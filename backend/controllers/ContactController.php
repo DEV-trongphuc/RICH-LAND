@@ -293,8 +293,8 @@ class ContactController {
         $stmt = $this->db->prepare("
             INSERT INTO contacts (tenant_id,company_id,owner_id,created_by,first_name,last_name,
                 email,phone,mobile,job_title,department,source,status,tags,notes,stage_id,
-                birthday,address,city,ward,expected_revenue,win_probability,last_contact,lead_score,person_id)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                birthday,address,city,ward,expected_revenue,win_probability,last_contact,lead_score,person_id,collaborator_ids)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
         ");
         $stmt->execute([
             $auth['tenant_id'],
@@ -307,7 +307,8 @@ class ContactController {
             $birthday, $b['address'] ?? null, $b['city'] ?? null, $b['ward'] ?? null,
             $b['expected_revenue'] ?? 0, $b['win_probability'] ?? 50,
             $last_contact, $b['lead_score'] ?? 0,
-            $personId
+            $personId,
+            $b['collaborator_ids'] ?? null
         ]);
         $id = (int)$this->db->lastInsertId();
         if ($duplicateFlag) {
@@ -536,7 +537,7 @@ class ContactController {
             'expected_revenue','win_probability','last_contact','stage_id',
             'pipeline_status', 'ttl1_completed', 'ttl1_data',
             'gender', 'zalo_link', 'fb_link', 'customer_type', 'industry', 'budget_range',
-            'temperature', 'suggested_temperature', 'campaign_id'
+            'temperature', 'suggested_temperature', 'campaign_id', 'collaborator_ids'
         ];
         $sets = []; $params = [];
         

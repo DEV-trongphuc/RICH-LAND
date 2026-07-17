@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { LogIn, Lock, Mail, Share2, Bell, BarChart3 } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
+import { LogIn, Lock, Mail, Share2, Bell, BarChart3, Sparkles, ShieldCheck, Zap, Bot, History, CheckCircle2, User, ArrowRight } from 'lucide-react';
 
 export const Login = () => {
   const { t } = useLanguage();
@@ -44,8 +44,8 @@ export const Login = () => {
     setLoading(false);
   };
 
-  const googleBtnRef = React.useRef<HTMLDivElement>(null);
-  const renderedRef = React.useRef(false);
+  const googleBtnRef = useRef<HTMLDivElement>(null);
+  const renderedRef = useRef(false);
 
   useEffect(() => {
     let intervalId: any;
@@ -84,7 +84,6 @@ export const Login = () => {
 
     if (localStorage.getItem('RICH LAND_DEMO_MODE') === 'true') {
       await new Promise(resolve => setTimeout(resolve, 500));
-      // Support matching roles based on email input
       const isSale = email.includes('sale') || email.includes('haidang') || email.includes('thao') || email.includes('dung') || email.includes('tuan');
       if (isSale) {
         let cId = 1;
@@ -164,368 +163,537 @@ export const Login = () => {
     setLoading(false);
   };
 
+  const ALL_MODULES = [
+    { title: t('Tích Hợp Zalo Bot'), sub: t('Quản lý ticket, nhận thông báo chia số và phản hồi duyệt lỗi tức thì trên Zalo.'), icon: Bot, color: 'linear-gradient(135deg, #3b82f6, #6366f1)' },
+    { title: t('Chia Data Thông Minh'), sub: t('Tự động phân bổ data theo vòng lặp, xử lý chống trùng lặp và đền bù lỗi.'), icon: Share2, color: 'linear-gradient(135deg, #f43f5e, #be123c)' },
+    { title: t('Thông Báo Email'), sub: t('Gửi mail cảnh báo trùng lặp, thông báo kết quả duyệt ticket ngay lập tức.'), icon: Bell, color: 'linear-gradient(135deg, #f59e0b, #d97706)' },
+    { title: t('Báo Cáo & Thống Kê'), sub: t('Báo cáo thống kê gửi hàng ngày theo khung giờ, đo lường hiệu suất Sale.'), icon: BarChart3, color: 'linear-gradient(135deg, #10b981, #059669)' },
+    { title: t('Đồng Hồ Bảo Mật'), sub: t('Tự động thu hồi khách hàng không tương tác và giải phóng về Databank chung.'), icon: ShieldCheck, color: 'linear-gradient(135deg, #a855f7, #6d28d9)' },
+    { title: t('Bù Lượt Lỗi Ca Trực'), sub: t('Cơ chế đền bù lượt lỗi, bù lượt thiếu do nghỉ phép hoặc trực ngoài giờ.'), icon: Zap, color: 'linear-gradient(135deg, #06b6d4, #0891b2)' }
+  ];
+
+  const row1 = ALL_MODULES.slice(0, 3);
+  const row2 = ALL_MODULES.slice(3);
+
+  const isDemoMode = localStorage.getItem('RICH LAND_DEMO_MODE') === 'true';
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      width: '100vw',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      background: 'linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%)',
-      position: 'relative',
-      overflow: 'hidden',
-      padding: '2rem'
-    }}>
-      {/* Decorative Background Elements */}
-      <div style={{
-        position: 'absolute', top: '-10%', left: '-10%', width: '50vw', height: '50vw',
-        background: 'radial-gradient(circle, rgba(189, 29, 45,0.15) 0%, rgba(0,0,0,0) 70%)',
-        borderRadius: '50%', filter: 'blur(60px)', animation: 'float 10s ease-in-out infinite'
-      }} />
-      <div style={{
-        position: 'absolute', bottom: '-20%', right: '-10%', width: '60vw', height: '60vw',
-        background: 'radial-gradient(circle, rgba(189, 29, 45,0.15) 0%, rgba(0,0,0,0) 70%)',
-        borderRadius: '50%', filter: 'blur(80px)', animation: 'float 15s ease-in-out infinite reverse'
-      }} />
-      
-      <div style={{
-        position: 'relative',
-        zIndex: 10,
-        width: '100%',
-        maxWidth: 1100,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: '4rem',
-        flexWrap: 'wrap'
-      }}>
-        
-        {/* Left Side: Features Info */}
-        <div className="features-panel" style={{ flex: '1 1 400px', color: 'white', animation: 'slideRight 0.6s cubic-bezier(0.16, 1, 0.3, 1)', display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-          <div>
-            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '12px', background: 'rgba(255,255,255,0.1)', padding: '8px 16px', borderRadius: '100px', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.2)', marginBottom: '1.5rem' }}>
-              <span style={{ display: 'flex', width: 8, height: 8, borderRadius: '50%', background: '#10b981', boxShadow: '0 0 10px #10b981' }}></span>
-              <span style={{ fontSize: '0.875rem', fontWeight: 600, letterSpacing: '0.5px' }}>{t("HỆ THỐNG AUTO CHIA DATA LOGIC")}</span>
-            </div>
-            <h1 style={{ fontSize: '3rem', fontWeight: 800, lineHeight: 1.2, marginBottom: '1rem', letterSpacing: '-1px' }}>
-              RICH LAND <span style={{ background: 'linear-gradient(to right, #818cf8, #e63946)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>DATA</span>
+    <div className="login-container">
+      {/* Background Decorative Blur Gradients */}
+      <div className="blur-glow-1" />
+      <div className="blur-glow-2" />
+
+      {/* Left Side: Brand & Visual Marquee */}
+      <div className="left-side">
+        <div style={{ position: 'relative', zIndex: 10, display: 'flex', flexDirection: 'column', gap: '3rem' }}>
+          {/* Header Badge */}
+          <div className="badge-container animate-float">
+            <Sparkles size={14} style={{ color: '#f87171' }} />
+            <span style={{ fontSize: '10px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '1.5px', color: '#fca5a5' }}>
+              {t("Data Automation Ecosystem")}
+            </span>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+            <h1 className="title-main">
+              RICH LAND <br />
+              <span className="title-gradient">
+                DATA SYSTEM 2026.
+              </span>
             </h1>
-            <p style={{ fontSize: '1.125rem', color: '#cbd5e1', lineHeight: 1.6, maxWidth: 480 }}>
-              {t("Giải pháp toàn diện giúp tự động hóa quy trình phân bổ khách hàng, theo dõi hiệu suất và tăng tỷ lệ chuyển đổi.")}
+            <p className="subtitle-main">
+              {t("Giải pháp toàn diện giúp tự động hóa quy trình phân bổ khách hàng, tối ưu hóa điểm chạm và tăng tỷ lệ chuyển đổi.")}
             </p>
           </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-            <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start', background: 'linear-gradient(to right, rgba(0,104,255,0.1), rgba(0,104,255,0.02))', padding: '16px', borderRadius: '16px', border: '1px solid rgba(0,104,255,0.3)', position: 'relative', overflow: 'hidden', boxShadow: '0 8px 32px rgba(0,104,255,0.15)' }}>
-              <div style={{ position: 'absolute', top: 0, right: 0, background: '#0068ff', color: 'white', fontSize: '0.65rem', fontWeight: 800, padding: '3px 10px', borderBottomLeftRadius: '12px', letterSpacing: '0.5px' }}>{t("NỔI BẬT")}</div>
-              <div style={{ flexShrink: 0, width: 44, height: 44, borderRadius: '50%', overflow: 'hidden', border: '2px solid rgba(0,104,255,0.6)', boxShadow: '0 4px 16px rgba(0,104,255,0.4)', marginTop: '2px' }}>
-                <img src="https://s120-ava-talk.zadn.vn/0/1/e/7/1/120/e932faecd85ad36444b8a9d41eb73bb7.jpg" alt="Zalo Bot" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+          {/* Scrolling Features Marquee */}
+          <div className="marquee-wrapper pause-on-hover mask-fade-edges">
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', width: '100%', position: 'relative' }}>
+              {/* Row 1 */}
+              <div className="marquee-row animate-slide-infinite">
+                {[...row1, ...row1, ...row1].map((f, i) => (
+                  <div key={`r1-${i}`} className="marquee-item">
+                    <div className="icon-box" style={{ background: f.color }}>
+                      <f.icon size={20} color="white" />
+                    </div>
+                    <h3 className="item-title">{f.title}</h3>
+                    <p className="item-sub">{f.sub}</p>
+                  </div>
+                ))}
               </div>
-              <div style={{ paddingTop: '2px' }}>
-                <h3 style={{ fontSize: '1.125rem', fontWeight: 800, marginBottom: '6px', color: '#60a5fa' }}>{t("Tích Hợp Zalo Bot")}</h3>
-                <p style={{ color: '#cbd5e1', fontSize: '0.95rem', lineHeight: 1.5 }}>{t("Quản lý ticket, nhận thông báo chia số và phản hồi duyệt lỗi nhanh chóng ngay trên ứng dụng Zalo.")}</p>
-              </div>
-            </div>
 
-            <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start' }}>
-              <div style={{ background: 'rgba(189, 29, 45,0.2)', padding: '10px', borderRadius: '12px', color: '#818cf8' }}>
-                <Share2 size={24} />
-              </div>
-              <div>
-                <h3 style={{ fontSize: '1.125rem', fontWeight: 600, marginBottom: '4px' }}>{t("Chia Data Thông Minh")}</h3>
-                <p style={{ color: '#94a3b8', fontSize: '0.95rem', lineHeight: 1.5 }}>{t("Tự động phân bổ data theo vòng lặp, xử lý chống trùng lặp và đền bù data lỗi chính xác 100%.")}</p>
-              </div>
-            </div>
-
-            <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start' }}>
-              <div style={{ background: 'rgba(56,189,248,0.2)', padding: '10px', borderRadius: '12px', color: '#38bdf8' }}>
-                <Bell size={24} />
-              </div>
-              <div>
-                <h3 style={{ fontSize: '1.125rem', fontWeight: 600, marginBottom: '4px' }}>{t("Thông Báo Email Tức Thì")}</h3>
-                <p style={{ color: '#94a3b8', fontSize: '0.95rem', lineHeight: 1.5 }}>{t("Gửi email cảnh báo data trùng lặp, data mới, và thông báo kết quả duyệt ticket ngay lập tức.")}</p>
-              </div>
-            </div>
-
-            <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start' }}>
-              <div style={{ background: 'rgba(244,114,182,0.2)', padding: '10px', borderRadius: '12px', color: '#f472b6' }}>
-                <BarChart3 size={24} />
-              </div>
-              <div>
-                <h3 style={{ fontSize: '1.125rem', fontWeight: 600, marginBottom: '4px' }}>{t("Báo Cáo & Thống Kê")}</h3>
-                <p style={{ color: '#94a3b8', fontSize: '0.95rem', lineHeight: 1.5 }}>{t("Báo cáo thống kê tự động gửi hàng ngày theo khung giờ tùy chọn, đo lường chính xác hiệu suất Sale và chất lượng Data.")}</p>
+              {/* Row 2 */}
+              <div className="marquee-row animate-slide-infinite-reverse">
+                {[...row2, ...row2, ...row2].map((f, i) => (
+                  <div key={`r2-${i}`} className="marquee-item">
+                    <div className="icon-box" style={{ background: f.color }}>
+                      <f.icon size={20} color="white" />
+                    </div>
+                    <h3 className="item-title">{f.title}</h3>
+                    <p className="item-sub">{f.sub}</p>
+                  </div>
+                ))}
               </div>
             </div>
           </div>
         </div>
 
-        {/* Right Side: Login Form */}
-        <div className="login-form-container" style={{
-          flex: '0 1 400px',
-          width: '100%',
-          background: 'rgba(255, 255, 255, 0.98)',
-          backdropFilter: 'blur(20px)',
-          borderRadius: '24px',
-          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255,255,255,0.1) inset',
-          padding: '3rem 2.5rem',
-          animation: 'slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1)'
-        }}>
-        <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
-          <div style={{
-            width: 64, height: 64, margin: '0 auto 1rem', borderRadius: 16,
-            background: 'linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-hover) 100%)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
-          }}>
-            <img src="/LOGO.jpg" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 16 }} 
-              onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
-              alt="logo" />
-          </div>
-          <h2 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--color-text)' }}>{t("Đăng Nhập")}</h2>
-          <p style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem', marginTop: 4 }}>{t("Vui lòng đăng nhập để tiếp tục")}</p>
-        </div>
+        {/* Circular Lines Decor */}
+        <div className="circle-decor-1" />
+        <div className="circle-decor-2" />
+        <div className="circle-decor-3" />
+      </div>
 
-        {error && (
-          <div style={{
-            padding: '0.75rem 1rem', background: 'var(--color-danger-light)', color: 'var(--color-danger)',
-            borderRadius: 'var(--radius-md)', fontSize: '0.875rem', fontWeight: 600, marginBottom: '1.5rem',
-            textAlign: 'center'
-          }}>
-            {error}
-          </div>
-        )}
-
-        <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-          <div>
-            <label className="form-label">{t("Email đăng nhập")}</label>
-            <div style={{ position: 'relative' }}>
-              <Mail size={20} style={{ position: 'absolute', left: 14, top: 14, color: '#94a3b8' }} />
-              <input
-                type="email"
-                className="form-input login-input"
-                style={{ paddingLeft: 44, height: 48, borderRadius: 12 }}
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder={t("VD: ten@richland.net")}
-                autoComplete="email"
-                required
-              />
+      {/* Right Side: Identity Check Card */}
+      <div className="right-side">
+        <div style={{ position: 'relative', zIndex: 10, width: '100%', maxWidth: '360px', display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+          <div style={{ textAlign: 'center', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            {/* Animated rotated logo container */}
+            <div className="logo-box">
+              <img src="/imgs/logo-rich-land-viet-nam-trang.webp" className="logo-img" style={{ objectFit: 'contain' }} alt="Rich Land Logo" />
+            </div>
+            <div style={{ paddingTop: '8px' }}>
+              <h2 style={{ fontSize: '1.75rem', fontWeight: 900, color: 'white', letterSpacing: '-0.5px' }}>
+                {isDemoMode ? t('Trải nghiệm Demo') : t('Đăng Nhập')}
+              </h2>
+              <p style={{ color: '#94a3b8', fontWeight: 500, fontSize: '0.875rem', marginTop: '6px' }}>
+                {isDemoMode
+                  ? t('Hãy chọn tài khoản demo để khởi động hệ thống')
+                  : t('Đăng nhập bằng tài khoản hoặc mã Google')}
+              </p>
             </div>
           </div>
 
-          <div>
-            <label className="form-label">{t("Mật khẩu")}</label>
-            <div style={{ position: 'relative' }}>
-              <Lock size={20} style={{ position: 'absolute', left: 14, top: 14, color: '#94a3b8' }} />
-              <input 
-                type="password" 
-                className="form-input login-input" 
-                style={{ paddingLeft: 44, height: 48, borderRadius: 12 }}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder={t("Nhập mật khẩu")}
-                autoComplete="current-password"
-                required
-              />
+          {error && (
+            <div style={{ padding: '12px', background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.3)', borderRadius: '16px', fontSize: '12px', fontWeight: 700, color: '#f87171', textAlign: 'center' }}>
+              {error}
             </div>
-          </div>
-
-          <button 
-            type="submit" 
-            className="login-btn" 
-            style={{ width: '100%', padding: '0 1.5rem', height: 48, marginTop: '1rem', fontSize: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
-            disabled={loading}
-          >
-            {loading ? t('Đang xác thực...') : <><LogIn size={18} /> {t("Đăng nhập")}</>}
-          </button>
-
-          {localStorage.getItem('RICH LAND_DEMO_MODE') === 'true' && (
-            <button
-              type="button"
-              onClick={() => {
-                setLoading(true);
-                setTimeout(() => {
-                  login('demo_token_12345', { id: 1, username: 'admin', email: 'admin@richland.net', name: 'Admin Demo', role: 'admin' });
-                  navigate('/');
-                  setLoading(false);
-                }, 500);
-              }}
-              className="login-btn"
-              style={{
-                width: '100%',
-                padding: '0 1.5rem',
-                height: 48,
-                marginTop: '0.75rem',
-                fontSize: '1rem',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: 8,
-                background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
-                boxShadow: '0 4px 12px rgba(16,185,129,0.3)',
-                border: 'none',
-                borderRadius: 12,
-                color: 'white',
-                fontWeight: 600,
-                cursor: 'pointer'
-              }}
-            >
-              <LogIn size={18} /> {t("Đăng nhập Demo (Admin)")}
-            </button>
           )}
-        </form>
 
-        <div style={{ display: 'flex', alignItems: 'center', margin: '1.5rem 0 1.25rem', color: 'var(--color-text-muted)', fontSize: '0.875rem' }}>
-          <div style={{ flex: 1, height: 1, background: 'var(--color-border)' }} />
-          <span style={{ padding: '0 0.75rem', fontWeight: 500 }}>{t("Hoặc đăng nhập bằng")}</span>
-          <div style={{ flex: 1, height: 1, background: 'var(--color-border)' }} />
-        </div>
+          <div className="login-card">
+            <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <div>
+                <label className="form-label-custom">{t("Email đăng nhập")}</label>
+                <div className="input-wrapper">
+                  <Mail size={16} className="input-icon" />
+                  <input
+                    type="email"
+                    className="input-field"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder={t("VD: ten@richland.net")}
+                    autoComplete="email"
+                    required
+                  />
+                </div>
+              </div>
 
-        <div style={{ display: 'flex', justifyContent: 'center' }}>
-          <div ref={googleBtnRef} style={{ width: '100%', display: 'flex', justifyContent: 'center', minHeight: 44 }}></div>
-        </div>
+              <div>
+                <label className="form-label-custom">{t("Mật khẩu")}</label>
+                <div className="input-wrapper">
+                  <Lock size={16} className="input-icon" />
+                  <input
+                    type="password"
+                    className="input-field"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder={t("Nhập mật khẩu")}
+                    autoComplete="current-password"
+                    required
+                  />
+                </div>
+              </div>
 
-        {/* Dev Login Buttons */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginTop: '1.5rem', borderTop: '1px dashed var(--color-border-light)', paddingTop: '1.25rem' }}>
-          <p style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)', textAlign: 'center', margin: 0 }}>Dành cho Nhà phát triển (Developer Quick Login)</p>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(115px, 1fr))', gap: '8px' }}>
-            <button 
-              type="button" 
-              className="btn secondary sm" 
-              style={{ height: '36px', fontSize: '0.75rem', padding: '4px 6px', display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center' }}
-              onClick={() => handleQuickLogin('superadmin@richland.net', 'superadmin123', 'Super Admin')}
-            >
-              Dev Super Admin
-            </button>
-            <button 
-              type="button" 
-              className="btn secondary sm" 
-              style={{ height: '36px', fontSize: '0.75rem', padding: '4px 6px', display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center' }}
-              onClick={() => handleQuickLogin('admin@richland.net', 'admin123', 'Admin')}
-            >
-              Dev Admin
-            </button>
-            <button 
-              type="button" 
-              className="btn secondary sm" 
-              style={{ height: '36px', fontSize: '0.75rem', padding: '4px 6px', display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center' }}
-              onClick={() => handleQuickLogin('haidang@richland.net', 'sale123', 'Sale')}
-            >
-              Dev Sale
-            </button>
-            <button 
-              type="button" 
-              className="btn secondary sm" 
-              style={{ height: '36px', fontSize: '0.75rem', padding: '4px 6px', display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center' }}
-              onClick={() => handleQuickLogin('director@richland.net', 'director123', 'Director')}
-            >
-              Dev Director
-            </button>
-            <button 
-              type="button" 
-              className="btn secondary sm" 
-              style={{ height: '36px', fontSize: '0.75rem', padding: '4px 6px', display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center' }}
-              onClick={() => handleQuickLogin('manager@richland.net', 'manager123', 'Manager')}
-            >
-              Dev Manager
-            </button>
-            <button 
-              type="button" 
-              className="btn secondary sm" 
-              style={{ height: '36px', fontSize: '0.75rem', padding: '4px 6px', display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center' }}
-              onClick={() => handleQuickLogin('assistant@richland.net', 'assistant123', 'Assistant')}
-            >
-              Dev Assistant
-            </button>
-            <button 
-              type="button" 
-              className="btn secondary sm" 
-              style={{ height: '36px', fontSize: '0.75rem', padding: '4px 6px', display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center' }}
-              onClick={() => handleQuickLogin('viewer@richland.net', 'viewer123', 'Viewer')}
-            >
-              Dev Viewer
-            </button>
+              <button
+                type="submit"
+                className="submit-btn-custom"
+                disabled={loading}
+              >
+                {loading ? t('Đang xác thực...') : <><LogIn size={16} /> {t("Đăng nhập")}</>}
+              </button>
+
+              {isDemoMode && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setLoading(true);
+                    setTimeout(() => {
+                      login('demo_token_12345', { id: 1, username: 'admin', email: 'admin@richland.net', name: 'Admin Demo', role: 'admin' });
+                      navigate('/');
+                      setLoading(false);
+                    }, 500);
+                  }}
+                  className="submit-btn-custom"
+                  style={{ background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', boxShadow: '0 8px 16px rgba(16, 185, 129, 0.2)' }}
+                >
+                  <LogIn size={16} /> {t("Đăng nhập Demo (Admin)")}
+                </button>
+              )}
+            </form>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', margin: '20px 0' }}>
+              <div style={{ height: '1px', flex: 1, background: 'rgba(255,255,255,0.08)' }} />
+              <span style={{ fontSize: '10px', fontWeight: 900, color: '#475569', textTransform: 'uppercase', letterSpacing: '1px' }}>{t("Hoặc")}</span>
+              <div style={{ height: '1px', flex: 1, background: 'rgba(255,255,255,0.08)' }} />
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '8px' }}>
+              <div ref={googleBtnRef} style={{ width: '100%', display: 'flex', justifyContent: 'center', minHeight: '44px' }}></div>
+            </div>
+
+            <p style={{ fontSize: '10px', color: '#475569', fontWeight: 500, textAlign: 'center', lineHeight: 1.5, marginTop: '16px' }}>
+              {t("Bằng cách đăng nhập, bạn đồng ý với các chính sách bảo mật và điều khoản sử dụng của hệ thống.")}
+            </p>
+          </div>
+
+          {/* Dev Quick Login Section */}
+          <div style={{ padding: '16px', background: 'rgba(15, 23, 42, 0.25)', border: '1px solid rgba(255, 255, 255, 0.05)', borderRadius: '20px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            <p style={{ fontSize: '10px', color: '#475569', fontWeight: 900, textTransform: 'uppercase', textAlign: 'center', letterSpacing: '1px', margin: 0 }}>
+              {t("Developer Quick Login")}
+            </p>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px' }}>
+              <button
+                onClick={() => handleQuickLogin('admin@richland.net', 'admin123', 'Admin')}
+                style={{ height: '36px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(15, 23, 42, 0.6)', color: '#cbd5e1', cursor: 'pointer', fontSize: '12px', fontWeight: 600 }}
+              >
+                Admin
+              </button>
+              <button
+                onClick={() => handleQuickLogin('director@richland.net', 'director123', 'Director')}
+                style={{ height: '36px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(15, 23, 42, 0.6)', color: '#cbd5e1', cursor: 'pointer', fontSize: '12px', fontWeight: 600 }}
+              >
+                Director
+              </button>
+              <button
+                onClick={() => handleQuickLogin('manager@richland.net', 'manager123', 'Manager')}
+                style={{ height: '36px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(15, 23, 42, 0.6)', color: '#cbd5e1', cursor: 'pointer', fontSize: '12px', fontWeight: 600 }}
+              >
+                Manager
+              </button>
+              <button
+                onClick={() => handleQuickLogin('haidang@richland.net', 'sale123', 'Sale')}
+                style={{ height: '36px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(15, 23, 42, 0.6)', color: '#cbd5e1', cursor: 'pointer', fontSize: '12px', fontWeight: 600 }}
+              >
+                Sale
+              </button>
+            </div>
           </div>
         </div>
+
+        {/* Watermark */}
+        <div style={{ position: 'absolute', bottom: '24px', right: '24px', color: 'rgba(255,255,255,0.015)', fontSize: '80px', fontWeight: 900, pointerEvents: 'none', userSelect: 'none', transform: 'rotate(2deg) translateY(40px)' }}>
+          RICHLAND.
+        </div>
       </div>
-      </div>
+
       <style>{`
-        @keyframes slideUp {
-          0% {
-            opacity: 0;
-            transform: translateY(40px);
-          }
-          60% {
-            transform: translateY(-8px);
-          }
-          85% {
-            transform: translateY(2px);
-          }
-          100% {
-            opacity: 1;
-            transform: translateY(0);
-          }
+        .login-container {
+          min-height: 100vh;
+          width: 100vw;
+          display: flex;
+          flex-direction: row;
+          background: #080d1a;
+          position: relative;
+          overflow: hidden;
         }
-        @keyframes slideRight {
-          from { opacity: 0; transform: translateX(-40px); }
-          to { opacity: 1; transform: translateX(0); }
+        .blur-glow-1 {
+          position: absolute;
+          top: 0;
+          right: 0;
+          width: 500px;
+          height: 500px;
+          background: rgba(239, 68, 68, 0.08);
+          filter: blur(120px);
+          border-radius: 50%;
+          pointer-events: none;
         }
-        @keyframes float {
-          0% { transform: translateY(0) scale(1); }
-          50% { transform: translateY(-30px) scale(1.05); }
-          100% { transform: translateY(0) scale(1); }
+        .blur-glow-2 {
+          position: absolute;
+          bottom: 0;
+          left: 0;
+          width: 500px;
+          height: 500px;
+          background: rgba(245, 158, 11, 0.08);
+          filter: blur(120px);
+          border-radius: 50%;
+          pointer-events: none;
         }
-        .login-input {
-          transition: all 0.2s ease;
-          background: #f8fafc;
-          border: 1px solid #e2e8f0;
+        .left-side {
+          position: relative;
+          flex: 1;
+          padding: 5rem 2rem 5rem 5rem;
+          display: flex;
+          flex-direction: column;
+          justify-content: center;
+          overflow: hidden;
         }
-        .login-input:focus {
-          background: #fff;
-          border-color: #BD1D2D;
-          box-shadow: 0 0 0 4px rgba(189, 29, 45,0.1);
+        .right-side {
+          position: relative;
+          width: 560px;
+          background: rgba(12, 18, 32, 0.6);
+          backdrop-filter: blur(30px);
+          border-left: 1px solid rgba(255, 255, 255, 0.08);
+          padding: 4rem;
+          display: flex;
+          flex-direction: column;
+          justify-content: center;
+          align-items: center;
+          overflow-y: auto;
         }
-        [data-theme="dark"] .login-form-container {
-          background: rgba(15, 20, 34, 0.85) !important;
-          border: 1px solid rgba(255, 255, 255, 0.08) !important;
-          box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(255, 255, 255, 0.05) inset !important;
+        .badge-container {
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+          padding: 8px 16px;
+          background: rgba(239, 68, 68, 0.08);
+          backdrop-filter: blur(8px);
+          border: 1px solid rgba(239, 68, 68, 0.25);
+          border-radius: 9999px;
+          margin-bottom: 2rem;
+          align-self: flex-start;
         }
-        [data-theme="dark"] .login-input {
-          background: rgba(6, 9, 19, 0.8) !important;
-          border-color: rgba(189, 29, 45, 0.25) !important;
-          color: #f8fafc !important;
-        }
-        [data-theme="dark"] .login-input:focus {
-          background: rgba(6, 9, 19, 0.95) !important;
-          border-color: #a78bfa !important;
-          box-shadow: 0 0 0 4px rgba(167, 139, 250, 0.15) !important;
-        }
-        .login-btn {
-          background: linear-gradient(135deg, #a31422 0%, #a31422 100%);
+        .title-main {
+          font-size: 4rem;
+          font-weight: 900;
           color: white;
-          border: none;
+          line-height: 1.1;
+          letter-spacing: -2px;
+          margin-bottom: 1.5rem;
+        }
+        .title-gradient {
+          background: linear-gradient(to right, #ff4d4d, #ff8080, #ffb366);
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+        }
+        .subtitle-main {
+          max-width: 450px;
+          font-size: 1.125rem;
+          color: #94a3b8;
+          font-weight: 500;
+          line-height: 1.6;
+          margin-bottom: 3rem;
+        }
+        .logo-box {
+          width: 80px;
+          height: 80px;
+          background: linear-gradient(135deg, #BD1D2D 0%, #a31422 100%);
+          border-radius: 24px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          margin: 0 auto 1rem;
+          box-shadow: 0 20px 40px rgba(189, 29, 45, 0.35);
+          transform: rotate(3deg);
+          overflow: hidden;
+          padding: 6px;
+          border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .logo-img {
+          width: 100%;
+          height: 100%;
+          object-fit: contain;
+          border-radius: 16px;
+        }
+        .login-card {
+          width: 100%;
+          max-width: 380px;
+          padding: 2rem;
+          background: rgba(15, 23, 42, 0.55);
+          border: 1px solid rgba(255, 255, 255, 0.08);
+          border-radius: 32px;
+          box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+          backdrop-filter: blur(20px);
+        }
+        .form-label-custom {
+          font-size: 11px;
+          font-weight: 700;
+          color: #94a3b8;
+          text-transform: uppercase;
+          letter-spacing: 1px;
+          display: block;
+          margin-bottom: 6px;
+        }
+        .input-wrapper {
+          position: relative;
+          margin-bottom: 1.25rem;
+        }
+        .input-icon {
+          position: absolute;
+          left: 14px;
+          top: 13px;
+          color: #64748b;
+        }
+        .input-field {
+          width: 100%;
+          height: 44px;
+          padding-left: 42px;
+          padding-right: 16px;
           border-radius: 12px;
-          font-weight: 600;
+          border: 1px solid rgba(255, 255, 255, 0.08);
+          background: rgba(15, 23, 42, 0.8);
+          color: white;
+          font-size: 14px;
+          transition: all 0.2s ease;
+          box-sizing: border-box;
+        }
+        .input-field:focus {
+          outline: none;
+          border-color: #ef4444;
+          box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.15);
+        }
+        .submit-btn-custom {
+          width: 100%;
+          height: 46px;
+          background: linear-gradient(135deg, #a31422 0%, #d01d33 100%);
+          color: white;
+          border-radius: 12px;
+          font-weight: 700;
+          font-size: 14px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 8px;
+          transition: all 0.2s;
+          border: none;
+          cursor: pointer;
+          box-shadow: 0 8px 16px rgba(163, 20, 34, 0.25);
+        }
+        .submit-btn-custom:hover {
+          transform: translateY(-1px);
+          box-shadow: 0 12px 20px rgba(163, 20, 34, 0.35);
+        }
+        .submit-btn-custom:active {
+          transform: translateY(1px);
+        }
+        .marquee-wrapper {
+          position: relative;
+          width: 100%;
+          overflow: hidden;
+          margin-top: 2rem;
+        }
+        .marquee-row {
+          display: flex;
+          gap: 16px;
+          width: max-content;
+        }
+        .marquee-item {
+          width: 280px;
+          flex-shrink: 0;
+          padding: 1.25rem;
+          background: rgba(18, 25, 42, 0.4);
+          backdrop-filter: blur(8px);
+          border: 1px solid rgba(255, 255, 255, 0.05);
+          border-radius: 24px;
           transition: all 0.3s ease;
-          box-shadow: 0 4px 12px rgba(189, 29, 45,0.3);
         }
-        .login-btn:hover:not(:disabled) {
+        .marquee-item:hover {
+          background: rgba(30, 41, 59, 0.6);
+          border-color: rgba(239, 68, 68, 0.3);
           transform: translateY(-2px);
-          box-shadow: 0 8px 20px rgba(189, 29, 45,0.4);
         }
-        .login-btn:disabled {
-          opacity: 0.7;
-          cursor: not-allowed;
+        .icon-box {
+          width: 44px;
+          height: 44px;
+          border-radius: 12px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          margin-bottom: 12px;
+          box-shadow: 0 8px 16px rgba(0,0,0,0.15);
         }
-        @media (max-width: 768px) {
-          .features-panel {
-            display: none !important;
+        .item-title {
+          font-size: 14px;
+          font-weight: 700;
+          color: white;
+          margin-bottom: 4px;
+        }
+        .item-sub {
+          font-size: 11px;
+          color: #94a3b8;
+          line-height: 1.5;
+        }
+        .circle-decor-1 {
+          position: absolute;
+          top: 50%;
+          left: 0;
+          transform: translateY(-50%);
+          width: 800px;
+          height: 800px;
+          border: 1px solid rgba(255,255,255,0.015);
+          border-radius: 50%;
+          pointer-events: none;
+        }
+        .circle-decor-2 {
+          position: absolute;
+          top: 50%;
+          left: 0;
+          transform: translateY(-50%) translate(40px);
+          width: 600px;
+          height: 600px;
+          border: 1px solid rgba(255,255,255,0.015);
+          border-radius: 50%;
+          pointer-events: none;
+        }
+        .circle-decor-3 {
+          position: absolute;
+          top: 50%;
+          left: 0;
+          transform: translateY(-50%) translate(80px);
+          width: 400px;
+          height: 400px;
+          border: 1px solid rgba(255,255,255,0.02);
+          border-radius: 50%;
+          pointer-events: none;
+        }
+
+        @keyframes float {
+          0%, 100% { transform: translateY(0); }
+          50% { transform: translateY(-10px); }
+        }
+        .animate-float {
+          animation: float 4s ease-in-out infinite;
+        }
+        @keyframes slide-infinite {
+          0% { transform: translateX(0); }
+          100% { transform: translateX(-33.3333%); }
+        }
+        @keyframes slide-infinite-reverse {
+          0% { transform: translateX(-33.3333%); }
+          100% { transform: translateX(0); }
+        }
+        .animate-slide-infinite {
+          animation: slide-infinite 25s linear infinite;
+        }
+        .animate-slide-infinite-reverse {
+          animation: slide-infinite-reverse 25s linear infinite;
+        }
+        .pause-on-hover:hover .animate-slide-infinite,
+        .pause-on-hover:hover .animate-slide-infinite-reverse {
+          animation-play-state: paused;
+        }
+        .mask-fade-edges {
+          mask-image: linear-gradient(to right, transparent, white 4%, white 98%, transparent);
+          -webkit-mask-image: linear-gradient(to right, transparent, white 4%, white 98%, transparent);
+        }
+
+        @media (max-width: 992px) {
+          .login-container {
+            flex-direction: column;
+            overflow-y: auto;
           }
-        }
-        @media (max-width: 480px) {
-          .login-form-container {
-            padding: 2rem 1.25rem !important;
+          .left-side {
+            padding: 3rem 1.5rem;
+            min-height: auto;
+          }
+          .right-side {
+            width: 100%;
+            padding: 3rem 1.5rem;
+            border-left: none;
+            border-top: 1px solid rgba(255, 255, 255, 0.08);
+            background: rgba(12, 18, 32, 0.85);
+          }
+          .title-main {
+            font-size: 2.75rem;
           }
         }
       `}</style>
