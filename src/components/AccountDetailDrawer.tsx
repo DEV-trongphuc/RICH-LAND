@@ -279,7 +279,8 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
       // Fetch Full Consultant Profile (for ERP metadata, Schedules, etc.)
       const fetchFullDetails = async () => {
         try {
-          const res = await fetchAPI(`consultant-profile?consultant_id=${account.id}`);
+          const param = account.username ? `user_id=${account.id}` : `consultant_id=${account.id}`;
+          const res = await fetchAPI(`consultant-profile?${param}`);
           if (res.success && res.data) {
             const d = res.data;
             setZaloChatId(d.zalo_chat_id || '');
@@ -1118,15 +1119,6 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
                   </button>
                   <button
                     type="button"
-                    className={`${styles.sidebarTabBtn} ${activeTab === 'account' ? styles.sidebarTabActive : ''}`}
-                    onClick={() => setActiveTab('account')}
-                    style={{ padding: '10px 0.75rem', fontSize: '0.825rem', display: 'flex', alignItems: 'center', gap: '8px', width: isMobileOrTablet ? 'auto' : '100%', border: 'none', background: activeTab === 'account' ? 'var(--color-bg-light)' : 'transparent', borderRadius: '8px', cursor: 'pointer', textAlign: 'left', fontWeight: activeTab === 'account' ? 700 : 500 }}
-                  >
-                    <Lock size={15} />
-                    <span style={{ whiteSpace: 'nowrap' }}>{t('Tài khoản & Quyền')}</span>
-                  </button>
-                  <button
-                    type="button"
                     className={`${styles.sidebarTabBtn} ${activeTab === 'bank' ? styles.sidebarTabActive : ''}`}
                     onClick={() => setActiveTab('bank')}
                     style={{ padding: '10px 0.75rem', fontSize: '0.825rem', display: 'flex', alignItems: 'center', gap: '8px', width: isMobileOrTablet ? 'auto' : '100%', border: 'none', background: activeTab === 'bank' ? 'var(--color-bg-light)' : 'transparent', borderRadius: '8px', cursor: 'pointer', textAlign: 'left', fontWeight: activeTab === 'bank' ? 700 : 500 }}
@@ -1160,6 +1152,33 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
                   >
                     <Paperclip size={15} />
                     <span style={{ whiteSpace: 'nowrap' }}>{t('Lưu trữ tài liệu')}</span>
+                  </button>
+
+                  {!isMobileOrTablet && (
+                    <div style={{ height: '1px', backgroundColor: 'var(--color-border-light)', margin: '6px 0.5rem' }} />
+                  )}
+                  <button
+                    type="button"
+                    className={`${styles.sidebarTabBtn} ${activeTab === 'account' ? styles.sidebarTabActive : ''}`}
+                    onClick={() => setActiveTab('account')}
+                    style={{ 
+                      padding: '10px 0.75rem', 
+                      fontSize: '0.825rem', 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      gap: '8px', 
+                      width: isMobileOrTablet ? 'auto' : '100%', 
+                      border: 'none', 
+                      background: activeTab === 'account' ? 'rgba(239, 68, 68, 0.08)' : 'transparent', 
+                      borderRadius: '8px', 
+                      cursor: 'pointer', 
+                      textAlign: 'left', 
+                      fontWeight: activeTab === 'account' ? 700 : 500,
+                      color: 'var(--color-danger)'
+                    }}
+                  >
+                    <Lock size={15} color="var(--color-danger)" />
+                    <span style={{ whiteSpace: 'nowrap' }}>{t('Tài khoản & Quyền')}</span>
                   </button>
                 </div>
               </div>
@@ -2893,6 +2912,7 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
                           const renderCheckbox = (action: 'read' | 'write' | 'delete', scope: 'own' | 'team' | 'all') => {
                             const val = getVal(action);
                             const isChecked = val === scope;
+                            const activeColor = mod.key === 'settings' ? 'var(--color-danger)' : 'var(--color-primary)';
                             return (
                               <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '36px' }}>
                                 <label style={{
@@ -2903,8 +2923,8 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
                                   width: '18px',
                                   height: '18px',
                                   borderRadius: '5px',
-                                  border: `2px solid ${isChecked ? 'var(--color-primary)' : 'var(--color-border)'}`,
-                                  background: isChecked ? 'var(--color-primary)' : 'transparent',
+                                  border: `2px solid ${isChecked ? activeColor : 'var(--color-border)'}`,
+                                  background: isChecked ? activeColor : 'transparent',
                                   cursor: 'pointer',
                                   transition: 'all 0.15s'
                                 }}>
@@ -2930,9 +2950,18 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
                             );
                           };
 
+                          const isSettings = mod.key === 'settings';
+
                           return (
-                            <tr key={mod.key} style={{ overflow: 'visible' }}>
-                              <td style={{ padding: '12px 14px', fontWeight: 700, color: 'var(--color-text)', borderBottom: '1px solid var(--color-border-light)', borderRight: '1px solid var(--color-border-light)', overflow: 'visible' }}>
+                            <tr key={mod.key} style={{ overflow: 'visible', background: isSettings ? 'rgba(239, 68, 68, 0.04)' : 'transparent' }}>
+                              <td style={{ 
+                                padding: '12px 14px', 
+                                fontWeight: 700, 
+                                color: isSettings ? 'var(--color-danger)' : 'var(--color-text)', 
+                                borderBottom: '1px solid var(--color-border-light)', 
+                                borderRight: '1px solid var(--color-border-light)', 
+                                overflow: 'visible' 
+                              }}>
                                 {mod.label}
                               </td>
                               
@@ -2996,42 +3025,47 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
                       value={teamSearchQuery}
                       onChange={e => setTeamSearchQuery(e.target.value)}
                       style={{
-                        paddingLeft: '2.25rem',
+                        paddingLeft: '12px',
+                        paddingRight: '2.25rem',
                         height: '36px',
                         fontSize: '0.8125rem',
                         borderRadius: '10px',
                         borderColor: 'var(--color-border)'
                       }}
                     />
-                    <Search 
-                      size={14} 
-                      style={{ 
-                        position: 'absolute', 
-                        left: '12px', 
-                        top: '50%', 
-                        transform: 'translateY(-50%)', 
-                        color: 'var(--color-text-muted)',
-                        pointerEvents: 'none'
-                      }} 
-                    />
-                    {teamSearchQuery && (
+                    {teamSearchQuery ? (
                       <button
                         type="button"
                         onClick={() => setTeamSearchQuery('')}
                         style={{
                           position: 'absolute',
-                          right: '10px',
+                          right: '12px',
                           top: '50%',
                           transform: 'translateY(-50%)',
                           border: 'none',
                           background: 'transparent',
                           cursor: 'pointer',
-                          color: 'var(--color-text-light)',
-                          padding: '2px'
+                          color: 'var(--color-text-muted)',
+                          padding: '2px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center'
                         }}
                       >
                         <X size={14} />
                       </button>
+                    ) : (
+                      <Search 
+                        size={14} 
+                        style={{ 
+                          position: 'absolute', 
+                          right: '12px', 
+                          top: '50%', 
+                          transform: 'translateY(-50%)', 
+                          color: 'var(--color-text-muted)',
+                          pointerEvents: 'none'
+                        }} 
+                      />
                     )}
                   </div>
                   

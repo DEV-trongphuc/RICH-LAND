@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useUIStore } from '../store/uiStore';
 import { withRouterFreezer } from '../components/RouterFreezer';
-import { Mail, Settings2, Save, Send, Server, Database, Activity, ChevronDown, ChevronUp, Zap, Shield, MessageCircle, RefreshCw, Settings as SettingsIcon, BarChart2, Clock, Calendar, Users, CheckCircle, Plus, Trash2, Edit2, FileSpreadsheet, Upload, Download, X, Search, UserCheck, FileText, Tag } from 'lucide-react';
+import { Mail, Settings2, Save, Send, Server, Database, Activity, ChevronDown, ChevronUp, Zap, Shield, MessageCircle, RefreshCw, Settings as SettingsIcon, BarChart2, Clock, Calendar, Users, CheckCircle, Plus, Trash2, Edit2, FileSpreadsheet, Upload, Download, X, Search, UserCheck, FileText, Tag, Scale, Layers, HelpCircle, Filter } from 'lucide-react';
 import { CustomSelect } from '../components/ui/CustomSelect';
 import { ToggleSwitch } from '../components/ui/ToggleSwitch';
 import { CustomModal } from '../components/ui/CustomModal';
@@ -100,32 +100,112 @@ const SettingsInner = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
-  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+  const [collapsedHelps, setCollapsedHelps] = useState<Record<string, boolean>>({
+    fallback: true,
+    business_limits: true,
+    starvation_prevention: true,
+    duplicate_filter: true,
+    pipeline_stages: true,
+    tag_management: true,
+    legacy_mapping: true,
+    error_reasons: true,
+    auto_approve_ticket: true,
+    email_config: true,
+    zalo_bot: true,
+    automated_reports: true,
+    ai_assistant: true,
+    workflow_templates: true,
+    database_maintenance: true
+  });
 
-  useEffect(() => {
-    const handleResize = () => setIsMobile(window.innerWidth <= 768);
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
+  const renderHelpBanner = (tabKey: string, title: string, content: React.ReactNode) => {
+    const isCollapsed = collapsedHelps[tabKey] ?? true;
+    return (
+      <div style={{
+        background: 'var(--color-surface)',
+        border: '1px solid var(--color-border)',
+        borderRadius: '12px',
+        padding: '1.25rem',
+        marginBottom: '1.5rem',
+        transition: 'all 0.3s ease',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: isCollapsed ? '0' : '0.75rem'
+      }}>
+        <div 
+          style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', userSelect: 'none' }} 
+          onClick={() => setCollapsedHelps(prev => ({ ...prev, [tabKey]: !isCollapsed }))}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <HelpCircle size={18} color="var(--color-primary)" />
+            <span style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--color-text)' }}>{title}</span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>
+            {isCollapsed ? t('Xem hướng dẫn cơ chế') : t('Thu gọn')}
+            {isCollapsed ? <ChevronDown size={14} /> : <ChevronUp size={14} />}
+          </div>
+        </div>
+        {!isCollapsed && (
+          <div style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', lineHeight: 1.6 }}>
+            {content}
+          </div>
+        )}
+      </div>
+    );
+  };
 
-  // Tab State
-  const [activeTab, setActiveTab] = useState<'processing_fallback' | 'processing_databank' | 'processing_approve' | 'processing_dedup' | 'email_settings' | 'zalo_settings' | 'report' | 'duplicate_check' | 'ai' | 'workflow' | 'database' | 'tags'>('processing_fallback');
-  const [showTestEmailModal, setShowTestEmailModal] = useState(false);
-
-  const tabOptions = [
-    { value: 'processing_fallback', label: t('Định tuyến Fallback'), icon: <RefreshCw size={16} /> },
-    { value: 'processing_databank', label: t('Hạn mức & Bảo mật'), icon: <Clock size={16} /> },
-    { value: 'processing_approve', label: t('Tự động duyệt Ticket'), icon: <CheckCircle size={16} /> },
-    { value: 'processing_dedup', label: t('Lọc trùng & Blacklist'), icon: <Shield size={16} /> },
-    { value: 'email_settings', label: t('Cấu hình Email'), icon: <Mail size={16} /> },
-    { value: 'zalo_settings', label: t('Zalo Bot & Webhook'), icon: <MessageCircle size={16} /> },
-    { value: 'report', label: t('Báo cáo'), icon: <BarChart2 size={16} /> },
-    { value: 'duplicate_check', label: t('Ánh xạ dữ liệu cũ'), icon: <FileSpreadsheet size={16} /> },
-    { value: 'ai', label: t('Cấu hình Trợ lý AI'), icon: <Zap size={16} /> },
-    { value: 'workflow', label: t('Mẫu Quy trình'), icon: <Activity size={16} /> },
-    { value: 'database', label: t('Bảo trì Database'), icon: <Database size={16} /> },
-    { value: 'tags', label: t('Quản lý Thẻ (Tags)'), icon: <Tag size={16} /> }
+  // Tab State & Categories definition
+  const categories = [
+    {
+      title: t('Phân phối & Nghiệp vụ'),
+      items: [
+        { value: 'business_limits', label: t('Nghiệp vụ & Hạn mức'), icon: <Clock size={15} /> },
+        { value: 'fallback', label: t('Xử lý Fallback'), icon: <RefreshCw size={15} /> },
+        { value: 'starvation_prevention', label: t('Bù lượt thiếu'), icon: <Scale size={15} /> }
+      ]
+    },
+    {
+      title: t('Dữ liệu & Vòng đời'),
+      items: [
+        { value: 'duplicate_filter', label: t('Nhận diện & Lọc trùng'), icon: <Search size={15} /> },
+        { value: 'pipeline_stages', label: t('Vòng đời & Trạng thái'), icon: <Layers size={15} /> },
+        { value: 'tag_management', label: t('Quản lý Thẻ (Tags)'), icon: <Tag size={15} /> },
+        { value: 'legacy_mapping', label: t('Ánh xạ dữ liệu cũ'), icon: <FileSpreadsheet size={15} /> }
+      ]
+    },
+    {
+      title: t('Khiếu nại & Báo lỗi'),
+      items: [
+        { value: 'error_reasons', label: t('Lý do báo lỗi & Hướng dẫn'), icon: <Shield size={15} /> },
+        { value: 'auto_approve_ticket', label: t('Tự động duyệt ticket'), icon: <CheckCircle size={15} /> }
+      ]
+    },
+    {
+      title: t('Giao tiếp & Báo cáo'),
+      items: [
+        { value: 'email_config', label: t('Cấu hình Gửi Email'), icon: <Mail size={15} /> },
+        { value: 'zalo_bot', label: t('Cấu hình Zalo Bot'), icon: <MessageCircle size={15} /> },
+        { value: 'automated_reports', label: t('Báo cáo tự động'), icon: <BarChart2 size={15} /> }
+      ]
+    },
+    {
+      title: t('Tích hợp & Hệ thống'),
+      items: [
+        { value: 'ai_assistant', label: t('Trợ lý AI (Gemini)'), icon: <Zap size={15} /> },
+        { value: 'workflow_templates', label: t('Mẫu Quy trình'), icon: <FileText size={15} /> },
+        { value: 'database_maintenance', label: t('Bảo trì Database'), icon: <Database size={15} /> }
+      ]
+    }
   ];
+
+  const tabOptions = categories.flatMap(cat => cat.items.map(item => ({
+    value: item.value,
+    label: item.label,
+    icon: item.icon
+  })));
+
+  const [activeTab, setActiveTab] = useState<string>('business_limits');
+  const [showTestEmailModal, setShowTestEmailModal] = useState(false);
 
   // States for Gemini API Connection
   const [geminiApiKey, setGeminiApiKey] = useState('');
@@ -575,30 +655,38 @@ const SettingsInner = () => {
     const params = new URLSearchParams(window.location.search);
     const tabParam = params.get('tab');
     if (tabParam) {
+      let targetTab = tabParam;
       if (tabParam === 'processing') {
-        setActiveTab('processing_fallback');
+        targetTab = window.location.hash === '#auto-approve' ? 'auto_approve_ticket' : 'fallback';
       } else if (tabParam === 'mail') {
-        setActiveTab('email_settings');
+        targetTab = 'email_config';
       } else if (tabParam === 'zalo') {
-        setActiveTab('zalo_settings');
-      } else if ([
-        'processing_fallback', 'processing_databank', 'processing_approve', 'processing_dedup',
-        'email_settings', 'zalo_settings', 'report', 'duplicate_check', 'ai', 'workflow', 'database', 'tags'
-      ].includes(tabParam)) {
-        setActiveTab(tabParam as any);
+        targetTab = 'zalo_bot';
+      } else if (tabParam === 'report') {
+        targetTab = 'automated_reports';
+      } else if (tabParam === 'duplicate_check') {
+        targetTab = 'legacy_mapping';
+      } else if (tabParam === 'ai') {
+        targetTab = 'ai_assistant';
+      } else if (tabParam === 'workflow') {
+        targetTab = 'workflow_templates';
+      } else if (tabParam === 'database') {
+        targetTab = 'database_maintenance';
+      } else if (tabParam === 'tags') {
+        targetTab = 'tag_management';
       }
-    }
-    if (window.location.hash === '#auto-approve') {
-      setActiveTab('processing_approve');
-      setTimeout(() => {
-        const el = document.getElementById('auto-approve');
-        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      }, 300);
+      setActiveTab(targetTab);
+      if (window.location.hash === '#auto-approve') {
+        setTimeout(() => {
+          const el = document.getElementById('auto-approve');
+          if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }, 300);
+      }
     }
   }, []);
 
   useEffect(() => {
-    if (activeTab === 'duplicate_check') {
+    if (activeTab === 'legacy_mapping') {
       fetchImportHistory(historyPage, historySearch);
     }
   }, [activeTab, historyPage, historySearch]);
@@ -735,13 +823,13 @@ const SettingsInner = () => {
   };
 
   useEffect(() => {
-    if (activeTab === 'workflow') {
+    if (activeTab === 'workflow_templates') {
       fetchWorkflowData();
     }
-    if (activeTab === 'database') {
+    if (activeTab === 'database_maintenance') {
       fetchDbStats();
     }
-    if (activeTab === 'tags') {
+    if (activeTab === 'tag_management') {
       fetchTagsData();
     }
   }, [activeTab]);
@@ -1324,15 +1412,15 @@ const SettingsInner = () => {
   };
 
   const getTabStyle = (tab: string) => ({
-    padding: '8px 18px',
+    padding: '10px 14px',
     borderRadius: '8px',
     display: 'flex',
     alignItems: 'center',
     gap: '0.5rem',
     fontSize: '0.85rem',
     fontWeight: 600,
-    background: 'transparent',
-    color: activeTab === tab ? 'var(--color-primary)' : 'var(--color-text-muted)',
+    background: activeTab === tab ? 'var(--color-bg)' : 'transparent',
+    color: activeTab === tab ? 'var(--color-text)' : 'var(--color-text-muted)',
     cursor: 'pointer',
     transition: 'all 0.2s ease',
     border: 'none',
@@ -1340,32 +1428,17 @@ const SettingsInner = () => {
     position: 'relative' as const,
     outline: 'none',
     boxShadow: 'none',
-    userSelect: 'none' as const
+    userSelect: 'none' as const,
+    width: '100%',
+    textAlign: 'left' as const,
+    paddingLeft: '14px'
   });
 
-  const renderActiveIndicator = (tab: string) => {
-    if (activeTab !== tab) return null;
-    return (
-      <motion.div 
-        layoutId="activeSettingsTabIndicator"
-        style={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          background: 'var(--color-surface)',
-          borderRadius: '8px',
-          boxShadow: '0 2px 6px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04)',
-          zIndex: 1
-        }}
-        transition={{ type: 'spring', stiffness: 380, damping: 30 }}
-      />
-    );
-  };
+  const showGlobalSave = true;
+  const showTestEmailButton = true;
 
   return (
-    <div style={{ animation: 'fadeIn 0.3s' }}>
+    <div style={{ padding: '2rem', display: 'flex', flexDirection: 'column', gap: '1.5rem', animation: 'fadeIn 0.3s', minWidth: 0 }}>
       <div className="page-header settings-page-header" style={{
         position: 'sticky',
         top: '-2rem',
@@ -1386,6 +1459,25 @@ const SettingsInner = () => {
           <p className="page-subtitle">{t('Cấu hình Email, Webhooks và các tích hợp nâng cao.')}</p>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          {showTestEmailButton && (
+            <button
+              className="btn outline"
+              onClick={() => setShowTestEmailModal(true)}
+              disabled={loading}
+              style={{
+                height: '38px',
+                borderRadius: '8px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                fontSize: '0.875rem',
+                fontWeight: 600
+              }}
+            >
+              <Send size={14} />
+              <span>{t('Gửi Test Email')}</span>
+            </button>
+          )}
           {dbVersion && (
             <span style={{
               fontSize: '0.8125rem',
@@ -1403,14 +1495,12 @@ const SettingsInner = () => {
               {t('Phiên bản')} v{dbVersion}
             </span>
           )}
-          <button className="btn outline" onClick={() => setShowTestEmailModal(true)} disabled={loading} style={{ marginRight: '8px' }}>
-            <Send size={16} />
-            <span>{t('Gửi Test Email')}</span>
-          </button>
-          <button className="btn primary" onClick={handleSave} disabled={saving || loading}>
-            {saving ? <Activity size={16} className="spin" /> : <Save size={16} />}
-            <span className="hide-on-mobile">{t('Lưu cấu hình')}</span>
-          </button>
+          {showGlobalSave && (
+            <button className="btn primary" onClick={handleSave} disabled={saving || loading}>
+              {saving ? <Activity size={16} className="spin" /> : <Save size={16} />}
+              <span className="hide-on-mobile">{t('Lưu cấu hình')}</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -1419,99 +1509,81 @@ const SettingsInner = () => {
         <CustomSelect
           options={tabOptions}
           value={activeTab}
-          onChange={(val) => setActiveTab(val as any)}
+          onChange={(val) => setActiveTab(val)}
           width="100%"
         />
       </div>
 
-      {loading ? (
-        <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'flex-start', flexDirection: isMobile ? 'column' : 'row', width: '100%' }}>
-          <div style={{ width: '260px', display: 'flex', flexDirection: 'column', gap: '8px', flexShrink: 0 }} className="hide-on-mobile">
-            <Skeleton height={40} style={{ marginBottom: '8px' }} />
-            <Skeleton height={40} style={{ marginBottom: '8px' }} />
-            <Skeleton height={40} style={{ marginBottom: '8px' }} />
-            <Skeleton height={40} style={{ marginBottom: '8px' }} />
-            <Skeleton height={40} style={{ marginBottom: '8px' }} />
-            <Skeleton height={40} style={{ marginBottom: '8px' }} />
-            <Skeleton height={40} style={{ marginBottom: '8px' }} />
-            <Skeleton height={40} style={{ marginBottom: '8px' }} />
-          </div>
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '1.5rem', minWidth: 0, width: '100%' }}>
-            <CardSkeleton height={220} /><CardSkeleton height={160} />
-          </div>
-        </div>
-      ) : (
+      <div style={{ display: 'flex', gap: '2rem', alignItems: 'flex-start', marginTop: '1rem' }}>
+        {/* Left Sidebar (Desktop only) */}
         <div 
+          className="hide-on-mobile no-scrollbar" 
           style={{ 
+            width: '280px', 
+            flexShrink: 0, 
             display: 'flex', 
-            gap: '1.5rem', 
-            alignItems: 'flex-start',
-            flexDirection: isMobile ? 'column' : 'row',
-            width: '100%'
+            flexDirection: 'column', 
+            gap: '1.25rem',
+            position: 'sticky',
+            top: '6rem',
+            maxHeight: 'calc(100vh - 10rem)',
+            overflowY: 'auto',
+            padding: '1.5rem 1rem',
+            background: 'var(--color-surface)',
+            borderRadius: '16px',
+            border: '1px solid var(--color-border)',
+            boxShadow: 'var(--shadow-sm)'
           }}
         >
-          {/* Left Column: Sidebar Tabs */}
-          <div 
-            className="hide-on-mobile"
-            style={{ 
-              width: '260px', 
-              display: 'flex', 
-              flexDirection: 'column', 
-              gap: '6px', 
-              flexShrink: 0,
-              background: 'var(--color-surface)',
-              border: '1px solid var(--color-border)',
-              borderRadius: '12px',
-              padding: '12px',
-              position: 'sticky',
-              top: '6rem',
-              maxHeight: 'calc(100vh - 8rem)',
-              overflowY: 'auto',
-              boxShadow: 'var(--shadow-sm)'
-            }}
-          >
-            {tabOptions.map((tab) => (
-              <button 
-                key={tab.value}
-                type="button"
-                onClick={() => setActiveTab(tab.value as any)}
-                style={{
-                  width: '100%',
-                  textAlign: 'left',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '10px',
-                  padding: '10px 14px',
-                  borderRadius: '8px',
-                  fontSize: '0.8125rem',
-                  border: 'none',
-                  background: activeTab === tab.value ? 'var(--color-primary-light)' : 'transparent',
-                  color: activeTab === tab.value ? 'var(--color-primary)' : 'var(--color-text-muted)',
-                  fontWeight: activeTab === tab.value ? 700 : 500,
-                  cursor: 'pointer',
-                  transition: 'all 0.15s ease'
-                }}
-                onMouseEnter={e => {
-                  if (activeTab !== tab.value) {
-                    e.currentTarget.style.background = 'rgba(73, 80, 87, 0.04)';
-                  }
-                }}
-                onMouseLeave={e => {
-                  if (activeTab !== tab.value) {
-                    e.currentTarget.style.background = 'transparent';
-                  }
-                }}
-              >
-                {tab.icon}
-                <span>{tab.label}</span>
-              </button>
-            ))}
-          </div>
+          {categories.map((category, catIndex) => (
+            <div 
+              key={catIndex} 
+              style={{ 
+                display: 'flex', 
+                flexDirection: 'column', 
+                gap: '4px',
+                borderTop: catIndex > 0 ? '1px solid var(--color-border-light)' : 'none',
+                paddingTop: catIndex > 0 ? '0.75rem' : '0',
+                marginTop: catIndex > 0 ? '0.5rem' : '0'
+              }}
+            >
+              <h4 style={{ 
+                fontSize: '0.58rem', 
+                fontWeight: 900, 
+                color: 'var(--color-text-muted)', 
+                textTransform: 'uppercase', 
+                letterSpacing: '0.08em', 
+                marginBottom: '0.25rem', 
+                paddingLeft: '8px' 
+              }}>
+                {category.title}
+              </h4>
+              {category.items.map((item) => (
+                <button
+                  key={item.value}
+                  onClick={() => setActiveTab(item.value)}
+                  style={getTabStyle(item.value)}
+                >
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', position: 'relative', zIndex: 2 }}>
+                    {item.icon} {item.label}
+                  </span>
+                </button>
+              ))}
+            </div>
+          ))}
+        </div>
 
-          {/* Right Column: Active Tab Content */}
-          <div style={{ flex: 1, minWidth: 0, width: '100%', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+        {/* Right Content Area */}
+        <div style={{ flex: 1, minWidth: 0, width: '100%' }}>
+          {loading ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+              <CardSkeleton height={220} />
+              <CardSkeleton height={160} />
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', width: '100%' }}>
             {/* AI Assistant Tab Content */}
-            <div style={{ display: activeTab === 'ai' ? 'block' : 'none' }} className="subtab-enter-active">
+            <div style={{ display: activeTab === 'ai_assistant' ? 'block' : 'none' }} className="subtab-enter-active">
               <div className="card" style={{ padding: '2rem', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
                 <h3 style={{ fontSize: '1.125rem', fontWeight: 700, margin: 0, color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 8 }}>
                   <span style={{ display: 'inline-flex', background: 'var(--color-primary)', color: 'white', padding: 6, borderRadius: 6 }}>
@@ -1522,6 +1594,14 @@ const SettingsInner = () => {
                 <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', margin: 0, lineHeight: 1.5 }}>
                   {t('Cấu hình khóa kết nối Google Gemini API để Trợ lý AI Chatbot có thể đọc dữ liệu thống kê trực tiếp và trả lời một cách thông minh, linh hoạt cho người dùng bằng mô hình')} <strong>Gemini 2.5 Flash Lite</strong>.
                 </p>
+
+                {renderHelpBanner('ai_assistant', t('Giải thích cơ chế hoạt động của Trợ lý AI'), (
+                  <ul style={{ paddingLeft: '1.25rem', margin: 0, display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    <li><strong>{t('Mô hình mặc định:')}</strong> {t('Sử dụng gemini-2.5-flash hoặc gemini-2.5-flash-lite để xử lý tốc độ cao và chi phí tối ưu.')}</li>
+                    <li><strong>{t('Tác vụ:')}</strong> {t('AI sẽ tự động đọc, chấm điểm tiềm năng (Scoring), phân tích lịch sử hội thoại, và gợi ý kịch bản/nội dung email/zalo tiếp theo cho Sale.')}</li>
+                    <li><strong>{t('Bảo mật:')}</strong> {t('Khóa API của bạn được mã hóa và lưu trữ an toàn trong DB của hệ thống.')}</li>
+                  </ul>
+                ))}
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                   <label style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text-light)' }}>
@@ -1579,9 +1659,9 @@ const SettingsInner = () => {
             </div>
 
             {/* ===== TAB: WORKFLOW TEMPLATES ===== */}
-            <div style={{ display: activeTab === 'workflow' ? 'block' : 'none' }} className="subtab-enter-active">
+            <div style={{ display: activeTab === 'workflow_templates' ? 'block' : 'none' }} className="subtab-enter-active">
               <div className="card" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', marginBottom: '1rem' }}>
                   <div>
                     <h3 style={{ fontSize: '1.125rem', fontWeight: 700, margin: 0, color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 8 }}>
                       <Activity size={18} color="var(--color-primary)" />
@@ -1612,6 +1692,14 @@ const SettingsInner = () => {
                     <Plus size={14} /> {t('Thêm mẫu mới')}
                   </button>
                 </div>
+
+                {renderHelpBanner('workflow_templates', t('Giải thích cơ chế Quy trình tự động'), (
+                  <ul style={{ paddingLeft: '1.25rem', margin: 0, display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    <li><strong>{t('Kích hoạt chuyển trạng thái:')}</strong> {t('Khi trạng thái (giai đoạn) của KHTN/Doanh nghiệp thay đổi khớp với giai đoạn của mẫu quy trình.')}</li>
+                    <li><strong>{t('Tự động tạo Task:')}</strong> {t('Hệ thống sẽ tạo ra checklist các công việc và tự động gán cho Sale đang phụ trách lead đó.')}</li>
+                    <li><strong>{t('Thời hạn (SLA):')}</strong> {t('Bạn có thể đặt số giờ/ngày phải hoàn thành kể từ lúc tạo, quá hạn sẽ gửi cảnh báo tới Manager.')}</li>
+                  </ul>
+                ))}
 
                 {loadingWorkflow ? (
                   <div style={{ textAlign: 'center', padding: '2rem' }}>
@@ -1715,9 +1803,9 @@ const SettingsInner = () => {
             </div>
 
             {/* ===== TAB: TAGS MANAGEMENT ===== */}
-            <div style={{ display: activeTab === 'tags' ? 'block' : 'none' }} className="subtab-enter-active">
+            <div style={{ display: activeTab === 'tag_management' ? 'block' : 'none' }} className="subtab-enter-active">
               <div className="card" style={{ padding: '2rem', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
                   <div>
                     <h3 style={{ fontSize: '1.25rem', fontWeight: 800, margin: 0, color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 10 }}>
                       <span style={{ display: 'inline-flex', background: 'rgba(163,20,34,0.1)', color: 'var(--color-primary)', padding: 8, borderRadius: 10 }}>
@@ -1733,6 +1821,14 @@ const SettingsInner = () => {
                     <Plus size={16} /> {t('Thêm Tag Mới')}
                   </button>
                 </div>
+
+                {renderHelpBanner('tag_management', t('Giải thích cơ chế Phân loại bằng Thẻ (Tags)'), (
+                  <ul style={{ paddingLeft: '1.25rem', margin: 0, display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    <li><strong>{t('Nhãn màu sắc:')}</strong> {t('Giúp Sale và Admin nhận diện trực quan phân loại khách hàng (ví dụ: VIP, Tiềm năng cao, Cần gọi lại).')}</li>
+                    <li><strong>{t('Sử dụng đa mục tiêu:')}</strong> {t('Thẻ có thể được gắn đồng thời cho Khách hàng Cá nhân (Person) hoặc Doanh nghiệp (Company).')}</li>
+                    <li><strong>{t('Bộ lọc nhanh:')}</strong> {t('Nhấp vào thẻ trên bàn làm việc/danh sách để lọc nhanh tất cả các bản ghi có chung nhãn này.')}</li>
+                  </ul>
+                ))}
 
                 {loadingTags ? (
                   <TableSkeleton rows={4} cols={5} />
@@ -1802,7 +1898,7 @@ const SettingsInner = () => {
             </div>
 
             {/* ===== TAB: DATABASE MAINTENANCE ===== */}
-            <div style={{ display: activeTab === 'database' ? 'block' : 'none' }} className="subtab-enter-active">
+            <div style={{ display: activeTab === 'database_maintenance' ? 'block' : 'none' }} className="subtab-enter-active">
               <div className="card" style={{ padding: '2rem', display: 'flex', flexDirection: 'column', gap: '2rem' }}>
                 <div>
                   <h3 style={{ fontSize: '1.25rem', fontWeight: 800, margin: 0, color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -1814,6 +1910,14 @@ const SettingsInner = () => {
                   <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', margin: '6px 0 0' }}>
                     {t('Xem thống kê lưu trữ của các bảng, dọn dẹp dung lượng phân mảnh và kiểm tra tính toàn vẹn của dữ liệu hệ thống.')}
                   </p>
+
+                  {renderHelpBanner('database_maintenance', t('Giải thích cơ chế Bảo trì Database'), (
+                    <ul style={{ paddingLeft: '1.25rem', margin: 0, display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                      <li><strong>{t('Dung lượng Overhead (Phân mảnh):')}</strong> {t('Khi dữ liệu bị xóa hoặc cập nhật thường xuyên, MySQL để lại các khoảng trống phân mảnh trên ổ đĩa. Hãy bấm "Tối ưu hóa" để thu hồi dung lượng.')}</li>
+                      <li><strong>{t('Kiểm tra tính toàn vẹn:')}</strong> {t('Kiểm tra các khóa ngoại (Foreign Keys) bị mồ côi hoặc không khớp để dọn sạch dữ liệu rác.')}</li>
+                      <li><strong>{t('Khuyến nghị:')}</strong> {t('Nên chạy bảo trì định kỳ 1 lần/tháng vào ban đêm để tránh ảnh hưởng hiệu năng hệ thống lúc đang chia số.')}</li>
+                    </ul>
+                  ))}
                 </div>
 
                 {/* 1. Quick Stats Grid */}
@@ -1931,8 +2035,16 @@ const SettingsInner = () => {
               </div>
             </div>
 
-            <div style={{ display: activeTab === 'duplicate_check' ? 'block' : 'none' }} className="subtab-enter-active">
+            <div style={{ display: activeTab === 'legacy_mapping' ? 'block' : 'none' }} className="subtab-enter-active">
               <div className="card" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                {renderHelpBanner('legacy_mapping', t('Giải thích cơ chế Ánh xạ & Import dữ liệu cũ'), (
+                  <ul style={{ paddingLeft: '1.25rem', margin: 0, display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    <li><strong>{t('Mục đích:')}</strong> {t('Dùng khi bạn muốn chuyển toàn bộ data cũ từ CRM/File Excel của công ty vào hệ thống mà không muốn kích hoạt chia số mới hay gửi tin nhắn SMS/Zalo spam khách hàng.')}</li>
+                    <li><strong>{t('Khớp số cũ:')}</strong> {t('Hệ thống sẽ đối chiếu Số điện thoại/Email để tìm trùng lặp, tự động map Sale cũ đang quản lý khách hàng đó.')}</li>
+                    <li><strong>{t('File mẫu:')}</strong> {t('Vui lòng tải xuống file Excel mẫu, điền đúng cột "Phone", "Email", "Sale_Owner" để hệ thống ánh xạ chuẩn xác.')}</li>
+                  </ul>
+                ))}
+
                 {checkedResults.length > 0 ? (
                   // Screen 1: Checked Results Table
                   (() => {
@@ -2707,80 +2819,76 @@ const SettingsInner = () => {
               </div>
             </div>
 
-            {/* ===== TAB: CẤU HÌNH EMAIL ===== */}
-            <div style={{ display: activeTab === 'email_settings' ? 'block' : 'none' }} className="subtab-enter-active">
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                {/* Guide Box */}
-                <div style={{ background: 'rgba(99, 102, 241, 0.02)', border: '1px solid rgba(99, 102, 241, 0.1)', padding: '1rem 1.25rem', borderRadius: '8px', fontSize: '0.8125rem', lineHeight: 1.5, color: 'var(--color-text-muted)' }}>
-                  <strong style={{ color: '#6366f1', display: 'flex', alignItems: 'center', gap: 6, marginBottom: '6px' }}>
-                    <Mail size={14} /> Hướng dẫn Cấu hình Server Email:
-                  </strong>
-                  Thiết lập cổng gửi Email thông báo lỗi dữ liệu, thông báo xác nhận tài khoản cho Admin và báo cáo định kỳ:
-                  <ul style={{ paddingLeft: '1.25rem', marginTop: '6px', listStyleType: 'disc', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                    <li><strong>Google Apps Script Webhook:</strong> Dành cho lưu lượng gửi mail nhỏ (miễn phí qua Google Mail). Bạn copy mã Script ở bên dưới, deploy trên tài khoản Google và dán URL deploy Web app vào cấu hình.</li>
-                    <li><strong>Amazon SES SMTP Server:</strong> Cấu hình cổng gửi thư điện tử chuyên nghiệp của AWS SES thông qua giao thức SMTP. Khuyên dùng cho môi trường sản xuất có tần suất gửi email liên tục.</li>
+            {/* Cấu hình Gửi tin & Email */}
+            {/* Cấu hình Gửi Email */}
+            <div style={{ display: activeTab === 'email_config' ? 'block' : 'none' }} className="subtab-enter-active">
+              <div className="card" style={{ padding: '1.5rem', marginTop: 0 }}>
+                <h3 style={{ fontSize: '1.125rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8, marginBottom: '1.25rem' }}>
+                  <Mail size={20} color="var(--color-primary)" /> {t('Phương thức Gửi Email')}
+                </h3>
+
+                {renderHelpBanner('email_config', t('Giải thích cơ chế Gửi Email'), (
+                  <ul style={{ paddingLeft: '1.25rem', margin: 0, display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    <li><strong>{t('Google Apps Script:')}</strong> {t('Sử dụng dịch vụ Gmail của tài khoản Google liên kết để gửi email tự động. Ưu điểm: Đơn giản, miễn phí (giới hạn 500-2000 email/ngày). Yêu cầu copy & deploy đoạn mã script được cung cấp thành Web App.')}</li>
+                    <li><strong>{t('Amazon SES (SMTP):')}</strong> {t('Thích hợp cho quy mô lớn, chuyên nghiệp và có độ tin cậy giao hàng (deliverability) cao nhất. Yêu cầu nhập Host, Port, Username, Password và From Email đã được verify trên AWS.')}</li>
                   </ul>
+                ))}
+
+                <div style={{ marginBottom: '1.5rem' }}>
+                  <label className="form-label">{t('Chọn phương thức gửi')}</label>
+                  <CustomSelect
+                    options={providerOptions}
+                    value={provider}
+                    onChange={val => {
+                      const pVal = String(val);
+                      setProvider(pVal);
+                      if (pVal === 'appscript') {
+                        setShowInputScript(true);
+                      }
+                    }}
+                  />
                 </div>
-                <div className="card" style={{ padding: '1.5rem' }}>
-                  <h3 style={{ fontSize: '1.125rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8, marginBottom: '1.25rem' }}>
-                    <Mail size={20} color="var(--color-primary)" /> Phương thức Gửi Email
-                  </h3>
 
-                  <div style={{ marginBottom: '1.5rem' }}>
-                    <label className="form-label">{t('Chọn phương thức gửi')}</label>
-                    <CustomSelect
-                      options={providerOptions}
-                      value={provider}
-                      onChange={val => {
-                        const pVal = String(val);
-                        setProvider(pVal);
-                        if (pVal === 'appscript') {
-                          setShowInputScript(true);
-                        }
-                      }}
-                    />
-                  </div>
+                {/* BUG-02 fix: Allow admin to configure the frontend URL for email report links */}
+                <div style={{ marginBottom: '1.5rem', background: 'var(--color-bg)', padding: '1rem', borderRadius: 8, border: '1px solid var(--color-border)' }}>
+                  <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>{t('🔗 URL Frontend (Dùng trong link Email báo cáo lỗi)')}</label>
+                  <input
+                    className="form-input"
+                    placeholder={t("Ví dụ: https://sale.richland.net")}
+                    value={frontendUrl}
+                    onChange={e => setFrontendUrl(e.target.value)}
+                  />
+                  <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 4 }}>{t('Domain website, không có dấu / ở cuối. Dùng để tạo link báo cáo trong email gửi cho Sale.')}</p>
+                </div>
 
-                  {/* BUG-02 fix: Allow admin to configure the frontend URL for email report links */}
-                  <div style={{ marginBottom: '1.5rem', background: 'var(--color-bg)', padding: '1rem', borderRadius: 8, border: '1px solid var(--color-border)' }}>
-                    <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>{t('🔗 URL Frontend (Dùng trong link Email báo cáo lỗi)')}</label>
-                    <input
-                      className="form-input"
-                      placeholder={t("Ví dụ: https://sale.richland.net")}
-                      value={frontendUrl}
-                      onChange={e => setFrontendUrl(e.target.value)}
-                    />
-                    <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 4 }}>{t('Domain website, không có dấu / ở cuối. Dùng để tạo link báo cáo trong email gửi cho Sale.')}</p>
-                  </div>
+                {provider === 'appscript' && (
+                  <div style={{ animation: 'fadeIn 0.3s', background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 12, padding: '1.25rem' }}>
+                    <h4 style={{ fontSize: '0.9375rem', fontWeight: 600, marginBottom: '1rem', color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <Server size={18} color="#10b981" /> {t('Cấu hình Webhook Apps Script')}
+                    </h4>
 
-                  {provider === 'appscript' && (
-                    <div style={{ animation: 'fadeIn 0.3s', background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 12, padding: '1.25rem' }}>
-                      <h4 style={{ fontSize: '0.9375rem', fontWeight: 600, marginBottom: '1rem', color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <Server size={18} color="#10b981" /> {t('Cấu hình Webhook Apps Script')}
-                      </h4>
+                    <div style={{ marginBottom: '1rem' }}>
+                      <label className="form-label">{t('Mã Code Apps Script Gửi Email (Copy 1 lần duy nhất)')}</label>
+                      <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', marginBottom: '0.5rem' }}>
+                        {t('Mã dưới đây dùng để kích hoạt tính năng')} <strong>{t('Gửi Email')}</strong> {t('qua Google. Copy mã này vào Apps Script, chọn')} <strong>Deploy as web app</strong> {t('(Quyền truy cập: Anyone), lấy URL dán vào ô bên dưới.')}
+                      </p>
 
-                      <div style={{ marginBottom: '1rem' }}>
-                        <label className="form-label">{t('Mã Code Apps Script Gửi Email (Copy 1 lần duy nhất)')}</label>
-                        <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', marginBottom: '0.5rem' }}>
-                          {t('Mã dưới đây dùng để kích hoạt tính năng')} <strong>{t('Gửi Email')}</strong> {t('qua Google. Copy mã này vào Apps Script, chọn')} <strong>Deploy as web app</strong> {t('(Quyền truy cập: Anyone), lấy URL dán vào ô bên dưới.')}
-                        </p>
+                      {/* Collapsible Script Block */}
+                      <div style={{ border: '1px solid var(--color-border)', borderRadius: 8, overflow: 'hidden' }}>
+                        <div
+                          style={{ padding: '0.75rem 1rem', background: 'var(--color-bg)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer' }}
+                          onClick={() => setShowInputScript(!showInputScript)}
+                        >
+                          <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--color-text)' }}>{t('Xem mã Apps Script')}</span>
+                          {showInputScript ? <ChevronUp size={16} color="var(--color-text-muted)" /> : <ChevronDown size={16} color="var(--color-text-muted)" />}
+                        </div>
 
-                        {/* Collapsible Script Block */}
-                        <div style={{ border: '1px solid var(--color-border)', borderRadius: 8, overflow: 'hidden' }}>
-                          <div
-                            style={{ padding: '0.75rem 1rem', background: 'var(--color-bg)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer' }}
-                            onClick={() => setShowInputScript(!showInputScript)}
-                          >
-                            <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--color-text)' }}>{t('Xem mã Apps Script')}</span>
-                            {showInputScript ? <ChevronUp size={16} color="var(--color-text-muted)" /> : <ChevronDown size={16} color="var(--color-text-muted)" />}
-                          </div>
-
-                          {showInputScript && (
-                            <pre style={{
-                              background: '#1e293b', color: '#dadada', padding: '1rem', margin: 0,
-                              fontSize: '0.75rem', overflowX: 'auto', fontFamily: 'monospace', lineHeight: 1.5
-                            }}>
-                              {`// ==========================================
+                        {showInputScript && (
+                          <pre style={{
+                            background: '#1e293b', color: '#dadada', padding: '1rem', margin: 0,
+                            fontSize: '0.75rem', overflowX: 'auto', fontFamily: 'monospace', lineHeight: 1.5
+                          }}>
+                            {`// ==========================================
 // ĐOẠN MÃ XỬ LÝ GỬI EMAIL (DEPLOY AS WEB APP)
 // ==========================================
 
@@ -2805,158 +2913,158 @@ function doPost(e) {
       .setMimeType(ContentService.MimeType.JSON);
   }
 }`}
-                            </pre>
-                          )}
-                        </div>
+                          </pre>
+                        )}
                       </div>
+                    </div>
 
+                    <div>
+                      <label className="form-label">{t('URL Webhook của Google Apps Script (doPost)')}</label>
+                      <input
+                        className="form-input"
+                        placeholder="https://script.google.com/macros/s/AKfycbw.../exec"
+                        value={appscriptUrl}
+                        onChange={e => setAppscriptUrl(e.target.value)}
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {provider === 'ses' && (
+                  <div style={{ animation: 'fadeIn 0.3s', background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 12, padding: '1.25rem' }}>
+                    <h4 style={{ fontSize: '0.9375rem', fontWeight: 600, marginBottom: '1rem', color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <Database size={18} color="#f59e0b" /> {t('Thông số Amazon SES (SMTP)')}
+                    </h4>
+                    <div className="responsive-grid-1-1" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
                       <div>
-                        <label className="form-label">{t('URL Webhook của Google Apps Script (doPost)')}</label>
-                        <input
-                          className="form-input"
-                          placeholder="https://script.google.com/macros/s/AKfycbw.../exec"
-                          value={appscriptUrl}
-                          onChange={e => setAppscriptUrl(e.target.value)}
-                        />
+                        <label className="form-label">SMTP Host</label>
+                        <input className="form-input" placeholder="email-smtp.us-east-1.amazonaws.com" value={sesHost} onChange={e => setSesHost(e.target.value)} />
+                      </div>
+                      <div>
+                        <label className="form-label">Port</label>
+                        <input className="form-input" value="587" disabled style={{ background: 'var(--color-bg)' }} />
                       </div>
                     </div>
-                  )}
-
-                  {provider === 'ses' && (
-                    <div style={{ animation: 'fadeIn 0.3s', background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 12, padding: '1.25rem' }}>
-                      <h4 style={{ fontSize: '0.9375rem', fontWeight: 600, marginBottom: '1rem', color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <Database size={18} color="#f59e0b" /> Thông số Amazon SES (SMTP)
-                      </h4>
-                      <div className="responsive-grid-1-1" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
-                        <div>
-                          <label className="form-label">SMTP Host</label>
-                          <input className="form-input" placeholder="email-smtp.us-east-1.amazonaws.com" value={sesHost} onChange={e => setSesHost(e.target.value)} />
-                        </div>
-                        <div>
-                          <label className="form-label">Port</label>
-                          <input className="form-input" value="587" disabled style={{ background: 'var(--color-bg)' }} />
-                        </div>
+                    <div className="responsive-grid-1-1" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+                      <div>
+                        <label className="form-label">SMTP Username</label>
+                        <input className="form-input" placeholder="AKIA..." value={sesUser} onChange={e => setSesUser(e.target.value)} />
                       </div>
-                      <div className="responsive-grid-1-1" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
-                        <div>
-                          <label className="form-label">SMTP Username</label>
-                          <input className="form-input" placeholder="AKIA..." value={sesUser} onChange={e => setSesUser(e.target.value)} />
-                        </div>
-                        <div>
-                          <label className="form-label">SMTP Password</label>
-                          <input className="form-input" type="password" placeholder="BI..." value={sesPass} onChange={e => setSesPass(e.target.value)} />
-                        </div>
-                      </div>
-                      <div className="responsive-grid-1-1" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                        <div>
-                          <label className="form-label">{t('Email Người Gửi (From Email)')}</label>
-                          <input className="form-input" placeholder="no-reply@domain.com" value={sesSenderEmail} onChange={e => setSesSenderEmail(e.target.value)} />
-                        </div>
-                        <div>
-                          <label className="form-label">{t('Tên Người Gửi (From Name)')}</label>
-                          <input className="form-input" placeholder="RICH LAND TEAM" value={sesSenderName} onChange={e => setSesSenderName(e.target.value)} />
-                        </div>
+                      <div>
+                        <label className="form-label">SMTP Password</label>
+                        <input className="form-input" type="password" placeholder="BI..." value={sesPass} onChange={e => setSesPass(e.target.value)} />
                       </div>
                     </div>
-                  )}
-                </div>
+                    <div className="responsive-grid-1-1" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                      <div>
+                        <label className="form-label">{t('Email Người Gửi (From Email)')}</label>
+                        <input className="form-input" placeholder="no-reply@domain.com" value={sesSenderEmail} onChange={e => setSesSenderEmail(e.target.value)} />
+                      </div>
+                      <div>
+                        <label className="form-label">{t('Tên Người Gửi (From Name)')}</label>
+                        <input className="form-input" placeholder="RICH LAND TEAM" value={sesSenderName} onChange={e => setSesSenderName(e.target.value)} />
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
 
-            {/* ===== TAB: CẤU HÌNH ZALO BOT ===== */}
-            <div style={{ display: activeTab === 'zalo_settings' ? 'block' : 'none' }} className="subtab-enter-active">
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                {/* Guide Box */}
-                <div style={{ background: 'rgba(6, 182, 212, 0.02)', border: '1px solid rgba(6, 182, 212, 0.1)', padding: '1rem 1.25rem', borderRadius: '8px', fontSize: '0.8125rem', lineHeight: 1.5, color: 'var(--color-text-muted)' }}>
-                  <strong style={{ color: '#06b6d4', display: 'flex', alignItems: 'center', gap: 6, marginBottom: '6px' }}>
-                    <MessageCircle size={14} /> Hướng dẫn Liên kết Zalo Bot Platform:
-                  </strong>
-                  Zalo Bot dùng để gửi thông báo data trực tiếp cho từng Tư vấn viên trên điện thoại và gửi các thông báo vận hành vào Group chat Admin:
-                  <ul style={{ paddingLeft: '1.25rem', marginTop: '6px', listStyleType: 'disc', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                    <li><strong>Bot Token:</strong> Tạo ứng dụng Zalo Bot trên cổng Zalo Developers và lấy mã Token kết nối dán vào đây.</li>
-                    <li><strong>Secret Token:</strong> Mã khóa tự chọn dùng để mã hóa tín hiệu Webhook, tránh các yêu cầu giả mạo gửi đến hệ thống.</li>
-                    <li><strong>Zalo Group Chat ID:</strong> Khai báo Chat ID nhóm Zalo để nhận báo cáo tổng kết ngày hoặc các yêu cầu duyệt đền bù khẩn cấp.</li>
+            {/* Cấu hình Zalo Bot */}
+            <div style={{ display: activeTab === 'zalo_bot' ? 'block' : 'none' }} className="subtab-enter-active">
+              <div className="card" style={{ padding: '1.5rem', marginTop: 0 }}>
+                <h3 style={{ fontSize: '1.125rem', fontWeight: 700, marginBottom: '1rem', color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ display: 'inline-flex', background: '#0068ff', color: 'white', padding: 4, borderRadius: 6 }}>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" /></svg>
+                  </span>
+                  {t('Cấu hình Zalo Bot (Gửi thông báo Data)')}
+                </h3>
+                <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', marginBottom: '1.25rem', lineHeight: 1.5 }}>
+                  {t('Tính năng này cho phép hệ thống gửi trực tiếp thông báo chia số tới Zalo của Tư vấn viên.')}<br />
+                  {t('Truy cập')} <a href="https://bot.zapps.me/" target="_blank" rel="noreferrer" style={{ color: '#0068ff', fontWeight: 600 }}>{t('Zalo Bot Platform')}</a> {t('để tạo Bot và lấy Token.')}
+                </p>
+
+                {renderHelpBanner('zalo_bot', t('Giải thích cơ chế Zalo Bot'), (
+                  <ul style={{ paddingLeft: '1.25rem', margin: 0, display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    <li><strong>{t('Thông báo chia số trực tiếp:')}</strong> {t('Khi có khách hàng mới phân chia cho Sale, hệ thống lập tức đẩy tin nhắn thông báo về Zalo cá nhân của Sale đó kèm link xem chi tiết.')}</li>
+                    <li><strong>{t('Group Chat Admin:')}</strong> {t('Nơi nhận các cảnh báo bảo mật, bộ lọc trùng lặp, yêu cầu đền bù (Ticket) cần duyệt, và các báo cáo cuối ngày.')}</li>
+                    <li><strong>{t('Webhook URL:')}</strong> {t('Khai báo link Webhook trên Zalo Bot Console để nhận các tương tác phản hồi (ví dụ: Sale gửi lệnh xác nhận trực tiếp từ nút bấm Zalo).')}</li>
                   </ul>
+                ))}
+
+                <div className="responsive-grid-1-1" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+                  <div>
+                    <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>{t('Bot Token (Zalo cung cấp)')}</label>
+                    <input
+                      type="password"
+                      className="form-input"
+                      placeholder={t("Ví dụ: 12345689:abc-xyz")}
+                      value={zaloBotToken}
+                      onChange={e => setZaloBotToken(e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>{t('Secret Token (Webhook bảo mật)')}</label>
+                    <input
+                      type="password"
+                      className="form-input"
+                      placeholder={t("Nhập Secret Token tự chọn (Ví dụ: MY_SECRET_123)")}
+                      value={zaloWebhookSecret}
+                      onChange={e => setZaloWebhookSecret(e.target.value)}
+                    />
+                  </div>
                 </div>
-                <div className="card" style={{ padding: '1.5rem' }}>
-                  <h3 style={{ fontSize: '1.125rem', fontWeight: 700, marginBottom: '1rem', color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span style={{ display: 'inline-flex', background: '#0068ff', color: 'white', padding: 4, borderRadius: 6 }}>
-                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" /></svg>
-                    </span>
-                    Cấu hình Zalo Bot (Gửi thông báo Data)
-                  </h3>
-                  <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', marginBottom: '1.25rem', lineHeight: 1.5 }}>
-                    Tính năng này cho phép hệ thống gửi trực tiếp thông báo chia số tới Zalo của Tư vấn viên.<br />
-                    Truy cập <a href="https://bot.zapps.me/" target="_blank" rel="noreferrer" style={{ color: '#0068ff', fontWeight: 600 }}>Zalo Bot Platform</a> để tạo Bot và lấy Token.
+
+                <div style={{ marginBottom: '1rem' }}>
+                  <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>{t('Link Zalo Bot (zalo.me/xxx)')}</label>
+                  <input
+                    className="form-input"
+                    placeholder={t("VD: https://zalo.me/1185588456243371597")}
+                    value={zaloBotLink}
+                    onChange={e => setZaloBotLink(e.target.value)}
+                  />
+                  <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 4 }}>
+                    {t('Link chèn vào Email chào mừng TVV.')}
                   </p>
+                </div>
 
-                  <div className="responsive-grid-1-1" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
-                    <div>
-                      <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>{t('Bot Token (Zalo cung cấp)')}</label>
-                      <input
-                        type="password"
-                        className="form-input"
-                        placeholder={t("Ví dụ: 12345689:abc-xyz")}
-                        value={zaloBotToken}
-                        onChange={e => setZaloBotToken(e.target.value)}
-                      />
-                    </div>
-                    <div>
-                      <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>{t('Secret Token (Webhook bảo mật)')}</label>
-                      <input
-                        type="password"
-                        className="form-input"
-                        placeholder={t("Nhập Secret Token tự chọn (Ví dụ: MY_SECRET_123)")}
-                        value={zaloWebhookSecret}
-                        onChange={e => setZaloWebhookSecret(e.target.value)}
-                      />
-                    </div>
-                  </div>
+                <div style={{ marginBottom: '1rem' }}>
+                  <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>{t('Zalo Admin Group Chat ID')}</label>
+                  <input
+                    className="form-input"
+                    placeholder={t("Nhập Chat ID của Group Admin Zalo (ví dụ: group.123456...)")}
+                    value={zaloAdminGroupChatId}
+                    onChange={e => setZaloAdminGroupChatId(e.target.value)}
+                  />
+                  <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 4 }}>
+                    {t('Mọi cảnh báo bộ lọc (Blacklist/Trùng), yêu cầu duyệt ticket đền bù, và báo cáo tổng kết ngày sẽ được gửi vào Group Chat này.')}
+                  </p>
+                </div>
 
-                  <div style={{ marginBottom: '1rem' }}>
-                    <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>{t('Link Zalo Bot (zalo.me/xxx)')}</label>
-                    <input
-                      className="form-input"
-                      placeholder={t("VD: https://zalo.me/1185588456243371597")}
-                      value={zaloBotLink}
-                      onChange={e => setZaloBotLink(e.target.value)}
-                    />
-                    <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 4 }}>
-                      {t('Link chèn vào Email chào mừng TVV.')}
-                    </p>
+                <div style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 12, padding: '1rem' }}>
+                  <label className="form-label">{t('Link Webhook khai báo trên Zalo Bot Platform:')}</label>
+                  <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                    <code style={{ flex: 1, background: 'var(--color-bg)', padding: '0.5rem', borderRadius: 6, fontSize: '0.875rem', color: 'var(--color-primary)', border: '1px solid var(--color-border)' }}>
+                      {`${import.meta.env.VITE_API_URL || window.location.origin + '/backend'}/zalo_webhook.php`}
+                    </code>
                   </div>
-
-                  <div style={{ marginBottom: '1rem' }}>
-                    <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>{t('Zalo Admin Group Chat ID')}</label>
-                    <input
-                      className="form-input"
-                      placeholder={t("Nhập Chat ID của Group Admin Zalo (ví dụ: group.123456...)")}
-                      value={zaloAdminGroupChatId}
-                      onChange={e => setZaloAdminGroupChatId(e.target.value)}
-                    />
-                    <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 4 }}>
-                      {t('Mọi cảnh báo bộ lọc (Blacklist/Trùng), yêu cầu duyệt ticket đền bù, và báo cáo tổng kết ngày sẽ được gửi vào Group Chat này.')}
-                    </p>
-                  </div>
-
-                  <div style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 12, padding: '1rem' }}>
-                    <label className="form-label">{t('Link Webhook khai báo trên Zalo Bot Platform:')}</label>
-                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                      <code style={{ flex: 1, background: 'var(--color-bg)', padding: '0.5rem', borderRadius: 6, fontSize: '0.875rem', color: 'var(--color-primary)', border: '1px solid var(--color-border)' }}>
-                        {`${import.meta.env.VITE_API_URL || window.location.origin + '/backend'}/zalo_webhook.php`}
-                      </code>
-                    </div>
-                    <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 8 }}>
-                      {t('Copy link Webhook này và Secret Token (nếu có) dán vào phần thiết lập Webhook của Zalo Bot.')}
-                    </p>
-                  </div>
+                  <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 8 }}>
+                    {t('Copy link Webhook này và Secret Token (nếu có) dán vào phần thiết lập Webhook của Zalo Bot.')}
+                  </p>
                 </div>
               </div>
             </div>
 
-                        {/* ===== TAB: BÁO CÁO NGÀY ===== */}
-            <div style={{ display: activeTab === 'report' ? 'block' : 'none' }} className="subtab-enter-active">
+            {/* ===== TAB: BÁO CÁO NGÀY ===== */}
+            <div style={{ display: activeTab === 'automated_reports' ? 'block' : 'none' }} className="subtab-enter-active">
               <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                {renderHelpBanner('automated_reports', t('Giải thích cơ chế Báo cáo Tự động'), (
+                  <ul style={{ paddingLeft: '1.25rem', margin: 0, display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    <li><strong>{t('Báo cáo Ngày (Zalo):')}</strong> {t('Gửi trực tiếp vào Group Chat Admin. Thống kê chi tiết số lượng data đổ về, tỉ lệ tiếp nhận, và số lượng khiếu nại đền bù của từng Sale.')}</li>
+                    <li><strong>{t('Báo cáo Tuần / Tháng (Email/Zalo):')}</strong> {t('Gửi tổng kết hiệu quả chia số cho từng cá nhân Sale và báo cáo tổng quan cho ban quản trị.')}</li>
+                    <li><strong>{t('Nguyên tắc tính thời gian:')}</strong> {t('Cửa sổ thời gian báo cáo trượt đúng 24h/7 ngày/30 ngày tính đến thời điểm cấu hình gửi, đảm bảo không bỏ sót bất kỳ lead nào.')}</li>
+                  </ul>
+                ))}
 
                 {/* Giờ gửi */}
                 <div className="card" style={{ padding: '1.5rem' }}>
@@ -3160,21 +3268,8 @@ function doPost(e) {
             </div>
 
             {/* Fallback & Blacklist Configs (Processing Tab) */}
-            {/* ===== TAB: ĐỊNH TUYẾN FALLBACK ===== */}
-            <div style={{ display: activeTab === 'processing_fallback' ? 'block' : 'none' }} className="subtab-enter-active">
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                {/* Guide Box */}
-                <div style={{ background: 'rgba(239, 68, 68, 0.02)', border: '1px solid rgba(239, 68, 68, 0.1)', padding: '1rem 1.25rem', borderRadius: '8px', fontSize: '0.8125rem', lineHeight: 1.5, color: 'var(--color-text-muted)' }}>
-                  <strong style={{ color: '#ef4444', display: 'flex', alignItems: 'center', gap: 6, marginBottom: '6px' }}>
-                    <RefreshCw size={14} /> Cơ chế Định tuyến Fallback (Dữ liệu không khớp luật):
-                  </strong>
-                  Khi dữ liệu khách hàng mới (Leads) được đẩy vào hệ thống mà không thỏa mãn bất kỳ bộ quy tắc phân phối nào của các Vòng chia số đang chạy, hệ thống sẽ tự động xử lý theo một trong hai cách dưới đây:
-                  <ul style={{ paddingLeft: '1.25rem', marginTop: '6px', listStyleType: 'disc', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                    <li><strong>Phân bổ theo Vòng mặc định:</strong> Chia đều cho các Tư vấn viên (Sale) trong Vòng được chọn theo cơ chế xoay vòng (Round-Robin).</li>
-                    <li><strong>Giao cho Admin xử lý:</strong> Giao trực tiếp cho Admin chỉ định, đồng thời gửi email thông báo CC đến danh sách nhận tin.</li>
-                  </ul>
-                </div>
-                <div className="card" style={{ padding: '1.5rem', marginTop: 0 }}>
+            <div style={{ display: activeTab === 'fallback' ? 'block' : 'none' }} className="subtab-enter-active">
+              <div className="card" style={{ padding: '1.5rem', marginTop: 0 }}>
                 <h3 style={{ fontSize: '1.125rem', fontWeight: 700, marginBottom: '1rem', color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 8 }}>
                   <span style={{ display: 'inline-flex', background: '#ef4444', color: 'white', padding: 4, borderRadius: 6 }}>
                     <Zap size={16} />
@@ -3184,6 +3279,14 @@ function doPost(e) {
                 <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', marginBottom: '1.25rem', lineHeight: 1.5 }}>
                   {t('Khi dữ liệu (leads) mới được đẩy vào hệ thống mà')} <strong>{t('không khớp với bất kỳ quy luật định tuyến nào')}</strong>{t(', hệ thống sẽ tự động xử lý theo một trong các tùy chọn dưới đây.')}
                 </p>
+
+                {renderHelpBanner('fallback', t('Giải thích cơ chế Xử lý Fallback'), (
+                  <ul style={{ paddingLeft: '1.25rem', margin: 0, display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    <li><strong>{t('Vì sao xảy ra Fallback:')}</strong> {t('Khi lead mới không đáp ứng bất kỳ phễu chia (Routing Rule) nào đang hoạt động.')}</li>
+                    <li><strong>{t('Phân chia khẩn cấp:')}</strong> {t('Hệ thống sẽ chỉ định trực tiếp lead này về cho một Admin hoặc gán thủ công để đảm bảo không bị trôi/mất thông tin khách hàng.')}</li>
+                    <li><strong>{t('Email CC cảnh báo:')}</strong> {t('Hệ thống sẽ gửi email báo cáo chi tiết các thông số của lead bị fallback tới các địa chỉ email quản trị để lập tức khắc phục phễu chia.')}</li>
+                  </ul>
+                ))}
 
                 {/* Selector for Fallback Type */}
                 <div className="responsive-grid-1-1" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.5rem' }}>
@@ -3329,9 +3432,11 @@ function doPost(e) {
                   </div>
                 )}
               </div>
+            </div>
 
-              {/* Cấu hình Tham số Nghiệp vụ & Hạn mức */}
-              <div className="card" style={{ padding: '2rem', marginTop: '1.5rem' }}>
+            {/* Cấu hình Tham số Nghiệp vụ & Hạn mức */}
+            <div style={{ display: activeTab === 'business_limits' ? 'block' : 'none' }} className="subtab-enter-active">
+              <div className="card" style={{ padding: '2rem', marginTop: 0 }}>
                 <h3 style={{ fontSize: '1.25rem', fontWeight: 800, marginBottom: '0.5rem', color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 8 }}>
                   <span style={{ display: 'inline-flex', background: 'var(--color-primary-light)', color: 'var(--color-primary)', padding: 6, borderRadius: 8 }}>
                     <Clock size={18} />
@@ -3342,134 +3447,181 @@ function doPost(e) {
                   {t('Thiết lập các mốc thời gian, trạng thái và hạn mức hoạt động của hệ thống theo quy chuẩn vận hành (không hardcode).')}
                 </p>
 
+                {renderHelpBanner('business_limits', t('Giải thích cơ chế Nghiệp vụ & Hạn mức'), (
+                  <ul style={{ paddingLeft: '1.25rem', margin: 0, display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    <li><strong>{t('Tự động rớt nhiệt (Decay):')}</strong> {t('Sau số ngày quy định, nếu Sale không cập nhật bất kỳ tương tác/ghi chú mới nào trên Lead, trạng thái sẽ chuyển thành "Rớt nhiệt" và lead tự động bị thu hồi về Databank.')}</li>
+                    <li><strong>{t('Thời gian chờ nhận lead:')}</strong> {t('Thời hạn tính bằng phút để Sale click "Tiếp nhận" khi nhận được thông báo chia số mới, quá giờ sẽ tự động chuyển cho Sale tiếp theo.')}</li>
+                    <li><strong>{t('Hạn mức chống ôm (Backpressure):')}</strong> {t('Nếu Sale đang giữ số lượng lead Chưa Xác Định vượt quá hạn mức này, hệ thống sẽ tạm dừng chia lead mới cho Sale đó cho tới khi họ xử lý xong.')}</li>
+                  </ul>
+                ))}
+
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-                  {/* Nhóm 1: Phân phối & Rớt nhiệt Lead */}
-                  <div style={{ background: 'var(--color-surface)', padding: '1.5rem', borderRadius: '12px', border: '1px solid var(--color-border-light)', boxShadow: 'var(--shadow-sm)' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '1rem' }}>
-                      <Zap size={15} style={{ color: 'var(--color-primary)' }} />
-                      <h4 style={{ fontSize: '0.9375rem', fontWeight: 700, color: 'var(--color-text)' }}>{t('Quy tắc Phân phối & Rớt nhiệt')}</h4>
-                    </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.25rem' }}>
-                      <div>
-                        <label className="form-label">{t('Số ngày tự động rớt nhiệt (Decay)')}</label>
-                        <div style={{ display: 'flex', alignItems: 'center', position: 'relative' }}>
-                          <input
-                            type="number"
-                            className="form-input"
-                            style={{ paddingRight: '3.5rem' }}
-                            value={temperatureDecayDays}
-                            onChange={e => setTemperatureDecayDays(Number(e.target.value))}
-                            min={1}
-                          />
-                          <span style={{ position: 'absolute', right: '12px', fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>{t('ngày')}</span>
-                        </div>
-                        <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px', display: 'block' }}>
-                          {t('Mặc định: 5 ngày không tương tác chất lượng.')}
-                        </span>
+                  {/* Nhóm 1: Các Tham Số Phân Phối & SLA (Chia làm 4 nhóm nhỏ gọn gàng) */}
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: '1.25rem' }}>
+                    
+                    {/* Sub-group 1: Phân phối & Rớt nhiệt */}
+                    <div style={{ background: 'var(--color-surface)', padding: '1.5rem', borderRadius: '12px', border: '1px solid var(--color-border)', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', borderBottom: '1px solid var(--color-border-light)', paddingBottom: '8px' }}>
+                        <Zap size={16} style={{ color: 'var(--color-primary)' }} />
+                        <h4 style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)', margin: 0 }}>{t('Quy tắc Rớt nhiệt & Phân phối')}</h4>
                       </div>
+                      
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                        <div>
+                          <label className="form-label" style={{ fontWeight: 600 }}>{t('Số ngày tự động rớt nhiệt (Decay)')}</label>
+                          <div style={{ display: 'flex', alignItems: 'center', position: 'relative' }}>
+                            <input
+                              type="number"
+                              className="form-input"
+                              style={{ paddingRight: '3.5rem' }}
+                              value={temperatureDecayDays}
+                              onChange={e => setTemperatureDecayDays(Number(e.target.value))}
+                              min={1}
+                            />
+                            <span style={{ position: 'absolute', right: '12px', fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>{t('ngày')}</span>
+                          </div>
+                          <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px', display: 'block', lineHeight: 1.4 }}>
+                            {t('Mặc định: 5 ngày không tương tác chất lượng.')}
+                          </span>
+                        </div>
 
-                      <div>
-                        <label className="form-label">{t('Thời gian chờ nhận lead')}</label>
-                        <div style={{ display: 'flex', alignItems: 'center', position: 'relative' }}>
-                          <input
-                            type="number"
-                            className="form-input"
-                            style={{ paddingRight: '3.5rem' }}
-                            value={leadResponseTimeoutMinutes}
-                            onChange={e => setLeadResponseTimeoutMinutes(Number(e.target.value))}
-                            min={1}
-                          />
-                          <span style={{ position: 'absolute', right: '12px', fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>{t('phút')}</span>
+                        <div>
+                          <label className="form-label" style={{ fontWeight: 600 }}>{t('Hạn mức chống ôm (Backpressure)')}</label>
+                          <div style={{ display: 'flex', alignItems: 'center', position: 'relative' }}>
+                            <input
+                              type="number"
+                              className="form-input"
+                              style={{ paddingRight: '3.5rem' }}
+                              value={backpressureLimit}
+                              onChange={e => setBackpressureLimit(Number(e.target.value))}
+                              min={1}
+                            />
+                            <span style={{ position: 'absolute', right: '12px', fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>{t('lead')}</span>
+                          </div>
+                          <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px', display: 'block', lineHeight: 1.4 }}>
+                            {t('Hạn mức data Chưa Xác Định tối đa trước khi chặn chia lead mới.')}
+                          </span>
                         </div>
-                        <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px', display: 'block' }}>
-                          {t('Thời gian phản hồi trước khi thu hồi lead.')}
-                        </span>
-                      </div>
 
-                      <div>
-                        <label className="form-label">{t('Chờ chia song song Chưa XĐ')}</label>
-                        <div style={{ display: 'flex', alignItems: 'center', position: 'relative' }}>
-                          <input
-                            type="number"
-                            className="form-input"
-                            style={{ paddingRight: '3.5rem' }}
-                            value={uncontactedLeadShareHours}
-                            onChange={e => setUncontactedLeadShareHours(Number(e.target.value))}
-                            min={1}
-                          />
-                          <span style={{ position: 'absolute', right: '12px', fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>{t('giờ')}</span>
+                        <div>
+                          <label className="form-label" style={{ fontWeight: 600 }}>{t('Chờ chia song song Chưa XĐ')}</label>
+                          <div style={{ display: 'flex', alignItems: 'center', position: 'relative' }}>
+                            <input
+                              type="number"
+                              className="form-input"
+                              style={{ paddingRight: '3.5rem' }}
+                              value={uncontactedLeadShareHours}
+                              onChange={e => setUncontactedLeadShareHours(Number(e.target.value))}
+                              min={1}
+                            />
+                            <span style={{ position: 'absolute', right: '12px', fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>{t('giờ')}</span>
+                          </div>
+                          <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px', display: 'block', lineHeight: 1.4 }}>
+                            {t('Chia thêm 1 TVV nếu lead Chưa XĐ không tiến triển.')}
+                          </span>
                         </div>
-                        <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px', display: 'block' }}>
-                          {t('Chia thêm 1 TVV nếu lead Chưa XĐ không tiến triển.')}
-                        </span>
-                      </div>
-
-                      <div>
-                        <label className="form-label">{t('Hạn mức chống ôm (Backpressure)')}</label>
-                        <div style={{ display: 'flex', alignItems: 'center', position: 'relative' }}>
-                          <input
-                            type="number"
-                            className="form-input"
-                            style={{ paddingRight: '3.5rem' }}
-                            value={backpressureLimit}
-                            onChange={e => setBackpressureLimit(Number(e.target.value))}
-                            min={1}
-                          />
-                          <span style={{ position: 'absolute', right: '12px', fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>{t('lead')}</span>
-                        </div>
-                        <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px', display: 'block' }}>
-                          {t('Hạn mức data Chưa Xác Định tối đa trước khi chặn chia lead mới.')}
-                        </span>
-                      </div>
-                      <div>
-                        <label className="form-label">{t('SLA Duyệt đi trễ (Chấm công)')}</label>
-                        <div style={{ display: 'flex', alignItems: 'center', position: 'relative' }}>
-                          <input
-                            type="number"
-                            className="form-input"
-                            style={{ paddingRight: '3.5rem' }}
-                            value={checkinApprovalSlaMinutes}
-                            onChange={e => setCheckinApprovalSlaMinutes(Number(e.target.value))}
-                            min={1}
-                          />
-                          <span style={{ position: 'absolute', right: '12px', fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>{t('phút')}</span>
-                        </div>
-                        <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px', display: 'block' }}>
-                          {t('Thời gian chờ duyệt xin nhận lead trễ trước khi gửi cảnh báo leo thang.')}
-                        </span>
-                      </div>
-                      <div>
-                        <label className="form-label">{t('Luật loại trừ Broadcast')}</label>
-                        <input
-                          type="text"
-                          className="form-input"
-                          value={broadcastExclusionRules}
-                          onChange={e => setBroadcastExclusionRules(e.target.value)}
-                          placeholder="not_lead,opt_out,active_khtn"
-                        />
-                        <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px', display: 'block' }}>
-                          {t('Các từ khóa loại trừ cách nhau bằng dấu phẩy (not_lead, opt_out, active_khtn).')}
-                        </span>
-                      </div>
-                      <div>
-                        <label className="form-label">{t('Chế độ hoạt động của Trưởng nhóm (Manager Behavior)')}</label>
-                        <CustomSelect
-                          options={[
-                            { value: 'combined', label: t('Trưởng nhóm kiêm Sale (Nhận data, chấm công như Sale)') },
-                            { value: 'pure', label: t('Trưởng nhóm thuần túy (Không nhận data, không chấm công, duyệt công team)') }
-                          ]}
-                          value={managerBehaviorMode}
-                          onChange={val => setManagerBehaviorMode(val as string)}
-                        />
-                        <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px', display: 'block' }}>
-                          {t('Chế độ quyết định xem trưởng nhóm có tham gia trực tiếp vào việc nhận lead và chấm công như sale hay không.')}
-                        </span>
                       </div>
                     </div>
+
+                    {/* Sub-group 2: SLA & Tiếp nhận */}
+                    <div style={{ background: 'var(--color-surface)', padding: '1.5rem', borderRadius: '12px', border: '1px solid var(--color-border)', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', borderBottom: '1px solid var(--color-border-light)', paddingBottom: '8px' }}>
+                        <Clock size={16} style={{ color: 'var(--color-primary)' }} />
+                        <h4 style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)', margin: 0 }}>{t('SLA & Tiếp nhận Phản hồi')}</h4>
+                      </div>
+
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                        <div>
+                          <label className="form-label" style={{ fontWeight: 600 }}>{t('Thời gian chờ nhận lead')}</label>
+                          <div style={{ display: 'flex', alignItems: 'center', position: 'relative' }}>
+                            <input
+                              type="number"
+                              className="form-input"
+                              style={{ paddingRight: '3.5rem' }}
+                              value={leadResponseTimeoutMinutes}
+                              onChange={e => setLeadResponseTimeoutMinutes(Number(e.target.value))}
+                              min={1}
+                            />
+                            <span style={{ position: 'absolute', right: '12px', fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>{t('phút')}</span>
+                          </div>
+                          <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px', display: 'block', lineHeight: 1.4 }}>
+                            {t('Thời gian phản hồi trước khi thu hồi lead.')}
+                          </span>
+                        </div>
+
+                        <div>
+                          <label className="form-label" style={{ fontWeight: 600 }}>{t('SLA Duyệt đi trễ (Chấm công)')}</label>
+                          <div style={{ display: 'flex', alignItems: 'center', position: 'relative' }}>
+                            <input
+                              type="number"
+                              className="form-input"
+                              style={{ paddingRight: '3.5rem' }}
+                              value={checkinApprovalSlaMinutes}
+                              onChange={e => setCheckinApprovalSlaMinutes(Number(e.target.value))}
+                              min={1}
+                            />
+                            <span style={{ position: 'absolute', right: '12px', fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>{t('phút')}</span>
+                          </div>
+                          <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px', display: 'block', lineHeight: 1.4 }}>
+                            {t('Thời gian chờ duyệt xin nhận lead trễ trước khi gửi cảnh báo leo thang.')}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Sub-group 3: Lọc & Loại trừ nâng cao */}
+                    <div style={{ background: 'var(--color-surface)', padding: '1.5rem', borderRadius: '12px', border: '1px solid var(--color-border)', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', borderBottom: '1px solid var(--color-border-light)', paddingBottom: '8px' }}>
+                        <Filter size={16} style={{ color: 'var(--color-primary)' }} />
+                        <h4 style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)', margin: 0 }}>{t('Bộ lọc & Loại trừ Broadcast')}</h4>
+                      </div>
+
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                        <div>
+                          <label className="form-label" style={{ fontWeight: 600 }}>{t('Luật loại trừ Broadcast')}</label>
+                          <input
+                            type="text"
+                            className="form-input"
+                            value={broadcastExclusionRules}
+                            onChange={e => setBroadcastExclusionRules(e.target.value)}
+                            placeholder="not_lead,opt_out,active_khtn"
+                          />
+                          <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px', display: 'block', lineHeight: 1.4 }}>
+                            {t('Các từ khóa loại trừ cách nhau bằng dấu phẩy (not_lead, opt_out, active_khtn).')}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Sub-group 4: Vai trò Trưởng nhóm */}
+                    <div style={{ background: 'var(--color-surface)', padding: '1.5rem', borderRadius: '12px', border: '1px solid var(--color-border)', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', borderBottom: '1px solid var(--color-border-light)', paddingBottom: '8px' }}>
+                        <Shield size={16} style={{ color: 'var(--color-primary)' }} />
+                        <h4 style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)', margin: 0 }}>{t('Chế độ hoạt động Trưởng nhóm')}</h4>
+                      </div>
+
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                        <div>
+                          <label className="form-label" style={{ fontWeight: 600 }}>{t('Chế độ Trưởng nhóm')}</label>
+                          <CustomSelect
+                            options={[
+                              { value: 'combined', label: t('Trưởng nhóm kiêm Sale (Nhận data, chấm công như Sale)') },
+                              { value: 'pure', label: t('Trưởng nhóm thuần túy (Không nhận data, không chấm công, duyệt công team)') }
+                            ]}
+                            value={managerBehaviorMode}
+                            onChange={val => setManagerBehaviorMode(val as string)}
+                          />
+                          <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px', display: 'block', lineHeight: 1.4 }}>
+                            {t('Quyết định xem Trưởng nhóm có tham gia trực tiếp nhận lead và chấm công như sale hay không.')}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
                   </div>
 
                   {/* Nhóm 2: Ca trực & Khung giờ vàng */}
-                  <div style={{ background: 'var(--color-surface)', padding: '1.5rem', borderRadius: '12px', border: '1px solid var(--color-border-light)', display: 'flex', flexDirection: 'column', gap: '1.25rem', boxShadow: 'var(--shadow-sm)' }}>
+                  <div style={{ background: 'var(--color-bg-secondary)', padding: '1.25rem', borderRadius: 'var(--radius-xl)', border: '1px solid var(--color-border)', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                       <Clock size={15} style={{ color: 'var(--color-primary)' }} />
                       <h4 style={{ fontSize: '0.9375rem', fontWeight: 700, color: 'var(--color-text)' }}>{t('Ca trực đêm & Khung giờ vàng')}</h4>
@@ -3519,26 +3671,9 @@ function doPost(e) {
                       </div>
                     </div>
                   </div>
-              </div>
-            </div>
 
-            {/* ===== TAB: HẠN MỨC & BẢO MẬT DATABANK ===== */}
-            <div style={{ display: activeTab === 'processing_databank' ? 'block' : 'none' }} className="subtab-enter-active">
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                {/* Guide Box */}
-                <div style={{ background: 'rgba(59, 130, 246, 0.02)', border: '1px solid rgba(59, 130, 246, 0.1)', padding: '1rem 1.25rem', borderRadius: '8px', fontSize: '0.8125rem', lineHeight: 1.5, color: 'var(--color-text-muted)' }}>
-                  <strong style={{ color: '#3b82f6', display: 'flex', alignItems: 'center', gap: 6, marginBottom: '6px' }}>
-                    <Clock size={14} /> Cơ chế Hạn mức & Bảo mật Databank:
-                  </strong>
-                  Trang này quản lý hạn mức nhận khách hàng và thời gian bảo mật dữ liệu, tránh tình trạng đầu cơ hoặc quên chăm sóc dẫn đến nguội data:
-                  <ul style={{ paddingLeft: '1.25rem', marginTop: '6px', listStyleType: 'disc', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                    <li><strong>Hạn mức nhận:</strong> Giới hạn số lượng khách hàng tối đa một Tư vấn viên được nhận từ Kho chung (Databank) trong mỗi giờ/tháng.</li>
-                    <li><strong>Đồng hồ bảo mật (Security Timer):</strong> Tự động thu hồi khách hàng về Kho chung (Databank) sau thời gian cấu hình nếu Tư vấn viên không cập nhật trạng thái mới cho khách hàng.</li>
-                    <li><strong>Quy tắc Bể cọc (Business Rules):</strong> Tự động thu hồi nếu bể cọc trước khi phát sinh doanh thu (kích hoạt lại đồng hồ bảo mật). Nếu khách hàng đã đóng đợt 1 (có doanh thu thực tế), trạng thái Đặt cọc sẽ được giữ nguyên.</li>
-                  </ul>
-                </div>
-                {/* Nhóm 3: Hạn mức nhận Databank */}
-                  <div className="card" style={{ background: 'var(--color-surface)', padding: '1.5rem', borderRadius: '12px', border: '1px solid var(--color-border-light)', boxShadow: 'var(--shadow-sm)' }}>
+                  {/* Nhóm 3: Hạn mức nhận Databank */}
+                  <div style={{ background: 'var(--color-bg-secondary)', padding: '1.25rem', borderRadius: 'var(--radius-xl)', border: '1px solid var(--color-border)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '1rem' }}>
                       <Shield size={15} style={{ color: 'var(--color-primary)' }} />
                       <h4 style={{ fontSize: '0.9375rem', fontWeight: 700, color: 'var(--color-text)' }}>{t('Hạn mức nhận khách hàng từ Databank')}</h4>
@@ -3601,7 +3736,7 @@ function doPost(e) {
                   </div>
 
                   {/* Nhóm 4: Thời hạn bảo mật & Nguồn ra kho */}
-                  <div className="card" style={{ background: 'var(--color-surface)', padding: '1.5rem', borderRadius: '12px', border: '1px solid var(--color-border-light)', marginTop: '1.5rem', boxShadow: 'var(--shadow-sm)' }}>
+                  <div style={{ background: 'var(--color-bg-secondary)', padding: '1.25rem', borderRadius: 'var(--radius-xl)', border: '1px solid var(--color-border)', marginTop: '1.25rem' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '1rem' }}>
                       <Clock size={15} style={{ color: 'var(--color-primary)' }} />
                       <h4 style={{ fontSize: '0.9375rem', fontWeight: 700, color: 'var(--color-text)' }}>{t('Cấu hình Thời hạn bảo mật & Nguồn ra kho Databank')}</h4>
@@ -3676,26 +3811,11 @@ function doPost(e) {
 
                 </div>
               </div>
-              </div>
             </div>
 
-            {/* ===== TAB: TỰ ĐỘNG DUYỆT TICKET ===== */}
-            <div style={{ display: activeTab === 'processing_approve' ? 'block' : 'none' }} className="subtab-enter-active">
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                {/* Guide Box */}
-                <div style={{ background: 'rgba(16, 185, 129, 0.02)', border: '1px solid rgba(16, 185, 129, 0.1)', padding: '1rem 1.25rem', borderRadius: '8px', fontSize: '0.8125rem', lineHeight: 1.5, color: 'var(--color-text-muted)' }}>
-                  <strong style={{ color: '#10b981', display: 'flex', alignItems: 'center', gap: 6, marginBottom: '6px' }}>
-                    <CheckCircle size={14} /> Cơ chế Tự động duyệt Yêu cầu đền bù (Ticket):
-                  </strong>
-                  Giúp phê duyệt tự động các yêu cầu đền bù khách hàng lỗi (ví dụ: sai số điện thoại, không liên lạc được, trùng khách hàng...) gửi từ Tư vấn viên nhằm tối ưu thời gian xử lý:
-                  <ul style={{ paddingLeft: '1.25rem', marginTop: '6px', listStyleType: 'disc', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                    <li>Hệ thống quét mô tả của Ticket. Nếu chứa các từ khóa trùng khớp với danh sách cấu hình, Ticket sẽ tự động được duyệt.</li>
-                    <li>Khi Ticket được duyệt tự động, hệ thống sẽ tự động hoàn một data mới hoặc cộng hạn mức đền bù tương ứng cho Tư vấn viên.</li>
-                    <li>Mọi Ticket không khớp từ khóa sẽ được chuyển sang trạng thái Chờ duyệt để Admin kiểm tra thủ công.</li>
-                  </ul>
-                </div>
-                {/* Cấu hình Tự động duyệt Ticket */}
-              <div id="auto-approve" className="card" style={{ padding: '1.5rem', marginTop: '1.5rem' }}>
+            {/* Cấu hình Tự Động Duyệt Ticket */}
+            <div style={{ display: activeTab === 'auto_approve_ticket' ? 'block' : 'none' }} className="subtab-enter-active">
+              <div id="auto-approve" className="card" style={{ padding: '1.5rem', marginTop: 0 }}>
                 <h3 style={{ fontSize: '1.125rem', fontWeight: 700, marginBottom: '1rem', color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 8 }}>
                   <span style={{ display: 'inline-flex', background: '#10b981', color: 'white', padding: 4, borderRadius: 6 }}>
                     <CheckCircle size={16} />
@@ -3705,6 +3825,14 @@ function doPost(e) {
                 <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', marginBottom: '1.25rem', lineHeight: 1.5 }}>
                   {t('Tự động phê duyệt và cộng lượt đền bù khi lý do báo lỗi của Sale chứa các từ khóa định sẵn. Đồng thời gửi thông báo Zalo/Email tự động.')}
                 </p>
+
+                {renderHelpBanner('auto_approve_ticket', t('Giải thích cơ chế Tự động duyệt ticket'), (
+                  <ul style={{ paddingLeft: '1.25rem', margin: 0, display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    <li><strong>{t('Quét từ khóa:')}</strong> {t('Khi Sale gửi khiếu nại (báo lỗi data), hệ thống sẽ quét qua nội dung mô tả lý do của Sale dựa trên danh sách từ khóa đã thiết lập.')}</li>
+                    <li><strong>{t('Duyệt & Đền bù tự động:')}</strong> {t('Nếu khớp từ khóa, ticket sẽ lập tức được duyệt tự động, hệ thống cộng trả lại 1 lượt nhận lead cho Sale và cập nhật trạng thái lead thành "Bị lỗi/Bỏ qua" ngay lập tức.')}</li>
+                    <li><strong>{t('Tiết kiệm thời gian:')}</strong> {t('Giúp Admin giảm bớt 80% tác vụ duyệt thủ công đối với các lỗi rõ ràng (ví dụ: Thuê bao, Sai số).')}</li>
+                  </ul>
+                ))}
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', borderRadius: 'var(--radius-lg)', background: 'var(--color-bg)', border: '1px solid var(--color-border)' }}>
@@ -3904,26 +4032,11 @@ function doPost(e) {
                   )}
                 </div>
               </div>
-              </div>
             </div>
 
-            {/* ===== TAB: LỌC TRÙNG & BLACKLIST ===== */}
-            <div style={{ display: activeTab === 'processing_dedup' ? 'block' : 'none' }} className="subtab-enter-active">
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                {/* Guide Box */}
-                <div style={{ background: 'rgba(245, 158, 11, 0.02)', border: '1px solid rgba(245, 158, 11, 0.1)', padding: '1rem 1.25rem', borderRadius: '8px', fontSize: '0.8125rem', lineHeight: 1.5, color: 'var(--color-text-muted)' }}>
-                  <strong style={{ color: '#f59e0b', display: 'flex', alignItems: 'center', gap: 6, marginBottom: '6px' }}>
-                    <Shield size={14} /> Cơ chế Kiểm tra trùng lặp & Blacklist:
-                  </strong>
-                  Đảm bảo chất lượng dữ liệu đầu vào và ngăn chặn dữ liệu rác:
-                  <ul style={{ paddingLeft: '1.25rem', marginTop: '6px', listStyleType: 'disc', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                    <li><strong>Lọc trùng thời gian:</strong> Quét dữ liệu trùng lặp số điện thoại hoặc email trong vòng số tháng cấu hình. Khi phát hiện trùng, hệ thống tự động gắn nhãn (Duplicate) và gán về chính Tư vấn viên đang chăm sóc.</li>
-                    <li><strong>Blacklist (Từ khóa loại trừ):</strong> Loại bỏ tự động các leads chứa từ khóa cấm trong tên hoặc ghi chú (ví dụ: test, spam, tuyển dụng...).</li>
-                    <li><strong>Blacklist (Liên hệ loại trừ):</strong> Chặn vĩnh viễn các số điện thoại hoặc địa chỉ email rác. Hỗ trợ nhập danh sách đen hàng loạt qua file Excel/CSV.</li>
-                  </ul>
-                </div>
-                {/* Cấu hình Lọc trùng */}
-              <div className="card" style={{ padding: '1.5rem', marginTop: '1.5rem' }}>
+            {/* Cấu hình Nhận diện & Lọc Trùng Lặp */}
+            <div style={{ display: activeTab === 'duplicate_filter' ? 'block' : 'none' }} className="subtab-enter-active">
+              <div className="card" style={{ padding: '1.5rem', marginTop: 0 }}>
                 <h3 style={{ fontSize: '1.125rem', fontWeight: 700, marginBottom: '1rem', color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 8 }}>
                   <span style={{ display: 'inline-flex', background: 'var(--color-primary)', color: 'white', padding: 4, borderRadius: 6 }}>
                     <RefreshCw size={16} />
@@ -3933,6 +4046,14 @@ function doPost(e) {
                 <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', marginBottom: '1.25rem', lineHeight: 1.5 }}>
                   {t('Nếu khách hàng đăng ký lại trong khoảng thời gian này, hệ thống sẽ bỏ qua quy trình phân chia mới và tự động định tuyến về Sale cũ phụ trách để chăm sóc tiếp.')}
                 </p>
+
+                {renderHelpBanner('duplicate_filter', t('Giải thích cơ chế Nhận diện & Lọc Trùng Lặp'), (
+                  <ul style={{ paddingLeft: '1.25rem', margin: 0, display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    <li><strong>{t('Thời hạn nhận diện trùng lặp:')}</strong> {t('Mặc định là 6 tháng. Khi phát hiện khách đăng ký trùng số điện thoại/email trong khoảng thời gian này, lead tự động về Sale cũ phụ trách.')}</li>
+                    <li><strong>{t('Giao lại khi Sale cũ off:')}</strong> {t('Nếu bật, khi phát hiện trùng số nhưng Sale cũ nghỉ phép/nghỉ việc, lead được xem là mới và tự động chia lại cho Sale mới hoạt động.')}</li>
+                    <li><strong>{t('Dữ liệu ánh xạ lịch sử:')}</strong> {t('Luôn được giữ nguyên Sale phụ trách cũ và đồng bộ ngầm để tránh spam thông báo.')}</li>
+                  </ul>
+                ))}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
                   <div>
                     <label className="form-label">{t('Thời hạn nhận diện trùng lặp (Tháng)')}</label>
@@ -3952,23 +4073,27 @@ function doPost(e) {
                     </p>
                   </div>
 
-                  <div style={{ borderTop: '1px solid var(--color-border)', paddingTop: '1.25rem', display: 'flex', alignItems: 'flex-start', gap: '0.75rem' }}>
-                    <ToggleSwitch
-                      checked={reassignIfOwnerInactive}
-                      onChange={setReassignIfOwnerInactive}
-                    />
-                    <div>
+                  <div style={{ borderTop: '1px solid var(--color-border)', paddingTop: '1.25rem', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '1.5rem' }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)' }}>{t('Giao lại khi Sale cũ không còn hoạt động (Mặc định BẬT)')}</div>
                       <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 4, lineHeight: 1.4 }}>
                         {t('Nếu bật: Khi phát hiện trùng số nhưng Sale cũ phụ trách số đó đã ngừng hoạt động / nghỉ việc / nghỉ phép, lead sẽ được coi là mới và tự động chia lại cho Sale mới đang hoạt động. Nếu tắt: Giữ nguyên Sale cũ phụ trách, cập nhật tương tác mới và không phân bổ lại. (Lưu ý: Với dữ liệu ánh xạ/import lịch sử, lead luôn được giữ nguyên Sale phụ trách cũ và đồng bộ ngầm để tránh spam thông báo).')}
                       </div>
                     </div>
+                    <div style={{ flexShrink: 0, marginTop: '2px' }}>
+                      <ToggleSwitch
+                        checked={reassignIfOwnerInactive}
+                        onChange={setReassignIfOwnerInactive}
+                      />
+                    </div>
                   </div>
                 </div>
               </div>
+            </div>
 
-              {/* Cấu hình Ticket / Báo cáo lỗi */}
-              <div className="card" style={{ padding: '1.5rem', marginTop: '1.5rem' }}>
+            {/* Cấu hình Báo Cáo Lỗi & Rule Hướng Dẫn */}
+            <div style={{ display: activeTab === 'error_reasons' ? 'block' : 'none' }} className="subtab-enter-active">
+              <div className="card" style={{ padding: '1.5rem', marginTop: 0 }}>
                 <h3 style={{ fontSize: '1.125rem', fontWeight: 700, marginBottom: '1rem', color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 8 }}>
                   <span style={{ display: 'inline-flex', background: '#ef4444', color: 'white', padding: 4, borderRadius: 6 }}>
                     <Shield size={16} />
@@ -3978,6 +4103,13 @@ function doPost(e) {
                 <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', marginBottom: '1.25rem', lineHeight: 1.5 }}>
                   {t('Cấu hình các tùy chọn lý do báo lỗi và ghi chú quy tắc báo lỗi cụ thể cho từng lý do. Ghi chú quy tắc này sẽ hiển thị trực tiếp cho người dùng ở trang báo lỗi để hướng dẫn họ.')}
                 </p>
+
+                {renderHelpBanner('error_reasons', t('Giải thích cơ chế Lý do báo lỗi & Hướng dẫn'), (
+                  <ul style={{ paddingLeft: '1.25rem', margin: 0, display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    <li><strong>{t('Lý do báo lỗi:')}</strong> {t('Danh sách các lỗi hợp lệ Sale được chọn khi gửi yêu cầu khiếu nại đền bù (ví dụ: Thuê bao, Sai số, Phá phách).')}</li>
+                    <li><strong>{t('Rule Hướng dẫn:')}</strong> {t('Văn bản hướng dẫn hiển thị trực tiếp cho Sale tương ứng với từng lý do để họ biết cách ứng xử (ví dụ: "Vui lòng gọi lại ít nhất 3 lần vào các khung giờ khác nhau").')}</li>
+                  </ul>
+                ))}
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
@@ -4107,9 +4239,11 @@ function doPost(e) {
                   </button>
                 </div>
               </div>
+            </div>
 
-              {/* Cấu hình Bù Lượt Thiếu (Fairness Starvation Prevention) */}
-              <div className="card" style={{ padding: '1.5rem', marginTop: '1.5rem' }}>
+            {/* Cấu hình Bù Lượt Thiếu */}
+            <div style={{ display: activeTab === 'starvation_prevention' ? 'block' : 'none' }} className="subtab-enter-active">
+              <div className="card" style={{ padding: '1.5rem', marginTop: 0 }}>
                 <h3 style={{ fontSize: '1.125rem', fontWeight: 700, marginBottom: '1rem', color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 8 }}>
                   <span style={{ display: 'inline-flex', background: 'var(--color-primary)', color: 'white', padding: 4, borderRadius: 6 }}>
                     <Activity size={16} />
@@ -4119,17 +4253,27 @@ function doPost(e) {
                 <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', marginBottom: '1.25rem', lineHeight: 1.5 }}>
                   {t('Khi Sale nghỉ phép hoặc ngoài giờ làm việc, hệ thống sẽ bỏ qua lượt của họ. Khi họ quay lại ca trực, cơ chế này sẽ ưu tiên bù lượt cho họ (giới hạn theo giờ để tránh dồn dập).')}
                 </p>
+
+                {renderHelpBanner('starvation_prevention', t('Giải thích cơ chế Bù lượt thiếu (Starvation Prevention)'), (
+                  <ul style={{ paddingLeft: '1.25rem', margin: 0, display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    <li><strong>{t('Mục đích:')}</strong> {t('Đảm bảo sự công bằng (Fairness) cho Sale khi họ tạm thời rời ca trực (nghỉ phép, ngoài giờ).')}</li>
+                    <li><strong>{t('Cách hoạt động:')}</strong> {t('Khi họ online trở lại, hệ thống sẽ ưu tiên bù lượt chia lead thiếu cho họ trước khi chia cho các Sale khác.')}</li>
+                    <li><strong>{t('Hạn mức bù mỗi giờ:')}</strong> {t('Giới hạn số data bù tối đa trong 1 giờ để tránh tình trạng dồn dập lead cùng lúc gây quá tải cho Sale.')}</li>
+                  </ul>
+                ))}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem' }}>
-                    <ToggleSwitch
-                      checked={starvationPreventionEnabled}
-                      onChange={setStarvationPreventionEnabled}
-                    />
-                    <div>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '1.5rem' }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)' }}>{t('Kích hoạt Bù Lượt Thiếu')}</div>
                       <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 4, lineHeight: 1.4 }}>
                         {t('Tự động tích lũy và ưu tiên bù lượt cho Sale khi quay lại ca trực (mặc định TẮT)')}
                       </div>
+                    </div>
+                    <div style={{ flexShrink: 0, marginTop: '2px' }}>
+                      <ToggleSwitch
+                        checked={starvationPreventionEnabled}
+                        onChange={setStarvationPreventionEnabled}
+                      />
                     </div>
                   </div>
 
@@ -4154,9 +4298,11 @@ function doPost(e) {
                   )}
                 </div>
               </div>
+            </div>
 
-              {/* Cấu hình Vòng đời Khách hàng (Pipeline Status Hierarchy) */}
-              <div className="card" style={{ padding: '2rem', marginTop: '1.5rem' }}>
+            {/* Cấu hình Vòng đời & Trạng thái Khách hàng */}
+            <div style={{ display: activeTab === 'pipeline_stages' ? 'block' : 'none' }} className="subtab-enter-active">
+              <div className="card" style={{ padding: '2rem', marginTop: 0 }}>
                 <h3 style={{ fontSize: '1.25rem', fontWeight: 800, marginBottom: '0.5rem', color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 8 }}>
                   <span style={{ display: 'inline-flex', background: 'var(--color-primary-light)', color: 'var(--color-primary)', padding: 6, borderRadius: 8 }}>
                     <Activity size={18} />
@@ -4166,6 +4312,13 @@ function doPost(e) {
                 <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', marginBottom: '1.75rem', lineHeight: 1.5 }}>
                   {t('Thiết lập thứ tự các bước chuyển trạng thái (State Machine) của khách hàng. Hãy nhập tên hiển thị tiếng Việt, hệ thống sẽ tự động tạo mã tương ứng. Các bước trùng lặp mã sẽ bị báo đỏ cảnh báo.')}
                 </p>
+
+                {renderHelpBanner('pipeline_stages', t('Giải thích cơ chế Vòng đời & Trạng thái khách hàng'), (
+                  <ul style={{ paddingLeft: '1.25rem', margin: 0, display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    <li><strong>{t('State Machine (Thứ tự trạng thái):')}</strong> {t('Quy định luồng chuyển dịch khách hàng từ lúc mới vào cho đến lúc chốt giao dịch. Trạng thái sau luôn có mức độ ưu tiên cao hơn trạng thái trước.')}</li>
+                    <li><strong>{t('Cho phép hợp tác:')}</strong> {t('Kích hoạt trạng thái có thể chạy đồng thời/hợp tác chia sẻ thông tin giữa nhiều phòng ban.')}</li>
+                  </ul>
+                ))}
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                   {(() => {
@@ -4192,9 +4345,14 @@ function doPost(e) {
                             transition: 'all 0.2s'
                           }}
                         >
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1 }}>
-                            <span style={{ fontWeight: 800, color: isDuplicate ? 'var(--color-danger)' : 'var(--color-primary)', minWidth: '24px' }}>#{index + 1}</span>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: 1, maxWidth: '400px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flex: 1, minWidth: 0 }}>
+                            {/* 1. Index */}
+                            <span style={{ fontWeight: 800, color: isDuplicate ? 'var(--color-danger)' : 'var(--color-primary)', width: '30px', flexShrink: 0 }}>
+                              #{index + 1}
+                            </span>
+                            
+                            {/* 2. Input */}
+                            <div style={{ flex: 1, minWidth: '150px', maxWidth: '300px' }}>
                               <input
                                 type="text"
                                 value={label}
@@ -4220,48 +4378,54 @@ function doPost(e) {
                                   padding: '6px 12px',
                                   fontSize: '0.875rem',
                                   borderColor: isDuplicate ? 'var(--color-danger)' : undefined,
-                                  boxShadow: isDuplicate ? '0 0 0 1px var(--color-danger-light)' : undefined
+                                  boxShadow: isDuplicate ? '0 0 0 1px var(--color-danger-light)' : undefined,
+                                  width: '100%'
                                 }}
                               />
                             </div>
 
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            {/* 3. Key label (Fixed width for perfect alignment) */}
+                            <div style={{ width: '180px', flexShrink: 0 }}>
                               <span style={{
                                 fontSize: '0.75rem',
                                 fontFamily: 'monospace',
-                                background: isDuplicate ? 'var(--color-danger-light)' : 'var(--color-bg-secondary)',
+                                background: isDuplicate ? 'var(--color-danger-light)' : 'var(--color-bg)',
                                 color: isDuplicate ? 'var(--color-danger)' : 'var(--color-text-muted)',
                                 padding: '4px 8px',
                                 borderRadius: '6px',
                                 border: `1px solid ${isDuplicate ? 'var(--color-danger)' : 'var(--color-border)'}`,
-                                fontWeight: 600
+                                fontWeight: 600,
+                                display: 'inline-block',
+                                maxWidth: '100%',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                whiteSpace: 'nowrap'
                               }}>
                                 {isDuplicate ? `${t('Mã trùng:')} ${status}` : `key: ${status}`}
                               </span>
-                              
-                              <label style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '0.75rem', cursor: 'pointer', userSelect: 'none', marginLeft: '12px' }}>
-                                <input
-                                  type="checkbox"
-                                  checked={coopEligibleStatuses.split(',').map((s: string) => s.trim()).filter(Boolean).includes(status)}
-                                  onChange={e => {
-                                    const currentList = coopEligibleStatuses.split(',').map((s: string) => s.trim()).filter(Boolean);
-                                    let newList;
-                                    if (e.target.checked) {
-                                      if (!currentList.includes(status)) {
-                                        currentList.push(status);
-                                      }
-                                      newList = currentList;
-                                    } else {
-                                      newList = currentList.filter(s => s !== status);
+                            </div>
+                            
+                            {/* 4. Toggle Switch (Fixed width for straight column alignment) */}
+                            <div style={{ width: '160px', flexShrink: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              <ToggleSwitch
+                                checked={coopEligibleStatuses.split(',').map((s: string) => s.trim()).filter(Boolean).includes(status)}
+                                onChange={checked => {
+                                  const currentList = coopEligibleStatuses.split(',').map((s: string) => s.trim()).filter(Boolean);
+                                  let newList;
+                                  if (checked) {
+                                    if (!currentList.includes(status)) {
+                                      currentList.push(status);
                                     }
-                                    setCoopEligibleStatuses(newList.join(','));
-                                  }}
-                                  style={{ cursor: 'pointer', width: '14px', height: '14px', accentColor: 'var(--color-primary)' }}
-                                />
-                                <span style={{ color: 'var(--color-text-muted)', fontWeight: 500 }}>
-                                  {t('Cho phép hợp tác')}
-                                </span>
-                              </label>
+                                    newList = currentList;
+                                  } else {
+                                    newList = currentList.filter(s => s !== status);
+                                  }
+                                  setCoopEligibleStatuses(newList.join(','));
+                                }}
+                              />
+                              <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 600, userSelect: 'none' }}>
+                                {t('Cho phép hợp tác')}
+                              </span>
                             </div>
                           </div>
 
@@ -4727,26 +4891,25 @@ function doPost(e) {
                   </div>
                 </div>
               </div>
-              </div>
             </div>
           </div>
-        </div>
-      )}
-
+        )}
+      </div>
+    </div>
       {/* Custom Modal for Test Email */}
       <CustomModal
         isOpen={showTestEmailModal}
         onClose={() => setShowTestEmailModal(false)}
-        title={t('Gửi Test Email')}
-        width="480px"
+        title={t("Gửi Test Email")}
+        width="450px"
       >
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', padding: '0.25rem 0' }}>
-          <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', lineHeight: 1.6, margin: 0 }}>
-            {t('Sau khi lưu cấu hình, bạn có thể gửi một email thử nghiệm để đảm bảo hệ thống đã kết nối thành công với AppScript hoặc Amazon SES.')}
+          <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', lineHeight: 1.5, margin: 0 }}>
+            {t('Gửi một email thử nghiệm để đảm bảo hệ thống đã kết nối thành công với AppScript hoặc Amazon SES.')}
           </p>
 
           <div>
-            <label className="form-label" style={{ fontWeight: 600, marginBottom: '0.375rem' }}>{t('Chọn mẫu thử nghiệm')}</label>
+            <label className="form-label" style={{ fontWeight: 600 }}>{t('Chọn loại test')}</label>
             <CustomSelect
               options={[
                 { value: 'system', label: t('Test Hệ Thống (SMTP / AppScript)') },
@@ -4762,31 +4925,38 @@ function doPost(e) {
               value={testType}
               onChange={val => setTestType(val.toString())}
               width="100%"
-              direction="down"
             />
           </div>
 
           <div>
-            <label className="form-label" style={{ fontWeight: 600, marginBottom: '0.375rem' }}>{t('Email nhận test')}</label>
+            <label className="form-label" style={{ fontWeight: 600 }}>{t('Email nhận test')}</label>
             <input
               className="form-input"
               placeholder={t("Nhập email nhận test...")}
               value={testEmail}
               onChange={e => setTestEmail(e.target.value)}
+              style={{ height: '40px' }}
             />
           </div>
 
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '0.5rem', borderTop: '1px solid var(--color-border-light)', paddingTop: '1rem' }}>
-            <button className="btn outline" onClick={() => setShowTestEmailModal(false)}>
-              {t('Đóng')}
+            <button
+              className="btn outline"
+              onClick={() => setShowTestEmailModal(false)}
+              disabled={testing}
+              style={{ height: '38px' }}
+            >
+              {t("Đóng")}
             </button>
             <button
               className="btn primary"
-              onClick={handleTestEmail}
+              onClick={async () => {
+                await handleTestEmail();
+              }}
               disabled={testing}
-              style={{ background: 'var(--color-primary)' }}
+              style={{ height: '38px', display: 'flex', alignItems: 'center', gap: '6px' }}
             >
-              {testing ? <Activity size={16} className="spin" /> : <Send size={16} />}
+              {testing ? <Activity size={14} className="spin" /> : <Send size={14} />}
               {testing ? t("Đang gửi...") : t("Gửi Email Test")}
             </button>
           </div>
@@ -5256,7 +5426,7 @@ function doPost(e) {
       </ConfirmModal>
 
       {/* Floating Save Button on Mobile */}
-      {!loading && activeTab !== 'duplicate_check' && (
+      {!loading && showGlobalSave && (
         <div className="mobile-only" style={{
           position: 'fixed',
           bottom: '2rem',

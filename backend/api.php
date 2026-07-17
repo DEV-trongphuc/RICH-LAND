@@ -3870,8 +3870,9 @@ switch ($action) {
         }
 
         $res = $conn->query("
-            SELECT c.*, t.name as team_name, t.branch as team_branch 
+            SELECT c.*, u.role, t.name as team_name, t.branch as team_branch 
             FROM consultants c 
+            LEFT JOIN accounts u ON c.email = u.email
             LEFT JOIN teams t ON c.team_id = t.id 
             $where
             ORDER BY c.created_at DESC
@@ -11304,24 +11305,28 @@ switch ($action) {
         break;
 
     case 'consultant-profile':
+        $userIdParam = isset($_GET['user_id']) && $_GET['user_id'] !== '' ? (int) $_GET['user_id'] : null;
         $saleFilterId = isset($_GET['consultant_id']) && $_GET['consultant_id'] !== '' ? (int) $_GET['consultant_id'] : null;
-        $targetId = $saleFilterId !== null ? $saleFilterId : $currentSaleConsultantId;
 
-        if (!$targetId) {
-            echo json_encode(['success' => false, 'message' => 'Consultant profile not found']);
-            exit;
-        }
-
-        $targetUserId = null;
-        $stmtUId = $conn->prepare("SELECT u.id FROM users u JOIN consultants c ON u.email = c.email WHERE c.id = ? LIMIT 1");
-        $stmtUId->bind_param("i", $targetId);
-        $stmtUId->execute();
-        $uRow = $stmtUId->get_result()->fetch_assoc();
-        $stmtUId->close();
-        if ($uRow) {
-            $targetUserId = (int)$uRow['id'];
+        if ($userIdParam !== null) {
+            $targetUserId = $userIdParam;
         } else {
-            $targetUserId = $targetId;
+            $targetId = $saleFilterId !== null ? $saleFilterId : $currentSaleConsultantId;
+            if (!$targetId) {
+                echo json_encode(['success' => false, 'message' => 'Consultant profile not found']);
+                exit;
+            }
+            $targetUserId = null;
+            $stmtUId = $conn->prepare("SELECT u.id FROM users u JOIN consultants c ON u.email = c.email WHERE c.id = ? LIMIT 1");
+            $stmtUId->bind_param("i", $targetId);
+            $stmtUId->execute();
+            $uRow = $stmtUId->get_result()->fetch_assoc();
+            $stmtUId->close();
+            if ($uRow) {
+                $targetUserId = (int)$uRow['id'];
+            } else {
+                $targetUserId = $targetId;
+            }
         }
 
         // Check permission
@@ -11346,7 +11351,7 @@ switch ($action) {
             exit;
         }
 
-        $stmtP = $conn->prepare("SELECT id, full_name AS name, email, status, leave_start, leave_end, work_start_time, work_end_time, work_schedule, avatar_url AS avatar, vacation_mode, dob, gender, citizen_id, address, bank_name, bank_account, zalo_chat_id, overtime_mode, permissions_json, extra_fields_json FROM users WHERE id = ?");
+        $stmtP = $conn->prepare("SELECT u.id, u.full_name AS name, u.email, a.role, u.status, u.leave_start, u.leave_end, u.work_start_time, u.work_end_time, u.work_schedule, u.avatar_url AS avatar, u.vacation_mode, u.dob, u.gender, u.citizen_id, u.address, u.bank_name, u.bank_account, u.zalo_chat_id, u.overtime_mode, u.permissions_json, u.extra_fields_json FROM users u LEFT JOIN accounts a ON u.id = a.id WHERE u.id = ?");
         $stmtP->bind_param("i", $targetUserId);
         $stmtP->execute();
         $consultantProfile = $stmtP->get_result()->fetch_assoc();
