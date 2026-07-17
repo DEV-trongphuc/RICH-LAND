@@ -119,8 +119,12 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
   const videoRef = React.useRef<HTMLVideoElement>(null);
   const [consultantProfile, setConsultantProfile] = useState<any>(null);
 
+  const [sysSettings, setSysSettings] = useState<any>(null);
+  const managerBehaviorMode = sysSettings?.manager_behavior_mode || 'combined';
+  const isSales = user?.role === 'sale' || (user?.role === 'manager' && managerBehaviorMode === 'combined');
+
   const loadCheckInStatus = async () => {
-    if (!user || user.role !== 'sale') return;
+    if (!user || !isSales) return;
     try {
       const res = await fetchAPI('check-ins&today_only=1');
       if (res.success) {
@@ -132,7 +136,7 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
   };
 
   const loadConsultantProfile = async () => {
-    if (!user || user.role !== 'sale') return;
+    if (!user || !isSales) return;
     try {
       const res = await fetchAPI('consultant-profile');
       if (res.success) {
@@ -280,9 +284,14 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
     loadCheckInStatus();
     loadConsultantProfile();
     const handleSync = () => loadCheckInStatus();
+    const handleTrigger = () => setCheckInModalOpen(true);
     window.addEventListener('checkin-status-changed', handleSync);
-    return () => window.removeEventListener('checkin-status-changed', handleSync);
-  }, [user]);
+    window.addEventListener('trigger-checkin-modal', handleTrigger);
+    return () => {
+      window.removeEventListener('checkin-status-changed', handleSync);
+      window.removeEventListener('trigger-checkin-modal', handleTrigger);
+    };
+  }, [user, isSales]);
 
   useEffect(() => {
     if (checkInModalOpen) {
@@ -501,10 +510,13 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
       fetchAPI('get_settings')
         .then(res => {
           console.log('Layout get_settings response:', res);
-          if (res && res.success && res.data && res.data.backend_version) {
-            console.log('Setting backendVersion to:', res.data.backend_version);
-            setBackendVersion(res.data.backend_version);
-            localStorage.setItem('backend_version', res.data.backend_version);
+          if (res && res.success && res.data) {
+            setSysSettings(res.data);
+            if (res.data.backend_version) {
+              console.log('Setting backendVersion to:', res.data.backend_version);
+              setBackendVersion(res.data.backend_version);
+              localStorage.setItem('backend_version', res.data.backend_version);
+            }
           }
         })
         .catch(err => {

@@ -51,6 +51,17 @@ export const Header = ({ onActivityFeedClick, onMenuClick, version }: { onActivi
 
   const [headerVacationMode, setHeaderVacationMode] = useState<boolean>(false);
   const [headerCheckIn, setHeaderCheckIn] = useState<any>(null);
+  const [sysSettings, setSysSettings] = useState<any>(null);
+  useEffect(() => {
+    fetchAPI('get_settings').then(res => {
+      if (res && res.success) {
+        setSysSettings(res.data);
+      }
+    });
+  }, []);
+
+  const managerBehaviorMode = sysSettings?.manager_behavior_mode || 'combined';
+  const isSales = user?.role === 'sale' || (user?.role === 'manager' && managerBehaviorMode === 'combined');
 
   const [uncontactedCount, setUncontactedCount] = useState(() => {
     return Number(sessionStorage.getItem('sale-uncontacted-count')) || 0;
@@ -236,7 +247,7 @@ export const Header = ({ onActivityFeedClick, onMenuClick, version }: { onActivi
   };
 
   const fetchHeaderPortalData = async () => {
-    if (user?.role !== 'sale') return;
+    if (!isSales) return;
     try {
       const res = await fetchAPI('check-ins&today_only=1');
       if (res.success) {
@@ -275,7 +286,7 @@ export const Header = ({ onActivityFeedClick, onMenuClick, version }: { onActivi
 
   useEffect(() => {
     fetchHeaderPortalData();
-  }, [user]);
+  }, [user, isSales]);
 
   useEffect(() => {
     const handleVacationChange = (e: Event) => {
@@ -692,7 +703,7 @@ export const Header = ({ onActivityFeedClick, onMenuClick, version }: { onActivi
         )}
         
         {/* Sales widgets for receiving data and check-in */}
-        {user?.role === 'sale' && (
+        {isSales && (
           <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? '4px' : '8px', marginRight: isMobile ? '2px' : '8px' }}>
             {/* Limit Warning Widget */}
             <div style={{
@@ -1722,7 +1733,7 @@ export const Header = ({ onActivityFeedClick, onMenuClick, version }: { onActivi
         `}</style>
       </CustomModal>
 
-      {user?.role === 'sale' && (!headerCheckIn || headerCheckIn.status === 'rejected') && (
+      {isSales && (!headerCheckIn || headerCheckIn.status === 'rejected') && (
         <>
           <style>{`
             @media (max-width: 768px) {

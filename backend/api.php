@@ -832,7 +832,7 @@ function processManualLead($conn, $leadData, $override_round_id, $override_consu
     $type = trim($leadData['type'] ?? '');
     $note = trim($leadData['note'] ?? '');
 
-    if ($decodedUser['role'] === 'sale') {
+    if ($decodedUser['role'] === 'sale' || $distribution_mode === 'self_assign') {
         $stmtC = $conn->prepare("SELECT id FROM consultants WHERE email = ? LIMIT 1");
         $stmtC->bind_param("s", $decodedUser['email']);
         $stmtC->execute();
@@ -840,6 +840,8 @@ function processManualLead($conn, $leadData, $override_round_id, $override_consu
         $stmtC->close();
         if ($cRow) {
             $override_consultant_id = (int)$cRow['id'];
+        } else {
+            $override_consultant_id = (int)$decodedUser['user_id'];
         }
         $distribution_mode = 'auto_round';
         if ($source !== 'gioi_thieu') {
