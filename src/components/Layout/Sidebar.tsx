@@ -245,15 +245,12 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileC
         >
           {/* Logo Icon */}
           <div style={{
-            width: 36, height: 36, borderRadius: '50%',
-            background: 'linear-gradient(135deg, #BD1D2D 0%, #a31422 100%)',
+            width: 36, height: 36,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             flexShrink: 0,
-            boxShadow: '0 0 12px rgba(189, 29, 45, 0.5), 0 2px 8px rgba(0, 0, 0, 0.3)',
-            overflow: 'hidden',
-            border: '2px solid rgba(189, 29, 45, 0.8)'
+            overflow: 'hidden'
           }}>
-            <img src="/LOGO.jpg" style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+            <img src="/imgs/logo-rich-land-viet-nam-trang.webp" style={{ width: '100%', height: '100%', objectFit: 'contain' }}
               onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
               alt="logo" />
           </div>
