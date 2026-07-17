@@ -1870,7 +1870,7 @@ switch ($action) {
                 }
 
                 $consultantId = null;
-                if ($user['role'] === 'sales' || $user['role'] === 'sale') {
+                if (in_array($user['role'], ['sales', 'sale', 'manager'], true)) {
                     $stmtC = $conn->prepare("SELECT id FROM consultants WHERE email = ? LIMIT 1");
                     $stmtC->bind_param("s", $user['email']);
                     $stmtC->execute();
@@ -2571,7 +2571,7 @@ switch ($action) {
         break;
 
     case 'get_sale_lead_timeline':
-        $isSale = $decodedUser['role'] === 'sale';
+        $isSale = in_array($decodedUser['role'], ['sale', 'sales', 'manager'], true);
         $saleId = $isSale ? $currentSaleConsultantId : (int) $decodedUser['id'];
         $leadId = isset($_GET['lead_id']) ? (int) $_GET['lead_id'] : 0;
 
@@ -2887,7 +2887,7 @@ switch ($action) {
             break;
         }
 
-        // If user is a sale, check if they own the lead
+        // If user is a sale, check if they own the lead. If manager, check if it belongs to their team members
         if ($decodedUser['role'] === 'sale') {
             $saleStmt = $conn->prepare("SELECT id FROM consultants WHERE email = ? LIMIT 1");
             $saleStmt->bind_param("s", $decodedUser['email']);
@@ -2896,6 +2896,22 @@ switch ($action) {
             $saleStmt->close();
 
             if (!$sRow || (int)$lead['assigned_to'] !== (int)$sRow['id']) {
+                http_response_code(403);
+                echo json_encode(['success' => false, 'message' => 'Bạn không có quyền xem thông tin khách hàng này']);
+                break;
+            }
+        } elseif ($decodedUser['role'] === 'manager') {
+            $stmtM = $conn->prepare("SELECT id FROM consultants WHERE team_id IN (SELECT id FROM teams WHERE leader_id = ?)");
+            $stmtM->bind_param("i", $decodedUser['user_id']);
+            $stmtM->execute();
+            $resM = $stmtM->get_result();
+            $teamIds = [];
+            while ($mRow = $resM->fetch_assoc()) {
+                $teamIds[] = (int)$mRow['id'];
+            }
+            $stmtM->close();
+            
+            if (!in_array((int)$lead['assigned_to'], $teamIds, true) && (int)$lead['assigned_to'] !== $currentSaleConsultantId) {
                 http_response_code(403);
                 echo json_encode(['success' => false, 'message' => 'Bạn không có quyền xem thông tin khách hàng này']);
                 break;
