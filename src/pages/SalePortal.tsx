@@ -7941,6 +7941,24 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
               </button>
               <button
                 type="button"
+                className={`${styles.sidebarTabBtn} ${profileActiveTab === 'certificates' ? styles.sidebarTabActive : ''}`}
+                onClick={() => setProfileActiveTab('certificates')}
+                style={{ width: isMobile ? 'auto' : '100%', border: 'none', background: 'transparent', textAlign: 'left', cursor: 'pointer' }}
+              >
+                <Award size={15} />
+                <span style={{ whiteSpace: 'nowrap' }}>{t('Bằng cấp & Chứng chỉ')}</span>
+              </button>
+              <button
+                type="button"
+                className={`${styles.sidebarTabBtn} ${profileActiveTab === 'hr_records' ? styles.sidebarTabActive : ''}`}
+                onClick={() => setProfileActiveTab('hr_records')}
+                style={{ width: isMobile ? 'auto' : '100%', border: 'none', background: 'transparent', textAlign: 'left', cursor: 'pointer' }}
+              >
+                <AlertCircle size={15} />
+                <span style={{ whiteSpace: 'nowrap' }}>{t('Khen thưởng & Kỷ luật')}</span>
+              </button>
+              <button
+                type="button"
                 className={`${styles.sidebarTabBtn} ${profileActiveTab === 'contact' ? styles.sidebarTabActive : ''}`}
                 onClick={() => setProfileActiveTab('contact')}
                 style={{ width: isMobile ? 'auto' : '100%', border: 'none', background: 'transparent', textAlign: 'left', cursor: 'pointer' }}
@@ -8088,8 +8106,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
 
             {/* 2. ERP PROFILE */}
             {profileActiveTab === 'erp' && (
-              <>
-                <div className="card animate-fade-in" style={{ padding: '2rem', display: 'flex', flexDirection: 'column', gap: '1.5rem', background: 'var(--color-surface)', borderRadius: '12px', border: '1px solid var(--color-border-light)', boxShadow: '0 4px 20px rgba(0,0,0,0.02)' }}>
+              <div className="card animate-fade-in" style={{ padding: '2rem', display: 'flex', flexDirection: 'column', gap: '1.5rem', background: 'var(--color-surface)', borderRadius: '12px', border: '1px solid var(--color-border-light)', boxShadow: '0 4px 20px rgba(0,0,0,0.02)' }}>
                 <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-text)', textTransform: 'uppercase', letterSpacing: '0.5px', margin: '0 0 0.5rem 0', display: 'flex', alignItems: 'center', gap: 8 }}>
                   <Layers size={16} color="var(--color-primary)" /> {t('Thông tin nhân sự & ERP')}
                 </h3>
@@ -8211,9 +8228,10 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                     </div>
                 </div>
               </div>
+            )}
 
-              {/* DANH SÁCH CHỨNG CHỈ & BẰNG CẤP */}
-              <div className="card animate-fade-in" style={{ padding: '2rem', display: 'flex', flexDirection: 'column', gap: '1.5rem', background: 'var(--color-surface)', borderRadius: '16px', border: '1px solid var(--color-border-light)', boxShadow: '0 4px 20px rgba(0,0,0,0.02)', marginTop: '2rem' }}>
+            {profileActiveTab === 'certificates' && (
+              <div className="card animate-fade-in" style={{ padding: '2rem', display: 'flex', flexDirection: 'column', gap: '1.5rem', background: 'var(--color-surface)', borderRadius: '16px', border: '1px solid var(--color-border-light)', boxShadow: '0 4px 20px rgba(0,0,0,0.02)' }}>
                 <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-text)', textTransform: 'uppercase', letterSpacing: '0.5px', margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
                   <Award size={18} color="var(--color-primary)" />
                   {t('BẰNG CẤP & CHỨNG CHỈ HÀNH NGHỀ')}
@@ -8431,9 +8449,10 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                   {t('Thêm bằng cấp / chứng chỉ')}
                 </button>
               </div>
+            )}
 
-              {/* KHEN THƯỞNG, CẢNH CÁO & KỶ LUẬT */}
-              <div className="card animate-fade-in" style={{ padding: '2rem', display: 'flex', flexDirection: 'column', gap: '1.5rem', background: 'var(--color-surface)', borderRadius: '16px', border: '1px solid var(--color-border-light)', boxShadow: '0 4px 20px rgba(0,0,0,0.02)', marginTop: '2rem' }}>
+            {profileActiveTab === 'hr_records' && (
+              <div className="card animate-fade-in" style={{ padding: '2rem', display: 'flex', flexDirection: 'column', gap: '1.5rem', background: 'var(--color-surface)', borderRadius: '16px', border: '1px solid var(--color-border-light)', boxShadow: '0 4px 20px rgba(0,0,0,0.02)' }}>
                 <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-text)', textTransform: 'uppercase', letterSpacing: '0.5px', margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
                   <AlertCircle size={18} color="var(--color-primary)" />
                   {t('KHEN THƯỞNG, CẢNH CÁO & KỶ LUẬT')}
@@ -8671,7 +8690,6 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                   </button>
                 )}
               </div>
-            </>
             )}
 
             {/* 3. CONTACT & LOGIN */}
