@@ -7,12 +7,8 @@ try {
         PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC
     ]);
     
-    echo "=== INSERTING DB_VERSION = 159 ===\n";
-    $db->exec("INSERT INTO system_settings (setting_key, setting_value) VALUES ('db_version', '159') ON DUPLICATE KEY UPDATE setting_value = '159'");
-    $db->exec("INSERT INTO system_settings (setting_key, setting_value) VALUES ('lead_response_timeout_minutes', '2') ON DUPLICATE KEY UPDATE setting_value = '2'");
-
-    echo "=== SYSTEM SETTINGS ===\n";
-    $stmt = $db->query("SELECT * FROM system_settings");
+    echo "=== COLUMNS OF PERSONS ===\n";
+    $stmt = $db->query("DESCRIBE persons");
     print_r($stmt->fetchAll());
 
 } catch (Exception $e) {
