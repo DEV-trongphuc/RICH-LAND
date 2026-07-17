@@ -1337,11 +1337,11 @@ export const Header = ({ onActivityFeedClick, onMenuClick, version }: { onActivi
               )
             : [];
 
-          const recentTargets = ['Dashboard', 'Bàn làm việc', 'Báo cáo', 'Khách hàng', 'Pipeline', 'Giỏ hàng'];
+          const recentTargets = ['Dashboard', 'Bàn làm việc', 'Báo cáo', 'Khách hàng', 'Pipeline', 'Giỏ hàng', 'Kho Databank'];
           const recentItems = recentTargets
             .map(name => allVisibleItems.find(item => item.name === name))
             .filter(Boolean)
-            .slice(0, 6);
+            .slice(0, 7);
 
           return (
             <div style={{ paddingRight: '4px' }}>
