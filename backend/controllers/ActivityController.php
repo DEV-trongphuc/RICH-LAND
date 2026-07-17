@@ -30,7 +30,13 @@ class ActivityController {
                         (int)$activity['related_id'], $auth['tenant_id'], $auth['user_id']
                     ]);
                     if ($checkRoster->fetch()) {
-                        return true;
+                        if (in_array($auth['role'], ['sale', 'sales'], true)) {
+                            if (empty($activity['user_id'])) {
+                                return true;
+                            }
+                        } else {
+                            return true;
+                        }
                     }
                 } else if ($activity['related_type'] === 'campaign') {
                     $checkRoster = $this->db->prepare('
@@ -40,7 +46,13 @@ class ActivityController {
                         (int)$activity['related_id'], $auth['tenant_id'], $auth['user_id'], $auth['user_id'], $auth['user_id']
                     ]);
                     if ($checkRoster->fetch()) {
-                        return true;
+                        if (in_array($auth['role'], ['sale', 'sales'], true)) {
+                            if (empty($activity['user_id'])) {
+                                return true;
+                            }
+                        } else {
+                            return true;
+                        }
                     }
                 }
             }
@@ -289,7 +301,7 @@ class ActivityController {
         if (!in_array($sortBy, $allowedSort)) $sortBy = 'due_date';
         if (!in_array(strtoupper($order), ['ASC', 'DESC'])) $order = 'ASC';
 
-        if (in_array($auth['role'], ['sales', 'sale'], true) && !$relType && !$relId) {
+        if (in_array($auth['role'], ['sales', 'sale'], true)) {
             $where[] = '(
                 a.user_id = ? 
                 OR a.created_by = ?
@@ -309,6 +321,12 @@ class ActivityController {
                         )
                     )
                 ))
+                OR (a.related_type = \'project\' AND EXISTS (
+                    SELECT 1 FROM project_roster pr WHERE pr.project_id = a.related_id AND pr.user_id = ?
+                ) AND (a.user_id IS NULL OR a.user_id = 0 OR a.user_id = ?))
+                OR (a.related_type = \'campaign\' AND EXISTS (
+                    SELECT 1 FROM marketing_campaigns mc WHERE mc.id = a.related_id AND (FIND_IN_SET(?, mc.user_ids) OR FIND_IN_SET(?, mc.manager_ids) OR mc.created_by = ?)
+                ) AND (a.user_id IS NULL OR a.user_id = 0 OR a.user_id = ?))
                 OR (a.tags LIKE \'internal_%\' AND (a.user_id IN (SELECT id FROM users WHERE team_id = (SELECT team_id FROM users WHERE id = ?)) OR a.body LIKE \'%"scope":"global"%\'))
             )';
             $params[] = $auth['user_id'];
@@ -321,7 +339,13 @@ class ActivityController {
             $params[] = $auth['user_id'];
             $params[] = $auth['user_id'];
             $params[] = $auth['user_id'];
-        } else if ($auth['role'] === 'manager' && !$relType && !$relId) {
+            $params[] = $auth['user_id'];
+            $params[] = $auth['user_id'];
+            $params[] = $auth['user_id'];
+            $params[] = $auth['user_id'];
+            $params[] = $auth['user_id'];
+            $params[] = $auth['user_id'];
+        } else if ($auth['role'] === 'manager') {
             $where[] = '(
                 a.user_id = ? 
                 OR a.created_by = ?
@@ -348,8 +372,18 @@ class ActivityController {
                         )
                     )
                 ))
+                OR (a.related_type = \'project\' AND EXISTS (
+                    SELECT 1 FROM project_roster pr WHERE pr.project_id = a.related_id AND pr.user_id = ?
+                ))
+                OR (a.related_type = \'campaign\' AND EXISTS (
+                    SELECT 1 FROM marketing_campaigns mc WHERE mc.id = a.related_id AND (FIND_IN_SET(?, mc.user_ids) OR FIND_IN_SET(?, mc.manager_ids) OR mc.created_by = ?)
+                ))
                 OR (a.tags LIKE \'internal_%\' AND (a.user_id IN (SELECT id FROM users WHERE team_id IN (SELECT id FROM teams WHERE leader_id = ?)) OR a.body LIKE \'%"scope":"global"%\'))
             )';
+            $params[] = $auth['user_id'];
+            $params[] = $auth['user_id'];
+            $params[] = $auth['user_id'];
+            $params[] = $auth['user_id'];
             $params[] = $auth['user_id'];
             $params[] = $auth['user_id'];
             $params[] = $auth['user_id'];
