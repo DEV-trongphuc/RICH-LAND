@@ -103,7 +103,7 @@ class ExportController {
                 case 'customer':   $where[] = "t.status = 'customer'"; break;
                 case 'has_deal':   $where[] = "EXISTS (SELECT 1 FROM deals d WHERE d.contact_id = t.id AND d.deleted_at IS NULL)"; break;
                 case 'no_contact': $where[] = "t.last_contact < DATE_SUB(NOW(), INTERVAL 30 DAY)"; break;
-                case 'not_contacted': $where[] = "NOT EXISTS (SELECT 1 FROM activities WHERE contact_id = t.id OR (related_type = 'contact' AND related_id = t.id)) AND NOT EXISTS (SELECT 1 FROM notes WHERE contact_id = t.id)"; break;
+                case 'not_contacted': $where[] = "NOT EXISTS (SELECT 1 FROM activities WHERE related_type = 'contact' AND related_id = t.id) AND NOT EXISTS (SELECT 1 FROM notes WHERE entity_type = 'contact' AND entity_id = t.id)"; break;
                 case 'new_week':   $where[] = "t.created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)"; break;
             }
 

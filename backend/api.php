@@ -2582,8 +2582,8 @@ switch ($action) {
                   AND l.status != 'reminder'
                   AND l.is_accepted = 1
                   AND l.source NOT IN ('ca_nhan', 'gioi_thieu')
-                  AND NOT EXISTS (SELECT 1 FROM activities WHERE contact_id = c.id OR (related_type = 'contact' AND related_id = c.id))
-                  AND NOT EXISTS (SELECT 1 FROM notes WHERE contact_id = c.id)
+                  AND NOT EXISTS (SELECT 1 FROM activities WHERE related_type = 'contact' AND related_id = c.id)
+                  AND NOT EXISTS (SELECT 1 FROM notes WHERE entity_type = 'contact' AND entity_id = c.id)
             ");
             if ($stmtKhtn) {
                 $stmtKhtn->bind_param("i", $saleId);
@@ -12453,8 +12453,8 @@ switch ($action) {
               AND l.is_accepted = 1 
               AND l.source NOT IN ('ca_nhan', 'gioi_thieu')
               AND c.id IS NOT NULL 
-              AND NOT EXISTS (SELECT 1 FROM activities WHERE contact_id = c.id OR (related_type = 'contact' AND related_id = c.id))
-              AND NOT EXISTS (SELECT 1 FROM notes WHERE contact_id = c.id)
+              AND NOT EXISTS (SELECT 1 FROM activities WHERE related_type = 'contact' AND related_id = c.id)
+              AND NOT EXISTS (SELECT 1 FROM notes WHERE entity_type = 'contact' AND entity_id = c.id)
               $managerFilterLeads
             GROUP BY l.assigned_to
         ");

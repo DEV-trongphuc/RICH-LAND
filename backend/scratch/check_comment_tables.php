@@ -1,7 +1,7 @@
 <?php
 require_once __DIR__ . '/../db_connect.php';
 
-$tables = ['activity_comments', 'ticket_comments', 'comments'];
+$tables = ['activities', 'notes'];
 foreach ($tables as $t) {
     echo "=== Table: $t ===\n";
     try {
