@@ -105,6 +105,13 @@ export const DealsPage: React.FC = () => {
   const [filterDateTo, setFilterDateTo] = useState('');
   const [filterAssignee, setFilterAssignee] = useState('');
   const [filterStage, setFilterStage] = useState('');
+  const [filterProject, setFilterProject] = useState('');
+  const [filterCampaign, setFilterCampaign] = useState('');
+  const [filterSource, setFilterSource] = useState('');
+
+  const [projects, setProjects] = useState<any[]>([]);
+  const [campaigns, setCampaigns] = useState<any[]>([]);
+  const [sources, setSources] = useState<any[]>([]);
   
   // Temp states for Filter Panel
   const [showFilterPanel, setShowFilterPanel] = useState(false);
@@ -172,12 +179,18 @@ export const DealsPage: React.FC = () => {
         if (filterAssignee && String(item.owner_id) !== String(filterAssignee)) return false;
         // Stage Filter
         if (filterStage && String(item.stage_id) !== String(filterStage)) return false;
+        // Project Filter
+        if (filterProject && String(item.project_id) !== String(filterProject)) return false;
+        // Campaign Filter
+        if (filterCampaign && String(item.campaign_id) !== String(filterCampaign)) return false;
+        // Source Filter
+        if (filterSource && String(item.source) !== String(filterSource)) return false;
         
         return true;
       });
     });
     return result;
-  }, [items, debouncedSearch, dateFilterType, filterDateFrom, filterDateTo, filterAssignee, filterStage, pipelineView]);
+  }, [items, debouncedSearch, dateFilterType, filterDateFrom, filterDateTo, filterAssignee, filterStage, filterProject, filterCampaign, filterSource, pipelineView]);
 
   const getVisibleItems = () => {
     return Object.values(filteredItems)
@@ -274,6 +287,38 @@ export const DealsPage: React.FC = () => {
     }
   };
 
+  const fetchProjects = async () => {
+    try {
+      const currentUser = useAuthStore.getState().user;
+      const isRosterRestricted = ['sale', 'sales', 'manager', 'director'].includes(currentUser?.role || '');
+      const bypassProj = isRosterRestricted ? '' : '?bypass_roster=1';
+      const r = await api.get(`/projects${bypassProj}`);
+      setProjects(r.data.data || []);
+    } catch (e) {
+      console.error("Failed to fetch projects", e);
+    }
+  };
+
+  const fetchCampaigns = async () => {
+    try {
+      const r = await api.get('/marketing-campaigns');
+      setCampaigns(r.data.data?.items || r.data.data || []);
+    } catch (e) {
+      console.error("Failed to fetch campaigns", e);
+    }
+  };
+
+  const fetchSources = async () => {
+    try {
+      const r = await api.get('api.php?action=get_unique_sources');
+      if (r.data?.success) {
+        setSources(r.data.data || []);
+      }
+    } catch (e) {
+      console.error("Failed to fetch sources", e);
+    }
+  };
+
   const fetchData = async () => {
     setLoading(true);
     try {
@@ -284,6 +329,9 @@ export const DealsPage: React.FC = () => {
         search: debouncedSearch,
         owner_id: filterAssignee,
         stage_id: filterStage,
+        project_id: filterProject,
+        campaign_id: filterCampaign,
+        source: filterSource,
       };
 
       const teamId = getEffectiveTeamId();
@@ -333,6 +381,9 @@ export const DealsPage: React.FC = () => {
 
   useEffect(() => {
     fetchUsers();
+    fetchProjects();
+    fetchCampaigns();
+    fetchSources();
     fetchStages().then(() => fetchData());
   }, [pipelineView, teams]);
 
@@ -369,7 +420,7 @@ export const DealsPage: React.FC = () => {
 
   useEffect(() => {
     if (stages.length > 0) fetchData();
-  }, [stages, pipelineView, page, debouncedSearch, filterAssignee, filterStage, filterDateFrom, filterDateTo, viewMode, allUsers, teams]);
+  }, [stages, pipelineView, page, debouncedSearch, filterAssignee, filterStage, filterProject, filterCampaign, filterSource, filterDateFrom, filterDateTo, viewMode, allUsers, teams]);
 
   useEffect(() => {
     const handleRefresh = () => {
@@ -389,7 +440,7 @@ export const DealsPage: React.FC = () => {
 
   useEffect(() => {
     setPage(1);
-  }, [debouncedSearch, filterAssignee, filterStage, filterDateFrom, filterDateTo, pipelineView]);
+  }, [debouncedSearch, filterAssignee, filterStage, filterProject, filterCampaign, filterSource, filterDateFrom, filterDateTo, pipelineView]);
 
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
@@ -528,6 +579,31 @@ export const DealsPage: React.FC = () => {
     } else {
       setFilterAssignee('');
     }
+  };
+
+  const hasActiveFilters = !!(
+    searchTerm.trim() ||
+    filterAssignee ||
+    filterStage ||
+    filterProject ||
+    filterCampaign ||
+    filterSource ||
+    dateFilterType ||
+    filterDateFrom ||
+    filterDateTo
+  );
+
+  const handleClearFilters = () => {
+    setSearchTerm('');
+    setFilterAssignee('');
+    setFilterStage('');
+    setFilterProject('');
+    setFilterCampaign('');
+    setFilterSource('');
+    setDateFilterType('');
+    setFilterDateFrom('');
+    setFilterDateTo('');
+    setPage(1);
   };
 
   return (
@@ -771,7 +847,7 @@ export const DealsPage: React.FC = () => {
               style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}
             >
               <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap', width: '100%' }}>
-                <div className="filter-search" style={{ width: '400px', position: 'relative', height: '38px', borderRadius: '8px', border: '1px solid var(--color-border)', boxSizing: 'border-box', paddingRight: '3.5rem' }}>
+                <div className="filter-search" style={{ width: '400px', position: 'relative', height: '38px', borderRadius: '8px', border: '1px solid var(--color-border)', boxSizing: 'border-box', paddingRight: '2.5rem' }}>
                   <Search size={14} style={{ color:'var(--color-text-muted)', marginLeft: '4px' }}/>
                   <input 
                     placeholder="Tìm tên, email, điện thoại..." 
@@ -779,7 +855,7 @@ export const DealsPage: React.FC = () => {
                     onChange={e => { setSearchTerm(e.target.value); setPage(1); }} 
                     style={{ paddingRight: '0.5rem', height: '100%' }} 
                   />
-                  <div style={{ position: 'absolute', right: '0.5rem', top: '50%', transform: 'translateY(-50%)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <div style={{ position: 'absolute', right: '0.5rem', top: '50%', transform: 'translateY(-50%)', display: 'flex', alignItems: 'center' }}>
                     <AnimatePresence>
                       {searchTerm && (
                         <motion.button 
@@ -796,26 +872,62 @@ export const DealsPage: React.FC = () => {
                         </motion.button>
                       )}
                     </AnimatePresence>
-                    <button 
-                      onClick={() => setShowFilterPanel(!showFilterPanel)}
-                      style={{
-                        padding: 4,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        cursor: 'pointer',
-                        border: 'none',
-                        background: 'transparent',
-                        color: showFilterPanel ? 'var(--color-text)' : 'var(--color-text-muted)',
-                        outline: 'none',
-                        boxShadow: 'none'
-                      }}
-                      title="Bộ lọc nâng cao"
-                    >
-                      <Filter size={16} />
-                    </button>
                   </div>
                 </div>
+
+                <button 
+                  onClick={() => setShowFilterPanel(!showFilterPanel)}
+                  style={{
+                    height: '38px',
+                    padding: '0 0.875rem',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '6px',
+                    cursor: 'pointer',
+                    border: '1px solid var(--color-border)',
+                    borderRadius: '8px',
+                    background: showFilterPanel ? 'var(--color-bg-light)' : 'var(--color-surface)',
+                    color: showFilterPanel ? 'var(--color-primary)' : 'var(--color-text)',
+                    fontSize: '0.8125rem',
+                    fontWeight: 600,
+                    boxShadow: 'var(--shadow-sm)',
+                    transition: 'all 0.2s',
+                    outline: 'none'
+                  }}
+                  title="Bộ lọc nâng cao"
+                >
+                  <Filter size={15} />
+                  <span>Bộ lọc</span>
+                </button>
+
+                {hasActiveFilters && (
+                  <button 
+                    onClick={handleClearFilters}
+                    style={{
+                      height: '38px',
+                      padding: '0 0.875rem',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '4px',
+                      cursor: 'pointer',
+                      border: '1px solid rgba(220, 38, 38, 0.2)',
+                      borderRadius: '8px',
+                      background: 'rgba(220, 38, 38, 0.05)',
+                      color: '#dc2626',
+                      fontSize: '0.8125rem',
+                      fontWeight: 600,
+                      boxShadow: 'var(--shadow-sm)',
+                      transition: 'all 0.2s',
+                      outline: 'none'
+                    }}
+                    title="Xóa tất cả bộ lọc đang chọn"
+                  >
+                    <X size={15} />
+                    <span>Xóa bộ lọc</span>
+                  </button>
+                )}
               </div>
 
               {/* The Filter Panel */}
@@ -841,6 +953,36 @@ export const DealsPage: React.FC = () => {
                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.375rem' }}>
                       <label style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.025em' }}>Giai đoạn</label>
                       <CustomSelect options={[{value: '', label: 'Tất cả giai đoạn'}, ...stages.map(s => ({value: String(s.id), label: s.name}))]} value={filterStage} onChange={v => setFilterStage(v as string)} />
+                   </div>
+                   {/* Dự án */}
+                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.375rem' }}>
+                      <label style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.025em' }}>Dự án</label>
+                      <CustomSelect 
+                        options={[{value: '', label: 'Tất cả dự án'}, ...projects.map(p => ({value: String(p.id), label: p.name}))]} 
+                        value={filterProject} 
+                        onChange={v => setFilterProject(v as string)} 
+                        searchable
+                      />
+                   </div>
+                   {/* Chiến dịch */}
+                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.375rem' }}>
+                      <label style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.025em' }}>Chiến dịch</label>
+                      <CustomSelect 
+                        options={[{value: '', label: 'Tất cả chiến dịch'}, ...campaigns.map(c => ({value: String(c.id), label: c.name}))]} 
+                        value={filterCampaign} 
+                        onChange={v => setFilterCampaign(v as string)} 
+                        searchable
+                      />
+                   </div>
+                   {/* Nguồn */}
+                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.375rem' }}>
+                      <label style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.025em' }}>Nguồn dữ liệu</label>
+                      <CustomSelect 
+                        options={[{value: '', label: 'Tất cả nguồn'}, ...sources.map(s => ({value: String(s), label: String(s)}))]} 
+                        value={filterSource} 
+                        onChange={v => setFilterSource(v as string)} 
+                        searchable
+                      />
                    </div>
                    {/* Khoảng ngày */}
                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.375rem' }}>
