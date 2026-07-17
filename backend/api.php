@@ -2953,25 +2953,49 @@ switch ($action) {
         $startDate = sprintf("%04d-%02d-01 00:00:00", $year, $month);
         $endDate = sprintf("%04d-%02d-%02d 23:59:59", $year, $month, $daysInMonth);
 
-        $consultantFilter = '';
+        $distFilter = '';
+        $ticketFilter = '';
+        
         if ($decodedUser['role'] === 'sale') {
-            $stmtC = $conn->prepare("SELECT name FROM consultants WHERE email = ? LIMIT 1");
+            $stmtC = $conn->prepare("SELECT id FROM consultants WHERE email = ? LIMIT 1");
             $stmtC->bind_param("s", $decodedUser['email']);
             $stmtC->execute();
             $cRow = $stmtC->get_result()->fetch_assoc();
             $stmtC->close();
-            $consultantName = $cRow ? $cRow['name'] : '';
-            $consultantFilter = " AND c.name = '" . $conn->real_escape_string($consultantName) . "'";
+            $consultantId = $cRow ? (int)$cRow['id'] : 0;
+            
+            $distFilter = " AND dl.assigned_to = " . $consultantId;
+            $ticketFilter = " AND t.consultant_id = " . $consultantId;
+        } elseif ($decodedUser['role'] === 'manager' && (!isset($_GET['consultant']) || $_GET['consultant'] === 'all')) {
+            $teamMemberIds = [];
+            $stmtTeam = $conn->prepare("SELECT id FROM consultants WHERE team_id IN (SELECT id FROM teams WHERE leader_id = ?)");
+            $stmtTeam->bind_param("i", $decodedUser['user_id']);
+            $stmtTeam->execute();
+            $resTeam = $stmtTeam->get_result();
+            while ($tRow = $resTeam->fetch_assoc()) {
+                $teamMemberIds[] = (int)$tRow['id'];
+            }
+            $stmtTeam->close();
+            
+            if (!empty($teamMemberIds)) {
+                $listStr = implode(',', $teamMemberIds);
+                $distFilter = " AND dl.assigned_to IN ($listStr)";
+                $ticketFilter = " AND t.consultant_id IN ($listStr)";
+            } else {
+                $distFilter = " AND dl.assigned_to = " . (int)$decodedUser['user_id'];
+                $ticketFilter = " AND t.consultant_id = " . (int)$decodedUser['user_id'];
+            }
         } elseif (isset($_GET['consultant']) && $_GET['consultant'] !== 'all') {
-            $consultant = $conn->real_escape_string($_GET['consultant']);
-            $consultantFilter = " AND c.name = '$consultant'";
-        }
-
-        $joinQuery = "";
-        $whereClause = "dl.received_at >= '$startDate' AND dl.received_at <= '$endDate' AND dl.status != 'silent'";
-        if (!empty($consultantFilter)) {
-            $joinQuery = " LEFT JOIN consultants c ON dl.assigned_to = c.id ";
-            $whereClause .= $consultantFilter;
+            // Find consultant ID from name
+            $stmtC = $conn->prepare("SELECT id FROM consultants WHERE name = ? LIMIT 1");
+            $stmtC->bind_param("s", $_GET['consultant']);
+            $stmtC->execute();
+            $cRow = $stmtC->get_result()->fetch_assoc();
+            $stmtC->close();
+            $consultantId = $cRow ? (int)$cRow['id'] : 0;
+            
+            $distFilter = " AND dl.assigned_to = " . $consultantId;
+            $ticketFilter = " AND t.consultant_id = " . $consultantId;
         }
 
         // 1. Get distribution logs count per day
@@ -2984,8 +3008,7 @@ switch ($action) {
                 SUM(CASE WHEN dl.status IN ('error', 'no_consultant') THEN 1 ELSE 0 END) as error,
                 COUNT(*) as total
             FROM distribution_logs dl
-            $joinQuery
-            WHERE $whereClause
+            WHERE dl.received_at >= '$startDate' AND dl.received_at <= '$endDate' AND dl.status != 'silent' $distFilter
             GROUP BY DATE(dl.received_at)
         ");
 
@@ -3005,13 +3028,6 @@ switch ($action) {
             }
         }
 
-        $ticketJoinQuery = "";
-        $ticketWhereClause = "t.created_at >= '$startDate' AND t.created_at <= '$endDate'";
-        if (!empty($consultantFilter)) {
-            $ticketJoinQuery = " LEFT JOIN consultants c ON t.consultant_id = c.id ";
-            $ticketWhereClause .= " AND c.name = '$consultant'";
-        }
-
         // 2. Get tickets count per day
         $ticketRes = $conn->query("
             SELECT 
@@ -3019,8 +3035,7 @@ switch ($action) {
                 COUNT(*) as ticket_total,
                 SUM(CASE WHEN t.status IN ('approved', 'approved_no_comp') THEN 1 ELSE 0 END) as ticket_approved
             FROM data_reports t
-            $ticketJoinQuery
-            WHERE $ticketWhereClause
+            WHERE t.created_at >= '$startDate' AND t.created_at <= '$endDate' $ticketFilter
             GROUP BY DATE(t.created_at)
         ");
 
@@ -3062,17 +3077,49 @@ switch ($action) {
         $escapedDate = $conn->real_escape_string($date);
 
         $consultantFilter = '';
+        $distFilter = '';
+        $ticketFilter = '';
+        
         if ($decodedUser['role'] === 'sale') {
-            $stmtC = $conn->prepare("SELECT name FROM consultants WHERE email = ? LIMIT 1");
+            $stmtC = $conn->prepare("SELECT id FROM consultants WHERE email = ? LIMIT 1");
             $stmtC->bind_param("s", $decodedUser['email']);
             $stmtC->execute();
             $cRow = $stmtC->get_result()->fetch_assoc();
             $stmtC->close();
-            $consultantName = $cRow ? $cRow['name'] : '';
-            $consultantFilter = " AND c.name = '" . $conn->real_escape_string($consultantName) . "'";
+            $consultantId = $cRow ? (int)$cRow['id'] : 0;
+            
+            $distFilter = " AND dl.assigned_to = " . $consultantId;
+            $ticketFilter = " AND r.consultant_id = " . $consultantId;
+        } elseif ($decodedUser['role'] === 'manager' && (!isset($_GET['consultant']) || $_GET['consultant'] === 'all')) {
+            $teamMemberIds = [];
+            $stmtTeam = $conn->prepare("SELECT id FROM consultants WHERE team_id IN (SELECT id FROM teams WHERE leader_id = ?)");
+            $stmtTeam->bind_param("i", $decodedUser['user_id']);
+            $stmtTeam->execute();
+            $resTeam = $stmtTeam->get_result();
+            while ($tRow = $resTeam->fetch_assoc()) {
+                $teamMemberIds[] = (int)$tRow['id'];
+            }
+            $stmtTeam->close();
+            
+            if (!empty($teamMemberIds)) {
+                $listStr = implode(',', $teamMemberIds);
+                $distFilter = " AND dl.assigned_to IN ($listStr)";
+                $ticketFilter = " AND r.consultant_id IN ($listStr)";
+            } else {
+                $distFilter = " AND dl.assigned_to = " . (int)$decodedUser['user_id'];
+                $ticketFilter = " AND r.consultant_id = " . (int)$decodedUser['user_id'];
+            }
         } elseif (isset($_GET['consultant']) && $_GET['consultant'] !== 'all') {
-            $consultant = $conn->real_escape_string($_GET['consultant']);
-            $consultantFilter = " AND c.name = '$consultant'";
+            // Find consultant ID from name
+            $stmtC = $conn->prepare("SELECT id FROM consultants WHERE name = ? LIMIT 1");
+            $stmtC->bind_param("s", $_GET['consultant']);
+            $stmtC->execute();
+            $cRow = $stmtC->get_result()->fetch_assoc();
+            $stmtC->close();
+            $consultantId = $cRow ? (int)$cRow['id'] : 0;
+            
+            $distFilter = " AND dl.assigned_to = " . $consultantId;
+            $ticketFilter = " AND r.consultant_id = " . $consultantId;
         }
 
         // a) Sale distribution statistics
@@ -3086,7 +3133,7 @@ switch ($action) {
             FROM distribution_logs dl
             LEFT JOIN consultants c ON dl.assigned_to = c.id
             LEFT JOIN distribution_rounds dr ON dl.round_id = dr.id
-            WHERE DATE(dl.received_at) = '$escapedDate' AND dl.status != 'silent' $consultantFilter
+            WHERE DATE(dl.received_at) = '$escapedDate' AND dl.status != 'silent' $distFilter
             GROUP BY dl.assigned_to, dl.round_id, dl.status
         ");
 
@@ -3118,7 +3165,7 @@ switch ($action) {
             FROM data_reports r
             LEFT JOIN leads l ON r.lead_id = l.id
             LEFT JOIN consultants c ON r.consultant_id = c.id
-            WHERE DATE(r.created_at) = '$escapedDate' $consultantFilter
+            WHERE DATE(r.created_at) = '$escapedDate' $ticketFilter
         ");
 
         $tickets = [];
