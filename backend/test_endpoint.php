@@ -1,5 +1,18 @@
 <?php
 header('Content-Type: application/json; charset=utf-8');
+
+if (!function_exists('respond')) {
+    function respond($code, $data = null, $message = '', $success = true) {
+        http_response_code($code);
+        echo json_encode([
+            'success' => $success,
+            'data' => $data,
+            'message' => $message
+        ]);
+        exit;
+    }
+}
+
 require_once 'config.php';
 require_once 'config/Database.php';
 require_once 'controllers/ActivityController.php';
@@ -26,15 +39,7 @@ try {
         'email' => 'manager@richland.net'
     ];
     
-    // Capture stdout
-    ob_start();
     $ctrl->show($auth, (int)$id);
-    $output = ob_get_clean();
-    
-    echo json_encode([
-        'activity_id' => $id,
-        'output' => json_decode($output, true) ?: $output
-    ], JSON_PRETTY_PRINT);
 
 } catch (Exception $e) {
     echo json_encode(['error' => $e->getMessage()]);
