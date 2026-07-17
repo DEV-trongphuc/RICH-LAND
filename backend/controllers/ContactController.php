@@ -70,27 +70,34 @@ class ContactController {
             } else {
                 $where[] = '1=0';
             }
-        } else if ($auth['role'] === 'sales' || $auth['role'] === 'sale') {
-            $where[] = '(c.owner_id = ? OR FIND_IN_SET(?, c.collaborator_ids) OR c.id IN (
-                SELECT contact_id FROM cooperation_slips 
-                WHERE JSON_CONTAINS(JSON_KEYS(CASE WHEN (shares_json IS NOT NULL AND JSON_VALID(shares_json)) THEN shares_json ELSE \'{}\' END), JSON_QUOTE(CAST(? AS CHAR)))
-            ))';
-            $params[] = $auth['user_id'];
-            $params[] = $auth['user_id'];
-            $params[] = $auth['user_id'];
-        } else if ($auth['role'] === 'manager') {
-            $where[] = '(c.owner_id = ? OR c.owner_id IN (
-                SELECT id FROM users WHERE team_id IN (
-                    SELECT id FROM teams WHERE leader_id = ?
-                )
-            ) OR FIND_IN_SET(?, c.collaborator_ids) OR c.id IN (
-                SELECT contact_id FROM cooperation_slips 
-                WHERE JSON_CONTAINS(JSON_KEYS(CASE WHEN (shares_json IS NOT NULL AND JSON_VALID(shares_json)) THEN shares_json ELSE \'{}\' END), JSON_QUOTE(CAST(? AS CHAR)))
-            ))';
-            $params[] = $auth['user_id'];
-            $params[] = $auth['user_id'];
-            $params[] = $auth['user_id'];
-            $params[] = $auth['user_id'];
+        } else {
+            $scope = $this->getScope($auth, 'leads', 'read');
+            if ($scope === 'all') {
+                // No filters
+            } else if ($scope === 'team') {
+                $where[] = '(c.owner_id = ? OR c.owner_id IN (
+                    SELECT id FROM users WHERE team_id IN (
+                        SELECT id FROM teams WHERE leader_id = ?
+                    )
+                ) OR FIND_IN_SET(?, c.collaborator_ids) OR c.id IN (
+                    SELECT contact_id FROM cooperation_slips 
+                    WHERE JSON_CONTAINS(JSON_KEYS(CASE WHEN (shares_json IS NOT NULL AND JSON_VALID(shares_json)) THEN shares_json ELSE "{}" END), JSON_QUOTE(CAST(? AS CHAR)))
+                ))';
+                $params[] = $auth['user_id'];
+                $params[] = $auth['user_id'];
+                $params[] = $auth['user_id'];
+                $params[] = $auth['user_id'];
+            } else if ($scope === 'own') {
+                $where[] = '(c.owner_id = ? OR FIND_IN_SET(?, c.collaborator_ids) OR c.id IN (
+                    SELECT contact_id FROM cooperation_slips 
+                    WHERE JSON_CONTAINS(JSON_KEYS(CASE WHEN (shares_json IS NOT NULL AND JSON_VALID(shares_json)) THEN shares_json ELSE "{}" END), JSON_QUOTE(CAST(? AS CHAR)))
+                ))';
+                $params[] = $auth['user_id'];
+                $params[] = $auth['user_id'];
+                $params[] = $auth['user_id'];
+            } else {
+                $where[] = '1=0';
+            }
         }
 
         if ($search) {
@@ -376,15 +383,10 @@ class ContactController {
             WHERE c.id=? AND c.tenant_id=? AND c.deleted_at IS NULL";
         
         $p = [$id, $auth['tenant_id']];
-        if ($auth['role'] === 'sales' || $auth['role'] === 'sale') {
-            $sql .= ' AND (c.owner_id=? OR FIND_IN_SET(?, c.collaborator_ids) OR c.id IN (
-                SELECT contact_id FROM cooperation_slips 
-                WHERE JSON_CONTAINS(JSON_KEYS(CASE WHEN (shares_json IS NOT NULL AND JSON_VALID(shares_json)) THEN shares_json ELSE "{}" END), JSON_QUOTE(CAST(? AS CHAR)))
-            ))';
-            $p[] = $auth['user_id'];
-            $p[] = $auth['user_id'];
-            $p[] = $auth['user_id'];
-        } else if ($auth['role'] === 'manager') {
+        $scope = $this->getScope($auth, 'leads', 'read');
+        if ($scope === 'all') {
+            // No filters
+        } else if ($scope === 'team') {
             $sql .= " AND (c.owner_id=? OR c.owner_id IN (
                 SELECT id FROM users WHERE team_id IN (
                     SELECT id FROM teams WHERE leader_id = ?
@@ -397,6 +399,16 @@ class ContactController {
             $p[] = $auth['user_id'];
             $p[] = $auth['user_id'];
             $p[] = $auth['user_id'];
+        } else if ($scope === 'own') {
+            $sql .= ' AND (c.owner_id=? OR FIND_IN_SET(?, c.collaborator_ids) OR c.id IN (
+                SELECT contact_id FROM cooperation_slips 
+                WHERE JSON_CONTAINS(JSON_KEYS(CASE WHEN (shares_json IS NOT NULL AND JSON_VALID(shares_json)) THEN shares_json ELSE "{}" END), JSON_QUOTE(CAST(? AS CHAR)))
+            ))';
+            $p[] = $auth['user_id'];
+            $p[] = $auth['user_id'];
+            $p[] = $auth['user_id'];
+        } else {
+            $sql .= ' AND 1=0';
         }
         
         $stmt = $this->db->prepare($sql);
@@ -619,15 +631,10 @@ class ContactController {
         // Check permission first
         $permissionSql = "SELECT id FROM contacts WHERE id=? AND tenant_id=?";
         $cp = [$id, $auth['tenant_id']];
-        if ($auth['role'] === 'sales' || $auth['role'] === 'sale') {
-            $permissionSql .= ' AND (owner_id=? OR FIND_IN_SET(?, collaborator_ids) OR id IN (
-                SELECT contact_id FROM cooperation_slips 
-                WHERE JSON_CONTAINS(JSON_KEYS(CASE WHEN (shares_json IS NOT NULL AND JSON_VALID(shares_json)) THEN shares_json ELSE "{}" END), JSON_QUOTE(CAST(? AS CHAR)))
-            ))';
-            $cp[] = $auth['user_id'];
-            $cp[] = $auth['user_id'];
-            $cp[] = $auth['user_id'];
-        } else if ($auth['role'] === 'manager') {
+        $scope = $this->getScope($auth, 'leads', 'write');
+        if ($scope === 'all') {
+            // No extra filters
+        } else if ($scope === 'team') {
             $permissionSql .= " AND (owner_id=? OR owner_id IN (
                 SELECT id FROM users WHERE team_id IN (
                     SELECT id FROM teams WHERE leader_id = ?
@@ -640,6 +647,16 @@ class ContactController {
             $cp[] = $auth['user_id'];
             $cp[] = $auth['user_id'];
             $cp[] = $auth['user_id'];
+        } else if ($scope === 'own') {
+            $permissionSql .= ' AND (owner_id=? OR FIND_IN_SET(?, collaborator_ids) OR id IN (
+                SELECT contact_id FROM cooperation_slips 
+                WHERE JSON_CONTAINS(JSON_KEYS(CASE WHEN (shares_json IS NOT NULL AND JSON_VALID(shares_json)) THEN shares_json ELSE "{}" END), JSON_QUOTE(CAST(? AS CHAR)))
+            ))';
+            $cp[] = $auth['user_id'];
+            $cp[] = $auth['user_id'];
+            $cp[] = $auth['user_id'];
+        } else {
+            $permissionSql .= ' AND 1=0';
         }
         $check = $this->db->prepare($permissionSql);
         $check->execute($cp);
@@ -859,17 +876,23 @@ class ContactController {
 
 
     public function destroy(array $auth, int $id): void {
-        if (in_array($auth['role'], ['sales', 'viewer'], true)) respond(403, null, 'Bạn không có quyền xóa liên hệ', false);
+        $scope = $this->getScope($auth, 'leads', 'delete');
+        if ($scope === 'none') {
+            respond(403, null, 'Bạn không có quyền xóa liên hệ', false);
+        }
         
         $sql = "UPDATE contacts SET deleted_at=NOW() WHERE id=? AND tenant_id=?";
         $p = [$id, $auth['tenant_id']];
-        if ($auth['role'] === 'manager') {
+        if ($scope === 'team') {
             $sql .= " AND (owner_id=? OR owner_id IN (
                 SELECT id FROM users WHERE team_id IN (
                     SELECT id FROM teams WHERE leader_id = ?
                 )
             ))";
             $p[] = $auth['user_id'];
+            $p[] = $auth['user_id'];
+        } else if ($scope === 'own') {
+            $sql .= " AND owner_id=?";
             $p[] = $auth['user_id'];
         }
         $stmt = $this->db->prepare($sql);
@@ -881,7 +904,10 @@ class ContactController {
     }
 
     public function bulkDelete(array $auth): void {
-        if (in_array($auth['role'], ['sales', 'viewer'], true)) respond(403, null, 'Bạn không có quyền xóa liên hệ', false);
+        $scope = $this->getScope($auth, 'leads', 'delete');
+        if ($scope === 'none') {
+            respond(403, null, 'Bạn không có quyền xóa liên hệ', false);
+        }
         $b = getBody();
         $ids = $b['ids'] ?? [];
         if (empty($ids)) respond(400, null, 'Danh sách ID không hợp lệ', false);
@@ -890,13 +916,16 @@ class ContactController {
         $where = "tenant_id=? AND id IN ($placeholders)";
         $params = array_merge([$auth['tenant_id']], $ids);
         
-        if ($auth['role'] === 'manager') {
+        if ($scope === 'team') {
             $where .= " AND (owner_id=? OR owner_id IN (
                 SELECT id FROM users WHERE team_id IN (
                     SELECT id FROM teams WHERE leader_id = ?
                 )
             ))";
             $params[] = $auth['user_id'];
+            $params[] = $auth['user_id'];
+        } else if ($scope === 'own') {
+            $where .= " AND owner_id=?";
             $params[] = $auth['user_id'];
         }
         
@@ -1078,6 +1107,47 @@ class ContactController {
             
             respond(200, ['action' => 'deleted'], 'Đã xóa khách hàng khỏi danh sách chăm sóc của bạn thành công!');
         }
+    }
+
+    private function getScope(array $auth, string $module, string $action): string {
+        $permissionsJson = null;
+        $stmtQ = $this->db->prepare("SELECT permissions_json FROM users WHERE id = ? LIMIT 1");
+        $stmtQ->execute([$auth['user_id']]);
+        $resQ = $stmtQ->fetch(PDO::FETCH_ASSOC);
+        if ($resQ && !empty($resQ['permissions_json'])) {
+            $permissionsJson = json_decode($resQ['permissions_json'], true);
+        }
+
+        if (in_array($auth['role'], ['admin', 'superadmin', 'super_admin'], true)) {
+            return 'all';
+        }
+
+        if ($permissionsJson && isset($permissionsJson[$module][$action])) {
+            $val = $permissionsJson[$module][$action];
+            if (in_array($val, ['all', 'team', 'own', 'none'], true)) {
+                return $val;
+            }
+        }
+
+        // Default fallbacks
+        $role = $auth['role'];
+        if ($role === 'director' || $role === 'assistant') {
+            return $action === 'delete' ? 'none' : 'all';
+        }
+        if ($role === 'manager') {
+            return $action === 'delete' ? 'none' : 'team';
+        }
+        if (in_array($role, ['sale', 'sales'], true)) {
+            if ($module === 'projects') {
+                return $action === 'read' ? 'all' : 'none';
+            }
+            return $action === 'delete' ? 'none' : 'own';
+        }
+        if ($role === 'viewer') {
+            return $action === 'read' ? 'all' : 'none';
+        }
+
+        return 'none';
     }
 }
 

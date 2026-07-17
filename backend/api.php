@@ -214,6 +214,56 @@ function verify_jwt($jwt, $secret)
     return false;
 }
 
+function getModulePermissionScope($conn, $auth, $module, $action)
+{
+    // Admin / Superadmin always have 'all' permissions
+    if (in_array($auth['role'], ['admin', 'superadmin', 'super_admin'], true)) {
+        return 'all';
+    }
+
+    $permissionsJson = null;
+    $stmt = $conn->prepare("SELECT permissions_json FROM users WHERE id = ? LIMIT 1");
+    if ($stmt) {
+        $stmt->bind_param("i", $auth['user_id']);
+        $stmt->execute();
+        $res = $stmt->get_result()->fetch_assoc();
+        $stmt->close();
+        if ($res && !empty($res['permissions_json'])) {
+            $permissionsJson = json_decode($res['permissions_json'], true);
+        }
+    }
+
+    if ($permissionsJson && isset($permissionsJson[$module][$action])) {
+        $val = $permissionsJson[$module][$action];
+        if (in_array($val, ['all', 'team', 'own', 'none'], true)) {
+            return $val;
+        }
+    }
+
+    // Default fallbacks based on role
+    $role = $auth['role'];
+    if ($role === 'director') {
+        return $action === 'delete' ? 'none' : 'all';
+    }
+    if ($role === 'manager') {
+        return $action === 'delete' ? 'none' : 'team';
+    }
+    if ($role === 'assistant') {
+        return $action === 'delete' ? 'none' : 'all';
+    }
+    if (in_array($role, ['sale', 'sales'], true)) {
+        if ($module === 'projects') {
+            return $action === 'read' ? 'all' : 'none';
+        }
+        return $action === 'delete' ? 'none' : 'own';
+    }
+    if ($role === 'viewer') {
+        return $action === 'read' ? 'all' : 'none';
+    }
+
+    return 'none';
+}
+
 function validateWorkSchedule($schedule)
 {
     if ($schedule === null || $schedule === '') return true;

@@ -13,16 +13,15 @@ class QuoteController {
         $from   = $_GET['from'] ?? '';
         $to     = $_GET['to'] ?? '';
         
-        $role = $auth['role'] ?? '';
         $uid = (int)($auth['user_id'] ?? 0);
         $tid = (int)($auth['tenant_id'] ?? 0);
         
-        $isSale = $role === 'sales' || $role === 'sale';
-        $isManager = $role === 'manager';
+        $scope = $this->getScope($auth, 'quotes', 'read');
+        if ($scope === 'none') respond(403, null, 'Bạn không có quyền xem báo giá', false);
 
-        // Load team members if manager
+        // Load team members if team scope
         $userIds = [$uid];
-        if ($isManager) {
+        if ($scope === 'team') {
             $stmtTeam = $this->db->prepare("SELECT id FROM users WHERE team_id IN (SELECT id FROM teams WHERE leader_id = ?)");
             $stmtTeam->execute([$uid]);
             $teamMemberIds = $stmtTeam->fetchAll(PDO::FETCH_COLUMN) ?: [];
@@ -37,7 +36,7 @@ class QuoteController {
             $params[] = (int)$contactId;
         }
 
-        if ($isSale) {
+        if ($scope === 'own') {
             if ($contactId) {
                 $stmtContact = $this->db->prepare("SELECT owner_id FROM contacts WHERE id = ? AND tenant_id = ?");
                 $stmtContact->execute([(int)$contactId, $tid]);
@@ -49,7 +48,7 @@ class QuoteController {
                 $where[] = 'q.created_by = ?';
                 $params[] = $uid;
             }
-        } else if ($isManager) {
+        } else if ($scope === 'team') {
             if ($contactId) {
                 $stmtContact = $this->db->prepare("SELECT owner_id FROM contacts WHERE id = ? AND tenant_id = ?");
                 $stmtContact->execute([(int)$contactId, $tid]);
@@ -117,29 +116,29 @@ class QuoteController {
         ]);
     }
     public function store(array $auth): void {
-        if ($auth['role'] === 'viewer') respond(403, null, 'Bạn không có quyền tạo báo giá', false);
+        $scope = $this->getScope($auth, 'quotes', 'write');
+        if ($scope === 'none') respond(403, null, 'Bạn không có quyền tạo báo giá', false);
         
-        $role = $auth['role'] ?? '';
         $uid = (int)($auth['user_id'] ?? 0);
         $tid = (int)($auth['tenant_id'] ?? 0);
-        
-        $isSale = $role === 'sales' || $role === 'sale';
-        $isManager = $role === 'manager';
 
         $b=getBody(); if(empty($b['title'])) respond(422,null,'Tiêu đề là bắt buộc',false);
         if (($b['total'] ?? 0) < 0) respond(422, null, 'Tổng tiền báo giá không được âm', false);
         
         // Verify contact belongs to tenant and is accessible
         if (!empty($b['contact_id'])) {
+            $leadsReadScope = $this->getScope($auth, 'leads', 'read');
             $sqlContact = "SELECT id FROM contacts WHERE id=? AND tenant_id=?";
             $pContact = [(int)$b['contact_id'], $tid];
-            if ($isSale) {
+            if ($leadsReadScope === 'own') {
                 $sqlContact .= " AND owner_id=?";
                 $pContact[] = $uid;
-            } else if ($isManager) {
+            } else if ($leadsReadScope === 'team') {
                 $sqlContact .= " AND (owner_id = ? OR owner_id IN (SELECT id FROM users WHERE team_id IN (SELECT id FROM teams WHERE leader_id = ?)))";
                 $pContact[] = $uid;
                 $pContact[] = $uid;
+            } else if ($leadsReadScope === 'none') {
+                $sqlContact .= " AND 1=0";
             }
             $c = $this->db->prepare($sqlContact);
             $c->execute($pContact);
@@ -224,14 +223,11 @@ class QuoteController {
         respond(200,$q);
     }
     public function update(array $auth,int $id): void {
-        if ($auth['role'] === 'viewer') respond(403, null, 'Bạn không có quyền cập nhật báo giá', false);
+        $scope = $this->getScope($auth, 'quotes', 'write');
+        if ($scope === 'none') respond(403, null, 'Bạn không có quyền cập nhật báo giá', false);
         
-        $role = $auth['role'] ?? '';
         $uid = (int)($auth['user_id'] ?? 0);
         $tid = (int)($auth['tenant_id'] ?? 0);
-        
-        $isSale = $role === 'sales' || $role === 'sale';
-        $isManager = $role === 'manager';
 
         $b=getBody(); $fields=['title','status','subtotal','discount','tax','total','valid_until','notes','terms'];
         $sets=[];$params=[];
@@ -247,30 +243,36 @@ class QuoteController {
         }
         if($sets){
             if (isset($b['contact_id']) && $b['contact_id']) {
+                $leadsReadScope = $this->getScope($auth, 'leads', 'read');
                 $sqlContact = "SELECT id FROM contacts WHERE id=? AND tenant_id=?";
                 $pContact = [(int)$b['contact_id'], $tid];
-                if ($isSale) {
+                if ($leadsReadScope === 'own') {
                     $sqlContact .= " AND owner_id=?";
                     $pContact[] = $uid;
-                } else if ($isManager) {
+                } else if ($leadsReadScope === 'team') {
                     $sqlContact .= " AND (owner_id = ? OR owner_id IN (SELECT id FROM users WHERE team_id IN (SELECT id FROM teams WHERE leader_id = ?)))";
                     $pContact[] = $uid;
                     $pContact[] = $uid;
+                } else if ($leadsReadScope === 'none') {
+                    $sqlContact .= " AND 1=0";
                 }
                 $c = $this->db->prepare($sqlContact);
                 $c->execute($pContact);
                 if (!$c->fetch()) respond(403, null, 'Không có quyền thao tác trên liên hệ này', false);
             }
             if (isset($b['deal_id']) && $b['deal_id']) {
+                $dealsReadScope = $this->getScope($auth, 'deals', 'read');
                 $sqlDeal = "SELECT id FROM deals WHERE id=? AND tenant_id=?";
                 $pDeal = [(int)$b['deal_id'], $tid];
-                if ($isSale) {
+                if ($dealsReadScope === 'own') {
                     $sqlDeal .= " AND owner_id=?";
                     $pDeal[] = $uid;
-                } else if ($isManager) {
+                } else if ($dealsReadScope === 'team') {
                     $sqlDeal .= " AND (owner_id = ? OR owner_id IN (SELECT id FROM users WHERE team_id IN (SELECT id FROM teams WHERE leader_id = ?)))";
                     $pDeal[] = $uid;
                     $pDeal[] = $uid;
+                } else if ($dealsReadScope === 'none') {
+                    $sqlDeal .= " AND 1=0";
                 }
                 $c = $this->db->prepare($sqlDeal);
                 $c->execute($pDeal);
@@ -284,10 +286,10 @@ class QuoteController {
 
             $sql = "UPDATE quotes SET ".implode(',',$sets)." WHERE id=? AND tenant_id=?";
             $params[]=$id;$params[]=$tid;
-            if ($isSale) {
+            if ($scope === 'own') {
                 $sql .= " AND created_by=?";
                 $params[] = $uid;
-            } else if ($isManager) {
+            } else if ($scope === 'team') {
                 $sql .= " AND (created_by = ? OR created_by IN (SELECT id FROM users WHERE team_id IN (SELECT id FROM teams WHERE leader_id = ?)))";
                 $params[] = $uid;
                 $params[] = $uid;
@@ -380,23 +382,65 @@ class QuoteController {
         $uid = (int)($auth['user_id'] ?? 0);
         $tid = (int)($auth['tenant_id'] ?? 0);
         
-        $isSale = $role === 'sales' || $role === 'sale';
-        $isManager = $role === 'manager';
-
-        if ($isSale) {
+        $scope = $this->getScope($auth, 'quotes', 'delete');
+        if ($scope === 'none') {
             respond(403, null, 'Bạn không có quyền xóa báo giá', false);
         }
 
         $sql = "DELETE FROM quotes WHERE id=? AND tenant_id=?";
         $p = [$id, $tid];
-        if ($isManager) {
+        if ($scope === 'team') {
             $sql .= " AND (created_by = ? OR created_by IN (SELECT id FROM users WHERE team_id IN (SELECT id FROM teams WHERE leader_id = ?)))";
             $p[] = $uid;
+            $p[] = $uid;
+        } else if ($scope === 'own') {
+            $sql .= " AND created_by=?";
             $p[] = $uid;
         }
         $stmt = $this->db->prepare($sql);
         $stmt->execute($p);
         if (!$stmt->rowCount()) respond(404, null, 'Không tìm thấy hoặc không có quyền', false);
         respond(200,null,'Đã xóa báo giá');
+    }
+
+    private function getScope(array $auth, string $module, string $action): string {
+        $permissionsJson = null;
+        $stmtQ = $this->db->prepare("SELECT permissions_json FROM users WHERE id = ? LIMIT 1");
+        $stmtQ->execute([$auth['user_id']]);
+        $resQ = $stmtQ->fetch(PDO::FETCH_ASSOC);
+        if ($resQ && !empty($resQ['permissions_json'])) {
+            $permissionsJson = json_decode($resQ['permissions_json'], true);
+        }
+
+        if (in_array($auth['role'], ['admin', 'superadmin', 'super_admin'], true)) {
+            return 'all';
+        }
+
+        if ($permissionsJson && isset($permissionsJson[$module][$action])) {
+            $val = $permissionsJson[$module][$action];
+            if (in_array($val, ['all', 'team', 'own', 'none'], true)) {
+                return $val;
+            }
+        }
+
+        // Default fallbacks
+        $role = $auth['role'];
+        if ($role === 'director' || $role === 'assistant') {
+            return $action === 'delete' ? 'none' : 'all';
+        }
+        if ($role === 'manager') {
+            return $action === 'delete' ? 'none' : 'team';
+        }
+        if (in_array($role, ['sale', 'sales'], true)) {
+            if ($module === 'projects') {
+                return $action === 'read' ? 'all' : 'none';
+            }
+            return $action === 'delete' ? 'none' : 'own';
+        }
+        if ($role === 'viewer') {
+            return $action === 'read' ? 'all' : 'none';
+        }
+
+        return 'none';
     }
 }

@@ -138,13 +138,10 @@ class CooperationController {
         ";
         $params = [$tid];
 
-        if ($auth['role'] === 'sales' || $auth['role'] === 'sale') {
-            // Only show slips where the sales is a shareholder
-            $sql .= ' AND (JSON_CONTAINS(JSON_KEYS(CASE WHEN (cs.shares_json IS NOT NULL AND JSON_VALID(cs.shares_json)) THEN cs.shares_json ELSE "{}" END), JSON_QUOTE(CAST(? AS CHAR))) OR cs.created_by = ?)';
-            $params[] = $auth['user_id'];
-            $params[] = $auth['user_id'];
-        } else if ($auth['role'] === 'manager') {
-            // Manager can see their own, or slips of team members
+        $scope = $this->getScope($auth, 'cooperation', 'read');
+        if ($scope === 'all') {
+            // No extra filters
+        } else if ($scope === 'team') {
             $sql .= ' AND (
                 JSON_CONTAINS(JSON_KEYS(CASE WHEN (cs.shares_json IS NOT NULL AND JSON_VALID(cs.shares_json)) THEN cs.shares_json ELSE "{}" END), JSON_QUOTE(CAST(? AS CHAR))) 
                 OR cs.created_by = ?
@@ -157,6 +154,12 @@ class CooperationController {
             $params[] = $auth['user_id'];
             $params[] = $auth['user_id'];
             $params[] = $auth['user_id'];
+        } else if ($scope === 'own') {
+            $sql .= ' AND (JSON_CONTAINS(JSON_KEYS(CASE WHEN (cs.shares_json IS NOT NULL AND JSON_VALID(cs.shares_json)) THEN cs.shares_json ELSE "{}" END), JSON_QUOTE(CAST(? AS CHAR))) OR cs.created_by = ?)';
+            $params[] = $auth['user_id'];
+            $params[] = $auth['user_id'];
+        } else {
+            $sql .= ' AND 1=0';
         }
 
         $sql .= " ORDER BY cs.created_at DESC";
@@ -956,5 +959,46 @@ class CooperationController {
         $stmtDel->execute([$id]);
         
         respond(200, null, 'Xóa phiếu hợp tác thành công');
+    }
+
+    private function getScope(array $auth, string $module, string $action): string {
+        $permissionsJson = null;
+        $stmtQ = $this->db->prepare("SELECT permissions_json FROM users WHERE id = ? LIMIT 1");
+        $stmtQ->execute([$auth['user_id']]);
+        $resQ = $stmtQ->fetch(PDO::FETCH_ASSOC);
+        if ($resQ && !empty($resQ['permissions_json'])) {
+            $permissionsJson = json_decode($resQ['permissions_json'], true);
+        }
+
+        if (in_array($auth['role'], ['admin', 'superadmin', 'super_admin'], true)) {
+            return 'all';
+        }
+
+        if ($permissionsJson && isset($permissionsJson[$module][$action])) {
+            $val = $permissionsJson[$module][$action];
+            if (in_array($val, ['all', 'team', 'own', 'none'], true)) {
+                return $val;
+            }
+        }
+
+        // Default fallbacks
+        $role = $auth['role'];
+        if ($role === 'director' || $role === 'assistant') {
+            return $action === 'delete' ? 'none' : 'all';
+        }
+        if ($role === 'manager') {
+            return $action === 'delete' ? 'none' : 'team';
+        }
+        if (in_array($role, ['sale', 'sales'], true)) {
+            if ($module === 'projects') {
+                return $action === 'read' ? 'all' : 'none';
+            }
+            return $action === 'delete' ? 'none' : 'own';
+        }
+        if ($role === 'viewer') {
+            return $action === 'read' ? 'all' : 'none';
+        }
+
+        return 'none';
     }
 }

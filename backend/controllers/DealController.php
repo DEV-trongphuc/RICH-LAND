@@ -8,19 +8,24 @@ class DealController {
     public function stages(array $auth): void {
         $tid = $auth['tenant_id'];
         
+        $scope = $this->getScope($auth, 'deals', 'read');
         $roleFilter = "";
-        $p = ['tid1' => $tid, 'tid2' => $tid, 'tid3' => $tid];
-        if (in_array($auth['role'], ['sales', 'sale'], true)) {
-            $uid = (int)$auth['user_id'];
-            $roleFilter = " AND owner_id = $uid";
-        } else if ($auth['role'] === 'manager') {
+        if ($scope === 'all') {
+            $roleFilter = "";
+        } else if ($scope === 'team') {
             $uid = (int)$auth['user_id'];
             $roleFilter = " AND (owner_id = $uid OR owner_id IN (
                 SELECT id FROM users WHERE team_id IN (
                     SELECT id FROM teams WHERE leader_id = $uid
                 )
             ))";
+        } else if ($scope === 'own') {
+            $uid = (int)$auth['user_id'];
+            $roleFilter = " AND owner_id = $uid";
+        } else {
+            $roleFilter = " AND 1=0";
         }
+        $p = ['tid1' => $tid, 'tid2' => $tid, 'tid3' => $tid];
 
         $sql = "
             SELECT ps.*, 
@@ -74,7 +79,10 @@ class DealController {
     }
 
     public function index(array $auth): void {
-        if ($auth['role'] === 'viewer') respond(403, null, 'Bạn không có quyền xem deal', false);
+        $scope = $this->getScope($auth, 'deals', 'read');
+        if ($scope === 'none') {
+            respond(403, null, 'Bạn không có quyền xem deal', false);
+        }
         $tid    = $auth['tenant_id'];
         $page   = max(1,(int)($_GET['page']??1));
         $limit  = min(2000,max(10,(int)($_GET['limit']??50)));
@@ -85,18 +93,18 @@ class DealController {
         $companyId = $_GET['company_id'] ?? '';
 
         $where=['d.tenant_id=?', 'd.deleted_at IS NULL']; $params=[$tid];
-        if (in_array($auth['role'], ['sales', 'sale'], true)) {
-            $where[] = '(d.owner_id = ? OR d.contact_id IN (
-                SELECT contact_id FROM cooperation_slips 
-                WHERE JSON_CONTAINS(JSON_KEYS(CASE WHEN (shares_json IS NOT NULL AND JSON_VALID(shares_json)) THEN shares_json ELSE "{}" END), JSON_QUOTE(CAST(? AS CHAR)))
-            ))';
-            $params[] = $auth['user_id'];
-            $params[] = $auth['user_id'];
-        } else if ($auth['role'] === 'manager') {
+        if ($scope === 'team') {
             $where[] = '(d.owner_id = ? OR d.owner_id IN (
                 SELECT id FROM users WHERE team_id IN (
                     SELECT id FROM teams WHERE leader_id = ?
                 )
+            ))';
+            $params[] = $auth['user_id'];
+            $params[] = $auth['user_id'];
+        } else if ($scope === 'own') {
+            $where[] = '(d.owner_id = ? OR d.contact_id IN (
+                SELECT contact_id FROM cooperation_slips 
+                WHERE JSON_CONTAINS(JSON_KEYS(CASE WHEN (shares_json IS NOT NULL AND JSON_VALID(shares_json)) THEN shares_json ELSE "{}" END), JSON_QUOTE(CAST(? AS CHAR)))
             ))';
             $params[] = $auth['user_id'];
             $params[] = $auth['user_id'];
@@ -131,7 +139,8 @@ class DealController {
     }
 
     public function store(array $auth): void {
-        if (in_array($auth['role'], ['viewer'])) respond(403, null, 'Bạn không có quyền tạo deal', false);
+        $scope = $this->getScope($auth, 'deals', 'write');
+        if ($scope === 'none') respond(403, null, 'Bạn không có quyền tạo deal', false);
         $b = getBody();
         if (empty($b['title'])) respond(422, null, 'Tiêu đề deal là bắt buộc', false);
         // Get first stage
@@ -206,14 +215,10 @@ class DealController {
             WHERE d.id=? AND d.tenant_id=? AND d.deleted_at IS NULL";
         
         $p = [$id, $auth['tenant_id']];
-        if ($auth['role'] === 'sales' || $auth['role'] === 'sale') {
-            $sql .= ' AND (d.owner_id=? OR d.contact_id IN (
-                SELECT contact_id FROM cooperation_slips 
-                WHERE JSON_CONTAINS(JSON_KEYS(CASE WHEN (shares_json IS NOT NULL AND JSON_VALID(shares_json)) THEN shares_json ELSE "{}" END), JSON_QUOTE(CAST(? AS CHAR)))
-            ))';
-            $p[] = $auth['user_id'];
-            $p[] = $auth['user_id'];
-        } else if ($auth['role'] === 'manager') {
+        $scope = $this->getScope($auth, 'deals', 'read');
+        if ($scope === 'all') {
+            // No extra filters
+        } else if ($scope === 'team') {
             $sql .= " AND (d.owner_id=? OR d.owner_id IN (
                 SELECT id FROM users WHERE team_id IN (
                     SELECT id FROM teams WHERE leader_id = ?
@@ -221,6 +226,15 @@ class DealController {
             ))";
             $p[] = $auth['user_id'];
             $p[] = $auth['user_id'];
+        } else if ($scope === 'own') {
+            $sql .= ' AND (d.owner_id=? OR d.contact_id IN (
+                SELECT contact_id FROM cooperation_slips 
+                WHERE JSON_CONTAINS(JSON_KEYS(CASE WHEN (shares_json IS NOT NULL AND JSON_VALID(shares_json)) THEN shares_json ELSE "{}" END), JSON_QUOTE(CAST(? AS CHAR)))
+            ))';
+            $p[] = $auth['user_id'];
+            $p[] = $auth['user_id'];
+        } else {
+            $sql .= ' AND 1=0';
         }
         $stmt = $this->db->prepare($sql);
         $stmt->execute($p);
@@ -327,7 +341,8 @@ class DealController {
     }
 
     public function update(array $auth, int $id): void {
-        if (in_array($auth['role'], ['viewer'])) respond(403, null, 'Bạn không có quyền cập nhật deal', false);
+        $scope = $this->getScope($auth, 'deals', 'write');
+        if ($scope === 'none') respond(403, null, 'Bạn không có quyền cập nhật deal', false);
         $b = getBody();
         $fields = ['stage_id','contact_id','company_id','owner_id','title','description','priority','value',
                    'probability','expected_close_date','source','lost_reason'];
@@ -366,14 +381,9 @@ class DealController {
         // Check permission first and get old stage
         $permissionSql = "SELECT id, stage_id FROM deals WHERE id=? AND tenant_id=?";
         $cp = [$id, $auth['tenant_id']];
-        if ($auth['role'] === 'sales' || $auth['role'] === 'sale') {
-            $permissionSql .= ' AND (owner_id=? OR contact_id IN (
-                SELECT contact_id FROM cooperation_slips 
-                WHERE JSON_CONTAINS(JSON_KEYS(CASE WHEN (shares_json IS NOT NULL AND JSON_VALID(shares_json)) THEN shares_json ELSE "{}" END), JSON_QUOTE(CAST(? AS CHAR)))
-            ))';
-            $cp[] = $auth['user_id'];
-            $cp[] = $auth['user_id'];
-        } else if ($auth['role'] === 'manager') {
+        if ($scope === 'all') {
+            // No extra filters
+        } else if ($scope === 'team') {
             $permissionSql .= " AND (owner_id=? OR owner_id IN (
                 SELECT id FROM users WHERE team_id IN (
                     SELECT id FROM teams WHERE leader_id = ?
@@ -381,6 +391,15 @@ class DealController {
             ))";
             $cp[] = $auth['user_id'];
             $cp[] = $auth['user_id'];
+        } else if ($scope === 'own') {
+            $permissionSql .= ' AND (owner_id=? OR contact_id IN (
+                SELECT contact_id FROM cooperation_slips 
+                WHERE JSON_CONTAINS(JSON_KEYS(CASE WHEN (shares_json IS NOT NULL AND JSON_VALID(shares_json)) THEN shares_json ELSE "{}" END), JSON_QUOTE(CAST(? AS CHAR)))
+            ))';
+            $cp[] = $auth['user_id'];
+            $cp[] = $auth['user_id'];
+        } else {
+            $permissionSql .= ' AND 1=0';
         }
         $check = $this->db->prepare($permissionSql);
         $check->execute($cp);
@@ -418,17 +437,21 @@ class DealController {
     }
 
     public function destroy(array $auth, int $id): void {
-        if (in_array($auth['role'], ['sales', 'viewer'], true)) respond(403, null, 'Bạn không có quyền xóa deal', false);
+        $scope = $this->getScope($auth, 'deals', 'delete');
+        if ($scope === 'none') respond(403, null, 'Bạn không có quyền xóa deal', false);
         
         $sql = "UPDATE deals SET deleted_at=NOW() WHERE id=? AND tenant_id=?";
         $p = [$id, $auth['tenant_id']];
-        if ($auth['role'] === 'manager') {
+        if ($scope === 'team') {
             $sql .= " AND (owner_id=? OR owner_id IN (
                 SELECT id FROM users WHERE team_id IN (
                     SELECT id FROM teams WHERE leader_id = ?
                 )
             ))";
             $p[] = $auth['user_id'];
+            $p[] = $auth['user_id'];
+        } else if ($scope === 'own') {
+            $sql .= " AND owner_id=?";
             $p[] = $auth['user_id'];
         }
         $stmt = $this->db->prepare($sql);
@@ -586,5 +609,46 @@ class DealController {
             $this->db->rollBack();
             respond(500, null, 'Lỗi đổi căn: ' . $e->getMessage(), false);
         }
+    }
+
+    private function getScope(array $auth, string $module, string $action): string {
+        $permissionsJson = null;
+        $stmtQ = $this->db->prepare("SELECT permissions_json FROM users WHERE id = ? LIMIT 1");
+        $stmtQ->execute([$auth['user_id']]);
+        $resQ = $stmtQ->fetch(PDO::FETCH_ASSOC);
+        if ($resQ && !empty($resQ['permissions_json'])) {
+            $permissionsJson = json_decode($resQ['permissions_json'], true);
+        }
+
+        if (in_array($auth['role'], ['admin', 'superadmin', 'super_admin'], true)) {
+            return 'all';
+        }
+
+        if ($permissionsJson && isset($permissionsJson[$module][$action])) {
+            $val = $permissionsJson[$module][$action];
+            if (in_array($val, ['all', 'team', 'own', 'none'], true)) {
+                return $val;
+            }
+        }
+
+        // Default fallbacks
+        $role = $auth['role'];
+        if ($role === 'director' || $role === 'assistant') {
+            return $action === 'delete' ? 'none' : 'all';
+        }
+        if ($role === 'manager') {
+            return $action === 'delete' ? 'none' : 'team';
+        }
+        if (in_array($role, ['sale', 'sales'], true)) {
+            if ($module === 'projects') {
+                return $action === 'read' ? 'all' : 'none';
+            }
+            return $action === 'delete' ? 'none' : 'own';
+        }
+        if ($role === 'viewer') {
+            return $action === 'read' ? 'all' : 'none';
+        }
+
+        return 'none';
     }
 }
