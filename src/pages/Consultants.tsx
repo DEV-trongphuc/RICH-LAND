@@ -844,22 +844,49 @@ const ConsultantsInner = () => {
       <div key={activeTab} className="subtab-enter-active" style={{ display: 'flex', flexDirection: 'column', width: '100%' }}>
         {/* Summary Cards */}
         {activeTab === 'consultants' && (
-        <div className="responsive-grid-4" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem', marginBottom: '1.5rem' }}>
-          <div className="stat-card hover-lift">
-            <div className="stat-label">{t('Tổng TVV')}</div>
-            <div className="stat-value">{users.length}</div>
+        <div className="responsive-grid-4" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginBottom: '1.5rem' }}>
+          {/* Card 1: Tổng TVV */}
+          <div className="stat-card hover-lift" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '1rem 1.25rem', background: 'var(--color-surface)', border: '1px solid var(--color-border-light)', borderRadius: '10px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '40px', height: '40px', borderRadius: '8px', background: 'rgba(73, 80, 87, 0.06)', color: 'var(--color-text-muted)' }}>
+              <Users size={18} />
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
+              <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.3px' }}>{t('Tổng TVV')}</span>
+              <span style={{ fontSize: '1.375rem', fontWeight: 700, color: 'var(--color-text)', marginTop: '1px', lineHeight: 1.1 }}>{users.length}</span>
+            </div>
           </div>
-          <div className="stat-card hover-lift">
-            <div className="stat-label" style={{ color: 'var(--color-success)' }}>{t('Đang nhận Data')}</div>
-            <div className="stat-value" style={{ color: 'var(--color-success)' }}>{activeCount}</div>
+
+          {/* Card 2: Đang nhận Data */}
+          <div className="stat-card hover-lift" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '1rem 1.25rem', background: 'var(--color-surface)', border: '1px solid var(--color-border-light)', borderRadius: '10px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '40px', height: '40px', borderRadius: '8px', background: 'rgba(16, 185, 129, 0.08)', color: 'var(--color-success)' }}>
+              <CheckCircle size={18} />
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
+              <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.3px' }}>{t('Đang nhận Data')}</span>
+              <span style={{ fontSize: '1.375rem', fontWeight: 700, color: 'var(--color-success)', marginTop: '1px', lineHeight: 1.1 }}>{activeCount}</span>
+            </div>
           </div>
-          <div className="stat-card hover-lift">
-            <div className="stat-label" style={{ color: 'var(--color-warning)' }}>{t('Đang nghỉ phép')}</div>
-            <div className="stat-value" style={{ color: 'var(--color-warning)' }}>{leaveCount}</div>
+
+          {/* Card 3: Đang nghỉ phép */}
+          <div className="stat-card hover-lift" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '1rem 1.25rem', background: 'var(--color-surface)', border: '1px solid var(--color-border-light)', borderRadius: '10px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '40px', height: '40px', borderRadius: '8px', background: 'rgba(245, 158, 11, 0.08)', color: 'var(--color-warning)' }}>
+              <Calendar size={18} />
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
+              <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.3px' }}>{t('Đang nghỉ phép')}</span>
+              <span style={{ fontSize: '1.375rem', fontWeight: 700, color: 'var(--color-warning)', marginTop: '1px', lineHeight: 1.1 }}>{leaveCount}</span>
+            </div>
           </div>
-          <div className="stat-card hover-lift">
-            <div className="stat-label" style={{ color: 'var(--color-danger)' }}>{t('Ngừng hoạt động')}</div>
-            <div className="stat-value" style={{ color: 'var(--color-danger)' }}>{inactiveCount}</div>
+
+          {/* Card 4: Ngừng hoạt động */}
+          <div className="stat-card hover-lift" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '1rem 1.25rem', background: 'var(--color-surface)', border: '1px solid var(--color-border-light)', borderRadius: '10px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '40px', height: '40px', borderRadius: '8px', background: 'rgba(239, 68, 68, 0.08)', color: 'var(--color-danger)' }}>
+              <UserX size={18} />
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
+              <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.3px' }}>{t('Ngừng hoạt động')}</span>
+              <span style={{ fontSize: '1.375rem', fontWeight: 700, color: 'var(--color-danger)', marginTop: '1px', lineHeight: 1.1 }}>{inactiveCount}</span>
+            </div>
           </div>
         </div>
       )}
