@@ -18,8 +18,8 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
   const { t } = useLanguage();
   const { user } = useAuth();
   const { showConfirm } = useUIStore();
-  const isSales = user?.role === 'sale';
-  const canApprove = ['admin', 'superadmin', 'super_admin', 'manager', 'director', 'assistant'].includes(user?.role || '');
+  const isSales = ['sale', 'manager'].includes(user?.role || '');
+  const canApprove = ['admin', 'superadmin', 'super_admin', 'director', 'assistant'].includes(user?.role || '');
   const [showInfoModal, setShowInfoModal] = useState(false);
   const [sysSettings, setSysSettings] = useState<any>(null);
   useEffect(() => {
@@ -72,6 +72,10 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
   });
   const [filterUser, setFilterUser] = useState<string>(isSales ? String(user?.id) : 'all');
   const [filterStatus, setFilterStatus] = useState<string>('all');
+
+  // Pagination states
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 50;
 
   // Selected date for detail modal
   const [selectedDateForDetail, setSelectedDateForDetail] = useState<string | null>(null);
@@ -170,6 +174,7 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
 
   useEffect(() => {
     fetchCheckInsList();
+    setCurrentPage(1);
   }, [period, customRange, filterUser, filterStatus]);
 
   useEffect(() => {
@@ -431,24 +436,24 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
           </div>
         </div>
 
-        <div style={{ overflowX: 'auto', width: '100%', borderRadius: '12px' }} className="custom-scrollbar">
+        <div style={{ overflowX: 'auto', width: '100%', borderRadius: '12px', boxShadow: 'var(--shadow-sm)', border: '1px solid var(--color-border-light)' }} className="custom-scrollbar">
           <div style={{
             display: 'grid',
             gridTemplateColumns: 'repeat(7, 1fr)',
             gap: '1px',
-            backgroundColor: 'var(--color-border)',
+            backgroundColor: 'var(--color-border-light)',
             overflow: 'hidden',
-            border: '1px solid var(--color-border)',
             minWidth: isMobile ? '700px' : 'auto'
           }}>
           {weekDays.map((day, idx) => (
             <div key={idx} style={{
-              backgroundColor: 'var(--color-bg)',
-              padding: '10px 4px',
+              backgroundColor: 'var(--color-surface)',
+              padding: '12px 4px',
               textAlign: 'center',
               fontSize: '0.75rem',
               fontWeight: 800,
-              color: idx === 6 ? 'var(--color-primary)' : 'var(--color-text-muted)'
+              color: idx === 6 ? 'var(--color-primary)' : 'var(--color-text-muted)',
+              borderBottom: '2px solid var(--color-border-light)'
             }}>
               {day}
             </div>
@@ -474,11 +479,11 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
                 style={{
                   backgroundColor: cell.isCurrentMonth
                     ? isWeekend
-                      ? 'var(--color-calendar-weekend)'
+                      ? 'var(--color-calendar-weekend, rgba(142, 142, 147, 0.04))'
                       : 'var(--color-surface)'
                     : 'var(--color-bg)',
-                  minHeight: '110px',
-                  padding: '10px',
+                  minHeight: '96px',
+                  padding: '8px 10px',
                   display: 'flex',
                   flexDirection: 'column',
                   justifyContent: 'space-between',
@@ -488,7 +493,7 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
                 }}
                 className={cell.dateStr ? 'calendar-day-cell' : ''}
               >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <span style={{
                     fontSize: '0.8125rem',
                     fontWeight: 700,
@@ -498,36 +503,59 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
                     alignItems: 'center',
                     justifyContent: 'center',
                     borderRadius: '50%',
-                    backgroundColor: isToday ? 'var(--color-primary)' : 'transparent',
-                    color: isToday ? 'white' : 'var(--color-text-light)'
+                    background: isToday ? 'linear-gradient(135deg, var(--color-primary), var(--color-primary-hover))' : 'transparent',
+                    color: isToday ? 'white' : cell.isCurrentMonth ? 'var(--color-text)' : 'var(--color-text-muted)',
+                    boxShadow: isToday ? '0 2px 6px rgba(189, 29, 45, 0.3)' : 'none'
                   }}>{cell.day}</span>
-                  {isToday && <span style={{ fontSize: '0.65rem', fontWeight: 600, color: 'var(--color-primary)' }}>{t('Hôm nay')}</span>}
+                  {isToday && (
+                    <span style={{ 
+                      width: '6px', 
+                      height: '6px', 
+                      borderRadius: '50%', 
+                      backgroundColor: 'var(--color-primary)', 
+                      display: 'inline-block' 
+                    }} title={t('Hôm nay')} />
+                  )}
                 </div>
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '4px' }}>
                   {calendarLoading && cell.isCurrentMonth ? (
-                    <div style={{ height: '4px', backgroundColor: 'var(--color-border)', borderRadius: '2px', animation: 'pulse 1.5s infinite' }} />
+                    <div style={{ height: '4px', backgroundColor: 'var(--color-border-light)', borderRadius: '2px', animation: 'pulse 1.5s infinite' }} />
                   ) : cell.dateStr && dayCheckIns && dayCheckIns.length > 0 ? (
                     filterUser === 'all' ? (
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '4px' }}>
-                        {dayCheckIns.slice(0, 4).map((c: any) => {
+                      <div style={{ display: 'flex', alignItems: 'center', paddingLeft: '4px', marginTop: '4px' }}>
+                        {dayCheckIns.slice(0, 4).map((c: any, index: number) => {
                           const statusColor = 
                             c.status === 'approved' ? 'var(--color-success)' :
                             c.status === 'pending_approval' ? 'var(--color-warning)' :
                             'var(--color-danger)';
                           return (
-                            <div key={c.id} style={{ position: 'relative', display: 'inline-block' }} title={`${c.user_name} (${c.check_in_time})`}>
-                              <Avatar src={c.user_avatar} name={c.user_name} size={24} />
+                            <div 
+                              key={c.id} 
+                              style={{ 
+                                position: 'relative', 
+                                display: 'inline-block',
+                                marginLeft: index === 0 ? 0 : '-8px',
+                                zIndex: 5 - index
+                              }} 
+                              className="calendar-avatar-item"
+                              title={`${c.user_name} (${c.check_in_time})`}
+                            >
+                              <Avatar 
+                                src={c.user_avatar} 
+                                name={c.user_name} 
+                                size={24} 
+                                style={{ border: '2px solid var(--color-surface)', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}
+                              />
                               <span style={{
                                 position: 'absolute',
-                                bottom: '-2px',
-                                right: '-2px',
+                                bottom: '0px',
+                                right: '0px',
                                 width: '8px',
                                 height: '8px',
                                 borderRadius: '50%',
                                 backgroundColor: statusColor,
                                 border: '1px solid var(--color-surface)',
-                                boxShadow: '0 0 2px rgba(0,0,0,0.2)'
                               }} />
                             </div>
                           );
@@ -537,14 +565,17 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
                             width: '24px',
                             height: '24px',
                             borderRadius: '50%',
-                            backgroundColor: 'var(--color-bg)',
-                            border: '1px solid var(--color-border)',
+                            backgroundColor: 'var(--color-bg-light)',
+                            border: '2px solid var(--color-surface)',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
                             fontSize: '0.65rem',
-                            fontWeight: 700,
-                            color: 'var(--color-text-muted)'
+                            fontWeight: 800,
+                            color: 'var(--color-text-muted)',
+                            marginLeft: '-8px',
+                            zIndex: 1,
+                            boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
                           }}>
                             +{dayCheckIns.length - 4}
                           </div>
@@ -553,42 +584,50 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
                     ) : (
                       dayCheckIns.map(c => {
                         const checkInLate = c.check_in_time > (c.work_start_time || '08:00');
+                        const isApproved = c.status === 'approved';
+                        const isPending = c.status === 'pending_approval';
                         return (
                           <div
                             key={c.id}
                             style={{
                               display: 'flex',
                               flexDirection: 'column',
-                              gap: '4px',
-                              padding: '4px',
-                              borderRadius: '6px',
+                              gap: '2px',
+                              padding: '5px 8px',
+                              borderRadius: '8px',
                               border: '1px solid',
                               backgroundColor: 
-                                c.status === 'approved' ? 'rgba(16, 185, 129, 0.05)' :
-                                c.status === 'pending_approval' ? 'rgba(245, 158, 11, 0.05)' :
-                                'rgba(239, 68, 68, 0.05)',
+                                isApproved 
+                                  ? (checkInLate ? 'rgba(0, 122, 255, 0.06)' : 'rgba(16, 185, 129, 0.08)') 
+                                  : isPending ? 'rgba(245, 158, 11, 0.06)' : 'rgba(239, 68, 68, 0.06)',
                               borderColor: 
-                                c.status === 'approved' ? 'rgba(16, 185, 129, 0.2)' :
-                                c.status === 'pending_approval' ? 'rgba(245, 158, 11, 0.2)' :
-                                'rgba(239, 68, 68, 0.2)',
+                                isApproved 
+                                  ? (checkInLate ? 'rgba(0, 122, 255, 0.15)' : 'rgba(16, 185, 129, 0.15)') 
+                                  : isPending ? 'rgba(245, 158, 11, 0.2)' :
+                                  'rgba(239, 68, 68, 0.2)',
+                              boxShadow: '0 1px 2px rgba(0,0,0,0.02)',
                             }}
+                            className="single-checkin-tag"
                           >
                             <div style={{
                               fontSize: '0.7rem',
-                              fontWeight: 700,
+                              fontWeight: 600,
                               color: 
-                                c.status === 'approved' ? '#15803d' :
-                                c.status === 'pending_approval' ? '#b45309' :
-                                '#b91c1c',
+                                isApproved 
+                                  ? (checkInLate ? '#007aff' : '#10b981') 
+                                  : isPending ? '#d97706' :
+                                  '#ef4444',
                               display: 'flex',
                               alignItems: 'center',
                               justifyContent: 'space-between',
                               gap: '4px'
                             }}>
-                              <span>{isSales ? t('Check-in:') : c.user_name}</span>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                <span style={{ fontSize: '0.65rem' }}>{c.check_in_time.substring(0, 5)}</span>
-                                {c.selfie_url && <Camera size={12} style={{ opacity: 0.8 }} />}
+                              <span style={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap', maxWidth: '80px' }}>
+                                {isSales ? t('Check-in') : c.user_name}
+                              </span>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '3px', flexShrink: 0 }}>
+                                <span style={{ fontSize: '0.65rem', fontWeight: 700 }}>{c.check_in_time.substring(0, 5)}</span>
+                                {c.selfie_url && <Camera size={10} style={{ opacity: 0.8 }} />}
                               </div>
                             </div>
                           </div>
@@ -610,6 +649,29 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
           @keyframes pulse {
             0%, 100% { opacity: 1; }
             50% { opacity: .5; }
+          }
+          .calendar-day-cell {
+            transition: all 0.2s ease-in-out;
+          }
+          .calendar-day-cell:hover {
+            background-color: var(--color-bg-light) !important;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+            z-index: 2;
+          }
+          .calendar-avatar-item {
+            transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+          }
+          .calendar-avatar-item:hover {
+            transform: scale(1.25) translateY(-3px);
+            z-index: 20 !important;
+          }
+          .single-checkin-tag {
+            transition: all 0.2s ease;
+          }
+          .single-checkin-tag:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
           }
         `}</style>
       </div>
@@ -721,40 +783,41 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
       )}
 
       {/* Stats row */}
-      <div className="responsive-grid-4" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1.25rem' }}>
+      <div className="responsive-grid-4" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem' }}>
         {/* Card 1: Total */}
         <div className="stat-card hover-lift" style={{
           backgroundColor: 'var(--color-surface)',
-          border: '1px solid var(--color-border)',
-          padding: '1.5rem',
-          borderRadius: '16px',
+          border: '1px solid var(--color-border-light)',
+          padding: '0.875rem 1.125rem',
+          borderRadius: '12px',
           display: 'flex',
           flexDirection: 'column',
-          boxShadow: 'var(--shadow-sm)'
+          boxShadow: '0 2px 8px rgba(0, 0, 0, 0.03)',
+          transition: 'all 0.2s ease'
         }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-            <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 700, letterSpacing: '0.05em' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', fontWeight: 700, letterSpacing: '0.05em' }}>
               {t('TỔNG BẢN GHI')}
             </span>
-            <div style={{ width: '32px', height: '32px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'var(--color-bg-light)', color: 'var(--color-text-muted)' }}>
-              <Calendar size={16} />
+            <div style={{ width: '28px', height: '28px', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'var(--color-bg-light)', color: 'var(--color-text-muted)' }}>
+              <Calendar size={14} />
             </div>
           </div>
-          <div style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--color-text)', marginTop: '8px', lineHeight: 1.2 }}>
+          <div style={{ fontSize: '1.625rem', fontWeight: 800, color: 'var(--color-text)', marginTop: '4px', lineHeight: 1.1 }}>
             {totalCount}
           </div>
           <div style={{
-            marginTop: '12px',
+            marginTop: '8px',
             display: 'flex',
             flexDirection: 'column',
-            gap: '4px',
-            fontSize: '0.75rem',
+            gap: '2px',
+            fontSize: '0.7rem',
             color: 'var(--color-text-muted)',
             borderTop: '1px solid var(--color-border-light)',
-            paddingTop: '10px'
+            paddingTop: '6px'
           }}>
             <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-              <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: 'var(--color-text-muted)' }} />
+              <span style={{ width: '5px', height: '5px', borderRadius: '50%', backgroundColor: 'var(--color-text-muted)' }} />
               {t('Ghi nhận từ các TVV')}
             </span>
           </div>
@@ -763,36 +826,37 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
         {/* Card 2: Approved */}
         <div className="stat-card hover-lift" style={{
           backgroundColor: 'var(--color-surface)',
-          border: '1px solid var(--color-border)',
-          padding: '1.5rem',
-          borderRadius: '16px',
+          border: '1px solid var(--color-border-light)',
+          padding: '0.875rem 1.125rem',
+          borderRadius: '12px',
           display: 'flex',
           flexDirection: 'column',
-          boxShadow: 'var(--shadow-sm)'
+          boxShadow: '0 2px 8px rgba(0, 0, 0, 0.03)',
+          transition: 'all 0.2s ease'
         }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-            <span style={{ fontSize: '0.75rem', color: '#10b981', fontWeight: 700, letterSpacing: '0.05em' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontSize: '0.7rem', color: '#10b981', fontWeight: 700, letterSpacing: '0.05em' }}>
               {t('ĐÃ DUYỆT / HỢP LỆ')}
             </span>
-            <div style={{ width: '32px', height: '32px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(16, 185, 129, 0.1)', color: '#10b981' }}>
-              <CheckCircle size={16} />
+            <div style={{ width: '28px', height: '28px', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(16, 185, 129, 0.1)', color: '#10b981' }}>
+              <CheckCircle size={14} />
             </div>
           </div>
-          <div style={{ fontSize: '2rem', fontWeight: 800, color: '#10b981', marginTop: '8px', lineHeight: 1.2 }}>
+          <div style={{ fontSize: '1.625rem', fontWeight: 800, color: '#10b981', marginTop: '4px', lineHeight: 1.1 }}>
             {approvedCount}
           </div>
           <div style={{
-            marginTop: '12px',
+            marginTop: '8px',
             display: 'flex',
             flexDirection: 'column',
-            gap: '4px',
-            fontSize: '0.75rem',
+            gap: '2px',
+            fontSize: '0.7rem',
             color: 'var(--color-text-muted)',
             borderTop: '1px solid var(--color-border-light)',
-            paddingTop: '10px'
+            paddingTop: '6px'
           }}>
             <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-              <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#10b981' }} />
+              <span style={{ width: '5px', height: '5px', borderRadius: '50%', backgroundColor: '#10b981' }} />
               {t('Đúng giờ & đi trễ hợp lệ')}
             </span>
           </div>
@@ -801,36 +865,37 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
         {/* Card 3: Pending */}
         <div className="stat-card hover-lift" style={{
           backgroundColor: 'var(--color-surface)',
-          border: '1px solid var(--color-border)',
-          padding: '1.5rem',
-          borderRadius: '16px',
+          border: '1px solid var(--color-border-light)',
+          padding: '0.875rem 1.125rem',
+          borderRadius: '12px',
           display: 'flex',
           flexDirection: 'column',
-          boxShadow: 'var(--shadow-sm)'
+          boxShadow: '0 2px 8px rgba(0, 0, 0, 0.03)',
+          transition: 'all 0.2s ease'
         }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-            <span style={{ fontSize: '0.75rem', color: '#f59e0b', fontWeight: 700, letterSpacing: '0.05em' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontSize: '0.7rem', color: '#f59e0b', fontWeight: 700, letterSpacing: '0.05em' }}>
               {t('ĐANG CHỜ DUYỆT')}
             </span>
-            <div style={{ width: '32px', height: '32px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(245, 158, 11, 0.1)', color: '#f59e0b' }}>
-              <Clock size={16} />
+            <div style={{ width: '28px', height: '28px', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(245, 158, 11, 0.1)', color: '#f59e0b' }}>
+              <Clock size={14} />
             </div>
           </div>
-          <div style={{ fontSize: '2rem', fontWeight: 800, color: '#f59e0b', marginTop: '8px', lineHeight: 1.2 }}>
+          <div style={{ fontSize: '1.625rem', fontWeight: 800, color: '#f59e0b', marginTop: '4px', lineHeight: 1.1 }}>
             {pendingCount}
           </div>
           <div style={{
-            marginTop: '12px',
+            marginTop: '8px',
             display: 'flex',
             flexDirection: 'column',
-            gap: '4px',
-            fontSize: '0.75rem',
+            gap: '2px',
+            fontSize: '0.7rem',
             color: 'var(--color-text-muted)',
             borderTop: '1px solid var(--color-border-light)',
-            paddingTop: '10px'
+            paddingTop: '6px'
           }}>
             <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-              <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#f59e0b' }} />
+              <span style={{ width: '5px', height: '5px', borderRadius: '50%', backgroundColor: '#f59e0b' }} />
               {t('Yêu cầu phê duyệt đi trễ')}
             </span>
           </div>
@@ -839,36 +904,37 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
         {/* Card 4: Rejected */}
         <div className="stat-card hover-lift" style={{
           backgroundColor: 'var(--color-surface)',
-          border: '1px solid var(--color-border)',
-          padding: '1.5rem',
-          borderRadius: '16px',
+          border: '1px solid var(--color-border-light)',
+          padding: '0.875rem 1.125rem',
+          borderRadius: '12px',
           display: 'flex',
           flexDirection: 'column',
-          boxShadow: 'var(--shadow-sm)'
+          boxShadow: '0 2px 8px rgba(0, 0, 0, 0.03)',
+          transition: 'all 0.2s ease'
         }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-            <span style={{ fontSize: '0.75rem', color: '#ef4444', fontWeight: 700, letterSpacing: '0.05em' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontSize: '0.7rem', color: '#ef4444', fontWeight: 700, letterSpacing: '0.05em' }}>
               {t('BỊ TỪ CHỐI')}
             </span>
-            <div style={{ width: '32px', height: '32px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(239, 68, 68, 0.1)', color: '#ef4444' }}>
-              <AlertCircle size={16} />
+            <div style={{ width: '28px', height: '28px', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(239, 68, 68, 0.1)', color: '#ef4444' }}>
+              <AlertCircle size={14} />
             </div>
           </div>
-          <div style={{ fontSize: '2rem', fontWeight: 800, color: '#ef4444', marginTop: '8px', lineHeight: 1.2 }}>
+          <div style={{ fontSize: '1.625rem', fontWeight: 800, color: '#ef4444', marginTop: '4px', lineHeight: 1.1 }}>
             {rejectedCount}
           </div>
           <div style={{
-            marginTop: '12px',
+            marginTop: '8px',
             display: 'flex',
             flexDirection: 'column',
-            gap: '4px',
-            fontSize: '0.75rem',
+            gap: '2px',
+            fontSize: '0.7rem',
             color: 'var(--color-text-muted)',
             borderTop: '1px solid var(--color-border-light)',
-            paddingTop: '10px'
+            paddingTop: '6px'
           }}>
             <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-              <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#ef4444' }} />
+              <span style={{ width: '5px', height: '5px', borderRadius: '50%', backgroundColor: '#ef4444' }} />
               {t('Không được phê duyệt')}
             </span>
           </div>
@@ -948,187 +1014,255 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
       )}
 
       {/* Main Content Area */}
-      {viewMode === 'list' ? (
-        <div className="card" style={{ padding: 0, background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: '12px', overflow: 'hidden' }}>
-          <div className="table-wrap" style={{ border: 'none', borderRadius: 0 }}>
-            <table className="mobile-table-compact" style={{ width: '100%', borderCollapse: 'collapse' }}>
-              <thead>
-                <tr style={{ borderBottom: '1px solid var(--color-border)', textAlign: 'left', background: 'var(--color-bg)' }}>
-                  <th style={{ padding: '12px 16px', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)' }}>{t('TƯ VẤN VIÊN')}</th>
-                  <th style={{ padding: '12px 16px', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)' }}>{t('GIỜ QUY ĐỊNH')}</th>
-                  <th style={{ padding: '12px 16px', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)' }}>{t('GIỜ CHECK-IN')}</th>
-                  <th style={{ padding: '12px 16px', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textAlign: 'center' }}>{t('ẢNH SELFIE')}</th>
-                  <th style={{ padding: '12px 16px', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)' }}>{t('LÝ DO TRỄ / GHI CHÚ')}</th>
-                  <th style={{ padding: '12px 16px', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)' }}>{t('TRẠNG THÁI')}</th>
-                  <th style={{ padding: '12px 16px', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textAlign: 'right' }}>{t('HÀNH ĐỘNG')}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {loading ? (
-                  [...Array(4)].map((_, i) => <TableRowSkeleton key={i} cols={7} />)
-                ) : checkIns.length === 0 ? (
-                  <tr>
-                    <td colSpan={7} style={{ textAlign: 'center', padding: '2rem', color: 'var(--color-text-muted)', fontSize: '0.875rem' }}>
-                      <Info size={24} style={{ display: 'block', margin: '0 auto 8px', opacity: 0.5 }} />
-                      {t('Không tìm thấy dữ liệu chấm công cho ngày đã chọn.')}
-                    </td>
+      {viewMode === 'list' ? (() => {
+        const totalPages = Math.ceil(checkIns.length / ITEMS_PER_PAGE);
+        const paginatedCheckIns = checkIns.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
+        return (
+          <div className="card" style={{ padding: 0, background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: '12px', overflow: 'hidden' }}>
+            <div className="table-wrap" style={{ border: 'none', borderRadius: 0, maxHeight: '600px', overflowY: 'auto' }}>
+              <table className="mobile-table-compact" style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <thead style={{ position: 'sticky', top: 0, zIndex: 10, background: 'var(--color-bg)' }}>
+                  <tr style={{ borderBottom: '1px solid var(--color-border)', textAlign: 'left', background: 'var(--color-bg)' }}>
+                    <th style={{ padding: '12px 16px', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)' }}>{t('TƯ VẤN VIÊN')}</th>
+                    <th style={{ padding: '12px 16px', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)' }}>{t('GIỜ CHECK-IN')}</th>
+                    <th style={{ padding: '12px 16px', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textAlign: 'center' }}>{t('ẢNH SELFIE')}</th>
+                    <th style={{ padding: '12px 16px', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)' }}>{t('LÝ DO TRỄ / GHI CHÚ')}</th>
+                    <th style={{ padding: '12px 16px', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)' }}>{t('TRẠNG THÁI')}</th>
+                    <th style={{ padding: '12px 16px', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textAlign: 'right' }}>{t('HÀNH ĐỘNG')}</th>
                   </tr>
-                ) : (
-                  checkIns.map((row) => {
-                    const isLate = row.check_in_time > (row.work_start_time || '08:00');
-                    return (
-                      <tr key={row.id} style={{ borderBottom: '1px solid var(--color-border)', fontSize: '0.8125rem' }} className="group table-row-hover">
-                        <td style={{ padding: '12px 16px' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <Avatar src={row.user_avatar} name={row.user_name} size={32} />
-                            <div style={{ display: 'flex', flexDirection: 'column' }}>
-                              <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>{row.user_name}</span>
-                              <span style={{ fontSize: '0.7rem', color: 'var(--color-text-light)' }}>{row.user_email}</span>
-                            </div>
-                          </div>
-                        </td>
-
-                        <td style={{ padding: '12px 16px', color: 'var(--color-text-light)' }}>
-                          {row.work_start_time || '08:00'}
-                        </td>
-
-                        <td style={{ padding: '12px 16px', fontWeight: 600, color: isLate ? 'var(--color-danger)' : 'var(--color-success)' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                            <Clock size={14} />
-                            {row.check_in_time}
-                            {isLate && (
-                              <span style={{ fontSize: '0.65rem', fontWeight: 500, backgroundColor: 'rgba(239,68,68,0.1)', padding: '2px 6px', borderRadius: '4px', marginLeft: '4px' }}>
-                                {t('Trễ')}
-                              </span>
-                            )}
-                          </div>
-                        </td>
-
-                        <td style={{ padding: '12px 16px', textAlign: 'center' }}>
-                          {row.selfie_url ? (
-                            <div
-                              style={{ position: 'relative', display: 'inline-block', cursor: 'pointer' }}
-                              onClick={() => setPreviewImage(row.selfie_url)}
-                            >
-                              <img
-                                src={row.selfie_url}
-                                style={{ width: '40px', height: '40px', borderRadius: '6px', objectFit: 'cover', border: '1px solid var(--color-border)' }}
-                                alt="Selfie"
-                              />
-                              <div className="overlay" style={{
-                                position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
-                                background: 'rgba(0,0,0,0.4)', borderRadius: '6px', display: 'flex',
-                                alignItems: 'center', justifyContent: 'center', opacity: 0, transition: 'opacity 0.2s'
-                              }}>
-                                <Eye size={12} style={{ color: '#fff' }} />
+                </thead>
+                <tbody>
+                  {loading ? (
+                    [...Array(4)].map((_, i) => <TableRowSkeleton key={i} cols={6} />)
+                  ) : checkIns.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} style={{ textAlign: 'center', padding: '2rem', color: 'var(--color-text-muted)', fontSize: '0.875rem' }}>
+                        <Info size={24} style={{ display: 'block', margin: '0 auto 8px', opacity: 0.5 }} />
+                        {t('Không tìm thấy dữ liệu chấm công cho ngày đã chọn.')}
+                      </td>
+                    </tr>
+                  ) : (
+                    paginatedCheckIns.map((row) => {
+                      const isLate = row.check_in_time > (row.work_start_time || '08:00');
+                      return (
+                        <tr key={row.id} style={{ borderBottom: '1px solid var(--color-border)', fontSize: '0.8125rem' }} className="group table-row-hover">
+                          <td style={{ padding: '12px 16px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              <Avatar src={row.user_avatar} name={row.user_name} size={32} />
+                              <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>{row.user_name}</span>
+                                <span style={{ fontSize: '0.7rem', color: 'var(--color-text-light)' }}>{row.user_email}</span>
                               </div>
-                              <style>{`
-                                div:hover .overlay { opacity: 1 !important; }
-                              `}</style>
                             </div>
-                          ) : (
-                            <span style={{ color: 'var(--color-text-muted)', fontSize: '0.75rem' }}>N/A</span>
-                          )}
-                        </td>
+                          </td>
 
-                        <td style={{ padding: '12px 16px', color: 'var(--color-text)', maxWidth: '250px', whiteSpace: 'normal', wordBreak: 'break-word' }}>
-                          {row.reason ? (
-                            <div style={{ display: 'flex', gap: '6px', alignItems: 'flex-start' }}>
-                              <ShieldAlert size={14} style={{ color: 'var(--color-warning)', flexShrink: 0, marginTop: '2px' }} />
-                              <span>{row.reason}</span>
+                          <td style={{ padding: '12px 16px', fontWeight: 600, color: isLate ? 'var(--color-danger)' : 'var(--color-success)' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                              <Clock size={14} />
+                              {row.check_in_time}
+                              {isLate && (
+                                <span style={{ fontSize: '0.65rem', fontWeight: 500, backgroundColor: 'rgba(239,68,68,0.1)', padding: '2px 6px', borderRadius: '4px', marginLeft: '4px' }}>
+                                  {t('Trễ')}
+                                </span>
+                              )}
                             </div>
-                          ) : (
-                            <span style={{ color: 'var(--color-text-light)', fontStyle: 'italic' }}>{t('Không có')}</span>
-                          )}
-                        </td>
+                          </td>
 
-                        <td style={{ padding: '12px 16px' }}>
-                          <span style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '4px',
-                            padding: '4px 10px',
-                            borderRadius: '12px',
-                            fontSize: '0.7rem',
-                            fontWeight: 600,
-                            backgroundColor:
-                              row.status === 'approved' ? 'var(--color-success-light)' :
-                              row.status === 'pending_approval' ? 'var(--color-warning-light)' :
-                              'var(--color-danger-light)',
-                            color:
-                              row.status === 'approved' ? 'var(--color-success)' :
-                              row.status === 'pending_approval' ? 'var(--color-warning)' :
-                              'var(--color-danger)',
-                          }}>
-                            {row.status === 'approved' && <CheckCircle size={12} />}
-                            {row.status === 'pending_approval' && <AlertCircle size={12} />}
-                            {row.status === 'rejected' && <X size={12} />}
-                            {row.status === 'approved' ? t('Đã duyệt / Đúng giờ') :
-                             row.status === 'pending_approval' ? t('Chờ duyệt đi trễ') :
-                             t('Bị từ chối')}
-                          </span>
-                        </td>
-
-                        <td style={{ padding: '12px 16px', textAlign: 'right' }}>
-                          <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', alignItems: 'center' }}>
-                            {row.status === 'pending_approval' && canApprove && (
-                              <>
-                                <button
-                                  onClick={() => handleUpdateStatus(row.id, 'approved')}
-                                  disabled={actionSubmittingId === row.id}
-                                  className="btn success sm icon-only"
-                                  title={t('Duyệt nhận lead')}
-                                  style={{ width: 28, height: 28, padding: 0, borderRadius: '6px' }}
-                                >
-                                  <Check size={14} />
-                                </button>
-                                <button
-                                  onClick={() => {
-                                    showConfirm({
-                                      title: t('Từ chối chấm công'),
-                                      message: t('Vui lòng nhập lý do từ chối chấm công này:'),
-                                      requirePromptInput: true,
-                                      promptPlaceholder: t('Nhập lý do từ chối...'),
-                                      confirmText: t('Từ chối'),
-                                      cancelText: t('Hủy'),
-                                      isDanger: true,
-                                      onConfirm: (reason) => {
-                                        if (reason && reason.trim()) {
-                                          handleUpdateStatus(row.id, 'rejected', reason.trim());
-                                        } else {
-                                          toast.error(t('Lý do từ chối là bắt buộc'));
-                                        }
-                                      }
-                                    });
-                                  }}
-                                  disabled={actionSubmittingId === row.id}
-                                  className="btn danger sm icon-only"
-                                  title={t('Từ chối nhận lead')}
-                                  style={{ width: 28, height: 28, padding: 0, borderRadius: '6px' }}
-                                >
-                                  <X size={14} />
-                                </button>
-                              </>
+                          <td style={{ padding: '12px 16px', textAlign: 'center' }}>
+                            {row.selfie_url ? (
+                              <a
+                                onClick={() => setPreviewImage(row.selfie_url)}
+                                style={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '4px',
+                                  color: 'var(--color-primary)',
+                                  fontSize: '0.75rem',
+                                  fontWeight: 600,
+                                  textDecoration: 'underline',
+                                  cursor: 'pointer'
+                                }}
+                              >
+                                <Camera size={14} />
+                                {t('Ảnh selfie')}
+                              </a>
+                            ) : (
+                              <span style={{ color: 'var(--color-text-muted)', fontSize: '0.75rem' }}>N/A</span>
                             )}
-                            <button
-                              onClick={() => openDeleteConfirm(row.id)}
-                              className="btn outline sm danger icon-only"
-                              title={t('Xóa bản ghi')}
-                              style={{ width: 28, height: 28, padding: 0, borderRadius: '6px', border: '1px solid var(--color-border)' }}
-                            >
-                              <Trash2 size={14} />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })
-                )}
-              </tbody>
-            </table>
+                          </td>
+
+                          <td style={{ padding: '12px 16px', color: 'var(--color-text)', maxWidth: '250px', whiteSpace: 'normal', wordBreak: 'break-word' }}>
+                            {row.reason ? (
+                              <div style={{ display: 'flex', gap: '6px', alignItems: 'flex-start' }}>
+                                <ShieldAlert size={14} style={{ color: 'var(--color-warning)', flexShrink: 0, marginTop: '2px' }} />
+                                <span>{row.reason}</span>
+                              </div>
+                            ) : (
+                              <span style={{ color: 'var(--color-text-light)', fontStyle: 'italic' }}>{t('Không có')}</span>
+                            )}
+                          </td>
+
+                          <td style={{ padding: '12px 16px' }}>
+                            <span style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '4px',
+                              padding: '4px 10px',
+                              borderRadius: '12px',
+                              fontSize: '0.7rem',
+                              fontWeight: 600,
+                              backgroundColor:
+                                row.status === 'approved' ? (
+                                  isLate ? 'rgba(0, 122, 255, 0.08)' : 'var(--color-success-light)'
+                                ) :
+                                row.status === 'pending_approval' ? 'var(--color-warning-light)' :
+                                'var(--color-danger-light)',
+                              color:
+                                row.status === 'approved' ? (
+                                  isLate ? '#007aff' : 'var(--color-success)'
+                                ) :
+                                row.status === 'pending_approval' ? 'var(--color-warning)' :
+                                'var(--color-danger)',
+                            }}>
+                              {row.status === 'approved' && <CheckCircle size={12} />}
+                              {row.status === 'pending_approval' && <AlertCircle size={12} />}
+                              {row.status === 'rejected' && <X size={12} />}
+                              {row.status === 'approved' ? (
+                                isLate ? t('Đã duyệt') : t('Đúng giờ')
+                              ) :
+                               row.status === 'pending_approval' ? t('Chờ duyệt đi trễ') :
+                               t('Bị từ chối')}
+                            </span>
+                          </td>
+
+                          <td style={{ padding: '12px 16px', textAlign: 'right' }}>
+                            <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', alignItems: 'center' }}>
+                              {row.status === 'pending_approval' && canApprove && (
+                                <>
+                                  <button
+                                    onClick={() => handleUpdateStatus(row.id, 'approved')}
+                                    disabled={actionSubmittingId === row.id}
+                                    className="btn success sm icon-only"
+                                    title={t('Duyệt nhận lead')}
+                                    style={{ width: 28, height: 28, padding: 0, borderRadius: '6px' }}
+                                  >
+                                    <Check size={14} />
+                                  </button>
+                                  <button
+                                    onClick={() => {
+                                      showConfirm({
+                                        title: t('Từ chối chấm công'),
+                                        message: t('Vui lòng nhập lý do từ chối chấm công này:'),
+                                        requirePromptInput: true,
+                                        promptPlaceholder: t('Nhập lý do từ chối...'),
+                                        confirmText: t('Từ chối'),
+                                        cancelText: t('Hủy'),
+                                        isDanger: true,
+                                        onConfirm: (reason) => {
+                                          if (reason && reason.trim()) {
+                                            handleUpdateStatus(row.id, 'rejected', reason.trim());
+                                          } else {
+                                            toast.error(t('Lý do từ chối là bắt buộc'));
+                                          }
+                                        }
+                                      });
+                                    }}
+                                    disabled={actionSubmittingId === row.id}
+                                    className="btn danger sm icon-only"
+                                    title={t('Từ chối nhận lead')}
+                                    style={{ width: 28, height: 28, padding: 0, borderRadius: '6px' }}
+                                  >
+                                    <X size={14} />
+                                  </button>
+                                </>
+                              )}
+                              <button
+                                onClick={() => openDeleteConfirm(row.id)}
+                                className="btn outline sm danger icon-only"
+                                title={t('Xóa bản ghi')}
+                                style={{ width: 28, height: 28, padding: 0, borderRadius: '6px', border: '1px solid var(--color-border)' }}
+                              >
+                                <Trash2 size={14} />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Pagination Controls */}
+            {totalPages > 1 && (
+              <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                padding: '12px 16px',
+                borderTop: '1px solid var(--color-border-light)',
+                background: 'var(--color-surface)',
+                flexWrap: 'wrap',
+                gap: '12px'
+              }}>
+                <div style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>
+                  {t('Hiển thị')} <span style={{ fontWeight: 700, color: 'var(--color-text)' }}>{(currentPage - 1) * ITEMS_PER_PAGE + 1}</span> - <span style={{ fontWeight: 700, color: 'var(--color-text)' }}>{Math.min(currentPage * ITEMS_PER_PAGE, checkIns.length)}</span> {t('trên')} <span style={{ fontWeight: 700, color: 'var(--color-text)' }}>{checkIns.length}</span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <button 
+                    onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))} 
+                    disabled={currentPage === 1} 
+                    className="btn sm outline" 
+                    style={{ height: 32, width: 32, padding: 0, minWidth: 32, borderRadius: '8px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', cursor: currentPage === 1 ? 'not-allowed' : 'pointer' }}
+                  >
+                    <ChevronLeft size={16} />
+                  </button>
+                  <div style={{ display: 'flex', gap: 4 }}>
+                    {(() => {
+                      const maxVisible = 5;
+                      let start = Math.max(1, currentPage - Math.floor(maxVisible / 2));
+                      let end = Math.min(totalPages, start + maxVisible - 1);
+                      if (end - start + 1 < maxVisible) {
+                        start = Math.max(1, end - maxVisible + 1);
+                      }
+                      const pageNumbers = [];
+                      for (let p = start; p <= end; p++) {
+                        pageNumbers.push(p);
+                      }
+                      return pageNumbers.map((pageNum) => (
+                        <button
+                          key={pageNum}
+                          onClick={() => setCurrentPage(pageNum)}
+                          style={{
+                            width: 32, height: 32, borderRadius: 8, fontSize: '0.8125rem', fontWeight: 700,
+                            border: currentPage === pageNum ? 'none' : '1px solid var(--color-border-light)',
+                            background: currentPage === pageNum ? 'var(--color-primary)' : 'var(--color-surface)',
+                            color: currentPage === pageNum ? 'white' : 'var(--color-text-muted)',
+                            cursor: 'pointer',
+                            transition: 'all 0.15s'
+                          }}
+                          className={currentPage === pageNum ? '' : 'hover-lift'}
+                        >
+                          {pageNum}
+                        </button>
+                      ));
+                    })()}
+                  </div>
+                  <button 
+                    onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))} 
+                    disabled={currentPage === totalPages} 
+                    className="btn sm outline" 
+                    style={{ height: 32, width: 32, padding: 0, minWidth: 32, borderRadius: '8px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', cursor: currentPage === totalPages ? 'not-allowed' : 'pointer' }}
+                  >
+                    <ChevronRight size={16} />
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
-        </div>
-      ) : (
+        );
+      })() : (
         renderCalendarView()
       )}
 
@@ -1283,9 +1417,7 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
                               </div>
                               {row.selfie_url && (
                                 <a
-                                  href={row.selfie_url}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
+                                  onClick={() => setPreviewImage(row.selfie_url)}
                                   style={{
                                     display: 'inline-flex',
                                     alignItems: 'center',

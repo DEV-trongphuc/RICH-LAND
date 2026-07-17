@@ -11585,7 +11585,8 @@ switch ($action) {
         break;
 
     case 'get_dashboard_stats':
-        $date = $_GET['date'] ?? 'Hôm nay';
+        try {
+            $date = $_GET['date'] ?? 'Hôm nay';
         
         $userId = (int)($decodedUser['user_id'] ?? $decodedUser['id'] ?? 0);
         $userRole = $decodedUser['role'] ?? '';
@@ -12596,7 +12597,12 @@ switch ($action) {
                 'leadSourceStats' => $leadSourceStats,
                 'errorStats' => $errorStats
             ]
-        ]);
+        } catch (Exception $e) {
+            echo json_encode([
+                'success' => false,
+                'message' => 'Lỗi máy chủ: ' . $e->getMessage() . ' tại dòng ' . $e->getLine() . ' trong file ' . $e->getFile()
+            ]);
+        }
         break;
 
     case 'get_fair_share_stats':
