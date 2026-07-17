@@ -216,6 +216,26 @@ export const Header = ({ onActivityFeedClick, onMenuClick, version }: { onActivi
         }
       }
 
+      const activityMatch = targetLink.match(/^\/activities\/(\d+)(?:\?.*)?$/);
+      if (activityMatch) {
+        try {
+          const res = await fetchAPI(`activities/${activityMatch[1]}`);
+          if (res.success && res.data) {
+            const act = res.data;
+            const actUrlObj = new URL(targetLink, window.location.origin);
+            const commentId = actUrlObj.searchParams.get('comment_id') || actUrlObj.searchParams.get('highlight_comment_id');
+            const commentQuery = commentId ? `&highlight_comment_id=${commentId}` : '';
+            if (act.related_type === 'contact') {
+              targetLink = `/contacts?open_contact_id=${act.related_id}&highlight_activity_id=${activityMatch[1]}${commentQuery}`;
+            } else if (act.related_type === 'deal') {
+              targetLink = `/deals?id=${act.related_id}&highlight_activity_id=${activityMatch[1]}${commentQuery}`;
+            }
+          }
+        } catch (e) {
+          console.error("Error resolving activity redirect link:", e);
+        }
+      }
+
       const urlObj = new URL(targetLink, window.location.origin);
       const contactMatch = targetLink.match(/^\/contacts\/(\d+)$/) || targetLink.match(/\/contacts\?(?:open_contact_id|id)=(\d+)/);
       if (contactMatch) {
