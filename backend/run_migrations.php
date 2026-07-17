@@ -2150,6 +2150,10 @@ try {
             }
         }
 
+        // Self-healing check: Reset bloated compensation counts caused by the auto-recall bug
+        $conn->query("UPDATE round_consultants SET compensation_count = 0");
+        $logMsg("Đã dọn dẹp và reset số lượng nợ bù (compensation_count) bị phình to do lỗi tự động thu hồi", "success");
+
         $logMsg("Hoàn thành tự tạo các INDEX hiệu năng.", "success");
 
         // Initialize Zalo Group notification settings (Version 156 & 157)

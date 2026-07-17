@@ -874,13 +874,15 @@ if (!function_exists('recallInactiveLeads')) {
                     $upOldLog->close();
                 }
 
-                // 2. Increment compensation count for the lazy consultant in that round
+                // 2. Increment compensation count - DISABLED: Sale who does not accept lead should NOT get compensated
+                /*
                 if ($roundId > 0) {
                     $chkComp = $conn->prepare("UPDATE round_consultants SET compensation_count = compensation_count + 1 WHERE round_id = ? AND consultant_id = ?");
                     $chkComp->bind_param("ii", $roundId, $oldConsultantId);
                     $chkComp->execute();
                     $chkComp->close();
                 }
+                */
 
                 // 3. Find next consultant in the round (or fallback to admin)
                 $newConsultantId = null;

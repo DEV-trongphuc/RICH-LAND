@@ -10,12 +10,14 @@ if ($conn->connect_error) {
     die("Connection failed: " . $conn->connect_error);
 }
 
-echo "=== DETAILS OF LEADS ===\n";
-$res = $conn->query("SELECT id, name, phone, email, assigned_to, is_accepted, last_assigned_at, status FROM leads");
-if ($res) {
-    while ($row = $res->fetch_assoc()) {
-        echo "ID: {$row['id']} | Name: {$row['name']} | Assigned: {$row['assigned_to']} | Is Accepted: {$row['is_accepted']} | Assigned At: {$row['last_assigned_at']} | Status: {$row['status']}\n";
-    }
+echo "=== COUNT OF MAIL QUEUE ===\n";
+$res = $conn->query("SELECT COUNT(*) as cnt FROM mail_queue");
+echo "Mail queue total rows: " . $res->fetch_assoc()['cnt'] . "\n";
+
+echo "\n=== RECENT MAILS IN QUEUE ===\n";
+$res = $conn->query("SELECT id, to_email, subject, status, attempts, lead_id, created_at, sent_at FROM mail_queue ORDER BY id DESC LIMIT 15");
+while ($row = $res->fetch_assoc()) {
+    echo "ID: {$row['id']} | To: {$row['to_email']} | Subject: {$row['subject']} | Status: {$row['status']} | Attempts: {$row['attempts']} | Lead ID: {$row['lead_id']} | Created: {$row['created_at']} | Sent: {$row['sent_at']}\n";
 }
 
 $conn->close();
