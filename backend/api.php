@@ -12017,14 +12017,14 @@ switch ($action) {
 
         // ticket_errors counts only APPROVED tickets in the date range created_at (for Dashboard card details)
         $ticketErrors = 0;
-        $tktErrRes = $conn->query("SELECT COUNT(*) as cnt FROM data_reports WHERE status IN ('approved', 'approved_no_comp') AND $dateConditionCreated $managerFilterReports");
+        $tktErrRes = $conn->query("SELECT COUNT(*) as cnt FROM data_reports WHERE status IN ('approved', 'approved_no_comp') AND reason != 'databank_claim' AND $dateConditionCreated $managerFilterReports");
         if ($tktErrRes && $row = $tktErrRes->fetch_assoc()) {
             $ticketErrors = (int) $row['cnt'];
         }
 
         // Previous period calculations for change percentage
         $prevTicketErrors = 0;
-        $prevTktErrRes = $conn->query("SELECT COUNT(*) as cnt FROM data_reports WHERE status IN ('approved', 'approved_no_comp') AND $prevDateConditionCreated $managerFilterReports");
+        $prevTktErrRes = $conn->query("SELECT COUNT(*) as cnt FROM data_reports WHERE status IN ('approved', 'approved_no_comp') AND reason != 'databank_claim' AND $prevDateConditionCreated $managerFilterReports");
         if ($prevTktErrRes && $row = $prevTktErrRes->fetch_assoc()) {
             $prevTicketErrors = (int) $row['cnt'];
         }
@@ -12034,8 +12034,8 @@ switch ($action) {
         $distributed_today = max(0, $raw_distributed - $ticketErrors);
 
         // Keep details consistent: distributed_assigned + distributed_compensation = distributed_today
-        $assigned_count = $statusCounts['assigned'] + $statusCounts['rule_6_month'] + $statusCounts['pending_work_hours'] + $statusCounts['fallback'] + $statusCounts['success'] + $statusCounts['databank_claim'];
-        $compensation_count = $statusCounts['compensation'];
+        $assigned_count = $statusCounts['assigned'] + $statusCounts['rule_6_month'] + $statusCounts['pending_work_hours'] + $statusCounts['fallback'] + $statusCounts['success'];
+        $compensation_count = $statusCounts['compensation'] + $statusCounts['databank_claim'];
         $assigned_adjusted = max(0, $assigned_count - $ticketErrors);
         $rem = max(0, $ticketErrors - $assigned_count);
         $compensation_adjusted = max(0, $compensation_count - $rem);

@@ -1038,7 +1038,7 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
                     </span>
                     <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
                       <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#10b981', display: 'inline-block', flexShrink: 0 }} />
-                      <span>{t('Bù')}: {stats?.distributed_compensation || 0}</span>
+                      <span>{t('Claim')}: {stats?.distributed_compensation || 0}</span>
                     </span>
                   </div>
                 )}

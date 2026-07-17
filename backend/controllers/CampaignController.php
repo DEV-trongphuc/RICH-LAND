@@ -356,12 +356,33 @@ class CampaignController {
         if (!$body) {
             respond(422, null, 'Nội dung bình luận là bắt buộc', false);
         }
+        $parentId = !empty($b['parent_id']) ? (int)$b['parent_id'] : null;
+
         $stmt = $this->db->prepare("
-            INSERT INTO comments (tenant_id, entity_type, entity_id, user_id, body) 
-            VALUES (?, 'campaign', ?, ?, ?)
+            INSERT INTO comments (tenant_id, entity_type, entity_id, user_id, body, parent_id) 
+            VALUES (?, 'campaign', ?, ?, ?, ?)
         ");
-        $stmt->execute([$auth['tenant_id'], $campaignId, $auth['user_id'], $body]);
+        $stmt->execute([$auth['tenant_id'], $campaignId, $auth['user_id'], $body, $parentId]);
         $newId = $this->db->lastInsertId();
+
+        if ($parentId > 0) {
+            $stmtParent = $this->db->prepare("SELECT user_id FROM comments WHERE id = ?");
+            $stmtParent->execute([$parentId]);
+            $parentOwnerId = (int)$stmtParent->fetchColumn();
+
+            if ($parentOwnerId > 0 && $parentOwnerId !== (int)$auth['user_id']) {
+                $title = "Bạn có phản hồi mới trong thảo luận chiến dịch";
+                $bodyText = ($auth['full_name'] ?? 'Đồng nghiệp') . " đã trả lời bình luận của bạn trong chiến dịch";
+                $type = "info";
+                $link = "/marketing?id=" . $campaignId . "&highlight_comment_id=" . $newId;
+
+                $insertNotif = $this->db->prepare("
+                    INSERT INTO notifications (user_id, tenant_id, title, body, type, link)
+                    VALUES (?, ?, ?, ?, ?, ?)
+                ");
+                $insertNotif->execute([$parentOwnerId, $auth['tenant_id'], $title, $bodyText, $type, $link]);
+            }
+        }
 
         // Parse mentions in comment body
         $mentions = [];

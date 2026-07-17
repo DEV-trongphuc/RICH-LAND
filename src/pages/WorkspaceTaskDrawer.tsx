@@ -70,6 +70,7 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
   const [newCommentText, setNewCommentText] = useState('');
   const [isSubmittingComment, setIsSubmittingComment] = useState(false);
   const [commentAttachments, setCommentAttachments] = useState<any[]>([]);
+  const [replyTo, setReplyTo] = useState<{ id: number; userName: string } | null>(null);
   const [uploadingFile, setUploadingFile] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -858,12 +859,14 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
       const attachmentUrls = commentAttachments.map(a => a.url);
       const res = await api.post(`/activities/${task.id}/comments`, {
         content: newCommentText.trim(),
-        attachments: attachmentUrls
+        attachments: attachmentUrls,
+        parent_id: replyTo ? replyTo.id : null
       });
 
       if (res.data && res.data.success) {
         setNewCommentText('');
         setCommentAttachments([]);
+        setReplyTo(null);
         loadComments(task.id);
         toast.success(t('Đã thêm bình luận!'));
       }
@@ -1632,6 +1635,12 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
 
                 {/* Add comment input */}
                 <div style={{ background: 'rgba(0, 0, 0, 0.015)', border: '1px solid var(--color-border-light)', padding: '12px', borderRadius: '14px', display: 'flex', flexDirection: 'column', gap: '10px', boxShadow: 'inset 0 2px 4px rgba(0, 0, 0, 0.01)' }}>
+                  {replyTo && (
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(163, 20, 34, 0.08)', padding: '6px 12px', borderRadius: '8px', fontSize: '0.72rem', color: '#a31422', fontWeight: 700 }}>
+                      <span>Đang trả lời {replyTo.userName}</span>
+                      <button onClick={() => setReplyTo(null)} style={{ border: 'none', background: 'transparent', color: '#a31422', cursor: 'pointer', fontWeight: 800, fontSize: '0.9rem', padding: '0 4px' }}>×</button>
+                    </div>
+                  )}
                   <MentionInput
                     value={newCommentText}
                     onChange={e => setNewCommentText(e.target.value)}
@@ -1667,7 +1676,7 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
                 </div>
 
                 {/* Comments feed list */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', maxHeight: '350px', overflowY: 'auto', marginTop: '4px' }} className="custom-scrollbar">
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', maxHeight: '420px', overflowY: 'auto', marginTop: '4px' }} className="custom-scrollbar">
                   {loadingComments ? (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                       <StatRowSkeleton />
@@ -1679,57 +1688,94 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
                       {t('Chưa có thảo luận nào.')}
                     </div>
                   ) : (
-                    comments.map((comment: any) => {
-                      const commUser = users.find(u => Number(u.id) === Number(comment.user_id));
-                      let commentParsedAtts = [];
-                      if (comment.attachments) {
-                        try {
-                          commentParsedAtts = typeof comment.attachments === 'string' ? JSON.parse(comment.attachments) : comment.attachments;
-                        } catch (e) {
-                          console.error(e);
-                        }
-                      }
-                      if (!Array.isArray(commentParsedAtts)) commentParsedAtts = [];
+                    (() => {
+                      const rootComments = comments.filter((c: any) => !c.parent_id);
+                      const getReplies = (parentId: number) => {
+                        return comments
+                          .filter((c: any) => Number(c.parent_id) === Number(parentId))
+                          .sort((a: any, b: any) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+                      };
 
-                      return (
-                        <div 
-                          key={comment.id} 
-                          id={`workspace-comment-${comment.id}`}
-                          style={{ 
-                            display: 'flex', 
-                            gap: '12px', 
-                            background: 'rgba(0, 0, 0, 0.01)', 
-                            border: '1px solid var(--color-border-light)', 
-                            padding: '12px 16px', 
-                            borderRadius: '14px',
-                            transition: 'all 0.5s ease'
-                          }}
-                        >
-                          <Avatar src={comment.avatar_url || commUser?.avatar || commUser?.avatar_url} name={commUser?.full_name || comment.user_name || 'Đồng nghiệp'} size={28} />
-                          <div style={{ flex: 1 }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                              <span style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--color-text)' }}>{commUser?.full_name || comment.user_name || 'Đồng nghiệp'}</span>
-                              <span style={{ fontSize: '0.68rem', color: 'var(--color-text-muted)', fontWeight: 500 }}>{new Date(comment.created_at).toLocaleString('vi-VN')}</span>
+                      const renderSingleComment = (comment: any, isReply: boolean = false) => {
+                        const commUser = users.find(u => Number(u.id) === Number(comment.user_id));
+                        let commentParsedAtts = [];
+                        if (comment.attachments) {
+                          try {
+                            commentParsedAtts = typeof comment.attachments === 'string' ? JSON.parse(comment.attachments) : comment.attachments;
+                          } catch (e) {
+                            console.error(e);
+                          }
+                        }
+                        if (!Array.isArray(commentParsedAtts)) commentParsedAtts = [];
+
+                        return (
+                          <div 
+                            key={comment.id} 
+                            id={`workspace-comment-${comment.id}`}
+                            style={{ 
+                              display: 'flex', 
+                              gap: '12px', 
+                              background: isReply ? 'transparent' : 'rgba(0, 0, 0, 0.01)', 
+                              border: isReply ? 'none' : '1px solid var(--color-border-light)', 
+                              padding: isReply ? '4px 0 4px 12px' : '12px 16px', 
+                              borderRadius: isReply ? '0' : '14px',
+                              borderLeft: isReply ? '2px solid var(--color-border-light)' : undefined,
+                              transition: 'all 0.5s ease',
+                              marginTop: isReply ? '6px' : '0'
+                            }}
+                          >
+                            <Avatar src={comment.avatar_url || commUser?.avatar || commUser?.avatar_url} name={commUser?.full_name || comment.user_name || 'Đồng nghiệp'} size={isReply ? 24 : 28} />
+                            <div style={{ flex: 1 }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <span style={{ fontSize: isReply ? '0.75rem' : '0.8rem', fontWeight: 800, color: 'var(--color-text)' }}>{commUser?.full_name || comment.user_name || 'Đồng nghiệp'}</span>
+                                <span style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)', fontWeight: 500 }}>{new Date(comment.created_at).toLocaleString('vi-VN')}</span>
+                              </div>
+                              <p style={{ fontSize: isReply ? '0.78rem' : '0.825rem', color: 'var(--color-text-light)', margin: '4px 0 0', lineHeight: '1.45', whiteSpace: 'pre-wrap' }}>{renderCommentContent(comment.content)}</p>
+                              {commentParsedAtts.length > 0 && (
+                                <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginTop: '8px' }}>
+                                  {commentParsedAtts.map((url: any, aIdx: number) => {
+                                    const name = typeof url === 'string' ? url.substring(url.lastIndexOf('/') + 1) : (url.name || 'File');
+                                    const href = typeof url === 'string' ? url : (url.url || '#');
+                                    return (
+                                      <a key={aIdx} href={href} target="_blank" rel="noreferrer" style={{ display: 'flex', alignItems: 'center', gap: '4px', background: 'var(--color-surface)', border: '1px solid var(--color-border-light)', padding: '2px 6px', borderRadius: '4px', textDecoration: 'none', color: 'var(--color-primary)', fontSize: '0.65rem' }}>
+                                        <FileText size={10} />
+                                        <span>{name}</span>
+                                      </a>
+                                    );
+                                  })}
+                                </div>
+                              )}
+                              
+                              {!isReply && (
+                                <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
+                                  <button
+                                    onClick={() => setReplyTo({ id: comment.id, userName: commUser?.full_name || comment.user_name || 'Đồng nghiệp' })}
+                                    style={{ background: 'transparent', border: 'none', color: 'var(--color-primary)', fontSize: '0.7rem', padding: 0, cursor: 'pointer', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '2px' }}
+                                    className="hover-lift"
+                                  >
+                                    Phản hồi
+                                  </button>
+                                </div>
+                              )}
                             </div>
-                            <p style={{ fontSize: '0.825rem', color: 'var(--color-text-light)', margin: '4px 0 0', lineHeight: '1.45', whiteSpace: 'pre-wrap' }}>{renderCommentContent(comment.content)}</p>
-                            {commentParsedAtts.length > 0 && (
-                              <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginTop: '8px' }}>
-                                {commentParsedAtts.map((url: any, aIdx: number) => {
-                                  const name = typeof url === 'string' ? url.substring(url.lastIndexOf('/') + 1) : (url.name || 'File');
-                                  const href = typeof url === 'string' ? url : (url.url || '#');
-                                  return (
-                                    <a key={aIdx} href={href} target="_blank" rel="noreferrer" style={{ display: 'flex', alignItems: 'center', gap: '4px', background: 'var(--color-surface)', border: '1px solid var(--color-border-light)', padding: '2px 6px', borderRadius: '4px', textDecoration: 'none', color: 'var(--color-primary)', fontSize: '0.65rem' }}>
-                                      <FileText size={10} />
-                                      <span>{name}</span>
-                                    </a>
-                                  );
-                                })}
+                          </div>
+                        );
+                      };
+
+                      return rootComments.map((rootComment: any) => {
+                        const replies = getReplies(rootComment.id);
+                        return (
+                          <div key={rootComment.id} style={{ display: 'flex', flexDirection: 'column' }}>
+                            {renderSingleComment(rootComment, false)}
+                            {replies.length > 0 && (
+                              <div style={{ marginLeft: '32px', display: 'flex', flexDirection: 'column', gap: '4px', borderLeft: '1px solid var(--color-border-light)', paddingLeft: '8px', marginTop: '4px' }}>
+                                {replies.map((reply: any) => renderSingleComment(reply, true))}
                               </div>
                             )}
                           </div>
-                        </div>
-                      );
-                    })
+                        );
+                      });
+                    })()
                   )}
                 </div>
               </div>

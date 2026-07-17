@@ -58,6 +58,7 @@ export const TicketDrawer: React.FC<Props> = ({ isOpen, onClose, ticket, onUpdat
   const [formData, setFormData] = useState<any>({});
   const [comments, setComments] = useState<any[]>([]);
   const [newComment, setNewComment] = useState('');
+  const [replyTo, setReplyTo] = useState<{ id: number; userName: string } | null>(null);
   const [isInternal, setIsInternal] = useState(false);
 
   useEffect(() => {
@@ -144,9 +145,13 @@ export const TicketDrawer: React.FC<Props> = ({ isOpen, onClose, ticket, onUpdat
     if (!newComment.trim() || isSubmitting) return;
     setIsSubmitting(true);
     try {
-      const r = await api.post(`/tickets/${ticket.id}/comments`, { body: newComment });
+      const r = await api.post(`/tickets/${ticket.id}/comments`, { 
+        body: newComment,
+        parent_id: replyTo ? replyTo.id : null
+      });
       setComments(r.data.data || []);
       setNewComment('');
+      setReplyTo(null);
       addToast('Đã thêm ghi chú', 'success');
     } catch (err: any) {
       addToast('Lỗi khi lưu ghi chú', 'error');
@@ -243,49 +248,100 @@ export const TicketDrawer: React.FC<Props> = ({ isOpen, onClose, ticket, onUpdat
                       Chưa có ghi chú nào. Hãy bắt đầu thảo luận!
                     </div>
                   ) : (
-                    comments.map((msg, i) => {
-                      const isSelf = currentUser && String(msg.user_id) === String(currentUser.id);
-                      return (
-                        <div 
-                          key={msg.id || i} 
-                          id={`ticket-comment-${msg.id}`}
-                          style={{ 
-                            display: 'flex', 
-                            gap: '1rem', 
-                            flexDirection: isSelf ? 'row-reverse' : 'row', 
-                            alignSelf: isSelf ? 'flex-end' : 'flex-start',
-                            width: '100%'
-                          }}
-                        >
-                          <Avatar name={msg.user_name || msg.user} src={msg.avatar_url} size={32} />
-                          <div style={{ maxWidth: '85%', display: 'flex', flexDirection: 'column', alignItems: isSelf ? 'flex-end' : 'flex-start' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px', flexDirection: isSelf ? 'row-reverse' : 'row' }}>
-                              <span style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>{msg.user_name || msg.user}</span>
-                              <span style={{ fontSize: '0.75rem', color: 'var(--color-text-light)' }}>{(msg.created_at || msg.time) ? new Date(msg.created_at || msg.time).toLocaleString('vi-VN') : ''}</span>
-                            </div>
-                            <div style={{ 
-                              padding: '0.875rem 1.25rem', 
-                              borderRadius: '16px', 
-                              borderTopLeftRadius: isSelf ? '16px' : '4px',
-                              borderTopRightRadius: isSelf ? '4px' : '16px',
-                              background: isSelf ? 'rgba(201, 24, 43, 0.08)' : (msg.is_internal ? 'var(--color-warning-light)' : 'var(--color-surface)'),
-                              border: isSelf ? '1px solid rgba(201, 24, 43, 0.15)' : '1px solid var(--color-border)',
-                              color: 'var(--color-text)',
-                              fontSize: '0.9375rem', 
-                              lineHeight: 1.5,
-                              wordBreak: 'break-word'
-                            }}>
-                              {msg.body || msg.text}
+                    (() => {
+                      const rootComments = comments.filter((c: any) => !c.parent_id);
+                      const getReplies = (parentId: number) => {
+                        return comments
+                          .filter((c: any) => Number(c.parent_id) === Number(parentId))
+                          .sort((a: any, b: any) => new Date(a.created_at || a.time).getTime() - new Date(b.created_at || b.time).getTime());
+                      };
+
+                      const renderSingleComment = (msg: any, isReply: boolean = false) => {
+                        const isSelf = currentUser && String(msg.user_id) === String(currentUser.id);
+                        return (
+                          <div 
+                            key={msg.id} 
+                            id={`ticket-comment-${msg.id}`}
+                            style={{ 
+                              display: 'flex', 
+                              gap: '1rem', 
+                              flexDirection: isSelf ? 'row-reverse' : 'row', 
+                              alignSelf: isSelf ? 'flex-end' : 'flex-start',
+                              width: '100%',
+                              marginTop: isReply ? '4px' : '0'
+                            }}
+                          >
+                            <Avatar name={msg.user_name || msg.user} src={msg.avatar_url} size={isReply ? 24 : 32} />
+                            <div style={{ maxWidth: '85%', display: 'flex', flexDirection: 'column', alignItems: isSelf ? 'flex-end' : 'flex-start' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px', flexDirection: isSelf ? 'row-reverse' : 'row' }}>
+                                <span style={{ fontSize: isReply ? '0.75rem' : '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>{msg.user_name || msg.user}</span>
+                                <span style={{ fontSize: '0.75rem', color: 'var(--color-text-light)' }}>{(msg.created_at || msg.time) ? new Date(msg.created_at || msg.time).toLocaleString('vi-VN') : ''}</span>
+                              </div>
+                              <div style={{ 
+                                padding: isReply ? '0.625rem 1rem' : '0.875rem 1.25rem', 
+                                borderRadius: '16px', 
+                                borderTopLeftRadius: isSelf ? '16px' : '4px',
+                                borderTopRightRadius: isSelf ? '4px' : '16px',
+                                background: isSelf ? 'rgba(201, 24, 43, 0.08)' : (msg.is_internal ? 'var(--color-warning-light)' : 'var(--color-surface)'),
+                                border: isSelf ? '1px solid rgba(201, 24, 43, 0.15)' : '1px solid var(--color-border)',
+                                color: 'var(--color-text)',
+                                fontSize: isReply ? '0.85rem' : '0.9375rem', 
+                                lineHeight: 1.5,
+                                wordBreak: 'break-word'
+                              }}>
+                                {msg.body || msg.text}
+                              </div>
+                              {!isReply && (
+                                <button
+                                  onClick={() => setReplyTo({ id: msg.id, userName: msg.user_name || msg.user || 'Đồng nghiệp' })}
+                                  style={{ background: 'transparent', border: 'none', color: 'var(--color-primary)', fontSize: '0.7rem', padding: '4px 0 0 0', cursor: 'pointer', fontWeight: 700 }}
+                                  className="hover-lift"
+                                >
+                                  Phản hồi
+                                </button>
+                              )}
                             </div>
                           </div>
-                        </div>
-                      );
-                    })
+                        );
+                      };
+
+                      return rootComments.map((rootComment: any) => {
+                        const replies = getReplies(rootComment.id);
+                        const isSelfRoot = currentUser && String(rootComment.user_id) === String(currentUser.id);
+                        return (
+                          <div key={rootComment.id} style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                            {renderSingleComment(rootComment, false)}
+                            {replies.length > 0 && (
+                              <div style={{ 
+                                marginLeft: isSelfRoot ? '0' : '2.5rem', 
+                                marginRight: isSelfRoot ? '2.5rem' : '0', 
+                                display: 'flex', 
+                                flexDirection: 'column', 
+                                gap: '8px', 
+                                borderLeft: isSelfRoot ? 'none' : '2px solid var(--color-border-light)', 
+                                borderRight: isSelfRoot ? '2px solid var(--color-border-light)' : 'none', 
+                                paddingLeft: isSelfRoot ? '0' : '12px', 
+                                paddingRight: isSelfRoot ? '12px' : '0', 
+                                marginTop: '4px' 
+                              }}>
+                                {replies.map((reply: any) => renderSingleComment(reply, true))}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      });
+                    })()
                   )}
                 </div>
 
                 {/* Reply Box */}
                 <div style={{ padding: '1.5rem', background: 'var(--color-surface)', borderTop: '1px solid var(--color-border)' }}>
+                  {replyTo && (
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(201, 24, 43, 0.08)', padding: '6px 12px', borderRadius: '8px', fontSize: '0.72rem', color: '#c9182b', fontWeight: 700, marginBottom: '8px' }}>
+                      <span>Đang trả lời {replyTo.userName}</span>
+                      <button onClick={() => setReplyTo(null)} style={{ border: 'none', background: 'transparent', color: '#c9182b', cursor: 'pointer', fontWeight: 800, fontSize: '0.9rem', padding: '0 4px' }}>×</button>
+                    </div>
+                  )}
                   <div style={{ position: 'relative' }}>
                     <textarea 
                       className="form-input" 

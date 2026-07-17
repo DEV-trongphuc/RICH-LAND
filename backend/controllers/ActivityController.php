@@ -6,6 +6,9 @@ class ActivityController {
         try {
             $this->db->exec("ALTER TABLE activities ADD COLUMN contact_id INT NULL AFTER related_id");
         } catch (Exception $e) {}
+        try {
+            $this->db->exec("ALTER TABLE activity_comments ADD COLUMN parent_id INT NULL DEFAULT NULL");
+        } catch (Exception $e) {}
     }
 
     private function hasAccess(array $auth, array $activity): bool {
@@ -898,19 +901,41 @@ class ActivityController {
 
         $attachments = !empty($b['attachments']) && is_array($b['attachments']) ? json_encode($b['attachments']) : null;
 
+        $parentId = !empty($b['parent_id']) ? (int)$b['parent_id'] : null;
+
         $stmt = $this->db->prepare("
-            INSERT INTO activity_comments (tenant_id, activity_id, user_id, content, attachments)
-            VALUES (?, ?, ?, ?, ?)
+            INSERT INTO activity_comments (tenant_id, activity_id, user_id, content, attachments, parent_id)
+            VALUES (?, ?, ?, ?, ?, ?)
         ");
         $stmt->execute([
             $auth['tenant_id'],
             $id,
             $auth['user_id'],
             $b['content'] ?? null,
-            $attachments
+            $attachments,
+            $parentId
         ]);
 
         $commentId = $this->db->lastInsertId();
+
+        if ($parentId > 0) {
+            $stmtParent = $this->db->prepare("SELECT user_id FROM activity_comments WHERE id = ?");
+            $stmtParent->execute([$parentId]);
+            $parentOwnerId = (int)$stmtParent->fetchColumn();
+            
+            if ($parentOwnerId > 0 && $parentOwnerId !== (int)$auth['user_id']) {
+                $title = "Bạn có phản hồi mới trong thảo luận";
+                $body = ($auth['full_name'] ?? 'Đồng nghiệp') . " đã trả lời bình luận của bạn trong hoạt động: " . ($activity['title'] ?? 'Công việc');
+                $type = "info";
+                $link = "/contacts?id=" . ($activity['contact_id'] ?? $activity['related_id'] ?? '') . "&highlight_comment_id=" . $commentId;
+
+                $insertNotif = $this->db->prepare("
+                    INSERT INTO notifications (user_id, tenant_id, title, body, type, link)
+                    VALUES (?, ?, ?, ?, ?, ?)
+                ");
+                $insertNotif->execute([$parentOwnerId, $auth['tenant_id'], $title, $body, $type, $link]);
+            }
+        }
 
         // Parse mentions in comment content
         $content = $b['content'] ?? '';

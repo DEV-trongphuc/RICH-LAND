@@ -418,6 +418,7 @@ export default function ProjectsPage() {
   // Comments state for Project or Campaign Detail Modals
   const [detailComments, setDetailComments] = useState<any[]>([]);
   const [loadingComments, setLoadingComments] = useState(false);
+  const [replyTo, setReplyTo] = useState<{ id: number; userName: string } | null>(null);
   const [newCommentText, setNewCommentText] = useState('');
   const [isSubmittingComment, setIsSubmittingComment] = useState(false);
 
@@ -450,11 +451,15 @@ export default function ProjectsPage() {
     try {
       const res = await fetchAPI(`${entityType}s/${entityId}/comments`, {
         method: 'POST',
-        body: JSON.stringify({ body: newCommentText.trim() }),
+        body: JSON.stringify({ 
+          body: newCommentText.trim(),
+          parent_id: replyTo ? replyTo.id : null
+        }),
         headers: { 'Content-Type': 'application/json' }
       });
       if (res.success || res.id) {
         setNewCommentText('');
+        setReplyTo(null);
         loadDetailComments(entityType, entityId);
       }
     } catch (e) {
@@ -462,6 +467,110 @@ export default function ProjectsPage() {
     } finally {
       setIsSubmittingComment(false);
     }
+  };
+
+  const renderEntityComments = (entityType: 'project' | 'campaign', entityId: number) => {
+    const rootComments = detailComments.filter((c: any) => !c.parent_id);
+    const getReplies = (parentId: number) => {
+      return detailComments
+        .filter((c: any) => Number(c.parent_id) === Number(parentId))
+        .sort((a: any, b: any) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+    };
+
+    const renderSingleCommentNode = (comment: any, isReply: boolean = false) => {
+      return (
+        <div key={comment.id} id={`entity-comment-${comment.id}`} style={{ display: 'flex', gap: '8px', fontSize: '0.8125rem', paddingLeft: isReply ? '12px' : '0', borderLeft: isReply ? '2px solid var(--color-border-light)' : undefined, marginTop: isReply ? '6px' : '0' }}>
+          <Avatar name={comment.user_name || 'User'} src={comment.avatar_url || undefined} size={isReply ? 20 : 24} />
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', background: isReply ? 'transparent' : 'var(--color-bg-light)', border: isReply ? 'none' : '1px solid var(--color-border-light)', padding: isReply ? '2px 0' : '8px 12px', borderRadius: isReply ? '0' : '12px', flex: 1 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontWeight: 800, color: 'var(--color-text)' }}>{comment.user_name || 'Thành viên'}</span>
+              <span style={{ fontSize: '0.68rem', color: 'var(--color-text-muted)' }}>{comment.created_at ? new Date(comment.created_at).toLocaleString('vi-VN') : ''}</span>
+            </div>
+            <p style={{ margin: 0, color: 'var(--color-text-light)', whiteSpace: 'pre-wrap', lineHeight: '1.4' }}>
+              {comment.body}
+            </p>
+            {!isReply && (
+              <button
+                onClick={() => setReplyTo({ id: comment.id, userName: comment.user_name || 'Thành viên' })}
+                style={{ background: 'transparent', border: 'none', color: 'var(--color-primary)', fontSize: '0.7rem', padding: '4px 0 0 0', cursor: 'pointer', fontWeight: 700, textAlign: 'left', width: 'fit-content' }}
+                className="hover-lift"
+              >
+                Phản hồi
+              </button>
+            )}
+          </div>
+        </div>
+      );
+    };
+
+    return (
+      <div style={{
+        background: '#ffffff',
+        border: '1px solid var(--color-border-light)',
+        borderRadius: '16px',
+        padding: '1.5rem',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '1rem',
+        boxShadow: 'var(--shadow-sm)'
+      }}>
+        <span style={{ fontSize: '0.825rem', color: 'var(--color-text-muted)', fontWeight: 750, display: 'block', marginBottom: '4px' }}>
+          Thảo luận & Trao đổi ({detailComments.length})
+        </span>
+        
+        <div style={{ background: 'var(--color-bg-light)', border: '1px solid var(--color-border-light)', padding: '12px', borderRadius: '12px', display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '8px' }}>
+          {replyTo && (
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(163, 20, 34, 0.08)', padding: '6px 12px', borderRadius: '8px', fontSize: '0.72rem', color: '#a31422', fontWeight: 700, marginBottom: '6px' }}>
+              <span>Đang trả lời {replyTo.userName}</span>
+              <button onClick={() => setReplyTo(null)} style={{ border: 'none', background: 'transparent', color: '#a31422', cursor: 'pointer', fontWeight: 800, fontSize: '0.9rem', padding: '0 4px' }}>×</button>
+            </div>
+          )}
+          <MentionInput
+            value={newCommentText}
+            onChange={e => setNewCommentText(e.target.value)}
+            placeholder="Viết bình luận... (Gõ @ để nhắc tên đồng nghiệp)"
+            style={{ minHeight: '55px', fontSize: '0.85rem' }}
+          />
+          <div style={{ display: 'flex', justifyContent: 'flex-end', borderTop: '1px solid var(--color-border-light)', paddingTop: '8px', marginTop: '2px' }}>
+            <button
+              onClick={() => handlePostDetailComment(entityType, entityId)}
+              disabled={isSubmittingComment}
+              className="btn primary sm"
+              style={{ padding: '5px 16px', fontSize: '0.75rem', borderRadius: '20px', display: 'flex', alignItems: 'center', gap: '4px' }}
+            >
+              <MessageSquare size={12} />
+              <span>Gửi bình luận</span>
+            </button>
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', maxHeight: '300px', overflowY: 'auto' }} className="custom-scrollbar">
+          {loadingComments ? (
+            <div style={{ display: 'flex', justifyContent: 'center', padding: '1rem' }}>
+              <RefreshCw className="spin" size={16} color="var(--color-text-muted)" />
+            </div>
+          ) : detailComments.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '1rem', color: 'var(--color-text-muted)', fontSize: '0.78rem', fontStyle: 'italic' }}>
+              Chưa có thảo luận nào.
+            </div>
+          ) : (
+            rootComments.map((rootComment: any) => {
+              const replies = getReplies(rootComment.id);
+              return (
+                <div key={rootComment.id} style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  {renderSingleCommentNode(rootComment, false)}
+                  {replies.length > 0 && (
+                    <div style={{ marginLeft: '1.5rem', display: 'flex', flexDirection: 'column', gap: '6px', borderLeft: '1px solid var(--color-border-light)', paddingLeft: '8px', marginTop: '4px' }}>
+                      {replies.map((reply: any) => renderSingleCommentNode(reply, true))}
+                    </div>
+                  )}
+                </div>
+              );
+            })
+          )}
+        </div>
+      </div>
+    );
   };
 
   const loadLinkedTasks = async (entityType: 'project' | 'campaign', entityId: number) => {
@@ -1138,67 +1247,7 @@ export default function ProjectsPage() {
                 </div>
 
                 {/* Discussions/Comments */}
-                <div style={{
-                  background: '#ffffff',
-                  border: '1px solid var(--color-border-light)',
-                  borderRadius: '16px',
-                  padding: '1.5rem',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '1rem',
-                  boxShadow: 'var(--shadow-sm)'
-                }}>
-                  <span style={{ fontSize: '0.825rem', color: 'var(--color-text-muted)', fontWeight: 750, display: 'block', marginBottom: '4px' }}>
-                    Thảo luận & Trao đổi ({detailComments.length})
-                  </span>
-                  
-                  <div style={{ background: 'var(--color-bg-light)', border: '1px solid var(--color-border-light)', padding: '12px', borderRadius: '12px', display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '8px' }}>
-                    <MentionInput
-                      value={newCommentText}
-                      onChange={e => setNewCommentText(e.target.value)}
-                      placeholder="Viết bình luận... (Gõ @ để nhắc tên đồng nghiệp)"
-                      style={{ minHeight: '55px', fontSize: '0.85rem' }}
-                    />
-                    <div style={{ display: 'flex', justifyContent: 'flex-end', borderTop: '1px solid var(--color-border-light)', paddingTop: '8px', marginTop: '2px' }}>
-                      <button
-                        onClick={() => handlePostDetailComment('project', editingProject!.id!)}
-                        disabled={isSubmittingComment}
-                        className="btn primary sm"
-                        style={{ padding: '5px 16px', fontSize: '0.75rem', borderRadius: '20px', display: 'flex', alignItems: 'center', gap: '4px' }}
-                      >
-                        <MessageSquare size={12} />
-                        <span>Gửi bình luận</span>
-                      </button>
-                    </div>
-                  </div>
-
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', maxHeight: '300px', overflowY: 'auto' }} className="custom-scrollbar">
-                    {loadingComments ? (
-                      <div style={{ display: 'flex', justifyContent: 'center', padding: '1rem' }}>
-                        <RefreshCw className="spin" size={16} color="var(--color-text-muted)" />
-                      </div>
-                    ) : detailComments.length === 0 ? (
-                      <div style={{ textAlign: 'center', padding: '1rem', color: 'var(--color-text-muted)', fontSize: '0.78rem', fontStyle: 'italic' }}>
-                        Chưa có thảo luận nào.
-                      </div>
-                    ) : (
-                      detailComments.map((comment: any) => (
-                        <div key={comment.id} id={`project-comment-${comment.id}`} style={{ display: 'flex', gap: '8px', fontSize: '0.8125rem' }}>
-                          <Avatar name={comment.user_name || 'User'} src={comment.avatar_url || undefined} size={24} />
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', background: 'var(--color-bg-light)', border: '1px solid var(--color-border-light)', padding: '8px 12px', borderRadius: '12px', flex: 1 }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                              <span style={{ fontWeight: 800, color: 'var(--color-text)' }}>{comment.user_name || 'Thành viên'}</span>
-                              <span style={{ fontSize: '0.65rem', color: 'var(--color-text-light)', fontWeight: 600 }}>
-                                {new Date(comment.created_at).toLocaleString('vi-VN')}
-                              </span>
-                            </div>
-                            <p style={{ margin: 0, color: 'var(--color-text)', lineHeight: 1.4 }}>{renderFormattedText(comment.body)}</p>
-                          </div>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                </div>
+                {editingProject && renderEntityComments('project', editingProject.id)}
 
               </div>
 
@@ -1733,67 +1782,7 @@ export default function ProjectsPage() {
                 </div>
 
                 {/* Discussions/Comments */}
-                <div style={{
-                  background: '#ffffff',
-                  border: '1px solid var(--color-border-light)',
-                  borderRadius: '16px',
-                  padding: '1.5rem',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '1rem',
-                  boxShadow: 'var(--shadow-sm)'
-                }}>
-                  <span style={{ fontSize: '0.825rem', color: 'var(--color-text-muted)', fontWeight: 750, display: 'block', marginBottom: '4px' }}>
-                    Thảo luận & Trao đổi ({detailComments.length})
-                  </span>
-                  
-                  <div style={{ background: 'var(--color-bg-light)', border: '1px solid var(--color-border-light)', padding: '12px', borderRadius: '12px', display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '8px' }}>
-                    <MentionInput
-                      value={newCommentText}
-                      onChange={e => setNewCommentText(e.target.value)}
-                      placeholder="Viết bình luận... (Gõ @ để nhắc tên đồng nghiệp)"
-                      style={{ minHeight: '55px', fontSize: '0.85rem' }}
-                    />
-                    <div style={{ display: 'flex', justifyContent: 'flex-end', borderTop: '1px solid var(--color-border-light)', paddingTop: '8px', marginTop: '2px' }}>
-                      <button
-                        onClick={() => handlePostDetailComment('campaign', editingCampaign!.id!)}
-                        disabled={isSubmittingComment}
-                        className="btn primary sm"
-                        style={{ padding: '5px 16px', fontSize: '0.75rem', borderRadius: '20px', display: 'flex', alignItems: 'center', gap: '4px' }}
-                      >
-                        <MessageSquare size={12} />
-                        <span>Gửi bình luận</span>
-                      </button>
-                    </div>
-                  </div>
-
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', maxHeight: '300px', overflowY: 'auto' }} className="custom-scrollbar">
-                    {loadingComments ? (
-                      <div style={{ display: 'flex', justifyContent: 'center', padding: '1rem' }}>
-                        <RefreshCw className="spin" size={16} color="var(--color-text-muted)" />
-                      </div>
-                    ) : detailComments.length === 0 ? (
-                      <div style={{ textAlign: 'center', padding: '1rem', color: 'var(--color-text-muted)', fontSize: '0.78rem', fontStyle: 'italic' }}>
-                        Chưa có thảo luận nào.
-                      </div>
-                    ) : (
-                      detailComments.map((comment: any) => (
-                        <div key={comment.id} id={`project-comment-${comment.id}`} style={{ display: 'flex', gap: '8px', fontSize: '0.8125rem' }}>
-                          <Avatar name={comment.user_name || 'User'} src={comment.avatar_url || undefined} size={24} />
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', background: 'var(--color-bg-light)', border: '1px solid var(--color-border-light)', padding: '8px 12px', borderRadius: '12px', flex: 1 }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                              <span style={{ fontWeight: 800, color: 'var(--color-text)' }}>{comment.user_name || 'Thành viên'}</span>
-                              <span style={{ fontSize: '0.65rem', color: 'var(--color-text-light)', fontWeight: 600 }}>
-                                {new Date(comment.created_at).toLocaleString('vi-VN')}
-                              </span>
-                            </div>
-                            <p style={{ margin: 0, color: 'var(--color-text)', lineHeight: 1.4 }}>{renderFormattedText(comment.body)}</p>
-                          </div>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                </div>
+                {editingCampaign && renderEntityComments('campaign', editingCampaign.id)}
 
               </div>
 
@@ -3157,67 +3146,7 @@ export default function ProjectsPage() {
               </div>
 
               {/* Discussions/Comments */}
-              <div style={{
-                background: '#ffffff',
-                border: '1px solid var(--color-border-light)',
-                borderRadius: '16px',
-                padding: '1.5rem',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '1rem',
-                boxShadow: 'var(--shadow-sm)'
-              }}>
-                <span style={{ fontSize: '0.825rem', color: 'var(--color-text-muted)', fontWeight: 750, display: 'block', marginBottom: '4px' }}>
-                  Thảo luận & Trao đổi ({detailComments.length})
-                </span>
-                
-                <div style={{ background: 'var(--color-bg-light)', border: '1px solid var(--color-border-light)', padding: '12px', borderRadius: '12px', display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '8px' }}>
-                  <MentionInput
-                    value={newCommentText}
-                    onChange={e => setNewCommentText(e.target.value)}
-                    placeholder="Viết bình luận... (Gõ @ để nhắc tên đồng nghiệp)"
-                    style={{ minHeight: '55px', fontSize: '0.85rem' }}
-                  />
-                  <div style={{ display: 'flex', justifyContent: 'flex-end', borderTop: '1px solid var(--color-border-light)', paddingTop: '8px', marginTop: '2px' }}>
-                    <button
-                      onClick={() => handlePostDetailComment('project', editingProject!.id!)}
-                      disabled={isSubmittingComment}
-                      className="btn primary sm"
-                      style={{ padding: '5px 16px', fontSize: '0.75rem', borderRadius: '20px', display: 'flex', alignItems: 'center', gap: '4px' }}
-                    >
-                      <MessageSquare size={12} />
-                      <span>Gửi bình luận</span>
-                    </button>
-                  </div>
-                </div>
-
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', maxHeight: '300px', overflowY: 'auto' }} className="custom-scrollbar">
-                  {loadingComments ? (
-                    <div style={{ display: 'flex', justifyContent: 'center', padding: '1rem' }}>
-                      <RefreshCw className="spin" size={16} color="var(--color-text-muted)" />
-                    </div>
-                  ) : detailComments.length === 0 ? (
-                    <div style={{ textAlign: 'center', padding: '1rem', color: 'var(--color-text-muted)', fontSize: '0.78rem', fontStyle: 'italic' }}>
-                      Chưa có thảo luận nào.
-                    </div>
-                  ) : (
-                    detailComments.map((comment: any) => (
-                      <div key={comment.id} id={`project-comment-${comment.id}`} style={{ display: 'flex', gap: '8px', fontSize: '0.8125rem' }}>
-                        <Avatar name={comment.user_name || 'User'} src={comment.avatar_url || undefined} size={24} />
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', background: 'var(--color-bg-light)', border: '1px solid var(--color-border-light)', padding: '8px 12px', borderRadius: '12px', flex: 1 }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <span style={{ fontWeight: 800, color: 'var(--color-text)' }}>{comment.user_name || 'Thành viên'}</span>
-                            <span style={{ fontSize: '0.65rem', color: 'var(--color-text-light)', fontWeight: 600 }}>
-                              {new Date(comment.created_at).toLocaleString('vi-VN')}
-                            </span>
-                          </div>
-                          <p style={{ margin: 0, color: 'var(--color-text)', lineHeight: 1.4 }}>{renderFormattedText(comment.body)}</p>
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </div>
+              {editingProject && renderEntityComments('project', editingProject.id)}
 
             </div>
 
@@ -4521,67 +4450,7 @@ export default function ProjectsPage() {
               </div>
 
               {/* Thảo luận & Trao đổi */}
-              <div style={{
-                background: '#ffffff',
-                border: '1px solid var(--color-border-light)',
-                borderRadius: '16px',
-                padding: '1.5rem',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '1rem',
-                boxShadow: 'var(--shadow-sm)'
-              }}>
-                <span style={{ fontSize: '0.825rem', color: 'var(--color-text-muted)', fontWeight: 750, display: 'block', marginBottom: '4px' }}>
-                  Thảo luận & Trao đổi ({detailComments.length})
-                </span>
-                
-                <div style={{ background: 'var(--color-bg-light)', border: '1px solid var(--color-border-light)', padding: '12px', borderRadius: '12px', display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '8px' }}>
-                  <MentionInput
-                    value={newCommentText}
-                    onChange={e => setNewCommentText(e.target.value)}
-                    placeholder="Viết bình luận... (Gõ @ để nhắc tên đồng nghiệp)"
-                    style={{ minHeight: '55px', fontSize: '0.85rem' }}
-                  />
-                  <div style={{ display: 'flex', justifyContent: 'flex-end', borderTop: '1px solid var(--color-border-light)', paddingTop: '8px', marginTop: '2px' }}>
-                    <button
-                      onClick={() => handlePostDetailComment('campaign', editingCampaign!.id!)}
-                      disabled={isSubmittingComment}
-                      className="btn primary sm"
-                      style={{ padding: '5px 16px', fontSize: '0.75rem', borderRadius: '20px', display: 'flex', alignItems: 'center', gap: '4px' }}
-                    >
-                      <MessageSquare size={12} />
-                      <span>Gửi bình luận</span>
-                    </button>
-                  </div>
-                </div>
-
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', maxHeight: '300px', overflowY: 'auto' }} className="custom-scrollbar">
-                  {loadingComments ? (
-                    <div style={{ display: 'flex', justifyContent: 'center', padding: '1rem' }}>
-                      <RefreshCw className="spin" size={16} color="var(--color-text-muted)" />
-                    </div>
-                  ) : detailComments.length === 0 ? (
-                    <div style={{ textAlign: 'center', padding: '1rem', color: 'var(--color-text-muted)', fontSize: '0.78rem', fontStyle: 'italic' }}>
-                      Chưa có thảo luận nào.
-                    </div>
-                  ) : (
-                    detailComments.map((comment: any) => (
-                      <div key={comment.id} id={`project-comment-${comment.id}`} style={{ display: 'flex', gap: '8px', fontSize: '0.8125rem' }}>
-                        <Avatar name={comment.user_name || 'User'} src={comment.avatar_url || undefined} size={24} />
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', background: 'var(--color-bg-light)', border: '1px solid var(--color-border-light)', padding: '8px 12px', borderRadius: '12px', flex: 1 }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <span style={{ fontWeight: 800, color: 'var(--color-text)' }}>{comment.user_name || 'Thành viên'}</span>
-                            <span style={{ fontSize: '0.65rem', color: 'var(--color-text-light)', fontWeight: 600 }}>
-                              {new Date(comment.created_at).toLocaleString('vi-VN')}
-                            </span>
-                          </div>
-                          <p style={{ margin: 0, color: 'var(--color-text)', lineHeight: 1.4 }}>{renderFormattedText(comment.body)}</p>
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </div>
+              {editingCampaign && renderEntityComments('campaign', editingCampaign.id)}
 
             </div>
 

@@ -273,6 +273,7 @@ const ActivityComments: React.FC<{ activityId: number, initialCount?: number, us
   const { addToast, showConfirm } = useUIStore();
   const { user: currentUser } = useAuth();
   const [comments, setComments] = useState<any[]>([]);
+  const [replyTo, setReplyTo] = useState<{ id: number; userName: string } | null>(null);
 
   const canDeleteComment = (c: any) => {
     if (!currentUser) return false;
@@ -281,6 +282,16 @@ const ActivityComments: React.FC<{ activityId: number, initialCount?: number, us
       return true;
     }
     return String(c.user_id) === String(currentUser.id);
+  };
+
+  const fetchComments = async () => {
+    try {
+      const res = await api.get(`/activities/${activityId}/comments`);
+      setComments(res.data.data || []);
+      setHasFetched(true);
+    } catch (e: any) {
+      console.error(e);
+    }
   };
 
   const handleDeleteComment = (commentId: number) => {
@@ -293,7 +304,7 @@ const ActivityComments: React.FC<{ activityId: number, initialCount?: number, us
       onConfirm: async () => {
         try {
           await api.delete(`/activities/comments/${commentId}`);
-          setComments(comments.filter((c: any) => c.id !== commentId));
+          await fetchComments();
           addToast('Đã xóa bình luận thành công', 'success');
         } catch (e: any) {
           addToast(e.response?.data?.message || 'Không thể xóa bình luận', 'error');
@@ -316,21 +327,11 @@ const ActivityComments: React.FC<{ activityId: number, initialCount?: number, us
     if (String(activityId) === String(highlightActivityId)) {
       setExpanded(true);
       if (!hasFetched) {
-        api.get(`/activities/${activityId}/comments`)
-          .then(res => {
-            setComments(res.data.data || []);
-            setHasFetched(true);
-          })
-          .catch(e => console.error(e));
+        fetchComments();
       }
     } else {
       if (initialCount > 0 && !hasFetched) {
-        api.get(`/activities/${activityId}/comments`)
-          .then(res => {
-            setComments(res.data.data || []);
-            setHasFetched(true);
-          })
-          .catch(e => console.error(e));
+        fetchComments();
       } else if (initialCount === 0 && !hasFetched) {
         setHasFetched(true);
       }
@@ -371,13 +372,7 @@ const ActivityComments: React.FC<{ activityId: number, initialCount?: number, us
 
   const toggleExpand = async () => {
     if (!expanded && !hasFetched && initialCount > 0) {
-      try {
-        const res = await api.get(`/activities/${activityId}/comments`);
-        setComments(res.data.data || []);
-        setHasFetched(true);
-      } catch (e: any) {
-        addToast(e.response?.data?.message || 'Không thể tải bình luận', 'error');
-      }
+      await fetchComments();
     }
     setExpanded(!expanded);
   };
@@ -420,26 +415,16 @@ const ActivityComments: React.FC<{ activityId: number, initialCount?: number, us
         uploadedUrl = res.data.data?.url ?? '';
       }
 
-      const payload = { content: text, attachments: uploadedUrl ? [uploadedUrl] : [] };
-      const res = await api.post(`/activities/${activityId}/comments`, payload);
-      
-      // Lấy tên người dùng hiện tại từ storage (nếu có)
-      let userName = 'Bạn';
-      try {
-        const authData = localStorage.getItem('minth-auth');
-        if (authData) userName = JSON.parse(authData).state?.user?.full_name || 'Bạn';
-      } catch (e: any) {
-        console.error(e);
-      }
-
-      setComments([{
-        id: res.data?.data?.id || Date.now(),
-        user_name: userName,
-        content: text,
+      const payload = { 
+        content: text, 
         attachments: uploadedUrl ? [uploadedUrl] : [],
-        created_at: new Date().toISOString()
-      }, ...comments]);
+        parent_id: replyTo ? replyTo.id : null
+      };
+      await api.post(`/activities/${activityId}/comments`, payload);
+      
+      await fetchComments();
       setText('');
+      setReplyTo(null);
       if (attachmentPreview) {
         URL.revokeObjectURL(attachmentPreview);
       }
@@ -466,55 +451,95 @@ const ActivityComments: React.FC<{ activityId: number, initialCount?: number, us
 
       {expanded && (
         <div style={{ marginTop: '1rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-          {comments.map((c: any) => (
-            <div key={c.id} id={`comment-${c.id}`} style={{ display: 'flex', gap: '0.75rem', transition: 'all 0.5s ease', borderRadius: '12px', padding: '4px' }}>
-              <Avatar name={c.user_name} src={c.avatar_url || undefined} size="sm" />
-              <div style={{ flex: 1, background: 'var(--color-surface)', padding: '0.75rem', borderRadius: '12px', border: '1px solid var(--color-border-light)', boxShadow: 'var(--shadow-sm)', overflow: 'hidden' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.25rem' }}>
-                  <strong style={{ fontSize: '0.8125rem', color: 'var(--color-text)' }}>{c.user_name}</strong>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>{c.created_at ? new Date(c.created_at).toLocaleString('vi-VN') : ''}</span>
-                    {canDeleteComment(c) && (
+          {(() => {
+            const rootComments = comments.filter((c: any) => !c.parent_id);
+            const getReplies = (parentId: number) => {
+              return comments
+                .filter((c: any) => Number(c.parent_id) === Number(parentId))
+                .sort((a: any, b: any) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+            };
+
+            const renderCommentNode = (c: any, isReply: boolean = false) => {
+              return (
+                <div key={c.id} id={`comment-${c.id}`} style={{ display: 'flex', gap: '0.75rem', transition: 'all 0.5s ease', borderRadius: '12px', padding: isReply ? '4px 0 4px 12px' : '4px', borderLeft: isReply ? '2px solid var(--color-border-light)' : undefined }}>
+                  <Avatar name={c.user_name} src={c.avatar_url || undefined} size={isReply ? 24 : "sm"} />
+                  <div style={{ flex: 1, background: isReply ? 'transparent' : 'var(--color-surface)', padding: isReply ? '4px 0' : '0.75rem', borderRadius: isReply ? '0' : '12px', border: isReply ? 'none' : '1px solid var(--color-border-light)', boxShadow: isReply ? 'none' : 'var(--shadow-sm)', overflow: 'hidden' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.25rem' }}>
+                      <strong style={{ fontSize: isReply ? '0.75rem' : '0.8125rem', color: 'var(--color-text)' }}>{c.user_name}</strong>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>{c.created_at ? new Date(c.created_at).toLocaleString('vi-VN') : ''}</span>
+                        {canDeleteComment(c) && (
+                          <button
+                            className="btn ghost sm"
+                            style={{ padding: '2px', height: '16px', width: '16px', color: 'var(--color-danger)', opacity: 0.5 }}
+                            onClick={(e) => { e.stopPropagation(); handleDeleteComment(c.id); }}
+                            onMouseEnter={e => e.currentTarget.style.opacity = '1'}
+                            onMouseLeave={e => e.currentTarget.style.opacity = '0.5'}
+                          >
+                            <Trash2 size={12} />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                    {c.content && <p style={{ fontSize: isReply ? '0.8125rem' : '0.875rem', color: 'var(--color-text-light)', lineHeight: 1.5, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{renderFormattedText(c.content, users)}</p>}
+                    {c.attachments && c.attachments.map((att: string, i: number) => {
+                      const isImg = /\.(jpg|jpeg|png|gif|webp)$/i.test(att);
+                      const fullUrl = resolveAttachmentUrl(att);
+                      return (
+                        <div key={i} style={{ marginTop: '0.5rem' }}>
+                          {isImg ? (
+                            <a href={fullUrl} target="_blank" rel="noreferrer">
+                              <img src={fullUrl} alt="attachment" style={{ maxWidth: '100%', maxHeight: '160px', borderRadius: '8px', border: '1px solid var(--color-border)' }} />
+                            </a>
+                          ) : (
+                            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '8px 12px', background: 'var(--color-bg-light)', borderRadius: '8px', border: '1px solid var(--color-border)', width: 'fit-content' }}>
+                              <FileText size={18} style={{ color: 'var(--color-primary)' }} />
+                              <a href={fullUrl} target="_blank" rel="noreferrer" style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--color-primary)', textDecoration: 'underline' }}>
+                                {att.split('/').pop()}
+                              </a>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                    {!isReply && (
                       <button
-                        className="btn ghost sm"
-                        style={{ padding: '2px', height: '16px', width: '16px', color: 'var(--color-danger)', opacity: 0.5 }}
-                        onClick={(e) => { e.stopPropagation(); handleDeleteComment(c.id); }}
-                        onMouseEnter={e => e.currentTarget.style.opacity = '1'}
-                        onMouseLeave={e => e.currentTarget.style.opacity = '0.5'}
+                        onClick={() => setReplyTo({ id: c.id, userName: c.user_name || 'Đồng nghiệp' })}
+                        style={{ background: 'transparent', border: 'none', color: 'var(--color-primary)', fontSize: '0.72rem', padding: '4px 0 0 0', cursor: 'pointer', fontWeight: 700, display: 'block' }}
+                        className="hover-lift"
                       >
-                        <Trash2 size={12} />
+                        Phản hồi
                       </button>
                     )}
                   </div>
                 </div>
-                {c.content && <p style={{ fontSize: '0.875rem', color: 'var(--color-text-light)', lineHeight: 1.5, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{renderFormattedText(c.content, users)}</p>}
-                {c.attachments && c.attachments.map((att: string, i: number) => {
-                  const isImg = /\.(jpg|jpeg|png|gif|webp)$/i.test(att);
-                  const fullUrl = resolveAttachmentUrl(att);
-                  return (
-                    <div key={i} style={{ marginTop: '0.5rem' }}>
-                      {isImg ? (
-                        <a href={fullUrl} target="_blank" rel="noreferrer">
-                          <img src={fullUrl} alt="attachment" style={{ maxWidth: '100%', maxHeight: '160px', borderRadius: '8px', border: '1px solid var(--color-border)' }} />
-                        </a>
-                      ) : (
-                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '8px 12px', background: 'var(--color-bg-light)', borderRadius: '8px', border: '1px solid var(--color-border)', width: 'fit-content' }}>
-                          <FileText size={18} style={{ color: 'var(--color-primary)' }} />
-                          <a href={fullUrl} target="_blank" rel="noreferrer" style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--color-primary)', textDecoration: 'underline' }}>
-                            {att.split('/').pop()}
-                          </a>
-                        </div>
-                      )}
+              );
+            };
+
+            return rootComments.map((rootC: any) => {
+              const replies = getReplies(rootC.id);
+              return (
+                <div key={rootC.id} style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                  {renderCommentNode(rootC, false)}
+                  {replies.length > 0 && (
+                    <div style={{ marginLeft: '2.5rem', display: 'flex', flexDirection: 'column', gap: '0.5rem', borderLeft: '1px solid var(--color-border-light)', paddingLeft: '0.75rem' }}>
+                      {replies.map((reply: any) => renderCommentNode(reply, true))}
                     </div>
-                  );
-                })}
-              </div>
-            </div>
-          ))}
+                  )}
+                </div>
+              );
+            });
+          })()}
 
           <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.5rem', alignItems: 'flex-start' }}>
             <Avatar name={(currentUser as any)?.full_name || "Bạn"} src={(currentUser as any)?.avatar_url || undefined} size="sm" />
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+              {replyTo && (
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(163, 20, 34, 0.08)', padding: '6px 12px', borderRadius: '8px', fontSize: '0.72rem', color: '#a31422', fontWeight: 700 }}>
+                  <span>Đang trả lời {replyTo.userName}</span>
+                  <button onClick={() => setReplyTo(null)} style={{ border: 'none', background: 'transparent', color: '#a31422', cursor: 'pointer', fontWeight: 800, fontSize: '0.9rem', padding: '0 4px' }}>×</button>
+                </div>
+              )}
               <div style={{ position: 'relative' }}>
                 <MentionInput
                   className="form-input" 

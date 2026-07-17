@@ -726,6 +726,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
   const [selectedTaskForDetails, setSelectedTaskForDetails] = useState<any>(null);
   const [taskComments, setTaskComments] = useState<any[]>([]);
   const [loadingTaskComments, setLoadingTaskComments] = useState(false);
+  const [replyTo, setReplyTo] = useState<{ id: number; userName: string } | null>(null);
   const [newCommentText, setNewCommentText] = useState('');
   const [pendingAttachments, setPendingAttachments] = useState<{ name: string; url: string; type: 'image' | 'file' }[]>([]);
   const [uploadingCommentFile, setUploadingCommentFile] = useState(false);
@@ -1556,11 +1557,13 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
     try {
       const res = await api.post(`/activities/${selectedTaskForDetails.id}/comments`, {
         content: newCommentText.trim(),
-        attachments: pendingAttachments
+        attachments: pendingAttachments,
+        parent_id: replyTo ? replyTo.id : null
       });
       if (res.data.success) {
         setNewCommentText('');
         setPendingAttachments([]);
+        setReplyTo(null);
         loadTaskComments(selectedTaskForDetails.id);
       }
     } catch (e) {

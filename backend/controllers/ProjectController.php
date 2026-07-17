@@ -48,10 +48,14 @@ class ProjectController {
                     entity_id INT NOT NULL,
                     user_id INT NOT NULL,
                     body TEXT NOT NULL,
+                    parent_id INT NULL DEFAULT NULL,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
             ");
+        } catch (Exception $e) {}
+        try {
+            $this->db->exec("ALTER TABLE comments ADD COLUMN parent_id INT NULL DEFAULT NULL");
         } catch (Exception $e) {}
     }
 
@@ -691,12 +695,33 @@ class ProjectController {
         if (!$body) {
             respond(422, null, 'Nội dung bình luận là bắt buộc', false);
         }
+        $parentId = !empty($b['parent_id']) ? (int)$b['parent_id'] : null;
+
         $stmt = $this->db->prepare("
-            INSERT INTO comments (tenant_id, entity_type, entity_id, user_id, body) 
-            VALUES (?, 'project', ?, ?, ?)
+            INSERT INTO comments (tenant_id, entity_type, entity_id, user_id, body, parent_id) 
+            VALUES (?, 'project', ?, ?, ?, ?)
         ");
-        $stmt->execute([$auth['tenant_id'], $projectId, $auth['user_id'], $body]);
+        $stmt->execute([$auth['tenant_id'], $projectId, $auth['user_id'], $body, $parentId]);
         $newId = $this->db->lastInsertId();
+
+        if ($parentId > 0) {
+            $stmtParent = $this->db->prepare("SELECT user_id FROM comments WHERE id = ?");
+            $stmtParent->execute([$parentId]);
+            $parentOwnerId = (int)$stmtParent->fetchColumn();
+
+            if ($parentOwnerId > 0 && $parentOwnerId !== (int)$auth['user_id']) {
+                $title = "Bạn có phản hồi mới trong thảo luận dự án";
+                $bodyText = ($auth['full_name'] ?? 'Đồng nghiệp') . " đã trả lời bình luận của bạn trong dự án";
+                $type = "info";
+                $link = "/projects?id=" . $projectId . "&highlight_comment_id=" . $newId;
+
+                $insertNotif = $this->db->prepare("
+                    INSERT INTO notifications (user_id, tenant_id, title, body, type, link)
+                    VALUES (?, ?, ?, ?, ?, ?)
+                ");
+                $insertNotif->execute([$parentOwnerId, $auth['tenant_id'], $title, $bodyText, $type, $link]);
+            }
+        }
 
         // Parse mentions in comment body
         $mentions = [];

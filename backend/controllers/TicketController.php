@@ -3,7 +3,12 @@
 
 class TicketController {
     private PDO $db;
-    public function __construct(PDO $db) { $this->db = $db; }
+    public function __construct(PDO $db) { 
+        $this->db = $db; 
+        try {
+            $this->db->exec("ALTER TABLE ticket_comments ADD COLUMN parent_id INT(11) NULL DEFAULT NULL");
+        } catch (Exception $e) {}
+    }
 
     public function index(array $auth): void {
         $tid    = $auth['tenant_id'];
@@ -461,9 +466,30 @@ class TicketController {
         $data = getBody();
         if (empty($data['body'])) respond(400, null, 'Nội dung ghi chú không được để trống', false);
 
-        $stmt = $this->db->prepare("INSERT INTO ticket_comments (ticket_id, user_id, body) VALUES (?, ?, ?)");
-        $stmt->execute([$ticketId, $auth['user_id'], $data['body']]);
+        $parentId = !empty($data['parent_id']) ? (int)$data['parent_id'] : null;
+
+        $stmt = $this->db->prepare("INSERT INTO ticket_comments (ticket_id, user_id, body, parent_id) VALUES (?, ?, ?, ?)");
+        $stmt->execute([$ticketId, $auth['user_id'], $data['body'], $parentId]);
         $newId = $this->db->lastInsertId();
+
+        if ($parentId > 0) {
+            $stmtParent = $this->db->prepare("SELECT user_id FROM ticket_comments WHERE id = ?");
+            $stmtParent->execute([$parentId]);
+            $parentOwnerId = (int)$stmtParent->fetchColumn();
+
+            if ($parentOwnerId > 0 && $parentOwnerId !== (int)$auth['user_id']) {
+                $title = "Bạn có phản hồi mới trong ticket";
+                $body = ($auth['full_name'] ?? 'Đồng nghiệp') . " đã trả lời bình luận của bạn trong ticket #" . $ticketId;
+                $type = "info";
+                $link = "/tickets?id=" . $ticketId . "&highlight_comment_id=" . $newId;
+
+                $insertNotif = $this->db->prepare("
+                    INSERT INTO notifications (user_id, tenant_id, title, body, type, link)
+                    VALUES (?, ?, ?, ?, ?, ?)
+                ");
+                $insertNotif->execute([$parentOwnerId, $auth['tenant_id'], $title, $body, $type, $link]);
+            }
+        }
 
         // Parse mentions in comment body
         $bodyText = $data['body'];
