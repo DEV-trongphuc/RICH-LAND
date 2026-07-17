@@ -100,13 +100,25 @@ const SettingsInner = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth <= 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   // Tab State
-  const [activeTab, setActiveTab] = useState<'processing' | 'communications' | 'report' | 'duplicate_check' | 'ai' | 'workflow' | 'database' | 'tags'>('processing');
+  const [activeTab, setActiveTab] = useState<'processing_fallback' | 'processing_databank' | 'processing_approve' | 'processing_dedup' | 'email_settings' | 'zalo_settings' | 'report' | 'duplicate_check' | 'ai' | 'workflow' | 'database' | 'tags'>('processing_fallback');
+  const [showTestEmailModal, setShowTestEmailModal] = useState(false);
 
   const tabOptions = [
-    { value: 'processing', label: t('Cấu hình Xử lý'), icon: <SettingsIcon size={16} /> },
-    { value: 'communications', label: t('Cấu hình Gửi tin & Email'), icon: <Send size={16} /> },
+    { value: 'processing_fallback', label: t('Định tuyến Fallback'), icon: <RefreshCw size={16} /> },
+    { value: 'processing_databank', label: t('Hạn mức & Bảo mật'), icon: <Clock size={16} /> },
+    { value: 'processing_approve', label: t('Tự động duyệt Ticket'), icon: <CheckCircle size={16} /> },
+    { value: 'processing_dedup', label: t('Lọc trùng & Blacklist'), icon: <Shield size={16} /> },
+    { value: 'email_settings', label: t('Cấu hình Email'), icon: <Mail size={16} /> },
+    { value: 'zalo_settings', label: t('Zalo Bot & Webhook'), icon: <MessageCircle size={16} /> },
     { value: 'report', label: t('Báo cáo'), icon: <BarChart2 size={16} /> },
     { value: 'duplicate_check', label: t('Ánh xạ dữ liệu cũ'), icon: <FileSpreadsheet size={16} /> },
     { value: 'ai', label: t('Cấu hình Trợ lý AI'), icon: <Zap size={16} /> },
@@ -562,14 +574,26 @@ const SettingsInner = () => {
     fetchSettings();
     const params = new URLSearchParams(window.location.search);
     const tabParam = params.get('tab');
-    if (tabParam && ['processing', 'mail', 'zalo', 'report', 'duplicate_check', 'ai'].includes(tabParam)) {
-      setActiveTab(tabParam as any);
-      if (window.location.hash === '#auto-approve') {
-        setTimeout(() => {
-          const el = document.getElementById('auto-approve');
-          if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }, 300);
+    if (tabParam) {
+      if (tabParam === 'processing') {
+        setActiveTab('processing_fallback');
+      } else if (tabParam === 'mail') {
+        setActiveTab('email_settings');
+      } else if (tabParam === 'zalo') {
+        setActiveTab('zalo_settings');
+      } else if ([
+        'processing_fallback', 'processing_databank', 'processing_approve', 'processing_dedup',
+        'email_settings', 'zalo_settings', 'report', 'duplicate_check', 'ai', 'workflow', 'database', 'tags'
+      ].includes(tabParam)) {
+        setActiveTab(tabParam as any);
       }
+    }
+    if (window.location.hash === '#auto-approve') {
+      setActiveTab('processing_approve');
+      setTimeout(() => {
+        const el = document.getElementById('auto-approve');
+        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 300);
     }
   }, []);
 
@@ -1379,6 +1403,10 @@ const SettingsInner = () => {
               {t('Phiên bản')} v{dbVersion}
             </span>
           )}
+          <button className="btn outline" onClick={() => setShowTestEmailModal(true)} disabled={loading} style={{ marginRight: '8px' }}>
+            <Send size={16} />
+            <span>{t('Gửi Test Email')}</span>
+          </button>
           <button className="btn primary" onClick={handleSave} disabled={saving || loading}>
             {saving ? <Activity size={16} className="spin" /> : <Save size={16} />}
             <span className="hide-on-mobile">{t('Lưu cấu hình')}</span>
@@ -1391,90 +1419,97 @@ const SettingsInner = () => {
         <CustomSelect
           options={tabOptions}
           value={activeTab}
-          onChange={(val) => setActiveTab(val)}
+          onChange={(val) => setActiveTab(val as any)}
           width="100%"
         />
       </div>
 
-      <div 
-        style={{ 
-          display: 'flex', 
-          background: 'var(--color-bg-secondary)', 
-          border: '1px solid var(--color-border)',
-          borderRadius: '12px', 
-          padding: '4px', 
-          alignSelf: 'flex-start', 
-          marginBottom: '1.5rem', 
-          width: 'fit-content', 
-          gap: '4px', 
-          flexWrap: 'nowrap',
-          maxWidth: '100%',
-          overflowX: 'auto',
-          scrollbarWidth: 'none',
-          WebkitOverflowScrolling: 'touch'
-        }} 
-        className="hide-on-mobile no-scrollbar"
-      >
-        <button onClick={() => setActiveTab('processing')} style={getTabStyle('processing')}>
-          {renderActiveIndicator('processing')}
-          <span style={{ position: 'relative', zIndex: 2, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <SettingsIcon size={16} /> {t('Cấu hình Xử lý')}
-          </span>
-        </button>
-        <button onClick={() => setActiveTab('communications')} style={getTabStyle('communications')}>
-          {renderActiveIndicator('communications')}
-          <span style={{ position: 'relative', zIndex: 2, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <Send size={16} /> {t('Cấu hình Gửi tin & Email')}
-          </span>
-        </button>
-        <button onClick={() => setActiveTab('report')} style={getTabStyle('report')}>
-          {renderActiveIndicator('report')}
-          <span style={{ position: 'relative', zIndex: 2, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <BarChart2 size={16} /> {t('Báo cáo')}
-          </span>
-        </button>
-        <button onClick={() => setActiveTab('duplicate_check')} style={getTabStyle('duplicate_check')}>
-          {renderActiveIndicator('duplicate_check')}
-          <span style={{ position: 'relative', zIndex: 2, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <FileSpreadsheet size={16} /> {t('Ánh xạ dữ liệu cũ')}
-          </span>
-        </button>
-        <button onClick={() => setActiveTab('ai')} style={getTabStyle('ai')}>
-          {renderActiveIndicator('ai')}
-          <span style={{ position: 'relative', zIndex: 2, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <Zap size={16} /> {t('Cấu hình Trợ lý AI')}
-          </span>
-        </button>
-        <button onClick={() => setActiveTab('workflow')} style={getTabStyle('workflow')}>
-          {renderActiveIndicator('workflow')}
-          <span style={{ position: 'relative', zIndex: 2, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <Activity size={16} /> {t('Mẫu Quy trình')}
-          </span>
-        </button>
-        <button onClick={() => setActiveTab('database')} style={getTabStyle('database')}>
-          {renderActiveIndicator('database')}
-          <span style={{ position: 'relative', zIndex: 2, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <Database size={16} /> {t('Bảo trì Database')}
-          </span>
-        </button>
-        <button onClick={() => setActiveTab('tags')} style={getTabStyle('tags')}>
-          {renderActiveIndicator('tags')}
-          <span style={{ position: 'relative', zIndex: 2, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <Tag size={16} /> {t('Quản lý Thẻ (Tags)')}
-          </span>
-        </button>
-      </div>
-
       {loading ? (
-        <div className="responsive-flex-row" style={{ display: 'flex', gap: '1.5rem', alignItems: 'flex-start' }}>
-          <div style={{ flex: 2, display: 'flex', flexDirection: 'column', gap: '1.5rem', minWidth: 0 }}>
+        <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'flex-start', flexDirection: isMobile ? 'column' : 'row', width: '100%' }}>
+          <div style={{ width: '260px', display: 'flex', flexDirection: 'column', gap: '8px', flexShrink: 0 }} className="hide-on-mobile">
+            <Skeleton height={40} style={{ marginBottom: '8px' }} />
+            <Skeleton height={40} style={{ marginBottom: '8px' }} />
+            <Skeleton height={40} style={{ marginBottom: '8px' }} />
+            <Skeleton height={40} style={{ marginBottom: '8px' }} />
+            <Skeleton height={40} style={{ marginBottom: '8px' }} />
+            <Skeleton height={40} style={{ marginBottom: '8px' }} />
+            <Skeleton height={40} style={{ marginBottom: '8px' }} />
+            <Skeleton height={40} style={{ marginBottom: '8px' }} />
+          </div>
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '1.5rem', minWidth: 0, width: '100%' }}>
             <CardSkeleton height={220} /><CardSkeleton height={160} />
           </div>
-          <div style={{ flex: 1, minWidth: 0 }}><CardSkeleton height={200} /></div>
         </div>
       ) : (
-        <div className="responsive-flex-row" style={{ display: 'flex', gap: '1.5rem', alignItems: 'flex-start' }}>
-          <div style={{ flex: (activeTab === 'duplicate_check' || activeTab === 'ai' || activeTab === 'workflow' || activeTab === 'database' || activeTab === 'tags') ? 1 : 2, display: 'flex', flexDirection: 'column', gap: '1.5rem', minWidth: 0, width: '100%' }}>
+        <div 
+          style={{ 
+            display: 'flex', 
+            gap: '1.5rem', 
+            alignItems: 'flex-start',
+            flexDirection: isMobile ? 'column' : 'row',
+            width: '100%'
+          }}
+        >
+          {/* Left Column: Sidebar Tabs */}
+          <div 
+            className="hide-on-mobile"
+            style={{ 
+              width: '260px', 
+              display: 'flex', 
+              flexDirection: 'column', 
+              gap: '6px', 
+              flexShrink: 0,
+              background: 'var(--color-surface)',
+              border: '1px solid var(--color-border)',
+              borderRadius: '12px',
+              padding: '12px',
+              position: 'sticky',
+              top: '6rem',
+              maxHeight: 'calc(100vh - 8rem)',
+              overflowY: 'auto',
+              boxShadow: 'var(--shadow-sm)'
+            }}
+          >
+            {tabOptions.map((tab) => (
+              <button 
+                key={tab.value}
+                type="button"
+                onClick={() => setActiveTab(tab.value as any)}
+                style={{
+                  width: '100%',
+                  textAlign: 'left',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '10px',
+                  padding: '10px 14px',
+                  borderRadius: '8px',
+                  fontSize: '0.8125rem',
+                  border: 'none',
+                  background: activeTab === tab.value ? 'var(--color-primary-light)' : 'transparent',
+                  color: activeTab === tab.value ? 'var(--color-primary)' : 'var(--color-text-muted)',
+                  fontWeight: activeTab === tab.value ? 700 : 500,
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease'
+                }}
+                onMouseEnter={e => {
+                  if (activeTab !== tab.value) {
+                    e.currentTarget.style.background = 'rgba(73, 80, 87, 0.04)';
+                  }
+                }}
+                onMouseLeave={e => {
+                  if (activeTab !== tab.value) {
+                    e.currentTarget.style.background = 'transparent';
+                  }
+                }}
+              >
+                {tab.icon}
+                <span>{tab.label}</span>
+              </button>
+            ))}
+          </div>
+
+          {/* Right Column: Active Tab Content */}
+          <div style={{ flex: 1, minWidth: 0, width: '100%', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
             {/* AI Assistant Tab Content */}
             <div style={{ display: activeTab === 'ai' ? 'block' : 'none' }} className="subtab-enter-active">
               <div className="card" style={{ padding: '2rem', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
@@ -2672,9 +2707,20 @@ const SettingsInner = () => {
               </div>
             </div>
 
-            {/* Cấu hình Gửi tin & Email */}
-            <div style={{ display: activeTab === 'communications' ? 'block' : 'none' }} className="subtab-enter-active">
+            {/* ===== TAB: CẤU HÌNH EMAIL ===== */}
+            <div style={{ display: activeTab === 'email_settings' ? 'block' : 'none' }} className="subtab-enter-active">
               <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                {/* Guide Box */}
+                <div style={{ background: 'rgba(99, 102, 241, 0.02)', border: '1px solid rgba(99, 102, 241, 0.1)', padding: '1rem 1.25rem', borderRadius: '8px', fontSize: '0.8125rem', lineHeight: 1.5, color: 'var(--color-text-muted)' }}>
+                  <strong style={{ color: '#6366f1', display: 'flex', alignItems: 'center', gap: 6, marginBottom: '6px' }}>
+                    <Mail size={14} /> Hướng dẫn Cấu hình Server Email:
+                  </strong>
+                  Thiết lập cổng gửi Email thông báo lỗi dữ liệu, thông báo xác nhận tài khoản cho Admin và báo cáo định kỳ:
+                  <ul style={{ paddingLeft: '1.25rem', marginTop: '6px', listStyleType: 'disc', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <li><strong>Google Apps Script Webhook:</strong> Dành cho lưu lượng gửi mail nhỏ (miễn phí qua Google Mail). Bạn copy mã Script ở bên dưới, deploy trên tài khoản Google và dán URL deploy Web app vào cấu hình.</li>
+                    <li><strong>Amazon SES SMTP Server:</strong> Cấu hình cổng gửi thư điện tử chuyên nghiệp của AWS SES thông qua giao thức SMTP. Khuyên dùng cho môi trường sản xuất có tần suất gửi email liên tục.</li>
+                  </ul>
+                </div>
                 <div className="card" style={{ padding: '1.5rem' }}>
                   <h3 style={{ fontSize: '1.125rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8, marginBottom: '1.25rem' }}>
                     <Mail size={20} color="var(--color-primary)" /> Phương thức Gửi Email
@@ -2814,7 +2860,24 @@ function doPost(e) {
                     </div>
                   )}
                 </div>
+              </div>
+            </div>
 
+            {/* ===== TAB: CẤU HÌNH ZALO BOT ===== */}
+            <div style={{ display: activeTab === 'zalo_settings' ? 'block' : 'none' }} className="subtab-enter-active">
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                {/* Guide Box */}
+                <div style={{ background: 'rgba(6, 182, 212, 0.02)', border: '1px solid rgba(6, 182, 212, 0.1)', padding: '1rem 1.25rem', borderRadius: '8px', fontSize: '0.8125rem', lineHeight: 1.5, color: 'var(--color-text-muted)' }}>
+                  <strong style={{ color: '#06b6d4', display: 'flex', alignItems: 'center', gap: 6, marginBottom: '6px' }}>
+                    <MessageCircle size={14} /> Hướng dẫn Liên kết Zalo Bot Platform:
+                  </strong>
+                  Zalo Bot dùng để gửi thông báo data trực tiếp cho từng Tư vấn viên trên điện thoại và gửi các thông báo vận hành vào Group chat Admin:
+                  <ul style={{ paddingLeft: '1.25rem', marginTop: '6px', listStyleType: 'disc', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <li><strong>Bot Token:</strong> Tạo ứng dụng Zalo Bot trên cổng Zalo Developers và lấy mã Token kết nối dán vào đây.</li>
+                    <li><strong>Secret Token:</strong> Mã khóa tự chọn dùng để mã hóa tín hiệu Webhook, tránh các yêu cầu giả mạo gửi đến hệ thống.</li>
+                    <li><strong>Zalo Group Chat ID:</strong> Khai báo Chat ID nhóm Zalo để nhận báo cáo tổng kết ngày hoặc các yêu cầu duyệt đền bù khẩn cấp.</li>
+                  </ul>
+                </div>
                 <div className="card" style={{ padding: '1.5rem' }}>
                   <h3 style={{ fontSize: '1.125rem', fontWeight: 700, marginBottom: '1rem', color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 8 }}>
                     <span style={{ display: 'inline-flex', background: '#0068ff', color: 'white', padding: 4, borderRadius: 6 }}>
@@ -2891,7 +2954,7 @@ function doPost(e) {
               </div>
             </div>
 
-            {/* ===== TAB: BÁO CÁO NGÀY ===== */}
+                        {/* ===== TAB: BÁO CÁO NGÀY ===== */}
             <div style={{ display: activeTab === 'report' ? 'block' : 'none' }} className="subtab-enter-active">
               <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
 
@@ -3097,8 +3160,21 @@ function doPost(e) {
             </div>
 
             {/* Fallback & Blacklist Configs (Processing Tab) */}
-            <div style={{ display: activeTab === 'processing' ? 'block' : 'none' }} className="subtab-enter-active">
-              <div className="card" style={{ padding: '1.5rem', marginTop: 0 }}>
+            {/* ===== TAB: ĐỊNH TUYẾN FALLBACK ===== */}
+            <div style={{ display: activeTab === 'processing_fallback' ? 'block' : 'none' }} className="subtab-enter-active">
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                {/* Guide Box */}
+                <div style={{ background: 'rgba(239, 68, 68, 0.02)', border: '1px solid rgba(239, 68, 68, 0.1)', padding: '1rem 1.25rem', borderRadius: '8px', fontSize: '0.8125rem', lineHeight: 1.5, color: 'var(--color-text-muted)' }}>
+                  <strong style={{ color: '#ef4444', display: 'flex', alignItems: 'center', gap: 6, marginBottom: '6px' }}>
+                    <RefreshCw size={14} /> Cơ chế Định tuyến Fallback (Dữ liệu không khớp luật):
+                  </strong>
+                  Khi dữ liệu khách hàng mới (Leads) được đẩy vào hệ thống mà không thỏa mãn bất kỳ bộ quy tắc phân phối nào của các Vòng chia số đang chạy, hệ thống sẽ tự động xử lý theo một trong hai cách dưới đây:
+                  <ul style={{ paddingLeft: '1.25rem', marginTop: '6px', listStyleType: 'disc', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <li><strong>Phân bổ theo Vòng mặc định:</strong> Chia đều cho các Tư vấn viên (Sale) trong Vòng được chọn theo cơ chế xoay vòng (Round-Robin).</li>
+                    <li><strong>Giao cho Admin xử lý:</strong> Giao trực tiếp cho Admin chỉ định, đồng thời gửi email thông báo CC đến danh sách nhận tin.</li>
+                  </ul>
+                </div>
+                <div className="card" style={{ padding: '1.5rem', marginTop: 0 }}>
                 <h3 style={{ fontSize: '1.125rem', fontWeight: 700, marginBottom: '1rem', color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 8 }}>
                   <span style={{ display: 'inline-flex', background: '#ef4444', color: 'white', padding: 4, borderRadius: 6 }}>
                     <Zap size={16} />
@@ -3268,7 +3344,7 @@ function doPost(e) {
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
                   {/* Nhóm 1: Phân phối & Rớt nhiệt Lead */}
-                  <div style={{ background: 'var(--color-bg-secondary)', padding: '1.25rem', borderRadius: 'var(--radius-xl)', border: '1px solid var(--color-border)' }}>
+                  <div style={{ background: 'var(--color-surface)', padding: '1.5rem', borderRadius: '12px', border: '1px solid var(--color-border-light)', boxShadow: 'var(--shadow-sm)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '1rem' }}>
                       <Zap size={15} style={{ color: 'var(--color-primary)' }} />
                       <h4 style={{ fontSize: '0.9375rem', fontWeight: 700, color: 'var(--color-text)' }}>{t('Quy tắc Phân phối & Rớt nhiệt')}</h4>
@@ -3393,7 +3469,7 @@ function doPost(e) {
                   </div>
 
                   {/* Nhóm 2: Ca trực & Khung giờ vàng */}
-                  <div style={{ background: 'var(--color-bg-secondary)', padding: '1.25rem', borderRadius: 'var(--radius-xl)', border: '1px solid var(--color-border)', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                  <div style={{ background: 'var(--color-surface)', padding: '1.5rem', borderRadius: '12px', border: '1px solid var(--color-border-light)', display: 'flex', flexDirection: 'column', gap: '1.25rem', boxShadow: 'var(--shadow-sm)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                       <Clock size={15} style={{ color: 'var(--color-primary)' }} />
                       <h4 style={{ fontSize: '0.9375rem', fontWeight: 700, color: 'var(--color-text)' }}>{t('Ca trực đêm & Khung giờ vàng')}</h4>
@@ -3443,9 +3519,26 @@ function doPost(e) {
                       </div>
                     </div>
                   </div>
+              </div>
+            </div>
 
-                  {/* Nhóm 3: Hạn mức nhận Databank */}
-                  <div style={{ background: 'var(--color-bg-secondary)', padding: '1.25rem', borderRadius: 'var(--radius-xl)', border: '1px solid var(--color-border)' }}>
+            {/* ===== TAB: HẠN MỨC & BẢO MẬT DATABANK ===== */}
+            <div style={{ display: activeTab === 'processing_databank' ? 'block' : 'none' }} className="subtab-enter-active">
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                {/* Guide Box */}
+                <div style={{ background: 'rgba(59, 130, 246, 0.02)', border: '1px solid rgba(59, 130, 246, 0.1)', padding: '1rem 1.25rem', borderRadius: '8px', fontSize: '0.8125rem', lineHeight: 1.5, color: 'var(--color-text-muted)' }}>
+                  <strong style={{ color: '#3b82f6', display: 'flex', alignItems: 'center', gap: 6, marginBottom: '6px' }}>
+                    <Clock size={14} /> Cơ chế Hạn mức & Bảo mật Databank:
+                  </strong>
+                  Trang này quản lý hạn mức nhận khách hàng và thời gian bảo mật dữ liệu, tránh tình trạng đầu cơ hoặc quên chăm sóc dẫn đến nguội data:
+                  <ul style={{ paddingLeft: '1.25rem', marginTop: '6px', listStyleType: 'disc', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <li><strong>Hạn mức nhận:</strong> Giới hạn số lượng khách hàng tối đa một Tư vấn viên được nhận từ Kho chung (Databank) trong mỗi giờ/tháng.</li>
+                    <li><strong>Đồng hồ bảo mật (Security Timer):</strong> Tự động thu hồi khách hàng về Kho chung (Databank) sau thời gian cấu hình nếu Tư vấn viên không cập nhật trạng thái mới cho khách hàng.</li>
+                    <li><strong>Quy tắc Bể cọc (Business Rules):</strong> Tự động thu hồi nếu bể cọc trước khi phát sinh doanh thu (kích hoạt lại đồng hồ bảo mật). Nếu khách hàng đã đóng đợt 1 (có doanh thu thực tế), trạng thái Đặt cọc sẽ được giữ nguyên.</li>
+                  </ul>
+                </div>
+                {/* Nhóm 3: Hạn mức nhận Databank */}
+                  <div className="card" style={{ background: 'var(--color-surface)', padding: '1.5rem', borderRadius: '12px', border: '1px solid var(--color-border-light)', boxShadow: 'var(--shadow-sm)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '1rem' }}>
                       <Shield size={15} style={{ color: 'var(--color-primary)' }} />
                       <h4 style={{ fontSize: '0.9375rem', fontWeight: 700, color: 'var(--color-text)' }}>{t('Hạn mức nhận khách hàng từ Databank')}</h4>
@@ -3508,7 +3601,7 @@ function doPost(e) {
                   </div>
 
                   {/* Nhóm 4: Thời hạn bảo mật & Nguồn ra kho */}
-                  <div style={{ background: 'var(--color-bg-secondary)', padding: '1.25rem', borderRadius: 'var(--radius-xl)', border: '1px solid var(--color-border)', marginTop: '1.25rem' }}>
+                  <div className="card" style={{ background: 'var(--color-surface)', padding: '1.5rem', borderRadius: '12px', border: '1px solid var(--color-border-light)', marginTop: '1.5rem', boxShadow: 'var(--shadow-sm)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '1rem' }}>
                       <Clock size={15} style={{ color: 'var(--color-primary)' }} />
                       <h4 style={{ fontSize: '0.9375rem', fontWeight: 700, color: 'var(--color-text)' }}>{t('Cấu hình Thời hạn bảo mật & Nguồn ra kho Databank')}</h4>
@@ -3583,8 +3676,25 @@ function doPost(e) {
 
                 </div>
               </div>
+              </div>
+            </div>
 
-              {/* Cấu hình Tự động duyệt Ticket */}
+            {/* ===== TAB: TỰ ĐỘNG DUYỆT TICKET ===== */}
+            <div style={{ display: activeTab === 'processing_approve' ? 'block' : 'none' }} className="subtab-enter-active">
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                {/* Guide Box */}
+                <div style={{ background: 'rgba(16, 185, 129, 0.02)', border: '1px solid rgba(16, 185, 129, 0.1)', padding: '1rem 1.25rem', borderRadius: '8px', fontSize: '0.8125rem', lineHeight: 1.5, color: 'var(--color-text-muted)' }}>
+                  <strong style={{ color: '#10b981', display: 'flex', alignItems: 'center', gap: 6, marginBottom: '6px' }}>
+                    <CheckCircle size={14} /> Cơ chế Tự động duyệt Yêu cầu đền bù (Ticket):
+                  </strong>
+                  Giúp phê duyệt tự động các yêu cầu đền bù khách hàng lỗi (ví dụ: sai số điện thoại, không liên lạc được, trùng khách hàng...) gửi từ Tư vấn viên nhằm tối ưu thời gian xử lý:
+                  <ul style={{ paddingLeft: '1.25rem', marginTop: '6px', listStyleType: 'disc', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <li>Hệ thống quét mô tả của Ticket. Nếu chứa các từ khóa trùng khớp với danh sách cấu hình, Ticket sẽ tự động được duyệt.</li>
+                    <li>Khi Ticket được duyệt tự động, hệ thống sẽ tự động hoàn một data mới hoặc cộng hạn mức đền bù tương ứng cho Tư vấn viên.</li>
+                    <li>Mọi Ticket không khớp từ khóa sẽ được chuyển sang trạng thái Chờ duyệt để Admin kiểm tra thủ công.</li>
+                  </ul>
+                </div>
+                {/* Cấu hình Tự động duyệt Ticket */}
               <div id="auto-approve" className="card" style={{ padding: '1.5rem', marginTop: '1.5rem' }}>
                 <h3 style={{ fontSize: '1.125rem', fontWeight: 700, marginBottom: '1rem', color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 8 }}>
                   <span style={{ display: 'inline-flex', background: '#10b981', color: 'white', padding: 4, borderRadius: 6 }}>
@@ -3794,8 +3904,25 @@ function doPost(e) {
                   )}
                 </div>
               </div>
+              </div>
+            </div>
 
-              {/* Cấu hình Lọc trùng */}
+            {/* ===== TAB: LỌC TRÙNG & BLACKLIST ===== */}
+            <div style={{ display: activeTab === 'processing_dedup' ? 'block' : 'none' }} className="subtab-enter-active">
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                {/* Guide Box */}
+                <div style={{ background: 'rgba(245, 158, 11, 0.02)', border: '1px solid rgba(245, 158, 11, 0.1)', padding: '1rem 1.25rem', borderRadius: '8px', fontSize: '0.8125rem', lineHeight: 1.5, color: 'var(--color-text-muted)' }}>
+                  <strong style={{ color: '#f59e0b', display: 'flex', alignItems: 'center', gap: 6, marginBottom: '6px' }}>
+                    <Shield size={14} /> Cơ chế Kiểm tra trùng lặp & Blacklist:
+                  </strong>
+                  Đảm bảo chất lượng dữ liệu đầu vào và ngăn chặn dữ liệu rác:
+                  <ul style={{ paddingLeft: '1.25rem', marginTop: '6px', listStyleType: 'disc', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <li><strong>Lọc trùng thời gian:</strong> Quét dữ liệu trùng lặp số điện thoại hoặc email trong vòng số tháng cấu hình. Khi phát hiện trùng, hệ thống tự động gắn nhãn (Duplicate) và gán về chính Tư vấn viên đang chăm sóc.</li>
+                    <li><strong>Blacklist (Từ khóa loại trừ):</strong> Loại bỏ tự động các leads chứa từ khóa cấm trong tên hoặc ghi chú (ví dụ: test, spam, tuyển dụng...).</li>
+                    <li><strong>Blacklist (Liên hệ loại trừ):</strong> Chặn vĩnh viễn các số điện thoại hoặc địa chỉ email rác. Hỗ trợ nhập danh sách đen hàng loạt qua file Excel/CSV.</li>
+                  </ul>
+                </div>
+                {/* Cấu hình Lọc trùng */}
               <div className="card" style={{ padding: '1.5rem', marginTop: '1.5rem' }}>
                 <h3 style={{ fontSize: '1.125rem', fontWeight: 700, marginBottom: '1rem', color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 8 }}>
                   <span style={{ display: 'inline-flex', background: 'var(--color-primary)', color: 'white', padding: 4, borderRadius: 6 }}>
@@ -4600,70 +4727,72 @@ function doPost(e) {
                   </div>
                 </div>
               </div>
-            </div>
-          </div>
-
-          {/* Right Column: Testing */}
-          {activeTab !== 'duplicate_check' && activeTab !== 'ai' && (
-            <div style={{
-              flex: 1,
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '1.5rem',
-              position: 'sticky',
-              top: '6rem',
-              alignSelf: 'start',
-              minWidth: 0,
-              width: '100%'
-            }}>
-              <div className="card" style={{ padding: '1.5rem', background: 'linear-gradient(to bottom right, var(--color-surface), rgba(163, 20, 34, 0.03))' }}>
-                <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <Send size={18} color="var(--color-primary)" /> {t('Gửi Test Email')}
-                </h3>
-                <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', marginBottom: '1rem', lineHeight: 1.6 }}>
-                  {t('Sau khi lưu cấu hình, bạn có thể gửi một email thử nghiệm để đảm bảo hệ thống đã kết nối thành công với AppScript hoặc Amazon SES.')}
-                </p>
-
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                  <CustomSelect
-                    options={[
-                      { value: 'system', label: t('Test Hệ Thống (SMTP / AppScript)') },
-                      { value: 'assignment', label: t('Test Template Giao Data') },
-                      { value: 'zalo_sale', label: t('Test Welcome & Zalo (Sale)') },
-                      { value: 'zalo_admin', label: t('Test Welcome & Zalo (Admin)') },
-                      { value: 'ticket_admin', label: t('Test Thông báo Ticket (Admin)') },
-                      { value: 'ticket_sale_success', label: t('Test Duyệt Ticket thành công (Sale)') },
-                      { value: 'ticket_sale_fail', label: t('Test Từ chối Ticket (Sale)') },
-                      { value: 'admin_confirm', label: t('Test Xác nhận Email (Admin)') },
-                      { value: 'daily_report', label: t('Test Báo Cáo Tổng Kết Ngày') }
-                    ]}
-                    value={testType}
-                    onChange={val => setTestType(val.toString())}
-                    width="100%"
-                    direction="down"
-                  />
-
-                  <input
-                    className="form-input"
-                    placeholder={t("Nhập email nhận test...")}
-                    value={testEmail}
-                    onChange={e => setTestEmail(e.target.value)}
-                  />
-                  <button
-                    className="btn outline"
-                    style={{ width: '100%', justifyContent: 'center' }}
-                    onClick={handleTestEmail}
-                    disabled={testing}
-                  >
-                    {testing ? <Activity size={16} className="spin" /> : <Send size={16} />}
-                    {testing ? t("Đang gửi...") : t("Gửi Email Test")}
-                  </button>
-                </div>
               </div>
             </div>
-          )}
+          </div>
         </div>
       )}
+
+      {/* Custom Modal for Test Email */}
+      <CustomModal
+        isOpen={showTestEmailModal}
+        onClose={() => setShowTestEmailModal(false)}
+        title={t('Gửi Test Email')}
+        width="480px"
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', padding: '0.25rem 0' }}>
+          <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', lineHeight: 1.6, margin: 0 }}>
+            {t('Sau khi lưu cấu hình, bạn có thể gửi một email thử nghiệm để đảm bảo hệ thống đã kết nối thành công với AppScript hoặc Amazon SES.')}
+          </p>
+
+          <div>
+            <label className="form-label" style={{ fontWeight: 600, marginBottom: '0.375rem' }}>{t('Chọn mẫu thử nghiệm')}</label>
+            <CustomSelect
+              options={[
+                { value: 'system', label: t('Test Hệ Thống (SMTP / AppScript)') },
+                { value: 'assignment', label: t('Test Template Giao Data') },
+                { value: 'zalo_sale', label: t('Test Welcome & Zalo (Sale)') },
+                { value: 'zalo_admin', label: t('Test Welcome & Zalo (Admin)') },
+                { value: 'ticket_admin', label: t('Test Thông báo Ticket (Admin)') },
+                { value: 'ticket_sale_success', label: t('Test Duyệt Ticket thành công (Sale)') },
+                { value: 'ticket_sale_fail', label: t('Test Từ chối Ticket (Sale)') },
+                { value: 'admin_confirm', label: t('Test Xác nhận Email (Admin)') },
+                { value: 'daily_report', label: t('Test Báo Cáo Tổng Kết Ngày') }
+              ]}
+              value={testType}
+              onChange={val => setTestType(val.toString())}
+              width="100%"
+              direction="down"
+            />
+          </div>
+
+          <div>
+            <label className="form-label" style={{ fontWeight: 600, marginBottom: '0.375rem' }}>{t('Email nhận test')}</label>
+            <input
+              className="form-input"
+              placeholder={t("Nhập email nhận test...")}
+              value={testEmail}
+              onChange={e => setTestEmail(e.target.value)}
+            />
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '0.5rem', borderTop: '1px solid var(--color-border-light)', paddingTop: '1rem' }}>
+            <button className="btn outline" onClick={() => setShowTestEmailModal(false)}>
+              {t('Đóng')}
+            </button>
+            <button
+              className="btn primary"
+              onClick={handleTestEmail}
+              disabled={testing}
+              style={{ background: 'var(--color-primary)' }}
+            >
+              {testing ? <Activity size={16} className="spin" /> : <Send size={16} />}
+              {testing ? t("Đang gửi...") : t("Gửi Email Test")}
+            </button>
+          </div>
+        </div>
+      </CustomModal>
+
       {/* Custom Modal for Workflow Template */}
       <CustomModal
         isOpen={showWorkflowModal}
