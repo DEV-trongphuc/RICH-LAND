@@ -37,7 +37,6 @@ export const SIDEBAR_GROUPS: SidebarGroup[] = [
       { name: 'Pipeline', href: '/deals', icon: TrendingUp },
       { name: 'Lịch biểu', href: '/calendar', icon: Calendar },
       { name: 'Kho Data', href: '/data', icon: Database, hideForRoles: ['sale'] },
-      { name: 'Quy tắc phân bổ', href: '/rounds', icon: GitBranch, adminOnly: true, hideForRoles: ['manager', 'assistant', 'sale', 'sales'] },
       { name: 'Đối soát công bằng', href: '/fair-share', icon: Scale },
       { name: 'AI Pre-screener', href: '/gatekeeper', icon: Filter, adminOnly: true, badgeKey: 'gatekeeper', hideForRoles: ['manager', 'assistant', 'sale', 'sales'] },
       { name: 'Ticket data lỗi', href: '/tickets', icon: Ticket, badgeKey: 'tickets' },
@@ -84,6 +83,7 @@ export const SIDEBAR_GROUPS: SidebarGroup[] = [
       { name: 'Quản lý tài khoản', href: '/accounts', icon: ShieldCheck, hideForRoles: ['manager', 'assistant', 'sale', 'viewer', 'sales'] },
       { name: 'Logic xử lý', href: '/rules', icon: Webhook, hideForRoles: ['manager', 'assistant', 'sale', 'viewer', 'sales'] },
       { name: 'Tích hợp Data', href: '/integrations', icon: Link2, hideForRoles: ['manager', 'assistant', 'sale', 'viewer', 'sales'] },
+      { name: 'Quy tắc phân bổ', href: '/rounds', icon: GitBranch, adminOnly: true, hideForRoles: ['manager', 'assistant', 'sale', 'sales'] },
       { name: 'CAPI', href: '/capi', icon: Link2, hideForRoles: ['manager', 'assistant', 'sale', 'viewer', 'sales'] }
     ]
   }
