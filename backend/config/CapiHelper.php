@@ -18,12 +18,53 @@ class CapiHelper {
         ]);
     }
     
-    public static function normalizeAndHash($val): string {
-        $clean = trim($val);
+    public static function removeAccents(string $str): string {
+        $unicode = [
+            'a' => 'á|à|ả|ã|ạ|ă|ắ|ằ|ẳ|ẵ|ặ|â|ấ|ầ|ẩ|ẫ|ậ|å|ä|æ',
+            'd' => 'đ',
+            'e' => 'é|è|ẻ|ẽ|ẹ|ê|ế|ề|ể|ễ|ệ',
+            'i' => 'í|ì|ỉ|ĩ|ị',
+            'o' => 'ó|ò|ỏ|õ|ọ|ô|ố|ồ|ổ|ỗ|ộ|ơ|ớ|ờ|ở|ỡ|ợ|ö|ø',
+            'u' => 'ú|ù|ủ|ũ|ụ|ư|ứ|ừ|ử|ữ|ự|ü',
+            'y' => 'ý|ỳ|ỷ|ỹ|ỵ',
+            'A' => 'Á|À|Ả|Ã|Ạ|Ă|Ắ|Ằ|Ẳ|Ẵ|Ặ|Â|Ấ|Ầ|Ẩ|Ẫ|Ậ|Å|Ä|Æ',
+            'D' => 'Đ',
+            'E' => 'É|È|Ẻ|Ẽ|Ẹ|Ê|Ế|Ề|Ể|Ễ|Ệ',
+            'I' => 'Í|Ì|Ỉ|Ĩ|Ị',
+            'O' => 'Ó|Ò|Ỏ|Õ|Ọ|Ô|Ố|Ồ|Ổ|Ỗ|Ộ|Ơ|Ớ|Ờ|Ở|Ỡ|Ợ|Ö|Ø',
+            'U' => 'Ú|Ù|Ủ|Ũ|Ụ|Ư|Ứ|Ừ|Ử|Ữ|Ự|Ü',
+            'Y' => 'Ý|Ỳ|Ỷ|Ỹ|Ỵ'
+        ];
+        foreach ($unicode as $nonUnicode => $uni) {
+            $str = preg_replace("/($uni)/i", $nonUnicode, $str);
+        }
+        return $str;
+    }
+    
+    public static function normalizeAndHash($val, bool $isEmailOrName = false): string {
+        $clean = trim((string)$val);
         $clean = strtolower($clean);
-        // If phone, strip leading zeros, +, spaces, etc.
-        $clean = preg_replace('/[^0-9a-z@.]/i', '', $clean);
-        return hash('sha256', $clean);
+        if ($isEmailOrName) {
+            $clean = self::removeAccents($clean);
+            return hash('sha256', $clean);
+        } else {
+            // Phone normalization for Meta CAPI
+            $clean = preg_replace('/[^\d+]/', '', $clean);
+            if (strpos($clean, '+') === 0) {
+                $clean = substr($clean, 1);
+            }
+            if (strpos($clean, '84') === 0 && strlen($clean) >= 10) {
+                // Already starts with 84
+            } else {
+                if (strpos($clean, '0') === 0) {
+                    $clean = substr($clean, 1);
+                }
+                if (strlen($clean) === 9) {
+                    $clean = '84' . $clean;
+                }
+            }
+            return hash('sha256', $clean);
+        }
     }
 
     public static function sendEvent(?PDO $db, ?int $contactId, string $eventName, float $value = 0.0, string $currency = 'VND'): bool {
@@ -50,7 +91,7 @@ class CapiHelper {
             }
 
             // Fetch contact details for custom data matching
-            $phone = ''; $email = ''; $name = ''; $leadId = null;
+            $phone = ''; $email = ''; $firstName = ''; $lastName = ''; $leadId = null;
             if ($contactId) {
                 $stmtC = $db->prepare("SELECT phone, email, first_name, last_name, id FROM contacts WHERE id = ?");
                 $stmtC->execute([$contactId]);
@@ -58,7 +99,8 @@ class CapiHelper {
                 if ($c) {
                     $phone = $c['phone'] ?? '';
                     $email = $c['email'] ?? '';
-                    $name = ($c['last_name'] ?? '') . ' ' . ($c['first_name'] ?? '');
+                    $firstName = $c['first_name'] ?? '';
+                    $lastName = $c['last_name'] ?? '';
                 }
 
                 // Try to find the associated raw lead_id
@@ -101,8 +143,10 @@ class CapiHelper {
                         'event_source_url' => $eventSourceUrl,
                         'action_source' => 'system',
                         'user_data' => [
-                            'ph' => !empty($phone) ? [self::normalizeAndHash($phone)] : [],
-                            'em' => !empty($email) ? [self::normalizeAndHash($email)] : [],
+                            'ph' => !empty($phone) ? [self::normalizeAndHash($phone, false)] : [],
+                            'em' => !empty($email) ? [self::normalizeAndHash($email, true)] : [],
+                            'fn' => !empty($firstName) ? [self::normalizeAndHash($firstName, true)] : [],
+                            'ln' => !empty($lastName) ? [self::normalizeAndHash($lastName, true)] : [],
                             'client_ip_address' => $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1',
                             'client_user_agent' => $_SERVER['HTTP_USER_AGENT'] ?? 'Mozilla/5.0'
                         ],

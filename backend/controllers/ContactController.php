@@ -733,7 +733,7 @@ class ContactController {
                     ];
                 }
                 
-                if (isset($capiMap[$newStatus])) {
+                if (isset($capiMap[$newStatus]) && $capiMap[$newStatus] !== 'Skip' && $capiMap[$newStatus] !== 'None' && $capiMap[$newStatus] !== 'BAD') {
                     CapiHelper::sendEvent($this->db, $id, $capiMap[$newStatus]);
                 }
 
@@ -919,7 +919,7 @@ class ContactController {
                 ];
             }
             
-            if (isset($capiMap[$newStatus])) {
+            if (isset($capiMap[$newStatus]) && $capiMap[$newStatus] !== 'Skip' && $capiMap[$newStatus] !== 'None' && $capiMap[$newStatus] !== 'BAD') {
                 CapiHelper::sendEvent($this->db, $id, $capiMap[$newStatus]);
             }
 

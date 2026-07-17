@@ -23,6 +23,12 @@ export default function CapiPage() {
   const [logs, setLogs] = useState<CapiLog[]>([]);
   const [pixelId, setPixelId] = useState('');
   const [accessToken, setAccessToken] = useState('');
+  
+  // Mapping triggers and status list
+  const [capiEventTriggers, setCapiEventTriggers] = useState<Record<string, string>>({});
+  const [pipelineStatuses, setPipelineStatuses] = useState<string[]>([]);
+  const [pipelineStatusLabels, setPipelineStatusLabels] = useState<Record<string, string>>({});
+
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -49,6 +55,9 @@ export default function CapiPage() {
       if (resSettings.success) {
         setPixelId(resSettings.data?.meta_pixel_id || '');
         setAccessToken(resSettings.data?.meta_access_token || '');
+        setCapiEventTriggers(resSettings.data?.capi_event_triggers || {});
+        setPipelineStatuses(resSettings.data?.pipeline_statuses || []);
+        setPipelineStatusLabels(resSettings.data?.pipeline_status_labels || {});
       }
       if (resLogs.success) {
         setLogs(resLogs.data || []);
@@ -72,7 +81,8 @@ export default function CapiPage() {
         method: 'POST',
         body: JSON.stringify({
           meta_pixel_id: pixelId,
-          meta_access_token: accessToken
+          meta_access_token: accessToken,
+          capi_event_triggers: capiEventTriggers
         })
       });
 
@@ -183,11 +193,46 @@ export default function CapiPage() {
                 style={{ height: '144px', resize: 'none' }}
               />
             </div>
+            <div style={{ marginTop: '1.25rem', borderTop: '1px solid var(--color-border-light)', paddingTop: '1.25rem' }}>
+              <label className="form-label" style={{ fontWeight: 700, marginBottom: '0.25rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <Code size={16} style={{ color: 'var(--color-primary)' }} />
+                Ánh xạ Trạng thái & Sự kiện Meta CAPI
+              </label>
+              <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginBottom: '1rem', lineHeight: 1.4 }}>
+                Chỉ định sự kiện Standard Meta CAPI tương ứng sẽ tự động kích hoạt khi khách hàng chuyển sang từng trạng thái phễu.
+              </p>
+              
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', maxHeight: '380px', overflowY: 'auto', paddingRight: '4px', border: '1px solid var(--color-border-light)', borderRadius: '8px', padding: '0.75rem', background: 'rgba(0, 0, 0, 0.01)' }}>
+                {pipelineStatuses.map(status => (
+                  <div key={status} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
+                    <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--color-text)' }}>
+                      {pipelineStatusLabels[status] || status}
+                    </span>
+                    <select
+                      className="form-input"
+                      style={{ width: '170px', padding: '4px 8px', fontSize: '0.75rem', height: '32px', borderRadius: '6px' }}
+                      value={capiEventTriggers[status] || 'Skip'}
+                      onChange={e => setCapiEventTriggers(prev => ({ ...prev, [status]: e.target.value }))}
+                    >
+                      <option value="Skip">Không gửi (Skip)</option>
+                      <option value="Lead">Lead (Khách tiềm năng)</option>
+                      <option value="Schedule">Schedule (Hẹn gặp)</option>
+                      <option value="CompleteRegistration">CompleteRegistration</option>
+                      <option value="SubmitApplication">SubmitApplication</option>
+                      <option value="Contact">Contact (Liên hệ)</option>
+                      <option value="ViewContent">ViewContent (Xem hàng)</option>
+                      <option value="Purchase">Purchase (Đặt cọc)</option>
+                    </select>
+                  </div>
+                ))}
+              </div>
+            </div>
+
             <button
               type="submit"
               disabled={saving}
               className="btn primary"
-              style={{ marginTop: '0.5rem', alignSelf: 'flex-start' }}
+              style={{ marginTop: '0.75rem', alignSelf: 'flex-start' }}
             >
               <Save size={16} />
               {saving ? 'Đang lưu...' : 'Lưu cấu hình'}
@@ -348,10 +393,11 @@ export default function CapiPage() {
                 <h5 style={{ fontSize: '0.875rem', fontWeight: 800, margin: '0 0 4px 0', color: 'var(--color-text)' }}>
                   1. Các loại sự kiện gửi về Facebook (Events)
                 </h5>
-                <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', margin: 0, lineHeight: 1.4 }}>
-                  • <strong>Lead (Nhận số)</strong>: Báo về Facebook ngay khi hệ thống vừa chia khách hàng mới cho nhân viên sale.<br />
-                  • <strong>Schedule (Đặt lịch hẹn)</strong>: Báo về Facebook khi nhân viên sale hẹn gặp khách hàng thành công.<br />
-                  • <strong>Purchase (Mua hàng)</strong>: Báo về Facebook khi khách hàng đóng đợt cọc đầu tiên thành công.
+                <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', margin: 0, lineHeight: 1.5 }}>
+                  • <strong>Thiết lập linh hoạt</strong>: Bạn có thể tự do ánh xạ bất kỳ trạng thái phễu nào của CRM với các sự kiện Standard của Meta (hoặc chọn 'Không gửi') ngay tại bảng điều khiển cấu hình bên cạnh.<br />
+                  • <strong>Lead (Khách tiềm năng)</strong>: Báo về Facebook khi hệ thống nhận diện được nhu cầu khách hàng.<br />
+                  • <strong>Schedule (Đặt lịch hẹn)</strong>: Báo về Facebook khi nhân viên sale đặt lịch hẹn gặp khách hàng thành công.<br />
+                  • <strong>Purchase (Mua hàng)</strong>: Báo về Facebook khi khách hàng ký kết hợp đồng đặt cọc thành công.
                 </p>
               </div>
             </div>
