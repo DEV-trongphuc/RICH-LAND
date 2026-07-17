@@ -216,25 +216,31 @@ export const Header = ({ onActivityFeedClick, onMenuClick, version }: { onActivi
         }
       }
 
+      const urlObj = new URL(targetLink, window.location.origin);
       const contactMatch = targetLink.match(/^\/contacts\/(\d+)$/) || targetLink.match(/\/contacts\?(?:open_contact_id|id)=(\d+)/);
       if (contactMatch) {
-        targetLink = `/contacts?open_contact_id=${contactMatch[1]}`;
+        urlObj.searchParams.set('open_contact_id', contactMatch[1]);
+        targetLink = `/contacts?${urlObj.searchParams.toString()}`;
       } else {
-        const activityMatch = targetLink.match(/^\/activities\/(\d+)$/);
+        const activityMatch = targetLink.match(/^\/activities\/(\d+)$/) || targetLink.match(/\/activities\?(?:task_id|id)=(\d+)/);
         if (activityMatch) {
           if (['sale', 'sales'].includes(user?.role || '')) {
-            targetLink = `/workspace?task_id=${activityMatch[1]}`;
+            urlObj.searchParams.set('task_id', activityMatch[1]);
+            targetLink = `/workspace?${urlObj.searchParams.toString()}`;
           } else {
-            targetLink = `/activities?id=${activityMatch[1]}`;
+            urlObj.searchParams.set('id', activityMatch[1]);
+            targetLink = `/activities?${urlObj.searchParams.toString()}`;
           }
         }
-        const projectMatch = targetLink.match(/^\/projects\/(\d+)$/);
+        const projectMatch = targetLink.match(/^\/projects\/(\d+)$/) || targetLink.match(/\/projects\?(?:id)=(\d+)/);
         if (projectMatch) {
-          targetLink = `/projects?id=${projectMatch[1]}`;
+          urlObj.searchParams.set('id', projectMatch[1]);
+          targetLink = `/projects?${urlObj.searchParams.toString()}`;
         }
-        const ticketMatch = targetLink.match(/^\/tickets\/(\d+)$/);
+        const ticketMatch = targetLink.match(/^\/tickets\/(\d+)$/) || targetLink.match(/\/tickets\?(?:id)=(\d+)/);
         if (ticketMatch) {
-          targetLink = `/support-tickets?id=${ticketMatch[1]}`;
+          urlObj.searchParams.set('id', ticketMatch[1]);
+          targetLink = `/support-tickets?${urlObj.searchParams.toString()}`;
         }
       }
       navigate(targetLink);

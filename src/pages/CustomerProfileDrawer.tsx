@@ -310,17 +310,54 @@ const ActivityComments: React.FC<{ activityId: number, initialCount?: number, us
   const [hasFetched, setHasFetched] = useState(false);
 
   useEffect(() => {
-    if (initialCount > 0 && !hasFetched) {
-      api.get(`/activities/${activityId}/comments`)
-        .then(res => {
-          setComments(res.data.data || []);
-          setHasFetched(true);
-        })
-        .catch(e => console.error(e));
-    } else if (initialCount === 0 && !hasFetched) {
-      setHasFetched(true);
+    const params = new URLSearchParams(window.location.search);
+    const highlightActivityId = params.get('highlight_activity_id');
+    const highlightCommentId = params.get('highlight_comment_id');
+
+    if (String(activityId) === String(highlightActivityId) && highlightCommentId) {
+      setExpanded(true);
+      if (!hasFetched) {
+        api.get(`/activities/${activityId}/comments`)
+          .then(res => {
+            setComments(res.data.data || []);
+            setHasFetched(true);
+          })
+          .catch(e => console.error(e));
+      }
+    } else {
+      if (initialCount > 0 && !hasFetched) {
+        api.get(`/activities/${activityId}/comments`)
+          .then(res => {
+            setComments(res.data.data || []);
+            setHasFetched(true);
+          })
+          .catch(e => console.error(e));
+      } else if (initialCount === 0 && !hasFetched) {
+        setHasFetched(true);
+      }
     }
   }, [activityId, initialCount, hasFetched]);
+
+  useEffect(() => {
+    if (expanded && comments.length > 0) {
+      const params = new URLSearchParams(window.location.search);
+      const highlightCommentId = params.get('highlight_comment_id');
+      const highlightActivityId = params.get('highlight_activity_id');
+      
+      if (String(activityId) === String(highlightActivityId) && highlightCommentId) {
+        setTimeout(() => {
+          const element = document.getElementById(`comment-${highlightCommentId}`);
+          if (element) {
+            element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            element.style.backgroundColor = '#fef08a'; // yellow-200
+            setTimeout(() => {
+              element.style.backgroundColor = 'transparent';
+            }, 2500);
+          }
+        }, 300);
+      }
+    }
+  }, [expanded, comments, activityId]);
 
   const displayCount = hasFetched ? comments.length : initialCount;
 
@@ -422,7 +459,7 @@ const ActivityComments: React.FC<{ activityId: number, initialCount?: number, us
       {expanded && (
         <div style={{ marginTop: '1rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
           {comments.map((c: any) => (
-            <div key={c.id} style={{ display: 'flex', gap: '0.75rem' }}>
+            <div key={c.id} id={`comment-${c.id}`} style={{ display: 'flex', gap: '0.75rem', transition: 'all 0.5s ease', borderRadius: '12px', padding: '4px' }}>
               <Avatar name={c.user_name} src={c.avatar_url || undefined} size="sm" />
               <div style={{ flex: 1, background: 'var(--color-surface)', padding: '0.75rem', borderRadius: '12px', border: '1px solid var(--color-border-light)', boxShadow: 'var(--shadow-sm)', overflow: 'hidden' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.25rem' }}>
@@ -468,7 +505,7 @@ const ActivityComments: React.FC<{ activityId: number, initialCount?: number, us
           ))}
 
           <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.5rem', alignItems: 'flex-start' }}>
-            <Avatar name="Bạn" size="sm" />
+            <Avatar name={(currentUser as any)?.full_name || "Bạn"} src={(currentUser as any)?.avatar_url || undefined} size="sm" />
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
               <div style={{ position: 'relative' }}>
                 <MentionInput
@@ -645,12 +682,55 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
   const [prevContactId, setPrevContactId] = useState<number | null>(null);
 
   useEffect(() => {
-    if (isOpen && initialTab) {
+    const params = new URLSearchParams(window.location.search);
+    const hasHighlight = params.has('highlight_activity_id');
+    
+    if (isOpen && hasHighlight) {
+      setActiveTab('timeline');
+    } else if (isOpen && initialTab) {
       setActiveTab(initialTab);
     } else if (isOpen) {
       setActiveTab('info');
     }
   }, [isOpen, initialTab]);
+
+  useEffect(() => {
+    if (isOpen && activeTab === 'timeline') {
+      const params = new URLSearchParams(window.location.search);
+      const highlightActivityId = params.get('highlight_activity_id');
+      const highlightCommentId = params.get('highlight_comment_id');
+      
+      if (highlightActivityId) {
+        if (!highlightCommentId) {
+          setTimeout(() => {
+            const element = document.getElementById(`activity-item-${highlightActivityId}`);
+            if (element) {
+              element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              const innerContent = element.firstElementChild?.nextElementSibling as HTMLElement;
+              if (innerContent) {
+                innerContent.style.transition = 'all 0.5s ease';
+                innerContent.style.borderColor = 'var(--color-primary)';
+                innerContent.style.backgroundColor = 'rgba(189, 29, 45, 0.05)';
+                setTimeout(() => {
+                  innerContent.style.borderColor = 'var(--color-border-light)';
+                  innerContent.style.backgroundColor = 'var(--color-surface)';
+                }, 2500);
+              }
+            }
+          }, 300);
+        }
+        
+        // Clean URL parameters after a short delay so children components can read them first
+        setTimeout(() => {
+          const newParams = new URLSearchParams(window.location.search);
+          newParams.delete('highlight_activity_id');
+          newParams.delete('highlight_comment_id');
+          const cleanUrl = window.location.pathname + (newParams.toString() ? '?' + newParams.toString() : '');
+          window.history.replaceState({}, '', cleanUrl);
+        }, 1200);
+      }
+    }
+  }, [isOpen, activeTab]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState<any>({});
   const [showScoringSystemModal, setShowScoringSystemModal] = useState(false);
@@ -5580,6 +5660,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                             initial={{ opacity: 0, x: -10 }}
                             animate={{ opacity: 1, x: 0 }}
                             transition={{ delay: index * 0.1 }}
+                            id={`activity-item-${ev.id}`}
                             style={{ display: 'flex', gap: '1rem', marginBottom: '1.25rem', position: 'relative' }}
                           >
                             {/* Step Node */}

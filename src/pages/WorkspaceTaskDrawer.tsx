@@ -192,6 +192,32 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
   };
 
   useEffect(() => {
+    if (comments.length > 0) {
+      const params = new URLSearchParams(window.location.search);
+      const highlightCommentId = params.get('comment_id') || params.get('highlight_comment_id');
+      if (highlightCommentId) {
+        setTimeout(() => {
+          const element = document.getElementById(`workspace-comment-${highlightCommentId}`);
+          if (element) {
+            element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            element.style.backgroundColor = '#fef08a'; // yellow-200
+            setTimeout(() => {
+              element.style.backgroundColor = 'rgba(0, 0, 0, 0.01)';
+            }, 2500);
+            
+            // Clean URL parameters
+            const newParams = new URLSearchParams(window.location.search);
+            newParams.delete('comment_id');
+            newParams.delete('highlight_comment_id');
+            const cleanUrl = window.location.pathname + (newParams.toString() ? '?' + newParams.toString() : '');
+            window.history.replaceState({}, '', cleanUrl);
+          }
+        }, 300);
+      }
+    }
+  }, [comments]);
+
+  useEffect(() => {
     if (isOpen && !embedMode) {
       document.body.style.overflow = 'hidden';
     } else {
@@ -1667,6 +1693,7 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
                       return (
                         <div 
                           key={comment.id} 
+                          id={`workspace-comment-${comment.id}`}
                           style={{ 
                             display: 'flex', 
                             gap: '12px', 
@@ -1674,7 +1701,7 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
                             border: '1px solid var(--color-border-light)', 
                             padding: '12px 16px', 
                             borderRadius: '14px',
-                            transition: 'all 0.2s ease'
+                            transition: 'all 0.5s ease'
                           }}
                         >
                           <Avatar src={comment.avatar_url || commUser?.avatar || commUser?.avatar_url} name={commUser?.full_name || comment.user_name || 'Đồng nghiệp'} size={28} />

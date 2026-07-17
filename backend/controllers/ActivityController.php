@@ -934,13 +934,21 @@ class ActivityController {
         if (!empty($mentions)) {
             require_once __DIR__ . '/../mailer.php';
             $notif = $this->db->prepare("INSERT INTO notifications (user_id, tenant_id, title, body, type, link) VALUES (?,?,?,?,?,?)");
+            $targetLink = "/activities/{$id}?comment_id={$commentId}";
+            if (!empty($activity['related_type']) && !empty($activity['related_id'])) {
+                if ($activity['related_type'] === 'contact') {
+                    $targetLink = "/contacts?open_contact_id={$activity['related_id']}&highlight_activity_id={$id}&highlight_comment_id={$commentId}";
+                } else if ($activity['related_type'] === 'deal') {
+                    $targetLink = "/deals?id={$activity['related_id']}&highlight_activity_id={$id}&highlight_comment_id={$commentId}";
+                }
+            }
             foreach ($mentions as $uid => $userRow) {
                 $notif->execute([
                     $uid, $auth['tenant_id'],
                     'Bạn được nhắc tên trong bình luận',
                     $auth['full_name'] . ' đã nhắc tên bạn trong một bình luận hoạt động.',
                     'mention',
-                    "/activities/{$id}"
+                    $targetLink
                 ]);
 
                 if (!empty($userRow['email'])) {
