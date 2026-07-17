@@ -2552,6 +2552,9 @@ switch ($action) {
                 $targetUserId = (int)$uRow['id'];
             }
         }
+        if (!$targetUserId) {
+            $targetUserId = (int)$decodedUser['id'];
+        }
 
         $vacationMode = 0;
         if ($targetUserId > 0) {
@@ -11378,15 +11381,18 @@ switch ($action) {
         $targetId = $saleFilterId !== null ? $saleFilterId : $currentSaleConsultantId;
 
         $targetUserId = null;
-        $stmtUId = $conn->prepare("SELECT u.id FROM users u JOIN consultants c ON u.email = c.email WHERE c.id = ? LIMIT 1");
-        $stmtUId->bind_param("i", $targetId);
-        $stmtUId->execute();
-        $uRow = $stmtUId->get_result()->fetch_assoc();
-        $stmtUId->close();
-        if ($uRow) {
-            $targetUserId = (int)$uRow['id'];
-        } else {
-            $targetUserId = $targetId;
+        if ($targetId !== null && $targetId > 0) {
+            $stmtUId = $conn->prepare("SELECT u.id FROM users u JOIN consultants c ON u.email = c.email WHERE c.id = ? LIMIT 1");
+            $stmtUId->bind_param("i", $targetId);
+            $stmtUId->execute();
+            $uRow = $stmtUId->get_result()->fetch_assoc();
+            $stmtUId->close();
+            if ($uRow) {
+                $targetUserId = (int)$uRow['id'];
+            }
+        }
+        if (!$targetUserId) {
+            $targetUserId = (int)$decodedUser['id'];
         }
 
         // Check permission

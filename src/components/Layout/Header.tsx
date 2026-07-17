@@ -505,11 +505,7 @@ export const Header = ({ onActivityFeedClick, onMenuClick, version }: { onActivi
 
   const handleProfileClick = () => {
     setIsProfileMenuOpen(false);
-    if (['sale', 'sales'].includes(user?.role || '')) {
-      navigate('/account');
-    } else {
-      window.dispatchEvent(new CustomEvent('open-profile-modal'));
-    }
+    navigate('/account');
   };
 
   const handleActivityClick = () => {

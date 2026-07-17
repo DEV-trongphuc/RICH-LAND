@@ -142,9 +142,7 @@ const AppTabs = () => {
       case '/workspace':
         return <SalePortal embedMode={true} activeTabProp="workspace" key="workspace" />;
       case '/account':
-        return ['sale', 'sales'].includes(user?.role || '') 
-          ? <SalePortal embedMode={true} activeTabProp="schedule" key="schedule" /> 
-          : <PersonalAccount key="personal-account" />;
+        return <SalePortal embedMode={true} activeTabProp="schedule" key="schedule" />;
       case '/data':
         return user?.role === 'sale' 
           ? <Navigate to={`/contacts${location.search}`} replace /> 
