@@ -705,31 +705,6 @@ export const Header = ({ onActivityFeedClick, onMenuClick, version }: { onActivi
         {/* Sales widgets for receiving data and check-in */}
         {isSales && (
           <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? '4px' : '8px', marginRight: isMobile ? '2px' : '8px' }}>
-            {/* Limit Warning Widget */}
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '4px',
-              background: uncontactedCount >= 5 
-                ? 'rgba(239, 68, 68, 0.1)' 
-                : 'var(--color-bg-light)',
-              border: uncontactedCount >= 5 
-                ? '1px solid rgba(239, 68, 68, 0.25)' 
-                : '1px solid var(--color-border)',
-              color: uncontactedCount >= 5 
-                ? 'var(--color-danger)' 
-                : 'var(--color-text)',
-              borderRadius: '20px',
-              padding: isMobile ? '4px 8px' : '4px 12px',
-              height: isMobile ? '30px' : '32px',
-              fontSize: '0.72rem',
-              fontWeight: 700,
-              boxShadow: '0 2px 5px rgba(0,0,0,0.03)',
-              whiteSpace: 'nowrap'
-            }}>
-              <AlertTriangle size={12} style={{ color: uncontactedCount >= 5 ? 'var(--color-danger)' : 'var(--color-warning)' }} />
-              <span>{isMobile ? '' : 'Chưa tương tác: '}<strong>{uncontactedCount}/5</strong></span>
-            </div>
 
             {/* Receiving Data Toggle */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '4px', background: 'var(--color-bg)', border: '1px solid var(--color-border)', borderRadius: '8px', padding: isMobile ? '4px 6px' : '4px 10px', height: isMobile ? '30px' : '36px' }}>
@@ -759,25 +734,6 @@ export const Header = ({ onActivityFeedClick, onMenuClick, version }: { onActivi
           </div>
         )}
 
-        {/* Version Badge */}
-        {!isMobile && (
-          <div style={{
-            padding: '4px 10px',
-            background: 'rgba(59, 130, 246, 0.08)',
-            color: '#3b82f6',
-            border: '1px solid rgba(59, 130, 246, 0.18)',
-            borderRadius: '20px',
-            fontSize: '0.75rem',
-            fontWeight: 700,
-            display: 'flex',
-            alignItems: 'center',
-            gap: 4,
-            marginRight: 4,
-            userSelect: 'none'
-          }}>
-            v{version || '1.5.3'}
-          </div>
-        )}
 
 
         {/* Live Activity Feed Button */}

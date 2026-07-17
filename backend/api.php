@@ -11241,11 +11241,15 @@ switch ($action) {
         $success = $stmt->execute();
         $stmt->close();
 
-        // 2. Update consultants table
+        // 2. Update consultants table (if it exists as a separate table, otherwise it's a VIEW of users)
         $stmtC = $conn->prepare("UPDATE consultants SET name=?, work_start_time=?, work_end_time=?, work_schedule=?, avatar=?, dob=?, gender=?, citizen_id=?, address=?, bank_name=?, bank_account=?, leave_start=?, leave_end=?, zalo_chat_id=?, overtime_mode=? WHERE id=?");
-        $stmtC->bind_param("ssssssssssssssii", $name, $work_start_time, $work_end_time, $work_schedule, $avatar, $dob, $gender, $citizen_id, $address, $bank_name, $bank_account, $leave_start, $leave_end, $zalo_chat_id, $overtime_mode, $targetId);
-        $successC = $stmtC->execute();
-        $stmtC->close();
+        if ($stmtC) {
+            $stmtC->bind_param("ssssssssssssssii", $name, $work_start_time, $work_end_time, $work_schedule, $avatar, $dob, $gender, $citizen_id, $address, $bank_name, $bank_account, $leave_start, $leave_end, $zalo_chat_id, $overtime_mode, $targetId);
+            $successC = $stmtC->execute();
+            $stmtC->close();
+        } else {
+            $successC = true;
+        }
 
         if ($success && $successC) {
             echo json_encode(['success' => true]);
