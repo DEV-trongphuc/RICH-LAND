@@ -1876,8 +1876,9 @@ try {
     ");
     $logMsg("Đã tạo hoặc kiểm tra cấu trúc bảng consultant_leaves", "success");
     // Recreate the accounts VIEW to allow all users (including Sales/Managers) to log in
+    $conn->query("DROP VIEW IF EXISTS `accounts`");
     $conn->query("
-        CREATE OR REPLACE VIEW `accounts` AS 
+        CREATE VIEW `accounts` AS 
         SELECT 
           `id`, 
           `username`, 
@@ -1910,8 +1911,9 @@ try {
     } catch (Throwable $e) {}
 
     // Recreate the consultants VIEW to support extended profile fields (dob, gender, etc.)
+    $conn->query("DROP VIEW IF EXISTS `consultants`");
     $conn->query("
-        CREATE OR REPLACE VIEW `consultants` AS 
+        CREATE VIEW `consultants` AS 
         SELECT 
           `id`, 
           `full_name` AS `name`, 
@@ -2239,11 +2241,13 @@ try {
         }
 
         // 3. Update consultants view to dynamically include manager role when behavior mode is combined
-        $conn->query("CREATE OR REPLACE VIEW `consultants` AS 
+        $conn->query("DROP VIEW IF EXISTS `consultants`");
+        $conn->query("CREATE VIEW `consultants` AS 
             SELECT 
               `id`, 
               `full_name` AS `name`, 
               `email`, 
+              `phone`,
               `status`, 
               `leave_start`, 
               `leave_end`, 
@@ -2254,7 +2258,14 @@ try {
               `work_schedule`, 
               `avatar_url` AS `avatar`, 
               `vacation_mode`,
-              `team_id`
+              `overtime_mode`,
+              `team_id`,
+              `dob`,
+              `gender`,
+              `citizen_id`,
+              `address`,
+              `bank_name`,
+              `bank_account`
             FROM `users` 
             WHERE `role` = 'sales' 
                OR (`role` = 'manager' AND COALESCE((SELECT setting_value FROM system_settings WHERE setting_key = 'manager_behavior_mode' LIMIT 1), 'combined') = 'combined')");
