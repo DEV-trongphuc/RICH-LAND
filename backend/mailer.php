@@ -708,7 +708,7 @@ function sendLeadAssignedEmailToSale($consultantEmail, $consultantName, $leadNam
                 <tr>
                 <td style="padding-right: 12px;">
                 <![endif]-->
-                <a href="' . $portalUrl . '" style="display: inline-block; background-color: #4f46e5; color: #ffffff; text-decoration: none; padding: 10px 24px; border-radius: 8px; font-weight: bold; font-size: 15px; box-shadow: 0 4px 6px -1px rgba(79, 70, 229, 0.2); margin-right: 8px; margin-bottom: 8px; vertical-align: middle;">
+                <a href="' . $portalUrl . '" style="display: inline-block; background-color: #BD1D2D; color: #ffffff; text-decoration: none; padding: 10px 24px; border-radius: 8px; font-weight: bold; font-size: 15px; box-shadow: 0 4px 6px -1px rgba(189, 29, 45, 0.2); margin-right: 8px; margin-bottom: 8px; vertical-align: middle;">
                     DATA CỦA BẠN
                 </a>
                 <!--[if mso]>
@@ -1163,9 +1163,9 @@ function sendCompensationAddedEmailToSale($consultantEmail, $consultantName, $ro
     $reasonStr = !empty($reason) ? "<p style='margin: 8px 0 0 0; font-size: 15px; color: #1e1b4b;'><strong>Lý do:</strong> " . htmlspecialchars($reason) . "</p>" : "";
 
     $content = '
-        <div style="background: #e0e7ff; padding: 12px; border-radius: 8px; border-left: 4px solid #4f46e5; margin-bottom: 24px;">
-            <p style="margin: 0; font-size: 14px; color: #3730a3;"><strong>THÔNG BÁO TỪ HỆ THỐNG</strong></p>
-            <p style="margin: 8px 0 0 0; font-size: 15px; color: #1e1b4b;">
+        <div style="background: rgba(189, 29, 45, 0.05); padding: 12px; border-radius: 8px; border-left: 4px solid #BD1D2D; margin-bottom: 24px;">
+            <p style="margin: 0; font-size: 14px; color: #BD1D2D;"><strong>THÔNG BÁO TỪ HỆ THỐNG</strong></p>
+            <p style="margin: 8px 0 0 0; font-size: 15px; color: #475569;">
                 Xin chào <strong>' . htmlspecialchars($consultantName) . '</strong>,
             </p>
             <p style="margin: 8px 0 0 0; font-size: 15px; color: #1e1b4b;">
@@ -1299,7 +1299,7 @@ function sendWeeklyReportEmailToSale(
         </div>
         
         <div style="text-align: center; margin-top: 24px;">
-            <a href="' . $frontendUrl . '/sale-portal" target="_blank" rel="noopener noreferrer" style="display: inline-block; background: #4f46e5; color: #ffffff; text-decoration: none; padding: 12px 32px; border-radius: 8px; font-weight: 700; font-size: 16px; box-shadow: 0 4px 6px -1px rgba(79, 70, 229, 0.2);">
+            <a href="' . $frontendUrl . '/sale-portal" target="_blank" rel="noopener noreferrer" style="display: inline-block; background: #BD1D2D; color: #ffffff; text-decoration: none; padding: 12px 32px; border-radius: 8px; font-weight: 700; font-size: 16px; box-shadow: 0 4px 6px -1px rgba(189, 29, 45, 0.2);">
                 TRUY CẬP TRANG NHẬN DATA & BÁO LỖI
             </a>
         </div>
@@ -1415,7 +1415,7 @@ function sendMonthlyReportEmailToSale(
         </div>
         
         <div style="text-align: center; margin-top: 24px;">
-            <a href="' . $frontendUrl . '/sale-portal" target="_blank" rel="noopener noreferrer" style="display: inline-block; background: #4f46e5; color: #ffffff; text-decoration: none; padding: 12px 32px; border-radius: 8px; font-weight: 700; font-size: 16px; box-shadow: 0 4px 6px -1px rgba(79, 70, 229, 0.2);">
+            <a href="' . $frontendUrl . '/sale-portal" target="_blank" rel="noopener noreferrer" style="display: inline-block; background: #BD1D2D; color: #ffffff; text-decoration: none; padding: 12px 32px; border-radius: 8px; font-weight: 700; font-size: 16px; box-shadow: 0 4px 6px -1px rgba(189, 29, 45, 0.2);">
                 TRUY CẬP TRANG NHẬN DATA & BÁO LỖI
             </a>
         </div>
