@@ -343,7 +343,7 @@ class ActivityController {
                         (a.user_id IS NULL OR a.user_id = 0)
                         AND (a.created_by IN (SELECT id FROM users WHERE team_id = (SELECT team_id FROM users WHERE id = ?)))
                     )
-                    OR a.body LIKE \'%"scope":"global"%\\'
+                    OR a.body LIKE \'%"scope":"global"%\'
                 ))
             )';
             $params[] = $auth['user_id'];
