@@ -890,7 +890,8 @@ export const Header = ({ onActivityFeedClick, onMenuClick, version }: { onActivi
           {theme === 'light' ? <Moon size={20} /> : <Sun size={20} style={{ color: '#fbbf24' }} />}
         </button>
 
-        {/* Language Selector Dropdown */}
+        {/* Language Selector Dropdown (Temporarily Hidden) */}
+        {false && (
         <div className="responsive-hide-mobile" style={{ position: 'relative' }}>
           <button
             onClick={(e) => {
@@ -1010,6 +1011,7 @@ export const Header = ({ onActivityFeedClick, onMenuClick, version }: { onActivi
             )}
           </AnimatePresence>
         </div>
+        )}
 
         <div
           onMouseEnter={() => setIsProfileMenuOpen(true)}

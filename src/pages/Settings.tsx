@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useUIStore } from '../store/uiStore';
 import { withRouterFreezer } from '../components/RouterFreezer';
-import { Mail, Settings2, Save, Send, Server, Database, Activity, ChevronDown, ChevronUp, Zap, Shield, MessageCircle, RefreshCw, Settings as SettingsIcon, BarChart2, Clock, Calendar, Users, CheckCircle, Plus, Trash2, Edit2, FileSpreadsheet, Upload, Download, X, Search, UserCheck, FileText } from 'lucide-react';
+import { Mail, Settings2, Save, Send, Server, Database, Activity, ChevronDown, ChevronUp, Zap, Shield, MessageCircle, RefreshCw, Settings as SettingsIcon, BarChart2, Clock, Calendar, Users, CheckCircle, Plus, Trash2, Edit2, FileSpreadsheet, Upload, Download, X, Search, UserCheck, FileText, Tag } from 'lucide-react';
 import { CustomSelect } from '../components/ui/CustomSelect';
 import { ToggleSwitch } from '../components/ui/ToggleSwitch';
 import { CustomModal } from '../components/ui/CustomModal';
@@ -102,7 +102,7 @@ const SettingsInner = () => {
   const [testing, setTesting] = useState(false);
 
   // Tab State
-  const [activeTab, setActiveTab] = useState<'processing' | 'communications' | 'report' | 'duplicate_check' | 'ai' | 'workflow' | 'database'>('processing');
+  const [activeTab, setActiveTab] = useState<'processing' | 'communications' | 'report' | 'duplicate_check' | 'ai' | 'workflow' | 'database' | 'tags'>('processing');
 
   const tabOptions = [
     { value: 'processing', label: t('Cấu hình Xử lý'), icon: <SettingsIcon size={16} /> },
@@ -111,7 +111,8 @@ const SettingsInner = () => {
     { value: 'duplicate_check', label: t('Ánh xạ dữ liệu cũ'), icon: <FileSpreadsheet size={16} /> },
     { value: 'ai', label: t('Cấu hình Trợ lý AI'), icon: <Zap size={16} /> },
     { value: 'workflow', label: t('Mẫu Quy trình'), icon: <Activity size={16} /> },
-    { value: 'database', label: t('Bảo trì Database'), icon: <Database size={16} /> }
+    { value: 'database', label: t('Bảo trì Database'), icon: <Database size={16} /> },
+    { value: 'tags', label: t('Quản lý Thẻ (Tags)'), icon: <Tag size={16} /> }
   ];
 
   // States for Gemini API Connection
@@ -604,12 +605,110 @@ const SettingsInner = () => {
     setLoadingWorkflow(false);
   };
 
+  // Tag Management States
+  const [tags, setTags] = useState<any[]>([]);
+  const [loadingTags, setLoadingTags] = useState(false);
+  const [showTagModal, setShowTagModal] = useState(false);
+  const [editingTag, setEditingTag] = useState<any>(null);
+  const [tagForm, setTagForm] = useState({
+    name: '',
+    color: '#6366f1',
+    entity_type: 'all'
+  });
+
+  const fetchTagsData = async () => {
+    setLoadingTags(true);
+    try {
+      const res = await fetchAPI('tags');
+      if (res.success) {
+        setTags(res.data || []);
+      }
+    } catch (err) {
+      console.error("Error fetching tags data:", err);
+    }
+    setLoadingTags(false);
+  };
+
+  const handleSaveTag = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!tagForm.name) {
+      toast.error(t('Tên tag không được để trống'));
+      return;
+    }
+    try {
+      const isEdit = Boolean(editingTag);
+      const url = isEdit ? `tags/${editingTag.id}` : 'tags';
+      const method = isEdit ? 'PUT' : 'POST';
+      const res = await fetchAPI(url, {
+        method,
+        body: JSON.stringify(tagForm) as any
+      });
+      if (res.success) {
+        toast.success(isEdit ? t('Đã cập nhật tag') : t('Đã tạo tag mới'));
+        setShowTagModal(false);
+        fetchTagsData();
+      } else {
+        toast.error(res.message || t('Lỗi khi lưu tag'));
+      }
+    } catch (err: any) {
+      toast.error(err.message || t('Lỗi hệ thống'));
+    }
+  };
+
+  const handleDeleteTag = (id: number) => {
+    showConfirm({
+      title: t('Xóa Tag'),
+      message: t('Bạn có chắc chắn muốn xóa Tag này? Hành động này không thể hoàn tác.'),
+      confirmText: t('Xóa'),
+      cancelText: t('Hủy'),
+      isDanger: true,
+      onConfirm: async () => {
+        try {
+          const res = await fetchAPI(`tags/${id}`, {
+            method: 'DELETE'
+          });
+          if (res.success) {
+            toast.success(t('Đã xóa tag thành công'));
+            fetchTagsData();
+          } else {
+            toast.error(res.message || t('Lỗi khi xóa tag'));
+          }
+        } catch (err: any) {
+          toast.error(err.message || t('Lỗi hệ thống'));
+        }
+      }
+    });
+  };
+
+  const openAddTagModal = () => {
+    setEditingTag(null);
+    setTagForm({
+      name: '',
+      color: '#6366f1',
+      entity_type: 'all'
+    });
+    setShowTagModal(true);
+  };
+
+  const openEditTagModal = (tag: any) => {
+    setEditingTag(tag);
+    setTagForm({
+      name: tag.name,
+      color: tag.color || '#6366f1',
+      entity_type: tag.entity_type || 'all'
+    });
+    setShowTagModal(true);
+  };
+
   useEffect(() => {
     if (activeTab === 'workflow') {
       fetchWorkflowData();
     }
     if (activeTab === 'database') {
       fetchDbStats();
+    }
+    if (activeTab === 'tags') {
+      fetchTagsData();
     }
   }, [activeTab]);
 
@@ -1359,7 +1458,7 @@ const SettingsInner = () => {
         </div>
       ) : (
         <div className="responsive-flex-row" style={{ display: 'flex', gap: '1.5rem', alignItems: 'flex-start' }}>
-          <div style={{ flex: (activeTab === 'duplicate_check' || activeTab === 'ai' || activeTab === 'workflow' || activeTab === 'database') ? 1 : 2, display: 'flex', flexDirection: 'column', gap: '1.5rem', minWidth: 0, width: '100%' }}>
+          <div style={{ flex: (activeTab === 'duplicate_check' || activeTab === 'ai' || activeTab === 'workflow' || activeTab === 'database' || activeTab === 'tags') ? 1 : 2, display: 'flex', flexDirection: 'column', gap: '1.5rem', minWidth: 0, width: '100%' }}>
             {/* AI Assistant Tab Content */}
             <div style={{ display: activeTab === 'ai' ? 'block' : 'none' }} className="subtab-enter-active">
               <div className="card" style={{ padding: '2rem', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
@@ -1551,6 +1650,93 @@ const SettingsInner = () => {
                                   className="btn-icon sm text-danger" 
                                   onClick={() => handleDeleteWorkflowTemplate(tpl.id)}
                                 >
+                                  <Trash2 size={14} />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* ===== TAB: TAGS MANAGEMENT ===== */}
+            <div style={{ display: activeTab === 'tags' ? 'block' : 'none' }} className="subtab-enter-active">
+              <div className="card" style={{ padding: '2rem', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div>
+                    <h3 style={{ fontSize: '1.25rem', fontWeight: 800, margin: 0, color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <span style={{ display: 'inline-flex', background: 'rgba(163,20,34,0.1)', color: 'var(--color-primary)', padding: 8, borderRadius: 10 }}>
+                        <Tag size={20} />
+                      </span>
+                      {t('Quản lý Thẻ phân loại (Tags)')}
+                    </h3>
+                    <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', margin: '6px 0 0' }}>
+                      {t('Tạo và quản lý các nhãn phân loại màu sắc dùng chung cho Khách hàng Tiềm năng và Doanh nghiệp.')}
+                    </p>
+                  </div>
+                  <button className="btn primary" onClick={openAddTagModal} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <Plus size={16} /> {t('Thêm Tag Mới')}
+                  </button>
+                </div>
+
+                {loadingTags ? (
+                  <TableSkeleton rows={4} cols={5} />
+                ) : tags.length === 0 ? (
+                  <div style={{ textAlign: 'center', padding: '3rem 1rem', color: 'var(--color-text-muted)' }}>
+                    <Tag size={40} style={{ opacity: 0.3, marginBottom: '1rem' }} />
+                    <p style={{ margin: 0, fontSize: '0.875rem' }}>{t('Chưa có thẻ phân loại nào được tạo. Hãy tạo thẻ đầu tiên để bắt đầu.')}</p>
+                  </div>
+                ) : (
+                  <div className="table-wrap custom-scrollbar" style={{ overflowX: 'auto', border: '1px solid var(--color-border)', borderRadius: '8px' }}>
+                    <table style={{ borderCollapse: 'collapse', width: '100%' }}>
+                      <thead>
+                        <tr style={{ background: 'var(--color-border-light)' }}>
+                          <th style={{ padding: '10px 16px', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', borderBottom: '1px solid var(--color-border)', textAlign: 'left' }}>{t('Tag')}</th>
+                          <th style={{ padding: '10px 16px', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', borderBottom: '1px solid var(--color-border)', textAlign: 'left' }}>{t('Màu sắc')}</th>
+                          <th style={{ padding: '10px 16px', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', borderBottom: '1px solid var(--color-border)', textAlign: 'left' }}>{t('Áp dụng cho')}</th>
+                          <th style={{ padding: '10px 16px', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', borderBottom: '1px solid var(--color-border)', textAlign: 'center' }}>{t('Số lượt sử dụng')}</th>
+                          <th style={{ padding: '10px 16px', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', borderBottom: '1px solid var(--color-border)', textAlign: 'center', width: '100px' }}>{t('Thao tác')}</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {tags.map((tag) => (
+                          <tr key={tag.id} style={{ borderBottom: '1px solid var(--color-border-light)' }}>
+                            <td style={{ padding: '12px 16px' }}>
+                              <span style={{ 
+                                background: `${tag.color}15`, 
+                                color: tag.color, 
+                                border: `1px solid ${tag.color}35`, 
+                                padding: '4px 10px', 
+                                borderRadius: '8px', 
+                                fontSize: '0.75rem', 
+                                fontWeight: 700,
+                                display: 'inline-block'
+                              }}>
+                                {tag.name}
+                              </span>
+                            </td>
+                            <td style={{ padding: '12px 16px', verticalAlign: 'middle' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <span style={{ width: '12px', height: '12px', borderRadius: '50%', background: tag.color, border: '1px solid rgba(0,0,0,0.1)' }} />
+                                <span style={{ fontFamily: 'monospace', fontSize: '0.8125rem', color: 'var(--color-text)' }}>{tag.color}</span>
+                              </div>
+                            </td>
+                            <td style={{ padding: '12px 16px', fontSize: '0.8125rem', color: 'var(--color-text)' }}>
+                              {tag.entity_type === 'contacts' ? t('Khách hàng') : tag.entity_type === 'companies' ? t('Doanh nghiệp') : t('Tất cả')}
+                            </td>
+                            <td style={{ padding: '12px 16px', textAlign: 'center', fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text-light)' }}>
+                              {tag.count || 0}
+                            </td>
+                            <td style={{ padding: '12px 16px', textAlign: 'center' }}>
+                              <div style={{ display: 'flex', justifyContent: 'center', gap: '8px' }}>
+                                <button className="btn-icon" onClick={() => openEditTagModal(tag)} title={t('Sửa')} style={{ color: 'var(--color-text-light)' }}>
+                                  <Edit2 size={14} />
+                                </button>
+                                <button className="btn-icon text-danger" onClick={() => handleDeleteTag(tag.id)} title={t('Xóa')}>
                                   <Trash2 size={14} />
                                 </button>
                               </div>
@@ -4712,6 +4898,76 @@ function doPost(e) {
             </button>
           </div>
         </div>
+        )}
+      </CustomModal>
+
+      {/* Custom Modal for Tag Creation/Editing */}
+      <CustomModal
+        isOpen={showTagModal}
+        onClose={() => setShowTagModal(false)}
+        title={editingTag ? t("Chỉnh sửa Tag") : t("Thêm Tag Mới")}
+        width="500px"
+      >
+        {showTagModal && (
+          <form onSubmit={handleSaveTag} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', padding: '0.25rem 0' }}>
+            <div>
+              <label className="form-label" style={{ fontWeight: 600 }}>{t('Tên Tag')} <span style={{ color: 'var(--color-danger)' }}>*</span></label>
+              <input
+                type="text"
+                className="form-input"
+                required
+                placeholder={t("Ví dụ: VIP, Tiềm năng cao...")}
+                value={tagForm.name}
+                onChange={e => setTagForm({ ...tagForm, name: e.target.value })}
+              />
+            </div>
+
+            <div>
+              <label className="form-label" style={{ fontWeight: 600 }}>{t('Màu sắc đại diện')}</label>
+              <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                <input
+                  type="color"
+                  value={tagForm.color}
+                  onChange={e => setTagForm({ ...tagForm, color: e.target.value })}
+                  style={{
+                    width: '46px',
+                    height: '38px',
+                    padding: '2px',
+                    border: '1px solid var(--color-border)',
+                    borderRadius: '8px',
+                    cursor: 'pointer',
+                    background: 'none'
+                  }}
+                />
+                <input
+                  type="text"
+                  className="form-input"
+                  value={tagForm.color}
+                  onChange={e => setTagForm({ ...tagForm, color: e.target.value })}
+                  placeholder="#6366f1"
+                  style={{ fontFamily: 'monospace', flex: 1 }}
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="form-label" style={{ fontWeight: 600 }}>{t('Đối tượng áp dụng')}</label>
+              <select
+                className="form-input"
+                value={tagForm.entity_type}
+                onChange={e => setTagForm({ ...tagForm, entity_type: e.target.value })}
+              >
+                <option value="all">{t('Tất cả (Khách hàng & Doanh nghiệp)')}</option>
+                <option value="contacts">{t('Chỉ Khách hàng')}</option>
+                <option value="companies">{t('Chỉ Doanh nghiệp')}</option>
+              </select>
+            </div>
+
+            <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
+              <button type="button" className="btn outline" onClick={() => setShowTagModal(false)}>{t('Hủy')}</button>
+              <button type="submit" className="btn primary">{t('Lưu lại')}</button>
+            </div>
+          </form>
         )}
       </CustomModal>
 
