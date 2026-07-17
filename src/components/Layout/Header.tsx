@@ -1989,30 +1989,6 @@ export const Header = ({ onActivityFeedClick, onMenuClick, version }: { onActivi
 
                 {/* Actions */}
                 <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
-                  <button
-                    onClick={() => {
-                      fetchNotifPrefs();
-                      setShowNotifSettings(true);
-                    }}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '4px',
-                      padding: '4px 8px',
-                      background: 'none',
-                      border: 'none',
-                      color: 'var(--color-text-muted)',
-                      fontSize: '0.75rem',
-                      fontWeight: 600,
-                      cursor: 'pointer',
-                      outline: 'none'
-                    }}
-                    onMouseEnter={e => e.currentTarget.style.color = 'var(--color-primary)'}
-                    onMouseLeave={e => e.currentTarget.style.color = 'var(--color-text-muted)'}
-                  >
-                    <Settings size={14} />
-                    {t("Cấu hình Email")}
-                  </button>
                   {unreadCount > 0 && (
                     <button
                       onClick={handleMarkAllRead}
