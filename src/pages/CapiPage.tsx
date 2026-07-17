@@ -5,6 +5,7 @@ import { Link2, Save, Check, X, AlertCircle, RefreshCw, Code, CheckCircle, Info,
 import { CustomModal } from '../components/ui/CustomModal';
 import { Skeleton } from '../components/ui/Skeleton';
 import { CustomSelect } from '../components/ui/CustomSelect';
+import { useUIStore } from '../store/uiStore';
 
 interface CapiLog {
   id: number;
@@ -20,6 +21,7 @@ interface CapiLog {
 
 export default function CapiPage() {
   const { user } = useAuth();
+  const { addToast } = useUIStore();
   const [showInfoModal, setShowInfoModal] = useState(false);
   const [logs, setLogs] = useState<CapiLog[]>([]);
   const [pixelId, setPixelId] = useState('');
@@ -88,12 +90,15 @@ export default function CapiPage() {
       });
 
       if (res.success) {
+        addToast('Cấu hình Meta Conversion API thành công!', 'success');
         setSuccess('Cấu hình Meta Conversion API thành công!');
         setTimeout(() => setSuccess(''), 3000);
       } else {
+        addToast(res.message || 'Lỗi lưu cấu hình', 'error');
         setError(res.message || 'Lỗi lưu cấu hình');
       }
     } catch (e: any) {
+      addToast(e.message || 'Lỗi kết nối', 'error');
       setError(e.message || 'Lỗi kết nối');
     } finally {
       setSaving(false);
