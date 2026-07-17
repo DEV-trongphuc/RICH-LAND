@@ -2573,7 +2573,7 @@ switch ($action) {
                 SELECT COUNT(*) as cnt 
                 FROM leads l
                 INNER JOIN consultants cons ON l.assigned_to = cons.id
-                INNER JOIN contacts c ON c.person_id = l.person_id AND c.owner_id = cons.user_id AND c.deleted_at IS NULL
+                INNER JOIN contacts c ON c.person_id = l.person_id AND c.owner_id = cons.id AND c.deleted_at IS NULL
                 WHERE l.assigned_to = ?
                   AND l.status != 'reminder'
                   AND l.is_accepted = 1
@@ -12458,7 +12458,7 @@ switch ($action) {
             SELECT l.assigned_to, COUNT(*) as cnt 
             FROM leads l
             JOIN consultants cons ON l.assigned_to = cons.id
-            LEFT JOIN contacts c ON c.person_id = l.person_id AND c.owner_id = cons.user_id AND c.deleted_at IS NULL
+            LEFT JOIN contacts c ON c.person_id = l.person_id AND c.owner_id = cons.id AND c.deleted_at IS NULL
             WHERE l.status != 'reminder' 
               AND l.is_accepted = 1 
               AND l.source NOT IN ('ca_nhan', 'gioi_thieu')
