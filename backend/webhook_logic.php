@@ -3317,7 +3317,15 @@ function ensurePersonAndContact($conn, $leadId) {
     if ($assigned_to > 0 && $is_accepted === 1) {
         $projectId = null;
         if (!empty($lead['target_round_id'])) {
-            $projectId = 1;
+            $chkProj = $conn->query("SELECT id FROM projects WHERE id = 1 LIMIT 1");
+            if ($chkProj && $chkProj->num_rows > 0) {
+                $projectId = 1;
+            } else {
+                $chkProjAny = $conn->query("SELECT id FROM projects LIMIT 1");
+                if ($chkProjAny && $rowProj = $chkProjAny->fetch_assoc()) {
+                    $projectId = (int)$rowProj['id'];
+                }
+            }
         }
 
         // Split name into first_name and last_name
