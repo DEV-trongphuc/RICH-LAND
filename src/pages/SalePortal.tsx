@@ -2277,6 +2277,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
         loadPortalData();
       } else {
         toast.error(json.message || t('Lỗi tiếp nhận lead'));
+        loadPortalData();
       }
     } catch (err: any) {
       toast.error(t('Lỗi kết nối: ') + err.message);

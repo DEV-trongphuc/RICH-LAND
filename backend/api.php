@@ -4264,7 +4264,7 @@ switch ($action) {
                 $sale_id = $currentSaleConsultantId;
                 if ((int)$resChk['assigned_to'] !== $sale_id) {
                     $conn->rollback();
-                    echo json_encode(['success' => false, 'message' => 'Bạn không được phép tiếp nhận Lead này']);
+                    echo json_encode(['success' => false, 'message' => 'Khách hàng này đã bị thu hồi hoặc chuyển cho người khác do quá hạn tiếp nhận']);
                     break;
                 }
             }
