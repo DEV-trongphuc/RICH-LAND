@@ -443,7 +443,19 @@ if (!in_array($action, $publicActions)) {
     }
 
     $currentSaleConsultantId = 0;
-    if (isset($decodedUser['email']) && !empty($decodedUser['email'])) {
+    $lookupId = $decodedUser['user_id'] ?? $decodedUser['id'] ?? 0;
+    if ($lookupId > 0) {
+        $stmtC = $conn->prepare("SELECT id FROM consultants WHERE id = ? LIMIT 1");
+        $stmtC->bind_param("i", $lookupId);
+        $stmtC->execute();
+        $cRow = $stmtC->get_result()->fetch_assoc();
+        $stmtC->close();
+        if ($cRow) {
+            $currentSaleConsultantId = (int)$cRow['id'];
+        }
+    }
+
+    if ($currentSaleConsultantId === 0 && isset($decodedUser['email']) && !empty($decodedUser['email'])) {
         $stmtC = $conn->prepare("SELECT id FROM consultants WHERE email = ? LIMIT 1");
         $stmtC->bind_param("s", $decodedUser['email']);
         $stmtC->execute();

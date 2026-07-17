@@ -1485,14 +1485,16 @@ try {
     // Self-healing database check (to repair databases where db_version was manually set but tables/columns were skipped)
     $logMsg("Bắt đầu tự sửa đổi cấu trúc (Self-healing check)...", "info");
 
-    // Custom email migrations for ID 999 and 1000
+    // Custom email migrations for ID 999 and 1000 and cleanup duplicates
+    $conn->query("DELETE FROM users WHERE email = 'haidang@richland.net' AND id != 1000");
+    $conn->query("DELETE FROM users WHERE email = 'admin@richland.net' AND id != 999");
     if (!$conn->query("UPDATE users SET email = 'turniodev@gmail.com' WHERE id = 999")) {
         $logMsg("Lỗi cập nhật email ID 999: " . $conn->error, "error");
     }
     if (!$conn->query("UPDATE users SET email = 'dom.marketing.vn@gmail.com' WHERE id = 1000")) {
         $logMsg("Lỗi cập nhật email ID 1000: " . $conn->error, "error");
     }
-    $logMsg("Đã chạy lệnh cập nhật email cho Admin Richland (ID 999) và Nguyễn Hải Đăng (ID 1000)", "success");
+    $logMsg("Đã chạy lệnh cập nhật email cho Admin Richland (ID 999) và Nguyễn Hải Đăng (ID 1000) và dọn dẹp các bản ghi trùng lặp", "success");
 
     // 1. teams table
     $conn->query("CREATE TABLE IF NOT EXISTS `teams` (
@@ -1841,8 +1843,8 @@ try {
 
     //    // Seed default users for Developer Quick Login (All Roles)
     $devUsers = [
-        ['id' => 999, 'username' => 'admin', 'email' => 'admin@richland.net', 'password' => 'admin123', 'name' => 'Admin Richland', 'role' => 'admin'],
-        ['id' => 1000, 'username' => 'haidang', 'email' => 'haidang@richland.net', 'password' => 'sale123', 'name' => 'Nguyễn Hải Đăng (Sale)', 'role' => 'sales'],
+        ['id' => 999, 'username' => 'admin', 'email' => 'turniodev@gmail.com', 'password' => 'admin123', 'name' => 'Admin Richland', 'role' => 'admin'],
+        ['id' => 1000, 'username' => 'haidang', 'email' => 'dom.marketing.vn@gmail.com', 'password' => 'sale123', 'name' => 'Nguyễn Hải Đăng (Sale)', 'role' => 'sales'],
         ['id' => 1001, 'username' => 'director', 'email' => 'director@richland.net', 'password' => 'director123', 'name' => 'Giám đốc kinh doanh Richland', 'role' => 'director'],
         ['id' => 1002, 'username' => 'manager', 'email' => 'manager@richland.net', 'password' => 'manager123', 'name' => 'Trưởng nhóm Richland', 'role' => 'manager'],
     ];
