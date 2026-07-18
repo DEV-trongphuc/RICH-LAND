@@ -3522,7 +3522,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
               
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1rem' }}>
                 {pendingLeads.map((lead: any) => {
-                  const leadRecallMins = Number(lead.lead_recall_minutes) || 2;
+                  const leadRecallMins = Number(lead.lead_recall_minutes) || Number(sysSettings?.lead_response_timeout_minutes) || 2;
                   const limitMs = leadRecallMins * 60 * 1000;
                   const elapsedMs = now - new Date(lead.received_at || lead.last_interaction_date).getTime();
                   const remainingMs = limitMs - elapsedMs;

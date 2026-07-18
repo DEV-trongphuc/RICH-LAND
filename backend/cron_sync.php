@@ -930,19 +930,16 @@ if (!function_exists('recallInactiveLeads')) {
     function recallInactiveLeads($conn) {
         logSync("Checking for inactive unaccepted leads to recall...");
         
-        // Query all leads that have been assigned but not yet accepted, joining sheet_connections to check their specific recall duration
-        // Falls back to system_settings 'lead_response_timeout_minutes' if connection-level timeout is 0
         $sql = "SELECT l.id as lead_id, l.name as lead_name, l.phone as lead_phone, l.email as lead_email,
                        l.source as lead_source, l.type as lead_type, l.note as lead_note,
-                       l.assigned_to as old_consultant_id, l.connection_id,
+                       l.assigned_to as old_consultant_id, l.connection_id, l.last_interaction_date,
                        c.name as old_consultant_name, c.email as old_consultant_email,
-                       COALESCE(NULLIF(sc.lead_recall_minutes, 0), (SELECT CAST(setting_value AS UNSIGNED) FROM system_settings WHERE setting_key = 'lead_response_timeout_minutes'), 2) as lead_recall_minutes
+                       IFNULL(sc.lead_recall_minutes, 0) as connection_recall_minutes
                 FROM leads l
                 JOIN consultants c ON l.assigned_to = c.id
-                JOIN sheet_connections sc ON l.connection_id = sc.id
+                LEFT JOIN sheet_connections sc ON l.connection_id = sc.id
                 WHERE l.is_accepted = 0
                   AND l.assigned_to IS NOT NULL
-                  AND l.last_interaction_date <= DATE_SUB(NOW(), INTERVAL COALESCE(NULLIF(sc.lead_recall_minutes, 0), (SELECT CAST(setting_value AS UNSIGNED) FROM system_settings WHERE setting_key = 'lead_response_timeout_minutes'), 2) MINUTE)
                 ORDER BY l.id ASC";
                 
         $stmt = $conn->prepare($sql);
@@ -952,11 +949,43 @@ if (!function_exists('recallInactiveLeads')) {
         }
         $stmt->execute();
         $res = $stmt->get_result();
-        $leads = $res->fetch_all(MYSQLI_ASSOC);
+        $allLeads = $res->fetch_all(MYSQLI_ASSOC);
         $stmt->close();
 
-        if (empty($leads)) {
+        if (empty($allLeads)) {
             logSync("No inactive unaccepted leads found.");
+            return;
+        }
+
+        $timeoutNormal = (int) get_system_setting($conn, 'lead_response_timeout_minutes') ?: 2;
+        $timeoutOvertime = (int) get_system_setting($conn, 'lead_response_timeout_overtime_minutes') ?: $timeoutNormal;
+        
+        $nightShiftStart = get_system_setting($conn, 'night_shift_start_time') ?: '18:00';
+        $nightShiftEnd = get_system_setting($conn, 'night_shift_end_time') ?: '06:00';
+
+        $leads = [];
+        foreach ($allLeads as $row) {
+            $lastTime = date('H:i', strtotime($row['last_interaction_date']));
+            $isOvertime = false;
+            if ($nightShiftStart < $nightShiftEnd) {
+                $isOvertime = ($lastTime >= $nightShiftStart && $lastTime <= $nightShiftEnd);
+            } else {
+                $isOvertime = ($lastTime >= $nightShiftStart || $lastTime <= $nightShiftEnd);
+            }
+
+            $leadRecallMins = (int)$row['connection_recall_minutes'];
+            if ($leadRecallMins <= 0) {
+                $leadRecallMins = $isOvertime ? $timeoutOvertime : $timeoutNormal;
+            }
+
+            $elapsedSeconds = time() - strtotime($row['last_interaction_date']);
+            if ($elapsedSeconds >= $leadRecallMins * 60) {
+                $leads[] = $row;
+            }
+        }
+
+        if (empty($leads)) {
+            logSync("No inactive unaccepted leads exceeded timeout.");
             return;
         }
 

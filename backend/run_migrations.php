@@ -1413,6 +1413,7 @@ try {
 
         $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('temperature_decay_days', '5')");
         $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('lead_response_timeout_minutes', '2')");
+        $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('lead_response_timeout_overtime_minutes', '5')");
         $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('uncontacted_lead_share_hours', '3')");
         $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('night_shift_start_time', '18:00')");
         $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('night_shift_end_time', '06:00')");
@@ -1706,6 +1707,7 @@ try {
     $logMsg("Đã tạo bảng workflow_task_templates thành công", "success");
     $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('temperature_decay_days', '5')");
     $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('lead_response_timeout_minutes', '2')");
+    $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('lead_response_timeout_overtime_minutes', '5')");
     $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('uncontacted_lead_share_hours', '3')");
     $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('night_shift_start_time', '18:00')");
     $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('night_shift_end_time', '06:00')");

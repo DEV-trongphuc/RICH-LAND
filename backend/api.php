@@ -2269,6 +2269,7 @@ switch ($action) {
         $personIds = [];
         while ($row = $resLeads->fetch_assoc()) {
             $row['takers'] = [];
+            $row['lead_recall_minutes'] = get_lead_recall_minutes($conn, $row['last_interaction_date'], $row['lead_recall_minutes']);
             $leads[] = $row;
             $personId = isset($row['person_id']) ? (int)$row['person_id'] : 0;
             if ($personId > 0) {
@@ -2518,7 +2519,7 @@ switch ($action) {
                 $stmtKhtn->close();
             }
         }
-        $leadRecallMinutes = (int) get_system_setting($conn, 'lead_recall_minutes');
+        $leadRecallMinutes = (int) get_system_setting($conn, 'lead_response_timeout_minutes');
 
         echo json_encode([
             'success' => true,
@@ -4222,13 +4223,10 @@ switch ($action) {
 
             // Lock the lead row for update to prevent race conditions with recall cron
             $stmtChk = $conn->prepare("
-                SELECT l.assigned_to, l.is_accepted, l.last_interaction_date,
-                       COALESCE(
-                           (SELECT NULLIF(lead_recall_minutes, 0) FROM sheet_connections WHERE id = l.connection_id),
-                           (SELECT CAST(setting_value AS UNSIGNED) FROM system_settings WHERE setting_key = 'lead_response_timeout_minutes' LIMIT 1),
-                           2
-                       ) as lead_recall_minutes
+                SELECT l.assigned_to, l.is_accepted, l.last_interaction_date, l.connection_id,
+                       IFNULL(sc.lead_recall_minutes, 0) as connection_recall_minutes
                 FROM leads l 
+                LEFT JOIN sheet_connections sc ON l.connection_id = sc.id
                 WHERE l.id = ? 
                 FOR UPDATE
             ");
@@ -4250,8 +4248,8 @@ switch ($action) {
             }
 
             // Verify timeout limit
+            $timeoutMinutes = get_lead_recall_minutes($conn, $resChk['last_interaction_date'], $resChk['connection_recall_minutes']);
             $lastInteraction = strtotime($resChk['last_interaction_date']);
-            $timeoutMinutes = (int) $resChk['lead_recall_minutes'];
             if ($timeoutMinutes > 0 && (time() - $lastInteraction) > $timeoutMinutes * 60) {
                 $conn->rollback();
                 echo json_encode(['success' => false, 'message' => 'Khách hàng này đã bị thu hồi hoặc chuyển cho người khác do quá hạn tiếp nhận']);
@@ -6209,8 +6207,8 @@ switch ($action) {
         $verifyStmt = $conn->prepare("
             SELECT dl.id, dl.status, l.name as lead_name, l.phone as lead_phone, l.email as lead_email, l.source, l.type as lead_type, l.note, l.is_accepted,
                    c.name as consultant_name, c.email as consultant_email,
-                   dr.round_name, dl.received_at,
-                   COALESCE(NULLIF(sc.lead_recall_minutes, 0), (SELECT CAST(setting_value AS UNSIGNED) FROM system_settings WHERE setting_key = 'lead_response_timeout_minutes'), 2) as lead_recall_minutes
+                   dr.round_name, dl.received_at, l.last_interaction_date,
+                   IFNULL(sc.lead_recall_minutes, 0) as lead_recall_minutes
             FROM distribution_logs dl
             JOIN leads l ON dl.lead_id = l.id
             JOIN consultants c ON dl.assigned_to = c.id
@@ -6222,6 +6220,10 @@ switch ($action) {
         $verifyStmt->bind_param("iii", $lead_id, $sale_id, $round_id);
         $verifyStmt->execute();
         $ctx = $verifyStmt->get_result()->fetch_assoc();
+
+        if ($ctx) {
+            $ctx['lead_recall_minutes'] = get_lead_recall_minutes($conn, $ctx['last_interaction_date'] ?: $ctx['received_at'], $ctx['lead_recall_minutes']);
+        }
 
         if (!$ctx) {
             echo json_encode(['success' => false, 'message' => 'Đường dẫn không hợp lệ hoặc thông tin không khớp với hệ thống.']);

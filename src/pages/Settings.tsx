@@ -230,6 +230,7 @@ const SettingsInner = () => {
   // Business Configurations (Dynamic settings from markdown rules)
   const [temperatureDecayDays, setTemperatureDecayDays] = useState<number>(5);
   const [leadResponseTimeoutMinutes, setLeadResponseTimeoutMinutes] = useState<number>(2);
+  const [leadResponseTimeoutOvertimeMinutes, setLeadResponseTimeoutOvertimeMinutes] = useState<number>(5);
   const [uncontactedLeadShareHours, setUncontactedLeadShareHours] = useState<number>(3);
   const [nightShiftStartTime, setNightShiftStartTime] = useState<string>("18:00");
   const [nightShiftEndTime, setNightShiftEndTime] = useState<string>("06:00");
@@ -587,6 +588,7 @@ const SettingsInner = () => {
         // Business configurations from markdown rules
         if (json.data.temperature_decay_days !== undefined) setTemperatureDecayDays(Number(json.data.temperature_decay_days));
         if (json.data.lead_response_timeout_minutes !== undefined) setLeadResponseTimeoutMinutes(Number(json.data.lead_response_timeout_minutes));
+        if (json.data.lead_response_timeout_overtime_minutes !== undefined) setLeadResponseTimeoutOvertimeMinutes(Number(json.data.lead_response_timeout_overtime_minutes));
         if (json.data.uncontacted_lead_share_hours !== undefined) setUncontactedLeadShareHours(Number(json.data.uncontacted_lead_share_hours));
         if (json.data.night_shift_start_time !== undefined) setNightShiftStartTime(json.data.night_shift_start_time);
         if (json.data.night_shift_end_time !== undefined) setNightShiftEndTime(json.data.night_shift_end_time);
@@ -952,6 +954,7 @@ const SettingsInner = () => {
       deal_won_status: dealWonStatus,
       temperature_decay_days: temperatureDecayDays,
       lead_response_timeout_minutes: leadResponseTimeoutMinutes,
+      lead_response_timeout_overtime_minutes: leadResponseTimeoutOvertimeMinutes,
       uncontacted_lead_share_hours: uncontactedLeadShareHours,
       night_shift_start_time: nightShiftStartTime,
       night_shift_end_time: nightShiftEndTime,
@@ -3659,21 +3662,42 @@ function doPost(e) {
 
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                         <div>
-                          <label className="form-label" style={{ fontWeight: 600 }}>{t('Thời gian chờ nhận lead')}</label>
-                          <div style={{ display: 'flex', alignItems: 'center', position: 'relative' }}>
-                            <input
-                              type="number"
-                              className="form-input"
-                              style={{ paddingRight: '3.5rem' }}
-                              value={leadResponseTimeoutMinutes}
-                              onChange={e => setLeadResponseTimeoutMinutes(Number(e.target.value))}
-                              min={1}
-                            />
-                            <span style={{ position: 'absolute', right: '12px', fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>{t('phút')}</span>
+                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                            <div>
+                              <label className="form-label" style={{ fontWeight: 600 }}>{t('Thời gian chờ nhận lead (HC)')}</label>
+                              <div style={{ display: 'flex', alignItems: 'center', position: 'relative' }}>
+                                <input
+                                  type="number"
+                                  className="form-input"
+                                  style={{ paddingRight: '3.5rem' }}
+                                  value={leadResponseTimeoutMinutes}
+                                  onChange={e => setLeadResponseTimeoutMinutes(Number(e.target.value))}
+                                  min={1}
+                                />
+                                <span style={{ position: 'absolute', right: '12px', fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>{t('phút')}</span>
+                              </div>
+                              <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px', display: 'block', lineHeight: 1.4 }}>
+                                {t('Giờ hành chính')}
+                              </span>
+                            </div>
+                            <div>
+                              <label className="form-label" style={{ fontWeight: 600 }}>{t('Thời gian chờ nhận lead (TC)')}</label>
+                              <div style={{ display: 'flex', alignItems: 'center', position: 'relative' }}>
+                                <input
+                                  type="number"
+                                  className="form-input"
+                                  style={{ paddingRight: '3.5rem' }}
+                                  value={leadResponseTimeoutOvertimeMinutes}
+                                  onChange={e => setLeadResponseTimeoutOvertimeMinutes(Number(e.target.value))}
+                                  min={1}
+                                />
+                                <span style={{ position: 'absolute', right: '12px', fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>{t('phút')}</span>
+                              </div>
+                              <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px', display: 'block', lineHeight: 1.4 }}>
+                                {t('Giờ tăng ca / Ca đêm')}
+                              </span>
+                            </div>
                           </div>
-                          <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px', display: 'block', lineHeight: 1.4 }}>
-                            {t('Thời gian phản hồi trước khi thu hồi lead.')}
-                          </span>
                           
                           <label style={{ gap: '8px', cursor: 'pointer', marginTop: '0.75rem', display: 'flex', alignItems: 'center' }}>
                             <input

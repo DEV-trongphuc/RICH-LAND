@@ -52,6 +52,31 @@ if (!function_exists('get_system_setting')) {
     }
 }
 
+if (!function_exists('get_lead_recall_minutes')) {
+    function get_lead_recall_minutes($conn, $lastInteractionDate, $connectionRecallMins = 0) {
+        $connectionRecallMins = (int)$connectionRecallMins;
+        if ($connectionRecallMins > 0) {
+            return $connectionRecallMins;
+        }
+
+        $timeoutNormal = (int) get_system_setting($conn, 'lead_response_timeout_minutes') ?: 2;
+        $timeoutOvertime = (int) get_system_setting($conn, 'lead_response_timeout_overtime_minutes') ?: $timeoutNormal;
+
+        $nightShiftStart = get_system_setting($conn, 'night_shift_start_time') ?: '18:00';
+        $nightShiftEnd = get_system_setting($conn, 'night_shift_end_time') ?: '06:00';
+
+        $lastTime = date('H:i', strtotime($lastInteractionDate));
+        $isOvertime = false;
+        if ($nightShiftStart < $nightShiftEnd) {
+            $isOvertime = ($lastTime >= $nightShiftStart && $lastTime <= $nightShiftEnd);
+        } else {
+            $isOvertime = ($lastTime >= $nightShiftStart || $lastTime <= $nightShiftEnd);
+        }
+
+        return $isOvertime ? $timeoutOvertime : $timeoutNormal;
+    }
+}
+
 if (!function_exists('get_normalized_report_error_reasons')) {
     function get_normalized_report_error_reasons($conn) {
         $rawReasons = json_decode(get_system_setting($conn, 'report_error_reasons') ?: '[]', true) ?: [];
