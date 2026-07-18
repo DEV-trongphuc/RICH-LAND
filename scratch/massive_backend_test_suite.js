@@ -173,7 +173,7 @@ async function runMassiveAudit() {
 
     // Fetch the milestones list of this deposit
     const listRes = await axios.get(getUrl('deposits'), adminHeaders);
-    const matchedDep = listRes.data.data.find(d => d.id === rule2DepositId);
+    const matchedDep = listRes.data.data.find(d => Number(d.id) === Number(rule2DepositId));
     const milestoneId = matchedDep.milestones[0].id;
 
     // Approve the first milestone payment (simulate revenue)
