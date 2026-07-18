@@ -3947,7 +3947,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                       <button
                         disabled={isSubmitting}
                         onClick={handleSave}
-                        className="btn hover-lift"
+                        className="btn"
                         style={{ 
                           display: 'flex', 
                           alignItems: 'center', 

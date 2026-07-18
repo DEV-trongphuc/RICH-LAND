@@ -1127,7 +1127,7 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
             <button
               onClick={handleManualSave}
               disabled={isSaving}
-              className="btn hover-lift"
+              className="btn"
               style={{
                 display: 'flex',
                 alignItems: 'center',
