@@ -1933,7 +1933,14 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
           id: d.id,
           name: d.name,
           date: new Date(d.created_at).toLocaleDateString('vi-VN'),
-          size: (d.file_size / 1024 / 1024).toFixed(1) + ' MB',
+          size: (() => {
+            const bytes = Number(d.file_size || 0);
+            if (!bytes) return '0 B';
+            const k = 1024;
+            const sizes = ['B', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+          })(),
           type: d.name.split('.').pop() || 'file',
           path: d.file_path,
           category: d.category
@@ -5698,7 +5705,13 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                         </div>
                       </div>
 
-                      {timeline.length === 0 ? (
+                      {loadingRelated ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '1rem' }}>
+                          <StatRowSkeleton />
+                          <StatRowSkeleton />
+                          <StatRowSkeleton />
+                        </div>
+                      ) : timeline.length === 0 ? (
                         <EmptyCard
                           icon={<History size={40} style={{ color: 'var(--color-text-muted)', opacity: 0.5 }} />}
                           title="Chưa có nhật ký tương tác"
@@ -6183,7 +6196,13 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                           }}><Plus size={14} /> Tạo phiếu đặt cọc</button>
                         )}
                       </div>
-                      {deals.length === 0 ? (
+                      {loadingRelated ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '1rem' }}>
+                          <StatRowSkeleton />
+                          <StatRowSkeleton />
+                          <StatRowSkeleton />
+                        </div>
+                      ) : deals.length === 0 ? (
                         <div className="card-panel" style={{ textAlign: 'center', padding: '4rem 2rem', border: '2px dashed var(--color-border-light)', borderRadius: '24px' }}>
                           <CreditCard size={48} style={{ color: 'var(--color-border)', margin: '0 auto 1.5rem', opacity: 0.4 }} />
                           <h4 style={{ fontWeight: 800, color: 'var(--color-text)', marginBottom: '8px' }}>Chưa có phiếu đặt cọc</h4>
@@ -6418,6 +6437,16 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                           }
                           return true;
                         });
+
+                        if (loadingRelated) {
+                          return (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '1rem' }}>
+                              <StatRowSkeleton />
+                              <StatRowSkeleton />
+                              <StatRowSkeleton />
+                            </div>
+                          );
+                        }
 
                         if (filteredTasks.length === 0) {
                           return (
@@ -7070,7 +7099,13 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                       )}
 
                       {/* Empty documents placeholder */}
-                      {docs.length === 0 ? (
+                      {loadingRelated ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '1rem' }}>
+                          <StatRowSkeleton />
+                          <StatRowSkeleton />
+                          <StatRowSkeleton />
+                        </div>
+                      ) : docs.length === 0 ? (
                         <EmptyCard
                           icon={<FileText size={40} style={{ color: 'var(--color-text-muted)', opacity: 0.5 }} />}
                           title="Chưa có tài liệu nào"
@@ -7372,7 +7407,13 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                           <button className="btn outline sm" onClick={() => { useUIStore.getState().setShowPOS(formData); }}><Plus size={14} /> Tạo hóa đơn</button>
                         )}
                       </div>
-                      {drawerInvoices.length === 0 ? (
+                      {loadingRelated ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '1rem' }}>
+                          <StatRowSkeleton />
+                          <StatRowSkeleton />
+                          <StatRowSkeleton />
+                        </div>
+                      ) : drawerInvoices.length === 0 ? (
                         <div className="card-panel" style={{ textAlign: 'center', padding: '4rem 2rem', border: '2px dashed var(--color-border-light)', borderRadius: '24px' }}>
                           <DollarSign size={48} style={{ color: 'var(--color-border)', margin: '0 auto 1.5rem', opacity: 0.4 }} />
                           <h4 style={{ fontWeight: 800, color: 'var(--color-text)', marginBottom: '8px' }}>Chưa có hóa đơn</h4>
@@ -7475,7 +7516,13 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                         )}
                       </div>
 
-                      {drawerQuotes.length === 0 ? (
+                      {loadingRelated ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '1rem' }}>
+                          <StatRowSkeleton />
+                          <StatRowSkeleton />
+                          <StatRowSkeleton />
+                        </div>
+                      ) : drawerQuotes.length === 0 ? (
                         <div className="card-panel" style={{ textAlign: 'center', padding: '4rem 2rem', border: '2px dashed var(--color-border-light)', borderRadius: '24px' }}>
                           <FileText size={48} style={{ color: 'var(--color-border)', margin: '0 auto 1.5rem', opacity: 0.4 }} />
                           <h4 style={{ fontWeight: 800, color: 'var(--color-text)', marginBottom: '8px' }}>Chưa có báo giá</h4>
@@ -7533,7 +7580,13 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                           <button className="btn outline sm" style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#BD1D2D', borderColor: '#BD1D2D' }} onClick={() => setShowExpenseModal(true)}><Plus size={14} /> Nhập chi phí</button>
                         )}
                       </div>
-                      {drawerExpenses.length > 0 ? (
+                      {loadingRelated ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '1rem' }}>
+                          <StatRowSkeleton />
+                          <StatRowSkeleton />
+                          <StatRowSkeleton />
+                        </div>
+                      ) : drawerExpenses.length > 0 ? (
                         <div style={{ display: 'grid', gap: '1rem' }}>
                           {drawerExpenses.map((exp: any) => (
                             <div 
@@ -7596,7 +7649,13 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                           </button>
                         )}
                       </div>
-                      {drawerTickets.length === 0 ? (
+                      {loadingRelated ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '1rem' }}>
+                          <StatRowSkeleton />
+                          <StatRowSkeleton />
+                          <StatRowSkeleton />
+                        </div>
+                      ) : drawerTickets.length === 0 ? (
                         <div className="card-panel" style={{ textAlign: 'center', padding: '4rem 2rem', border: '2px dashed var(--color-border-light)', borderRadius: '24px' }}>
                           <LifeBuoy size={48} style={{ color: 'var(--color-border)', margin: '0 auto 1.5rem', opacity: 0.4 }} />
                           <h4 style={{ fontWeight: 800, color: 'var(--color-text)', marginBottom: '8px' }}>Chưa có ticket hỗ trợ</h4>
