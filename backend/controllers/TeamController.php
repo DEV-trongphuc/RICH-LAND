@@ -20,7 +20,7 @@ class TeamController
         $params = [];
 
         if ($role === 'manager') {
-            $where = " WHERE (t.leader_id = ? OR t.id = (SELECT team_id FROM users WHERE id = ?))";
+            $where = " WHERE (FIND_IN_SET(?, CONCAT(t.leader_id, ',', IFNULL(t.co_leader_ids, ''))) OR t.id = (SELECT team_id FROM users WHERE id = ?))";
             $params[] = $uid;
             $params[] = $uid;
         } else if (in_array($role, ['sale', 'sales'], true)) {
@@ -78,7 +78,7 @@ class TeamController
             respond(409, null, 'Tên nhóm đã tồn tại', false);
         }
 
-        $coLeaderIds = isset($b['co_leader_ids']) ? (is_array($b['co_leader_ids']) ? json_encode(array_map('intval', $b['co_leader_ids'])) : trim($b['co_leader_ids'])) : null;
+        $coLeaderIds = isset($b['co_leader_ids']) ? (is_array($b['co_leader_ids']) ? implode(',', array_filter(array_map('intval', $b['co_leader_ids']))) : trim($b['co_leader_ids'])) : null;
 
         $stmt = $this->db->prepare("INSERT INTO teams (name, branch, leader_id, description, kpi_target, max_members, focus_project, co_leader_ids) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
         $stmt->execute([$name, $branch, $leaderId, $description, $kpiTarget, $maxMembers, $focusProject, $coLeaderIds]);
@@ -187,7 +187,7 @@ class TeamController
 
         if (array_key_exists('co_leader_ids', $b)) {
             $sets[] = "co_leader_ids = ?";
-            $params[] = isset($b['co_leader_ids']) ? (is_array($b['co_leader_ids']) ? json_encode(array_map('intval', $b['co_leader_ids'])) : trim($b['co_leader_ids'])) : null;
+            $params[] = isset($b['co_leader_ids']) ? (is_array($b['co_leader_ids']) ? implode(',', array_filter(array_map('intval', $b['co_leader_ids']))) : trim($b['co_leader_ids'])) : null;
         }
 
         if (array_key_exists('description', $b)) {

@@ -41,11 +41,11 @@ class TicketController {
         } else if ($auth['role'] === 'manager') {
             $where[] = '(t.created_by = ? OR t.assignee_id = ? OR t.created_by IN (
                 SELECT id FROM users WHERE team_id IN (
-                    SELECT id FROM teams WHERE leader_id = ?
+                    SELECT id FROM teams WHERE FIND_IN_SET(?, CONCAT(leader_id, ',', IFNULL(co_leader_ids, '')))
                 ) OR team_id = (SELECT team_id FROM users WHERE id = ?)
             ) OR t.assignee_id IN (
                 SELECT id FROM users WHERE team_id IN (
-                    SELECT id FROM teams WHERE leader_id = ?
+                    SELECT id FROM teams WHERE FIND_IN_SET(?, CONCAT(leader_id, ',', IFNULL(co_leader_ids, '')))
                 ) OR team_id = (SELECT team_id FROM users WHERE id = ?)
             ) OR EXISTS (
                 SELECT 1 FROM contacts c 
@@ -56,7 +56,7 @@ class TicketController {
                       OR FIND_IN_SET(?, c.collaborator_ids)
                       OR c.owner_id IN (
                           SELECT id FROM users WHERE team_id IN (
-                              SELECT id FROM teams WHERE leader_id = ?
+                              SELECT id FROM teams WHERE FIND_IN_SET(?, CONCAT(leader_id, ',', IFNULL(co_leader_ids, '')))
                           ) OR team_id = (SELECT team_id FROM users WHERE id = ?)
                       )
                   )
@@ -145,15 +145,15 @@ class TicketController {
         $params = [$ticketId, $auth['tenant_id'], $auth['user_id'], $auth['user_id'], $auth['user_id'], $auth['user_id']];
         
         if ($auth['role'] === 'manager') {
-            $sql .= " OR created_by IN (SELECT id FROM users WHERE team_id IN (SELECT id FROM teams WHERE leader_id = ?) OR team_id = (SELECT team_id FROM users WHERE id = ?))
-                      OR assignee_id IN (SELECT id FROM users WHERE team_id IN (SELECT id FROM teams WHERE leader_id = ?) OR team_id = (SELECT team_id FROM users WHERE id = ?))
+            $sql .= " OR created_by IN (SELECT id FROM users WHERE team_id IN (SELECT id FROM teams WHERE FIND_IN_SET(?, CONCAT(leader_id, ',', IFNULL(co_leader_ids, '')))) OR team_id = (SELECT team_id FROM users WHERE id = ?))
+                      OR assignee_id IN (SELECT id FROM users WHERE team_id IN (SELECT id FROM teams WHERE FIND_IN_SET(?, CONCAT(leader_id, ',', IFNULL(co_leader_ids, '')))) OR team_id = (SELECT team_id FROM users WHERE id = ?))
                       OR EXISTS (
                           SELECT 1 FROM contacts c 
                           WHERE c.tenant_id = tickets.tenant_id 
                             AND JSON_CONTAINS(tickets.related_contacts, CAST(c.id AS CHAR)) 
                             AND c.owner_id IN (
                                 SELECT id FROM users WHERE team_id IN (
-                                    SELECT id FROM teams WHERE leader_id = ?
+                                    SELECT id FROM teams WHERE FIND_IN_SET(?, CONCAT(leader_id, ',', IFNULL(co_leader_ids, '')))
                                 ) OR team_id = (SELECT team_id FROM users WHERE id = ?)
                             )
                       )";
@@ -363,11 +363,11 @@ class TicketController {
         } else if ($auth['role'] === 'manager') {
             $sql .= " AND (created_by = ? OR assignee_id = ? OR created_by IN (
                 SELECT id FROM users WHERE team_id IN (
-                    SELECT id FROM teams WHERE leader_id = ?
+                    SELECT id FROM teams WHERE FIND_IN_SET(?, CONCAT(leader_id, ',', IFNULL(co_leader_ids, '')))
                 ) OR team_id = (SELECT team_id FROM users WHERE id = ?)
             ) OR assignee_id IN (
                 SELECT id FROM users WHERE team_id IN (
-                    SELECT id FROM teams WHERE leader_id = ?
+                    SELECT id FROM teams WHERE FIND_IN_SET(?, CONCAT(leader_id, ',', IFNULL(co_leader_ids, '')))
                 ) OR team_id = (SELECT team_id FROM users WHERE id = ?)
             ))";
             $params[] = $auth['user_id'];
@@ -473,11 +473,11 @@ class TicketController {
         if ($auth['role'] === 'manager') {
             $sql .= " AND (created_by = ? OR assignee_id = ? OR created_by IN (
                 SELECT id FROM users WHERE team_id IN (
-                    SELECT id FROM teams WHERE leader_id = ?
+                    SELECT id FROM teams WHERE FIND_IN_SET(?, CONCAT(leader_id, ',', IFNULL(co_leader_ids, '')))
                 ) OR team_id = (SELECT team_id FROM users WHERE id = ?)
             ) OR assignee_id IN (
                 SELECT id FROM users WHERE team_id IN (
-                    SELECT id FROM teams WHERE leader_id = ?
+                    SELECT id FROM teams WHERE FIND_IN_SET(?, CONCAT(leader_id, ',', IFNULL(co_leader_ids, '')))
                 ) OR team_id = (SELECT team_id FROM users WHERE id = ?)
             ))";
             $p[] = $auth['user_id'];
