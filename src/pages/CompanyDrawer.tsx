@@ -135,6 +135,13 @@ export const CompanyDrawer: React.FC<CompanyDrawerProps> = ({ isOpen, onClose, e
         return;
       }
 
+      if (!entity?.id) {
+        // Creating - delegate post request to parent
+        await onSave(payload);
+        setIsSaving(false);
+        return;
+      }
+
       const res = await api.put(`/companies/${entity.id}`, payload);
       const updated = res.data.data;
       setFormData(updated);
@@ -298,6 +305,15 @@ export const CompanyDrawer: React.FC<CompanyDrawerProps> = ({ isOpen, onClose, e
 
         fetchInvoices();
         fetchExpenses();
+    } else {
+      setFormData({});
+      setTags([]);
+      setBaseData({});
+      setBaseTags([]);
+      setSubContacts([]);
+      setDeals([]);
+      setInvoices([]);
+      setExpenses([]);
     }
   }, [entity]);
 
