@@ -3365,7 +3365,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
   // Active Sale Portal View
   const renderWorkspaceView = () => {
     const currentUser = user;
-    const isAdminOrManager = ['admin', 'superadmin', 'super_admin', 'manager'].includes(String(user?.role || displayUser?.role || '').toLowerCase());
+    const isAdminOrManager = ['admin', 'superadmin', 'super_admin', 'manager', 'director'].includes(String(user?.role || displayUser?.role || '').toLowerCase());
     const teamOptions = [
       { value: '', label: t('Tất cả Nhóm') },
       ...teamsList.map((t: any) => ({ value: String(t.id), label: t.name }))
@@ -4514,7 +4514,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                   </div>
 
                   {/* Team filter (Admin/Manager only) */}
-                  {['admin', 'superadmin', 'super_admin', 'manager'].includes(currentUser?.role || '') && (
+                  {['admin', 'superadmin', 'super_admin', 'manager', 'director'].includes(currentUser?.role || '') && (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                       <label style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.03em' }}>{t('Nhóm')}</label>
                       <CustomSelect
@@ -4526,7 +4526,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                   )}
 
                   {/* Consultant filter (Admin/Manager only) */}
-                  {['admin', 'superadmin', 'super_admin', 'manager'].includes(currentUser?.role || '') && (
+                  {['admin', 'superadmin', 'super_admin', 'manager', 'director'].includes(currentUser?.role || '') && (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                       <label style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.03em' }}>{t('Nhân viên')}</label>
                       <CustomSelect
@@ -7223,7 +7223,39 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                           <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2 }}>{lead.email || '-'}</div>
                         </td>
                         <td style={{ padding: '1rem' }}>
-                          {getStatusBadge('databank', undefined, undefined, undefined, lead.takers)}
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'flex-start' }}>
+                            {getStatusBadge('databank', undefined, undefined, undefined, lead.takers)}
+                            {lead.takers && lead.takers.length > 0 && (
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '4px' }}>
+                                <div style={{ display: 'flex', alignItems: 'center' }}>
+                                  {lead.takers.map((taker: any, tIdx: number) => (
+                                    <div 
+                                      key={taker.id || tIdx} 
+                                      style={{ 
+                                        marginLeft: tIdx > 0 ? '-6px' : '0', 
+                                        zIndex: 10 - tIdx,
+                                        position: 'relative'
+                                      }}
+                                      title={`${taker.name || 'Sale'} (${taker.claimed_at ? new Date(taker.claimed_at).toLocaleString('vi-VN') : ''})`}
+                                    >
+                                      <Avatar 
+                                        src={taker.avatar} 
+                                        name={taker.name} 
+                                        size={20} 
+                                        style={{ 
+                                          border: '1.5px solid var(--color-surface)',
+                                          boxShadow: 'var(--shadow-sm)'
+                                        }} 
+                                      />
+                                    </div>
+                                  ))}
+                                </div>
+                                <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', fontWeight: 500 }}>
+                                  {lead.takers.map((t: any) => t.name).join(', ')}
+                                </span>
+                              </div>
+                            )}
+                          </div>
                         </td>
                         <td style={{ padding: '1rem', color: 'var(--color-text-muted)', fontSize: '0.8125rem' }}>
                           {lead.released_to_kho_at ? new Date(lead.released_to_kho_at).toLocaleString('vi-VN') : '-'}

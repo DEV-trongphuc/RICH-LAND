@@ -490,6 +490,7 @@ export const Header = ({ onActivityFeedClick, onMenuClick, version }: { onActivi
       case 'assistant': return t('Trợ lý');
       case 'viewer': return t('Người xem');
       case 'sale': return t('Tư vấn viên');
+      case 'director': return t('Giám đốc kinh doanh');
       default: return t('Người dùng');
     }
   };

@@ -195,6 +195,7 @@ export default function ProjectsPage() {
   };
 
   const handleOpenFolderModal = (path: string, projectId: number) => {
+    console.log('handleOpenFolderModal called: path=', path, 'projectId:', projectId);
     setFolderModalPath(path);
     setFolderModalProjectId(projectId);
     setFolderFiles([]);
@@ -4945,8 +4946,9 @@ export default function ProjectsPage() {
                     <div 
                       key={idx}
                       onClick={() => {
-                        if (f.type !== 'link' && selectedProj?.id) {
-                          handleOpenFolderModal(f.path, selectedProj.id);
+                        console.log('Clicked folder card:', f.path, 'selectedProjectId:', selectedProjectId);
+                        if (f.type !== 'link' && selectedProjectId) {
+                          handleOpenFolderModal(f.path, selectedProjectId);
                         }
                       }}
                       style={{
@@ -5004,8 +5006,9 @@ export default function ProjectsPage() {
                           style={{ borderRadius: '10px', fontSize: '0.75rem', height: '32px', display: 'inline-flex', alignItems: 'center', gap: '6px', whiteSpace: 'nowrap', background: 'var(--color-primary)', color: '#fff', border: 'none', cursor: 'pointer' }}
                           onClick={e => {
                             e.stopPropagation();
-                            if (selectedProj?.id) {
-                              handleOpenFolderModal(f.path, selectedProj.id);
+                            console.log('Clicked folder button: icon=folder, path=', f.path, 'selectedProjectId:', selectedProjectId);
+                            if (selectedProjectId) {
+                              handleOpenFolderModal(f.path, selectedProjectId);
                             }
                           }}
                         >
