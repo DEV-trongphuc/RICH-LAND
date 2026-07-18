@@ -7766,7 +7766,10 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                     <div className="animate-fade">
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
                         <h3 style={{ fontWeight: 700, fontSize: '1.125rem' }}>Hỗ trợ / Khiếu nại (Tickets)</h3>
-                        {!isViewer && (
+                        {!isViewer && 
+                         !['ca_nhan', 'cold_call', 'gioi_thieu'].includes(formData.source || contact?.source) && 
+                         (formData.dl_status || contact?.dl_status) !== 'databank_claim' && 
+                         Number(formData.dl_round_id || contact?.dl_round_id) > 0 && (
                           <button className="btn outline sm" onClick={() => setShowTicketModal(true)}>
                             <Plus size={14} /> Tạo Ticket
                           </button>
@@ -7782,7 +7785,14 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                         <div className="card-panel" style={{ textAlign: 'center', padding: '4rem 2rem', border: '2px dashed var(--color-border-light)', borderRadius: '24px' }}>
                           <LifeBuoy size={48} style={{ color: 'var(--color-border)', margin: '0 auto 1.5rem', opacity: 0.4 }} />
                           <h4 style={{ fontWeight: 800, color: 'var(--color-text)', marginBottom: '8px' }}>Chưa có ticket hỗ trợ</h4>
-                          <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', maxWidth: '240px', margin: '0 auto' }}>Hiện tại không có yêu cầu hỗ trợ nào đang chờ xử lý cho khách hàng này.</p>
+                          <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', maxWidth: '240px', margin: '0 auto' }}>
+                            {!['ca_nhan', 'cold_call', 'gioi_thieu'].includes(formData.source || contact?.source) && 
+                             (formData.dl_status || contact?.dl_status) !== 'databank_claim' && 
+                             Number(formData.dl_round_id || contact?.dl_round_id) > 0
+                              ? t('Hiện tại không có yêu cầu hỗ trợ nào đang chờ xử lý cho khách hàng này.')
+                              : t('Khách hàng tự nhập hoặc nhận từ Databank không hỗ trợ báo lỗi/yêu cầu bù data.')
+                            }
+                          </p>
                         </div>
                       ) : (
                         <div className="card-panel" style={{ padding: 0, overflow: 'hidden' }}>

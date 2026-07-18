@@ -207,9 +207,18 @@ class TicketController {
                     respond(400, null, 'Chỉ duy nhất data được chia mới được báo bù. Khách tự khai thác / tự nhập không được báo bù.', false);
                 }
                 
+                // Retrieve correct lead_id associated with this contact's person_id
+                $stmtLead = $this->db->prepare("SELECT id FROM leads WHERE person_id = (SELECT person_id FROM contacts WHERE id = ? LIMIT 1) ORDER BY id DESC LIMIT 1");
+                $stmtLead->execute([$contactId]);
+                $leadId = $stmtLead->fetchColumn();
+                
+                if (!$leadId) {
+                    respond(400, null, 'Chỉ duy nhất data được chia mới được báo bù. Khách tự nhập không được báo bù.', false);
+                }
+
                 // Databank claimed: check latest distribution log
                 $stmtLogs = $this->db->prepare("SELECT status FROM distribution_logs WHERE lead_id = ? ORDER BY id DESC LIMIT 1");
-                $stmtLogs->execute([$contactId]);
+                $stmtLogs->execute([$leadId]);
                 $lastLogStatus = $stmtLogs->fetchColumn();
                 
                 if (!$lastLogStatus || !in_array($lastLogStatus, ['assigned', 'compensation', 'rule_6_month', 'fallback', 'pending_work_hours', 'success'], true)) {
