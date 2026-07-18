@@ -260,6 +260,9 @@ const SettingsInner = () => {
   const [standardCommissionRate, setStandardCommissionRate] = useState<number>(0.03);
   const [lockoutReasonCountThreshold, setLockoutReasonCountThreshold] = useState<number>(3);
   const [maxParallelSalesPerClient, setMaxParallelSalesPerClient] = useState<number>(2);
+  const [tempSuggestionCallDuration, setTempSuggestionCallDuration] = useState<number>(300);
+  const [tempSuggestionRequiredNotes, setTempSuggestionRequiredNotes] = useState<number>(2);
+  const [capiStuckAlertThresholdHours, setCapiStuckAlertThresholdHours] = useState<number>(24);
 
   const [pipelineStatusHierarchy, setPipelineStatusHierarchy] = useState<string[]>([
     'chua_xac_dinh', 'quan_tam', 'dong_y_gap', 'da_gap', 'booking', 'dat_coc', 'dong_deal'
@@ -641,6 +644,9 @@ const SettingsInner = () => {
         if (json.data.standard_commission_rate !== undefined) setStandardCommissionRate(Number(json.data.standard_commission_rate));
         if (json.data.lockout_reason_count_threshold !== undefined) setLockoutReasonCountThreshold(Number(json.data.lockout_reason_count_threshold));
         if (json.data.max_parallel_sales_per_client !== undefined) setMaxParallelSalesPerClient(Number(json.data.max_parallel_sales_per_client));
+        if (json.data.temp_suggestion_call_duration_seconds !== undefined) setTempSuggestionCallDuration(Number(json.data.temp_suggestion_call_duration_seconds));
+        if (json.data.temp_suggestion_required_notes !== undefined) setTempSuggestionRequiredNotes(Number(json.data.temp_suggestion_required_notes));
+        if (json.data.capi_stuck_alert_threshold_hours !== undefined) setCapiStuckAlertThresholdHours(Number(json.data.capi_stuck_alert_threshold_hours));
         setTicketAutoApproveEnabled(json.data.ticket_auto_approve_enabled === '1' || json.data.ticket_auto_approve_enabled === 1);
         setTicketAutoApproveKeywords(json.data.ticket_auto_approve_keywords || '');
         if (json.data.report_error_reasons) {
@@ -1026,6 +1032,9 @@ const SettingsInner = () => {
       standard_commission_rate: standardCommissionRate,
       lockout_reason_count_threshold: lockoutReasonCountThreshold,
       max_parallel_sales_per_client: maxParallelSalesPerClient,
+      temp_suggestion_call_duration_seconds: tempSuggestionCallDuration,
+      temp_suggestion_required_notes: tempSuggestionRequiredNotes,
+      capi_stuck_alert_threshold_hours: capiStuckAlertThresholdHours,
       gemini_api_key: geminiApiKey,
       gemini_model: geminiModel,
       ai_screener_enabled: aiScreenerEnabled ? '1' : '0',
@@ -1883,6 +1892,26 @@ const SettingsInner = () => {
                   />
                   <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
                     {t('Nhập chuỗi JSON cấu hình ánh xạ trạng thái sang tên sự kiện CAPI của Meta (ví dụ: Schedule, Lead, Purchase, CompleteRegistration).')}
+                  </span>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '1rem', borderTop: '1px solid var(--color-border-light)', paddingTop: '1rem' }}>
+                  <label style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text-light)' }}>
+                    {t('Ngưỡng thời gian phát hiện tắc nghẽn CAPI')}
+                  </label>
+                  <div style={{ display: 'flex', alignItems: 'center', position: 'relative', width: '200px' }}>
+                    <input
+                      type="number"
+                      className="form-input"
+                      style={{ paddingRight: '3.5rem' }}
+                      value={capiStuckAlertThresholdHours}
+                      onChange={e => setCapiStuckAlertThresholdHours(Number(e.target.value))}
+                      min={1}
+                    />
+                    <span style={{ position: 'absolute', right: '12px', fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>{t('giờ')}</span>
+                  </div>
+                  <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
+                    {t('Thời gian tối đa nếu có sự kiện CAPI lỗi không đồng bộ thành công về Meta quá ngưỡng này, hệ thống sẽ gửi cảnh báo đỏ cho Ban quản trị (Mặc định: 24 giờ).')}
                   </span>
                 </div>
               </div>
@@ -3736,6 +3765,42 @@ function doPost(e) {
                           </div>
                           <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px', display: 'block', lineHeight: 1.4 }}>
                             {t('Mặc định: 5 ngày không tương tác chất lượng.')}
+                          </span>
+                        </div>
+
+                        <div>
+                          <label className="form-label" style={{ fontWeight: 600 }}>{t('Thời lượng cuộc gọi gợi ý Ấm (nối đồng)')}</label>
+                          <div style={{ display: 'flex', alignItems: 'center', position: 'relative' }}>
+                            <input
+                              type="number"
+                              className="form-input"
+                              style={{ paddingRight: '3.5rem' }}
+                              value={tempSuggestionCallDuration}
+                              onChange={e => setTempSuggestionCallDuration(Number(e.target.value))}
+                              min={1}
+                            />
+                            <span style={{ position: 'absolute', right: '12px', fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>{t('giây')}</span>
+                          </div>
+                          <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px', display: 'block', lineHeight: 1.4 }}>
+                            {t('Thời lượng cuộc gọi tối thiểu (nối đồng) để đề xuất khách hàng là Ấm (Mặc định: 300 giây).')}
+                          </span>
+                        </div>
+
+                        <div>
+                          <label className="form-label" style={{ fontWeight: 600 }}>{t('Số tương tác tối thiểu gợi ý Ấm')}</label>
+                          <div style={{ display: 'flex', alignItems: 'center', position: 'relative' }}>
+                            <input
+                              type="number"
+                              className="form-input"
+                              style={{ paddingRight: '3.5rem' }}
+                              value={tempSuggestionRequiredNotes}
+                              onChange={e => setTempSuggestionRequiredNotes(Number(e.target.value))}
+                              min={1}
+                            />
+                            <span style={{ position: 'absolute', right: '12px', fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>{t('lượt')}</span>
+                          </div>
+                          <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px', display: 'block', lineHeight: 1.4 }}>
+                            {t('Số lượt tương tác ghi chú tối thiểu trước đó để đề xuất khách hàng là Ấm (Mặc định: 2 lượt).')}
                           </span>
                         </div>
 

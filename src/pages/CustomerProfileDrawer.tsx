@@ -1106,6 +1106,8 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
   const [noteDocsSent, setNoteDocsSent] = useState<string>('');
   const [noteObstacle, setNoteObstacle] = useState<string>('');
   const [noteSaleTemp, setNoteSaleTemp] = useState<'cold' | 'cool' | 'neutral' | 'warm' | 'hot' | ''>('');
+  const [tempSuggestionCallDuration, setTempSuggestionCallDuration] = useState<number>(300);
+  const [tempSuggestionRequiredNotes, setTempSuggestionRequiredNotes] = useState<number>(2);
   const [notes, setNotes] = useState<{ id: number; text: string; time: string; user: string; user_id?: number; user_avatar?: string | null; attachment_url?: string | null; edit_history?: any; channel?: string; note_type?: string; duration_minutes?: number; stuck_tag?: string; suggested_temperature?: string; sale_temperature?: string; documents_sent?: string }[]>([]);
   
   const calculatedSuggestedTemp = useMemo(() => {
@@ -1113,11 +1115,11 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
       return 'warm'; // Nóng
     }
     const durationSec = parseInt(noteDuration, 10) || 0;
-    if (noteChannel === 'call' && durationSec > 300 && notes.length >= 2) {
+    if (noteChannel === 'call' && durationSec > tempSuggestionCallDuration && notes.length >= tempSuggestionRequiredNotes) {
       return 'neutral'; // Ấm
     }
     return 'cold'; // Lạnh
-  }, [noteChannel, noteDuration, notes.length]);
+  }, [noteChannel, noteDuration, notes.length, tempSuggestionCallDuration, tempSuggestionRequiredNotes]);
 
   useEffect(() => {
     if (isOpen && activeTab === 'tags' && notes.length > 0) {
@@ -2245,6 +2247,17 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
               const val = parseInt(res.data.temperature_decay_days, 10);
               if (!isNaN(val) && val > 0) {
                 setDecayDays(val);
+              }
+            if (res.data.temp_suggestion_call_duration_seconds !== undefined) {
+              const val = parseInt(res.data.temp_suggestion_call_duration_seconds, 10);
+              if (!isNaN(val) && val > 0) {
+                setTempSuggestionCallDuration(val);
+              }
+            }
+            if (res.data.temp_suggestion_required_notes !== undefined) {
+              const val = parseInt(res.data.temp_suggestion_required_notes, 10);
+              if (!isNaN(val) && val > 0) {
+                setTempSuggestionRequiredNotes(val);
               }
             }
             if (res.data.coop_eligible_statuses) {

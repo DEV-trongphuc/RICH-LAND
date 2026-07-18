@@ -2513,6 +2513,54 @@ function checkCheckInSlaEscalation($conn) {
     }
 }
 
+function checkCapiStuckAlert($conn) {
+    logSync("Running checkCapiStuckAlert...");
+    $thresholdHours = (int) get_system_setting($conn, 'capi_stuck_alert_threshold_hours') ?: 24;
+    
+    $stmt = $conn->prepare("
+        SELECT COUNT(*) as cnt 
+        FROM capi_logs 
+        WHERE response_status != 200 
+          AND sent_at <= DATE_SUB(NOW(), INTERVAL ? HOUR)
+          AND sent_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)
+    ");
+    if ($stmt) {
+        $stmt->bind_param("i", $thresholdHours);
+        $stmt->execute();
+        $res = $stmt->get_result()->fetch_assoc();
+        $stmt->close();
+        
+        $count = $res ? (int)$res['cnt'] : 0;
+        if ($count > 0) {
+            logSync("Found $count failed CAPI events older than $thresholdHours hours. Sending alert to admin/marketing...");
+            
+            $admRes = $conn->query("
+                SELECT id, tenant_id FROM users 
+                WHERE role IN ('admin', 'superadmin', 'super_admin', 'director', 'assistant')
+            ");
+            if ($admRes) {
+                $notifStmt = $conn->prepare("
+                    INSERT INTO notifications (user_id, tenant_id, title, body, type, link)
+                    VALUES (?, ?, ?, ?, 'system', '/capi')
+                ");
+                if ($notifStmt) {
+                    $title = "CẢNH BÁO CAPI: Tắc nghẽn hàng đợi";
+                    $body = "Hệ thống phát hiện $count sự kiện Meta CAPI bị lỗi chưa gửi được quá $thresholdHours giờ! Vui lòng kiểm tra cấu hình Pixel/Access Token.";
+                    while ($row = $admRes->fetch_assoc()) {
+                        $uid = (int)$row['id'];
+                        $tid = (int)$row['tenant_id'];
+                        $link = '/capi';
+                        $type = 'system';
+                        $notifStmt->bind_param("iissss", $uid, $tid, $title, $body, $type, $link);
+                        $notifStmt->execute();
+                    }
+                    $notifStmt->close();
+                }
+            }
+        }
+    }
+}
+
 logSync("Cronjob finished.");
 
 if (!defined('DIAG_TOKEN')) {
@@ -2528,6 +2576,13 @@ if (!defined('DIAG_TOKEN')) {
         checkCheckInSlaEscalation($conn);
     } catch (Exception $e) {
         logSync("Error running checkCheckInSlaEscalation: " . $e->getMessage());
+    }
+
+    // --- Chạy kiểm tra cảnh báo tắc nghẽn Meta CAPI ---
+    try {
+        checkCapiStuckAlert($conn);
+    } catch (Exception $e) {
+        logSync("Error running checkCapiStuckAlert: " . $e->getMessage());
     }
 
     // --- Chạy phân bổ song song ở trạng thái Chưa Xác Định quá 3 giờ ---

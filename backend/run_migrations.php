@@ -18,7 +18,7 @@ $apply = (isset($_GET['apply']) && $_GET['apply'] === 'true')
       || (isset($_POST['execute_migration']) && $_POST['execute_migration'] === '1')
       || ($isCli && in_array('--apply', $argv));
 
-$targetVersion = 163;
+$targetVersion = 164;
 $currentVersion = 0;
 
 // Query current DB version
@@ -2468,6 +2468,17 @@ SQL;
             
             $conn->query("INSERT INTO system_settings (setting_key, setting_value) VALUES ('db_version', '163') ON DUPLICATE KEY UPDATE setting_value = '163'");
             $currentVersion = 163;
+        }
+
+        // Version 164 (Add dynamic temperature suggestion and CAPI stuck alert threshold settings)
+        if ($currentVersion < 164) {
+            $logMsg("Đang chạy cập nhật phiên bản 164 (Thêm các cấu hình gợi ý nhiệt độ và cảnh báo CAPI)...", "info");
+            $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('temp_suggestion_call_duration_seconds', '300')");
+            $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('temp_suggestion_required_notes', '2')");
+            $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('capi_stuck_alert_threshold_hours', '24')");
+            
+            $conn->query("INSERT INTO system_settings (setting_key, setting_value) VALUES ('db_version', '164') ON DUPLICATE KEY UPDATE setting_value = '164'");
+            $currentVersion = 164;
         }
 
     $logMsg("Tự sửa đổi cấu trúc hoàn thành thành công.", "success");
