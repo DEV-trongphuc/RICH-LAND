@@ -2399,6 +2399,40 @@ SQL;
             $currentVersion = 160;
         }
 
+        // Version 161 (Move manager_behavior_mode to users table and update consultants view)
+        if ($currentVersion < 161) {
+            $logMsg("Đang chạy cập nhật phiên bản 161 (Thêm cột manager_behavior_mode vào bảng users và cập nhật view consultants)...", "info");
+            
+            try {
+                $conn->query("ALTER TABLE users ADD COLUMN manager_behavior_mode VARCHAR(50) NOT NULL DEFAULT 'combined'");
+            } catch (Exception $e) {}
+
+            try {
+                $conn->query("CREATE OR REPLACE VIEW `consultants` AS 
+                    SELECT 
+                      `id`, 
+                      `full_name` AS `name`, 
+                      `email`, 
+                      `status`, 
+                      `leave_start`, 
+                      `leave_end`, 
+                      `created_at`, 
+                      `zalo_chat_id`, 
+                      `work_start_time`, 
+                      `work_end_time`, 
+                      `work_schedule`, 
+                      `avatar_url` AS `avatar`, 
+                      `vacation_mode`,
+                      `team_id`
+                    FROM `users` 
+                    WHERE `role` = 'sales' 
+                       OR (`role` = 'manager' AND `manager_behavior_mode` = 'combined')");
+            } catch (Exception $e) {}
+            
+            $conn->query("INSERT INTO system_settings (setting_key, setting_value) VALUES ('db_version', '161') ON DUPLICATE KEY UPDATE setting_value = '161'");
+            $currentVersion = 161;
+        }
+
     $logMsg("Tự sửa đổi cấu trúc hoàn thành thành công.", "success");
 
     $logMsg("Hệ thống đã cập nhật thành công lên phiên bản mới nhất: " . $currentVersion, "success");

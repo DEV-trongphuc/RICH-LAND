@@ -826,14 +826,49 @@ class ProjectController {
     public function getStats(array $auth, int $projectId): void {
         $this->requireProjectAccess($auth, $projectId);
         
-        // Count total contacts/deals
-        $stmtDeals = $this->db->prepare("SELECT COUNT(*) FROM contacts WHERE project_id = ? AND deleted_at IS NULL");
-        $stmtDeals->execute([$projectId]);
-        $totalDeals = (int)$stmtDeals->fetchColumn();
+        // Retrieve dynamic settings
+        $resOpp = $this->db->query("SELECT setting_value FROM system_settings WHERE setting_key = 'deal_opportunity_status' LIMIT 1");
+        $oppStatus = $resOpp ? $resOpp->fetchColumn() : 'booking';
+        if (!$oppStatus) {
+            $oppStatus = 'booking';
+        }
+
+        $resWon = $this->db->query("SELECT setting_value FROM system_settings WHERE setting_key = 'deal_won_status' LIMIT 1");
+        $wonStatus = $resWon ? $resWon->fetchColumn() : 'dong_deal';
+        if (!$wonStatus) {
+            $wonStatus = 'dong_deal';
+        }
+
+        $resHier = $this->db->query("SELECT setting_value FROM system_settings WHERE setting_key = 'pipeline_status_hierarchy' LIMIT 1");
+        $hierJson = $resHier ? $resHier->fetchColumn() : null;
+        $hierarchy = $hierJson ? json_decode($hierJson, true) : ['chua_xac_dinh', 'quan_tam', 'dong_y_gap', 'da_gap', 'booking', 'dat_coc', 'dong_deal'];
+        if (!is_array($hierarchy)) {
+            $hierarchy = ['chua_xac_dinh', 'quan_tam', 'dong_y_gap', 'da_gap', 'booking', 'dat_coc', 'dong_deal'];
+        }
+
+        // Find opportunity stages from $oppStatus onwards in hierarchy
+        $oppIdx = array_search($oppStatus, $hierarchy);
+        if ($oppIdx === false) {
+            $oppIdx = array_search('booking', $hierarchy);
+            if ($oppIdx === false) {
+                $oppIdx = 0;
+            }
+        }
+        $oppStages = array_slice($hierarchy, $oppIdx);
+
+        // Count total deals (contacts at or after opportunity status)
+        if (!empty($oppStages)) {
+            $placeholders = implode(',', array_fill(0, count($oppStages), '?'));
+            $stmtDeals = $this->db->prepare("SELECT COUNT(*) FROM contacts WHERE project_id = ? AND pipeline_status IN ($placeholders) AND deleted_at IS NULL");
+            $stmtDeals->execute(array_merge([$projectId], $oppStages));
+            $totalDeals = (int)$stmtDeals->fetchColumn();
+        } else {
+            $totalDeals = 0;
+        }
         
-        // Count won deals (dong_deal)
-        $stmtWon = $this->db->prepare("SELECT COUNT(*) FROM contacts WHERE project_id = ? AND pipeline_status = 'dong_deal' AND deleted_at IS NULL");
-        $stmtWon->execute([$projectId]);
+        // Count won deals (configured won status)
+        $stmtWon = $this->db->prepare("SELECT COUNT(*) FROM contacts WHERE project_id = ? AND pipeline_status = ? AND deleted_at IS NULL");
+        $stmtWon->execute([$projectId, $wonStatus]);
         $wonDeals = (int)$stmtWon->fetchColumn();
         
         // Win rate

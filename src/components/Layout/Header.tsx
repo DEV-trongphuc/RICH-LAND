@@ -50,16 +50,7 @@ export const Header = ({ onActivityFeedClick, onMenuClick, version }: { onActivi
 
   const [headerVacationMode, setHeaderVacationMode] = useState<boolean>(false);
   const [headerCheckIn, setHeaderCheckIn] = useState<any>(null);
-  const [sysSettings, setSysSettings] = useState<any>(null);
-  useEffect(() => {
-    fetchAPI('get_settings').then(res => {
-      if (res && res.success) {
-        setSysSettings(res.data);
-      }
-    });
-  }, []);
-
-  const managerBehaviorMode = sysSettings?.manager_behavior_mode || 'combined';
+  const managerBehaviorMode = user?.manager_behavior_mode || 'combined';
   const isSales = user?.role === 'sale' || (user?.role === 'manager' && managerBehaviorMode === 'combined');
 
   const [uncontactedCount, setUncontactedCount] = useState(() => {

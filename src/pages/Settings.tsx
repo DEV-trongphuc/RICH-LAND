@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useUIStore } from '../store/uiStore';
 import { withRouterFreezer } from '../components/RouterFreezer';
-import { Mail, Settings2, Save, Send, Server, Database, Activity, ChevronDown, ChevronUp, Zap, Shield, MessageCircle, RefreshCw, Settings as SettingsIcon, BarChart2, Clock, Calendar, Users, CheckCircle, Plus, Trash2, Edit2, FileSpreadsheet, Upload, Download, X, Search, UserCheck, FileText, Tag, Scale, Layers, HelpCircle, Filter } from 'lucide-react';
+import { Mail, Settings2, Save, Send, Server, Database, Activity, ChevronDown, ChevronUp, Zap, Shield, MessageCircle, RefreshCw, Settings as SettingsIcon, BarChart2, Clock, Calendar, Users, CheckCircle, Plus, Trash2, Edit2, FileSpreadsheet, Upload, Download, X, Search, UserCheck, FileText, Tag, Scale, Layers, HelpCircle, Filter, Briefcase } from 'lucide-react';
 import { CustomSelect } from '../components/ui/CustomSelect';
 import { ToggleSwitch } from '../components/ui/ToggleSwitch';
 import { CustomModal } from '../components/ui/CustomModal';
@@ -236,7 +236,6 @@ const SettingsInner = () => {
   const [broadcastExclusionRules, setBroadcastExclusionRules] = useState<string>("not_lead,opt_out,active_khtn");
   const [coopEligibleStatuses, setCoopEligibleStatuses] = useState<string>("booking,da_gap,dat_coc");
   const [coopDefaultFiles, setCoopDefaultFiles] = useState<string>("UNC.png,CMND.png");
-  const [managerBehaviorMode, setManagerBehaviorMode] = useState<string>("combined");
 
   const [securityTimerChuaXacDinh, setSecurityTimerChuaXacDinh] = useState<string>("+3 hours");
   const [securityTimerQuanTam, setSecurityTimerQuanTam] = useState<string>("+1 day");
@@ -259,6 +258,8 @@ const SettingsInner = () => {
     dat_coc: 'Đặt cọc',
     dong_deal: 'Đóng deal'
   });
+  const [dealOpportunityStatus, setDealOpportunityStatus] = useState<string>('booking');
+  const [dealWonStatus, setDealWonStatus] = useState<string>('dong_deal');
 
   // States
   const [provider, setProvider] = useState('appscript');
@@ -522,6 +523,8 @@ const SettingsInner = () => {
             setPipelineStatusLabels(JSON.parse(json.data.pipeline_status_labels));
           } catch(e) {}
         }
+        if (json.data.deal_opportunity_status) setDealOpportunityStatus(json.data.deal_opportunity_status);
+        if (json.data.deal_won_status) setDealWonStatus(json.data.deal_won_status);
         if (json.data.db_version) setDbVersion(json.data.db_version);
         if (json.data.email_provider) {
           setProvider(json.data.email_provider);
@@ -588,7 +591,6 @@ const SettingsInner = () => {
         if (json.data.broadcast_exclusion_rules !== undefined) setBroadcastExclusionRules(json.data.broadcast_exclusion_rules);
         if (json.data.coop_eligible_statuses !== undefined) setCoopEligibleStatuses(json.data.coop_eligible_statuses);
         if (json.data.coop_default_files !== undefined) setCoopDefaultFiles(json.data.coop_default_files);
-        if (json.data.manager_behavior_mode !== undefined) setManagerBehaviorMode(json.data.manager_behavior_mode);
         if (json.data.security_timer_chua_xac_dinh !== undefined) setSecurityTimerChuaXacDinh(json.data.security_timer_chua_xac_dinh);
         if (json.data.security_timer_quan_tam !== undefined) setSecurityTimerQuanTam(json.data.security_timer_quan_tam);
         if (json.data.security_timer_thien_chi !== undefined) setSecurityTimerThienChi(json.data.security_timer_thien_chi);
@@ -935,6 +937,8 @@ const SettingsInner = () => {
       report_error_reasons: reportErrorReasons,
       pipeline_status_hierarchy: JSON.stringify(pipelineStatusHierarchy),
       pipeline_status_labels: JSON.stringify(pipelineStatusLabels),
+      deal_opportunity_status: dealOpportunityStatus,
+      deal_won_status: dealWonStatus,
       temperature_decay_days: temperatureDecayDays,
       lead_response_timeout_minutes: leadResponseTimeoutMinutes,
       uncontacted_lead_share_hours: uncontactedLeadShareHours,
@@ -950,7 +954,6 @@ const SettingsInner = () => {
       broadcast_exclusion_rules: broadcastExclusionRules,
       coop_eligible_statuses: coopEligibleStatuses,
       coop_default_files: coopDefaultFiles,
-      manager_behavior_mode: managerBehaviorMode,
       security_timer_chua_xac_dinh: securityTimerChuaXacDinh,
       security_timer_quan_tam: securityTimerQuanTam,
       security_timer_thien_chi: securityTimerThienChi,
@@ -3656,55 +3659,8 @@ function doPost(e) {
                       </div>
                     </div>
 
-                    {/* Sub-group 3: Lọc & Loại trừ nâng cao */}
-                    <div style={{ background: 'var(--color-surface)', padding: '1.5rem', borderRadius: '12px', border: '1px solid var(--color-border)', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', borderBottom: '1px solid var(--color-border-light)', paddingBottom: '8px' }}>
-                        <Filter size={16} style={{ color: 'var(--color-primary)' }} />
-                        <h4 style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)', margin: 0 }}>{t('Bộ lọc & Loại trừ Broadcast')}</h4>
-                      </div>
 
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                        <div>
-                          <label className="form-label" style={{ fontWeight: 600 }}>{t('Luật loại trừ Broadcast')}</label>
-                          <CustomSelect
-                            options={broadcastExclusionOptions}
-                            value={currentExclusionArr}
-                            onChange={(arr: any[]) => setBroadcastExclusionRules(arr.join(','))}
-                            multiple={true}
-                            searchable={true}
-                            placeholder={t('Chọn Trạng thái hoặc Thẻ loại trừ...')}
-                          />
-                          <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px', display: 'block', lineHeight: 1.4 }}>
-                            {t('Chọn các trạng thái phễu hoặc thẻ phân loại khách hàng để loại trừ khỏi các chiến dịch gửi tin hàng loạt (Zalo Broadcast, ZNS, SMS).')}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
 
-                    {/* Sub-group 4: Vai trò Trưởng nhóm */}
-                    <div style={{ background: 'var(--color-surface)', padding: '1.5rem', borderRadius: '12px', border: '1px solid var(--color-border)', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', borderBottom: '1px solid var(--color-border-light)', paddingBottom: '8px' }}>
-                        <Shield size={16} style={{ color: 'var(--color-primary)' }} />
-                        <h4 style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)', margin: 0 }}>{t('Chế độ hoạt động Trưởng nhóm')}</h4>
-                      </div>
-
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                        <div>
-                          <label className="form-label" style={{ fontWeight: 600 }}>{t('Chế độ Trưởng nhóm')}</label>
-                          <CustomSelect
-                            options={[
-                              { value: 'combined', label: t('Trưởng nhóm kiêm Sale (Nhận data, chấm công như Sale)') },
-                              { value: 'pure', label: t('Trưởng nhóm thuần túy (Không nhận data, không chấm công, duyệt công team)') }
-                            ]}
-                            value={managerBehaviorMode}
-                            onChange={val => setManagerBehaviorMode(val as string)}
-                          />
-                          <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px', display: 'block', lineHeight: 1.4 }}>
-                            {t('Quyết định xem Trưởng nhóm có tham gia trực tiếp nhận lead và chấm công như sale hay không.')}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
 
                   </div>
 
@@ -3933,6 +3889,31 @@ function doPost(e) {
                         />
                         <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px', display: 'block', lineHeight: 1.4 }}>
                           {t('Trạng thái đích nếu khách hàng từng có lịch sử đặt chỗ/booking (ví dụ: Booking).')}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Nhóm 6: Bộ lọc & Loại trừ Broadcast */}
+                  <div style={{ background: 'var(--color-surface)', padding: '1.5rem', borderRadius: '12px', border: '1px solid var(--color-border)', marginTop: '1.25rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', borderBottom: '1px solid var(--color-border-light)', paddingBottom: '8px' }}>
+                      <Filter size={16} style={{ color: 'var(--color-primary)' }} />
+                      <h4 style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)', margin: 0 }}>{t('Bộ lọc & Loại trừ Broadcast')}</h4>
+                    </div>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                      <div>
+                        <label className="form-label" style={{ fontWeight: 600 }}>{t('Luật loại trừ Broadcast')}</label>
+                        <CustomSelect
+                          options={broadcastExclusionOptions}
+                          value={currentExclusionArr}
+                          onChange={(arr: any[]) => setBroadcastExclusionRules(arr.join(','))}
+                          multiple={true}
+                          searchable={true}
+                          placeholder={t('Chọn Trạng thái hoặc Thẻ loại trừ...')}
+                        />
+                        <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px', display: 'block', lineHeight: 1.4 }}>
+                          {t('Chọn các trạng thái phễu hoặc thẻ phân loại khách hàng để loại trừ khỏi các chiến dịch gửi tin hàng loạt (Zalo Broadcast, ZNS, SMS).')}
                         </span>
                       </div>
                     </div>
@@ -4628,6 +4609,56 @@ function doPost(e) {
                   >
                     <Plus size={14} /> {t('Thêm bước trạng thái mới')}
                   </button>
+
+                  {/* Định nghĩa cơ hội và chốt deal */}
+                  <div style={{ 
+                    marginTop: '2rem', 
+                    paddingTop: '1.5rem', 
+                    borderTop: '1px solid var(--color-border)', 
+                    display: 'grid',
+                    gridTemplateColumns: '1fr 1fr',
+                    gap: '1.5rem'
+                  }}>
+                    <div>
+                      <label className="form-label" style={{ fontWeight: 700, color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
+                        <Briefcase size={16} style={{ color: 'var(--color-primary)' }} />
+                        {t('Trạng thái đại diện cho Cơ hội bán hàng')}
+                      </label>
+                      <CustomSelect
+                        options={pipelineStatusHierarchy.map(status => ({
+                          value: status,
+                          label: pipelineStatusLabels[status] || status
+                        }))}
+                        value={dealOpportunityStatus}
+                        onChange={val => setDealOpportunityStatus(val as string)}
+                        direction="up"
+                        width="100%"
+                      />
+                      <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', display: 'block', marginTop: '4px' }}>
+                        {t('Các trạng thái từ mốc này trở đi trong vòng đời sẽ được tính là Cơ hội bán hàng trong các thống kê.')}
+                      </span>
+                    </div>
+
+                    <div>
+                      <label className="form-label" style={{ fontWeight: 700, color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
+                        <CheckCircle size={16} style={{ color: '#10b981' }} />
+                        {t('Trạng thái đại diện cho Chốt deal thành công')}
+                      </label>
+                      <CustomSelect
+                        options={pipelineStatusHierarchy.map(status => ({
+                          value: status,
+                          label: pipelineStatusLabels[status] || status
+                        }))}
+                        value={dealWonStatus}
+                        onChange={val => setDealWonStatus(val as string)}
+                        direction="up"
+                        width="100%"
+                      />
+                      <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', display: 'block', marginTop: '4px' }}>
+                        {t('Trạng thái này đánh dấu giao dịch đã thành công (Chốt deal).')}
+                      </span>
+                    </div>
+                  </div>
 
                   {/* Cấu hình tài liệu hợp tác tích hợp */}
                   <div style={{ 

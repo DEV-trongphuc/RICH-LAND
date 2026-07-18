@@ -120,7 +120,7 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
   const [consultantProfile, setConsultantProfile] = useState<any>(null);
 
   const [sysSettings, setSysSettings] = useState<any>(null);
-  const managerBehaviorMode = sysSettings?.manager_behavior_mode || 'combined';
+  const managerBehaviorMode = user?.manager_behavior_mode || 'combined';
   const isSales = user?.role === 'sale' || (user?.role === 'manager' && managerBehaviorMode === 'combined');
 
   const loadCheckInStatus = async () => {

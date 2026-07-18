@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { BarChart3, TrendingUp, Users, Briefcase, Download, ArrowUpRight, ArrowDownRight, Filter } from 'lucide-react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, PieChart, Pie, Cell, AreaChart, Area, ComposedChart, Line } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, PieChart, Pie, Cell, AreaChart, Area, ComposedChart, Line, LabelList } from 'recharts';
 import { PeriodFilter, getDateRange } from '../components/ui/PeriodFilter';
 import { useUIStore } from '../store/uiStore';
 import { useAuth } from '../contexts/AuthContext';
@@ -326,8 +326,8 @@ export const ReportsPage: React.FC = () => {
                 {Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} height={`${((i * 13) % 40) + 40}%`} width="100%" />)}
               </div>
             ) : (
-              <ResponsiveContainer width="100%" height={200} debounce={50}>
-                <BarChart data={salesData?.by_month || MONTHLY} margin={{ left: -10 }}>
+              <ResponsiveContainer width="100%" height={260} debounce={50}>
+                <ComposedChart data={salesData?.by_month || MONTHLY} margin={{ left: -10, right: 5, top: 20 }}>
                   <defs>
                     <linearGradient id="colorSalesRevenue" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="0%" stopColor="#a31422" stopOpacity={1}/>
@@ -340,13 +340,30 @@ export const ReportsPage: React.FC = () => {
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border-light)" vertical={false} />
                   <XAxis dataKey="month" tick={{ fontSize: 10, fill: 'var(--color-text-light)' }} axisLine={false} tickLine={false} />
-                  <YAxis tickFormatter={FMT} tick={{ fontSize: 9, fill: 'var(--color-text-light)' }} axisLine={false} tickLine={false} width={42} />
-                  <Tooltip cursor={false} formatter={(v: any, name: any) => [FMT_VND(Number(v || 0)), name]}
-                    contentStyle={{ borderRadius: 10, border: 'none', boxShadow: '0 10px 25px rgba(0,0,0,0.1)', fontSize: '0.8125rem' }} />
+                  <YAxis domain={[0, (max) => (max < 5 ? 5 : Math.ceil(max * 1.15))]} tickFormatter={FMT} tick={{ fontSize: 9, fill: 'var(--color-text-light)' }} axisLine={false} tickLine={false} width={42} />
+                  <Tooltip content={({ active, payload, label }) => {
+                    if (active && payload && payload.length) {
+                      return (
+                        <div style={{ background: 'var(--color-surface)', padding: '12px', borderRadius: '10px', boxShadow: '0 10px 25px rgba(0,0,0,0.1)', border: '1px solid var(--color-border)' }}>
+                          <div style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text)', marginBottom: 4 }}>{label}</div>
+                          {payload.map((p: any, idx: number) => (
+                            <div key={idx} style={{ fontSize: '0.8125rem', color: p.color || 'var(--color-primary)', marginTop: idx > 0 ? 4 : 0 }}>
+                              {p.name}: <span style={{ fontWeight: 800 }}>{FMT_VND(p.value)}</span>
+                            </div>
+                          ))}
+                        </div>
+                      );
+                    }
+                    return null;
+                  }} />
                   <Legend iconType="circle" iconSize={6} wrapperStyle={{ fontSize: '0.75rem', marginTop: '6px' }} />
-                  <Bar dataKey="revenue" name="Doanh thu" fill="url(#colorSalesRevenue)" radius={[4, 4, 0, 0]} maxBarSize={16} />
-                  <Bar dataKey="cost" name="Chi phí" fill="url(#colorSalesCost)" radius={[4, 4, 0, 0]} maxBarSize={16} />
-                </BarChart>
+                  <Bar dataKey="revenue" name="Doanh thu" fill="url(#colorSalesRevenue)" radius={[4, 4, 0, 0]} maxBarSize={16}>
+                    <LabelList dataKey="revenue" position="top" style={{ fill: 'var(--color-text)', fontSize: 10, fontWeight: 700 }} offset={6} formatter={FMT} />
+                  </Bar>
+                  <Bar dataKey="cost" name="Chi phí" fill="url(#colorSalesCost)" radius={[4, 4, 0, 0]} maxBarSize={16}>
+                    <LabelList dataKey="cost" position="top" style={{ fill: 'var(--color-text)', fontSize: 10, fontWeight: 700 }} offset={6} formatter={FMT} />
+                  </Bar>
+                </ComposedChart>
               </ResponsiveContainer>
             )}
           </div>
@@ -512,17 +529,32 @@ export const ReportsPage: React.FC = () => {
 
             <div className="card" style={{ padding: '1rem' }}>
                <h3 style={{ fontWeight: 700, fontSize: '0.9rem', marginBottom: '1rem' }}>Phân bổ theo giai đoạn</h3>
-               <div style={{ height: 200 }}>
+               <div style={{ height: 260 }}>
                  <ResponsiveContainer width="100%" height="100%" debounce={50}>
-                    <PieChart>
-                       <Pie data={pipelineData} dataKey="count" nameKey="stage" cx="50%" cy="50%" innerRadius={50} outerRadius={70} paddingAngle={4}>
-                        {pipelineData.map((s: any, i: number) => (
-                           <Cell key={`cell-${i}`} fill={s.color || COLORS[i % COLORS.length]} />
-                        ))}
-                       </Pie>
-                       <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.1)' }} />
-                       <Legend iconType="circle" iconSize={6} wrapperStyle={{ fontSize: '0.75rem', fontWeight: 500 }} />
-                    </PieChart>
+                   <ComposedChart data={pipelineData} margin={{ left: -10, right: 5, top: 20 }}>
+                     <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border-light)" vertical={false} />
+                     <XAxis dataKey="stage" tick={{ fontSize: 10, fill: 'var(--color-text-light)' }} axisLine={false} tickLine={false} />
+                     <YAxis domain={[0, (max) => (max < 5 ? 5 : Math.ceil(max * 1.15))]} tick={{ fontSize: 10, fill: 'var(--color-text-light)' }} axisLine={false} tickLine={false} width={40} />
+                     <Tooltip content={({ active, payload }) => {
+                       if (active && payload && payload.length) {
+                         const data = payload[0].payload;
+                         return (
+                           <div style={{ background: 'var(--color-surface)', padding: '12px', borderRadius: '10px', boxShadow: '0 10px 25px rgba(0,0,0,0.1)', border: '1px solid var(--color-border)' }}>
+                             <div style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text)', marginBottom: 4 }}>{data.stage}</div>
+                             <div style={{ fontSize: '0.8125rem', color: 'var(--color-primary)' }}>Số lượng: <span style={{ fontWeight: 800 }}>{data.count}</span></div>
+                             <div style={{ fontSize: '0.8125rem', color: 'var(--color-text-light)', marginTop: 4 }}>Giá trị: <span style={{ fontWeight: 600 }}>{FMT_VND(data.total_value)}</span></div>
+                           </div>
+                         );
+                       }
+                       return null;
+                     }} />
+                     <Bar dataKey="count" radius={[4, 4, 0, 0]} maxBarSize={20}>
+                       {pipelineData.map((s: any, i: number) => (
+                         <Cell key={`cell-${i}`} fill={s.color || COLORS[i % COLORS.length]} />
+                       ))}
+                       <LabelList dataKey="count" position="top" style={{ fill: 'var(--color-text)', fontSize: 11, fontWeight: 700 }} offset={6} />
+                     </Bar>
+                   </ComposedChart>
                  </ResponsiveContainer>
                </div>
             </div>
@@ -535,25 +567,39 @@ export const ReportsPage: React.FC = () => {
           <div className="grid grid-2" style={{ gap: '1.25rem' }}>
             <div className="card" style={{ padding: '1rem' }}>
               <h3 style={{ fontWeight: 700, marginBottom: '0.75rem' }}>Nguồn khách hàng</h3>
-              <div style={{ height: 200 }}>
+              <div style={{ height: 260 }}>
                 <ResponsiveContainer width="100%" height="100%" debounce={50}>
-                  <PieChart>
-                    <Pie data={customerData?.by_source || []} dataKey="count" nameKey="source" cx="50%" cy="50%" innerRadius={50} outerRadius={70} paddingAngle={4}>
+                  <ComposedChart data={customerData?.by_source || []} margin={{ left: -10, right: 5, top: 20 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border-light)" vertical={false} />
+                    <XAxis dataKey="source" tick={{ fontSize: 10, fill: 'var(--color-text-light)' }} axisLine={false} tickLine={false} />
+                    <YAxis domain={[0, (max) => (max < 5 ? 5 : Math.ceil(max * 1.15))]} tick={{ fontSize: 10, fill: 'var(--color-text-light)' }} axisLine={false} tickLine={false} width={40} />
+                    <Tooltip content={({ active, payload }) => {
+                      if (active && payload && payload.length) {
+                        const data = payload[0].payload;
+                        return (
+                          <div style={{ background: 'var(--color-surface)', padding: '12px', borderRadius: '10px', boxShadow: '0 10px 25px rgba(0,0,0,0.1)', border: '1px solid var(--color-border)' }}>
+                            <div style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text)', marginBottom: 4 }}>{data.source}</div>
+                            <div style={{ fontSize: '0.8125rem', color: 'var(--color-primary)' }}>Số lượng: <span style={{ fontWeight: 800 }}>{data.count}</span></div>
+                          </div>
+                        );
+                      }
+                      return null;
+                    }} />
+                    <Bar dataKey="count" radius={[4, 4, 0, 0]} maxBarSize={20}>
                       {(customerData?.by_source || []).map((_: any, index: number) => (
                         <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                       ))}
-                    </Pie>
-                    <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.1)', fontSize: '0.8125rem' }} />
-                    <Legend iconType="circle" iconSize={6} wrapperStyle={{ fontSize: '0.75rem', fontWeight: 500 }} />
-                  </PieChart>
+                      <LabelList dataKey="count" position="top" style={{ fill: 'var(--color-text)', fontSize: 11, fontWeight: 700 }} offset={6} />
+                    </Bar>
+                  </ComposedChart>
                 </ResponsiveContainer>
               </div>
             </div>
             <div className="card" style={{ padding: '1rem' }}>
               <h3 style={{ fontWeight: 700, marginBottom: '0.75rem' }}>Tăng trưởng khách hàng mới</h3>
-              <div style={{ height: 200 }}>
+              <div style={{ height: 260 }}>
                 <ResponsiveContainer width="100%" height="100%" debounce={50}>
-                  <BarChart data={customerData?.trend || []}>
+                  <ComposedChart data={customerData?.trend || []} margin={{ left: -10, right: 5, top: 20 }}>
                     <defs>
                       <linearGradient id="colorCustomerGrowth" x1="0" y1="0" x2="0" y2="1">
                         <stop offset="0%" stopColor="#3b82f6" stopOpacity={1}/>
@@ -561,20 +607,32 @@ export const ReportsPage: React.FC = () => {
                       </linearGradient>
                     </defs>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--color-border-light)" />
-                    <XAxis dataKey="date" tick={{ fontSize: 10 }} />
-                    <YAxis tick={{ fontSize: 10 }} />
-                    <Tooltip cursor={false} contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.1)', fontSize: '0.8125rem' }} />
-                    <Bar dataKey="count" fill="url(#colorCustomerGrowth)" radius={[4, 4, 0, 0]} maxBarSize={24} />
-                  </BarChart>
+                    <XAxis dataKey="date" tick={{ fontSize: 10, fill: 'var(--color-text-light)' }} axisLine={false} tickLine={false} />
+                    <YAxis domain={[0, (max) => (max < 5 ? 5 : Math.ceil(max * 1.15))]} tick={{ fontSize: 10, fill: 'var(--color-text-light)' }} axisLine={false} tickLine={false} width={40} />
+                    <Tooltip content={({ active, payload, label }) => {
+                      if (active && payload && payload.length) {
+                        return (
+                          <div style={{ background: 'var(--color-surface)', padding: '12px', borderRadius: '10px', boxShadow: '0 10px 25px rgba(0,0,0,0.1)', border: '1px solid var(--color-border)' }}>
+                            <div style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text)', marginBottom: 4 }}>{label}</div>
+                            <div style={{ fontSize: '0.8125rem', color: 'var(--color-primary)' }}>Khách hàng mới: <span style={{ fontWeight: 800 }}>{payload[0].value}</span></div>
+                          </div>
+                        );
+                      }
+                      return null;
+                    }} />
+                    <Bar dataKey="count" fill="url(#colorCustomerGrowth)" radius={[4, 4, 0, 0]} maxBarSize={20}>
+                      <LabelList dataKey="count" position="top" style={{ fill: 'var(--color-text)', fontSize: 11, fontWeight: 700 }} offset={6} />
+                    </Bar>
+                  </ComposedChart>
                 </ResponsiveContainer>
               </div>
             </div>
           </div>
           <div className="card" style={{ padding: '1rem' }}>
             <h3 style={{ fontWeight: 700, marginBottom: '0.75rem' }}>Phân bổ theo Lead Score</h3>
-            <div style={{ height: 200 }}>
+            <div style={{ height: 260 }}>
               <ResponsiveContainer width="100%" height="100%" debounce={50}>
-                <BarChart data={customerData?.by_score || []}>
+                <ComposedChart data={customerData?.by_score || []} margin={{ left: -10, right: 5, top: 20 }}>
                   <defs>
                     <linearGradient id="colorCustomerScore" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="0%" stopColor="#4f46e5" stopOpacity={1}/>
@@ -582,11 +640,23 @@ export const ReportsPage: React.FC = () => {
                     </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--color-border-light)" />
-                  <XAxis dataKey="bucket" label={{ value: 'Điểm tiềm năng', position: 'insideBottom', offset: -5, style: { fontSize: 10, fill: 'var(--color-text-light)' } }} tick={{ fontSize: 10 }} />
-                  <YAxis label={{ value: 'Số lượng', angle: -90, position: 'insideLeft', style: { fontSize: 10, fill: 'var(--color-text-light)' } }} tick={{ fontSize: 10 }} />
-                  <Tooltip cursor={false} contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.1)', fontSize: '0.8125rem' }} />
-                  <Bar dataKey="count" fill="url(#colorCustomerScore)" radius={[4, 4, 0, 0]} maxBarSize={24} />
-                </BarChart>
+                  <XAxis dataKey="bucket" label={{ value: 'Điểm tiềm năng', position: 'insideBottom', offset: -5, style: { fontSize: 10, fill: 'var(--color-text-light)' } }} tick={{ fontSize: 10, fill: 'var(--color-text-light)' }} axisLine={false} tickLine={false} />
+                  <YAxis label={{ value: 'Số lượng', angle: -90, position: 'insideLeft', style: { fontSize: 10, fill: 'var(--color-text-light)' } }} tick={{ fontSize: 10, fill: 'var(--color-text-light)' }} axisLine={false} tickLine={false} width={40} />
+                  <Tooltip content={({ active, payload, label }) => {
+                    if (active && payload && payload.length) {
+                      return (
+                        <div style={{ background: 'var(--color-surface)', padding: '12px', borderRadius: '10px', boxShadow: '0 10px 25px rgba(0,0,0,0.1)', border: '1px solid var(--color-border)' }}>
+                          <div style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text)', marginBottom: 4 }}>Nhóm {label}</div>
+                          <div style={{ fontSize: '0.8125rem', color: 'var(--color-primary)' }}>Số lượng: <span style={{ fontWeight: 800 }}>{payload[0].value}</span></div>
+                        </div>
+                      );
+                    }
+                    return null;
+                  }} />
+                  <Bar dataKey="count" fill="url(#colorCustomerScore)" radius={[4, 4, 0, 0]} maxBarSize={20}>
+                    <LabelList dataKey="count" position="top" style={{ fill: 'var(--color-text)', fontSize: 11, fontWeight: 700 }} offset={6} />
+                  </Bar>
+                </ComposedChart>
               </ResponsiveContainer>
             </div>
           </div>
@@ -598,48 +668,89 @@ export const ReportsPage: React.FC = () => {
           <div className="grid grid-2" style={{ gap: '1.25rem' }}>
             <div className="card" style={{ padding: '1rem' }}>
               <h3 style={{ fontWeight: 700, marginBottom: '0.75rem' }}>Phân loại theo lĩnh vực</h3>
-              <div style={{ height: 200 }}>
+              <div style={{ height: 260 }}>
                 <ResponsiveContainer width="100%" height="100%" debounce={50}>
-                  <PieChart>
-                    <Pie data={companyData?.by_industry || []} dataKey="count" nameKey="industry" cx="50%" cy="50%" innerRadius={50} outerRadius={70} paddingAngle={4}>
+                  <ComposedChart data={companyData?.by_industry || []} margin={{ left: -10, right: 5, top: 20 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border-light)" vertical={false} />
+                    <XAxis dataKey="industry" tick={{ fontSize: 10, fill: 'var(--color-text-light)' }} axisLine={false} tickLine={false} />
+                    <YAxis domain={[0, (max) => (max < 5 ? 5 : Math.ceil(max * 1.15))]} tick={{ fontSize: 10, fill: 'var(--color-text-light)' }} axisLine={false} tickLine={false} width={40} />
+                    <Tooltip content={({ active, payload }) => {
+                      if (active && payload && payload.length) {
+                        const data = payload[0].payload;
+                        return (
+                          <div style={{ background: 'var(--color-surface)', padding: '12px', borderRadius: '10px', boxShadow: '0 10px 25px rgba(0,0,0,0.1)', border: '1px solid var(--color-border)' }}>
+                            <div style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text)', marginBottom: 4 }}>{data.industry}</div>
+                            <div style={{ fontSize: '0.8125rem', color: 'var(--color-primary)' }}>Số lượng: <span style={{ fontWeight: 800 }}>{data.count}</span></div>
+                          </div>
+                        );
+                      }
+                      return null;
+                    }} />
+                    <Bar dataKey="count" radius={[4, 4, 0, 0]} maxBarSize={20}>
                       {(companyData?.by_industry || []).map((_: any, index: number) => (
                         <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                       ))}
-                    </Pie>
-                    <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.1)', fontSize: '0.8125rem' }} />
-                    <Legend iconType="circle" iconSize={6} wrapperStyle={{ fontSize: '0.75rem', fontWeight: 500 }} />
-                  </PieChart>
+                      <LabelList dataKey="count" position="top" style={{ fill: 'var(--color-text)', fontSize: 11, fontWeight: 700 }} offset={6} />
+                    </Bar>
+                  </ComposedChart>
                 </ResponsiveContainer>
               </div>
             </div>
             <div className="card" style={{ padding: '1rem' }}>
               <h3 style={{ fontWeight: 700, marginBottom: '0.75rem' }}>Quy mô doanh nghiệp</h3>
-              <div style={{ height: 200 }}>
+              <div style={{ height: 260 }}>
                 <ResponsiveContainer width="100%" height="100%" debounce={50}>
-                  <PieChart>
-                    <Pie data={companyData?.by_size || []} dataKey="count" nameKey="size" cx="50%" cy="50%" innerRadius={50} outerRadius={70} paddingAngle={4}>
+                  <ComposedChart data={companyData?.by_size || []} margin={{ left: -10, right: 5, top: 20 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border-light)" vertical={false} />
+                    <XAxis dataKey="size" tick={{ fontSize: 10, fill: 'var(--color-text-light)' }} axisLine={false} tickLine={false} />
+                    <YAxis domain={[0, (max) => (max < 5 ? 5 : Math.ceil(max * 1.15))]} tick={{ fontSize: 10, fill: 'var(--color-text-light)' }} axisLine={false} tickLine={false} width={40} />
+                    <Tooltip content={({ active, payload }) => {
+                      if (active && payload && payload.length) {
+                        const data = payload[0].payload;
+                        return (
+                          <div style={{ background: 'var(--color-surface)', padding: '12px', borderRadius: '10px', boxShadow: '0 10px 25px rgba(0,0,0,0.1)', border: '1px solid var(--color-border)' }}>
+                            <div style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text)', marginBottom: 4 }}>Quy mô: {data.size}</div>
+                            <div style={{ fontSize: '0.8125rem', color: 'var(--color-primary)' }}>Số lượng: <span style={{ fontWeight: 800 }}>{data.count}</span></div>
+                          </div>
+                        );
+                      }
+                      return null;
+                    }} />
+                    <Bar dataKey="count" radius={[4, 4, 0, 0]} maxBarSize={20}>
                       {(companyData?.by_size || []).map((_: any, index: number) => (
                         <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                       ))}
-                    </Pie>
-                    <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.1)', fontSize: '0.8125rem' }} />
-                    <Legend iconType="circle" iconSize={6} wrapperStyle={{ fontSize: '0.75rem', fontWeight: 500 }} />
-                  </PieChart>
+                      <LabelList dataKey="count" position="top" style={{ fill: 'var(--color-text)', fontSize: 11, fontWeight: 700 }} offset={6} />
+                    </Bar>
+                  </ComposedChart>
                 </ResponsiveContainer>
               </div>
             </div>
           </div>
           <div className="card" style={{ padding: '1rem' }}>
             <h3 style={{ fontWeight: 700, marginBottom: '0.75rem' }}>Top 10 thành phố</h3>
-            <div style={{ height: 200 }}>
+            <div style={{ height: 320 }}>
               <ResponsiveContainer width="100%" height="100%" debounce={50}>
-                <BarChart data={companyData?.by_city || []} layout="vertical" margin={{ left: 20 }}>
+                <ComposedChart data={companyData?.by_city || []} layout="vertical" margin={{ left: 10, right: 30, top: 10, bottom: 10 }}>
                   <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="var(--color-border-light)" />
                   <XAxis type="number" hide />
-                  <YAxis dataKey="city" type="category" tick={{ fontSize: 10, fill: 'var(--color-text-light)' }} width={80} />
-                  <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.1)', fontSize: '0.8125rem' }} />
-                  <Bar dataKey="count" fill="var(--color-primary)" radius={[0, 4, 4, 0]} maxBarSize={12} />
-                </BarChart>
+                  <YAxis dataKey="city" type="category" tick={{ fontSize: 10, fill: 'var(--color-text-light)' }} width={80} axisLine={false} tickLine={false} />
+                  <Tooltip content={({ active, payload }) => {
+                    if (active && payload && payload.length) {
+                      const data = payload[0].payload;
+                      return (
+                        <div style={{ background: 'var(--color-surface)', padding: '12px', borderRadius: '10px', boxShadow: '0 10px 25px rgba(0,0,0,0.1)', border: '1px solid var(--color-border)' }}>
+                          <div style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text)', marginBottom: 4 }}>{data.city}</div>
+                          <div style={{ fontSize: '0.8125rem', color: 'var(--color-primary)' }}>Số lượng: <span style={{ fontWeight: 800 }}>{data.count}</span></div>
+                        </div>
+                      );
+                    }
+                    return null;
+                  }} />
+                  <Bar dataKey="count" fill="#a31422" fillOpacity={0.85} radius={[0, 4, 4, 0]} maxBarSize={16}>
+                    <LabelList dataKey="count" position="right" style={{ fill: 'var(--color-text)', fontSize: 11, fontWeight: 700 }} offset={8} />
+                  </Bar>
+                </ComposedChart>
               </ResponsiveContainer>
             </div>
           </div>
@@ -651,46 +762,63 @@ export const ReportsPage: React.FC = () => {
           <div className="grid grid-2" style={{ gap: '1.25rem' }}>
             <div className="card" style={{ padding: '1rem' }}>
               <h3 style={{ fontWeight: 700, marginBottom: '0.75rem' }}>Cơ cấu chi phí</h3>
-              <div style={{ height: 200 }}>
+              <div style={{ height: 260 }}>
                 <ResponsiveContainer width="100%" height="100%" debounce={50}>
-                  <PieChart>
-                    <Pie 
-                      data={expenseData?.by_category || []} 
-                      dataKey="total" 
-                      nameKey="category" 
-                      cx="50%" 
-                      cy="50%" 
-                      innerRadius={50}
-                      outerRadius={70} 
-                      paddingAngle={4}
-                    >
+                  <ComposedChart data={expenseData?.by_category || []} margin={{ left: -10, right: 5, top: 20 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border-light)" vertical={false} />
+                    <XAxis dataKey="category" tick={{ fontSize: 10, fill: 'var(--color-text-light)' }} axisLine={false} tickLine={false} />
+                    <YAxis domain={[0, (max) => (max < 5 ? 5 : Math.ceil(max * 1.15))]} tickFormatter={FMT} tick={{ fontSize: 10, fill: 'var(--color-text-light)' }} axisLine={false} tickLine={false} width={40} />
+                    <Tooltip content={({ active, payload }) => {
+                      if (active && payload && payload.length) {
+                        const data = payload[0].payload;
+                        return (
+                          <div style={{ background: 'var(--color-surface)', padding: '12px', borderRadius: '10px', boxShadow: '0 10px 25px rgba(0,0,0,0.1)', border: '1px solid var(--color-border)' }}>
+                            <div style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text)', marginBottom: 4 }}>{data.category}</div>
+                            <div style={{ fontSize: '0.8125rem', color: 'var(--color-primary)' }}>Tổng chi phí: <span style={{ fontWeight: 800 }}>{FMT_VND(data.total)}</span></div>
+                          </div>
+                        );
+                      }
+                      return null;
+                    }} />
+                    <Bar dataKey="total" radius={[4, 4, 0, 0]} maxBarSize={20}>
                       {(expenseData?.by_category || []).map((_: any, index: number) => (
                         <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                       ))}
-                    </Pie>
-                    <Tooltip formatter={(v: any) => FMT_VND(Number(v))} contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.1)', fontSize: '0.8125rem' }} />
-                    <Legend iconType="circle" iconSize={6} wrapperStyle={{ fontSize: '0.75rem', fontWeight: 500 }} />
-                  </PieChart>
+                      <LabelList dataKey="total" position="top" style={{ fill: 'var(--color-text)', fontSize: 10, fontWeight: 700 }} offset={6} formatter={FMT} />
+                    </Bar>
+                  </ComposedChart>
                 </ResponsiveContainer>
               </div>
             </div>
             <div className="card" style={{ padding: '1rem' }}>
               <h3 style={{ fontWeight: 700, marginBottom: '0.75rem' }}>Biến động chi phí theo ngày</h3>
-              <div style={{ height: 200 }}>
+              <div style={{ height: 260 }}>
                 <ResponsiveContainer width="100%" height="100%" debounce={50}>
-                  <AreaChart data={expenseData?.trend || []}>
+                  <ComposedChart data={expenseData?.trend || []} margin={{ left: -10, right: 5, top: 20 }}>
                     <defs>
-                      <linearGradient id="colorTotal" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#ef4444" stopOpacity={0.3}/>
-                        <stop offset="95%" stopColor="#ef4444" stopOpacity={0}/>
+                      <linearGradient id="colorExpenseTotalBar" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#ef4444" stopOpacity={1}/>
+                        <stop offset="100%" stopColor="#b91c1c" stopOpacity={1}/>
                       </linearGradient>
                     </defs>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--color-border-light)" />
-                    <XAxis dataKey="date" tick={{ fontSize: 10, fill: 'var(--color-text-light)' }} />
-                    <YAxis tickFormatter={FMT} tick={{ fontSize: 10, fill: 'var(--color-text-light)' }} />
-                    <Tooltip formatter={(v: any) => FMT_VND(Number(v))} contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.1)', fontSize: '0.8125rem' }} />
-                    <Area type="monotone" dataKey="total" stroke="#ef4444" fillOpacity={1} fill="url(#colorTotal)" />
-                  </AreaChart>
+                    <XAxis dataKey="date" tick={{ fontSize: 10, fill: 'var(--color-text-light)' }} axisLine={false} tickLine={false} />
+                    <YAxis domain={[0, (max) => (max < 5 ? 5 : Math.ceil(max * 1.15))]} tickFormatter={FMT} tick={{ fontSize: 10, fill: 'var(--color-text-light)' }} axisLine={false} tickLine={false} width={40} />
+                    <Tooltip content={({ active, payload, label }) => {
+                      if (active && payload && payload.length) {
+                        return (
+                          <div style={{ background: 'var(--color-surface)', padding: '12px', borderRadius: '10px', boxShadow: '0 10px 25px rgba(0,0,0,0.1)', border: '1px solid var(--color-border)' }}>
+                            <div style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text)', marginBottom: 4 }}>{label}</div>
+                            <div style={{ fontSize: '0.8125rem', color: '#ef4444' }}>Chi phí: <span style={{ fontWeight: 800 }}>{FMT_VND(payload[0].value)}</span></div>
+                          </div>
+                        );
+                      }
+                      return null;
+                    }} />
+                    <Bar dataKey="total" fill="url(#colorExpenseTotalBar)" radius={[4, 4, 0, 0]} maxBarSize={20}>
+                      <LabelList dataKey="total" position="top" style={{ fill: 'var(--color-text)', fontSize: 10, fontWeight: 700 }} offset={6} formatter={FMT} />
+                    </Bar>
+                  </ComposedChart>
                 </ResponsiveContainer>
               </div>
             </div>
@@ -698,16 +826,34 @@ export const ReportsPage: React.FC = () => {
           
           <div className="card" style={{ padding: '1rem' }}>
             <h3 style={{ fontWeight: 700, marginBottom: '0.75rem' }}>Chi phí vs Doanh thu (Kết hợp)</h3>
-            <div style={{ height: 200 }}>
+            <div style={{ height: 260 }}>
               <ResponsiveContainer width="100%" height="100%" debounce={50}>
-                <ComposedChart data={salesData?.by_month || []}>
+                <ComposedChart data={salesData?.by_month || []} margin={{ left: -10, right: 5, top: 20 }}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--color-border-light)" />
-                  <XAxis dataKey="month" tick={{ fontSize: 10, fill: 'var(--color-text-light)' }} />
-                  <YAxis tickFormatter={FMT} tick={{ fontSize: 10, fill: 'var(--color-text-light)' }} />
-                  <Tooltip formatter={(v: any) => FMT_VND(Number(v))} contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.1)', fontSize: '0.8125rem' }} />
+                  <XAxis dataKey="month" tick={{ fontSize: 10, fill: 'var(--color-text-light)' }} axisLine={false} tickLine={false} />
+                  <YAxis domain={[0, (max) => (max < 5 ? 5 : Math.ceil(max * 1.15))]} tickFormatter={FMT} tick={{ fontSize: 10, fill: 'var(--color-text-light)' }} axisLine={false} tickLine={false} width={40} />
+                  <Tooltip content={({ active, payload, label }) => {
+                    if (active && payload && payload.length) {
+                      return (
+                        <div style={{ background: 'var(--color-surface)', padding: '12px', borderRadius: '10px', boxShadow: '0 10px 25px rgba(0,0,0,0.1)', border: '1px solid var(--color-border)' }}>
+                          <div style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text)', marginBottom: 4 }}>{label}</div>
+                          {payload.map((p: any, idx: number) => (
+                            <div key={idx} style={{ fontSize: '0.8125rem', color: p.color || 'var(--color-primary)', marginTop: idx > 0 ? 4 : 0 }}>
+                              {p.name}: <span style={{ fontWeight: 800 }}>{FMT_VND(p.value)}</span>
+                            </div>
+                          ))}
+                        </div>
+                      );
+                    }
+                    return null;
+                  }} />
                   <Legend iconType="circle" iconSize={6} wrapperStyle={{ fontSize: '0.75rem', fontWeight: 500 }} />
-                  <Bar dataKey="revenue" name="Doanh thu" fill="#a31422" radius={[4, 4, 0, 0]} maxBarSize={12} />
-                  <Line type="monotone" dataKey="cost" name="Chi phí" stroke="#ef4444" strokeWidth={3} dot={{ r: 4, fill: '#ef4444' }} />
+                  <Bar dataKey="revenue" name="Doanh thu" fill="#a31422" radius={[4, 4, 0, 0]} maxBarSize={16}>
+                    <LabelList dataKey="revenue" position="top" style={{ fill: 'var(--color-text)', fontSize: 10, fontWeight: 700 }} offset={6} formatter={FMT} />
+                  </Bar>
+                  <Bar dataKey="cost" name="Chi phí" fill="#ef4444" radius={[4, 4, 0, 0]} maxBarSize={16}>
+                    <LabelList dataKey="cost" position="top" style={{ fill: 'var(--color-text)', fontSize: 10, fontWeight: 700 }} offset={6} formatter={FMT} />
+                  </Bar>
                 </ComposedChart>
               </ResponsiveContainer>
             </div>
@@ -720,26 +866,31 @@ export const ReportsPage: React.FC = () => {
           <div className="grid grid-2">
             <div className="card" style={{ padding: '1rem' }}>
               <h3 style={{ fontWeight: 700, fontSize: '0.9rem', marginBottom: '1rem' }}>Phân bổ loại hoạt động</h3>
-              <div style={{ height: 200 }}>
+              <div style={{ height: 260 }}>
                 <ResponsiveContainer width="100%" height="100%" debounce={50}>
-                  <PieChart>
-                    <Pie 
-                      data={activityData?.by_type || []} 
-                      dataKey="total" 
-                      nameKey="type" 
-                      cx="50%" 
-                      cy="50%" 
-                      innerRadius={50}
-                      outerRadius={70} 
-                      paddingAngle={4}
-                    >
+                  <ComposedChart data={activityData?.by_type || []} margin={{ left: -10, right: 5, top: 20 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border-light)" vertical={false} />
+                    <XAxis dataKey="type" tickFormatter={(v) => T_LABEL[v as string] || v} tick={{ fontSize: 10, fill: 'var(--color-text-light)' }} axisLine={false} tickLine={false} />
+                    <YAxis domain={[0, (max) => (max < 5 ? 5 : Math.ceil(max * 1.15))]} tick={{ fontSize: 10, fill: 'var(--color-text-light)' }} axisLine={false} tickLine={false} width={40} />
+                    <Tooltip content={({ active, payload }) => {
+                      if (active && payload && payload.length) {
+                        const data = payload[0].payload;
+                        return (
+                          <div style={{ background: 'var(--color-surface)', padding: '12px', borderRadius: '10px', boxShadow: '0 10px 25px rgba(0,0,0,0.1)', border: '1px solid var(--color-border)' }}>
+                            <div style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text)', marginBottom: 4 }}>{T_LABEL[data.type] || data.type}</div>
+                            <div style={{ fontSize: '0.8125rem', color: 'var(--color-primary)' }}>Tổng số: <span style={{ fontWeight: 800 }}>{data.total}</span></div>
+                          </div>
+                        );
+                      }
+                      return null;
+                    }} />
+                    <Bar dataKey="total" radius={[4, 4, 0, 0]} maxBarSize={20}>
                       {(activityData?.by_type || []).map((_: any, index: number) => (
                         <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                       ))}
-                    </Pie>
-                    <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.1)' }} />
-                    <Legend iconType="circle" iconSize={6} wrapperStyle={{ fontSize: '0.75rem', fontWeight: 500 }} formatter={(v) => T_LABEL[v as string] || v} />
-                  </PieChart>
+                      <LabelList dataKey="total" position="top" style={{ fill: 'var(--color-text)', fontSize: 11, fontWeight: 700 }} offset={6} />
+                    </Bar>
+                  </ComposedChart>
                 </ResponsiveContainer>
               </div>
             </div>

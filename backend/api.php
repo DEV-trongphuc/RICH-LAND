@@ -84,6 +84,32 @@ try {
     $conn->query("ALTER TABLE users ADD COLUMN overtime_mode TINYINT(1) DEFAULT 0");
 } catch (Exception $e) {}
 
+try {
+    $conn->query("ALTER TABLE users ADD COLUMN manager_behavior_mode VARCHAR(50) NOT NULL DEFAULT 'combined'");
+} catch (Exception $e) {}
+
+try {
+    $conn->query("CREATE OR REPLACE VIEW `consultants` AS 
+        SELECT 
+          `id`, 
+          `full_name` AS `name`, 
+          `email`, 
+          `status`, 
+          `leave_start`, 
+          `leave_end`, 
+          `created_at`, 
+          `zalo_chat_id`, 
+          `work_start_time`, 
+          `work_end_time`, 
+          `work_schedule`, 
+          `avatar_url` AS `avatar`, 
+          `vacation_mode`,
+          `team_id`
+        FROM `users` 
+        WHERE `role` = 'sales' 
+           OR (`role` = 'manager' AND `manager_behavior_mode` = 'combined')");
+} catch (Exception $e) {}
+
 // Safe CORS origin matching
 $httpOrigin = $_SERVER['HTTP_ORIGIN'] ?? '';
 $allowedOrigins = [
@@ -9414,10 +9440,15 @@ switch ($action) {
                 $keepIds = [];
                 $colors = ['#3b82f6', '#6366f1', '#ec4899', '#f59e0b', '#10b981', '#14b8a6', '#10b981'];
                 
+                $dealWonStatus = $input['deal_won_status'] ?? 'dong_deal';
+                if (!$dealWonStatus) {
+                    $dealWonStatus = 'dong_deal';
+                }
+
                 foreach ($hierarchy as $idx => $slug) {
                     $name = $labels[$slug] ?? $slug;
                     $color = $colors[$idx % count($colors)];
-                    $isWon = ($slug === 'dong_deal') ? 1 : 0;
+                    $isWon = ($slug === $dealWonStatus) ? 1 : 0;
                     $isLost = ($slug === 'that_bai' || $slug === 'lost') ? 1 : 0;
                     
                     if (isset($existingStages[$idx])) {
@@ -10924,6 +10955,14 @@ switch ($action) {
             if ($stmt->execute()) {
                 $newId = $conn->insert_id;
 
+                // Save manager_behavior_mode if provided
+                if (isset($input['manager_behavior_mode'])) {
+                    $stmtBeh = $conn->prepare("UPDATE users SET manager_behavior_mode = ? WHERE id = ?");
+                    $stmtBeh->bind_param("si", $input['manager_behavior_mode'], $newId);
+                    $stmtBeh->execute();
+                    $stmtBeh->close();
+                }
+
                 // Save permissions_json if provided
                 if (isset($input['permissions_json'])) {
                     $stmtPerm = $conn->prepare("UPDATE users SET permissions_json = ? WHERE id = ?");
@@ -11065,6 +11104,14 @@ switch ($action) {
             }
 
             if ($stmt->execute()) {
+                // Save manager_behavior_mode if provided
+                if (isset($input['manager_behavior_mode'])) {
+                    $stmtBeh = $conn->prepare("UPDATE users SET manager_behavior_mode = ? WHERE id = ?");
+                    $stmtBeh->bind_param("si", $input['manager_behavior_mode'], $id);
+                    $stmtBeh->execute();
+                    $stmtBeh->close();
+                }
+
                 // Save permissions_json if provided
                 if (isset($input['permissions_json'])) {
                     $stmtPerm = $conn->prepare("UPDATE users SET permissions_json = ? WHERE id = ?");
@@ -11225,7 +11272,7 @@ switch ($action) {
             exit;
         }
 
-        $stmtP = $conn->prepare("SELECT u.id, u.full_name AS name, u.email, a.role, u.status, u.leave_start, u.leave_end, u.work_start_time, u.work_end_time, u.work_schedule, u.avatar_url AS avatar, u.vacation_mode, u.dob, u.gender, u.citizen_id, u.address, u.bank_name, u.bank_account, u.zalo_chat_id, u.overtime_mode, u.permissions_json, u.extra_fields_json FROM users u LEFT JOIN accounts a ON u.id = a.id WHERE u.id = ?");
+        $stmtP = $conn->prepare("SELECT u.id, u.full_name AS name, u.email, a.role, u.status, u.leave_start, u.leave_end, u.work_start_time, u.work_end_time, u.work_schedule, u.avatar_url AS avatar, u.vacation_mode, u.dob, u.gender, u.citizen_id, u.address, u.bank_name, u.bank_account, u.zalo_chat_id, u.overtime_mode, u.permissions_json, u.extra_fields_json, u.manager_behavior_mode FROM users u LEFT JOIN accounts a ON u.id = a.id WHERE u.id = ?");
         $stmtP->bind_param("i", $targetUserId);
         $stmtP->execute();
         $consultantProfile = $stmtP->get_result()->fetch_assoc();

@@ -196,10 +196,10 @@ class CheckInController {
     public function update(array $auth, int $id): void {
         $allowed = ['admin', 'superadmin', 'super_admin', 'assistant', 'director'];
         
-        $stmtSet = $this->db->prepare("SELECT setting_value FROM system_settings WHERE setting_key = 'manager_behavior_mode' LIMIT 1");
-        $stmtSet->execute();
-        $setting = $stmtSet->fetchColumn();
-        if ($setting === 'pure') {
+        $stmtUser = $this->db->prepare("SELECT manager_behavior_mode FROM users WHERE id = ? LIMIT 1");
+        $stmtUser->execute([$auth['user_id']]);
+        $behaviorMode = $stmtUser->fetchColumn() ?: 'combined';
+        if ($behaviorMode === 'pure') {
             $allowed[] = 'manager';
         }
         requireRole($auth, $allowed);

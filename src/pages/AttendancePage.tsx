@@ -20,7 +20,7 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
   const { showConfirm } = useUIStore();
   const [showInfoModal, setShowInfoModal] = useState(false);
   const [sysSettings, setSysSettings] = useState<any>(null);
-  const managerBehaviorMode = sysSettings?.manager_behavior_mode || 'combined';
+  const managerBehaviorMode = user?.manager_behavior_mode || 'combined';
   const isSales = user?.role === 'sale' || (user?.role === 'manager' && managerBehaviorMode === 'combined');
   const canSelectUser = ['admin', 'superadmin', 'super_admin', 'director', 'assistant', 'manager'].includes(user?.role || '');
   const canApprove = ['admin', 'superadmin', 'super_admin', 'director', 'assistant'].includes(user?.role || '') || (user?.role === 'manager' && managerBehaviorMode === 'pure');

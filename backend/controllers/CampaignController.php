@@ -482,15 +482,21 @@ class CampaignController {
         $conversionRate = $totalLeads > 0 ? round(($convertedLeads / $totalLeads) * 100, 1) : 0.0;
         
         // Won deals from this campaign
+        $resWon = $this->db->query("SELECT setting_value FROM system_settings WHERE setting_key = 'deal_won_status' LIMIT 1");
+        $wonStatus = $resWon ? $resWon->fetchColumn() : 'dong_deal';
+        if (!$wonStatus) {
+            $wonStatus = 'dong_deal';
+        }
+
         $stmtWon = $this->db->prepare("
             SELECT COUNT(DISTINCT c.id) 
             FROM contacts c
             LEFT JOIN leads l ON c.person_id = l.person_id
             WHERE (l.campaign_id = ? OR l.campaign_name = ? OR c.campaign_id = ?)
-              AND c.pipeline_status = 'dong_deal'
+              AND c.pipeline_status = ?
               AND c.deleted_at IS NULL
         ");
-        $stmtWon->execute([$campaignIdStr, $campName, $campaignId]);
+        $stmtWon->execute([$campaignIdStr, $campName, $campaignId, $wonStatus]);
         $wonDeals = (int)$stmtWon->fetchColumn();
         
         // Actual revenue from paid invoices of contacts from this campaign

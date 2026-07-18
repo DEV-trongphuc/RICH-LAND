@@ -173,7 +173,7 @@ class AuthController {
 
     public function me(array $auth): void {
         $stmt = $this->db->prepare(
-            'SELECT u.id, u.email, u.full_name, u.role, u.avatar_url, u.phone,
+            'SELECT u.id, u.email, u.full_name, u.role, u.avatar_url, u.phone, u.manager_behavior_mode,
                     u.tenant_id, t.name as tenant_name, t.slug as tenant_slug, t.logo_url as tenant_logo
              FROM users u JOIN tenants t ON u.tenant_id = t.id
              WHERE u.id = ? AND u.is_active = 1'

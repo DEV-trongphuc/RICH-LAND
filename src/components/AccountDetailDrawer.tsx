@@ -178,6 +178,7 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
   const [isActive, setIsActive] = useState('1');
   const [bankName, setBankName] = useState('');
   const [bankAccount, setBankAccount] = useState('');
+  const [managerBehaviorMode, setManagerBehaviorMode] = useState('combined');
 
   // 2. Personal Profile Fields
   const [dob, setDob] = useState('');
@@ -296,6 +297,7 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
             setBankName(d.bank_name || '');
             setBankAccount(d.bank_account || '');
             setManagerTeams(d.manager_teams || []);
+            setManagerBehaviorMode(d.manager_behavior_mode || 'combined');
             try {
               const defaultPerms = getDefaultPermissionsForRole(d.role || account?.role || '');
               const parsed = d.permissions_json ? JSON.parse(d.permissions_json) : {};
@@ -439,6 +441,7 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
       setWorkSchedule(DEFAULT_SCHEDULE);
       setPermissionsJson(getDefaultPermissionsForRole('sale'));
       setManagerTeams([]);
+      setManagerBehaviorMode('combined');
 
       setDocuments([]);
       setLoading(false);
@@ -713,7 +716,8 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
         bank_name: bankName || null,
         bank_account: bankAccount || null,
         permissions_json: JSON.stringify(permissionsJson),
-        manager_teams: managerTeams
+        manager_teams: managerTeams,
+        manager_behavior_mode: managerBehaviorMode
       };
 
       const resAccount = await fetchAPI(action, {
@@ -1611,6 +1615,20 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
                               width="100%"
                             />
                           </div>
+                          {role === 'manager' && (
+                            <div className="form-group">
+                              <label className="form-label">{t('Chế độ hoạt động Trưởng nhóm')}</label>
+                              <CustomSelect 
+                                options={[
+                                  { value: 'combined', label: t('Trưởng nhóm kiêm Sale (Nhận data, chấm công như Sale)') },
+                                  { value: 'pure', label: t('Trưởng nhóm thuần túy (Không nhận data, không chấm công, duyệt công)') }
+                                ]}
+                                value={managerBehaviorMode}
+                                onChange={val => setManagerBehaviorMode(val.toString())}
+                                width="100%"
+                              />
+                            </div>
+                          )}
                           <div className="form-group">
                             <label className="form-label">{t('Trạng thái hoạt động')}</label>
                             <CustomSelect 

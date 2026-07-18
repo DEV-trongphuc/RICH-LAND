@@ -10,6 +10,7 @@ type User = {
   email?: string;
   consultant_id?: number;
   avatar?: string;
+  manager_behavior_mode?: string;
 };
 
 interface AuthContextType {
