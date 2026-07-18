@@ -2414,7 +2414,7 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
                               </div>
                             </div>
 
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                            <div style={{ display: 'grid', gridTemplateColumns: isMobileOrTablet ? '1fr' : '1fr 1fr', gap: '1rem' }}>
                               <div className="form-group" style={{ margin: 0 }}>
                                 <label className="form-label" style={{ fontWeight: 600 }}>{t('Ngày cấp')}</label>
                                 <input
