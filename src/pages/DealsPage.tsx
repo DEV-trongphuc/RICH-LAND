@@ -60,6 +60,10 @@ export const DealsPage: React.FC = () => {
     }
     return null;
   };
+
+  const effectiveTeamId = useMemo(() => {
+    return getEffectiveTeamId();
+  }, [teams]);
   
   // Drawers
   const [showContactDrawer, setShowContactDrawer] = useState(false);
@@ -380,11 +384,14 @@ export const DealsPage: React.FC = () => {
 
 
   useEffect(() => {
-    fetchUsers();
     fetchProjects();
     fetchCampaigns();
     fetchSources();
     fetchStages();
+  }, [pipelineView]);
+
+  useEffect(() => {
+    fetchUsers();
   }, [pipelineView, teams]);
 
   useEffect(() => {
@@ -420,7 +427,7 @@ export const DealsPage: React.FC = () => {
 
   useEffect(() => {
     if (stages.length > 0) fetchData();
-  }, [stages, pipelineView, page, debouncedSearch, filterAssignee, filterStage, filterProject, filterCampaign, filterSource, filterDateFrom, filterDateTo, viewMode, allUsers, teams]);
+  }, [stages, pipelineView, page, debouncedSearch, filterAssignee, filterStage, filterProject, filterCampaign, filterSource, filterDateFrom, filterDateTo, viewMode, allUsers.length, effectiveTeamId]);
 
   useEffect(() => {
     const handleRefresh = () => {
