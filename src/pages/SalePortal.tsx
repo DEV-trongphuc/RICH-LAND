@@ -2750,7 +2750,10 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
   }, [token, user?.id, saleIdFilter, data.consultant_profile?.id]);
 
   useEffect(() => {
-    loadPortalData();
+    const timer = setTimeout(() => {
+      loadPortalData();
+    }, 100);
+    return () => clearTimeout(timer);
   }, [token, user?.id, user?.role, roundId, dateMode, saleIdFilter, search, startDate, endDate]);
 
 
