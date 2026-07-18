@@ -2569,16 +2569,6 @@ export const WarRoomFlightDeck: React.FC<WarRoomProps> = ({
     ), { duration: 5000, id: `sync-${connName}-${Date.now()}` });
   };
 
-  useEffect(() => {
-    if (!isOpen) return;
-    fetchAPI('get_connections')
-      .then(res => {
-        if (res.success && Array.isArray(res.data)) {
-          setConnections(res.data);
-        }
-      })
-      .catch(err => console.error('Lỗi fetch connections on load:', err));
-  }, [isOpen]);
 
   const [todayStats, setTodayStats] = useState<any>(null);
   const [todayLogs, setTodayLogs] = useState<any[]>([]);

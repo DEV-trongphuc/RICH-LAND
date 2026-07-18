@@ -254,13 +254,6 @@ export const ContactsPage: React.FC = () => {
   const [pipelineStages, setPipelineStages] = useState<any[]>([]);
   const [teams, setTeams] = useState<any[]>([]);
 
-  useEffect(() => {
-    if (user && ['manager', 'admin', 'superadmin'].includes(user.role)) {
-      api.get('/teams').then(res => {
-        setTeams(res.data.data || res.data || []);
-      }).catch(() => {});
-    }
-  }, [user]);
 
   const getEffectiveTeamId = () => {
     if ((user as any)?.team_id) return (user as any).team_id;

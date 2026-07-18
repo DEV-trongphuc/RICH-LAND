@@ -1412,13 +1412,6 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
           setWsContacts(items);
         }
       }).catch(() => {});
-
-      const isPrivileged = ['admin', 'superadmin', 'super_admin', 'manager'].includes(user?.role || '');
-      if (isPrivileged) {
-        api.get('/teams').then(res => {
-          setTeamsList(res.data.data || res.data || []);
-        }).catch(() => {});
-      }
     }
   }, [activeTab, user?.role]);
 
@@ -1443,7 +1436,11 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
       }).catch(() => {});
       api.get('/projects').then(r => setAllowedProjects(r.data.data || r.data || [])).catch(() => {});
       api.get('/marketing-campaigns').then(r => setAllowedCampaigns(r.data.data?.items || r.data.data || [])).catch(() => {});
-      api.get('/teams').then(r => setAllowedTeams(r.data.data || r.data || [])).catch(() => {});
+      api.get('/teams').then(r => {
+        const list = r.data.data || r.data || [];
+        setAllowedTeams(list);
+        setTeamsList(list);
+      }).catch(() => {});
     }
   }, [token, user?.role]);
 
