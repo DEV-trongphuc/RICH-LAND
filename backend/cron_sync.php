@@ -700,7 +700,43 @@ if (!function_exists('releasePendingWorkHoursLeads')) {
                 $workSchedule = $row['work_schedule'] ?? null;
                 
                 if (isConsultantInWorkHours($currentTime, $whStart, $whEnd, $workSchedule)) {
-                    $readyToRelease[$row['assigned_to']][] = $row;
+                    // Check if consultant has an approved check-in for today (Gate 2 Check-in constraint)
+                    $hasCheckIn = false;
+                    $todayStr = date('Y-m-d');
+                    $dayOfWeek = date('N'); // 1 (Mon) - 7 (Sun)
+                    
+                    if ($dayOfWeek >= 1 && $dayOfWeek <= 6) { // Mon-Sat
+                        $stmtCheck = $conn->prepare("SELECT 1 FROM check_ins WHERE user_id = ? AND check_in_date = ? AND status = 'approved' LIMIT 1");
+                        if ($stmtCheck) {
+                            $stmtCheck->bind_param("is", $row['assigned_to'], $todayStr);
+                            $stmtCheck->execute();
+                            $hasCheckIn = (bool)$stmtCheck->get_result()->fetch_assoc();
+                            $stmtCheck->close();
+                        }
+                    } else if ($dayOfWeek == 7) { // Sun
+                        // Weekend registration + approved check-in
+                        $stmtCheckReg = $conn->prepare("SELECT 1 FROM night_shift_registrations WHERE user_id = ? AND shift_date = ? LIMIT 1");
+                        if ($stmtCheckReg) {
+                            $stmtCheckReg->bind_param("is", $row['assigned_to'], $todayStr);
+                            $stmtCheckReg->execute();
+                            $hasReg = (bool)$stmtCheckReg->get_result()->fetch_assoc();
+                            $stmtCheckReg->close();
+                            
+                            if ($hasReg) {
+                                $stmtCheck = $conn->prepare("SELECT 1 FROM check_ins WHERE user_id = ? AND check_in_date = ? AND status = 'approved' LIMIT 1");
+                                if ($stmtCheck) {
+                                    $stmtCheck->bind_param("is", $row['assigned_to'], $todayStr);
+                                    $stmtCheck->execute();
+                                    $hasCheckIn = (bool)$stmtCheck->get_result()->fetch_assoc();
+                                    $stmtCheck->close();
+                                }
+                            }
+                        }
+                    }
+                    
+                    if ($hasCheckIn) {
+                        $readyToRelease[$row['assigned_to']][] = $row;
+                    }
                 }
             }
         }
