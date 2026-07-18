@@ -1855,6 +1855,8 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
   // Fetch portal data when token is valid
   const loadPortalData = async () => {
     if (!token || !ALLOWED_PORTAL_ROLES.includes(user?.role || '')) return;
+    const activePaths = ['/', '/workspace', '/account', '/calendar', '/databank', '/fair-share'];
+    if (!activePaths.includes(loc.pathname)) return;
     setLoading(true);
     fetchPortalTasks();
     fetchPortalCoops();
@@ -2538,6 +2540,8 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
   };
 
   const fetchLeaveHistory = async () => {
+    const activePaths = ['/', '/workspace', '/account', '/calendar', '/databank', '/fair-share'];
+    if (!activePaths.includes(loc.pathname)) return;
     setLoadingLeaves(true);
     try {
       const saleId = ['sale', 'manager'].includes(String(displayUser?.role).toLowerCase()) ? displayUser?.consultant_id : (data.consultant_profile?.id || null);

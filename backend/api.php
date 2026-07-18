@@ -560,9 +560,9 @@ if (!in_array($action, $publicActions)) {
     list($permModule, $permActionType) = getActionModuleAndType($action);
     $resolvedScope = getModulePermissionScope($conn, $decodedUser, $permModule, $permActionType);
 
-    // get_settings is a read-only configuration fetch called by Layout, Dashboard, SalePortal, and Attendance pages
-    // We allow any authenticated user (all roles) to read settings.
-    if ($action === 'get_settings') {
+    // Read-only configuration and own-data lookups called by Layout, Dashboard, SalePortal, and Attendance pages
+    // We allow any authenticated user (all roles) to query these endpoints.
+    if (in_array($action, ['get_settings', 'get_unique_sources', 'get_calendar_stats', 'get_calendar_day_details', 'get_consultant_leaves'], true)) {
         $resolvedScope = 'all';
     }
 
