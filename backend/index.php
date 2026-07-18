@@ -563,6 +563,8 @@ switch ($resource) {
         if     ($resourceId && $subResource === 'comments' && $method === 'GET')  $ctrl->getComments($auth, (int)$resourceId);
         elseif ($resourceId && $subResource === 'comments' && $method === 'POST') $ctrl->addComment($auth, (int)$resourceId);
         elseif ($resourceId === 'comments' && $subResource && $method === 'DELETE') $ctrl->deleteComment($auth, (int)$subResource);
+        elseif ($resourceId && $subResource === 'cancel-meeting' && $method === 'POST') $ctrl->cancelMeeting($auth, (int)$resourceId);
+        elseif ($resourceId && $subResource === 'reschedule-meeting' && $method === 'POST') $ctrl->rescheduleMeeting($auth, (int)$resourceId);
         elseif (!$resourceId && $method === 'GET')    $ctrl->index($auth);
         elseif (!$resourceId && $method === 'POST')   $ctrl->store($auth);
         elseif ($resourceId  && $method === 'GET')    $ctrl->show($auth, (int)$resourceId);

@@ -916,6 +916,10 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
   const [proofImagePreview, setProofImagePreview] = useState<string | null>(null);
   const [proofCommentText, setProofCommentText] = useState('Ảnh minh chứng hoàn thành gặp gỡ');
   const [completingMeeting, setCompletingMeeting] = useState(false);
+  const [activeMeetingMenuId, setActiveMeetingMenuId] = useState<number | null>(null);
+  const [reschedulingMeeting, setReschedulingMeeting] = useState<any | null>(null);
+  const [newMeetingTime, setNewMeetingTime] = useState<string>('');
+  const [updatingMeetingTime, setUpdatingMeetingTime] = useState(false);
   const [showNoteModal, setShowNoteModal] = useState(false);
   const [editingNote, setEditingNote] = useState<any>(null);
   const [editingActivity, setEditingActivity] = useState<any>(null);
@@ -2302,6 +2306,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
       id: a.id,
       title: a.subject,
       type: a.type,
+      status: a.status,
       user: a.user_name || 'Hệ thống',
       time: a.created_at,
       color: a.type === 'call' ? '#3b82f6' : a.type === 'meeting' ? '#BD1D2D' : a.type === 'task' ? '#f59e0b' : a.type === 'system' ? '#64748b' : a.type === 'note' ? '#6366f1' : '#10b981',
@@ -2838,6 +2843,56 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
     } catch (e: any) {
       console.error(e);
       addToast('Lỗi khi kiểm tra bình luận gặp gỡ', 'error');
+    }
+  };
+
+  const handleCancelMeeting = async (ev: any) => {
+    try {
+      await api.put(`/activities/${ev.id}`, { status: 'cancelled' });
+      addToast('Đã hủy gặp gỡ', 'success');
+      setDrawerActivities(prev => prev.map(a => a.id === ev.id ? { ...a, status: 'cancelled' } : a));
+      setTasks(prev => prev.map(a => a.id === ev.id ? { ...a, status: 'cancelled', done: true } : a));
+    } catch (e: any) {
+      console.error(e);
+      addToast('Lỗi khi hủy gặp gỡ', 'error');
+    }
+  };
+
+  const handleRescheduleMeetingClick = (ev: any) => {
+    setReschedulingMeeting(ev);
+    if (ev.time) {
+      const d = new Date(ev.time);
+      if (!isNaN(d.getTime())) {
+        const year = d.getFullYear();
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const date = String(d.getDate()).padStart(2, '0');
+        const hours = String(d.getHours()).padStart(2, '0');
+        const minutes = String(d.getMinutes()).padStart(2, '0');
+        setNewMeetingTime(`${year}-${month}-${date}T${hours}:${minutes}`);
+        return;
+      }
+    }
+    setNewMeetingTime(new Date().toISOString().slice(0, 16));
+  };
+
+  const handleUpdateReschedule = async () => {
+    if (!reschedulingMeeting) return;
+    setUpdatingMeetingTime(true);
+    try {
+      const formattedTime = newMeetingTime.replace('T', ' ') + ':00';
+      await api.put(`/activities/${reschedulingMeeting.id}`, {
+        status: 'rescheduled',
+        due_date: formattedTime
+      });
+      addToast('Đã dời lịch gặp gỡ', 'success');
+      setDrawerActivities(prev => prev.map(a => a.id === reschedulingMeeting.id ? { ...a, status: 'rescheduled', time: formattedTime, due_date: formattedTime } : a));
+      setTasks(prev => prev.map(a => a.id === reschedulingMeeting.id ? { ...a, status: 'rescheduled', due_date: formattedTime } : a));
+      setReschedulingMeeting(null);
+    } catch (e: any) {
+      console.error(e);
+      addToast('Lỗi khi dời lịch gặp gỡ', 'error');
+    } finally {
+      setUpdatingMeetingTime(false);
     }
   };
 
@@ -5914,30 +5969,80 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                   <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
                                     <span style={{ fontSize: '0.75rem', fontWeight: 600, color: ev.color, background: `${ev.color}15`, padding: '2px 8px', borderRadius: 'var(--radius-full)' }}>{ev.type.toUpperCase()}</span>
                                     {ev.type === 'meeting' && ev.status === 'planned' && (
-                                      <button
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          handleCompleteMeeting(ev);
-                                        }}
-                                        className="btn sm"
-                                        style={{
-                                          backgroundColor: '#10b981',
-                                          color: 'white',
-                                          border: 'none',
-                                          borderRadius: '4px',
-                                          padding: '2px 8px',
-                                          fontSize: '0.72rem',
-                                          fontWeight: 600,
-                                          display: 'flex',
-                                          alignItems: 'center',
-                                          gap: '4px',
-                                          cursor: 'pointer',
-                                          marginLeft: '6px',
-                                          height: '22px'
-                                        }}
-                                      >
-                                        <Check size={10} /> Hoàn thành
-                                      </button>
+                                      <div style={{ display: 'flex', gap: '4px', alignItems: 'center', marginLeft: '6px' }}>
+                                        <button
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleCompleteMeeting(ev);
+                                          }}
+                                          className="btn sm"
+                                          style={{
+                                            backgroundColor: '#10b981',
+                                            color: 'white',
+                                            border: 'none',
+                                            borderRadius: '4px',
+                                            padding: '2px 8px',
+                                            fontSize: '0.72rem',
+                                            fontWeight: 600,
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '4px',
+                                            cursor: 'pointer',
+                                            height: '22px'
+                                          }}
+                                        >
+                                          <Check size={10} />
+                                          <span>Đã gặp</span>
+                                        </button>
+                                        <button
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleCancelMeeting(ev);
+                                          }}
+                                          className="btn sm"
+                                          style={{
+                                            backgroundColor: '#ef4444',
+                                            color: 'white',
+                                            border: 'none',
+                                            borderRadius: '4px',
+                                            padding: '2px 8px',
+                                            fontSize: '0.72rem',
+                                            fontWeight: 600,
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '4px',
+                                            cursor: 'pointer',
+                                            height: '22px'
+                                          }}
+                                        >
+                                          <X size={10} />
+                                          <span>Hủy kèo</span>
+                                        </button>
+                                        <button
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleRescheduleMeetingClick(ev);
+                                          }}
+                                          className="btn sm"
+                                          style={{
+                                            backgroundColor: '#f59e0b',
+                                            color: 'white',
+                                            border: 'none',
+                                            borderRadius: '4px',
+                                            padding: '2px 8px',
+                                            fontSize: '0.72rem',
+                                            fontWeight: 600,
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '4px',
+                                            cursor: 'pointer',
+                                            height: '22px'
+                                          }}
+                                        >
+                                          <Calendar size={10} />
+                                          <span>Dời lịch</span>
+                                        </button>
+                                      </div>
                                     )}
                                     <span style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: '6px' }}>
                                       Thực hiện bởi <Avatar name={ev.user} size="sm" /> <strong>{ev.user}</strong>
@@ -9053,6 +9158,57 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
           </div>
         </div>,
         document.body
+      )}
+
+      {reschedulingMeeting && (
+        <CustomModal
+          isOpen={true}
+          onClose={() => setReschedulingMeeting(null)}
+          title="Dời lịch gặp gỡ"
+        >
+          <div style={{ padding: '1rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)' }}>
+              Chọn thời gian mới cho cuộc gặp gỡ: <strong>{reschedulingMeeting.title}</strong>
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.375rem' }}>
+              <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text)' }}>Thời gian mới</label>
+              <input
+                type="datetime-local"
+                value={newMeetingTime}
+                onChange={(e) => setNewMeetingTime(e.target.value)}
+                style={{
+                  padding: '8px 12px',
+                  borderRadius: '6px',
+                  border: '1px solid var(--color-border)',
+                  background: 'var(--color-surface)',
+                  color: 'var(--color-text)',
+                  fontSize: '0.875rem',
+                  outline: 'none',
+                  width: '100%'
+                }}
+              />
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', marginTop: '0.5rem' }}>
+              <button
+                type="button"
+                onClick={() => setReschedulingMeeting(null)}
+                className="btn secondary sm"
+              >
+                Hủy
+              </button>
+              <button
+                type="button"
+                onClick={handleUpdateReschedule}
+                disabled={updatingMeetingTime}
+                className="btn primary sm"
+                style={{ display: 'flex', alignItems: 'center', gap: '4px' }}
+              >
+                {updatingMeetingTime && <Loader2 size={12} className="animate-spin" />}
+                Xác nhận dời lịch
+              </button>
+            </div>
+          </div>
+        </CustomModal>
       )}
 
       {/* Quick View Expense Modal */}
