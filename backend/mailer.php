@@ -728,7 +728,7 @@ function sendAdminConfirmationEmail(
             <p style="color: #334155; font-size: 15px; line-height: 1.6; margin: 0 0 16px;">
                 Vui lòng click vào nút bên dưới để xác nhận địa chỉ Email của bạn:
             </p>
-            <a href="' . htmlspecialchars($confirmLink) . '" target="_blank" rel="noopener noreferrer" style="display: inline-block; background: linear-gradient(135deg, #0f172a, #334155); color: #ffffff; text-decoration: none; padding: 12px 32px; border-radius: 8px; font-weight: 700; font-size: 16px;">
+            <a href="' . htmlspecialchars($confirmLink) . '" target="_blank" rel="noopener noreferrer" style="display: inline-block; background: linear-gradient(135deg, #BD1D2D, #8C111E); color: #ffffff; text-decoration: none; padding: 12px 32px; border-radius: 8px; font-weight: 700; font-size: 16px; box-shadow: 0 4px 6px -1px rgba(189, 29, 45, 0.2);">
                 XÁC NHẬN EMAIL
             </a>
         </div>
