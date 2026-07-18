@@ -2793,7 +2793,8 @@ export default function ProjectsPage() {
             width: '110px',
             borderRadius: '6px',
             background: '#ffffff',
-            boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
+            boxShadow: '0 2px 8px rgba(163, 20, 34, 0.08), 0 1px 3px rgba(0,0,0,0.04)',
+            border: '1px solid rgba(163, 20, 34, 0.12)',
             transition: 'transform 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
             transform: `translateX(${activeSubTab === 'projects' ? '0px' : '112px'})`,
             zIndex: 1
@@ -2817,7 +2818,7 @@ export default function ProjectsPage() {
                   fontWeight: 700,
                   cursor: 'pointer',
                   background: 'transparent',
-                  color: isSelected ? 'var(--color-text)' : 'var(--color-text-muted)',
+                  color: isSelected ? 'var(--color-primary)' : 'var(--color-text-muted)',
                   display: 'inline-flex',
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -2835,8 +2836,8 @@ export default function ProjectsPage() {
                   fontSize: '0.7rem',
                   padding: '1px 5px',
                   borderRadius: '10px',
-                  background: isSelected ? 'var(--color-border-light)' : 'rgba(0, 0, 0, 0.04)',
-                  color: isSelected ? 'var(--color-text)' : 'var(--color-text-muted)',
+                  background: isSelected ? 'rgba(163, 20, 34, 0.08)' : 'rgba(0, 0, 0, 0.04)',
+                  color: isSelected ? 'var(--color-primary)' : 'var(--color-text-muted)',
                   fontWeight: 800,
                   transition: 'background 0.2s ease, color 0.2s ease'
                 }}>
