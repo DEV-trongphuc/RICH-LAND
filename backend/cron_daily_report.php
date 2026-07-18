@@ -43,6 +43,7 @@ function runDailyReportCron($conn)
               (last_contact IS NOT NULL AND last_contact < DATE_SUB(CURDATE(), INTERVAL $decayDays DAY))
               OR (last_contact IS NULL AND created_at < DATE_SUB(NOW(), INTERVAL $decayDays DAY))
           )
+          AND (temperature_updated_at IS NULL OR temperature_updated_at < DATE_SUB(NOW(), INTERVAL 23 HOUR))
           AND temperature != 'cold'
     ");
 
