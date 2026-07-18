@@ -207,7 +207,7 @@ const TABS = [
   { id: 'tickets', label: 'Hỗ trợ/Khiếu nại', icon: <LifeBuoy size={16} /> },
 ];
 
-const renderFormattedText = (text: string, users: any[]) => {
+const renderFormattedText = (text: string, users: any[], onMentionClick?: (e: React.MouseEvent, name: string) => void) => {
   if (!text) return '';
   // Regex matches URLs or @mentions (supporting unicode characters and parentheses like @Minh_Khôi_(Manager))
   const regex = /(https?:\/\/[^\s]+|@[a-zA-Z0-9_\u00C0-\u1EF9()]+)/g;
@@ -236,36 +236,42 @@ const renderFormattedText = (text: string, users: any[]) => {
 
       const displayName = taggedUser?.full_name || part.substring(1).replace(/_/g, ' ');
       const avatarUrl = taggedUser?.avatar_url || taggedUser?.avatar;
-      const initial = displayName ? displayName.charAt(0).toUpperCase() : '?';
 
       return (
         <span
           key={index}
+          onClick={(e) => onMentionClick && onMentionClick(e, displayName)}
           style={{
             display: 'inline-flex',
             alignItems: 'center',
             gap: '4px',
-            color: '#dc2626', // Red text
-            background: 'rgba(239, 68, 68, 0.08)', // Light red background tint
-            border: '1px solid rgba(239, 68, 68, 0.2)',
+            color: 'var(--color-primary)',
+            background: 'rgba(163, 20, 34, 0.05)',
+            border: '1px solid rgba(163, 20, 34, 0.15)',
             padding: '2px 8px',
             borderRadius: '9999px',
             margin: '0 2px',
             fontWeight: 600,
             fontSize: '0.85em',
-            verticalAlign: 'middle'
+            verticalAlign: 'middle',
+            cursor: onMentionClick ? 'pointer' : 'default'
           }}
         >
-            <Avatar name={displayName} src={avatarUrl} size={16} />
-            @{displayName}
-          </span>
+          <Avatar name={displayName} src={avatarUrl} size={14} />
+          @{displayName}
+        </span>
       );
     }
     return part;
   });
 };
 
-const ActivityComments: React.FC<{ activityId: number, initialCount?: number, users?: any[] }> = ({ activityId, initialCount = 0, users = [] }) => {
+const ActivityComments: React.FC<{ 
+  activityId: number; 
+  initialCount?: number; 
+  users?: any[]; 
+  onMentionClick?: (e: React.MouseEvent, name: string) => void;
+}> = ({ activityId, initialCount = 0, users = [], onMentionClick }) => {
   const { addToast, showConfirm } = useUIStore();
   const { user: currentUser } = useAuth();
   const [comments, setComments] = useState<any[]>([]);
@@ -510,7 +516,7 @@ const ActivityComments: React.FC<{ activityId: number, initialCount?: number, us
                         )}
                       </div>
                     </div>
-                    {c.content && <p style={{ fontSize: isReply ? '0.8125rem' : '0.875rem', color: 'var(--color-text-light)', lineHeight: 1.5, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{renderFormattedText(c.content, users)}</p>}
+                    {c.content && <p style={{ fontSize: isReply ? '0.8125rem' : '0.875rem', color: 'var(--color-text-light)', lineHeight: 1.5, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{renderFormattedText(c.content, users, onMentionClick)}</p>}
                     {c.attachments && c.attachments.map((att: string, i: number) => {
                       const isImg = /\.(jpg|jpeg|png|gif|webp)$/i.test(att);
                       const fullUrl = resolveAttachmentUrl(att);
@@ -1658,7 +1664,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
   const [showQuoteEditor, setShowQuoteEditor] = useState(false);
   const [selectedQuote, setSelectedQuote] = useState<any>(null);
   const [loadingRelated, setLoadingRelated] = useState(false);
-  const [quickUserCard, setQuickUserCard] = useState<{ id: number; name: string; role: string; email?: string; phone?: string; vacationMode?: number; visible: boolean; x: number; y: number } | null>(null);
+  const [quickUserCard, setQuickUserCard] = useState<{ id: number; name: string; role: string; email?: string; phone?: string; vacationMode?: number; avatarUrl?: string; visible: boolean; x: number; y: number } | null>(null);
   const [showAvatarModal, setShowAvatarModal] = useState(false);
   const [tempAvatar, setTempAvatar] = useState('');
 
@@ -1684,14 +1690,21 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
 
   const showUserCard = (e: React.MouseEvent, name: string) => {
     e.stopPropagation();
-    const user = users.find(u => u.full_name === name || u.full_name.replace(/\s+/g, '_') === name || u.name === name || u.username === name);
+    const cleanName = (n: string) => (n || '').trim().replace(/\s+/g, '_').toLowerCase();
+    const searchVal = cleanName(name);
+    const user = users.find(u => {
+      const uName = cleanName(u.full_name || u.name || u.username || '');
+      return uName === searchVal || uName.includes(searchVal) || searchVal.includes(uName);
+    });
+
     setQuickUserCard({
       id: user?.id || 0,
       name: user?.full_name || name,
-      role: user?.role || 'Nhân viên',
+      role: user?.role || 'sales',
       email: user?.email,
       phone: user?.phone || user?.phone_number || '',
       vacationMode: user?.vacation_mode,
+      avatarUrl: user?.avatar_url || user?.avatar || '',
       visible: true,
       x: e.clientX,
       y: e.clientY
@@ -1699,17 +1712,43 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
   };
 
   const formatNote = (text: string) => {
+    if (!text) return '';
     const parts = text.split(/(@[a-zA-Z0-9_\u00C0-\u1EF9]+)/g);
     return parts.map((part, i) => {
       if (part.startsWith('@')) {
         const name = part.substring(1);
+        const cleanName = (n: string) => (n || '').trim().replace(/\s+/g, '_').toLowerCase();
+        const searchVal = cleanName(name);
+        const taggedUser = users.find(u => {
+          const uName = cleanName(u.full_name || u.name || u.username || '');
+          return uName === searchVal || uName.includes(searchVal);
+        });
+
+        const displayName = taggedUser?.full_name || name.replace(/_/g, ' ');
+        const avatarUrl = taggedUser?.avatar_url || taggedUser?.avatar;
+
         return (
           <span
             key={i}
-            onClick={(e) => showUserCard(e, name)}
-            style={{ color: '#BD1D2D', fontWeight: 700, cursor: 'pointer', background: '#fff5f6', padding: '2px 6px', borderRadius: '4px', margin: '0 2px' }}
+            onClick={(e) => showUserCard(e, displayName)}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '4px',
+              color: 'var(--color-primary)',
+              background: 'rgba(163, 20, 34, 0.05)',
+              border: '1px solid rgba(163, 20, 34, 0.15)',
+              padding: '2px 8px',
+              borderRadius: '9999px',
+              margin: '0 2px',
+              fontWeight: 600,
+              fontSize: '0.85em',
+              verticalAlign: 'middle',
+              cursor: 'pointer'
+            }}
           >
-            {part}
+            <Avatar name={displayName} src={avatarUrl} size={14} />
+            @{displayName}
           </span>
         );
       }
@@ -3275,42 +3314,139 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                       style={{
                         position: 'fixed',
                         top: quickUserCard.y + 15,
-                        left: quickUserCard.x - 110,
+                        left: quickUserCard.x - 130,
                         zIndex: 3001,
-                        width: 220,
+                        width: 270,
                         background: 'var(--color-surface)',
-                        borderRadius: '16px',
-                        boxShadow: '0 10px 30px rgba(0,0,0,0.1)',
-                        border: '1px solid var(--color-border)',
+                        borderRadius: '20px',
+                        boxShadow: '0 20px 48px -10px rgba(163, 20, 34, 0.18), 0 8px 24px -6px rgba(0,0,0,0.06)',
+                        border: '1px solid rgba(163, 20, 34, 0.12)',
                         overflow: 'hidden'
                       }}
                     >
-                      <div style={{ height: 60, background: 'linear-gradient(135deg, #BD1D2D 0%, #8a0f1b 100%)' }} />
-                      <div style={{ padding: '0 1.25rem 1.25rem', textAlign: 'center', marginTop: -30 }}>
-                        <div style={{ width: 60, height: 60, borderRadius: '20px', background: 'var(--color-surface)', margin: '0 auto 0.75rem', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: 'var(--shadow-md)', border: '4px solid var(--color-surface)', fontSize: '1.5rem', fontWeight: 800, color: '#BD1D2D' }}>
-                          {quickUserCard.name.charAt(0).toUpperCase()}
+                      <div style={{ height: 75, background: 'linear-gradient(135deg, var(--color-primary) 0%, #8a0f1b 100%)' }} />
+                      <div style={{ padding: '0 1.25rem 1.25rem', textAlign: 'center', marginTop: -32 }}>
+                        <div style={{ 
+                          width: 64, 
+                          height: 64, 
+                          borderRadius: '50%', 
+                          background: 'var(--color-surface)', 
+                          margin: '0 auto 0.5rem', 
+                          display: 'flex', 
+                          alignItems: 'center', 
+                          justifyContent: 'center', 
+                          boxShadow: '0 4px 12px rgba(0,0,0,0.08)', 
+                          border: '4px solid var(--color-surface)', 
+                          fontSize: '1.5rem', 
+                          fontWeight: 800, 
+                          color: 'var(--color-primary)',
+                          overflow: 'hidden'
+                        }}>
+                          {quickUserCard.avatarUrl ? (
+                            <img 
+                              src={quickUserCard.avatarUrl} 
+                              alt={quickUserCard.name} 
+                              style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+                            />
+                          ) : (
+                            quickUserCard.name.charAt(0).toUpperCase()
+                          )}
                         </div>
-                        <h4 style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--color-text)', marginBottom: '2px' }}>{quickUserCard.name}</h4>
-                        <p style={{ fontSize: '0.75rem', fontWeight: 600, color: '#BD1D2D', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '4px' }}>{quickUserCard.role === 'admin' ? 'Quản trị viên' : 'Nhân viên kinh doanh'}</p>
+                        <h4 style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--color-text)', marginBottom: '2px' }}>
+                          {quickUserCard.name}
+                        </h4>
+                        <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', display: 'block', marginBottom: '6px', fontWeight: 600 }}>
+                          RL-{String(quickUserCard.id).padStart(4, '0')}
+                        </span>
                         
-                        <div style={{ display: 'flex', justifyContent: 'center', gap: '4px', marginBottom: '8px' }}>
-                          <span style={{ fontSize: '0.625rem', padding: '2px 6px', borderRadius: '4px', background: quickUserCard.vacationMode === 1 ? 'var(--color-warning-light)' : 'var(--color-success-light)', color: quickUserCard.vacationMode === 1 ? 'var(--color-warning)' : 'var(--color-success)', fontWeight: 700 }}>
-                            {quickUserCard.vacationMode === 1 ? 'Đang nghỉ phép' : 'Đang hoạt động'}
+                        <p style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--color-primary)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '8px' }}>
+                          {['admin', 'superadmin', 'super_admin'].includes(quickUserCard.role.toLowerCase()) 
+                            ? 'Quản trị viên' 
+                            : ['manager', 'director'].includes(quickUserCard.role.toLowerCase()) 
+                              ? 'Trưởng nhóm kinh doanh' 
+                              : 'Nhân viên kinh doanh'}
+                        </p>
+                        
+                        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '12px' }}>
+                          <span style={{ 
+                            fontSize: '0.65rem', 
+                            padding: '3px 8px', 
+                            borderRadius: '100px', 
+                            background: quickUserCard.vacationMode === 1 ? 'rgba(245, 158, 11, 0.08)' : 'rgba(16, 185, 129, 0.08)', 
+                            color: quickUserCard.vacationMode === 1 ? '#d97706' : '#059669', 
+                            border: quickUserCard.vacationMode === 1 ? '1px solid rgba(245, 158, 11, 0.15)' : '1px solid rgba(16, 185, 129, 0.15)',
+                            fontWeight: 700,
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px'
+                          }}>
+                            <span style={{ 
+                              width: 6, 
+                              height: 6, 
+                              borderRadius: '50%', 
+                              background: quickUserCard.vacationMode === 1 ? '#d97706' : '#059669' 
+                            }} />
+                            {quickUserCard.vacationMode === 1 ? 'Nghỉ phép (Tạm ngưng nhận lead)' : 'Đang hoạt động (Sẵn sàng nhận lead)'}
                           </span>
                         </div>
 
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', width: '100%' }}>
                           {quickUserCard.email && (
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--color-text-light)', fontSize: '0.75rem', padding: '6px 8px', background: 'var(--color-bg)', borderRadius: '8px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={quickUserCard.email}>
-                              <Mail size={11} style={{ flexShrink: 0 }} />
-                              <span style={{ fontWeight: 500 }}>{quickUserCard.email}</span>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 10px', background: 'var(--color-bg)', borderRadius: '10px', border: '1px solid var(--color-border-light)' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={quickUserCard.email}>
+                                <Mail size={12} style={{ color: 'var(--color-primary)', flexShrink: 0 }} />
+                                <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{quickUserCard.email}</span>
+                              </div>
+                              <button
+                                type="button"
+                                className="btn-icon xs"
+                                onClick={() => copyToClipboard(quickUserCard.email || '', 'email')}
+                                style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: '4px', color: 'var(--color-text-muted)', display: 'inline-flex', borderRadius: '4px' }}
+                                title="Sao chép email"
+                              >
+                                <Copy size={11} />
+                              </button>
                             </div>
                           )}
                           {quickUserCard.phone && (
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--color-text-light)', fontSize: '0.75rem', padding: '6px 8px', background: 'var(--color-bg)', borderRadius: '8px' }}>
-                              <Phone size={11} style={{ flexShrink: 0 }} />
-                              <span style={{ fontWeight: 500 }}>{quickUserCard.phone}</span>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 10px', background: 'var(--color-bg)', borderRadius: '10px', border: '1px solid var(--color-border-light)' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={quickUserCard.phone}>
+                                <Phone size={12} style={{ color: 'var(--color-primary)', flexShrink: 0 }} />
+                                <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text)' }}>{quickUserCard.phone}</span>
+                              </div>
+                              <button
+                                type="button"
+                                className="btn-icon xs"
+                                onClick={() => copyToClipboard(quickUserCard.phone || '', 'số điện thoại')}
+                                style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: '4px', color: 'var(--color-text-muted)', display: 'inline-flex', borderRadius: '4px' }}
+                                title="Sao chép số điện thoại"
+                              >
+                                <Copy size={11} />
+                              </button>
                             </div>
+                          )}
+                        </div>
+
+                        <div style={{ display: 'flex', gap: '8px', marginTop: '12px', width: '100%' }}>
+                          {quickUserCard.email && (
+                            <a 
+                              href={`mailto:${quickUserCard.email}`} 
+                              className="btn primary sm" 
+                              style={{ flex: 1, height: '32px', fontSize: '0.75rem', fontWeight: 700, borderRadius: '8px', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+                            >
+                              <Mail size={12} />
+                              Email
+                            </a>
+                          )}
+                          {quickUserCard.phone && (
+                            <a 
+                              href={`tel:${quickUserCard.phone}`} 
+                              className="btn outline sm" 
+                              style={{ flex: 1, height: '32px', fontSize: '0.75rem', fontWeight: 700, borderRadius: '8px', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+                            >
+                              <Phone size={12} />
+                              Gọi điện
+                            </a>
                           )}
                         </div>
                       </div>
@@ -5889,7 +6025,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                 );
                               })()}
                               {['call', 'email', 'meeting', 'task', 'note'].includes(ev.type) && (
-                                <ActivityComments activityId={ev.id} initialCount={Number(ev.comment_count) || 0} users={users} />
+                                <ActivityComments activityId={ev.id} initialCount={Number(ev.comment_count) || 0} users={users} onMentionClick={showUserCard} />
                               )}
                             </div>
                           </motion.div>

@@ -624,6 +624,8 @@ switch ($resource) {
         $auth = requireAuth();
         $ctrl = new TeamController($db);
         if     ($resourceId === 'leave' && $method === 'POST') $ctrl->leave($auth);
+        elseif ($resourceId && $subResource === 'comments' && $method === 'GET') $ctrl->getComments($auth, (int)$resourceId);
+        elseif ($resourceId && $subResource === 'comments' && $method === 'POST') $ctrl->addComment($auth, (int)$resourceId);
         elseif (!$resourceId && $method === 'GET')    $ctrl->index($auth);
         elseif (!$resourceId && $method === 'POST')   $ctrl->store($auth);
         elseif ($resourceId  && $method === 'GET')    $ctrl->show($auth, (int)$resourceId);

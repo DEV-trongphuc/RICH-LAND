@@ -350,4 +350,94 @@ class TeamController
             respond(500, null, 'Lỗi hệ thống khi rời nhóm: ' . $e->getMessage(), false);
         }
     }
+
+    private function requireTeamAccess(array $auth, int $teamId): void {
+        $role = $auth['role'];
+        if (in_array($role, ['admin', 'superadmin', 'super_admin', 'manager', 'director'], true)) {
+            return;
+        }
+        $stmt = $this->db->prepare("SELECT team_id FROM users WHERE id = ?");
+        $stmt->execute([$auth['user_id']]);
+        $teamIdUser = (int)$stmt->fetchColumn();
+        if ($teamIdUser !== $teamId) {
+            respond(403, null, 'Bạn không thuộc nhóm này để thực hiện thao tác', false);
+        }
+    }
+
+    public function getComments(array $auth, int $teamId): void {
+        $this->requireTeamAccess($auth, $teamId);
+        $stmt = $this->db->prepare("
+            SELECT c.*, u.full_name as user_name, COALESCE(u.avatar_url, u.avatar) as avatar_url 
+            FROM comments c
+            JOIN users u ON c.user_id = u.id
+            WHERE c.entity_type = 'team' AND c.entity_id = ? AND c.tenant_id = ?
+            ORDER BY c.created_at DESC
+        ");
+        $stmt->execute([$teamId, $auth['tenant_id']]);
+        respond(200, $stmt->fetchAll(), 'Lấy danh sách bình luận thành công');
+    }
+
+    public function addComment(array $auth, int $teamId): void {
+        $this->requireTeamAccess($auth, $teamId);
+        $b = getBody();
+        $body = trim($b['body'] ?? '');
+        if (!$body) {
+            respond(422, null, 'Nội dung bình luận là bắt buộc', false);
+        }
+        $parentId = !empty($b['parent_id']) ? (int)$b['parent_id'] : null;
+
+        $stmt = $this->db->prepare("
+            INSERT INTO comments (tenant_id, entity_type, entity_id, user_id, body, parent_id) 
+            VALUES (?, 'team', ?, ?, ?, ?)
+        ");
+        $stmt->execute([$auth['tenant_id'], $teamId, $auth['user_id'], $body, $parentId]);
+        $newId = $this->db->lastInsertId();
+
+        if ($parentId > 0) {
+            $stmtParent = $this->db->prepare("SELECT user_id FROM comments WHERE id = ?");
+            $stmtParent->execute([$parentId]);
+            $parentOwnerId = (int)$stmtParent->fetchColumn();
+
+            if ($parentOwnerId > 0 && $parentOwnerId !== (int)$auth['user_id']) {
+                $title = "Bạn có phản hồi mới trong thảo luận nhóm";
+                $bodyText = ($auth['full_name'] ?? 'Đồng nghiệp') . " đã trả lời bình luận của bạn trong thảo luận nhóm";
+                $type = "info";
+                $link = "/consultants?tab=teams&highlight_comment_id=" . $newId;
+
+                $insertNotif = $this->db->prepare("
+                    INSERT INTO notifications (user_id, tenant_id, title, body, type, link)
+                    VALUES (?, ?, ?, ?, ?, ?)
+                ");
+                $insertNotif->execute([$parentOwnerId, $auth['tenant_id'], $title, $bodyText, $type, $link]);
+            }
+        }
+
+        // Parse mentions
+        preg_match_all('/@([a-zA-Z0-9_\x{00C0}-\x{1EF9}()]+)/u', $body, $matches);
+        if (!empty($matches[1])) {
+            foreach ($matches[1] as $nameWithUnderscores) {
+                $fullName = str_replace('_', ' ', $nameWithUnderscores);
+                $stmtUser = $this->db->prepare("SELECT id, email, full_name FROM users WHERE tenant_id=? AND full_name=?");
+                $stmtUser->execute([$auth['tenant_id'], $fullName]);
+                $userRow = $stmtUser->fetch(PDO::FETCH_ASSOC);
+                if ($userRow) {
+                    $mentionedUserId = (int)$userRow['id'];
+                    if ($mentionedUserId !== (int)$auth['user_id']) {
+                        $title = "Bạn được nhắc tên trong thảo luận nhóm";
+                        $bodyText = ($auth['full_name'] ?? 'Đồng nghiệp') . " đã nhắc đến bạn trong thảo luận nhóm";
+                        $type = "mention";
+                        $link = "/consultants?tab=teams&highlight_comment_id=" . $newId;
+
+                        $insertNotif = $this->db->prepare("
+                            INSERT INTO notifications (user_id, tenant_id, title, body, type, link)
+                            VALUES (?, ?, ?, ?, ?, ?)
+                        ");
+                        $insertNotif->execute([$mentionedUserId, $auth['tenant_id'], $title, $bodyText, $type, $link]);
+                    }
+                }
+            }
+        }
+
+        respond(200, ['id' => $newId], 'Đăng bình luận thành công');
+    }
 }

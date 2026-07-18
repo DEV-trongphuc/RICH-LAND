@@ -345,7 +345,7 @@ export const CompanyDrawer: React.FC<CompanyDrawerProps> = ({ isOpen, onClose, e
                 </span>
                 <button 
                   className="btn primary sm" 
-                  disabled={isSaving || !hasChanges}
+                  disabled={isSaving}
                   style={{ 
                     background: 'var(--color-primary)', 
                     display: 'flex', 

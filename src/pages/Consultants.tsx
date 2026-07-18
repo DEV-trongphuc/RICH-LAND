@@ -1,13 +1,17 @@
 import React, { useEffect, useState, useRef } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { createPortal } from 'react-dom';
 import { withRouterFreezer } from '../components/RouterFreezer';
-import { Users, Plus, Trash2, Mail, MessageCircle, Shield, UserX, Clock, X, Link2Off, User, Send, Check, RefreshCw, BarChart2, Calendar, Scale, Eye, CheckCircle, AlertTriangle, Building2, ChevronLeft, ChevronRight, Search, Phone, Info, TrendingUp } from 'lucide-react';
+import { Users, Plus, Trash2, Mail, MessageCircle, Shield, UserX, Clock, X, Link2Off, User, Send, Check, RefreshCw, BarChart2, Calendar, Scale, Eye, CheckCircle, AlertTriangle, Building2, ChevronLeft, ChevronRight, Search, Phone, Info, TrendingUp, Paperclip, Link2, File as FileIcon, Folder, Download } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { CustomModal } from '../components/ui/CustomModal';
 import { ConfirmModal } from '../components/ui/ConfirmModal';
 import { Avatar } from '../components/ui/Avatar';
 import { fetchAPI } from '../utils/api';
+import api from '../api/axios';
 import { AccountDetailDrawer } from '../components/AccountDetailDrawer';
+import { MentionInput } from '../components/ui/MentionInput';
+import styles from './EntityDrawer.module.css';
 import { compressToWebP } from '../utils/imageCompress';
 import { TableRowSkeleton, KpiCardSkeleton, ChartSkeleton } from '../components/ui/Skeleton';
 import { ToggleSwitch } from '../components/ui/ToggleSwitch';
@@ -174,6 +178,14 @@ const ConsultantsInner = () => {
   const [deleteTeamId, setDeleteTeamId] = useState<number | null>(null);
   const [confirmLeaveTeamOpen, setConfirmLeaveTeamOpen] = useState(false);
   const [isLeavingTeam, setIsLeavingTeam] = useState(false);
+  const [teamDrawerTab, setTeamDrawerTab] = useState<'info' | 'members' | 'comments'>('info');
+  const [teamComments, setTeamComments] = useState<any[]>([]);
+  const [loadingTeamComments, setLoadingTeamComments] = useState(false);
+  const [newTeamCommentText, setNewTeamCommentText] = useState('');
+  const [isSubmittingTeamComment, setIsSubmittingTeamComment] = useState(false);
+  const [teamReplyTo, setTeamReplyTo] = useState<{ id: number; userName: string } | null>(null);
+  const [teamCommentAttachments, setTeamCommentAttachments] = useState<{ name: string; url: string }[]>([]);
+  const [isUploadingCommentFile, setIsUploadingCommentFile] = useState(false);
   
   const [consultantsPage, setConsultantsPage] = useState(1);
   const [teamsPage, setTeamsPage] = useState(1);
@@ -280,6 +292,80 @@ const ConsultantsInner = () => {
     }
   };
 
+  const fetchTeamComments = async (teamId: number) => {
+    setLoadingTeamComments(true);
+    try {
+      const res = await api.get(`/teams/${teamId}/comments`);
+      const list = res.data?.data || res.data || [];
+      setTeamComments(Array.isArray(list) ? list : []);
+    } catch (e: any) {
+      console.error('Failed to fetch team comments:', e);
+      toast.error(t('Không thể tải bình luận nhóm'));
+    } finally {
+      setLoadingTeamComments(false);
+    }
+  };
+
+  const handlePostTeamComment = async (teamId: number) => {
+    if (!newTeamCommentText.trim() && teamCommentAttachments.length === 0) return;
+    setIsSubmittingTeamComment(true);
+    try {
+      let finalBody = newTeamCommentText.trim();
+      if (teamCommentAttachments.length > 0) {
+        const attachmentLines = teamCommentAttachments.map(att => `📎 [${att.name}](${att.url})`).join('\n');
+        finalBody = finalBody ? `${finalBody}\n${attachmentLines}` : attachmentLines;
+      }
+
+      await api.post(`/teams/${teamId}/comments`, {
+        body: finalBody,
+        parent_id: teamReplyTo ? teamReplyTo.id : null
+      });
+
+      setNewTeamCommentText('');
+      setTeamReplyTo(null);
+      setTeamCommentAttachments([]);
+      toast.success(t('Đã gửi bình luận thành công'));
+      fetchTeamComments(teamId);
+    } catch (e: any) {
+      console.error('Failed to post team comment:', e);
+      toast.error(e.response?.data?.message || t('Lỗi khi gửi bình luận'));
+    } finally {
+      setIsSubmittingTeamComment(false);
+    }
+  };
+
+  const handleAttachCommentFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setIsUploadingCommentFile(true);
+    const fd = new FormData();
+    fd.append('file', file);
+    try {
+      const res = await api.post('/upload', fd);
+      const fileUrl = res.data?.data?.url || res.data?.url || res.data?.data?.file_path || res.data?.file_path;
+      if (fileUrl) {
+        setTeamCommentAttachments(prev => [...prev, { name: file.name, url: fileUrl }]);
+        toast.success(t('Tải lên tệp đính kèm thành công'));
+      } else {
+        toast.error(t('Không nhận được đường dẫn tệp tải lên'));
+      }
+    } catch (err: any) {
+      console.error('Upload failed:', err);
+      toast.error(t('Lỗi tải tệp lên máy chủ'));
+    } finally {
+      setIsUploadingCommentFile(false);
+      e.target.value = '';
+    }
+  };
+
+  const handleAttachCommentLink = () => {
+    const url = prompt(t('Nhập địa chỉ liên kết (URL):'), 'https://');
+    if (!url || url.trim() === 'https://' || !url.trim()) return;
+    const title = prompt(t('Nhập tên hiển thị của liên kết (để trống sẽ dùng URL):'), '');
+    const displayTitle = title?.trim() || url;
+    setTeamCommentAttachments(prev => [...prev, { name: displayTitle, url: url.trim() }]);
+  };
+
   const handleToggleVacation = async (id: number) => {
     try {
       const json = await fetchAPI('toggle_consultant_vacation', {
@@ -313,6 +399,12 @@ const ConsultantsInner = () => {
     fetchAllSystemUsers();
     fetchProjects();
   }, []);
+
+  useEffect(() => {
+    if (editingTeam?.id && teamDrawerTab === 'comments') {
+      fetchTeamComments(editingTeam.id);
+    }
+  }, [editingTeam, teamDrawerTab]);
 
   const openAddModal = () => {
     setEditingUser(null);
@@ -2176,493 +2268,750 @@ const ConsultantsInner = () => {
       />
 
       {/* Team Add/Edit Modal */}
-      {teamModalOpen && typeof document !== 'undefined' && createPortal(
-        <div className="overlay-backdrop" onClick={() => setTeamModalOpen(false)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', zIndex: 1100 }}>
-          <div
-            className="card"
-            style={{ width: '100%', maxWidth: 960, maxHeight: '92vh', display: 'flex', flexDirection: 'column', animation: 'modalSpring 0.4s cubic-bezier(0.34, 1.18, 0.64, 1) both', margin: 'auto', overflow: 'hidden' }}
-            onClick={e => e.stopPropagation()}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1.25rem', borderBottom: '1px solid var(--color-border-light)' }}>
-              <h3 style={{ fontSize: '1.125rem', fontWeight: 700 }}>
-                {editingTeam ? (isWriteAuthorized ? t('Cập nhật Nhóm (Team)') : t('Chi tiết Nhóm (Team)')) : t('Thêm Nhóm mới')}
-              </h3>
-              <button type="button" onClick={() => setTeamModalOpen(false)} style={{ color: 'var(--color-text-muted)', padding: 4, background: 'transparent', border: 'none', cursor: 'pointer' }}>
-                <X size={20} />
-              </button>
-            </div>
-
-            <form onSubmit={handleSaveTeam} style={{ display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden' }}>
-              <div style={{ padding: '1.5rem', overflowY: 'auto' }}>
-                <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '1.5rem', alignItems: 'start' }}>
-
-                  {/* Cột 1: Thông tin cơ bản & Quản trị */}
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-                    <div className="form-group">
-                      <label className="form-label" style={{ fontWeight: 600 }}>{t('Tên Nhóm')} <span style={{ color: 'var(--color-danger)' }}>*</span></label>
-                      <input
-                        className="form-input"
-                        placeholder={t('VD: Team Chiến Binh')}
-                        value={teamFormData.name}
-                        onChange={e => setTeamFormData({ ...teamFormData, name: e.target.value })}
-                        required
-                        autoFocus
-                        disabled={!isWriteAuthorized}
-                      />
+      {typeof document !== 'undefined' && createPortal(
+        <AnimatePresence>
+          {teamModalOpen && (
+            <>
+              {/* Backdrop */}
+              <div
+                className="drawer-backdrop"
+                onClick={() => setTeamModalOpen(false)}
+                style={{
+                  zIndex: 1000,
+                  opacity: 1,
+                  pointerEvents: 'auto'
+                }}
+              />
+              <motion.div
+                initial={{ x: '100%' }}
+                animate={{ x: 0 }}
+                exit={{ x: '100%' }}
+                transition={{ type: 'tween', duration: 0.3 }}
+                className={styles.drawer}
+                style={{
+                  zIndex: 10600
+                }}
+              >
+                {/* Header */}
+                <div className={styles.header}>
+                  <div className={styles.headerProfile}>
+                    <div className="avatar-placeholder lg" style={{ background: 'linear-gradient(135deg, #BD1D2D 0%, #a31422 100%)', fontSize: '1.25rem', width: 56, height: 56, borderRadius: '12px', boxShadow: '0 4px 12px rgba(189, 29, 45, 0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ffffff', fontWeight: 800 }}>
+                      {teamFormData.name?.[0] || 'T'}
                     </div>
-
-                    <div className="form-group" ref={leaderDropdownRef} style={{ position: 'relative' }}>
-                      <label className="form-label" style={{ fontWeight: 600 }}>{t('Manager')}</label>
-                      
-                      {/* Search Input Box */}
-                      <div style={{ position: 'relative', width: '100%' }}>
-                        <input
-                          className="form-input"
-                          style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)', width: '100%' }}
-                          placeholder={t("Tìm kiếm và chọn Manager...")}
-                          value={searchLeader}
-                          onChange={e => {
-                            if (!isWriteAuthorized) return;
-                            setSearchLeader(e.target.value);
-                            setShowLeaderDropdown(true);
-                          }}
-                          onFocus={() => isWriteAuthorized && setShowLeaderDropdown(true)}
-                          disabled={!isWriteAuthorized}
-                        />
-                        {isWriteAuthorized && teamFormData.leader_id && (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setTeamFormData({ ...teamFormData, leader_id: '' });
-                              setSearchLeader('');
-                            }}
-                            style={{
-                              position: 'absolute', right: 12, top: 10, color: 'var(--color-text-muted)',
-                              background: 'transparent', border: 'none', cursor: 'pointer', padding: 0
-                            }}
-                          >
-                            <X size={16} />
-                          </button>
-                        )}
-                      </div>
-
-                      {/* Dropdown Options */}
-                      {showLeaderDropdown && (
-                        <div style={{
-                          position: 'absolute', top: '100%', left: 0, right: 0, marginTop: 4, zIndex: 1200,
-                          background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)',
-                          boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)', maxHeight: 220, overflowY: 'auto'
-                        }}>
-                          {allSystemUsers.filter(u => (u.full_name || u.name || '').toLowerCase().includes(searchLeader.toLowerCase())).map(u => {
-                            const uName = u.full_name || u.name || '';
-                            const isSelected = String(teamFormData.leader_id) === String(u.id);
-                            return (
-                              <div
-                                key={u.id}
-                                onClick={() => {
-                                  setTeamFormData({ ...teamFormData, leader_id: String(u.id) });
-                                  setSearchLeader(uName);
-                                  setShowLeaderDropdown(false);
-                                }}
-                                style={{
-                                  padding: '0.5rem 0.75rem', display: 'flex', alignItems: 'center', gap: '0.75rem',
-                                  cursor: 'pointer',
-                                  background: isSelected ? 'var(--color-primary-light)' : 'transparent',
-                                  transition: 'background 0.1s'
-                                }}
-                                onMouseEnter={e => { if (!isSelected) e.currentTarget.style.background = 'var(--color-bg)'; }}
-                                onMouseLeave={e => { if (!isSelected) e.currentTarget.style.background = 'transparent'; }}
-                              >
-                                <Avatar src={u.avatar_url || u.avatar} name={uName} size={28} />
-                                <div style={{ flex: 1 }}>
-                                  <p style={{ fontSize: '0.875rem', fontWeight: isSelected ? 700 : 500, color: isSelected ? 'var(--color-primary)' : 'var(--color-text)', margin: 0 }}>{uName}</p>
-                                  <p style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: 4, margin: 0 }}>
-                                    {u.email && (
-                                      <img
-                                        src="https://www.gstatic.com/images/branding/product/1x/gmail_2020q4_32dp.png"
-                                        alt="Gmail"
-                                        style={{ width: 13, height: 10, objectFit: 'contain', flexShrink: 0 }}
-                                      />
-                                    )}
-                                    <span>{u.email}</span>
-                                    {u.role && (
-                                      <span style={{ fontSize: '0.65rem', background: 'var(--color-bg)', padding: '2px 6px', borderRadius: 4, marginLeft: 'auto', fontWeight: 600 }}>
-                                        {t(u.role)}
-                                      </span>
-                                    )}
-                                  </p>
-                                </div>
-                                {isSelected && <Check size={16} color="var(--color-primary)" />}
-                              </div>
-                            );
-                          })}
-                          {allSystemUsers.filter(u => (u.full_name || u.name || '').toLowerCase().includes(searchLeader.toLowerCase())).length === 0 && (
-                            <div style={{ padding: '1rem', textAlign: 'center', color: 'var(--color-text-muted)', fontSize: '0.875rem' }}>
-                              {t("Không tìm thấy nhân sự nào")}
-                            </div>
-                          )}
-                        </div>
-                      )}
-                    </div>
-
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
-                      <div className="form-group">
-                        <label className="form-label" style={{ fontWeight: 600 }}>{t('KPI doanh thu tháng (VND)')}</label>
-                        <input
-                          type="number"
-                          className="form-input"
-                          placeholder="VD: 100000000"
-                          value={teamFormData.kpi_target}
-                          onChange={e => setTeamFormData({ ...teamFormData, kpi_target: e.target.value })}
-                          disabled={!isWriteAuthorized}
-                        />
-                      </div>
-                      <div className="form-group">
-                        <label className="form-label" style={{ fontWeight: 600 }}>{t('Số TV tối đa')}</label>
-                        <input
-                          type="number"
-                          className="form-input"
-                          placeholder="VD: 10"
-                          value={teamFormData.max_members}
-                          onChange={e => setTeamFormData({ ...teamFormData, max_members: e.target.value })}
-                          disabled={!isWriteAuthorized}
-                        />
-                      </div>
-                    </div>
-
-                    <div className="form-group">
-                      <label className="form-label" style={{ fontWeight: 600 }}>{t('Mô tả nhóm / Slogan')}</label>
-                      <textarea
-                        className="form-input"
-                        rows={3}
-                        placeholder={t('Nhập mô tả hoạt động hoặc slogan của nhóm...')}
-                        value={teamFormData.description}
-                        onChange={e => setTeamFormData({ ...teamFormData, description: e.target.value })}
-                        style={{ resize: 'vertical' }}
-                        disabled={!isWriteAuthorized}
-                      />
+                    <div>
+                      <h2 className={styles.title}>{teamFormData.name || t('Tên Nhóm')}</h2>
+                      <p className={styles.subtitle} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <Users size={14} /> {t('Quy mô')}: {teamFormData.member_ids.length} sales · KPI: {teamFormData.kpi_target ? Number(teamFormData.kpi_target).toLocaleString('vi-VN') : '0'} VND
+                      </p>
                     </div>
                   </div>
+                  <div className={styles.headerActions} style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    {isWriteAuthorized ? (
+                      <button 
+                        type="submit"
+                        form="team-drawer-form"
+                        className="btn primary sm" 
+                        disabled={isSaving}
+                        style={{ 
+                          background: 'var(--color-primary)', 
+                          display: 'flex', 
+                          alignItems: 'center', 
+                          gap: 6,
+                          padding: '6px 14px',
+                          fontSize: '0.8rem',
+                          height: '32px'
+                        }}
+                      >
+                        {isSaving ? t('Đang lưu...') : t('Lưu thay đổi')}
+                      </button>
+                    ) : (
+                      <button type="button" className="btn primary sm" onClick={() => setTeamModalOpen(false)}>
+                        {t('Đóng')}
+                      </button>
+                    )}
+                    <button type="button" className={styles.closeBtn} onClick={() => setTeamModalOpen(false)} style={{ marginLeft: '4px' }}><X size={20} /></button>
+                  </div>
+                </div>
 
-                  {/* Cột 2: Địa chỉ & Dự án & Quản lý Thành viên */}
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-                    <div className="form-group">
-                      <AddressSelect
-                        label={t('Địa chỉ chi nhánh')}
-                        value={teamFormData.branch}
-                        onChange={val => setTeamFormData({ ...teamFormData, branch: val })}
-                        disabled={!isWriteAuthorized}
-                      />
+                <form id="team-drawer-form" onSubmit={handleSaveTeam} style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, overflow: 'hidden' }}>
+                  {/* Layout Split: Left Sidebar & Content */}
+                  <div className={styles.drawerBody}>
+                    
+                    {/* Sidebar Tabs */}
+                    <div className={styles.sidebarTabs}>
+                      <button 
+                        type="button" 
+                        className={`${styles.sidebarTabBtn} ${teamDrawerTab === 'info' ? styles.sidebarTabActive : ''}`}
+                        onClick={() => setTeamDrawerTab('info')}
+                      >
+                        <Building2 size={16} /> {t('Thông tin')}
+                      </button>
+                      <button 
+                        type="button" 
+                        className={`${styles.sidebarTabBtn} ${teamDrawerTab === 'members' ? styles.sidebarTabActive : ''}`}
+                        onClick={() => setTeamDrawerTab('members')}
+                      >
+                        <Users size={16} /> {t('Nhân sự')}
+                      </button>
+                      {editingTeam && (
+                        <button 
+                          type="button" 
+                          className={`${styles.sidebarTabBtn} ${teamDrawerTab === 'comments' ? styles.sidebarTabActive : ''}`}
+                          onClick={() => setTeamDrawerTab('comments')}
+                        >
+                          <MessageCircle size={16} /> {t('Bình luận')}
+                        </button>
+                      )}
                     </div>
 
-                    {/* Dự án trọng điểm (Multi-select) */}
-                    <div className="form-group">
-                      <label className="form-label" style={{ fontWeight: 600 }}>{t('Dự án trọng điểm')} ({teamFormData.focus_projects.length})</label>
+                    {/* Content Area */}
+                    <div className={styles.contentArea}>
                       
-                      {/* Selected projects tags */}
-                      {teamFormData.focus_projects.length > 0 && (
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.375rem', marginBottom: '0.5rem' }}>
-                          {teamFormData.focus_projects.map(projName => (
-                            <span 
-                              key={projName} 
-                              style={{ 
-                                display: 'inline-flex', 
-                                alignItems: 'center', 
-                                gap: '0.25rem', 
-                                background: 'var(--color-primary-light)', 
-                                color: 'var(--color-primary)', 
-                                padding: '2px 8px', 
-                                borderRadius: '12px', 
-                                fontSize: '0.75rem',
-                                fontWeight: 600
-                              }}
-                            >
-                              {projName}
-                              {isWriteAuthorized && (
-                                <button 
-                                  type="button" 
-                                  onClick={() => setTeamFormData({ ...teamFormData, focus_projects: teamFormData.focus_projects.filter(p => p !== projName) })}
-                                  style={{ border: 'none', background: 'transparent', cursor: 'pointer', padding: 0, color: 'var(--color-primary)', display: 'inline-flex', alignItems: 'center' }}
-                                >
-                                  <X size={12} />
-                                </button>
-                              )}
-                            </span>
-                          ))}
-                        </div>
-                      )}
-
-                      {/* Projects checklist */}
-                      <div className="custom-scrollbar" style={{ 
-                        border: '1px solid var(--color-border)', 
-                        borderRadius: 'var(--radius-md)', 
-                        maxHeight: '120px', 
-                        overflowY: 'auto',
-                        background: 'var(--color-bg)',
-                        padding: '0.25rem'
-                      }}>
-                        {projects.length === 0 ? (
-                          <div style={{ padding: '0.75rem', textAlign: 'center', color: 'var(--color-text-muted)', fontSize: '0.75rem' }}>
-                            {t('Không có dự án nào trên hệ thống')}
+                      {/* TAB 1: THÔNG TIN CƠ BẢN */}
+                      {teamDrawerTab === 'info' && (
+                        <div className="card-panel animate-fade" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--color-border-light)', paddingBottom: '0.75rem' }}>
+                            <h4 className="panel-title" style={{ margin: 0, fontSize: '0.95rem', fontWeight: 800, color: 'var(--color-text)' }}>{t('Thông tin nhóm')}</h4>
                           </div>
-                        ) : (
-                          projects.map(p => {
-                            const isChecked = teamFormData.focus_projects.includes(p.name);
-                            return (
-                              <div
-                                key={p.id}
-                                onClick={() => {
-                                  if (!isWriteAuthorized) return;
-                                  const current = [...teamFormData.focus_projects];
-                                  if (isChecked) {
-                                    setTeamFormData({ ...teamFormData, focus_projects: current.filter(name => name !== p.name) });
-                                  } else {
-                                    setTeamFormData({ ...teamFormData, focus_projects: [...current, p.name] });
-                                  }
-                                }}
-                                style={{
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  gap: '0.5rem',
-                                  padding: '0.375rem 0.5rem',
-                                  cursor: isWriteAuthorized ? 'pointer' : 'default',
-                                  borderRadius: '4px',
-                                  fontSize: '0.8125rem',
-                                  background: isChecked ? 'var(--color-primary-light)' : 'transparent'
-                                }}
-                                onMouseEnter={e => { if (!isChecked && isWriteAuthorized) e.currentTarget.style.background = 'var(--color-surface)'; }}
-                                onMouseLeave={e => { if (!isChecked && isWriteAuthorized) e.currentTarget.style.background = 'transparent'; }}
-                              >
+
+                          <div className="grid grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem' }}>
+                            <div className="form-group" style={{ gridColumn: 'span 2', textAlign: 'left' }}>
+                              <label className="form-label" style={{ fontWeight: 650, fontSize: '0.8rem', color: 'var(--color-text-muted)', marginBottom: 6, display: 'block' }}>{t('Tên nhóm')} <span style={{ color: 'var(--color-danger)' }}>*</span></label>
+                              <input 
+                                className="form-input"
+                                value={teamFormData.name} 
+                                onChange={e => setTeamFormData({ ...teamFormData, name: e.target.value })} 
+                                required 
+                                disabled={!isWriteAuthorized}
+                                placeholder={t('Nhập tên nhóm...')}
+                                style={{ width: '100%' }}
+                              />
+                            </div>
+
+                            <div className="form-group" ref={leaderDropdownRef} style={{ position: 'relative', textAlign: 'left' }}>
+                              <label className="form-label" style={{ fontWeight: 650, fontSize: '0.8rem', color: 'var(--color-text-muted)', marginBottom: 6, display: 'block' }}>{t('Manager')}</label>
+                              
+                              {/* Search Input Box */}
+                              <div style={{ position: 'relative', width: '100%' }}>
                                 <input
-                                  type="checkbox"
-                                  checked={isChecked}
-                                  onChange={() => {}} // handled by click parent
-                                  style={{ cursor: isWriteAuthorized ? 'pointer' : 'default' }}
+                                  className="form-input"
+                                  style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border-light)', width: '100%' }}
+                                  placeholder={t("Tìm kiếm và chọn Manager...")}
+                                  value={searchLeader}
+                                  onChange={e => {
+                                    if (!isWriteAuthorized) return;
+                                    setSearchLeader(e.target.value);
+                                    setShowLeaderDropdown(true);
+                                  }}
+                                  onFocus={() => isWriteAuthorized && setShowLeaderDropdown(true)}
                                   disabled={!isWriteAuthorized}
                                 />
-                                <span style={{ color: 'var(--color-text)', fontWeight: isChecked ? 600 : 400 }}>{p.name}</span>
-                              </div>
-                            );
-                          })
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Quản lý Thành viên Team */}
-                    <div className="form-group" style={{ display: 'flex', flexDirection: 'column', minHeight: 0 }}>
-                      <label className="form-label" style={{ fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                        <span>{t('Thành viên nhóm')} ({teamFormData.member_ids.length})</span>
-                        {teamFormData.max_members && (
-                          <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
-                            {t('Tối đa')}: {teamFormData.max_members}
-                          </span>
-                        )}
-                      </label>
-
-                      {/* Selected members avatars list */}
-                      {teamFormData.member_ids.length > 0 && (
-                        <div style={{ 
-                          display: 'flex', 
-                          flexWrap: 'wrap', 
-                          gap: '0.5rem', 
-                          marginBottom: '0.75rem',
-                          padding: '0.5rem',
-                          background: 'var(--color-bg)',
-                          border: '1px dashed var(--color-border)',
-                          borderRadius: 'var(--radius-md)'
-                        }}>
-                          {teamFormData.member_ids.map(id => {
-                            const member = allSystemUsers.find(u => String(u.id) === String(id));
-                            if (!member) return null;
-                            const mName = member.full_name || member.name || '';
-                            return (
-                              <div 
-                                key={id} 
-                                style={{ 
-                                  display: 'inline-flex', 
-                                  alignItems: 'center', 
-                                  gap: '0.375rem', 
-                                  background: 'var(--color-surface)', 
-                                  border: '1px solid var(--color-border-light)', 
-                                  padding: '2px 8px 2px 4px', 
-                                  borderRadius: '12px',
-                                  fontSize: '0.75rem' 
-                                }}
-                              >
-                                <Avatar src={member.avatar_url || member.avatar} name={mName} size={16} />
-                                <span style={{ fontWeight: 600, color: 'var(--color-text)', maxWidth: 100, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{mName}</span>
-                                {isWriteAuthorized && (
-                                  <button 
-                                    type="button" 
-                                    onClick={() => setTeamFormData({ ...teamFormData, member_ids: teamFormData.member_ids.filter(mid => mid !== id) })}
-                                    style={{ border: 'none', background: 'transparent', cursor: 'pointer', padding: 0, display: 'inline-flex', alignItems: 'center', color: 'var(--color-text-muted)' }}
+                                {isWriteAuthorized && teamFormData.leader_id && (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setTeamFormData({ ...teamFormData, leader_id: '' });
+                                      setSearchLeader('');
+                                    }}
+                                    style={{
+                                      position: 'absolute', right: 12, top: 10, color: 'var(--color-text-muted)',
+                                      background: 'transparent', border: 'none', cursor: 'pointer', padding: 0
+                                    }}
                                   >
-                                    <X size={12} />
+                                    <X size={16} />
                                   </button>
                                 )}
                               </div>
-                            );
-                          })}
+
+                              {/* Dropdown Options */}
+                              {showLeaderDropdown && (
+                                <div style={{
+                                  position: 'absolute', top: '100%', left: 0, right: 0, marginTop: 4, zIndex: 1200,
+                                  background: 'var(--color-surface)', border: '1px solid var(--color-border-light)', borderRadius: '8px',
+                                  boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)', maxHeight: 220, overflowY: 'auto'
+                                }}>
+                                  {allSystemUsers.filter(u => (u.full_name || u.name || '').toLowerCase().includes(searchLeader.toLowerCase())).map(u => {
+                                    const uName = u.full_name || u.name || '';
+                                    const isSelected = String(teamFormData.leader_id) === String(u.id);
+                                    return (
+                                      <div
+                                        key={u.id}
+                                        onClick={() => {
+                                          setTeamFormData({ ...teamFormData, leader_id: String(u.id) });
+                                          setSearchLeader(uName);
+                                          setShowLeaderDropdown(false);
+                                        }}
+                                        style={{
+                                          padding: '0.5rem 0.75rem', display: 'flex', alignItems: 'center', gap: '0.75rem',
+                                          cursor: 'pointer',
+                                          background: isSelected ? 'var(--color-primary-light)' : 'transparent',
+                                          transition: 'background 0.1s'
+                                        }}
+                                        onMouseEnter={e => { if (!isSelected) e.currentTarget.style.background = 'var(--color-bg)'; }}
+                                        onMouseLeave={e => { if (!isSelected) e.currentTarget.style.background = 'transparent'; }}
+                                      >
+                                        <Avatar src={u.avatar_url || u.avatar} name={uName} size={28} />
+                                        <div style={{ flex: 1, minWidth: 0, textAlign: 'left' }}>
+                                          <p style={{ fontSize: '0.8125rem', fontWeight: isSelected ? 700 : 500, color: isSelected ? 'var(--color-primary)' : 'var(--color-text)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{uName}</p>
+                                          <p style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{u.email}</p>
+                                        </div>
+                                        {isSelected && <Check size={16} color="var(--color-primary)" />}
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              )}
+                            </div>
+
+                            <div className="form-group" style={{ textAlign: 'left' }}>
+                              <label className="form-label" style={{ fontWeight: 650, fontSize: '0.8rem', color: 'var(--color-text-muted)', marginBottom: 6, display: 'block' }}>{t('Mục tiêu KPI (Doanh số)')}</label>
+                              <input
+                                type="number"
+                                className="form-input"
+                                value={teamFormData.kpi_target} 
+                                onChange={e => setTeamFormData({ ...teamFormData, kpi_target: e.target.value })} 
+                                disabled={!isWriteAuthorized}
+                                placeholder="0"
+                                style={{ width: '100%' }}
+                              />
+                            </div>
+
+                            <div className="form-group" style={{ textAlign: 'left' }}>
+                              <label className="form-label" style={{ fontWeight: 650, fontSize: '0.8rem', color: 'var(--color-text-muted)', marginBottom: 6, display: 'block' }}>{t('Số lượng thành viên tối đa')}</label>
+                              <input 
+                                type="number"
+                                className="form-input"
+                                value={teamFormData.max_members} 
+                                onChange={e => setTeamFormData({ ...teamFormData, max_members: e.target.value })} 
+                                disabled={!isWriteAuthorized}
+                                min={1}
+                                placeholder="10"
+                                style={{ width: '100%' }}
+                              />
+                            </div>
+
+                            <div className="form-group" style={{ gridColumn: 'span 2', textAlign: 'left' }}>
+                              <label className="form-label" style={{ fontWeight: 650, fontSize: '0.8rem', color: 'var(--color-text-muted)', marginBottom: 6, display: 'block' }}>{t('Địa chỉ chi nhánh (Dùng để nhận diện Tỉnh/Thành chi nhánh)')}</label>
+                              <AddressSelect
+                                value={teamFormData.branch || ''}
+                                onChange={val => setTeamFormData({ ...teamFormData, branch: val })}
+                                disabled={!isWriteAuthorized}
+                                placeholder={t('Chọn địa chỉ chi nhánh để phân loại tự động...')}
+                              />
+                            </div>
+
+                            <div className="form-group" style={{ gridColumn: 'span 2', textAlign: 'left' }}>
+                              <label className="form-label" style={{ fontWeight: 650, fontSize: '0.8rem', color: 'var(--color-text-muted)', marginBottom: 6, display: 'block' }}>
+                                {t('Dự án trọng điểm')} ({teamFormData.focus_projects.length})
+                              </label>
+                              {teamFormData.focus_projects.length > 0 && (
+                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.375rem', marginBottom: '0.5rem' }}>
+                                  {teamFormData.focus_projects.map(projName => (
+                                    <span 
+                                      key={projName} 
+                                      style={{ 
+                                        display: 'inline-flex', 
+                                        alignItems: 'center', 
+                                        gap: '0.25rem', 
+                                        background: 'var(--color-primary-light)', 
+                                        color: 'var(--color-primary)', 
+                                        padding: '2px 8px', 
+                                        borderRadius: '12px', 
+                                        fontSize: '0.75rem',
+                                        fontWeight: 600
+                                      }}
+                                    >
+                                      {projName}
+                                      {isWriteAuthorized && (
+                                        <button 
+                                          type="button" 
+                                          onClick={() => setTeamFormData({ ...teamFormData, focus_projects: teamFormData.focus_projects.filter(p => p !== projName) })}
+                                          style={{ border: 'none', background: 'transparent', cursor: 'pointer', padding: 0, color: 'var(--color-primary)', display: 'inline-flex', alignItems: 'center' }}
+                                        >
+                                          <X size={12} />
+                                        </button>
+                                      )}
+                                    </span>
+                                  ))}
+                                </div>
+                              )}
+                              <div className="custom-scrollbar" style={{ 
+                                border: '1px solid var(--color-border-light)', 
+                                borderRadius: '8px', 
+                                maxHeight: '120px', 
+                                overflowY: 'auto',
+                                background: 'var(--color-bg)',
+                                padding: '4px'
+                              }}>
+                                {projects.length === 0 ? (
+                                  <div style={{ padding: '0.75rem', textAlign: 'center', color: 'var(--color-text-muted)', fontSize: '0.75rem' }}>
+                                    {t('Không có dự án nào trên hệ thống')}
+                                  </div>
+                                ) : (
+                                  projects.map(p => {
+                                    const isChecked = teamFormData.focus_projects.includes(p.name);
+                                    return (
+                                      <div
+                                        key={p.id}
+                                        onClick={() => {
+                                          if (!isWriteAuthorized) return;
+                                          const current = [...teamFormData.focus_projects];
+                                          if (isChecked) {
+                                            setTeamFormData({ ...teamFormData, focus_projects: current.filter(name => name !== p.name) });
+                                          } else {
+                                            setTeamFormData({ ...teamFormData, focus_projects: [...current, p.name] });
+                                          }
+                                        }}
+                                        style={{
+                                          display: 'flex',
+                                          alignItems: 'center',
+                                          gap: '0.5rem',
+                                          padding: '0.375rem 0.5rem',
+                                          cursor: isWriteAuthorized ? 'pointer' : 'default',
+                                          borderRadius: '4px',
+                                          fontSize: '0.8125rem',
+                                          background: isChecked ? 'rgba(163, 20, 34, 0.05)' : 'transparent'
+                                        }}
+                                        onMouseEnter={e => { if (!isChecked && isWriteAuthorized) e.currentTarget.style.background = 'var(--color-surface)'; }}
+                                        onMouseLeave={e => { if (!isChecked && isWriteAuthorized) e.currentTarget.style.background = 'transparent'; }}
+                                      >
+                                        <input
+                                          type="checkbox"
+                                          checked={isChecked}
+                                          onChange={() => {}}
+                                          style={{ cursor: isWriteAuthorized ? 'pointer' : 'default' }}
+                                          disabled={!isWriteAuthorized}
+                                        />
+                                        <span style={{ color: 'var(--color-text)', fontWeight: isChecked ? 600 : 400 }}>{p.name}</span>
+                                      </div>
+                                    );
+                                  })
+                                )}
+                              </div>
+                            </div>
+
+                            <div className="form-group" style={{ gridColumn: 'span 2', textAlign: 'left' }}>
+                              <label className="form-label" style={{ fontWeight: 650, fontSize: '0.8rem', color: 'var(--color-text-muted)', marginBottom: 6, display: 'block' }}>{t('Mô tả nhóm')}</label>
+                              <textarea 
+                                className="form-input"
+                                value={teamFormData.description} 
+                                onChange={e => setTeamFormData({ ...teamFormData, description: e.target.value })} 
+                                disabled={!isWriteAuthorized}
+                                placeholder={t('Mô tả ngắn gọn về nhóm...')}
+                                rows={3}
+                                style={{ width: '100%', resize: 'vertical' }}
+                              />
+                            </div>
+
+                            {/* Leave team button if user is in team and not manager/admin */}
+                            {!isWriteAuthorized && editingTeam && teamFormData.member_ids.includes(String(user?.id)) && (
+                              <div style={{ gridColumn: 'span 2', display: 'flex', justifyContent: 'flex-start', marginTop: '1rem' }}>
+                                <button 
+                                  type="button" 
+                                  className="btn outline"
+                                  style={{ 
+                                    color: 'var(--color-danger)', 
+                                    borderColor: 'rgba(189, 29, 45, 0.3)', 
+                                    background: 'rgba(189, 29, 45, 0.05)',
+                                    fontWeight: 700,
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '6px'
+                                  }}
+                                  onClick={() => setConfirmLeaveTeamOpen(true)}
+                                  disabled={isLeavingTeam}
+                                >
+                                  <UserX size={15} />
+                                  {isLeavingTeam ? t('Đang rời nhóm...') : t('Rời khỏi nhóm')}
+                                </button>
+                              </div>
+                            )}
+                          </div>
                         </div>
                       )}
 
-                      {/* Search box for members */}
-                      <div style={{ marginBottom: '0.5rem', position: 'relative', width: '100%' }}>
-                        <input
-                          className="form-input sm"
-                          style={{ height: '32px', fontSize: '0.8125rem', width: '100%', paddingRight: '2rem' }}
-                          placeholder={t('Tìm kiếm TVV để xem/thêm vào nhóm...')}
-                          value={memberSearch}
-                          onChange={e => setMemberSearch(e.target.value)}
-                        />
-                        {memberSearch && (
-                          <button
-                            type="button"
-                            onClick={() => setMemberSearch('')}
-                            style={{ position: 'absolute', right: 8, top: 8, border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--color-text-muted)' }}
-                          >
-                            <X size={14} />
-                          </button>
-                        )}
-                      </div>
+                      {/* TAB 2: THÀNH VIÊN TRONG NHÓM */}
+                      {teamDrawerTab === 'members' && (
+                        <div className="card-panel animate-fade" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--color-border-light)', paddingBottom: '0.75rem' }}>
+                            <div>
+                              <h4 className="panel-title" style={{ margin: 0, fontSize: '0.95rem', fontWeight: 800, color: 'var(--color-text)' }}>
+                                {t('Thành viên nhóm')} ({teamFormData.member_ids.length})
+                              </h4>
+                              {teamFormData.max_members && (
+                                <p style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', margin: '4px 0 0 0' }}>
+                                  {t('Giới hạn tối đa:')} {teamFormData.max_members} {t('nhân sự')}
+                                </p>
+                              )}
+                            </div>
+                          </div>
 
-                      {/* Members Checklist */}
-                      <div className="custom-scrollbar" style={{ 
-                        border: '1px solid var(--color-border)', 
-                        borderRadius: 'var(--radius-md)', 
-                        maxHeight: '220px', 
-                        overflowY: 'auto',
-                        background: 'var(--color-bg)'
-                      }}>
-                        {(() => {
-                          const systemSales = allSystemUsers.filter(u => u.role === 'sales' || u.role === 'sale');
-                          const filteredSales = systemSales.filter(u => 
-                            (u.full_name || u.name || '').toLowerCase().includes(memberSearch.toLowerCase()) ||
-                            (u.email || '').toLowerCase().includes(memberSearch.toLowerCase())
-                          );
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                            <div style={{ position: 'relative' }}>
+                              <Search size={14} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-muted)' }} />
+                              <input 
+                                className="form-input"
+                                placeholder={t('Tìm kiếm tư vấn viên theo tên, email...')}
+                                value={memberSearch}
+                                onChange={e => setMemberSearch(e.target.value)}
+                                style={{ paddingLeft: '2rem', width: '100%', fontSize: '0.8125rem' }}
+                              />
+                            </div>
 
-                          if (filteredSales.length === 0) {
-                            return (
-                              <div style={{ padding: '1.5rem 1rem', textAlign: 'center', color: 'var(--color-text-muted)', fontSize: '0.8125rem' }}>
-                                {t('Không tìm thấy tư vấn viên nào')}
-                              </div>
-                            );
-                          }
+                            <div style={{ 
+                              border: '1px solid var(--color-border-light)', 
+                              borderRadius: '8px', 
+                              maxHeight: '350px', 
+                              overflowY: 'auto',
+                              background: 'var(--color-bg)'
+                            }}>
+                              {(() => {
+                                const systemSales = allSystemUsers.filter(u => u.role === 'sales' || u.role === 'sale');
+                                const filteredSales = systemSales.filter(u => 
+                                  (u.full_name || u.name || '').toLowerCase().includes(memberSearch.toLowerCase()) ||
+                                  (u.email || '').toLowerCase().includes(memberSearch.toLowerCase())
+                                );
 
-                          return filteredSales.map(sale => {
-                            const isChecked = teamFormData.member_ids.includes(String(sale.id));
-                            const belongsToOtherTeam = sale.team_id && String(sale.team_id) !== String(editingTeam?.id);
-                            const otherTeam = teams.find(t => String(t.id) === String(sale.team_id));
-                            
-                            return (
-                              <div
-                                key={sale.id}
-                                onClick={() => {
-                                  if (!isWriteAuthorized) return;
-                                  const currentIds = [...teamFormData.member_ids];
-                                  if (isChecked) {
-                                    setTeamFormData({ ...teamFormData, member_ids: currentIds.filter(id => id !== String(sale.id)) });
-                                  } else {
-                                    setTeamFormData({ ...teamFormData, member_ids: [...currentIds, String(sale.id)] });
-                                  }
-                                }}
-                                style={{
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  gap: '0.75rem',
-                                  padding: '0.5rem 0.75rem',
-                                  borderBottom: '1px solid var(--color-border-light)',
-                                  cursor: isWriteAuthorized ? 'pointer' : 'default',
-                                  transition: 'background 0.1s',
-                                  background: isChecked ? 'var(--color-primary-light)' : 'transparent'
-                                }}
-                                onMouseEnter={e => { if (!isChecked && isWriteAuthorized) e.currentTarget.style.background = 'var(--color-surface)'; }}
-                                onMouseLeave={e => { if (!isChecked && isWriteAuthorized) e.currentTarget.style.background = 'transparent'; }}
-                              >
-                                <input
-                                  type="checkbox"
-                                  checked={isChecked}
-                                  onChange={() => {}} // handled by outer div click
-                                  style={{ cursor: isWriteAuthorized ? 'pointer' : 'default' }}
-                                  disabled={!isWriteAuthorized}
-                                />
-                                <Avatar src={sale.avatar_url || sale.avatar} name={sale.full_name || sale.name || ''} size={24} />
-                                <div style={{ flex: 1, minWidth: 0 }}>
-                                  <p style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--color-text)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                    {sale.full_name || sale.name}
-                                  </p>
-                                  <p style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                    {sale.email}
-                                  </p>
-                                </div>
-                                {sale.team_id && (
-                                  <span style={{ 
-                                    fontSize: '0.65rem', 
-                                    background: belongsToOtherTeam ? 'var(--color-danger-light)' : 'var(--color-primary-light)', 
-                                    color: belongsToOtherTeam ? 'var(--color-danger)' : 'var(--color-primary)', 
-                                    padding: '2px 6px', 
-                                    borderRadius: 4, 
-                                    fontWeight: 600 
-                                  }}>
-                                    {belongsToOtherTeam ? `${t('Nhóm')}: ${otherTeam ? otherTeam.name : 'Khác'}` : t('Đang trong nhóm')}
-                                  </span>
-                                )}
-                                {!sale.team_id && (
-                                  <span style={{ fontSize: '0.65rem', background: 'var(--color-bg)', color: 'var(--color-text-muted)', padding: '2px 6px', borderRadius: 4 }}>
-                                    {t('Tự do')}
-                                  </span>
-                                )}
-                              </div>
-                            );
+                                if (filteredSales.length === 0) {
+                                  return (
+                                    <div style={{ padding: '1.5rem 1rem', textAlign: 'center', color: 'var(--color-text-muted)', fontSize: '0.8125rem' }}>
+                                      {t('Không tìm thấy tư vấn viên nào')}
+                                    </div>
+                                  );
+                                }
+
+                                return filteredSales.map(sale => {
+                                  const isChecked = teamFormData.member_ids.includes(String(sale.id));
+                                  const belongsToOtherTeam = sale.team_id && String(sale.team_id) !== String(editingTeam?.id);
+                                  const otherTeam = teams.find(t => String(t.id) === String(sale.team_id));
+                                  
+                                  return (
+                                    <div
+                                      key={sale.id}
+                                      onClick={() => {
+                                        if (!isWriteAuthorized) return;
+                                        const currentIds = [...teamFormData.member_ids];
+                                        if (isChecked) {
+                                          setTeamFormData({ ...teamFormData, member_ids: currentIds.filter(id => id !== String(sale.id)) });
+                                        } else {
+                                          setTeamFormData({ ...teamFormData, member_ids: [...currentIds, String(sale.id)] });
+                                        }
+                                      }}
+                                      style={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '0.75rem',
+                                        padding: '0.5rem 0.75rem',
+                                        borderBottom: '1px solid var(--color-border-light)',
+                                        cursor: isWriteAuthorized ? 'pointer' : 'default',
+                                        transition: 'background 0.1s',
+                                        background: isChecked ? 'rgba(163, 20, 34, 0.05)' : 'transparent'
+                                      }}
+                                      onMouseEnter={e => { if (!isChecked && isWriteAuthorized) e.currentTarget.style.background = 'var(--color-surface)'; }}
+                                      onMouseLeave={e => { if (!isChecked && isWriteAuthorized) e.currentTarget.style.background = 'transparent'; }}
+                                    >
+                                      <input
+                                        type="checkbox"
+                                        checked={isChecked}
+                                        onChange={() => {}}
+                                        style={{ cursor: isWriteAuthorized ? 'pointer' : 'default' }}
+                                        disabled={!isWriteAuthorized}
+                                      />
+                                      <Avatar src={sale.avatar_url || sale.avatar} name={sale.full_name || sale.name || ''} size={24} />
+                                      <div style={{ flex: 1, minWidth: 0, textAlign: 'left' }}>
+                                        <p style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--color-text)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                          {sale.full_name || sale.name}
+                                        </p>
+                                        <p style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                          {sale.email}
+                                        </p>
+                                      </div>
+                                      {sale.team_id && (
+                                        <span style={{ 
+                                          fontSize: '0.65rem', 
+                                          background: belongsToOtherTeam ? 'var(--color-danger-light)' : 'rgba(163, 20, 34, 0.05)', 
+                                          color: belongsToOtherTeam ? 'var(--color-danger)' : 'var(--color-primary)', 
+                                          padding: '2px 6px', 
+                                          borderRadius: 4, 
+                                          fontWeight: 600 
+                                        }}>
+                                          {belongsToOtherTeam ? `${t('Nhóm')}: ${otherTeam ? otherTeam.name : 'Khác'}` : t('Đang trong nhóm')}
+                                        </span>
+                                      )}
+                                      {!sale.team_id && (
+                                        <span style={{ fontSize: '0.65rem', background: 'var(--color-bg)', color: 'var(--color-text-muted)', padding: '2px 6px', borderRadius: 4 }}>
+                                          {t('Tự do')}
+                                        </span>
+                                      )}
+                                    </div>
+                                  );
+                                });
+                              })()}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* TAB 3: THẢO LUẬN & BÌNH LUẬN NHÓM */}
+                      {editingTeam && teamDrawerTab === 'comments' && (() => {
+                        const rootComments = teamComments.filter((c: any) => !c.parent_id);
+                        const getReplies = (parentId: number) => {
+                          return teamComments
+                            .filter((c: any) => Number(c.parent_id) === Number(parentId))
+                            .sort((a: any, b: any) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+                        };
+
+                        const parseCommentAttachments = (bodyText: string) => {
+                          const attachmentsList: {name: string, url: string}[] = [];
+                          const cleanBodyLines: string[] = [];
+                          const lines = (bodyText || '').split("\n");
+                          
+                          lines.forEach(line => {
+                            const match = line.match(/^📎\s*\[(.*?)\]\((.*?)\)$/);
+                            if (match) {
+                              attachmentsList.push({ name: match[1], url: match[2] });
+                            } else {
+                              cleanBodyLines.push(line);
+                            }
                           });
-                        })()}
-                      </div>
+                          
+                          return {
+                            cleanBody: cleanBodyLines.join("\n").trim(),
+                            attachments: attachmentsList
+                          };
+                        };
+
+                        const getAttachmentIcon = (att: {name: string, url: string}) => {
+                          const url = att.url.toLowerCase();
+                          const name = att.name.toLowerCase();
+                          
+                          if (url.includes('drive.google.com') || url.includes('dropbox.com') || name.includes('folder') || name.includes('thư mục') || name.includes('kho')) {
+                            return <Folder size={14} style={{ color: '#d97706' }} />;
+                          }
+                          if (url.startsWith('http') && !url.includes('/uploads/')) {
+                            return <Link2 size={14} style={{ color: 'var(--color-primary)' }} />;
+                          }
+                          return <FileIcon size={14} style={{ color: '#2563eb' }} />;
+                        };
+
+                        const renderSingleCommentNode = (comment: any, isReply: boolean = false) => {
+                          const { cleanBody, attachments: atts } = parseCommentAttachments(comment.body);
+                          return (
+                            <div key={comment.id} id={`team-comment-${comment.id}`} style={{ display: 'flex', gap: '8px', fontSize: '0.8125rem', paddingLeft: isReply ? '12px' : '0', borderLeft: isReply ? '2px solid var(--color-border-light)' : undefined, marginTop: isReply ? '6px' : '0' }}>
+                              <Avatar name={comment.user_name || 'User'} src={comment.avatar_url || undefined} size={isReply ? 20 : 24} />
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', background: isReply ? 'transparent' : 'var(--color-bg-light)', border: isReply ? 'none' : '1px solid var(--color-border-light)', padding: isReply ? '2px 0' : '8px 12px', borderRadius: isReply ? '0' : '12px', flex: 1 }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                  <span style={{ fontWeight: 800, color: 'var(--color-text)', textAlign: 'left' }}>{comment.user_name || 'Thành viên'}</span>
+                                  <span style={{ fontSize: '0.68rem', color: 'var(--color-text-muted)' }}>{comment.created_at ? new Date(comment.created_at).toLocaleString('vi-VN') : ''}</span>
+                                </div>
+                                <p style={{ margin: 0, color: 'var(--color-text-light)', whiteSpace: 'pre-wrap', lineHeight: '1.4', textAlign: 'left' }}>
+                                  {cleanBody}
+                                </p>
+                                
+                                {/* Attachments rendering */}
+                                {atts.length > 0 && (
+                                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '6px' }}>
+                                    {atts.map((att, attIdx) => (
+                                      <a 
+                                        key={attIdx}
+                                        href={att.url.startsWith('http') ? att.url : `${import.meta.env.VITE_API_URL || '/backend'}/${att.url}`} 
+                                        target="_blank" 
+                                        rel="noopener noreferrer"
+                                        style={{
+                                          display: 'inline-flex',
+                                          alignItems: 'center',
+                                          gap: '6px',
+                                          padding: '4px 10px',
+                                          background: '#ffffff',
+                                          border: '1px solid var(--color-border-light)',
+                                          borderRadius: '6px',
+                                          textDecoration: 'none',
+                                          color: 'var(--color-primary)',
+                                          fontSize: '0.75rem',
+                                          fontWeight: 650
+                                        }}
+                                      >
+                                        {getAttachmentIcon(att)}
+                                        <span style={{ maxWidth: '180px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{att.name}</span>
+                                        <Download size={11} style={{ opacity: 0.6 }} />
+                                      </a>
+                                    ))}
+                                  </div>
+                                )}
+
+                                {!isReply && (
+                                  <button
+                                    type="button"
+                                    onClick={() => setTeamReplyTo({ id: comment.id, userName: comment.user_name || 'Thành viên' })}
+                                    style={{ background: 'transparent', border: 'none', color: 'var(--color-primary)', fontSize: '0.7rem', padding: '4px 0 0 0', cursor: 'pointer', fontWeight: 700, textAlign: 'left', width: 'fit-content' }}
+                                    className="hover-lift"
+                                  >
+                                    Phản hồi
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        };
+
+                        return (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', height: '100%' }}>
+                            
+                            {/* Post Comment Section */}
+                            <div style={{ background: '#ffffff', border: '1px solid var(--color-border-light)', padding: '16px', borderRadius: '12px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                              {teamReplyTo && (
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(163, 20, 34, 0.06)', padding: '6px 12px', borderRadius: '8px', fontSize: '0.72rem', color: 'var(--color-primary)', fontWeight: 700 }}>
+                                  <span>Đang trả lời {teamReplyTo.userName}</span>
+                                  <button type="button" onClick={() => setTeamReplyTo(null)} style={{ border: 'none', background: 'transparent', color: 'var(--color-primary)', cursor: 'pointer', fontWeight: 800, fontSize: '0.9rem' }}>×</button>
+                                </div>
+                              )}
+                              
+                              <MentionInput
+                                value={newTeamCommentText}
+                                onChange={e => setNewTeamCommentText(e.target.value)}
+                                placeholder="Nhập nội dung trao đổi... (Gõ @ để nhắc tên đồng nghiệp)"
+                                style={{ minHeight: '60px', fontSize: '0.85rem' }}
+                              />
+
+                              {/* Attachments Preview Row */}
+                              {teamCommentAttachments.length > 0 && (
+                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', padding: '4px 0' }}>
+                                  {teamCommentAttachments.map((att, idx) => (
+                                    <span 
+                                      key={idx} 
+                                      style={{ 
+                                        display: 'inline-flex', 
+                                        alignItems: 'center', 
+                                        gap: '4px', 
+                                        background: 'var(--color-bg-light)', 
+                                        border: '1px solid var(--color-border-light)', 
+                                        padding: '2px 8px', 
+                                        borderRadius: '6px', 
+                                        fontSize: '0.72rem',
+                                        fontWeight: 600
+                                      }}
+                                    >
+                                      <Paperclip size={10} style={{ opacity: 0.6 }} />
+                                      <span style={{ maxWidth: '120px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{att.name}</span>
+                                      <button 
+                                        type="button" 
+                                        onClick={() => setTeamCommentAttachments(prev => prev.filter((_, i) => i !== idx))}
+                                        style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--color-danger)', fontSize: '0.9rem', padding: '0 2px' }}
+                                      >
+                                        ×
+                                      </button>
+                                    </span>
+                                  ))}
+                                </div>
+                              )}
+
+                              {/* Toolbar Buttons */}
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--color-border-light)', paddingTop: '10px' }}>
+                                <div style={{ display: 'flex', gap: '8px' }}>
+                                  {/* File Upload Button */}
+                                  <label 
+                                    htmlFor="team-comment-file-input"
+                                    style={{ 
+                                      display: 'inline-flex', 
+                                      alignItems: 'center', 
+                                      gap: '4px', 
+                                      padding: '4px 10px', 
+                                      borderRadius: '6px', 
+                                      border: '1px solid var(--color-border-light)', 
+                                      fontSize: '0.75rem', 
+                                      cursor: 'pointer', 
+                                      background: 'var(--color-bg-light)',
+                                      color: 'var(--color-text-muted)',
+                                      fontWeight: 600
+                                    }}
+                                    className="hover-lift"
+                                  >
+                                    <Paperclip size={12} />
+                                    <span>{isUploadingCommentFile ? t('Đang tải...') : t('Đính kèm tệp')}</span>
+                                  </label>
+                                  <input 
+                                    id="team-comment-file-input"
+                                    type="file"
+                                    onChange={handleAttachCommentFile}
+                                    style={{ display: 'none' }}
+                                    disabled={isUploadingCommentFile}
+                                  />
+
+                                  {/* Link Attach Button */}
+                                  <button
+                                    type="button"
+                                    onClick={handleAttachCommentLink}
+                                    style={{ 
+                                      display: 'inline-flex', 
+                                      alignItems: 'center', 
+                                      gap: '4px', 
+                                      padding: '4px 10px', 
+                                      borderRadius: '6px', 
+                                      border: '1px solid var(--color-border-light)', 
+                                      fontSize: '0.75rem', 
+                                      cursor: 'pointer', 
+                                      background: 'var(--color-bg-light)',
+                                      color: 'var(--color-text-muted)',
+                                      fontWeight: 600
+                                    }}
+                                    className="hover-lift"
+                                  >
+                                    <Link2 size={12} />
+                                    <span>{t('Đính kèm Link')}</span>
+                                  </button>
+                                </div>
+
+                                <button
+                                  type="button"
+                                  onClick={() => handlePostTeamComment(editingTeam.id)}
+                                  disabled={isSubmittingTeamComment}
+                                  className="btn primary sm"
+                                  style={{ padding: '6px 16px', fontSize: '0.75rem', borderRadius: '20px', display: 'flex', alignItems: 'center', gap: '4px' }}
+                                >
+                                  <Send size={11} />
+                                  <span>{isSubmittingTeamComment ? t('Đang gửi...') : t('Gửi')}</span>
+                                </button>
+                              </div>
+                            </div>
+
+                            {/* Comments List Feed */}
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', flex: 1, overflowY: 'auto', background: '#ffffff', border: '1px solid var(--color-border-light)', borderRadius: '12px', padding: '16px', maxHeight: '350px' }} className="custom-scrollbar">
+                              {loadingTeamComments ? (
+                                <div style={{ display: 'flex', justifyContent: 'center', padding: '2rem' }}>
+                                  <RefreshCw className="spin" size={18} color="var(--color-text-muted)" />
+                                </div>
+                              ) : teamComments.length === 0 ? (
+                                <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--color-text-muted)', fontSize: '0.8rem', fontStyle: 'italic' }}>
+                                  {t('Chưa có bình luận nào. Nhóm hãy bình luận trao đổi thông tin tại đây!')}
+                                </div>
+                              ) : (
+                                rootComments.map((rootComment: any) => {
+                                  const replies = getReplies(rootComment.id);
+                                  return (
+                                    <div key={rootComment.id} style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                      {renderSingleCommentNode(rootComment, false)}
+                                      {replies.length > 0 && (
+                                        <div style={{ marginLeft: '1.5rem', display: 'flex', flexDirection: 'column', gap: '6px', borderLeft: '1px solid var(--color-border-light)', paddingLeft: '8px', marginTop: '4px' }}>
+                                          {replies.map((reply: any) => renderSingleCommentNode(reply, true))}
+                                        </div>
+                                      )}
+                                    </div>
+                                  );
+                                })
+                              )}
+                            </div>
+
+                          </div>
+                        );
+                      })()}
+
                     </div>
                   </div>
-
-                </div>
-              </div>
-
-              <div style={{ padding: '1.25rem', background: 'var(--color-bg)', borderTop: '1px solid var(--color-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottomLeftRadius: 'var(--radius-xl)', borderBottomRightRadius: 'var(--radius-xl)' }}>
-                <div>
-                  {!isWriteAuthorized && editingTeam && teamFormData.member_ids.includes(String(user?.id)) && (
-                    <button 
-                      type="button" 
-                      className="btn ghost sm" 
-                      style={{ color: 'var(--color-text-muted)', border: '1px solid var(--color-border)', borderRadius: '6px', padding: '4px 10px', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '4px' }}
-                      onClick={() => setConfirmLeaveTeamOpen(true)}
-                      disabled={isLeavingTeam}
-                      onMouseEnter={e => {
-                        e.currentTarget.style.color = 'var(--color-danger)';
-                        e.currentTarget.style.borderColor = 'rgba(189, 29, 45, 0.2)';
-                        e.currentTarget.style.background = 'rgba(189, 29, 45, 0.05)';
-                      }}
-                      onMouseLeave={e => {
-                        e.currentTarget.style.color = 'var(--color-text-muted)';
-                        e.currentTarget.style.borderColor = 'var(--color-border)';
-                        e.currentTarget.style.background = 'transparent';
-                      }}
-                    >
-                      {isLeavingTeam ? t('Đang rời nhóm...') : t('Rời khỏi nhóm')}
-                    </button>
-                  )}
-                </div>
-                <div style={{ display: 'flex', gap: '0.75rem' }}>
-                  <button type="button" className="btn outline" onClick={() => setTeamModalOpen(false)}>{t('Hủy')}</button>
-                  {isWriteAuthorized ? (
-                    <button type="submit" className="btn primary" disabled={isSaving}>
-                      {isSaving ? t('Đang lưu...') : t('Lưu lại')}
-                    </button>
-                  ) : (
-                    <button type="button" className="btn primary" onClick={() => setTeamModalOpen(false)}>
-                      {t('Đóng')}
-                    </button>
-                  )}
-                </div>
-              </div>
-            </form>
-          </div>
-        </div>,
+                </form>
+              </motion.div>
+            </>
+          )}
+        </AnimatePresence>,
         document.body
       )}
 

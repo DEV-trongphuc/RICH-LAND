@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Truck, Plus, Search, MoreHorizontal, Mail, Phone, MapPin, 
   Trash2, Pencil, ExternalLink, Filter, Download, User, Hash,
-  ArrowUpRight, Building2, X
+  ArrowUpRight, Building2, X, Layers
 } from 'lucide-react';
 import api from '../api/axios';
 import { useUIStore } from '../store/uiStore';
@@ -13,6 +13,8 @@ import { EmptyCard } from '../components/ui/EmptyCard';
 import { AddressSelect } from '../components/ui/AddressSelect';
 import { CustomSelect } from '../components/ui/CustomSelect';
 import { Pagination } from '../components/ui/Pagination';
+import { Avatar } from '../components/ui/Avatar';
+import styles from './EntityDrawer.module.css';
 
 const PRESTIGE_OPTIONS = [
   { value: 'A', label: 'Hạng A (Rất uy tín)' },
@@ -26,24 +28,67 @@ const COOP_OPTIONS = [
   { value: 'suspended', label: 'Tạm ngưng' }
 ];
 
+const SUPPLIER_TABS = [
+  { id: 'info', label: 'Thông tin chung', icon: <Building2 size={16} /> },
+  { id: 'projects', label: 'Dự án tiêu biểu', icon: <Layers size={16} /> }
+];
+
 export const SuppliersPage: React.FC = () => {
   const { user } = useAuth();
   const isSale = user && ['sales', 'sale', 'viewer'].includes((user.role || '').toLowerCase());
+  
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 1024);
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 1024);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
   
   const { addToast, showConfirm, closeConfirm } = useUIStore();
   const [suppliers, setSuppliers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [showModal, setShowModal] = useState(false);
-  const [showFilterModal, setShowFilterModal] = useState(false);
   const [filters, setFilters] = useState({ prestige_tier: '', cooperation_status: '' });
-  const [draftFilters, setDraftFilters] = useState({ prestige_tier: '', cooperation_status: '' });
+  const [projectsList, setProjectsList] = useState<any[]>([]);
+  const [projSearch, setProjSearch] = useState('');
+  const [showProjDropdown, setShowProjDropdown] = useState(false);
   
+  const [activeTab, setActiveTab] = useState('info');
+  const [isVisible, setIsVisible] = useState(showModal);
+  const [animateIn, setAnimateIn] = useState(showModal);
+
   useEffect(() => {
-    if (showFilterModal) {
-      setDraftFilters(filters);
+    if (showModal) {
+      setIsVisible(true);
+      const timer = setTimeout(() => setAnimateIn(true), 10);
+      return () => clearTimeout(timer);
+    } else {
+      setAnimateIn(false);
+      const timer = setTimeout(() => setIsVisible(false), 420);
+      return () => clearTimeout(timer);
     }
-  }, [showFilterModal, filters]);
+  }, [showModal]);
+
+  useEffect(() => {
+    if (isVisible) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [isVisible]);
+
+  useEffect(() => {
+    api.get('/projects?all=1')
+      .then(res => {
+        const list = res.data.data || res.data || [];
+        setProjectsList(Array.isArray(list) ? list : (list.items || []));
+      })
+      .catch(() => {});
+  }, []);
 
   const [selectedSupplier, setSelectedSupplier] = useState<any>(null);
   const [formData, setFormData] = useState({
@@ -91,7 +136,26 @@ export const SuppliersPage: React.FC = () => {
       contact_position: '', website: '', scale_capital: '', typical_projects: '', focused_type: '', prestige_tier: 'A', cooperation_status: 'active', bank_account: ''
     });
     setIsReadOnly(s ? readOnly : false);
+    setActiveTab('info');
     setShowModal(true);
+  };
+
+  const handleAddProject = (name: string) => {
+    const trimmed = name.trim();
+    if (!trimmed) return;
+    const current = formData.typical_projects ? formData.typical_projects.split(',').map(p => p.trim()).filter(Boolean) : [];
+    if (!current.includes(trimmed)) {
+      const updated = [...current, trimmed].join(', ');
+      setFormData(prev => ({ ...prev, typical_projects: updated }));
+    }
+    setProjSearch('');
+    setShowProjDropdown(false);
+  };
+
+  const handleRemoveProject = (name: string) => {
+    const current = formData.typical_projects ? formData.typical_projects.split(',').map(p => p.trim()).filter(Boolean) : [];
+    const updated = current.filter(p => p !== name).join(', ');
+    setFormData(prev => ({ ...prev, typical_projects: updated }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -135,6 +199,7 @@ export const SuppliersPage: React.FC = () => {
   };
 
   const filtered = suppliers;
+  const selectedProjects = formData.typical_projects ? formData.typical_projects.split(',').map((p: any) => p.trim()).filter(Boolean) : [];
 
   return (
     <div className="page-container">
@@ -155,86 +220,124 @@ export const SuppliersPage: React.FC = () => {
         </div>
       </div>
 
-      <div 
-        style={{ 
-          background: 'var(--color-surface)',
-          border: '1px solid var(--color-border-light)',
-          borderRadius: '16px',
-          padding: '12px 16px',
-          boxShadow: 'var(--shadow-sm)',
-          marginBottom: '24px'
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <div 
-            style={{ 
-              flex: 1, 
-              display: 'flex', 
-              alignItems: 'center', 
-              gap: '10px', 
-              background: 'var(--color-bg-light)', 
-              border: '1px solid var(--color-border)', 
-              borderRadius: '12px', 
-              padding: '0 14px',
-              height: '42px',
-              transition: 'all 0.2s ease-in-out'
-            }}
-            className="search-input-container-focus"
-          >
-            <input 
-              type="text"
-              placeholder="Tìm kiếm theo tên chủ đầu tư hoặc người liên hệ..." 
-              value={searchTerm}
-              onChange={e => setSearchTerm(e.target.value)}
-              style={{
-                background: 'transparent',
-                border: 'none',
-                outline: 'none',
-                width: '100%',
-                fontSize: '0.875rem',
-                color: 'var(--color-text)',
-                padding: 0
-              }}
-            />
-          </div>
-          
-          <button 
-            type="button"
-            onClick={() => setShowFilterModal(true)}
+      {/* Control row */}
+      <div style={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        flexWrap: 'wrap',
+        gap: '0.75rem',
+        background: '#ffffff',
+        border: '1px solid var(--color-border-light)',
+        borderRadius: '12px',
+        padding: '0.625rem 1.25rem',
+        marginBottom: '1.25rem',
+        boxShadow: 'var(--shadow-sm)',
+        width: '100%'
+      }}>
+        {/* Left: Search input */}
+        <div 
+          style={{ 
+            flex: '1 1 300px', 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: '10px', 
+            background: 'var(--color-bg-light)', 
+            border: '1px solid var(--color-border-light)', 
+            borderRadius: '10px', 
+            padding: '0 12px',
+            height: '36px',
+            transition: 'all 0.2s ease-in-out'
+          }}
+        >
+          <Search size={14} style={{ color: 'var(--color-text-muted)', opacity: 0.7 }} />
+          <input 
+            type="text"
+            placeholder="Tìm kiếm theo tên chủ đầu tư hoặc người liên hệ..." 
+            value={searchTerm}
+            onChange={e => setSearchTerm(e.target.value)}
             style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              background: (filters.prestige_tier || filters.cooperation_status) ? 'rgba(163, 20, 34, 0.05)' : 'var(--color-surface)',
-              border: (filters.prestige_tier || filters.cooperation_status) ? '1px solid var(--color-primary-light)' : '1px solid var(--color-border)',
-              color: (filters.prestige_tier || filters.cooperation_status) ? 'var(--color-primary)' : 'var(--color-text-muted)',
-              borderRadius: '12px',
-              padding: '0 16px',
-              height: '42px',
-              fontWeight: 600,
-              fontSize: '0.875rem',
-              cursor: 'pointer',
-              transition: 'all 0.2s ease',
-              position: 'relative'
+              background: 'transparent',
+              border: 'none',
+              outline: 'none',
+              width: '100%',
+              fontSize: '0.825rem',
+              color: 'var(--color-text)',
+              padding: 0
             }}
-            className="filter-btn-hover"
-          >
-            <Filter size={15} /> 
-            <span>Bộ lọc nâng cao</span>
-            {(filters.prestige_tier || filters.cooperation_status) && (
-              <span 
-                style={{ 
-                  width: '6px', 
-                  height: '6px', 
-                  borderRadius: '50%', 
-                  background: 'var(--color-primary)', 
-                  position: 'absolute',
-                  top: '6px',
-                  right: '6px'
-                }} 
-              />
-            )}
-          </button>
+          />
+        </div>
+
+        {/* Right side: Filters & Count */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+          {/* Filter 1: Prestige Tier */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', height: '36px' }}>
+            <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--color-text-muted)', whiteSpace: 'nowrap' }}>Phân hạng:</span>
+            <select
+              value={filters.prestige_tier}
+              onChange={e => setFilters({ ...filters, prestige_tier: e.target.value })}
+              style={{
+                padding: '0 8px',
+                height: '30px',
+                borderRadius: '6px',
+                border: '1px solid var(--color-border-light)',
+                background: '#ffffff',
+                fontSize: '0.8rem',
+                fontWeight: 650,
+                color: 'var(--color-text)',
+                outline: 'none',
+                cursor: 'pointer'
+              }}
+            >
+              <option value="">Tất cả phân hạng</option>
+              {PRESTIGE_OPTIONS.map(opt => (
+                <option key={opt.value} value={opt.value}>{opt.label}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Filter 2: Cooperation Status */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', height: '36px' }}>
+            <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--color-text-muted)', whiteSpace: 'nowrap' }}>Hợp tác:</span>
+            <select
+              value={filters.cooperation_status}
+              onChange={e => setFilters({ ...filters, cooperation_status: e.target.value })}
+              style={{
+                padding: '0 8px',
+                height: '30px',
+                borderRadius: '6px',
+                border: '1px solid var(--color-border-light)',
+                background: '#ffffff',
+                fontSize: '0.8rem',
+                fontWeight: 650,
+                color: 'var(--color-text)',
+                outline: 'none',
+                cursor: 'pointer'
+              }}
+            >
+              <option value="">Tất cả trạng thái</option>
+              {COOP_OPTIONS.map(opt => (
+                <option key={opt.value} value={opt.value}>{opt.label}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Count Badge */}
+          <div style={{
+            fontSize: '0.75rem',
+            fontWeight: 700,
+            background: 'var(--color-bg-light)',
+            color: 'var(--color-text-muted)',
+            padding: '6px 12px',
+            borderRadius: '8px',
+            border: '1px solid var(--color-border-light)',
+            height: '30px',
+            display: 'flex',
+            alignItems: 'center',
+            boxSizing: 'border-box'
+          }}>
+            Hiển thị <strong style={{ color: 'var(--color-primary)', marginLeft: '4px', marginRight: '4px' }}>{total}</strong> chủ đầu tư
+          </div>
         </div>
       </div>
 
@@ -252,57 +355,54 @@ export const SuppliersPage: React.FC = () => {
         />
       ) : (
         <>
-          <div className="grid grid-3">
-            {filtered.map(s => (
-              <motion.div 
-                key={s.id} 
-                className="card hover-lift relative overflow-hidden"
-                style={{
-                  padding: '1rem',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  borderRadius: '16px',
-                  background: 'var(--color-surface)',
-                  border: '1px solid var(--color-border-light)',
-                  boxShadow: 'var(--shadow-sm)',
-                  cursor: 'pointer'
-                }}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                onClick={() => handleOpenModal(s, true)}
-              >
-                <div>
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, minmax(0, 1fr))',
+            gap: '1rem',
+            marginBottom: '1.5rem'
+          }}>
+            {filtered.map(s => {
+              const cardProjList = s.typical_projects 
+                ? s.typical_projects.split(',').map((p: any) => p.trim()).filter(Boolean) 
+                : [];
+
+              return (
+                <motion.div 
+                  key={s.id} 
+                  className="card hover-lift relative overflow-hidden"
+                  style={{
+                    padding: '1rem',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    borderRadius: '12px',
+                    background: 'var(--color-surface)',
+                    border: '1px solid var(--color-border-light)',
+                    boxShadow: 'var(--shadow-sm)',
+                    cursor: 'pointer',
+                    position: 'relative',
+                    transition: 'all 0.2s ease',
+                    minHeight: '180px'
+                  }}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  onClick={() => handleOpenModal(s, true)}
+                >
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.75rem' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0, flex: 1 }}>
-                      <div style={{
-                        width: '36px',
-                        height: '36px',
-                        borderRadius: '8px',
-                        background: 'linear-gradient(135deg, rgba(189, 29, 45, 0.08), rgba(249, 115, 22, 0.08))',
-                        color: 'var(--color-primary)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        flexShrink: 0
-                      }}>
-                        <Building2 size={16} />
-                      </div>
-                      <div style={{ minWidth: 0, flex: 1 }}>
-                        <h3 style={{ fontSize: '0.9rem', fontWeight: 800, color: 'var(--color-text)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={s.name}>
+                      <Avatar name={s.name} size={36} />
+                      <div style={{ minWidth: 0, flex: 1, textAlign: 'left' }}>
+                        <h3 style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--color-text)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={s.name}>
                           {s.name}
                         </h3>
-                        <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', marginTop: '2px' }}>
-                          <span className="badge sm" style={{ background: '#f3f4f6', color: '#6b7280', fontSize: '0.6rem', padding: '1px 4px' }}>
-                            Chủ đầu tư
-                          </span>
+                        <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', marginTop: '2px', alignItems: 'center' }}>
                           {s.prestige_tier && (
-                            <span className="badge sm" style={{
-                              background: s.prestige_tier === 'A' ? 'rgba(16, 185, 129, 0.1)' : s.prestige_tier === 'B' ? 'rgba(59, 130, 246, 0.1)' : 'rgba(107, 114, 128, 0.1)',
-                              color: s.prestige_tier === 'A' ? '#10b981' : s.prestige_tier === 'B' ? '#3b82f6' : '#6b7280',
-                              fontSize: '0.6rem',
-                              padding: '1px 4px'
-                            }}>
+                            <span className="badge sm" style={{ background: '#f3f4f6', color: '#4b5563', fontSize: '0.65rem', padding: '1px 6px' }}>
                               Hạng {s.prestige_tier}
+                            </span>
+                          )}
+                          {s.cooperation_status && (
+                            <span className={`badge sm ${s.cooperation_status === 'active' ? 'success' : s.cooperation_status === 'negotiating' ? 'warning' : 'danger'}`} style={{ fontSize: '0.65rem', padding: '1px 6px' }}>
+                              {s.cooperation_status === 'active' ? 'Đang liên kết' : s.cooperation_status === 'negotiating' ? 'Đang đàm phán' : 'Tạm ngưng'}
                             </span>
                           )}
                         </div>
@@ -310,71 +410,78 @@ export const SuppliersPage: React.FC = () => {
                     </div>
                     {!isSale && (
                       <div style={{ display: 'flex', gap: '4px', marginLeft: '8px', flexShrink: 0 }} onClick={e => e.stopPropagation()}>
-                        <button className="btn ghost sm" onClick={() => handleOpenModal(s)} style={{ padding: '4px', borderRadius: '4px', width: '24px', height: '24px' }}>
-                          <Pencil size={12} />
-                        </button>
-                        <button className="btn ghost sm text-danger" onClick={() => handleDelete(s.id)} style={{ padding: '4px', borderRadius: '4px', width: '24px', height: '24px' }}>
-                          <Trash2 size={12} />
-                        </button>
+                        <button className="btn ghost sm" onClick={() => handleOpenModal(s)} style={{ padding: '4px', borderRadius: '4px', width: '24px', height: '24px' }}><Pencil size={12} /></button>
+                        <button className="btn ghost sm text-danger" style={{ color: 'var(--color-danger)', padding: '4px', borderRadius: '4px', width: '24px', height: '24px' }} onClick={() => handleDelete(s.id)}><Trash2 size={12} /></button>
                       </div>
                     )}
                   </div>
 
-                  {/* Details Grid */}
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '4px', padding: '0.5rem 0 0 0', borderTop: '1px solid var(--color-border-light)' }}>
+                  {/* Clean, simple details list */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', borderTop: '1px solid var(--color-border-light)', paddingTop: '8px', flex: 1, textAlign: 'left' }}>
                     {s.contact_name && (
                       <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
-                        <User size={12} style={{ opacity: 0.6 }} />
-                        <span style={{ fontWeight: 600 }}>
+                        <span style={{ color: 'var(--color-text-light)' }}>Đại diện:</span>
+                        <span style={{ fontWeight: 650, color: 'var(--color-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                           {s.contact_name} {s.contact_position ? `(${s.contact_position})` : ''}
                         </span>
                       </div>
                     )}
-                    
-                    <div style={{
-                      background: 'rgba(0, 0, 0, 0.02)',
-                      border: '1px solid var(--color-border-light)',
-                      borderRadius: '8px',
-                      padding: '8px',
-                      marginTop: '4px',
-                      display: 'grid',
-                      gridTemplateColumns: '1fr 1fr',
-                      gap: '4px 8px'
-                    }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.72rem', color: 'var(--color-text-muted)' }}>
-                        <Phone size={11} style={{ opacity: 0.6 }} />
-                        <span>{s.phone || '—'}</span>
+                    {s.phone && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
+                        <Phone size={11} style={{ opacity: 0.5 }} />
+                        <span>{s.phone}</span>
                       </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.72rem', color: 'var(--color-text-muted)', minWidth: 0 }}>
-                        <Mail size={11} style={{ opacity: 0.6 }} />
-                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={s.email}>{s.email || '—'}</span>
+                    )}
+                    {s.email && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.75rem', color: 'var(--color-text-muted)', minWidth: 0 }}>
+                        <Mail size={11} style={{ opacity: 0.5 }} />
+                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={s.email}>{s.email}</span>
                       </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.72rem', color: 'var(--color-text-muted)', minWidth: 0, gridColumn: 'span 2' }}>
-                        <MapPin size={11} style={{ opacity: 0.6 }} />
-                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={s.address}>{s.address || '—'}</span>
+                    )}
+                    {s.address && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.75rem', color: 'var(--color-text-muted)', minWidth: 0 }}>
+                        <MapPin size={11} style={{ opacity: 0.5 }} />
+                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={s.address}>{s.address}</span>
                       </div>
-                      {s.website && (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.72rem', color: 'var(--color-text-muted)', minWidth: 0, gridColumn: 'span 2' }}>
-                          <ExternalLink size={11} style={{ opacity: 0.6 }} />
-                          <a href={s.website.startsWith('http') ? s.website : `https://${s.website}`} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--color-primary)', textDecoration: 'none', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} onClick={e => e.stopPropagation()}>
-                            {s.website}
-                          </a>
+                    )}
+                    {cardProjList.length > 0 && (
+                      <div style={{ display: 'flex', alignItems: 'flex-start', gap: '6px', fontSize: '0.75rem', color: 'var(--color-text-muted)', minWidth: 0, marginTop: '2px', flexWrap: 'wrap' }}>
+                        <Building2 size={11} style={{ opacity: 0.5, marginTop: '2px', flexShrink: 0 }} />
+                        <span style={{ color: 'var(--color-text-light)', flexShrink: 0 }}>Dự án:</span>
+                        <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', minWidth: 0, flex: 1 }}>
+                          {cardProjList.map((proj, pIdx) => {
+                            const pId = projectsList.find(p => p.name.trim().toLowerCase() === proj.trim().toLowerCase())?.id;
+                            return (
+                              <span
+                                key={pIdx}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (pId) {
+                                    window.location.href = `/projects?project_id=${pId}`;
+                                  } else {
+                                    window.location.href = `/projects?search=${encodeURIComponent(proj)}`;
+                                  }
+                                }}
+                                style={{
+                                  color: 'var(--color-primary)',
+                                  fontWeight: 600,
+                                  textDecoration: 'underline',
+                                  cursor: 'pointer',
+                                  whiteSpace: 'nowrap'
+                                }}
+                                title="Click để mở chi tiết dự án"
+                              >
+                                {proj}{pIdx < cardProjList.length - 1 ? ',' : ''}
+                              </span>
+                            );
+                          })}
                         </div>
-                      )}
-                    </div>
-
-                    {s.typical_projects && (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.72rem', color: 'var(--color-text-muted)', minWidth: 0, marginTop: '4px' }}>
-                        <Building2 size={11} style={{ opacity: 0.6 }} />
-                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontStyle: 'italic' }} title={s.typical_projects}>
-                          Dự án: {s.typical_projects}
-                        </span>
                       </div>
                     )}
                   </div>
-                </div>
-              </motion.div>
-            ))}
+                </motion.div>
+              );
+            })}
           </div>
           
           {total > 12 && (
@@ -385,190 +492,146 @@ export const SuppliersPage: React.FC = () => {
         </>
       )}
 
-      {/* Modal Cải tiến */}
+      {/* Drawer Cải tiến */}
       {typeof document !== 'undefined' && createPortal(
         <AnimatePresence>
           {showModal && (
-            <div 
-              className="overlay-backdrop" 
-              onClick={() => setShowModal(false)} 
-              style={{ 
-                zIndex: 11000, 
-                display: 'flex', 
-                alignItems: 'center', 
-                justifyContent: 'center',
-                position: 'fixed',
-                inset: 0,
-                padding: '20px',
-                overflowY: 'auto'
-              }}
-            >
-              <motion.div 
-                className="modal-sheet modal-lg shadow-2xl"
-                style={{ maxWidth: '900px', width: '100%' }}
-                initial={{ opacity: 0, scale: 0.95, y: 20 }}
-                animate={{ opacity: 1, scale: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.95, y: 20 }}
-                onClick={e => e.stopPropagation()}
+            <>
+              {/* Backdrop */}
+              <div
+                className="drawer-backdrop"
+                onClick={() => setShowModal(false)}
+                style={{
+                  zIndex: 10000,
+                  opacity: animateIn ? 1 : 0,
+                  transition: 'opacity 0.42s cubic-bezier(0.16, 1, 0.3, 1)',
+                  pointerEvents: animateIn ? 'auto' : 'none'
+                }}
+              />
+
+              {/* Drawer Sheet */}
+              <div
+                className={styles.drawer}
+                style={{
+                  transform: animateIn ? 'translateX(0)' : 'translateX(160px)',
+                  opacity: animateIn ? 1 : 0,
+                  transition: 'transform 0.42s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.42s cubic-bezier(0.16, 1, 0.3, 1)',
+                  willChange: 'transform, opacity',
+                  zIndex: 10600
+                }}
               >
-                <div className="modal-header">
-                  <h3>{isReadOnly ? 'Chi tiết đối tác' : (selectedSupplier ? 'Cập nhật đối tác' : 'Thêm chủ đầu tư mới')}</h3>
-                  <button className="btn-icon sm" onClick={() => setShowModal(false)}><ArrowUpRight size={18} style={{ transform: 'rotate(45deg)' }} /></button>
+                {/* Header */}
+                <div className={styles.header} style={{ borderBottom: '1px solid var(--color-border-light)', padding: '1.25rem 1.5rem', background: '#ffffff', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <Avatar name={formData.name || 'C'} size={40} />
+                    <div style={{ textAlign: 'left' }}>
+                      <h2 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--color-text)', margin: 0 }}>
+                        {formData.name || 'Thêm đối tác mới'}
+                      </h2>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '2px' }}>
+                        <span>MST: {formData.tax_code || '—'}</span>
+                        <span>•</span>
+                        <span>Hạng: {formData.prestige_tier || 'A'}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    {formData.cooperation_status && (
+                      <span className={`badge sm ${formData.cooperation_status === 'active' ? 'success' : formData.cooperation_status === 'negotiating' ? 'warning' : 'danger'}`}>
+                        {formData.cooperation_status === 'active' ? 'Đang liên kết' : formData.cooperation_status === 'negotiating' ? 'Đang đàm phán' : 'Tạm ngưng'}
+                      </span>
+                    )}
+
+                    {!isReadOnly ? (
+                      <button 
+                        type="button" 
+                        onClick={handleSubmit} 
+                        className="btn primary sm" 
+                        disabled={isSaving}
+                        style={{ height: '32px', fontSize: '0.8rem', padding: '0 14px', borderRadius: '8px' }}
+                      >
+                        {isSaving ? 'Đang lưu...' : 'Lưu thay đổi'}
+                      </button>
+                    ) : (
+                      !isSale && (
+                        <button 
+                          type="button" 
+                          onClick={() => setIsReadOnly(false)} 
+                          className="btn primary sm"
+                          style={{ height: '32px', fontSize: '0.8rem', padding: '0 14px', borderRadius: '8px' }}
+                        >
+                          Chỉnh sửa
+                        </button>
+                      )
+                    )}
+                    <button className={styles.closeBtn} onClick={() => setShowModal(false)}><X size={20} /></button>
+                  </div>
                 </div>
 
-                {isReadOnly ? (
-                  <>
-                    <div className="modal-body" style={{ maxHeight: 'calc(100vh - 200px)', overflowY: 'auto' }}>
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', alignItems: 'start' }}>
-                        {/* Left Column: Enterprise Info */}
-                        <div>
-                          <h4 style={{ fontSize: '0.85rem', fontWeight: 800, textTransform: 'uppercase', color: 'var(--color-primary)', letterSpacing: '0.05em', marginBottom: '16px', paddingBottom: '6px', borderBottom: '1px solid var(--color-border-light)' }}>
-                            Thông tin doanh nghiệp
-                          </h4>
-                          
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                {/* Drawer Body - Simple 2-column view */}
+                <div style={{ flex: 1, padding: '24px', overflowY: 'auto', background: '#f9fafb', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '24px', alignItems: 'stretch' }}>
+                    
+                    {/* Left Column: Enterprise Info */}
+                    <div style={{ background: '#ffffff', border: '1px solid var(--color-border-light)', borderRadius: '10px', padding: '20px' }}>
+                      <h3 style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)', textTransform: 'uppercase', borderBottom: '1px solid var(--color-border-light)', paddingBottom: '10px', marginBottom: '16px', textAlign: 'left' }}>
+                        Thông tin doanh nghiệp
+                      </h3>
+
+                      {isReadOnly ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', textAlign: 'left' }}>
+                          <div>
+                            <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', display: 'block', marginBottom: '2px' }}>Tên chủ đầu tư / đối tác</span>
+                            <span style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--color-text)' }}>{formData.name || '—'}</span>
+                          </div>
+
+                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
                             <div>
-                              <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', display: 'block', marginBottom: '2px' }}>Tên doanh nghiệp / Chủ đầu tư</span>
-                              <span style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--color-text)' }}>{formData.name || '—'}</span>
+                              <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', display: 'block', marginBottom: '2px' }}>Mã số thuế</span>
+                              <span style={{ fontSize: '0.875rem', color: 'var(--color-text)' }}>{formData.tax_code || '—'}</span>
                             </div>
-
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                              <div>
-                                <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', display: 'block', marginBottom: '2px' }}>Mã số thuế</span>
-                                <span style={{ fontSize: '0.9rem', fontWeight: 500 }}>{formData.tax_code || '—'}</span>
-                              </div>
-                              <div>
-                                <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', display: 'block', marginBottom: '2px' }}>Vốn điều lệ / Quy mô</span>
-                                <span style={{ fontSize: '0.9rem', fontWeight: 500 }}>{formData.scale_capital || '—'}</span>
-                              </div>
-                            </div>
-
                             <div>
-                              <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', display: 'block', marginBottom: '2px' }}>Website doanh nghiệp</span>
-                              {formData.website ? (
-                                <a href={formData.website.startsWith('http') ? formData.website : `https://${formData.website}`} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--color-primary)', fontWeight: 600, textDecoration: 'none', fontSize: '0.9rem' }} onClick={e => e.stopPropagation()}>
-                                  {formData.website}
-                                </a>
-                              ) : (
-                                <span style={{ fontSize: '0.9rem', color: 'var(--color-text-muted)' }}>—</span>
-                              )}
+                              <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', display: 'block', marginBottom: '2px' }}>Vốn điều lệ / Quy mô</span>
+                              <span style={{ fontSize: '0.875rem', color: 'var(--color-text)' }}>{formData.scale_capital || '—'}</span>
                             </div>
+                          </div>
 
+                          <div>
+                            <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', display: 'block', marginBottom: '2px' }}>Website</span>
+                            {formData.website ? (
+                              <a href={formData.website.startsWith('http') ? formData.website : `https://${formData.website}`} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--color-primary)', textDecoration: 'none', fontSize: '0.875rem', fontWeight: 600 }}>
+                                {formData.website} <ExternalLink size={12} style={{ display: 'inline', verticalAlign: 'middle' }} />
+                              </a>
+                            ) : (
+                              <span style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)' }}>—</span>
+                            )}
+                          </div>
+
+                          <div>
+                            <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', display: 'block', marginBottom: '2px' }}>Phân khúc BĐS tập trung</span>
+                            <span style={{ fontSize: '0.875rem', color: 'var(--color-text)' }}>{formData.focused_type || '—'}</span>
+                          </div>
+
+                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
                             <div>
-                              <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', display: 'block', marginBottom: '2px' }}>Phân khúc BĐS tập trung</span>
-                              <span style={{ fontSize: '0.9rem', fontWeight: 500 }}>{formData.focused_type || '—'}</span>
-                            </div>
-
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                              <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', display: 'block', marginBottom: '4px' }}>Phân hạng uy tín</span>
                               <div>
-                                <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', display: 'block', marginBottom: '2px' }}>Phân hạng uy tín</span>
-                                <div>
-                                  <span className="badge" style={{
-                                    background: formData.prestige_tier === 'A' ? 'rgba(16, 185, 129, 0.1)' : formData.prestige_tier === 'B' ? 'rgba(59, 130, 246, 0.1)' : 'rgba(107, 114, 128, 0.1)',
-                                    color: formData.prestige_tier === 'A' ? '#10b981' : formData.prestige_tier === 'B' ? '#3b82f6' : '#6b7280',
-                                    fontSize: '0.7rem',
-                                    padding: '2px 6px',
-                                    borderRadius: '4px',
-                                    fontWeight: 600
-                                  }}>
-                                    Hạng {formData.prestige_tier || 'A'}
-                                  </span>
-                                </div>
+                                <span className="badge sm" style={{ background: '#f3f4f6', color: '#4b5563' }}>Hạng {formData.prestige_tier || 'A'}</span>
                               </div>
+                            </div>
+                            <div>
+                              <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', display: 'block', marginBottom: '4px' }}>Trạng thái hợp tác</span>
                               <div>
-                                <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', display: 'block', marginBottom: '2px' }}>Trạng thái hợp tác</span>
-                                <div>
-                                  <span className="badge" style={{
-                                    background: formData.cooperation_status === 'active' ? 'rgba(16, 185, 129, 0.1)' : formData.cooperation_status === 'negotiating' ? 'rgba(245, 158, 11, 0.1)' : 'rgba(239, 68, 68, 0.1)',
-                                    color: formData.cooperation_status === 'active' ? '#10b981' : formData.cooperation_status === 'negotiating' ? '#f59e0b' : '#ef4444',
-                                    fontSize: '0.7rem',
-                                    padding: '2px 6px',
-                                    borderRadius: '4px',
-                                    fontWeight: 600
-                                  }}>
-                                    {formData.cooperation_status === 'active' ? 'Đang liên kết' : formData.cooperation_status === 'negotiating' ? 'Đang đàm phán' : 'Tạm ngưng'}
-                                  </span>
-                                </div>
+                                <span className={`badge sm ${formData.cooperation_status === 'active' ? 'success' : formData.cooperation_status === 'negotiating' ? 'warning' : 'danger'}`}>
+                                  {formData.cooperation_status === 'active' ? 'Đang liên kết' : formData.cooperation_status === 'negotiating' ? 'Đang đàm phán' : 'Tạm ngưng'}
+                                </span>
                               </div>
                             </div>
                           </div>
                         </div>
-
-                        {/* Right Column: Contact & Transaction Info */}
-                        <div>
-                          <h4 style={{ fontSize: '0.85rem', fontWeight: 800, textTransform: 'uppercase', color: 'var(--color-primary)', letterSpacing: '0.05em', marginBottom: '16px', paddingBottom: '6px', borderBottom: '1px solid var(--color-border-light)' }}>
-                            Thông tin liên hệ & Giao dịch
-                          </h4>
-
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                              <div>
-                                <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', display: 'block', marginBottom: '2px' }}>Người liên hệ</span>
-                                <span style={{ fontSize: '0.9rem', fontWeight: 600 }}>{formData.contact_name || '—'}</span>
-                              </div>
-                              <div>
-                                <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', display: 'block', marginBottom: '2px' }}>Chức vụ</span>
-                                <span style={{ fontSize: '0.9rem', fontWeight: 500 }}>{formData.contact_position || '—'}</span>
-                              </div>
-                            </div>
-
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                              <div>
-                                <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', display: 'block', marginBottom: '2px' }}>Số điện thoại</span>
-                                <span style={{ fontSize: '0.9rem', fontWeight: 500 }}>{formData.phone || '—'}</span>
-                              </div>
-                              <div>
-                                <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', display: 'block', marginBottom: '2px' }}>Email</span>
-                                <span style={{ fontSize: '0.9rem', fontWeight: 500 }}>{formData.email || '—'}</span>
-                              </div>
-                            </div>
-
-                            <div>
-                              <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', display: 'block', marginBottom: '2px' }}>Tài khoản ngân hàng giao dịch</span>
-                              <span style={{ fontSize: '0.9rem', fontWeight: 500 }}>{formData.bank_account || '—'}</span>
-                            </div>
-
-                            <div>
-                              <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', display: 'block', marginBottom: '2px' }}>Địa chỉ văn phòng</span>
-                              <span style={{ fontSize: '0.9rem', fontWeight: 500 }}>{formData.address || '—'}</span>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Full Width Bottom Area */}
-                      <div style={{ marginTop: '20px', borderTop: '1px solid var(--color-border-light)', paddingTop: '20px' }}>
-                        <div style={{ marginBottom: '16px' }}>
-                          <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', display: 'block', marginBottom: '4px' }}>Danh sách dự án tiêu biểu</span>
-                          <span style={{ fontSize: '0.9rem', fontWeight: 500 }}>{formData.typical_projects || '—'}</span>
-                        </div>
-
-                        <div>
-                          <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', display: 'block', marginBottom: '4px' }}>Ghi chú thêm</span>
-                          <div style={{ fontSize: '0.9rem', fontWeight: 500, whiteSpace: 'pre-wrap', background: 'rgba(0, 0, 0, 0.01)', padding: '10px', borderRadius: '8px', border: '1px solid var(--color-border-light)' }}>
-                            {formData.notes || 'Không có ghi chú thêm.'}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="modal-footer">
-                      <button type="button" className="btn secondary" onClick={() => setShowModal(false)}>Đóng</button>
-                      {!isSale && (
-                        <button type="button" className="btn primary" onClick={() => setIsReadOnly(false)}>Chỉnh sửa</button>
-                      )}
-                    </div>
-                  </>
-                ) : (
-                  <form onSubmit={handleSubmit}>
-                    <div className="modal-body" style={{ maxHeight: 'calc(100vh - 200px)', overflowY: 'auto' }}>
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', alignItems: 'start' }}>
-                        {/* Left Column: Enterprise Info */}
-                        <div>
-                          <h4 style={{ fontSize: '0.85rem', fontWeight: 800, textTransform: 'uppercase', color: 'var(--color-primary)', letterSpacing: '0.05em', marginBottom: '12px', paddingBottom: '6px', borderBottom: '1px solid var(--color-border-light)' }}>
-                            Thông tin doanh nghiệp
-                          </h4>
-                          
+                      ) : (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', textAlign: 'left' }}>
                           <div className="form-group">
                             <label className="form-label">Tên doanh nghiệp / Chủ đầu tư <span className="text-danger">*</span></label>
                             <input 
@@ -577,11 +640,10 @@ export const SuppliersPage: React.FC = () => {
                               required 
                               value={formData.name}
                               onChange={e => setFormData({...formData, name: e.target.value})}
-                              disabled={isReadOnly}
                             />
                           </div>
 
-                          <div className="grid grid-2">
+                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                             <div className="form-group">
                               <label className="form-label">Mã số thuế</label>
                               <input 
@@ -589,7 +651,6 @@ export const SuppliersPage: React.FC = () => {
                                 placeholder="MST doanh nghiệp"
                                 value={formData.tax_code || ''}
                                 onChange={e => setFormData({...formData, tax_code: e.target.value})}
-                                disabled={isReadOnly}
                               />
                             </div>
                             <div className="form-group">
@@ -599,7 +660,6 @@ export const SuppliersPage: React.FC = () => {
                                 placeholder="Ví dụ: 5.000 tỷ..."
                                 value={formData.scale_capital || ''}
                                 onChange={e => setFormData({...formData, scale_capital: e.target.value})}
-                                disabled={isReadOnly}
                               />
                             </div>
                           </div>
@@ -611,7 +671,6 @@ export const SuppliersPage: React.FC = () => {
                               placeholder="https://..."
                               value={formData.website || ''}
                               onChange={e => setFormData({...formData, website: e.target.value})}
-                              disabled={isReadOnly}
                             />
                           </div>
 
@@ -622,235 +681,392 @@ export const SuppliersPage: React.FC = () => {
                               placeholder="Ví dụ: Căn hộ cao cấp, Đất nền, Nghỉ dưỡng..."
                               value={formData.focused_type || ''}
                               onChange={e => setFormData({...formData, focused_type: e.target.value})}
-                              disabled={isReadOnly}
                             />
                           </div>
 
-                          <div className="grid grid-2">
+                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                             <div className="form-group">
                               <label className="form-label">Phân hạng uy tín</label>
                               <CustomSelect 
                                 options={PRESTIGE_OPTIONS}
                                 value={formData.prestige_tier || 'A'}
-                                onChange={val => setFormData({...formData, prestige_tier: val})}
-                                disabled={isReadOnly}
+                                  onChange={val => setFormData({...formData, prestige_tier: val})}
+                                />
+                              </div>
+                              <div className="form-group">
+                                <label className="form-label">Trạng thái hợp tác</label>
+                                <CustomSelect 
+                                  options={COOP_OPTIONS}
+                                  value={formData.cooperation_status || 'active'}
+                                  onChange={val => setFormData({...formData, cooperation_status: val})}
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Right Column: Contact Info & Transaction Details */}
+                      <div style={{ background: '#ffffff', border: '1px solid var(--color-border-light)', borderRadius: '10px', padding: '20px' }}>
+                        <h3 style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)', textTransform: 'uppercase', borderBottom: '1px solid var(--color-border-light)', paddingBottom: '10px', marginBottom: '16px', textAlign: 'left' }}>
+                          Thông tin liên hệ & Giao dịch
+                        </h3>
+
+                        {isReadOnly ? (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', textAlign: 'left' }}>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+                              <div>
+                                <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', display: 'block', marginBottom: '2px' }}>Người liên hệ</span>
+                                <span style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>{formData.contact_name || '—'}</span>
+                              </div>
+                              <div>
+                                <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', display: 'block', marginBottom: '2px' }}>Chức vụ</span>
+                                <span style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)' }}>{formData.contact_position || '—'}</span>
+                              </div>
+                            </div>
+
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+                              <div>
+                                <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', display: 'block', marginBottom: '2px' }}>Số điện thoại</span>
+                                <span style={{ fontSize: '0.875rem', color: 'var(--color-text)', fontWeight: 600 }}>{formData.phone || '—'}</span>
+                              </div>
+                              <div>
+                                <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', display: 'block', marginBottom: '2px' }}>Email</span>
+                                <span style={{ fontSize: '0.875rem', color: 'var(--color-text)' }}>{formData.email || '—'}</span>
+                              </div>
+                            </div>
+
+                            <div>
+                              <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', display: 'block', marginBottom: '2px' }}>Tài khoản ngân hàng giao dịch</span>
+                              <span style={{ fontSize: '0.875rem', color: 'var(--color-text)' }}>{formData.bank_account || '—'}</span>
+                            </div>
+
+                            <div>
+                              <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', display: 'block', marginBottom: '2px' }}>Địa chỉ văn phòng</span>
+                              <span style={{ fontSize: '0.875rem', color: 'var(--color-text)' }}>{formData.address || '—'}</span>
+                            </div>
+                          </div>
+                        ) : (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', textAlign: 'left' }}>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                              <div className="form-group">
+                                <label className="form-label">Người liên hệ</label>
+                                <input 
+                                  className="form-input" 
+                                  placeholder="Họ và tên"
+                                  value={formData.contact_name || ''}
+                                  onChange={e => setFormData({...formData, contact_name: e.target.value})}
+                                />
+                              </div>
+                              <div className="form-group">
+                                <label className="form-label">Chức vụ</label>
+                                <input 
+                                  className="form-input" 
+                                  placeholder="Ví dụ: GĐ Kinh doanh..."
+                                  value={formData.contact_position || ''}
+                                  onChange={e => setFormData({...formData, contact_position: e.target.value})}
+                                />
+                              </div>
+                            </div>
+
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                              <div className="form-group">
+                                <label className="form-label">Số điện thoại</label>
+                                <input 
+                                  className="form-input" 
+                                  placeholder="09xx..."
+                                  value={formData.phone || ''}
+                                  onChange={e => setFormData({...formData, phone: e.target.value})}
+                                />
+                              </div>
+                              <div className="form-group">
+                                <label className="form-label">Email</label>
+                                <input 
+                                  className="form-input" 
+                                  type="email"
+                                  placeholder="developer@email.com"
+                                  value={formData.email || ''}
+                                  onChange={e => setFormData({...formData, email: e.target.value})}
+                                />
+                              </div>
+                            </div>
+
+                            <div className="form-group">
+                              <label className="form-label">Tài khoản ngân hàng giao dịch</label>
+                              <input 
+                                className="form-input" 
+                                placeholder="Số TK - Tên NH - Chi nhánh..."
+                                value={formData.bank_account || ''}
+                                onChange={e => setFormData({...formData, bank_account: e.target.value})}
                               />
                             </div>
+
                             <div className="form-group">
-                              <label className="form-label">Trạng thái hợp tác</label>
-                              <CustomSelect 
-                                options={COOP_OPTIONS}
-                                value={formData.cooperation_status || 'active'}
-                                onChange={val => setFormData({...formData, cooperation_status: val})}
-                                disabled={isReadOnly}
+                              <AddressSelect
+                                label="Địa chỉ văn phòng"
+                                value={formData.address || ''}
+                                onChange={val => setFormData({...formData, address: val})}
+                                placeholder="Chọn địa chỉ văn phòng..."
                               />
                             </div>
                           </div>
-                        </div>
+                        )}
+                      </div>
+                    </div>
 
-                        {/* Right Column: Contact & Transaction Info */}
+                    {/* Bottom Section: Typical Projects & Notes */}
+                    <div style={{ background: '#ffffff', border: '1px solid var(--color-border-light)', borderRadius: '10px', padding: '20px', textAlign: 'left' }}>
+                      <h3 style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)', textTransform: 'uppercase', borderBottom: '1px solid var(--color-border-light)', paddingBottom: '10px', marginBottom: '16px' }}>
+                        Dự án tiêu biểu & Ghi chú
+                      </h3>
+
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                         <div>
-                          <h4 style={{ fontSize: '0.85rem', fontWeight: 800, textTransform: 'uppercase', color: 'var(--color-primary)', letterSpacing: '0.05em', marginBottom: '12px', paddingBottom: '6px', borderBottom: '1px solid var(--color-border-light)' }}>
-                            Thông tin liên hệ & Giao dịch
-                          </h4>
-
-                          <div className="grid grid-2">
-                            <div className="form-group">
-                              <label className="form-label">Người liên hệ</label>
-                              <input 
-                                className="form-input" 
-                                placeholder="Họ và tên"
-                                value={formData.contact_name || ''}
-                                onChange={e => setFormData({...formData, contact_name: e.target.value})}
-                                disabled={isReadOnly}
-                              />
+                          <label className="form-label" style={{ fontWeight: 600, color: 'var(--color-text-muted)', marginBottom: '6px', fontSize: '0.78rem' }}>Dự án tiêu biểu</label>
+                          
+                          {isReadOnly ? (
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                              {selectedProjects.length > 0 ? (
+                                selectedProjects.map((p, idx) => {
+                                  const pId = projectsList.find(proj => proj.name.trim().toLowerCase() === p.trim().toLowerCase())?.id;
+                                  return (
+                                    <span 
+                                      key={idx} 
+                                      onClick={() => {
+                                        if (pId) {
+                                          window.location.href = `/projects?project_id=${pId}`;
+                                        } else {
+                                          window.location.href = `/projects?search=${encodeURIComponent(p)}`;
+                                        }
+                                      }}
+                                      className="hover-lift"
+                                      style={{ 
+                                        background: 'rgba(163, 20, 34, 0.04)', 
+                                        color: 'var(--color-primary)', 
+                                        border: '1px solid rgba(163, 20, 34, 0.15)', 
+                                        padding: '4px 10px', 
+                                        borderRadius: '6px', 
+                                        fontSize: '0.8rem', 
+                                        fontWeight: 600,
+                                        cursor: 'pointer',
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        gap: '4px'
+                                      }}
+                                      title="Nhấp để xem chi tiết dự án"
+                                    >
+                                      {p} <ExternalLink size={11} />
+                                    </span>
+                                  );
+                                })
+                              ) : (
+                                <span style={{ fontSize: '0.875rem', color: 'var(--color-text-light)', fontStyle: 'italic' }}>Không có dự án tiêu biểu.</span>
+                              )}
                             </div>
-                            <div className="form-group">
-                              <label className="form-label">Chức vụ</label>
-                              <input 
-                                className="form-input" 
-                                placeholder="Ví dụ: GĐ Kinh doanh..."
-                                value={formData.contact_position || ''}
-                                onChange={e => setFormData({...formData, contact_position: e.target.value})}
-                                disabled={isReadOnly}
-                              />
-                            </div>
-                          </div>
+                          ) : (
+                            <div style={{ position: 'relative' }}>
+                              <div style={{
+                                display: 'flex',
+                                flexWrap: 'wrap',
+                                gap: '6px',
+                                minHeight: '38px',
+                                padding: '6px 12px',
+                                background: '#ffffff',
+                                border: '1px solid var(--color-border)',
+                                borderRadius: '8px',
+                                alignItems: 'center',
+                                cursor: 'text'
+                              }}
+                              onClick={() => setShowProjDropdown(true)}
+                              >
+                                {selectedProjects.map((p, idx) => (
+                                  <span 
+                                    key={idx} 
+                                    style={{ 
+                                      display: 'inline-flex', 
+                                      alignItems: 'center', 
+                                      gap: '4px', 
+                                      background: 'rgba(163, 20, 34, 0.05)', 
+                                      color: 'var(--color-primary)', 
+                                      border: '1px solid rgba(163, 20, 34, 0.12)', 
+                                      padding: '2px 8px', 
+                                      borderRadius: '6px', 
+                                      fontSize: '0.78rem', 
+                                      fontWeight: 700 
+                                    }}
+                                  >
+                                    {p}
+                                    <X 
+                                      size={12} 
+                                      style={{ cursor: 'pointer', opacity: 0.7 }} 
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleRemoveProject(p);
+                                      }} 
+                                    />
+                                  </span>
+                                ))}
+                                
+                                <input
+                                  type="text"
+                                  value={projSearch}
+                                  onChange={(e) => {
+                                    setProjSearch(e.target.value);
+                                    setShowProjDropdown(true);
+                                  }}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter') {
+                                      e.preventDefault();
+                                      if (projSearch.trim()) {
+                                        handleAddProject(projSearch);
+                                      }
+                                    }
+                                  }}
+                                  placeholder={selectedProjects.length === 0 ? "Chọn dự án hoặc tự nhập tay..." : ""}
+                                  style={{
+                                    border: 'none',
+                                    outline: 'none',
+                                    background: 'transparent',
+                                    flex: 1,
+                                    minWidth: '120px',
+                                    fontSize: '0.825rem',
+                                    color: 'var(--color-text)',
+                                    padding: 0
+                                  }}
+                                />
+                              </div>
 
-                          <div className="grid grid-2">
-                            <div className="form-group">
-                              <label className="form-label">Số điện thoại</label>
-                              <input 
-                                className="form-input" 
-                                placeholder="09xx..."
-                                value={formData.phone || ''}
-                                onChange={e => setFormData({...formData, phone: e.target.value})}
-                                disabled={isReadOnly}
-                              />
-                            </div>
-                            <div className="form-group">
-                              <label className="form-label">Email</label>
-                              <input 
-                                className="form-input" 
-                                type="email"
-                                placeholder="developer@email.com"
-                                value={formData.email || ''}
-                                onChange={e => setFormData({...formData, email: e.target.value})}
-                                disabled={isReadOnly}
-                              />
-                            </div>
-                          </div>
+                              {showProjDropdown && projSearch.trim() === '' && (
+                                <>
+                                  <div style={{ position: 'fixed', inset: 0, zIndex: 12000 }} onClick={() => setShowProjDropdown(false)} />
+                                  <div style={{
+                                    position: 'absolute',
+                                    top: '100%',
+                                    left: 0,
+                                    right: 0,
+                                    background: '#ffffff',
+                                    border: '1px solid var(--color-border)',
+                                    borderRadius: '8px',
+                                    boxShadow: 'var(--shadow-lg)',
+                                    zIndex: 12001,
+                                    maxHeight: '200px',
+                                    overflowY: 'auto',
+                                    marginTop: '4px'
+                                  }}>
+                                    {projectsList
+                                      .filter(proj => !selectedProjects.includes(proj.name))
+                                      .map((proj) => (
+                                        <div
+                                          key={proj.id}
+                                          onClick={() => handleAddProject(proj.name)}
+                                          style={{
+                                            padding: '8px 12px',
+                                            fontSize: '0.8rem',
+                                            cursor: 'pointer',
+                                            fontWeight: 550,
+                                            color: 'var(--color-text)',
+                                            textAlign: 'left'
+                                          }}
+                                          onMouseEnter={e => e.currentTarget.style.background = 'var(--color-bg-light)'}
+                                          onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                                        >
+                                          {proj.name}
+                                        </div>
+                                      ))}
+                                    {projectsList.filter(proj => !selectedProjects.includes(proj.name)).length === 0 && (
+                                      <div style={{ padding: '8px 12px', fontSize: '0.78rem', color: 'var(--color-text-light)', fontStyle: 'italic' }}>
+                                        Gõ để tạo dự án mới...
+                                      </div>
+                                    )}
+                                  </div>
+                                </>
+                              )}
 
-                          <div className="form-group">
-                            <label className="form-label">Tài khoản ngân hàng giao dịch</label>
-                            <input 
-                              className="form-input" 
-                              placeholder="Số TK - Tên NH - Chi nhánh..."
-                              value={formData.bank_account || ''}
-                              onChange={e => setFormData({...formData, bank_account: e.target.value})}
-                              disabled={isReadOnly}
-                            />
-                          </div>
-
-                          <div className="form-group">
-                            <AddressSelect
-                              label="Địa chỉ văn phòng"
-                              value={formData.address || ''}
-                              onChange={val => setFormData({...formData, address: val})}
-                              placeholder="Chọn địa chỉ văn phòng..."
-                              disabled={isReadOnly}
-                            />
-                          </div>
+                              {showProjDropdown && projSearch.trim() !== '' && (
+                                <>
+                                  <div style={{ position: 'fixed', inset: 0, zIndex: 12000 }} onClick={() => setShowProjDropdown(false)} />
+                                  <div style={{
+                                    position: 'absolute',
+                                    top: '100%',
+                                    left: 0,
+                                    right: 0,
+                                    background: '#ffffff',
+                                    border: '1px solid var(--color-border)',
+                                    borderRadius: '8px',
+                                    boxShadow: 'var(--shadow-lg)',
+                                    zIndex: 12001,
+                                    maxHeight: '200px',
+                                    overflowY: 'auto',
+                                    marginTop: '4px'
+                                  }}>
+                                    {projectsList
+                                      .filter(proj => proj.name.toLowerCase().includes(projSearch.toLowerCase()) && !selectedProjects.includes(proj.name))
+                                      .map((proj) => (
+                                        <div
+                                          key={proj.id}
+                                          onClick={() => handleAddProject(proj.name)}
+                                          style={{
+                                            padding: '8px 12px',
+                                            fontSize: '0.8rem',
+                                            cursor: 'pointer',
+                                            fontWeight: 550,
+                                            color: 'var(--color-text)',
+                                            textAlign: 'left'
+                                          }}
+                                          onMouseEnter={e => e.currentTarget.style.background = 'var(--color-bg-light)'}
+                                          onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                                        >
+                                          {proj.name}
+                                        </div>
+                                      ))}
+                                    <div
+                                      onClick={() => handleAddProject(projSearch)}
+                                      style={{
+                                        padding: '8px 12px',
+                                        fontSize: '0.8rem',
+                                        cursor: 'pointer',
+                                        fontWeight: 650,
+                                        color: 'var(--color-primary)',
+                                        borderTop: '1px solid var(--color-border-light)',
+                                        textAlign: 'left'
+                                      }}
+                                      onMouseEnter={e => e.currentTarget.style.background = 'rgba(163, 20, 34, 0.04)'}
+                                      onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                                    >
+                                      + Tạo dự án mới: "{projSearch}"
+                                    </div>
+                                  </div>
+                                </>
+                              )}
+                            </div>
+                          )}
                         </div>
-                      </div>
 
-                      {/* Full Width Bottom Area */}
-                      <div style={{ marginTop: '20px', borderTop: '1px solid var(--color-border-light)', paddingTop: '20px' }}>
-                        <div className="form-group">
-                          <label className="form-label">Danh sách dự án tiêu biểu</label>
-                          <input 
-                            className="form-input" 
-                            placeholder="Ví dụ: Vinhomes Grand Park, Masteri Centre Point..."
-                            value={formData.typical_projects || ''}
-                            onChange={e => setFormData({...formData, typical_projects: e.target.value})}
-                            disabled={isReadOnly}
-                          />
-                        </div>
-
-                        <div className="form-group">
-                          <label className="form-label">Ghi chú thêm</label>
-                          <textarea 
-                            className="form-textarea" 
-                            placeholder="Thông tin thêm về chủ đầu tư..."
-                            value={formData.notes || ''}
-                            onChange={e => setFormData({...formData, notes: e.target.value})}
-                            rows={3}
-                            disabled={isReadOnly}
-                          />
+                        <div>
+                          <label className="form-label" style={{ fontWeight: 600, color: 'var(--color-text-muted)', marginBottom: '6px', fontSize: '0.78rem' }}>Ghi chú thêm</label>
+                          {isReadOnly ? (
+                            <div style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', whiteSpace: 'pre-wrap', background: '#f9fafb', padding: '12px', borderRadius: '8px', border: '1px solid var(--color-border-light)' }}>
+                              {formData.notes || 'Không có ghi chú thêm.'}
+                            </div>
+                          ) : (
+                            <textarea 
+                              className="form-textarea" 
+                              placeholder="Thông tin thêm về chủ đầu tư..."
+                              value={formData.notes || ''}
+                              onChange={e => setFormData({...formData, notes: e.target.value})}
+                              rows={4}
+                            />
+                          )}
                         </div>
                       </div>
                     </div>
 
-                    <div className="modal-footer">
-                      <button type="button" className="btn secondary" onClick={() => setShowModal(false)}>Hủy bỏ</button>
-                      <button type="submit" className="btn primary" disabled={isSaving}>
-                        {isSaving ? 'Đang lưu...' : (selectedSupplier ? 'Lưu thay đổi' : 'Tạo chủ đầu tư')}
-                      </button>
-                    </div>
-                  </form>
-                )}
-              </motion.div>
-            </div>
-          )}
-        </AnimatePresence>
-      , document.body)}
-
-      {typeof document !== 'undefined' && createPortal(
-        <AnimatePresence>
-          {showFilterModal && (
-            <div 
-              className="overlay-backdrop" 
-              onClick={() => setShowFilterModal(false)} 
-              style={{ 
-                zIndex: 11000, 
-                display: 'flex', 
-                alignItems: 'center', 
-                justifyContent: 'center',
-                position: 'fixed',
-                inset: 0,
-                padding: '20px',
-                background: 'rgba(0, 0, 0, 0.42)',
-                backdropFilter: 'blur(4px)'
-              }}
-            >
-              <motion.div 
-                className="modal-sheet shadow-2xl"
-                style={{ maxWidth: '420px', width: '100%', borderRadius: '16px', overflow: 'hidden', background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}
-                initial={{ opacity: 0, scale: 0.95, y: 15 }}
-                animate={{ opacity: 1, scale: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.95, y: 15 }}
-                onClick={e => e.stopPropagation()}
-              >
-                <div className="modal-header" style={{ padding: '16px 20px', borderBottom: '1px solid var(--color-border-light)' }}>
-                  <h3 style={{ fontSize: '1.05rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--color-text)' }}><Filter size={18} /> Bộ lọc nâng cao</h3>
-                  <button className="btn-icon sm" onClick={() => setShowFilterModal(false)}><X size={18} /></button>
-                </div>
-
-                <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '16px', padding: '20px' }}>
-                  <div className="form-group" style={{ margin: 0 }}>
-                    <label className="form-label" style={{ fontWeight: 600, marginBottom: '6px', fontSize: '0.8rem', color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>Phân hạng uy tín</label>
-                    <CustomSelect 
-                      options={[
-                        { value: '', label: 'Tất cả phân hạng' },
-                        ...PRESTIGE_OPTIONS
-                      ]}
-                      value={draftFilters.prestige_tier}
-                      onChange={val => setDraftFilters({ ...draftFilters, prestige_tier: val })}
-                    />
-                  </div>
-
-                  <div className="form-group" style={{ margin: 0 }}>
-                    <label className="form-label" style={{ fontWeight: 600, marginBottom: '6px', fontSize: '0.8rem', color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>Trạng thái hợp tác</label>
-                    <CustomSelect 
-                      options={[
-                        { value: '', label: 'Tất cả trạng thái' },
-                        ...COOP_OPTIONS
-                      ]}
-                      value={draftFilters.cooperation_status}
-                      onChange={val => setDraftFilters({ ...draftFilters, cooperation_status: val })}
-                    />
                   </div>
                 </div>
-
-                <div className="modal-footer" style={{ background: 'var(--color-bg-light)', display: 'flex', justifyContent: 'space-between', gap: '12px', padding: '12px 20px', borderTop: '1px solid var(--color-border-light)' }}>
-                  <button 
-                    type="button" 
-                    className="btn secondary" 
-                    onClick={() => {
-                      setFilters({ prestige_tier: '', cooperation_status: '' });
-                      setShowFilterModal(false);
-                    }}
-                    style={{ flex: 1, height: '38px', borderRadius: '10px' }}
-                  >
-                    Thiết lập lại
-                  </button>
-                  <button 
-                    type="button" 
-                    className="btn primary" 
-                    onClick={() => {
-                      setFilters(draftFilters);
-                      setShowFilterModal(false);
-                    }}
-                    style={{ flex: 1, height: '38px', borderRadius: '10px' }}
-                  >
-                    Áp dụng
-                  </button>
-                </div>
-              </motion.div>
-            </div>
-          )}
-        </AnimatePresence>
-      , document.body)}
+              </>
+            )}
+          </AnimatePresence>
+        , document.body)}
     </div>
   );
 };
