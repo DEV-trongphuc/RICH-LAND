@@ -384,7 +384,7 @@ export const DealsPage: React.FC = () => {
     fetchProjects();
     fetchCampaigns();
     fetchSources();
-    fetchStages().then(() => fetchData());
+    fetchStages();
   }, [pipelineView, teams]);
 
   useEffect(() => {
