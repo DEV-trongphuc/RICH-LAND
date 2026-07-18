@@ -225,118 +225,126 @@ export const CompaniesPage: React.FC = () => {
 
       {/* Card View */}
       {!loading && viewMode === 'card' && (
-        <div className="grid-cards-responsive" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(360px, 1fr))' }}>
+        <div className="grid-cards-responsive" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(390px, 1fr))' }}>
           <AnimatePresence>
-            {companies.map(co => (
-              <motion.div
-                key={co.id}
-                className="card card-hover"
-                style={{
-                  padding: '1.25rem',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  borderRadius: '16px',
-                  background: 'var(--color-surface)',
-                  border: '1px solid var(--color-border-light)',
-                  boxShadow: 'var(--shadow-sm)',
-                  cursor: 'pointer'
-                }}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.95 }}
-                onClick={() => openEdit(co)}
-              >
-                <div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.75rem' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: 0, flex: 1 }}>
-                      <Avatar name={co.name} src={co.logo_url} size={42} />
-                      <div style={{ minWidth: 0, flex: 1 }}>
-                        <h3 style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--color-text)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={co.name}>
-                          {co.name}
-                        </h3>
-                        <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', marginTop: '4px' }}>
-                          <span className="badge sm" style={{ background: '#f3f4f6', color: '#6b7280', fontSize: '0.65rem', padding: '2px 6px' }}>
-                            {co.industry || 'Chưa xác định'}
-                          </span>
+            {companies.map(co => {
+              // Debug representative data in console
+              console.log('Company Card Render:', { id: co.id, name: co.name, rep_id: co.dedicated_rep_id, rep_name: co.rep_name, rep_avatar: co.rep_avatar });
+              
+              return (
+                <motion.div
+                  key={co.id}
+                  className="card card-hover"
+                  style={{
+                    padding: '1.25rem',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    borderRadius: '16px',
+                    background: 'var(--color-surface)',
+                    border: '1px solid var(--color-border-light)',
+                    boxShadow: 'var(--shadow-sm)',
+                    cursor: 'pointer'
+                  }}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
+                  onClick={() => openEdit(co)}
+                >
+                  <div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.75rem' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: 0, flex: 1 }}>
+                        <Avatar name={co.name} src={co.logo_url} size={42} />
+                        <div style={{ minWidth: 0, flex: 1 }}>
+                          <h3 style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--color-text)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={co.name}>
+                            {co.name}
+                          </h3>
+                          <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginTop: '4px' }}>
+                            <span className="badge sm" style={{ background: '#f3f4f6', color: '#6b7280', fontSize: '0.65rem', padding: '2px 6px' }}>
+                              {co.industry || 'Chưa xác định'}
+                            </span>
+                            {co.sla_level && (
+                              <span className="badge sm" style={{
+                                background: co.sla_level === 'platinum' ? 'rgba(168, 85, 247, 0.15)' : co.sla_level === 'gold' ? 'rgba(234, 179, 8, 0.15)' : 'rgba(107, 114, 128, 0.15)',
+                                color: co.sla_level === 'platinum' ? '#a855f7' : co.sla_level === 'gold' ? '#eab308' : '#6b7280',
+                                fontSize: '0.65rem',
+                                padding: '2px 6px',
+                                fontWeight: 700
+                              }}>
+                                SLA: {co.sla_level.toUpperCase()}
+                              </span>
+                            )}
+                          </div>
                         </div>
                       </div>
-                    </div>
-                    {!isSale && (
-                      <div style={{ display: 'flex', gap: '4px', marginLeft: '8px', flexShrink: 0 }} onClick={e => e.stopPropagation()}>
-                        <button className="btn ghost sm" onClick={() => openEdit(co)} style={{ padding: '4px', borderRadius: '4px', width: '24px', height: '24px' }}><Pencil size={12} /></button>
-                        <button className="btn ghost sm text-danger" style={{ color: 'var(--color-danger)', padding: '4px', borderRadius: '4px', width: '24px', height: '24px' }} onClick={() => confirmDelete(co)}><Trash2 size={12} /></button>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Details Grid */}
-                  {(co.phone || co.email || co.website || co.city) && (
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '4px', padding: '0.5rem 0 0.5rem 0', borderTop: '1px solid var(--color-border-light)' }}>
-                      <div style={{
-                        background: 'rgba(0, 0, 0, 0.02)',
-                        border: '1px solid var(--color-border-light)',
-                        borderRadius: '8px',
-                        padding: '8px',
-                        marginTop: '4px',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: '6px'
-                      }}>
-                        {co.phone && (
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.72rem', color: 'var(--color-text-muted)' }}>
-                            <Phone size={11} style={{ opacity: 0.6 }} />
-                            <span>{co.phone}</span>
-                          </div>
-                        )}
-                        {co.email && (
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.72rem', color: 'var(--color-text-muted)', minWidth: 0 }}>
-                            <Mail size={11} style={{ opacity: 0.6 }} />
-                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={co.email}>{co.email}</span>
-                          </div>
-                        )}
-                        {co.website && (
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.72rem', color: 'var(--color-text-muted)', minWidth: 0 }}>
-                            <Globe size={11} style={{ opacity: 0.6 }} />
-                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={co.website}>{co.website}</span>
-                          </div>
-                        )}
-                        {co.city && (
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.72rem', color: 'var(--color-text-muted)', minWidth: 0 }}>
-                            <MapPin size={11} style={{ opacity: 0.6 }} />
-                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{co.city}</span>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Metadata Footer */}
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--color-border-light)', paddingTop: '0.5rem', marginTop: '0.25rem' }}>
-                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                      <span style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.65rem', color: 'var(--color-text-muted)' }} title="Người liên hệ">
-                        <Users size={11} />
-                        {co.contact_count || 0}
-                      </span>
-                      <span style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.65rem', color: 'var(--color-text-muted)' }} title="Quy mô">
-                        <Briefcase size={11} />
-                        {co.size || '1-10'} nv
-                      </span>
-                      {co.stage_name && (
-                        <span className="badge sm" style={{ background: (co.stage_color || '#BD1D2D') + '15', color: co.stage_color || '#BD1D2D', fontSize: '0.6rem', padding: '1px 4px' }}>
-                          {co.stage_name}
-                        </span>
+                      {!isSale && (
+                        <div style={{ display: 'flex', gap: '4px', marginLeft: '8px', flexShrink: 0 }} onClick={e => e.stopPropagation()}>
+                          <button className="btn ghost sm" onClick={() => openEdit(co)} style={{ padding: '4px', borderRadius: '4px', width: '24px', height: '24px' }}><Pencil size={12} /></button>
+                          <button className="btn ghost sm text-danger" style={{ color: 'var(--color-danger)', padding: '4px', borderRadius: '4px', width: '24px', height: '24px' }} onClick={() => confirmDelete(co)}><Trash2 size={12} /></button>
+                        </div>
                       )}
                     </div>
-                    {co.dedicated_rep_id && (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }} title={`Chuyên viên chăm sóc: ${co.rep_name || 'Chưa rõ'}`}>
-                        <span style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)' }}>Chuyên viên:</span>
-                        <Avatar name={co.rep_name || 'CV'} src={co.rep_avatar} size={22} />
+
+                    {/* Details Grid */}
+                    <div style={{
+                      display: 'grid',
+                      gridTemplateColumns: 'repeat(2, 1fr)',
+                      gap: '8px 12px',
+                      padding: '0.75rem 0',
+                      borderTop: '1px solid var(--color-border-light)',
+                      marginTop: '0.5rem',
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.75rem', color: 'var(--color-text-muted)', minWidth: 0 }}>
+                        <Phone size={12} style={{ opacity: 0.6, flexShrink: 0 }} />
+                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{co.phone || 'Chưa có SĐT'}</span>
                       </div>
-                    )}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.75rem', color: 'var(--color-text-muted)', minWidth: 0 }}>
+                        <Mail size={12} style={{ opacity: 0.6, flexShrink: 0 }} />
+                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={co.email}>{co.email || 'Chưa có Email'}</span>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.75rem', color: 'var(--color-text-muted)', minWidth: 0 }}>
+                        <Globe size={12} style={{ opacity: 0.6, flexShrink: 0 }} />
+                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={co.website}>{co.website || 'Chưa có Website'}</span>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.75rem', color: 'var(--color-text-muted)', minWidth: 0 }}>
+                        <MapPin size={12} style={{ opacity: 0.6, flexShrink: 0 }} />
+                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={co.address || co.city}>{co.address || co.city || 'Chưa có địa chỉ'}</span>
+                      </div>
+                      {co.tax_id && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.75rem', color: 'var(--color-text-muted)', minWidth: 0, gridColumn: 'span 2' }}>
+                          <span style={{ fontWeight: 600, fontSize: '0.7rem', background: 'rgba(0, 0, 0, 0.05)', padding: '2px 6px', borderRadius: '4px', flexShrink: 0 }}>MST</span>
+                          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{co.tax_id}</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Metadata Footer */}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--color-border-light)', paddingTop: '0.5rem', marginTop: '0.25rem' }}>
+                      <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                        <span style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.65rem', color: 'var(--color-text-muted)' }} title="Người liên hệ">
+                          <Users size={11} />
+                          {co.contact_count || 0}
+                        </span>
+                        <span style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.65rem', color: 'var(--color-text-muted)' }} title="Quy mô">
+                          <Briefcase size={11} />
+                          {co.size || '1-10'} nv
+                        </span>
+                        {co.stage_name && (
+                          <span className="badge sm" style={{ background: (co.stage_color || '#BD1D2D') + '15', color: co.stage_color || '#BD1D2D', fontSize: '0.6rem', padding: '1px 4px' }}>
+                            {co.stage_name}
+                          </span>
+                        )}
+                      </div>
+                      {co.dedicated_rep_id && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }} title={`Chuyên viên chăm sóc: ${co.rep_name || 'Chưa rõ'}`}>
+                          <span style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)' }}>Chuyên viên:</span>
+                          <Avatar name={co.rep_name || 'CV'} src={co.rep_avatar} size={22} />
+                        </div>
+                      )}
+                    </div>
                   </div>
-                </div>
-              </motion.div>
-            ))}
+                </motion.div>
+              );
+            })}
           </AnimatePresence>
           {total === 0 && (
             <div className="empty-state" style={{ gridColumn: '1/-1' }}>

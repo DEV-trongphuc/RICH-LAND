@@ -121,12 +121,15 @@ class CompanyController {
     public function show(array $auth, int $id): void {
         $sql = "
             SELECT c.*, u.full_name as owner_name, ps.name as stage_name, ps.color as stage_color,
+                   rep.full_name as rep_name, rep.avatar_url as rep_avatar,
                    COUNT(DISTINCT ct.id) as contact_count
             FROM companies c 
             LEFT JOIN users u ON c.owner_id=u.id
+            LEFT JOIN users rep ON c.dedicated_rep_id=rep.id
             LEFT JOIN pipeline_stages ps ON c.stage_id=ps.id
             LEFT JOIN contacts ct ON ct.company_id=c.id AND ct.deleted_at IS NULL
-            WHERE c.id=? AND c.tenant_id=? AND c.deleted_at IS NULL";
+            WHERE c.id=? AND c.tenant_id=? AND c.deleted_at IS NULL
+            GROUP BY c.id, u.id, rep.id, ps.id";
         
         $p = [$id, $auth['tenant_id']];
         $isSale = in_array($auth['role'], ['sale', 'sales'], true);
