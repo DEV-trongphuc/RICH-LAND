@@ -3583,18 +3583,22 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
 
                         <button 
                           onClick={() => handleAcceptLead(lead.lead_id)} 
+                          disabled={isOverdue}
                           className="btn primary sm hover-lift"
                           style={{
                             height: '32px',
                             borderRadius: '8px',
                             fontWeight: 700,
                             padding: '0 14px',
-                            background: 'var(--color-primary)',
-                            color: '#fff',
-                            fontSize: '0.8rem'
+                            background: isOverdue ? '#cbd5e1' : 'var(--color-primary)',
+                            color: isOverdue ? '#64748b' : '#fff',
+                            fontSize: '0.8rem',
+                            cursor: isOverdue ? 'not-allowed' : 'pointer',
+                            pointerEvents: isOverdue ? 'none' : 'auto',
+                            border: 'none'
                           }}
                         >
-                          {t('Tiếp nhận')}
+                          {isOverdue ? t('Quá hạn') : t('Tiếp nhận')}
                         </button>
                       </div>
                     </div>

@@ -4219,7 +4219,17 @@ switch ($action) {
             $conn->begin_transaction();
 
             // Lock the lead row for update to prevent race conditions with recall cron
-            $stmtChk = $conn->prepare("SELECT assigned_to, is_accepted FROM leads WHERE id = ? FOR UPDATE");
+            $stmtChk = $conn->prepare("
+                SELECT l.assigned_to, l.is_accepted, l.last_interaction_date,
+                       COALESCE(
+                           (SELECT NULLIF(lead_recall_minutes, 0) FROM sync_connections WHERE id = l.connection_id),
+                           (SELECT CAST(setting_value AS UNSIGNED) FROM system_settings WHERE setting_key = 'lead_response_timeout_minutes' LIMIT 1),
+                           2
+                       ) as lead_recall_minutes
+                FROM leads l 
+                WHERE l.id = ? 
+                FOR UPDATE
+            ");
             $stmtChk->bind_param("i", $lead_id);
             $stmtChk->execute();
             $resChk = $stmtChk->get_result()->fetch_assoc();
@@ -4234,6 +4244,15 @@ switch ($action) {
             if ((int)$resChk['is_accepted'] === 1) {
                 $conn->rollback();
                 echo json_encode(['success' => false, 'message' => 'Lead này đã được tiếp nhận trước đó']);
+                break;
+            }
+
+            // Verify timeout limit
+            $lastInteraction = strtotime($resChk['last_interaction_date']);
+            $timeoutMinutes = (int) $resChk['lead_recall_minutes'];
+            if ($timeoutMinutes > 0 && (time() - $lastInteraction) > $timeoutMinutes * 60) {
+                $conn->rollback();
+                echo json_encode(['success' => false, 'message' => 'Khách hàng này đã bị thu hồi hoặc chuyển cho người khác do quá hạn tiếp nhận']);
                 break;
             }
 
