@@ -174,9 +174,9 @@ const SettingsInner = () => {
     {
       title: t('Dữ liệu & Vòng đời'),
       items: [
+        { value: 'pipeline_stages', label: t('Vòng đời & Trạng thái'), icon: <Layers size={15} /> },
         { value: 'duplicate_filter', label: t('Nhận diện & Lọc trùng'), icon: <Search size={15} /> },
         { value: 'blacklist', label: t('Danh sách đen & Loại trừ'), icon: <Shield size={15} /> },
-        { value: 'pipeline_stages', label: t('Vòng đời & Trạng thái'), icon: <Layers size={15} /> },
         { value: 'tag_management', label: t('Quản lý Thẻ (Tags)'), icon: <Tag size={15} /> },
         { value: 'legacy_mapping', label: t('Ánh xạ dữ liệu cũ'), icon: <FileSpreadsheet size={15} /> }
       ]
