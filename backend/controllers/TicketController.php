@@ -18,6 +18,7 @@ class TicketController {
         $status = $_GET['status'] ?? '';
         $search = $_GET['search'] ?? '';
         $contactId = $_GET['contact_id'] ?? '';
+        $unresolved = isset($_GET['unresolved']) && $_GET['unresolved'] == 1;
         
         $where = ['t.tenant_id=?'];
         $params = [$tid];
@@ -74,7 +75,9 @@ class TicketController {
             $params[] = $auth['user_id'];
         }
 
-        if ($status && $status !== 'all') {
+        if ($unresolved) {
+            $where[] = "t.status IN ('open', 'in_progress', 'waiting')";
+        } elseif ($status && $status !== 'all') {
             $where[] = 't.status=?';
             $params[] = $status;
         }
@@ -255,6 +258,24 @@ class TicketController {
             !empty($validUsers) ? json_encode($validUsers) : null
         ]);
         $id = $this->db->lastInsertId();
+
+        // Send notifications to all admins & directors
+        try {
+            $stmtAdmins = $this->db->prepare("SELECT id FROM users WHERE role IN ('admin', 'superadmin', 'super_admin', 'director') AND id != ?");
+            $stmtAdmins->execute([$auth['user_id']]);
+            $adminIds = $stmtAdmins->fetchAll(PDO::FETCH_COLUMN) ?: [];
+            
+            $stmtNotif = $this->db->prepare("INSERT INTO notifications (user_id, tenant_id, title, body, type, link) VALUES (?, ?, ?, ?, 'ticket_assignment', ?)");
+            foreach ($adminIds as $adminId) {
+                $stmtNotif->execute([
+                    $adminId,
+                    $auth['tenant_id'],
+                    "Yêu cầu hỗ trợ mới (Ticket #" . $id . ")",
+                    "Có yêu cầu hỗ trợ mới từ " . $auth['full_name'] . ": " . $data['subject'],
+                    "/support-tickets"
+                ]);
+            }
+        } catch (Exception $e) {}
 
         // Email notifications for Assignee & Related Users
         require_once __DIR__ . '/../mailer.php';

@@ -911,6 +911,11 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
   }, [hasChanges, onClose, showConfirm, handleSave]);
   const [showCallLogger, setShowCallLogger] = useState(false);
   const [showActivityModal, setShowActivityModal] = useState(false);
+  const [meetingToComplete, setMeetingToComplete] = useState<any | null>(null);
+  const [proofImageFile, setProofImageFile] = useState<File | null>(null);
+  const [proofImagePreview, setProofImagePreview] = useState<string | null>(null);
+  const [proofCommentText, setProofCommentText] = useState('Ảnh minh chứng hoàn thành gặp gỡ');
+  const [completingMeeting, setCompletingMeeting] = useState(false);
   const [showNoteModal, setShowNoteModal] = useState(false);
   const [editingNote, setEditingNote] = useState<any>(null);
   const [editingActivity, setEditingActivity] = useState<any>(null);
@@ -2807,6 +2812,33 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
         }
       }
     });
+  };
+
+  const handleCompleteMeeting = async (ev: any) => {
+    try {
+      const res = await api.get(`/activities/${ev.id}/comments`);
+      const commentsList = res.data.data || [];
+      const hasImage = commentsList.some((c: any) => {
+        const atts = Array.isArray(c.attachments) ? c.attachments : JSON.parse(c.attachments || '[]');
+        return atts.some((att: string) => /\.(jpg|jpeg|png|gif|webp)$/i.test(att));
+      });
+
+      if (hasImage) {
+        await api.put(`/activities/${ev.id}`, { status: 'done' });
+        addToast('Đã hoàn thành gặp gỡ', 'success');
+        confetti({ particleCount: 80, spread: 60, origin: { y: 0.8 } });
+        setDrawerActivities(prev => prev.map(a => a.id === ev.id ? { ...a, status: 'done' } : a));
+        setTasks(prev => prev.map(a => a.id === ev.id ? { ...a, status: 'done', done: true } : a));
+      } else {
+        setMeetingToComplete(ev);
+        setProofCommentText('Ảnh minh chứng hoàn thành gặp gỡ');
+        setProofImageFile(null);
+        setProofImagePreview(null);
+      }
+    } catch (e: any) {
+      console.error(e);
+      addToast('Lỗi khi kiểm tra bình luận gặp gỡ', 'error');
+    }
   };
 
   const toggleTaskDone = async (taskId: number, currentDone: boolean) => {
@@ -5881,6 +5913,32 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                   <h4 style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--color-text)', marginBottom: '0.25rem' }}>{ev.title}</h4>
                                   <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
                                     <span style={{ fontSize: '0.75rem', fontWeight: 600, color: ev.color, background: `${ev.color}15`, padding: '2px 8px', borderRadius: 'var(--radius-full)' }}>{ev.type.toUpperCase()}</span>
+                                    {ev.type === 'meeting' && ev.status === 'planned' && (
+                                      <button
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleCompleteMeeting(ev);
+                                        }}
+                                        className="btn sm"
+                                        style={{
+                                          backgroundColor: '#10b981',
+                                          color: 'white',
+                                          border: 'none',
+                                          borderRadius: '4px',
+                                          padding: '2px 8px',
+                                          fontSize: '0.72rem',
+                                          fontWeight: 600,
+                                          display: 'flex',
+                                          alignItems: 'center',
+                                          gap: '4px',
+                                          cursor: 'pointer',
+                                          marginLeft: '6px',
+                                          height: '22px'
+                                        }}
+                                      >
+                                        <Check size={10} /> Hoàn thành
+                                      </button>
+                                    )}
                                     <span style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: '6px' }}>
                                       Thực hiện bởi <Avatar name={ev.user} size="sm" /> <strong>{ev.user}</strong>
                                     </span>
@@ -7889,6 +7947,149 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
         userId={contact?.owner_id || currentUser?.id}
         activity={editingActivity}
       />
+
+      {/* PROOF UPLOAD MODAL FOR MEETING COMPLETION */}
+      <AnimatePresence>
+        {meetingToComplete && (
+          <div className="overlay-backdrop" style={{ zIndex: 12000, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => setMeetingToComplete(null)}>
+            <motion.div 
+              className="modal-sheet" 
+              style={{ width: '100%', maxWidth: 500, padding: '1.5rem', borderRadius: '16px', overflow: 'hidden', background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}
+              initial={{ opacity: 0, y: 20, scale: 0.95 }} 
+              animate={{ opacity: 1, y: 0, scale: 1 }} 
+              exit={{ opacity: 0, y: 20, scale: 0.95 }}
+              onClick={e => e.stopPropagation()}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+                <h3 style={{ fontWeight: 700, fontSize: '1.25rem', color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Camera style={{ color: '#10b981' }} />
+                  Cung cấp ảnh minh chứng
+                </h3>
+                <button className="btn-icon sm ghost" onClick={() => setMeetingToComplete(null)}><X size={16} /></button>
+              </div>
+
+              <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', marginBottom: '1.25rem', lineHeight: 1.5 }}>
+                Gặp gỡ này chưa có ảnh đính kèm trong phần bình luận. Bạn phải tải lên ảnh minh chứng (chụp ảnh cùng khách hàng, sa bàn, v.v.) để hoàn thành cuộc gặp.
+              </p>
+
+              <div style={{ marginBottom: '1.25rem' }}>
+                <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 600, color: 'var(--color-text)', marginBottom: '0.5rem' }}>Ảnh minh chứng *</label>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                  {proofImagePreview ? (
+                    <div style={{ position: 'relative', width: '100%', height: '180px', borderRadius: '10px', overflow: 'hidden', border: '1px solid var(--color-border)' }}>
+                      <img src={proofImagePreview} alt="Proof preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      <button 
+                        onClick={() => {
+                          setProofImageFile(null);
+                          setProofImagePreview(null);
+                        }}
+                        style={{ position: 'absolute', top: '8px', right: '8px', background: 'rgba(0,0,0,0.6)', color: 'white', border: 'none', borderRadius: '50%', width: '28px', height: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
+                      >
+                        <X size={14} />
+                      </button>
+                    </div>
+                  ) : (
+                    <label style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', width: '100%', height: '120px', border: '2px dashed var(--color-border)', borderRadius: '10px', cursor: 'pointer', background: 'var(--color-bg)', transition: 'border-color 0.2s' }} className="hover-lift">
+                      <Camera size={28} style={{ color: 'var(--color-text-muted)', marginBottom: '6px' }} />
+                      <span style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>Tải ảnh lên (JPEG, PNG, WebP)</span>
+                      <input 
+                        type="file" 
+                        accept="image/*" 
+                        onChange={async (e) => {
+                          const file = e.target.files?.[0];
+                          if (!file) return;
+                          if (file.size > 5 * 1024 * 1024) {
+                            addToast('Dung lượng tệp đính kèm không được vượt quá 5MB', 'error');
+                            return;
+                          }
+                          const previewUrl = URL.createObjectURL(file);
+                          setProofImageFile(file);
+                          setProofImagePreview(previewUrl);
+                        }}
+                        style={{ display: 'none' }}
+                      />
+                    </label>
+                  )}
+                </div>
+              </div>
+
+              <div style={{ marginBottom: '1.5rem' }}>
+                <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 600, color: 'var(--color-text)', marginBottom: '0.5rem' }}>Nội dung bình luận</label>
+                <textarea
+                  className="input w-full"
+                  value={proofCommentText}
+                  onChange={(e) => setProofCommentText(e.target.value)}
+                  placeholder="Nhập ghi chú hoặc mô tả về buổi gặp gỡ..."
+                  style={{ minHeight: '80px', fontSize: '0.875rem' }}
+                />
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+                <button className="btn outline" onClick={() => setMeetingToComplete(null)} disabled={completingMeeting}>Hủy</button>
+                <button 
+                  className="btn success" 
+                  disabled={!proofImageFile || completingMeeting} 
+                  onClick={async () => {
+                    if (!proofImageFile || !meetingToComplete) return;
+                    setCompletingMeeting(true);
+                    try {
+                      let fileToUpload = proofImageFile;
+                      if (proofImageFile.type.startsWith('image/')) {
+                        fileToUpload = await compressToWebP(proofImageFile);
+                      }
+                      const fd = new FormData();
+                      fd.append('file', fileToUpload);
+                      const uploadRes = await api.post('/upload', fd, {
+                        headers: { 'Content-Type': 'multipart/form-data' }
+                      });
+                      const uploadedUrl = uploadRes.data.data?.url ?? '';
+                      if (!uploadedUrl) throw new Error('Không thể tải ảnh lên');
+
+                      // Post comment
+                      const payload = {
+                        content: proofCommentText,
+                        attachments: [uploadedUrl],
+                        parent_id: null
+                      };
+                      await api.post(`/activities/${meetingToComplete.id}/comments`, payload);
+
+                      // Complete activity
+                      await api.put(`/activities/${meetingToComplete.id}`, { status: 'done' });
+
+                      addToast('Đã tải ảnh minh chứng và hoàn thành gặp gỡ', 'success');
+                      confetti({ particleCount: 80, spread: 60, origin: { y: 0.8 } });
+
+                      // Update local state
+                      setDrawerActivities(prev => prev.map(a => a.id === meetingToComplete.id ? { ...a, status: 'done' } : a));
+                      setTasks(prev => prev.map(a => a.id === meetingToComplete.id ? { ...a, status: 'done', done: true } : a));
+
+                      setMeetingToComplete(null);
+                      fetchData();
+                    } catch (e: any) {
+                      addToast(e.response?.data?.message || 'Có lỗi xảy ra khi lưu minh chứng', 'error');
+                    } finally {
+                      setCompletingMeeting(false);
+                    }
+                  }}
+                  style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
+                >
+                  {completingMeeting ? (
+                    <>
+                      <Loader2 size={14} className="animate-spin" />
+                      Đang xử lý...
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle2 size={14} />
+                      Hoàn thành
+                    </>
+                  )}
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       {/* ADD/EDIT NOTE MODAL */}
       <AnimatePresence>

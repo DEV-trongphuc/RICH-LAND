@@ -40,7 +40,7 @@ export const SIDEBAR_GROUPS: SidebarGroup[] = [
       { name: 'Đối soát công bằng', href: '/fair-share', icon: Scale },
       { name: 'AI Pre-screener', href: '/gatekeeper', icon: Filter, adminOnly: true, badgeKey: 'gatekeeper', hideForRoles: ['manager', 'assistant', 'sale', 'sales'] },
       { name: 'Ticket data lỗi', href: '/tickets', icon: Ticket, badgeKey: 'tickets' },
-      { name: 'Ticket hỗ trợ', href: '/support-tickets', icon: LifeBuoy }
+      { name: 'Ticket hỗ trợ', href: '/support-tickets', icon: LifeBuoy, badgeKey: 'supportTickets' }
     ]
   },
   {
@@ -94,6 +94,7 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileC
   const { t } = useLanguage();
   const location = useLocation();
   const [pendingTickets, setPendingTickets] = useState(0);
+  const [supportTicketsCount, setSupportTicketsCount] = useState(0);
   const [heldLeadsCount, setHeldLeadsCount] = useState(0);
   const [pendingCoopCount, setPendingCoopCount] = useState(0);
   const [undoneTasksCount, setUndoneTasksCount] = useState(0);
@@ -120,15 +121,17 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileC
         }
 
         if (isAdminOrManager) {
-          const [resReports, resHeld, resCoop] = await Promise.all([
+          const [resReports, resHeld, resCoop, resSupport] = await Promise.all([
             fetchAPI('get_reports&status=pending'),
             fetchAPI('get_held_leads&pageSize=1&date=all'),
-            fetchAPI('cooperation-slips')
+            fetchAPI('cooperation-slips'),
+            fetchAPI('get_support_tickets_count').catch(() => null)
           ]);
 
           let countReports = 0;
           let countHeld = 0;
           let countCoop = 0;
+          let countSupport = 0;
 
           if (resReports.success) {
             countReports = resReports.stats?.pending ?? (resReports.data ? resReports.data.filter((r: any) => r.status === 'pending').length : 0);
@@ -142,9 +145,14 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileC
             countCoop = (resCoop.data || []).filter((s: any) => s.status === 'pending_manager_approval').length;
           }
 
+          if (resSupport && resSupport.success) {
+            countSupport = resSupport.count || 0;
+          }
+
           setPendingTickets(countReports);
           setHeldLeadsCount(countHeld);
           setPendingCoopCount(countCoop);
+          setSupportTicketsCount(countSupport);
         } else if (role === 'sale' || role === 'sales') {
           const resCoop = await fetchAPI('cooperation-slips');
           let countUnsigned = 0;
@@ -383,7 +391,7 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileC
                   </span>
                 )}
                  {group.items.map(({ name, href, icon: Icon, end, badgeKey }) => {
-                   const badgeCount = badgeKey === 'tickets' ? pendingTickets : badgeKey === 'gatekeeper' ? heldLeadsCount : badgeKey === 'coopSlips' ? pendingCoopCount : badgeKey === 'workspaceTasks' ? (undoneTasksCount + pendingLeadsCount) : 0;
+                   const badgeCount = badgeKey === 'tickets' ? pendingTickets : badgeKey === 'supportTickets' ? supportTicketsCount : badgeKey === 'gatekeeper' ? heldLeadsCount : badgeKey === 'coopSlips' ? pendingCoopCount : badgeKey === 'workspaceTasks' ? (undoneTasksCount + pendingLeadsCount) : 0;
                    const checkIsActive = (locationPath: string, locationSearch: string, itemHref: string) => {
                      const qIdx = itemHref.indexOf('?');
                      if (qIdx !== -1) {

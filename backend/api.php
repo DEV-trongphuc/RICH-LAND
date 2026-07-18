@@ -520,7 +520,7 @@ if (!in_array($action, $publicActions)) {
     $salesAllowedActions = [
         'get_settings', 'get_sale_portal_data', 'get_sale_lead_timeline', 
         'toggle_consultant_vacation', 'accept_lead', 'check_lead_duplicate', 
-        'get_lead_notification_status', 'get_reports', 'get_rounds', 
+        'get_lead_notification_status', 'get_reports', 'get_support_tickets_count', 'get_rounds', 
         'get_fair_share_stats', 'get_consultant_compensation_details', 
         'upload_avatar', 'update_consultant_self_profile', 'consultant-profile', 
         'get_dashboard_stats', 'get_logs', 'get_consultants', 'invoices', 
@@ -6732,6 +6732,23 @@ switch ($action) {
         } else {
             echo json_encode(['success' => false, 'message' => 'Lỗi lưu báo cáo']);
         }
+        break;
+
+
+    case 'get_support_tickets_count':
+        $role = $decodedUser['role'] ?? '';
+        if (!in_array($role, ['admin', 'superadmin', 'super_admin', 'director'], true)) {
+            echo json_encode(['success' => true, 'count' => 0]);
+            break;
+        }
+        $tenantId = (int)($decodedUser['tenant_id'] ?? 1);
+        $stmtC = $conn->prepare("SELECT COUNT(*) FROM tickets WHERE tenant_id = ? AND status IN ('open', 'in_progress', 'waiting')");
+        $stmtC->bind_param("i", $tenantId);
+        $stmtC->execute();
+        $resC = $stmtC->get_result();
+        $count = $resC->fetch_row()[0] ?? 0;
+        $stmtC->close();
+        echo json_encode(['success' => true, 'count' => (int)$count]);
         break;
 
 

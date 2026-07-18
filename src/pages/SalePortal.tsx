@@ -7225,36 +7225,61 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                         <td style={{ padding: '1rem' }}>
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'flex-start' }}>
                             {getStatusBadge('databank', undefined, undefined, undefined, lead.takers)}
-                            {lead.takers && lead.takers.length > 0 && (
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '4px' }}>
-                                <div style={{ display: 'flex', alignItems: 'center' }}>
-                                  {lead.takers.map((taker: any, tIdx: number) => (
-                                    <div 
-                                      key={taker.id || tIdx} 
-                                      style={{ 
-                                        marginLeft: tIdx > 0 ? '-6px' : '0', 
-                                        zIndex: 10 - tIdx,
-                                        position: 'relative'
-                                      }}
-                                      title={`${taker.name || 'Sale'} (${taker.claimed_at ? new Date(taker.claimed_at).toLocaleString('vi-VN') : ''})`}
-                                    >
-                                      <Avatar 
-                                        src={taker.avatar} 
-                                        name={taker.name} 
-                                        size={20} 
+                            {(() => {
+                              const currentUserRole = String(user?.role || displayUser?.role || '').toLowerCase();
+                              const currentUserId = Number(user?.id || displayUser?.id || 0);
+                              
+                              let displayTakers = [];
+                              if (lead.takers) {
+                                if (['admin', 'superadmin', 'super_admin', 'director'].includes(currentUserRole)) {
+                                  displayTakers = lead.takers;
+                                } else if (['sale', 'sales'].includes(currentUserRole)) {
+                                  displayTakers = lead.takers.filter((taker: any) => Number(taker.id) === currentUserId);
+                                } else if (currentUserRole === 'manager') {
+                                  const managedTeamIds = teamsList.map((t: any) => Number(t.id));
+                                  displayTakers = lead.takers.filter((taker: any) => {
+                                    if (Number(taker.id) === currentUserId) return true;
+                                    const takerUser = users.find((u: any) => Number(u.id) === Number(taker.id));
+                                    return takerUser && takerUser.team_id && managedTeamIds.includes(Number(takerUser.team_id));
+                                  });
+                                } else {
+                                  displayTakers = lead.takers.filter((taker: any) => Number(taker.id) === currentUserId);
+                                }
+                              }
+                              
+                              if (displayTakers.length === 0) return null;
+                              
+                              return (
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '4px' }}>
+                                  <div style={{ display: 'flex', alignItems: 'center' }}>
+                                    {displayTakers.map((taker: any, tIdx: number) => (
+                                      <div 
+                                        key={taker.id || tIdx} 
                                         style={{ 
-                                          border: '1.5px solid var(--color-surface)',
-                                          boxShadow: 'var(--shadow-sm)'
-                                        }} 
-                                      />
-                                    </div>
-                                  ))}
+                                          marginLeft: tIdx > 0 ? '-6px' : '0', 
+                                          zIndex: 10 - tIdx,
+                                          position: 'relative'
+                                        }}
+                                        title={`${taker.name || 'Sale'} (${taker.claimed_at ? new Date(taker.claimed_at).toLocaleString('vi-VN') : ''})`}
+                                      >
+                                        <Avatar 
+                                          src={taker.avatar} 
+                                          name={taker.name} 
+                                          size={20} 
+                                          style={{ 
+                                            border: '1.5px solid var(--color-surface)',
+                                            boxShadow: 'var(--shadow-sm)'
+                                          }} 
+                                        />
+                                      </div>
+                                    ))}
+                                  </div>
+                                  <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', fontWeight: 500 }}>
+                                    {displayTakers.map((t: any) => t.name).join(', ')}
+                                  </span>
                                 </div>
-                                <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', fontWeight: 500 }}>
-                                  {lead.takers.map((t: any) => t.name).join(', ')}
-                                </span>
-                              </div>
-                            )}
+                              );
+                            })()}
                           </div>
                         </td>
                         <td style={{ padding: '1rem', color: 'var(--color-text-muted)', fontSize: '0.8125rem' }}>

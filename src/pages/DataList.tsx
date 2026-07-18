@@ -1,4 +1,5 @@
 import { useState, useEffect, Fragment, useMemo } from 'react';
+import api from '../api/axios';
 import { createPortal } from 'react-dom';
 import { Database, Search, Filter, ChevronLeft, ChevronRight, Download, RefreshCw, User, Phone, Mail, Clock, Tag, ExternalLink, AlertTriangle, CheckCircle2, XCircle, ShieldAlert, Calendar, LayoutList, Sparkles, Check, X, Edit, Bell, Copy, CheckCircle, BarChart2, Scale, Info } from 'lucide-react';
 import {
@@ -304,6 +305,45 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
   const isAdmin = userRole === 'admin' || userRole === 'superadmin' || userRole === 'super_admin' || userRole === 'manager';
   const { language, t } = useLanguage();
   const { showConfirm } = useUIStore();
+
+  const [users, setUsers] = useState<any[]>([]);
+  const [teamsList, setTeamsList] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (userRole === 'manager') {
+      api.get('/users?all=1').then(r => {
+        const d = r.data.data;
+        const list = Array.isArray(d) ? d : (d?.items || []);
+        setUsers(list);
+      }).catch(() => {});
+
+      api.get('/teams').then(r => {
+        setTeamsList(r.data.data || r.data || []);
+      }).catch(() => {});
+    }
+  }, [userRole]);
+
+  const filterVisibleTakers = (takers: any[] | undefined) => {
+    if (!takers) return [];
+    const currentUserRole = String(user?.role || '').toLowerCase();
+    const currentUserId = Number(user?.id || 0);
+
+    if (['admin', 'superadmin', 'super_admin', 'director'].includes(currentUserRole)) {
+      return takers;
+    }
+    if (['sale', 'sales'].includes(currentUserRole)) {
+      return takers.filter((taker: any) => Number(taker.id) === currentUserId);
+    }
+    if (currentUserRole === 'manager') {
+      const managedTeamIds = teamsList.map((t: any) => Number(t.id));
+      return takers.filter((taker: any) => {
+        if (Number(taker.id) === currentUserId) return true;
+        const takerUser = users.find((u: any) => Number(u.id) === Number(taker.id));
+        return takerUser && takerUser.team_id && managedTeamIds.includes(Number(takerUser.team_id));
+      });
+    }
+    return takers.filter((taker: any) => Number(taker.id) === currentUserId);
+  };
 
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
     return (document.documentElement.getAttribute('data-theme') as 'light' | 'dark') || 'light';
@@ -2028,32 +2068,37 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                           </span>
                         </td>
                         <td style={{ padding: '12px 16px' }}>
-                          {lead.takers && lead.takers.length > 0 ? (
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                              {lead.takers.map((tk: any) => (
-                                <div 
-                                  key={tk.id} 
-                                  title={tk.name}
-                                  style={{
-                                    width: '26px', height: '26px', borderRadius: '50%',
-                                    background: 'var(--color-primary-light)',
-                                    color: 'var(--color-primary)',
-                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                    fontWeight: 700, fontSize: '0.75rem', border: '2px solid var(--color-surface)',
-                                    overflow: 'hidden', cursor: 'help'
-                                  }}
-                                >
-                                  {tk.avatar ? (
-                                    <img src={tk.avatar} alt={tk.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                                  ) : (
-                                    tk.name.charAt(0).toUpperCase()
-                                  )}
+                          {(() => {
+                            const displayTakers = filterVisibleTakers(lead.takers);
+                            if (displayTakers.length > 0) {
+                              return (
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                  {displayTakers.map((tk: any) => (
+                                    <div 
+                                      key={tk.id} 
+                                      title={tk.name}
+                                      style={{
+                                        width: '26px', height: '26px', borderRadius: '50%',
+                                        background: 'var(--color-primary-light)',
+                                        color: 'var(--color-primary)',
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                        fontWeight: 700, fontSize: '0.75rem', border: '2px solid var(--color-surface)',
+                                        overflow: 'hidden', cursor: 'help'
+                                      }}
+                                    >
+                                      {tk.avatar ? (
+                                        <img src={tk.avatar} alt={tk.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                      ) : (
+                                        tk.name.charAt(0).toUpperCase()
+                                      )}
+                                    </div>
+                                  ))}
                                 </div>
-                              ))}
-                            </div>
-                          ) : (
-                            <span style={{ color: 'var(--color-text-muted)', fontSize: '0.75rem' }}>{t('Chưa ai nhận')}</span>
-                          )}
+                              );
+                            } else {
+                              return <span style={{ color: 'var(--color-text-muted)', fontSize: '0.75rem' }}>{t('Chưa ai nhận')}</span>;
+                            }
+                          })()}
                         </td>
 
                         <td style={{ padding: '12px 16px', color: 'var(--color-text-muted)', fontSize: '0.8125rem' }}>{lead.released_to_kho_at || '-'}</td>
@@ -2283,15 +2328,20 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                               <span style={{ fontWeight: 700, color: 'var(--color-text)' }}>Rich Land AI - Angry</span>
                             </div>
                           ) : (lead.is_public === 1 || Number(lead.is_public) === 1 || lead.status === 'released_to_kho' || lead.status === 'databank_claim' || lead.status === 'databank') ? (
-                            lead.takers && lead.takers.length > 0 ? (
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                {lead.takers.map((tk: any) => (
-                                  <Avatar key={tk.id} src={tk.avatar} name={tk.name} size={20} title={tk.name} />
-                                ))}
-                              </div>
-                            ) : (
-                              <span style={{ color: 'var(--color-text-muted)' }}>{t('Chưa ai nhận')}</span>
-                            )
+                            (() => {
+                              const displayTakers = filterVisibleTakers(lead.takers);
+                              if (displayTakers.length > 0) {
+                                return (
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                    {displayTakers.map((tk: any) => (
+                                      <Avatar key={tk.id} src={tk.avatar} name={tk.name} size={20} title={tk.name} />
+                                    ))}
+                                  </div>
+                                );
+                              } else {
+                                return <span style={{ color: 'var(--color-text-muted)' }}>{t('Chưa ai nhận')}</span>;
+                              }
+                            })()
                           ) : lead.assigned_to_name !== '-' ? (
                             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                               <Avatar src={lead.assigned_to_avatar} name={lead.assigned_to_name} size={20} aiScreened={!!(lead.ai_screener_status && lead.ai_screener_status !== 'not_screened')} />
@@ -2424,29 +2474,36 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                               </div>
                             </div>
                           ) : (lead.is_public === 1 || Number(lead.is_public) === 1 || lead.status === 'released_to_kho' || lead.status === 'databank_claim' || lead.status === 'databank') ? (
-                            lead.takers && lead.takers.length > 0 ? (
-                              lead.takers.length === 1 ? (
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                  <Avatar name={lead.takers[0].name} src={lead.takers[0].avatar} size={28} title={`${lead.takers[0].name} (Nhận lúc: ${lead.takers[0].claimed_at})`} />
-                                  <span style={{ fontSize: '0.875rem', fontWeight: 550, color: 'var(--color-text)' }}>{lead.takers[0].name}</span>
-                                </div>
-                              ) : (
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                  {lead.takers.map((tk: any) => (
-                                    <Avatar 
-                                      key={tk.id} 
-                                      name={tk.name} 
-                                      src={tk.avatar} 
-                                      size={28} 
-                                      title={`${tk.name} (Nhận lúc: ${tk.claimed_at})`} 
-                                      style={{ border: '2px solid var(--color-surface)', cursor: 'help' }}
-                                    />
-                                  ))}
-                                </div>
-                              )
-                            ) : (
-                              <span style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem' }}>{t('Chưa ai nhận')}</span>
-                            )
+                            (() => {
+                              const displayTakers = filterVisibleTakers(lead.takers);
+                              if (displayTakers.length > 0) {
+                                if (displayTakers.length === 1) {
+                                  return (
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                      <Avatar name={displayTakers[0].name} src={displayTakers[0].avatar} size={28} title={`${displayTakers[0].name} (Nhận lúc: ${displayTakers[0].claimed_at})`} />
+                                      <span style={{ fontSize: '0.875rem', fontWeight: 550, color: 'var(--color-text)' }}>{displayTakers[0].name}</span>
+                                    </div>
+                                  );
+                                } else {
+                                  return (
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                      {displayTakers.map((tk: any) => (
+                                        <Avatar 
+                                          key={tk.id} 
+                                          name={tk.name} 
+                                          src={tk.avatar} 
+                                          size={28} 
+                                          title={`${tk.name} (Nhận lúc: ${tk.claimed_at})`} 
+                                          style={{ border: '2px solid var(--color-surface)', cursor: 'help' }}
+                                        />
+                                      ))}
+                                    </div>
+                                  );
+                                }
+                              } else {
+                                return <span style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem' }}>{t('Chưa ai nhận')}</span>;
+                              }
+                            })()
                           ) : lead.assigned_to_name !== '-' ? (
                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                               <Avatar src={lead.assigned_to_avatar} name={lead.assigned_to_name} size={32} aiScreened={!!(lead.ai_screener_status && lead.ai_screener_status !== 'not_screened')} />
