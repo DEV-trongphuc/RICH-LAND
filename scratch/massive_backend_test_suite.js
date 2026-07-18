@@ -78,8 +78,8 @@ async function runMassiveAudit() {
     { path: 'contacts', readRoles: ['admin', 'director', 'manager', 'sale', 'viewer', 'assistant'], writeRoles: ['admin', 'director', 'manager', 'sale', 'assistant'] },
     { path: 'deals', readRoles: ['admin', 'director', 'manager', 'sale', 'viewer', 'assistant'], writeRoles: ['admin', 'director', 'manager', 'sale', 'assistant'] },
     { path: 'tickets', readRoles: ['admin', 'director', 'manager', 'sale', 'viewer', 'assistant'], writeRoles: ['admin', 'director', 'manager', 'sale', 'assistant'] },
-    { path: 'expenses', readRoles: ['admin', 'director', 'manager', 'viewer', 'assistant', 'sale'], writeRoles: ['admin', 'director', 'manager', 'assistant', 'sale'] },
-    { path: 'check-ins', readRoles: ['admin', 'director', 'manager', 'viewer', 'assistant', 'sale'], writeRoles: ['admin', 'director', 'manager', 'sale', 'assistant'] },
+    { path: 'expenses', readRoles: ['admin', 'director', 'manager', 'sale'], writeRoles: ['admin', 'director', 'manager', 'sale'] },
+    { path: 'check-ins', readRoles: ['admin', 'director', 'manager', 'viewer', 'assistant', 'sale'], writeRoles: ['admin', 'director', 'manager', 'sale', 'assistant', 'viewer'] },
     { path: 'users', readRoles: ['admin', 'director', 'manager', 'sale'], writeRoles: ['admin', 'director'] }
   ];
 
@@ -170,7 +170,11 @@ async function runMassiveAudit() {
       milestones: [{ name: 'Đợt 1', amount: 100000000 }]
     }, adminHeaders);
     rule2DepositId = dRes.data.data.id;
-    const milestoneId = dRes.data.data.milestones[0].id;
+
+    // Fetch the milestones list of this deposit
+    const listRes = await axios.get(getUrl('deposits'), adminHeaders);
+    const matchedDep = listRes.data.data.find(d => d.id === rule2DepositId);
+    const milestoneId = matchedDep.milestones[0].id;
 
     // Approve the first milestone payment (simulate revenue)
     await axios.post(getUrl(`deposits/${rule2DepositId}/milestones/${milestoneId}/approve`), {
@@ -207,7 +211,9 @@ async function runMassiveAudit() {
 
     // Close deal as switched
     await axios.post(getUrl(`deals/${oldDealId}/switch`), {
-      status: 'switched',
+      new_unit_code: 'A1-02',
+      new_price: 2500000000,
+      new_project_id: 1,
       reason: 'Đổi sang căn B'
     }, adminHeaders);
 
