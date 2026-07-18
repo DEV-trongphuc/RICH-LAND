@@ -3450,13 +3450,12 @@ switch ($action) {
             echo json_encode(['success' => false, 'message' => 'Unauthorized']);
             break;
         }
-        $isSale = $decodedUser['role'] === 'sale';
-        $userId = $isSale ? $currentSaleConsultantId : (int)$decodedUser['id'];
+        $dbUserId = (int)$decodedUser['id'];
         $currentHour = (int)date('H');
         $shiftDate = ($currentHour < 6) ? date('Y-m-d', strtotime('-1 day')) : date('Y-m-d');
 
         $stmt = $conn->prepare("SELECT id FROM night_shift_registrations WHERE user_id = ? AND shift_date = ?");
-        $stmt->bind_param("is", $userId, $shiftDate);
+        $stmt->bind_param("is", $dbUserId, $shiftDate);
         $stmt->execute();
         $res = $stmt->get_result()->fetch_assoc();
         $stmt->close();
@@ -3479,33 +3478,32 @@ switch ($action) {
             break;
         }
 
-        $isSale = $decodedUser['role'] === 'sale';
-        $userId = $isSale ? $currentSaleConsultantId : (int)$decodedUser['id'];
+        $dbUserId = (int)$decodedUser['id'];
         $shiftDate = date('Y-m-d');
         $b = json_decode(file_get_contents('php://input'), true);
         $register = isset($b['register']) ? (bool)$b['register'] : true;
 
         if ($register) {
             $stmt = $conn->prepare("INSERT IGNORE INTO night_shift_registrations (user_id, shift_date) VALUES (?, ?)");
-            $stmt->bind_param("is", $userId, $shiftDate);
+            $stmt->bind_param("is", $dbUserId, $shiftDate);
             $stmt->execute();
             $stmt->close();
-            logAdminAction($conn, $userId, 'REGISTER_NIGHT_SHIFT', json_encode([
-                'user_id' => $userId,
+            logAdminAction($conn, $dbUserId, 'REGISTER_NIGHT_SHIFT', json_encode([
+                'user_id' => $dbUserId,
                 'shift_date' => $shiftDate
             ]));
-            notifyNightShiftChange($conn, $userId, $shiftDate, true);
+            notifyNightShiftChange($conn, $currentSaleConsultantId, $shiftDate, true);
             echo json_encode(['success' => true, 'message' => 'Đăng ký trực đêm thành công.']);
         } else {
             $stmt = $conn->prepare("DELETE FROM night_shift_registrations WHERE user_id = ? AND shift_date = ?");
-            $stmt->bind_param("is", $userId, $shiftDate);
+            $stmt->bind_param("is", $dbUserId, $shiftDate);
             $stmt->execute();
             $stmt->close();
-            logAdminAction($conn, $userId, 'CANCEL_NIGHT_SHIFT', json_encode([
-                'user_id' => $userId,
+            logAdminAction($conn, $dbUserId, 'CANCEL_NIGHT_SHIFT', json_encode([
+                'user_id' => $dbUserId,
                 'shift_date' => $shiftDate
             ]));
-            notifyNightShiftChange($conn, $userId, $shiftDate, false);
+            notifyNightShiftChange($conn, $currentSaleConsultantId, $shiftDate, false);
             echo json_encode(['success' => true, 'message' => 'Hủy đăng ký trực đêm thành công.']);
         }
         break;
