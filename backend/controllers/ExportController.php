@@ -40,7 +40,25 @@ class ExportController {
         $params = [];
 
         if ($type === 'contact') {
-            $baseColumns = ['id' => 'ID', 'first_name' => 'Tên', 'last_name' => 'Họ', 'email' => 'Email', 'phone' => 'Số điện thoại', 'mobile' => 'Di động', 'job_title' => 'Chức danh', 'department' => 'Phòng ban', 'source' => 'Nguồn', 'status' => 'Trạng thái', 'company_name' => 'Công ty', 'owner_name' => 'Người phụ trách', 'created_at' => 'Ngày tạo'];
+            $baseColumns = [
+                'id' => 'ID', 
+                'first_name' => 'Tên', 
+                'last_name' => 'Họ', 
+                'email' => 'Email', 
+                'phone' => 'Số điện thoại', 
+                'mobile' => 'Di động', 
+                'job_title' => 'Chức danh', 
+                'department' => 'Phòng ban', 
+                'source' => 'Nguồn', 
+                'status' => 'Trạng thái', 
+                'company_name' => 'Công ty', 
+                'owner_name' => 'Người phụ trách', 
+                'notes' => 'Ghi chú', 
+                'customer_type' => 'Loại khách hàng', 
+                'temperature' => 'Nhiệt độ (Nóng/Ấm/Lạnh)', 
+                'project_name' => 'Dự án quan tâm', 
+                'created_at' => 'Ngày tạo'
+            ];
             
             $search  = $_GET['search'] ?? '';
             $status  = $_GET['status'] ?? '';
@@ -109,10 +127,11 @@ class ExportController {
 
             $whereStr = implode(' AND ', $where);
 
-            $sql = "SELECT t.*, co.name as company_name, u.full_name as owner_name 
+            $sql = "SELECT t.*, co.name as company_name, u.full_name as owner_name, p.name as project_name 
                     FROM contacts t 
                     LEFT JOIN companies co ON t.company_id = co.id 
                     LEFT JOIN users u ON t.owner_id = u.id 
+                    LEFT JOIN projects p ON t.project_id = p.id
                     WHERE $whereStr ORDER BY t.created_at DESC";
         } elseif ($type === 'company') {
             $baseColumns = ['id' => 'ID', 'name' => 'Tên công ty', 'tax_id' => 'Mã số thuế', 'industry' => 'Ngành nghề', 'email' => 'Email', 'phone' => 'Số điện thoại', 'website' => 'Website', 'address' => 'Địa chỉ', 'city' => 'Tỉnh/Thành phố', 'size' => 'Quy mô', 'status' => 'Trạng thái', 'owner_name' => 'Người phụ trách', 'created_at' => 'Ngày tạo'];

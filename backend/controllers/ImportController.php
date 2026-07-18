@@ -19,8 +19,8 @@ class ImportController {
         $sample = [];
 
         if ($type === 'contact') {
-            $headers = ['first_name', 'last_name', 'email', 'phone', 'job_title', 'source', 'status', 'company_name'];
-            $sample  = ['Nguyễn', 'Văn A', 'example@email.com', '0901234567', 'Giám đốc', 'website', 'lead', 'Công ty ABC'];
+            $headers = ['first_name', 'last_name', 'email', 'phone', 'job_title', 'source', 'status', 'company_name', 'notes', 'customer_type', 'temperature', 'project_name'];
+            $sample  = ['Nguyễn', 'Văn A', 'example@email.com', '0901234567', 'Giám đốc', 'website', 'lead', 'Công ty ABC', 'Khách hàng quan tâm dự án căn hộ 2 phòng ngủ', 'Cá nhân', 'Nóng', 'Richland Riverside'];
         } elseif ($type === 'company') {
             $headers = ['name', 'industry', 'city', 'phone', 'email', 'website', 'status', 'tax_id'];
             $sample  = ['Công ty ABC', 'Công nghệ', 'TP.HCM', '02812345678', 'info@abc.vn', 'abc.vn', 'active', '0101234567'];
@@ -143,12 +143,22 @@ class ImportController {
             $companyId = $stmt->fetchColumn() ?: null;
         }
 
-        $stmt = $this->db->prepare("INSERT INTO contacts (tenant_id, first_name, last_name, email, phone, job_title, source, status, company_id, owner_id, created_by) VALUES (?,?,?,?,?,?,?,?,?,?,?)");
+        // Check project
+        $projectId = null;
+        if (!empty($data['project_name'])) {
+            $stmt = $this->db->prepare("SELECT id FROM projects WHERE name = ? AND tenant_id = ?");
+            $stmt->execute([$data['project_name'], $auth['tenant_id']]);
+            $projectId = $stmt->fetchColumn() ?: null;
+        }
+
+        $stmt = $this->db->prepare("INSERT INTO contacts (tenant_id, first_name, last_name, email, phone, job_title, source, status, company_id, owner_id, created_by, notes, customer_type, temperature, project_id) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
         $stmt->execute([
             $auth['tenant_id'], $data['first_name'], $data['last_name'] ?? '',
             $data['email'] ?? null, $data['phone'] ?? null, $data['job_title'] ?? null,
             $data['source'] ?? 'other', $data['status'] ?? 'lead',
-            $companyId, $auth['user_id'], $auth['user_id']
+            $companyId, $auth['user_id'], $auth['user_id'],
+            $data['notes'] ?? null, $data['customer_type'] ?? null, $data['temperature'] ?? null,
+            $projectId
         ]);
         return (int)$this->db->lastInsertId();
     }

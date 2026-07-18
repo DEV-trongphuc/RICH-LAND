@@ -88,6 +88,8 @@ export const QuickAddLeadModal = () => {
   const { t } = useLanguage();
   const userRole = useAuthStore.getState().user?.role;
   const isSale = userRole === 'sale';
+  const managerBehaviorMode = useAuthStore.getState().user?.manager_behavior_mode || 'combined';
+  const canSelfAssign = userRole === 'sale' || (userRole === 'manager' && managerBehaviorMode === 'sale');
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
     return (document.documentElement.getAttribute('data-theme') as 'light' | 'dark') || 'light';
   });
@@ -125,7 +127,9 @@ export const QuickAddLeadModal = () => {
   const [activeTab, setActiveTab] = useState<'single' | 'bulk'>('single');
   const [bulkInputText, setBulkInputText] = useState('');
   const [bulkParsedLeads, setBulkParsedLeads] = useState<any[]>([]);
-  const [distributionMode, setDistributionMode] = useState<'auto_round' | 'direct_databank' | 'self_assign'>('auto_round');
+  const [distributionMode, setDistributionMode] = useState<'auto_round' | 'direct_databank' | 'self_assign'>(() => {
+    return (userRole === 'sale' || (userRole === 'manager' && managerBehaviorMode === 'sale')) ? 'self_assign' : 'auto_round';
+  });
   const [bulkSubtab, setBulkSubtab] = useState<'text' | 'file'>('text');
 
   const previewTimerRef = useRef<any>(null);
@@ -1304,19 +1308,21 @@ export const QuickAddLeadModal = () => {
                 <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{t('Lưu trữ công khai cho các Sale chủ động nhận')}</div>
               </div>
             </label>
-            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '0.875rem', color: 'var(--color-text)' }}>
-              <input
-                type="radio"
-                name="distribution_mode"
-                checked={distributionMode === 'self_assign'}
-                onChange={() => setDistributionMode('self_assign')}
-                style={{ accentColor: '#bd1d2d' }}
-              />
-              <div>
-                <strong>{t('Tự nhận chăm sóc (Self-assign)')}</strong>
-                <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{t('Giao trực tiếp data này cho tôi phụ trách')}</div>
-              </div>
-            </label>
+            {canSelfAssign && (
+              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '0.875rem', color: 'var(--color-text)' }}>
+                <input
+                  type="radio"
+                  name="distribution_mode"
+                  checked={distributionMode === 'self_assign'}
+                  onChange={() => setDistributionMode('self_assign')}
+                  style={{ accentColor: '#bd1d2d' }}
+                />
+                <div>
+                  <strong>{t('Tự nhận chăm sóc (Self-assign)')}</strong>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{t('Giao trực tiếp data này cho tôi phụ trách')}</div>
+                </div>
+              </label>
+            )}
           </div>
         </div>
       )}

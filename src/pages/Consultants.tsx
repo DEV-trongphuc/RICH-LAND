@@ -2,7 +2,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { createPortal } from 'react-dom';
 import { withRouterFreezer } from '../components/RouterFreezer';
-import { Users, Plus, Trash2, Mail, MessageCircle, Shield, UserX, Clock, X, Link2Off, User, Send, Check, RefreshCw, BarChart2, Calendar, Scale, Eye, CheckCircle, AlertTriangle, Building2, ChevronLeft, ChevronRight, Search, Phone, Info, TrendingUp, Paperclip, Link2, File as FileIcon, Folder, Download } from 'lucide-react';
+import { Users, Plus, Trash2, Mail, MessageCircle, Shield, UserX, Clock, X, Link2Off, User, Send, Check, RefreshCw, BarChart2, Calendar, Scale, Eye, CheckCircle, AlertTriangle, Building2, ChevronLeft, ChevronRight, Search, Phone, Info, TrendingUp, Paperclip, Link2, File as FileIcon, Folder, Download, MapPin } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { CustomModal } from '../components/ui/CustomModal';
 import { ConfirmModal } from '../components/ui/ConfirmModal';
@@ -1640,7 +1640,13 @@ const ConsultantsInner = () => {
           )}
         </div>
       ) : (
-        <div style={{ display: 'flex', gap: '1.5rem', width: '100%', minHeight: '500px', alignItems: 'stretch' }}>
+        <div style={{ 
+          display: 'flex', 
+          flexDirection: isMobile ? 'column' : 'row', 
+          gap: '1.5rem', 
+          width: '100%', 
+          alignItems: 'stretch' 
+        }}>
           {(() => {
             const branchMap: Record<string, any[]> = {};
             teams.forEach(team => {
@@ -1682,97 +1688,232 @@ const ConsultantsInner = () => {
             const activeBTeams = branchMap[activeBName] || [];
             const activeBTotalMembers = activeBTeams.reduce((sum, tObj) => sum + Number(tObj.member_count), 0);
 
+            // Horizontal scrollable list on Mobile, styled left panel on Desktop
+            const branchSelectorContainerStyle = isMobile ? {
+              display: 'flex',
+              gap: '0.75rem',
+              overflowX: 'auto' as const,
+              padding: '4px 4px 12px 4px',
+              margin: '0 -0.5rem',
+              width: 'calc(100% + 1rem)',
+              WebkitOverflowScrolling: 'touch' as const,
+              scrollbarWidth: 'none' as const
+            } : {
+              width: '300px',
+              display: 'flex',
+              flexDirection: 'column' as const,
+              gap: '0.75rem',
+              flexShrink: 0
+            };
+
             return (
               <>
                 {/* Left Side: Master Branch List */}
-                <div style={{ width: '280px', display: 'flex', flexDirection: 'column', gap: '0.75rem', flexShrink: 0 }}>
-                  <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '4px', textAlign: 'left' }}>
-                    Danh sách chi nhánh ({branchList.length})
-                  </span>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', overflowY: 'auto', maxHeight: '70vh' }}>
-                    {branchList.map(([bName, bTeams]) => {
-                      const totalM = bTeams.reduce((sum, team) => sum + Number(team.member_count), 0);
-                      const isSelected = activeBName === bName;
-                      return (
-                        <div
-                          key={bName}
-                          onClick={() => setSelectedBranch(bName)}
-                          style={{
-                            padding: '1.125rem 1.25rem',
-                            borderRadius: '14px',
-                            border: '1px solid var(--color-border-light)',
-                            borderLeft: isSelected ? '4px solid var(--color-primary)' : '1px solid var(--color-border-light)',
-                            background: isSelected ? 'rgba(189, 29, 45, 0.03)' : 'var(--color-surface)',
-                            cursor: 'pointer',
-                            transition: 'all 0.2s ease',
-                            boxShadow: isSelected ? '0 4px 15px -3px rgba(189, 29, 45, 0.08), 0 2px 6px -2px rgba(0, 0, 0, 0.02)' : 'none',
-                            transform: isSelected ? 'translateX(2px)' : 'none'
-                          }}
-                          onMouseEnter={e => {
-                            if (!isSelected) {
-                              e.currentTarget.style.borderColor = 'rgba(189, 29, 45, 0.3)';
-                              e.currentTarget.style.background = 'var(--color-bg-light)';
-                            }
-                          }}
-                          onMouseLeave={e => {
-                            if (!isSelected) {
-                              e.currentTarget.style.borderColor = 'var(--color-border-light)';
-                              e.currentTarget.style.background = 'var(--color-surface)';
-                            }
-                          }}
-                        >
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-                            <Building2 size={16} color={isSelected ? 'var(--color-primary)' : 'var(--color-text-muted)'} />
-                            <strong style={{ fontSize: '0.875rem', color: isSelected ? 'var(--color-primary)' : 'var(--color-text)', display: 'block', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap', textAlign: 'left' }}>
+                <div style={branchSelectorContainerStyle}>
+                  {!isMobile && (
+                    <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '4px', textAlign: 'left' }}>
+                      {t('Danh sách chi nhánh')} ({branchList.length})
+                    </span>
+                  )}
+                  {branchList.map(([bName, bTeams]) => {
+                    const totalM = bTeams.reduce((sum, team) => sum + Number(team.member_count), 0);
+                    const isSelected = activeBName === bName;
+                    return (
+                      <div
+                        key={bName}
+                        onClick={() => setSelectedBranch(bName)}
+                        style={{
+                          padding: isMobile ? '0.75rem 1rem' : '1.25rem 1.5rem',
+                          borderRadius: '16px',
+                          border: '1px solid var(--color-border-light)',
+                          borderLeft: !isMobile && isSelected ? '5px solid var(--color-primary)' : '1px solid var(--color-border-light)',
+                          borderBottom: isMobile && isSelected ? '4px solid var(--color-primary)' : '1px solid var(--color-border-light)',
+                          background: isSelected 
+                            ? 'linear-gradient(135deg, rgba(189, 29, 45, 0.05) 0%, rgba(189, 29, 45, 0.01) 100%)' 
+                            : 'var(--color-surface)',
+                          cursor: 'pointer',
+                          transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                          boxShadow: isSelected 
+                            ? 'var(--shadow-md)' 
+                            : 'var(--shadow-sm)',
+                          transform: isSelected && !isMobile ? 'translateX(4px)' : 'none',
+                          minWidth: isMobile ? '200px' : 'auto',
+                          flexShrink: isMobile ? 0 : 1,
+                          position: 'relative',
+                          overflow: 'hidden'
+                        }}
+                        className="hover-lift"
+                      >
+                        {isSelected && (
+                          <div style={{
+                            position: 'absolute',
+                            top: 0,
+                            right: 0,
+                            width: '45px',
+                            height: '45px',
+                            background: 'radial-gradient(circle, rgba(189,29,45,0.1) 0%, transparent 70%)',
+                            pointerEvents: 'none'
+                          }} />
+                        )}
+
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
+                          <div style={{
+                            width: '32px',
+                            height: '32px',
+                            borderRadius: '10px',
+                            background: isSelected ? 'rgba(189, 29, 45, 0.1)' : 'rgba(0, 0, 0, 0.03)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            color: isSelected ? 'var(--color-primary)' : 'var(--color-text-muted)',
+                            transition: 'all 0.3s'
+                          }}>
+                            <Building2 size={16} />
+                          </div>
+                          <div style={{ minWidth: 0, flex: 1 }}>
+                            <strong style={{ 
+                              fontSize: '0.9rem', 
+                              color: isSelected ? 'var(--color-primary)' : 'var(--color-text)', 
+                              display: 'block', 
+                              textOverflow: 'ellipsis', 
+                              overflow: 'hidden', 
+                              whiteSpace: 'nowrap', 
+                              textAlign: 'left',
+                              fontWeight: 800
+                            }}>
                               {bName}
                             </strong>
                           </div>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
-                            <span>{bTeams.length} nhóm</span>
-                            <span>•</span>
-                            <span>{totalM} nhân sự</span>
-                          </div>
                         </div>
-                      );
-                    })}
-                  </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.75rem', color: 'var(--color-text-light)', marginTop: '4px' }}>
+                          <span style={{ fontWeight: 600 }}>{bTeams.length} {t('nhóm')}</span>
+                          <span style={{ opacity: 0.5 }}>•</span>
+                          <span style={{ fontWeight: 600 }}>{totalM} {t('nhân sự')}</span>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
 
                 {/* Right Side: Detailed Teams Grid */}
-                <div className="card" style={{ flex: 1, padding: '1.5rem', borderRadius: '16px', border: '1px solid var(--color-border-light)', background: 'var(--color-surface)', display: 'flex', flexDirection: 'column', gap: '1.25rem', overflow: 'hidden' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--color-border-light)', paddingBottom: '0.75rem' }}>
-                    <div style={{ textAlign: 'left' }}>
-                      <h3 style={{ fontSize: '1.125rem', fontWeight: 800, color: 'var(--color-text)', margin: 0 }}>{activeBName}</h3>
-                      <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', margin: '4px 0 0 0' }}>Tổng cộng {activeBTeams.length} nhóm và {activeBTotalMembers} nhân sự phân phối</p>
+                <div style={{ 
+                  flex: 1, 
+                  display: 'flex', 
+                  flexDirection: 'column', 
+                  gap: '1.5rem' 
+                }}>
+                  {/* Branch Premium Header Card */}
+                  <div style={{
+                    background: 'var(--color-surface)',
+                    border: '1px solid var(--color-border-light)',
+                    borderRadius: '20px',
+                    padding: '1.75rem',
+                    boxShadow: 'var(--shadow-md)',
+                    position: 'relative',
+                    overflow: 'hidden',
+                    display: 'flex',
+                    flexDirection: isMobile ? 'column' : 'row',
+                    justifyContent: 'space-between',
+                    alignItems: isMobile ? 'stretch' : 'center',
+                    gap: '1.25rem'
+                  }}>
+                    {/* Glowing background accent */}
+                    <div style={{
+                      position: 'absolute',
+                      top: '-100px',
+                      right: '-100px',
+                      width: '300px',
+                      height: '300px',
+                      background: 'radial-gradient(circle, rgba(189,29,45,0.04) 0%, transparent 75%)',
+                      pointerEvents: 'none'
+                    }} />
+
+                    <div style={{ textAlign: 'left', zIndex: 1 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+                        <span style={{
+                          padding: '4px 10px',
+                          background: 'rgba(189, 29, 45, 0.08)',
+                          borderRadius: '20px',
+                          fontSize: '0.68rem',
+                          fontWeight: 800,
+                          color: 'var(--color-primary)',
+                          textTransform: 'uppercase',
+                          letterSpacing: '0.5px'
+                        }}>
+                          {t('Chi nhánh')}
+                        </span>
+                      </div>
+                      <h3 style={{ fontSize: '1.5rem', fontWeight: 900, color: 'var(--color-text)', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        {activeBName}
+                      </h3>
+                      <p style={{ fontSize: '0.825rem', color: 'var(--color-text-muted)', margin: '6px 0 0 0' }}>
+                        {t('Hệ thống quản lý')} {activeBTeams.length} {t('nhóm hoạt động với tổng')} {activeBTotalMembers} {t('nhân sự tư vấn trực thuộc')}.
+                      </p>
+                    </div>
+
+                    {/* Quick Stats Widget */}
+                    <div style={{
+                      display: 'flex',
+                      gap: '0.75rem',
+                      zIndex: 1,
+                      justifyContent: 'flex-start'
+                    }}>
+                      <div style={{
+                        background: 'var(--color-bg-light)',
+                        border: '1px solid var(--color-border-light)',
+                        borderRadius: '14px',
+                        padding: '10px 14px',
+                        textAlign: 'center',
+                        minWidth: '85px'
+                      }}>
+                        <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', fontWeight: 700, textTransform: 'uppercase' }}>{t('Nhóm')}</div>
+                        <div style={{ fontSize: '1.25rem', fontWeight: 900, color: 'var(--color-text)', marginTop: '2px' }}>{activeBTeams.length}</div>
+                      </div>
+                      <div style={{
+                        background: 'var(--color-bg-light)',
+                        border: '1px solid var(--color-border-light)',
+                        borderRadius: '14px',
+                        padding: '10px 14px',
+                        textAlign: 'center',
+                        minWidth: '85px'
+                      }}>
+                        <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', fontWeight: 700, textTransform: 'uppercase' }}>{t('Nhân Sự')}</div>
+                        <div style={{ fontSize: '1.25rem', fontWeight: 900, color: 'var(--color-text)', marginTop: '2px' }}>{activeBTotalMembers}</div>
+                      </div>
                     </div>
                   </div>
 
                   {/* Branch Config/Setting Info Banner */}
                   <div style={{
-                    padding: '10px 14px',
-                    background: 'var(--color-primary-light)',
-                    border: '1px solid rgba(189, 29, 45, 0.15)',
-                    borderRadius: '10px',
-                    fontSize: '0.78rem',
-                    color: 'var(--color-primary)',
-                    lineHeight: '1.45',
+                    padding: '12px 16px',
+                    background: theme === 'dark' ? 'rgba(189, 29, 45, 0.05)' : 'rgba(189, 29, 45, 0.02)',
+                    border: '1px dashed rgba(189, 29, 45, 0.25)',
+                    borderRadius: '16px',
+                    fontSize: '0.8rem',
+                    color: 'var(--color-text-muted)',
+                    lineHeight: '1.5',
                     display: 'flex',
                     alignItems: 'flex-start',
-                    gap: '8px',
+                    gap: '10px',
                     textAlign: 'left'
                   }}>
-                    <span style={{ fontSize: '1.1rem', lineHeight: 1 }}>💡</span>
+                    <span style={{ fontSize: '1.25rem', lineHeight: 1 }}>💡</span>
                     <div>
-                      <strong>Cơ chế tự động:</strong> Chi nhánh được phân loại tự động dựa trên tỉnh/thành phố trong phần <strong>Địa chỉ chi nhánh</strong> của từng Nhóm.
+                      <strong style={{ color: 'var(--color-primary)' }}>{t('Cơ chế tự động phân loại:')}</strong> {t('Chi nhánh được liên kết tự động dựa trên Tỉnh/Thành phố được định cấu hình trong trường')} <strong>{t('Địa chỉ chi nhánh')}</strong> {t('của từng Nhóm.')}
                       {isWriteAuthorized ? (
-                        <span> Để đổi chi nhánh hoặc cập nhật Trưởng nhóm, bạn chỉ cần <strong>nhấp vào thẻ Nhóm bên dưới</strong> để chỉnh sửa.</span>
+                        <span> {t('Để điều chỉnh chi nhánh hoặc cập nhật Trưởng nhóm, bạn chỉ cần')} <strong>{t('nhấp vào thẻ Nhóm bên dưới')}</strong> {t('để mở form cấu hình.')}</span>
                       ) : (
-                        <span> Vui lòng liên hệ Admin/Manager để cập nhật thông tin địa chỉ hoặc trưởng nhóm.</span>
+                        <span> {t('Bạn cần liên hệ Quản trị viên/Giám đốc để cập nhật thông tin này.')}</span>
                       )}
                     </div>
                   </div>
 
-                  <div className="custom-scrollbar" style={{ flex: 1, overflowY: 'auto', display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '1rem', paddingRight: '4px', alignContent: 'start' }}>
+                  {/* Teams Grid Layout */}
+                  <div style={{ 
+                    display: 'grid', 
+                    gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', 
+                    gap: '1.25rem' 
+                  }}>
                     {activeBTeams.map(team => {
                       const leader = allSystemUsers.find(u => Number(u.id) === Number(team.leader_id));
                       const coLeaderIds = team.co_leader_ids ? (Array.isArray(team.co_leader_ids) ? team.co_leader_ids.map(String) : (typeof team.co_leader_ids === 'string' && team.co_leader_ids.startsWith('[') ? JSON.parse(team.co_leader_ids).map(String) : String(team.co_leader_ids).split(',').map((id: any) => id.trim()).filter(Boolean))) : [];
@@ -1787,53 +1928,119 @@ const ConsultantsInner = () => {
                             }
                           }}
                           style={{ 
-                            padding: '1.25rem', 
+                            padding: '1.5rem', 
                             background: 'var(--color-surface)', 
-                            borderRadius: '16px', 
+                            borderRadius: '20px', 
                             border: '1px solid var(--color-border-light)', 
                             display: 'flex', 
                             flexDirection: 'column', 
-                            gap: '0.875rem',
+                            gap: '1rem',
                             cursor: isWriteAuthorized ? 'pointer' : 'default',
-                            transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
-                            boxShadow: '0 1px 3px rgba(0,0,0,0.02)'
+                            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                            boxShadow: 'var(--shadow-sm)',
+                            position: 'relative',
+                            overflow: 'hidden'
                           }}
-                          className="hover-lift hover-shadow"
+                          className="hover-lift hover-shadow-lg"
                         >
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                            <strong style={{ fontSize: '0.9rem', color: 'var(--color-text)', display: 'block', fontWeight: 800, textAlign: 'left' }}>{team.name}</strong>
-                            <span className="badge info sm" style={{ fontWeight: 700, fontSize: '0.68rem', padding: '2px 8px', borderRadius: '12px', flexShrink: 0 }}>
+                          {/* Card Top Header */}
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px' }}>
+                            <div style={{ textAlign: 'left' }}>
+                              <h4 style={{ 
+                                fontSize: '1.05rem', 
+                                color: 'var(--color-text)', 
+                                margin: 0,
+                                fontWeight: 800,
+                                lineHeight: 1.3
+                              }}>
+                                {team.name}
+                              </h4>
+                              <span style={{ 
+                                fontSize: '0.72rem', 
+                                color: 'var(--color-text-light)',
+                                display: 'block',
+                                marginTop: '2px'
+                              }}>
+                                {team.branch || t('Chưa thiết lập địa chỉ')}
+                              </span>
+                            </div>
+                            
+                            <span style={{ 
+                              fontWeight: 800, 
+                              fontSize: '0.68rem', 
+                              padding: '4px 10px', 
+                              borderRadius: '20px', 
+                              flexShrink: 0,
+                              background: 'var(--color-primary-light)',
+                              color: 'var(--color-primary)',
+                              border: '1px solid rgba(189, 29, 45, 0.1)'
+                            }}>
                               {team.member_count} sales
                             </span>
                           </div>
 
                           {team.description && (
-                            <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--color-text-muted)', fontStyle: 'italic', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', lineHeight: 1.4, textAlign: 'left' }}>
+                            <p style={{ 
+                              margin: 0, 
+                              fontSize: '0.75rem', 
+                              color: 'var(--color-text-muted)', 
+                              fontStyle: 'italic', 
+                              display: '-webkit-box', 
+                              WebkitLineClamp: 2, 
+                              WebkitBoxOrient: 'vertical', 
+                              overflow: 'hidden', 
+                              lineHeight: 1.45, 
+                              textAlign: 'left',
+                              borderLeft: '2px solid var(--color-border)',
+                              paddingLeft: '8px'
+                            }}>
                               "{team.description}"
                             </p>
                           )}
 
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', background: 'var(--color-bg-light)', padding: '10px', borderRadius: '10px', border: '1px solid var(--color-border-light)' }}>
-                            {/* Manager row */}
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.78rem' }}>
-                              <span style={{ color: 'var(--color-text-muted)' }}>{t('Manager')}:</span>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          {/* Leader & Co-leaders profile card */}
+                          <div style={{ 
+                            display: 'flex', 
+                            flexDirection: 'column', 
+                            gap: '10px', 
+                            background: 'var(--color-bg-light)', 
+                            padding: '12px 14px', 
+                            borderRadius: '16px', 
+                            border: '1px solid var(--color-border-light)' 
+                          }}>
+                            {/* Manager section */}
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <span style={{ fontSize: '0.75rem', color: 'var(--color-text-light)', fontWeight: 600 }}>{t('Trưởng nhóm')}:</span>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                 <div style={{ display: 'flex', alignItems: 'center' }}>
                                   {leader && (
-                                    <Avatar src={leader.avatar_url || leader.avatar} name={team.leader_name} size={18} />
+                                    <Avatar src={leader.avatar_url || leader.avatar} name={team.leader_name} size={22} />
                                   )}
                                   {coLeaders.slice(0, 3).map((cl: any) => (
-                                    <div key={cl.id} style={{ marginLeft: '-5px', border: '1.5px solid var(--color-surface)', borderRadius: '50%', overflow: 'hidden', display: 'flex' }}>
-                                      <Avatar src={cl.avatar_url || cl.avatar} name={cl.full_name || cl.name} size={16} />
+                                    <div key={cl.id} style={{ marginLeft: '-6px', border: '1.5px solid var(--color-surface)', borderRadius: '50%', overflow: 'hidden', display: 'flex' }}>
+                                      <Avatar src={cl.avatar_url || cl.avatar} name={cl.full_name || cl.name} size={20} />
                                     </div>
                                   ))}
                                   {coLeaders.length > 3 && (
-                                    <div style={{ marginLeft: '-5px', width: 16, height: 16, borderRadius: '50%', background: 'var(--color-primary-light)', color: 'var(--color-primary)', fontSize: '0.6rem', fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid var(--color-surface)' }}>
+                                    <div style={{ 
+                                      marginLeft: '-6px', 
+                                      width: 20, 
+                                      height: 20, 
+                                      borderRadius: '50%', 
+                                      background: 'var(--color-primary-light)', 
+                                      color: 'var(--color-primary)', 
+                                      fontSize: '0.625rem', 
+                                      fontWeight: 800, 
+                                      display: 'flex', 
+                                      alignItems: 'center', 
+                                      justifyContent: 'center', 
+                                      border: '1.5px solid var(--color-surface)' 
+                                    }}>
                                       +{coLeaders.length - 3}
                                     </div>
                                   )}
                                 </div>
-                                <span style={{ color: 'var(--color-text)', fontWeight: 700 }}>
+                                <span style={{ color: 'var(--color-text)', fontWeight: 800, fontSize: '0.8rem' }}>
                                   {team.leader_name || t('Chưa gán')}
                                 </span>
                               </div>
@@ -1841,11 +2048,23 @@ const ConsultantsInner = () => {
 
                             {/* KPI target row */}
                             {team.kpi_target && (
-                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.78rem', borderTop: '1px dashed var(--color-border-light)', paddingTop: '6px', marginTop: '2px' }}>
-                                <span style={{ color: 'var(--color-text-muted)' }}>KPI:</span>
-                                <strong style={{ color: 'var(--color-primary)', fontWeight: 800 }}>
+                              <div style={{ 
+                                display: 'flex', 
+                                justifyContent: 'space-between', 
+                                alignItems: 'center', 
+                                borderTop: '1px dashed var(--color-border)', 
+                                paddingTop: '8px', 
+                                marginTop: '4px' 
+                              }}>
+                                <span style={{ fontSize: '0.75rem', color: 'var(--color-text-light)', fontWeight: 600 }}>{t('Chỉ tiêu Doanh thu')}:</span>
+                                <span style={{ 
+                                  color: 'var(--color-primary)', 
+                                  fontWeight: 900, 
+                                  fontSize: '0.875rem',
+                                  fontFamily: 'monospace'
+                                }}>
                                   {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(team.kpi_target)}
-                                </strong>
+                                </span>
                               </div>
                             )}
                           </div>

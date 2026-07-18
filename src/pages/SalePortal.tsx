@@ -3439,35 +3439,37 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
               {t("Quản lý toàn bộ công việc cần thực hiện, lọc chi tiết theo tiến độ và độ ưu tiên.")}
             </p>
           </div>
-          <button 
-            className="btn primary" 
-            onClick={() => {
-              setSelectedTaskForDetails({
-                id: 'new',
-                subject: '',
-                priority: 'medium',
-                due_date: new Date().toISOString().slice(0, 10),
-                description: '',
-                link: '',
-                user_id: String(user?.id || ''),
-                progress: 0,
-                require_approval: 0,
-                approver_id: '',
-                tags: wsSubTab === 'personal' ? 'personal_task' : '',
-                internal_type: wsSubTab === 'team' ? 'task' : '',
-                scope: wsSubTab === 'team' ? 'team' : '',
-                participant_ids: '',
-                related_contact_ids: [],
-                checklist: [],
-                project_id: '',
-                campaign_id: '',
-                team_id: '',
-                campaign_target: ''
-              });
-            }}
-          >
-            <Plus size={16} /> {t('Tạo công việc')}
-          </button>
+          {!isMobile && (
+            <button 
+              className="btn primary" 
+              onClick={() => {
+                setSelectedTaskForDetails({
+                  id: 'new',
+                  subject: '',
+                  priority: 'medium',
+                  due_date: new Date().toISOString().slice(0, 10),
+                  description: '',
+                  link: '',
+                  user_id: String(user?.id || ''),
+                  progress: 0,
+                  require_approval: 0,
+                  approver_id: '',
+                  tags: wsSubTab === 'personal' ? 'personal_task' : '',
+                  internal_type: wsSubTab === 'team' ? 'task' : '',
+                  scope: wsSubTab === 'team' ? 'team' : '',
+                  participant_ids: '',
+                  related_contact_ids: [],
+                  checklist: [],
+                  project_id: '',
+                  campaign_id: '',
+                  team_id: '',
+                  campaign_target: ''
+                });
+              }}
+            >
+              <Plus size={16} /> {t('Tạo công việc')}
+            </button>
+          )}
         </div>
 
         {/* Pending Leads Section */}
@@ -3593,104 +3595,211 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
           );
         })()}
 
-        {/* Main Subtabs Selection (iOS Segmented Control style) */}
-        <div className="segmented-control-wrapper" style={{ marginBottom: '1rem' }}>
-          <div style={{
-            display: 'flex',
-            background: 'var(--color-border-light)',
-            border: '1px solid var(--color-border)',
-            padding: '2px',
-            borderRadius: '8px',
-            gap: '2px',
-            width: 'fit-content',
-            position: 'relative'
+        {/* Main Subtabs Selection */}
+        {isMobile ? (
+          <div style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'space-between', 
+            gap: '0.75rem', 
+            marginBottom: '1rem',
+            width: '100%'
           }}>
-            {[
-              { id: 'all', label: t('Tất cả'), icon: <Layers size={14} />, count: wsTasks.length },
-              { id: 'customer', label: t('Công việc khách hàng'), icon: <Users size={14} />, count: wsTasks.filter(task => task.related_type && ['contact', 'deal', 'company'].includes(task.related_type)).length },
-              { id: 'team', label: t('Công việc nội bộ team'), icon: <CheckSquare size={14} />, count: wsTasks.filter(task => {
-                  const isClient = task.related_type && ['contact', 'deal', 'company'].includes(task.related_type);
-                  const tagsList = task.tags ? task.tags.split(',').map((t: string) => t.trim()) : [];
-                  return !isClient && !tagsList.includes('personal_task');
-                }).length
-              },
-              { id: 'personal', label: t('Công việc cá nhân'), icon: <User size={14} />, count: wsTasks.filter(task => {
-                  const tagsList = task.tags ? task.tags.split(',').map((t: string) => t.trim()) : [];
-                  return tagsList.includes('personal_task');
-                }).length
-              }
-            ].map(tab => {
-              const isSelected = wsSubTab === tab.id;
-              return (
-                <button
-                  key={tab.id}
-                  onClick={() => {
-                    setWsSubTab(tab.id as any);
-                    setWsTeamSubFilter('all');
-                  }}
-                  style={{
-                    padding: '6px 16px',
-                    height: '34px',
-                    borderRadius: '6px',
-                    border: 'none',
-                    fontSize: '0.85rem',
-                    fontWeight: 700,
-                    cursor: 'pointer',
-                    background: 'transparent',
-                    color: isSelected ? 'var(--color-text)' : 'var(--color-text-light)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '6px',
-                    position: 'relative',
-                    outline: 'none',
-                    boxShadow: 'none',
-                    flexShrink: 0,
-                    zIndex: 2,
-                    transition: 'color 0.2s ease'
-                  }}
-                >
-                  {isSelected && (
-                    <motion.div 
-                      layoutId="activeWsSubTabIndicator"
-                      style={{
-                        position: 'absolute',
-                        top: 0,
-                        left: 0,
-                        right: 0,
-                        bottom: 0,
-                        background: 'var(--color-surface)',
-                        borderRadius: '6px',
-                        boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
-                        zIndex: 1
-                      }}
-                      transition={{ type: 'spring', stiffness: 380, damping: 30 }}
-                    />
-                  )}
-                  
-                  <span style={{ position: 'relative', zIndex: 2, display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    {tab.icon}
-                    <span>{tab.label}</span>
-                  </span>
-                  
-                  <span style={{
-                    position: 'relative',
-                    zIndex: 2,
-                    fontSize: '0.75rem',
-                    padding: '2px 6px',
-                    borderRadius: '10px',
-                    background: isSelected ? 'var(--color-border-light)' : 'rgba(0, 0, 0, 0.04)',
-                    color: isSelected ? 'var(--color-text)' : 'var(--color-text-muted)',
-                    fontWeight: 800,
-                    transition: 'background 0.2s ease, color 0.2s ease'
-                  }}>
-                    {tab.count}
-                  </span>
-                </button>
-              );
-            })}
+            {/* Dropdown filter on the left */}
+            <div style={{ position: 'relative', flex: 1 }}>
+              <select
+                value={wsSubTab}
+                onChange={(e) => {
+                  setWsSubTab(e.target.value as any);
+                  setWsTeamSubFilter('all');
+                }}
+                style={{
+                  width: '100%',
+                  height: '38px',
+                  borderRadius: '10px',
+                  border: '1px solid var(--color-border)',
+                  background: 'var(--color-surface)',
+                  color: 'var(--color-text)',
+                  fontSize: '0.85rem',
+                  fontWeight: 700,
+                  padding: '0 2.25rem 0 0.75rem',
+                  appearance: 'none',
+                  outline: 'none',
+                  boxShadow: 'var(--shadow-sm)'
+                }}
+              >
+                {[
+                  { id: 'all', label: `${t('Tất cả')} (${wsTasks.length})` },
+                  { id: 'customer', label: `${t('Công việc khách hàng')} (${wsTasks.filter(task => task.related_type && ['contact', 'deal', 'company'].includes(task.related_type)).length})` },
+                  { id: 'team', label: `${t('Công việc nội bộ team')} (${wsTasks.filter(task => {
+                      const isClient = task.related_type && ['contact', 'deal', 'company'].includes(task.related_type);
+                      const tagsList = task.tags ? task.tags.split(',').map((t: string) => t.trim()) : [];
+                      return !isClient && !tagsList.includes('personal_task');
+                    }).length})` },
+                  { id: 'personal', label: `${t('Công việc cá nhân')} (${wsTasks.filter(task => {
+                      const tagsList = task.tags ? task.tags.split(',').map((t: string) => t.trim()) : [];
+                      return tagsList.includes('personal_task');
+                    }).length})` }
+                ].map(opt => (
+                  <option key={opt.id} value={opt.id}>{opt.label}</option>
+                ))}
+              </select>
+              <div style={{
+                position: 'absolute',
+                top: '50%',
+                right: '0.75rem',
+                transform: 'translateY(-50%)',
+                color: 'var(--color-text-muted)',
+                pointerEvents: 'none',
+                display: 'flex',
+                alignItems: 'center'
+              }}>
+                <ChevronDown size={14} />
+              </div>
+            </div>
+
+            {/* Tạo công việc button on the right */}
+            <button 
+              className="btn primary sm" 
+              onClick={() => {
+                setSelectedTaskForDetails({
+                  id: 'new',
+                  subject: '',
+                  priority: 'medium',
+                  due_date: new Date().toISOString().slice(0, 10),
+                  description: '',
+                  link: '',
+                  user_id: String(user?.id || ''),
+                  progress: 0,
+                  require_approval: 0,
+                  approver_id: '',
+                  tags: wsSubTab === 'personal' ? 'personal_task' : '',
+                  internal_type: wsSubTab === 'team' ? 'task' : '',
+                  scope: wsSubTab === 'team' ? 'team' : '',
+                  participant_ids: '',
+                  related_contact_ids: [],
+                  checklist: [],
+                  project_id: '',
+                  campaign_id: '',
+                  team_id: '',
+                  campaign_target: ''
+                });
+              }}
+              style={{
+                height: '38px',
+                borderRadius: '10px',
+                fontWeight: 700,
+                padding: '0 12px',
+                fontSize: '0.8rem',
+                whiteSpace: 'nowrap',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px',
+                flexShrink: 0
+              }}
+            >
+              <Plus size={14} /> {t('Tạo công việc')}
+            </button>
           </div>
-        </div>
+        ) : (
+          <div className="segmented-control-wrapper" style={{ marginBottom: '1rem' }}>
+            <div style={{
+              display: 'flex',
+              background: 'var(--color-border-light)',
+              border: '1px solid var(--color-border)',
+              padding: '2px',
+              borderRadius: '8px',
+              gap: '2px',
+              width: 'fit-content',
+              position: 'relative'
+            }}>
+              {[
+                { id: 'all', label: t('Tất cả'), icon: <Layers size={14} />, count: wsTasks.length },
+                { id: 'customer', label: t('Công việc khách hàng'), icon: <Users size={14} />, count: wsTasks.filter(task => task.related_type && ['contact', 'deal', 'company'].includes(task.related_type)).length },
+                { id: 'team', label: t('Công việc nội bộ team'), icon: <CheckSquare size={14} />, count: wsTasks.filter(task => {
+                    const isClient = task.related_type && ['contact', 'deal', 'company'].includes(task.related_type);
+                    const tagsList = task.tags ? task.tags.split(',').map((t: string) => t.trim()) : [];
+                    return !isClient && !tagsList.includes('personal_task');
+                  }).length
+                },
+                { id: 'personal', label: t('Công việc cá nhân'), icon: <User size={14} />, count: wsTasks.filter(task => {
+                    const tagsList = task.tags ? task.tags.split(',').map((t: string) => t.trim()) : [];
+                    return tagsList.includes('personal_task');
+                  }).length
+                }
+              ].map(tab => {
+                const isSelected = wsSubTab === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => {
+                      setWsSubTab(tab.id as any);
+                      setWsTeamSubFilter('all');
+                    }}
+                    style={{
+                      padding: '6px 16px',
+                      height: '34px',
+                      borderRadius: '6px',
+                      border: 'none',
+                      fontSize: '0.85rem',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      background: 'transparent',
+                      color: isSelected ? 'var(--color-text)' : 'var(--color-text-light)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '6px',
+                      position: 'relative',
+                      outline: 'none',
+                      boxShadow: 'none',
+                      flexShrink: 0,
+                      zIndex: 2,
+                      transition: 'color 0.2s ease'
+                    }}
+                  >
+                    {isSelected && (
+                      <motion.div 
+                        layoutId="activeWsSubTabIndicator"
+                        style={{
+                          position: 'absolute',
+                          top: 0,
+                          left: 0,
+                          right: 0,
+                          bottom: 0,
+                          background: 'var(--color-surface)',
+                          borderRadius: '6px',
+                          boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
+                          zIndex: 1
+                        }}
+                        transition={{ type: 'spring', stiffness: 380, damping: 30 }}
+                      />
+                    )}
+                    
+                    <span style={{ position: 'relative', zIndex: 2, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      {tab.icon}
+                      <span>{tab.label}</span>
+                    </span>
+                    
+                    <span style={{
+                      position: 'relative',
+                      zIndex: 2,
+                      fontSize: '0.75rem',
+                      padding: '2px 6px',
+                      borderRadius: '10px',
+                      background: isSelected ? 'var(--color-border-light)' : 'rgba(0, 0, 0, 0.04)',
+                      color: isSelected ? 'var(--color-text)' : 'var(--color-text-muted)',
+                      fontWeight: 800,
+                      transition: 'background 0.2s ease, color 0.2s ease'
+                    }}>
+                      {tab.count}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         {/* Team sub-filters */}
         {wsSubTab === 'team' && (

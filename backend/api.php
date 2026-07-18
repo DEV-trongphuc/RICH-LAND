@@ -799,6 +799,13 @@ function processManualLead($conn, $leadData, $override_round_id, $override_consu
     $type = trim($leadData['type'] ?? '');
     $note = trim($leadData['note'] ?? '');
 
+    $managerBehaviorMode = $decodedUser['manager_behavior_mode'] ?? 'combined';
+    $canSelfAssign = ($decodedUser['role'] === 'sale') || ($decodedUser['role'] === 'manager' && $managerBehaviorMode === 'sale');
+
+    if ($distribution_mode === 'self_assign' && !$canSelfAssign) {
+        return ['success' => false, 'message' => 'Chỉ có Sale hoặc Manager dạng Sale mới được phép tự nhận chăm sóc (Self-assign) data.'];
+    }
+
     if ($decodedUser['role'] === 'sale' || $distribution_mode === 'self_assign') {
         $stmtC = $conn->prepare("SELECT id FROM consultants WHERE email = ? LIMIT 1");
         $stmtC->bind_param("s", $decodedUser['email']);

@@ -11,6 +11,7 @@ export interface AuthUser {
   tenant_id: number;
   tenant_name: string;
   tenant_slug: string;
+  manager_behavior_mode?: string | null;
 }
 
 interface AuthStore {

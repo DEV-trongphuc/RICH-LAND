@@ -775,7 +775,7 @@ export const DealsPage: React.FC = () => {
             })}
           </div>
 
-          {currentUser?.role !== 'viewer' && currentUser?.role !== 'sale' && (
+          {!isMobile && currentUser?.role !== 'viewer' && currentUser?.role !== 'sale' && (
             <button 
               onClick={() => setShowImportExport(true)} 
               title="Nhập/Xuất"
