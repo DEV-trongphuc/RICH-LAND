@@ -630,8 +630,8 @@ export default function CooperationSlipsPage() {
       sum += val;
     }
 
-    if (sum > 100) {
-      addToast(`Tổng tỷ lệ hoa hồng không được vượt quá 100% (Hiện tại là ${sum}%)`, 'error');
+    if (sum !== 100) {
+      addToast(`Tổng tỷ lệ chia sẻ hoa hồng phải bằng đúng 100% (Hiện tại là ${sum}%)`, 'error');
       return;
     }
 
