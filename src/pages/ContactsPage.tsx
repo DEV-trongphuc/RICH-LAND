@@ -756,7 +756,7 @@ export const ContactsPage: React.FC = () => {
         </div>
         
         {/* Render export buttons only if not on mobile */}
-        <div className="flex gap-2" style={{ display: isMobile && user?.role === 'sale' ? 'none' : 'flex' }}>
+        <div className="flex gap-2" style={{ display: isMobile ? 'none' : 'flex' }}>
           {user?.role !== 'viewer' && !isSale && (
             <button className="btn outline" onClick={() => setShowImportExport(true)} title="Nhập/Xuất Dữ liệu">
               <Download size={14}/>

@@ -4661,8 +4661,8 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                     fontWeight: 700,
                     display: 'inline-flex',
                     alignItems: 'center',
-                    gap: '8px',
-                    padding: '0 16px',
+                    gap: isMobile ? '0' : '8px',
+                    padding: isMobile ? '0 12px' : '0 16px',
                     cursor: 'pointer',
                     fontSize: '0.8rem',
                     boxShadow: 'var(--shadow-xs)',
@@ -4671,7 +4671,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                   }}
                   className="hover-lift"
                 >
-                  <ArrowLeft size={15} /> {t('Quay lại')}
+                  <ArrowLeft size={15} /> {!isMobile && t('Quay lại')}
                 </button>
 
                 <div style={{ width: '1px', height: '24px', background: 'var(--color-border)', flexShrink: 0 }} />

@@ -3854,7 +3854,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                       </div>
 
                       {/* Row 2: Contact Info Links (Phone, Email) */}
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                      <div style={{ display: 'grid', gridTemplateColumns: isMobileOrTablet ? '1fr' : '1fr 1fr', gap: '8px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'var(--color-surface)', border: '1px solid var(--color-border-light)', padding: '6px 10px', borderRadius: '8px' }}>
                           <Phone size={12} className="text-primary" style={{ flexShrink: 0 }} />
                           <PhoneLink phone={formData.phone} style={{ fontSize: '0.75rem', fontWeight: 700 }} />
