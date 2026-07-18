@@ -1723,6 +1723,9 @@ try {
     $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('security_timer_da_gap', '+5 days')");
     $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('security_timer_booking', '+3 months')");
     $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('databank_applicable_sources', 'R3_Fb,R3,R2,broadcast')");
+    $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('standard_commission_rate', '0.03')");
+    $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('lockout_reason_count_threshold', '3')");
+    $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('max_parallel_sales_per_client', '2')");
     // Databank migrations
     $chkIsPublic = $conn->query("SHOW COLUMNS FROM persons LIKE 'is_public'");
     if ($chkIsPublic && $chkIsPublic->num_rows === 0) {

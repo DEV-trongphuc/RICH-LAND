@@ -2109,9 +2109,9 @@ function releaseExpiredLeadsToKho($conn) {
                 $stmt->execute();
                 $person = $stmt->get_result()->fetch_assoc();
                 $stmt->close();
-                
                 if ($person) {
-                    // Rule 5.13: Cùng 1 Person bị Đóng/Lỗi 3 lần cùng 1 lý do trong 1 chiến dịch -> không ra kho nữa
+                    // Rule 5.13: Cùng 1 Person bị Đóng/Lỗi N lần cùng 1 lý do trong 1 chiến dịch -> không ra kho nữa
+                    $lockoutCount = (int) get_system_setting($conn, 'lockout_reason_count_threshold') ?: 3;
                     $checkReasonStmt = $conn->prepare("
                         SELECT dr.reason, COUNT(*) as cnt 
                         FROM data_reports dr
@@ -2119,16 +2119,16 @@ function releaseExpiredLeadsToKho($conn) {
                         WHERE l.person_id = ?
                           AND dr.status IN ('approved', 'approved_no_comp')
                         GROUP BY dr.reason
-                        HAVING cnt >= 3
+                        HAVING cnt >= ?
                         LIMIT 1
                     ");
-                    $checkReasonStmt->bind_param("i", $personId);
+                    $checkReasonStmt->bind_param("ii", $personId, $lockoutCount);
                     $checkReasonStmt->execute();
                     $hasThreeSameReason = $checkReasonStmt->get_result()->fetch_assoc();
                     $checkReasonStmt->close();
 
                     if ($hasThreeSameReason) {
-                        logSync("Person ID $personId bi bao loi trung 3 lan cung 1 ly do (" . $hasThreeSameReason['reason'] . "). Tu choi ra Kho.");
+                        logSync("Person ID $personId bi bao loi trung " . $lockoutCount . " lan cung 1 ly do (" . $hasThreeSameReason['reason'] . "). Tu choi ra Kho.");
                         $conn->commit();
                         continue;
                     }

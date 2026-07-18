@@ -588,8 +588,9 @@ class DealController {
                         INSERT INTO deposits (contact_id, project_id, unit_code, price, expected_commission, status, created_by)
                         VALUES (?, ?, ?, ?, ?, 'pending_admin', ?)
                     ");
-                    // standard commission is 3% if not set
-                    $comm = $newPrice * 0.03;
+                    // standard commission is loaded dynamically from settings (default: 3%)
+                    $commRate = (float)$this->getSetting('standard_commission_rate', '0.03');
+                    $comm = $newPrice * $commRate;
                     $stmtNewDep->execute([
                         $oldDeal['contact_id'],
                         $targetProjId,
@@ -668,5 +669,12 @@ class DealController {
         }
 
         return 'none';
+    }
+
+    private function getSetting(string $key, string $default): string {
+        $stmt = $this->db->prepare("SELECT setting_value FROM system_settings WHERE setting_key = ?");
+        $stmt->execute([$key]);
+        $val = $stmt->fetchColumn();
+        return $val !== false ? $val : $default;
     }
 }

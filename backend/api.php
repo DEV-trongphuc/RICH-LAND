@@ -15581,7 +15581,8 @@ switch ($action) {
                 $stmtProtected->close();
             }
 
-            if ($remClaims < 2 && !$hasProtectedStatus) {
+            $maxParallelClaims = (int) get_system_setting($conn, 'max_parallel_sales_per_client') ?: 2;
+            if ($remClaims < $maxParallelClaims && !$hasProtectedStatus) {
                 $stmtUpPerson = $conn->prepare("UPDATE persons SET is_public = 1 WHERE id = ?");
                 $stmtUpPerson->bind_param("i", $personId);
                 $stmtUpPerson->execute();
@@ -15643,22 +15644,23 @@ switch ($action) {
             }
 
             // 1b. Check Same-Reason Reject Lockout (Rule 5.13)
+            $lockoutCount = (int) get_system_setting($conn, 'lockout_reason_count_threshold') ?: 3;
             $stmtLock = $conn->prepare("
                 SELECT reason, COUNT(*) as cnt 
                 FROM data_reports 
                 WHERE status = 'approved' AND lead_id IN (SELECT id FROM leads WHERE person_id = ?)
                 GROUP BY reason 
-                HAVING cnt >= 3 
+                HAVING cnt >= ? 
                 LIMIT 1
             ");
-            $stmtLock->bind_param("i", $personId);
+            $stmtLock->bind_param("ii", $personId, $lockoutCount);
             $stmtLock->execute();
             $lockout = $stmtLock->get_result()->fetch_assoc();
             $stmtLock->close();
 
             if ($lockout) {
                 $conn->rollback();
-                echo json_encode(['success' => false, 'message' => 'Khách hàng này đã bị khóa nhận do có từ 3 báo cáo lỗi cùng lý do: ' . $lockout['reason']]);
+                echo json_encode(['success' => false, 'message' => 'Khách hàng này đã bị khóa nhận do có từ ' . $lockoutCount . ' báo cáo lỗi cùng lý do: ' . $lockout['reason']]);
                 break;
             }
 
@@ -15714,16 +15716,17 @@ switch ($action) {
                 break;
             }
 
-            // 6. Check Person Quota - Max 2 active Sales can claim this Person
+            // 6. Check Person Quota - Max N active Sales can claim this Person
+            $maxParallelClaims = (int) get_system_setting($conn, 'max_parallel_sales_per_client') ?: 2;
             $stmtQPerson = $conn->prepare("SELECT COUNT(*) as cnt FROM contacts WHERE person_id = ? AND deleted_at IS NULL");
             $stmtQPerson->bind_param("i", $personId);
             $stmtQPerson->execute();
             $personClaims = (int)($stmtQPerson->get_result()->fetch_assoc()['cnt'] ?? 0);
             $stmtQPerson->close();
 
-            if ($personClaims >= 2) {
+            if ($personClaims >= $maxParallelClaims) {
                 $conn->rollback();
-                echo json_encode(['success' => false, 'message' => 'Khách hàng này đã đạt giới hạn nhận tối đa (tối đa 2 Sale nhận).']);
+                echo json_encode(['success' => false, 'message' => 'Khách hàng này đã đạt giới hạn nhận tối đa (tối đa ' . $maxParallelClaims . ' Sale nhận).']);
                 break;
             }
 
@@ -15774,7 +15777,7 @@ switch ($action) {
             $newContactId = $conn->insert_id;
             $stmtIns->close();
 
-            if ($personClaims + 1 >= 2) {
+            if ($personClaims + 1 >= $maxParallelClaims) {
                 $stmtUpPerson = $conn->prepare("UPDATE persons SET is_public = 0 WHERE id = ?");
                 $stmtUpPerson->bind_param("i", $personId);
                 $stmtUpPerson->execute();
