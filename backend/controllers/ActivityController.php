@@ -147,12 +147,12 @@ class ActivityController {
                             OR ct.owner_id=?
                             OR d.owner_id IN (
                                 SELECT id FROM users WHERE team_id IN (
-                                    SELECT id FROM teams WHERE FIND_IN_SET(?, CONCAT(leader_id, ",", IFNULL(co_leader_ids, "")))
+                                    SELECT id FROM teams WHERE FIND_IN_SET(?, CONCAT(leader_id, CHAR(44), COALESCE(co_leader_ids, leader_id)))
                                 )
                             )
                             OR ct.owner_id IN (
                                 SELECT id FROM users WHERE team_id IN (
-                                    SELECT id FROM teams WHERE FIND_IN_SET(?, CONCAT(leader_id, ",", IFNULL(co_leader_ids, "")))
+                                    SELECT id FROM teams WHERE FIND_IN_SET(?, CONCAT(leader_id, CHAR(44), COALESCE(co_leader_ids, leader_id)))
                                 )
                             )
                         )
@@ -166,7 +166,7 @@ class ActivityController {
                     try {
                         $checkOwner = $this->db->prepare("SELECT id FROM `$table` WHERE id=? AND tenant_id=? AND (owner_id=? OR owner_id IN (
                             SELECT id FROM users WHERE team_id IN (
-                                SELECT id FROM teams WHERE FIND_IN_SET(?, CONCAT(leader_id, ",", IFNULL(co_leader_ids, "")))
+                                SELECT id FROM teams WHERE FIND_IN_SET(?, CONCAT(leader_id, CHAR(44), COALESCE(co_leader_ids, leader_id)))
                             )
                         ))");
                         $checkOwner->execute([(int)$activity['related_id'], $auth['tenant_id'], $auth['user_id'], $auth['user_id']]);
@@ -206,7 +206,7 @@ class ActivityController {
                                 SELECT id FROM contacts 
                                 WHERE id IN ($inPlaceholders) AND tenant_id=? AND (owner_id=? OR owner_id IN (
                                     SELECT id FROM users WHERE team_id IN (
-                                        SELECT id FROM teams WHERE FIND_IN_SET(?, CONCAT(leader_id, ",", IFNULL(co_leader_ids, "")))
+                                        SELECT id FROM teams WHERE FIND_IN_SET(?, CONCAT(leader_id, CHAR(44), COALESCE(co_leader_ids, leader_id)))
                                     )
                                 ))
                             ");
@@ -250,7 +250,7 @@ class ActivityController {
                 $stmtTeamCheck = $this->db->prepare("
                     SELECT 1 FROM users u 
                     WHERE u.id = ? 
-                      AND (u.team_id IN (SELECT id FROM teams WHERE FIND_IN_SET(?, CONCAT(leader_id, ",", IFNULL(co_leader_ids, "")))) 
+                      AND (u.team_id IN (SELECT id FROM teams WHERE FIND_IN_SET(?, CONCAT(leader_id, CHAR(44), COALESCE(co_leader_ids, leader_id)))) 
                            OR ? LIKE '%\"scope\":\"global\"%')
                 ");
                 $stmtTeamCheck->execute([$activity['user_id'], $auth['user_id'], $activity['body']]);
@@ -264,7 +264,7 @@ class ActivityController {
         if ($auth['role'] === 'manager') {
             $stmtMgrTeam = $this->db->prepare("
                 SELECT 1 FROM users WHERE id = ? AND team_id IN (
-                    SELECT id FROM teams WHERE FIND_IN_SET(?, CONCAT(leader_id, ",", IFNULL(co_leader_ids, "")))
+                    SELECT id FROM teams WHERE FIND_IN_SET(?, CONCAT(leader_id, CHAR(44), COALESCE(co_leader_ids, leader_id)))
                 )
             ");
             $stmtMgrTeam->execute([$activity['user_id'], $auth['user_id']]);
@@ -370,11 +370,11 @@ class ActivityController {
                 OR a.created_by = ?
                 OR a.approver_id = ?
                 OR FIND_IN_SET(?, a.participant_ids)
-                OR a.user_id IN (SELECT id FROM users WHERE team_id IN (SELECT id FROM teams WHERE FIND_IN_SET(?, CONCAT(leader_id, ",", IFNULL(co_leader_ids, "")))))
+                OR a.user_id IN (SELECT id FROM users WHERE team_id IN (SELECT id FROM teams WHERE FIND_IN_SET(?, CONCAT(leader_id, CHAR(44), COALESCE(co_leader_ids, leader_id)))))
                 OR (a.related_type = \'contact\' AND EXISTS (
                     SELECT 1 FROM contacts ct WHERE ct.id = a.related_id AND (ct.owner_id = ? OR ct.owner_id IN (
                         SELECT id FROM users WHERE team_id IN (
-                            SELECT id FROM teams WHERE FIND_IN_SET(?, CONCAT(leader_id, ",", IFNULL(co_leader_ids, "")))
+                            SELECT id FROM teams WHERE FIND_IN_SET(?, CONCAT(leader_id, CHAR(44), COALESCE(co_leader_ids, leader_id)))
                         )
                     ))
                 )) 
@@ -382,11 +382,11 @@ class ActivityController {
                     SELECT 1 FROM deals d LEFT JOIN contacts ct ON d.contact_id = ct.id WHERE d.id = a.related_id AND (
                         d.owner_id = ? OR ct.owner_id = ? OR d.owner_id IN (
                             SELECT id FROM users WHERE team_id IN (
-                                SELECT id FROM teams WHERE FIND_IN_SET(?, CONCAT(leader_id, ",", IFNULL(co_leader_ids, "")))
+                                SELECT id FROM teams WHERE FIND_IN_SET(?, CONCAT(leader_id, CHAR(44), COALESCE(co_leader_ids, leader_id)))
                             )
                         ) OR ct.owner_id IN (
                             SELECT id FROM users WHERE team_id IN (
-                                SELECT id FROM teams WHERE FIND_IN_SET(?, CONCAT(leader_id, ",", IFNULL(co_leader_ids, "")))
+                                SELECT id FROM teams WHERE FIND_IN_SET(?, CONCAT(leader_id, CHAR(44), COALESCE(co_leader_ids, leader_id)))
                             )
                         )
                     )
@@ -397,7 +397,7 @@ class ActivityController {
                 OR (a.related_type = \'campaign\' AND EXISTS (
                     SELECT 1 FROM marketing_campaigns mc WHERE mc.id = a.related_id AND (FIND_IN_SET(?, mc.user_ids) OR FIND_IN_SET(?, mc.manager_ids) OR mc.created_by = ?)
                 ))
-                OR (a.tags LIKE \'internal_%\' AND (a.user_id IN (SELECT id FROM users WHERE team_id IN (SELECT id FROM teams WHERE FIND_IN_SET(?, CONCAT(leader_id, ",", IFNULL(co_leader_ids, ""))))) OR a.body LIKE \'%"scope":"global"%\'))
+                OR (a.tags LIKE \'internal_%\' AND (a.user_id IN (SELECT id FROM users WHERE team_id IN (SELECT id FROM teams WHERE FIND_IN_SET(?, CONCAT(leader_id, CHAR(44), COALESCE(co_leader_ids, leader_id))))) OR a.body LIKE \'%"scope":"global"%\'))
             )';
             $params[] = $auth['user_id'];
             $params[] = $auth['user_id'];
@@ -1126,7 +1126,7 @@ class ActivityController {
         } else if ($auth['role'] === 'manager') {
             $sql .= " AND (user_id = ? OR created_by = ? OR approver_id = ? OR user_id IN (
                 SELECT id FROM users WHERE team_id IN (
-                    SELECT id FROM teams WHERE FIND_IN_SET(?, CONCAT(leader_id, ",", IFNULL(co_leader_ids, "")))
+                    SELECT id FROM teams WHERE FIND_IN_SET(?, CONCAT(leader_id, CHAR(44), COALESCE(co_leader_ids, leader_id)))
                 )
             ))";
             $p[] = $auth['user_id'];

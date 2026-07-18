@@ -83,7 +83,7 @@ class ContactController {
             } else if ($scope === 'team') {
                 $where[] = '(c.owner_id = ? OR c.owner_id IN (
                     SELECT id FROM users WHERE team_id IN (
-                        SELECT id FROM teams WHERE FIND_IN_SET(?, CONCAT(leader_id, ",", IFNULL(co_leader_ids, "")))
+                        SELECT id FROM teams WHERE FIND_IN_SET(?, CONCAT(leader_id, CHAR(44), COALESCE(co_leader_ids, leader_id)))
                     ) OR team_id = (SELECT team_id FROM users WHERE id = ?)
                 ) OR FIND_IN_SET(?, c.collaborator_ids) OR c.id IN (
                     SELECT contact_id FROM cooperation_slips 
@@ -409,7 +409,7 @@ class ContactController {
         } else if ($scope === 'team') {
             $sql .= " AND (c.owner_id=? OR c.owner_id IN (
                 SELECT id FROM users WHERE team_id IN (
-                    SELECT id FROM teams WHERE FIND_IN_SET(?, CONCAT(leader_id, ",", IFNULL(co_leader_ids, "")))
+                    SELECT id FROM teams WHERE FIND_IN_SET(?, CONCAT(leader_id, CHAR(44), COALESCE(co_leader_ids, leader_id)))
                 )
             ) OR FIND_IN_SET(?, c.collaborator_ids) OR c.id IN (
                 SELECT contact_id FROM cooperation_slips 
@@ -657,7 +657,7 @@ class ContactController {
         } else if ($scope === 'team') {
             $permissionSql .= " AND (owner_id=? OR owner_id IN (
                 SELECT id FROM users WHERE team_id IN (
-                    SELECT id FROM teams WHERE FIND_IN_SET(?, CONCAT(leader_id, ",", IFNULL(co_leader_ids, "")))
+                    SELECT id FROM teams WHERE FIND_IN_SET(?, CONCAT(leader_id, CHAR(44), COALESCE(co_leader_ids, leader_id)))
                 )
             ) OR FIND_IN_SET(?, collaborator_ids) OR id IN (
                 SELECT contact_id FROM cooperation_slips 
@@ -960,7 +960,7 @@ class ContactController {
         if ($scope === 'team') {
             $sql .= " AND (owner_id=? OR owner_id IN (
                 SELECT id FROM users WHERE team_id IN (
-                    SELECT id FROM teams WHERE FIND_IN_SET(?, CONCAT(leader_id, ",", IFNULL(co_leader_ids, "")))
+                    SELECT id FROM teams WHERE FIND_IN_SET(?, CONCAT(leader_id, CHAR(44), COALESCE(co_leader_ids, leader_id)))
                 )
             ))";
             $p[] = $auth['user_id'];
@@ -993,7 +993,7 @@ class ContactController {
         if ($scope === 'team') {
             $where .= " AND (owner_id=? OR owner_id IN (
                 SELECT id FROM users WHERE team_id IN (
-                    SELECT id FROM teams WHERE FIND_IN_SET(?, CONCAT(leader_id, ",", IFNULL(co_leader_ids, "")))
+                    SELECT id FROM teams WHERE FIND_IN_SET(?, CONCAT(leader_id, CHAR(44), COALESCE(co_leader_ids, leader_id)))
                 )
             ))";
             $params[] = $auth['user_id'];
