@@ -252,13 +252,95 @@ export default function InventoryPage() {
 
   return (
     <div className="page-container anim-fade-up">
-      <div className="page-header">
-        <div>
-          <h1 className="page-title">Giỏ hàng &amp; Căn hộ</h1>
-          <p className="page-subtitle">Quản lý giỏ hàng căn hộ, lô đất dự án và lịch sử giao dịch.</p>
+      <div className="page-header" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', borderBottom: '1px solid var(--color-border-light)', paddingBottom: '1.25rem', marginBottom: '1.5rem', alignItems: 'stretch' }}>
+        {/* Row 1: Title & Actions */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', flexWrap: 'wrap', gap: '1rem' }}>
+          <div>
+            <h1 className="page-title" style={{ margin: 0 }}>Giỏ hàng &amp; Căn hộ</h1>
+            <p className="page-subtitle" style={{ margin: '4px 0 0' }}>Quản lý giỏ hàng căn hộ, lô đất dự án và lịch sử giao dịch.</p>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+            <button 
+              onClick={handleExport} 
+              style={{ 
+                height: '36px', 
+                fontSize: '0.8125rem', 
+                padding: '0 12px', 
+                gap: '0.4rem', 
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'center', 
+                borderRadius: '8px',
+                border: '1px solid var(--color-border)',
+                background: 'var(--color-surface)',
+                color: 'var(--color-text)',
+                cursor: 'pointer',
+                fontWeight: 600,
+                transition: 'all 0.2s'
+              }} 
+              title="Xuất Excel/CSV"
+            >
+              <Download size={14} />
+              <span>Xuất file</span>
+            </button>
+
+            {!isSale && (
+              <>
+                <button 
+                  onClick={() => setShowInventorySync(true)} 
+                  style={{ 
+                    height: '36px', 
+                    fontSize: '0.8125rem', 
+                    padding: '0 12px', 
+                    gap: '0.4rem', 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    justifyContent: 'center', 
+                    borderRadius: '8px',
+                    border: '1px solid var(--color-border)',
+                    background: 'var(--color-surface)',
+                    color: 'var(--color-text)',
+                    cursor: 'pointer',
+                    fontWeight: 600,
+                    transition: 'all 0.2s'
+                  }} 
+                  title="Đồng bộ Google Sheets"
+                >
+                  <FileSpreadsheet size={14} />
+                  <span>Đồng bộ Google Sheets</span>
+                </button>
+
+                <button 
+                  onClick={() => { setActiveTab('purchase_orders'); setShowPOModal(true); }} 
+                  style={{ 
+                    height: '36px', 
+                    fontSize: '0.8125rem', 
+                    padding: '0 14px', 
+                    gap: '0.4rem', 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    justifyContent: 'center', 
+                    borderRadius: '8px',
+                    border: 'none',
+                    background: 'var(--color-primary)',
+                    color: 'white',
+                    cursor: 'pointer',
+                    fontWeight: 600,
+                    transition: 'all 0.2s'
+                  }} 
+                  title="Khai báo căn / lô"
+                >
+                  <Plus size={14} />
+                  <span>Khai báo căn / lô</span>
+                </button>
+              </>
+            )}
+          </div>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
-          
+
+        {/* Row 2: Tabs Switcher */}
+        <div style={{ display: 'flex', width: '100%', justifyContent: 'flex-start' }}>
           {/* Pill Tab Switcher */}
           <div style={{ 
             display: 'flex', 
@@ -267,14 +349,13 @@ export default function InventoryPage() {
             padding: '2px', 
             borderRadius: '8px',
             gap: '2px', 
-            flexWrap: 'wrap',
             position: 'relative'
           }}>
             <button 
               style={{ 
-                padding: '6px 16px', 
+                padding: '6px 14px', 
                 borderRadius: '6px', 
-                fontSize: '0.85rem', 
+                fontSize: '0.8125rem', 
                 fontWeight: 700, 
                 background: 'transparent', 
                 color: activeTab === 'batches' ? 'var(--color-text)' : 'var(--color-text-light)', 
@@ -315,9 +396,9 @@ export default function InventoryPage() {
             </button>
             <button 
               style={{ 
-                padding: '6px 16px', 
+                padding: '6px 14px', 
                 borderRadius: '6px', 
-                fontSize: '0.85rem', 
+                fontSize: '0.8125rem', 
                 fontWeight: 700, 
                 background: 'transparent', 
                 color: activeTab === 'history' ? 'var(--color-text)' : 'var(--color-text-light)', 
@@ -358,9 +439,9 @@ export default function InventoryPage() {
             </button>
             <button 
               style={{ 
-                padding: '6px 16px', 
+                padding: '6px 14px', 
                 borderRadius: '6px', 
-                fontSize: '0.85rem', 
+                fontSize: '0.8125rem', 
                 fontWeight: 700, 
                 background: 'transparent', 
                 color: activeTab === 'purchase_orders' ? 'var(--color-text)' : 'var(--color-text-light)', 
@@ -400,81 +481,6 @@ export default function InventoryPage() {
               </span>
             </button>
           </div>
-
-          <button 
-            onClick={handleExport} 
-            style={{ 
-              height: '38px', 
-              fontSize: '0.875rem', 
-              padding: '0 16px', 
-              gap: '0.4rem', 
-              display: 'flex', 
-              alignItems: 'center', 
-              justifyContent: 'center', 
-              borderRadius: '8px',
-              border: '1px solid var(--color-border)',
-              background: 'var(--color-surface)',
-              color: 'var(--color-text)',
-              cursor: 'pointer',
-              transition: 'all 0.2s'
-            }} 
-            title="Xuất Excel/CSV"
-          >
-            <Download size={14} />
-            <span className="hide-on-mobile"> Xuất file</span>
-          </button>
-
-          {!isSale && (
-            <>
-              <div className="hide-on-mobile" style={{ width: '1px', height: '28px', background: 'var(--color-border)' }} />
-
-              <button 
-                onClick={() => setShowInventorySync(true)} 
-                style={{ 
-                  height: '38px', 
-                  fontSize: '0.875rem', 
-                  padding: '0 16px', 
-                  gap: '0.4rem', 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  justifyContent: 'center', 
-                  borderRadius: '8px',
-                  border: '1px solid var(--color-border)',
-                  background: 'var(--color-surface)',
-                  color: 'var(--color-text)',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s'
-                }} 
-                title="Đồng bộ Google Sheets"
-              >
-                <FileSpreadsheet size={14} />
-                <span> Đồng bộ Google Sheets</span>
-              </button>
-
-              <button 
-                onClick={() => { setActiveTab('purchase_orders'); setShowPOModal(true); }} 
-                style={{ 
-                  height: '38px', 
-                  fontSize: '0.875rem', 
-                  padding: '0 16px', 
-                  gap: '0.4rem', 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  justifyContent: 'center', 
-                  borderRadius: '8px',
-                  border: '1px solid var(--color-border)',
-                  background: 'var(--color-surface)',
-                  color: 'var(--color-text)',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s'
-                }} 
-                title="Khai báo căn / lô"
-              >
-                <Plus size={14} />
-                <span> Khai báo căn / lô</span>
-              </button>
-            </>
-          )}
         </div>
       </div>
 
