@@ -2248,6 +2248,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
               if (!isNaN(val) && val > 0) {
                 setDecayDays(val);
               }
+            }
             if (res.data.temp_suggestion_call_duration_seconds !== undefined) {
               const val = parseInt(res.data.temp_suggestion_call_duration_seconds, 10);
               if (!isNaN(val) && val > 0) {
