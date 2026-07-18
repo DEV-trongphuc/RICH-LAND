@@ -3781,109 +3781,96 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
               <div className={styles.drawerBody}>
                 {isMobileOrTablet && (
                   <>
-                    {/* Mobile Profile Info Card */}
+                    {/* Compact Mobile Profile Info Card */}
                     <div style={{
                       background: 'linear-gradient(135deg, var(--color-surface) 0%, var(--color-bg-dark) 100%)',
-                      padding: '1.25rem 1rem',
+                      padding: '0.75rem 1rem',
                       borderBottom: '1px solid var(--color-border-light)',
                       display: 'flex',
                       flexDirection: 'column',
-                      gap: '12px',
+                      gap: '8px',
                       flexShrink: 0
                     }}>
-                      {/* Row 1: Avatar, Name, Status Badge, Scoring */}
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                        <Avatar 
-                          src={formData.avatar_url} 
-                          name={fullName} 
-                          size={48} 
-                        />
-
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                            <span className={`badge ${formData.status === 'customer' ? 'success' : formData.status === 'qualified' ? 'warning' : 'info'}`} style={{ padding: '2px 6px', fontSize: '0.625rem', borderRadius: '4px' }}>
-                              {formData.status === 'customer' ? 'VIP' : formData.status === 'qualified' ? 'Đã thẩm định' : 'Tiềm năng'}
+                      {/* Row 1: Status Badges & Scoring */}
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                          <span className={`badge ${formData.status === 'customer' ? 'success' : formData.status === 'qualified' ? 'warning' : 'info'}`} style={{ padding: '2px 6px', fontSize: '0.625rem', borderRadius: '4px' }}>
+                            {formData.status === 'customer' ? 'VIP' : formData.status === 'qualified' ? 'Đã thẩm định' : 'Tiềm năng'}
+                          </span>
+                          {formData.temperature && tempLabels[formData.temperature] && (
+                            <span 
+                              style={{ 
+                                padding: '2px 6px', 
+                                fontSize: '0.625rem', 
+                                borderRadius: '4px',
+                                fontWeight: 700,
+                                color: tempLabels[formData.temperature].color,
+                                background: tempLabels[formData.temperature].bg,
+                                border: `1px solid ${tempLabels[formData.temperature].color}33`
+                              }}
+                              title={`Nhiệt độ sale chốt: ${tempLabels[formData.temperature].label}`}
+                            >
+                              {tempLabels[formData.temperature].label}
                             </span>
-                            {formData.temperature && tempLabels[formData.temperature] && (
-                              <span 
-                                style={{ 
-                                  padding: '2px 6px', 
-                                  fontSize: '0.625rem', 
-                                  borderRadius: '4px',
-                                  fontWeight: 700,
-                                  color: tempLabels[formData.temperature].color,
-                                  background: tempLabels[formData.temperature].bg,
-                                  border: `1px solid ${tempLabels[formData.temperature].color}33`
-                                }}
-                                title={`Nhiệt độ sale chốt: ${tempLabels[formData.temperature].label}`}
-                              >
-                                {tempLabels[formData.temperature].label}
-                              </span>
-                            )}
-                            {formData.suggested_temperature && tempLabels[formData.suggested_temperature] && (
-                              <span 
-                                style={{ 
-                                  padding: '2px 6px', 
-                                  fontSize: '0.625rem', 
-                                  borderRadius: '4px',
-                                  fontWeight: 600,
-                                  color: '#64748b',
-                                  background: 'var(--color-bg)',
-                                  border: '1px solid var(--color-border-light)'
-                                }}
-                                title={`Máy đề xuất: ${tempLabels[formData.suggested_temperature].label}`}
-                              >
-                                🤖 {tempLabels[formData.suggested_temperature].label}
-                              </span>
-                            )}
-                            {formData.not_lead_proposed === 1 && (
-                              <span className="badge danger" style={{ padding: '2px 6px', fontSize: '0.625rem', borderRadius: '4px' }}>Chờ duyệt loại</span>
-                            )}
-                          </div>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginTop: '2px' }}>
-                            <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>Mã: #{contact?.id || formData.id}</span>
-                          </div>
+                          )}
+                          {formData.suggested_temperature && tempLabels[formData.suggested_temperature] && (
+                            <span 
+                              style={{ 
+                                padding: '2px 6px', 
+                                fontSize: '0.625rem', 
+                                borderRadius: '4px',
+                                fontWeight: 600,
+                                color: '#64748b',
+                                background: 'var(--color-bg)',
+                                border: '1px solid var(--color-border-light)'
+                              }}
+                              title={`Máy đề xuất: ${tempLabels[formData.suggested_temperature].label}`}
+                            >
+                              🤖 {tempLabels[formData.suggested_temperature].label}
+                            </span>
+                          )}
+                          {formData.not_lead_proposed === 1 && (
+                            <span className="badge danger" style={{ padding: '2px 6px', fontSize: '0.625rem', borderRadius: '4px' }}>Chờ duyệt loại</span>
+                          )}
                         </div>
 
                         <div 
                           onClick={() => setActiveTab('scoring')}
-                          style={{ cursor: 'pointer', flexShrink: 0 }}
+                          style={{ cursor: 'pointer', flexShrink: 0, display: 'flex', alignItems: 'center', gap: '4px' }}
                         >
-                          <LeadScoreRing score={score} size={40} showLabel={true} />
+                          <LeadScoreRing score={score} size={30} showLabel={true} />
                         </div>
                       </div>
 
-                      {/* Row 2: Contact Info Links (Phone, Email) */}
-                      <div style={{ display: 'grid', gridTemplateColumns: isMobileOrTablet ? '1fr' : '1fr 1fr', gap: '8px' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'var(--color-surface)', border: '1px solid var(--color-border-light)', padding: '6px 10px', borderRadius: '8px' }}>
-                          <Phone size={12} className="text-primary" style={{ flexShrink: 0 }} />
+                      {/* Row 2: Contact Info Links (Phone, Email) - Inline & Borderless */}
+                      <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '10px 16px', fontSize: '0.75rem', color: 'var(--color-text)' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                          <Phone size={11} className="text-primary" style={{ flexShrink: 0 }} />
                           <PhoneLink phone={formData.phone} style={{ fontSize: '0.75rem', fontWeight: 700 }} />
                         </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'var(--color-surface)', border: '1px solid var(--color-border-light)', padding: '6px 10px', borderRadius: '8px', overflow: 'hidden' }}>
-                          <Mail size={12} className="text-muted" style={{ flexShrink: 0 }} />
-                          <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={formData.email}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', minWidth: 0 }}>
+                          <Mail size={11} className="text-muted" style={{ flexShrink: 0 }} />
+                          <span style={{ fontSize: '0.75rem', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '160px' }} title={formData.email}>
                             {formData.email || 'contact@email.com'}
                           </span>
                         </div>
                       </div>
 
-                      {/* Row 3: Owner, Sync state */}
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', flexWrap: 'wrap' }}>
+                      {/* Row 3: Owner, Creation date - Inline & Compact */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>
                         <div 
-                          style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '3px 8px', background: 'var(--color-surface)', border: '1px solid var(--color-border-light)', borderRadius: '6px', cursor: 'pointer' }}
+                          style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }}
                           onClick={(e) => showUserCard(e, formData.owner_name)}
                         >
                           <Avatar 
                             src={ownerAvatarUrl}
                             name={formData.owner_name} 
-                            size={16} 
+                            size={14} 
                           />
-                          <span style={{ fontSize: '0.7rem', fontWeight: 700, color: '#8a0f1b' }}>{formData.owner_name || 'Chưa nhận'}</span>
+                          <span style={{ fontWeight: 700, color: '#8a0f1b' }}>{formData.owner_name || 'Chưa nhận'}</span>
                         </div>
-
-                        <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>
-                          <span>Tạo: {new Date(formData.created_at).toLocaleDateString('vi-VN')}</span>
-                        </div>
+                        <span>·</span>
+                        <span>Tạo: {new Date(formData.created_at).toLocaleDateString('vi-VN')}</span>
                       </div>
                     </div>
 
