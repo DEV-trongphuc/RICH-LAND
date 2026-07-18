@@ -152,8 +152,8 @@ async function run() {
 
   // Case 5: Vacation Mode skip
   try {
-    // We set sale to vacation mode and check the response (pass ID: 1)
-    const toggleRes = await axios.post(getUrl('toggle_consultant_vacation'), { id: 1 }, {
+    // We set sale to vacation mode and check the response (pass ID: 1000)
+    const toggleRes = await axios.post(getUrl('toggle_consultant_vacation'), { id: 1000 }, {
       headers: { Authorization: `Bearer ${adminToken}` }
     });
     logResult('Case 5: Vacation Mode status toggled', 'Vacation mode response successful', JSON.stringify(toggleRes.data), toggleRes.data.success);
@@ -204,7 +204,7 @@ async function run() {
 
     // Add comment tagging administrative emails
     const commentRes = await axios.post(getUrl(`tickets/${ticketId}/comments`), {
-      comment: 'Vấn đề cần @turniodev@gmail.com giải quyết ngay.'
+      body: 'Vấn đề cần @Nguyễn_Hải_Đăng giải quyết ngay.'
     }, adminHeaders);
     logResult('Case 9: Mentions notification dispatch', 'Notification entries generated for tagged users', 'Mentions parsed and log updated', commentRes.status === 200);
   } catch (e) {
