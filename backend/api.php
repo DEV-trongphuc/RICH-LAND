@@ -4748,7 +4748,7 @@ switch ($action) {
         $isDirector = (isset($decodedUser['role']) && $decodedUser['role'] === 'director');
         $isProjManager = false;
         $projIds = [];
-        if ($isManager || $isDirector) {
+        if ($isManager) {
             $pRes = $conn->query("SELECT id, manager_ids FROM projects");
             if ($pRes) {
                 while ($pRow = $pRes->fetch_assoc()) {
@@ -5066,7 +5066,7 @@ switch ($action) {
                     }
                 }
                 
-                if ($userRole === 'director' && !$isProjManager) {
+                if ($userRole === 'director') {
                     // GĐKD Toàn sàn has global access
                 } else if ($isProjManager) {
                     $stmtCheckProj = $conn->prepare("SELECT project_id FROM distribution_rounds WHERE id = ?");
@@ -7716,7 +7716,7 @@ switch ($action) {
         $isDirector = (isset($decodedUser['role']) && $decodedUser['role'] === 'director');
         $isProjManager = false;
         $projIds = [];
-        if ($isManager || $isDirector) {
+        if ($isManager) {
             $pRes = $conn->query("SELECT id, manager_ids FROM projects");
             if ($pRes) {
                 while ($pRow = $pRes->fetch_assoc()) {
@@ -11850,14 +11850,16 @@ switch ($action) {
         
         $isProjManager = false;
         $projIds = [];
-        $pRes = $conn->query("SELECT id, manager_ids FROM projects");
-        if ($pRes) {
-            while ($pRow = $pRes->fetch_assoc()) {
-                if (!empty($pRow['manager_ids'])) {
-                    $mIds = array_filter(array_map('intval', explode(',', $pRow['manager_ids'])));
-                    if (in_array((int)$userId, $mIds, true)) {
-                        $projIds[] = (int)$pRow['id'];
-                        $isProjManager = true;
+        if ($isManager) {
+            $pRes = $conn->query("SELECT id, manager_ids FROM projects");
+            if ($pRes) {
+                while ($pRow = $pRes->fetch_assoc()) {
+                    if (!empty($pRow['manager_ids'])) {
+                        $mIds = array_filter(array_map('intval', explode(',', $pRow['manager_ids'])));
+                        if (in_array((int)$userId, $mIds, true)) {
+                            $projIds[] = (int)$pRow['id'];
+                            $isProjManager = true;
+                        }
                     }
                 }
             }
@@ -13555,14 +13557,16 @@ switch ($action) {
         
         $isProjManager = false;
         $projIds = [];
-        $pRes = $conn->query("SELECT id, manager_ids FROM projects");
-        if ($pRes) {
-            while ($pRow = $pRes->fetch_assoc()) {
-                if (!empty($pRow['manager_ids'])) {
-                    $mIds = array_filter(array_map('intval', explode(',', $pRow['manager_ids'])));
-                    if (in_array((int)$userId, $mIds, true)) {
-                        $projIds[] = (int)$pRow['id'];
-                        $isProjManager = true;
+        if ($userRole === 'manager') {
+            $pRes = $conn->query("SELECT id, manager_ids FROM projects");
+            if ($pRes) {
+                while ($pRow = $pRes->fetch_assoc()) {
+                    if (!empty($pRow['manager_ids'])) {
+                        $mIds = array_filter(array_map('intval', explode(',', $pRow['manager_ids'])));
+                        if (in_array((int)$userId, $mIds, true)) {
+                            $projIds[] = (int)$pRow['id'];
+                            $isProjManager = true;
+                        }
                     }
                 }
             }

@@ -55,15 +55,17 @@ class ContactController {
         // GĐKD Dự án scoping vs general manager/sale scoping
         $isProjManager = false;
         $projIds = [];
-        $stmtP = $this->db->prepare("SELECT id, manager_ids FROM projects");
-        $stmtP->execute();
-        $projs = $stmtP->fetchAll(PDO::FETCH_ASSOC);
-        foreach ($projs as $pRow) {
-            if (!empty($pRow['manager_ids'])) {
-                $mIds = array_filter(array_map('intval', explode(',', $pRow['manager_ids'])));
-                if (in_array((int)$auth['user_id'], $mIds, true)) {
-                    $projIds[] = (int)$pRow['id'];
-                    $isProjManager = true;
+        if ($auth['role'] === 'manager') {
+            $stmtP = $this->db->prepare("SELECT id, manager_ids FROM projects");
+            $stmtP->execute();
+            $projs = $stmtP->fetchAll(PDO::FETCH_ASSOC);
+            foreach ($projs as $pRow) {
+                if (!empty($pRow['manager_ids'])) {
+                    $mIds = array_filter(array_map('intval', explode(',', $pRow['manager_ids'])));
+                    if (in_array((int)$auth['user_id'], $mIds, true)) {
+                        $projIds[] = (int)$pRow['id'];
+                        $isProjManager = true;
+                    }
                 }
             }
         }

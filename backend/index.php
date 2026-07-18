@@ -550,8 +550,8 @@ switch ($resource) {
         $auth = requireAuth();
         $ctrl = new DealController($db);
         if ($method === 'GET') $ctrl->stages($auth);
-        elseif (!$resourceId && $method === 'POST') { requireRole($auth, ['admin','manager']); $ctrl->storeStage($auth); }
-        elseif ($resourceId  && $method === 'PUT')  { requireRole($auth, ['admin','manager']); $ctrl->updateStage($auth, (int)$resourceId); }
+        elseif (!$resourceId && $method === 'POST') { requireRole($auth, ['admin','manager','director']); $ctrl->storeStage($auth); }
+        elseif ($resourceId  && $method === 'PUT')  { requireRole($auth, ['admin','manager','director']); $ctrl->updateStage($auth, (int)$resourceId); }
         elseif ($resourceId  && $method === 'DELETE') { requireRole($auth, ['admin']); $ctrl->destroyStage($auth, (int)$resourceId); }
         else respond(404, null, 'Route không tồn tại', false);
         break;
@@ -586,9 +586,9 @@ switch ($resource) {
         $ctrl = new ProductController($db);
         if ($resourceId === 'bulk-delete' && $method === 'POST') $ctrl->bulkDelete($auth);
         elseif (!$resourceId && $method === 'GET')    $ctrl->index($auth);
-        elseif (!$resourceId && $method === 'POST')   { requireRole($auth, ['admin','manager']); $ctrl->store($auth); }
+        elseif (!$resourceId && $method === 'POST')   { requireRole($auth, ['admin','manager','director']); $ctrl->store($auth); }
         elseif ($resourceId  && $method === 'GET')    $ctrl->show($auth, (int)$resourceId);
-        elseif ($resourceId  && $method === 'PUT')    { requireRole($auth, ['admin','manager']); $ctrl->update($auth, (int)$resourceId); }
+        elseif ($resourceId  && $method === 'PUT')    { requireRole($auth, ['admin','manager','director']); $ctrl->update($auth, (int)$resourceId); }
         elseif ($resourceId  && $method === 'DELETE') { requireRole($auth, ['admin']); $ctrl->destroy($auth, (int)$resourceId); }
         else respond(404, null, 'Route không tồn tại', false);
         break;
@@ -596,7 +596,7 @@ switch ($resource) {
     // QUOTES
     case 'quotes':
         $auth = requireAuth();
-        requireRole($auth, ['admin', 'superadmin', 'super_admin', 'manager', 'sales', 'sale']);
+        requireRole($auth, ['admin', 'superadmin', 'super_admin', 'manager', 'sales', 'sale', 'director']);
         $ctrl = new QuoteController($db);
         if     (!$resourceId && $method === 'GET')    $ctrl->index($auth);
         elseif (!$resourceId && $method === 'POST')   $ctrl->store($auth);
@@ -611,7 +611,7 @@ switch ($resource) {
     case 'users':
         $auth = requireAuth();
         $ctrl = new UserController($db);
-        if     (!$resourceId && $method === 'GET')    { requireRole($auth, ['admin', 'super_admin', 'superadmin', 'manager', 'sales', 'sale']); $ctrl->index($auth); }
+        if     (!$resourceId && $method === 'GET')    { requireRole($auth, ['admin', 'super_admin', 'superadmin', 'manager', 'sales', 'sale', 'director']); $ctrl->index($auth); }
         elseif (!$resourceId && $method === 'POST')   { requireRole($auth, ['admin', 'super_admin']); $ctrl->store($auth); }
         elseif ($resourceId  && $method === 'GET')    $ctrl->show($auth, (int)$resourceId);
         elseif ($resourceId  && $method === 'PUT')    $ctrl->update($auth, (int)$resourceId);
@@ -717,7 +717,7 @@ switch ($resource) {
 
     case 'expenses':
         $auth = requireAuth();
-        requireRole($auth, ['admin', 'superadmin', 'super_admin', 'manager', 'sales', 'sale']);
+        requireRole($auth, ['admin', 'superadmin', 'super_admin', 'manager', 'sales', 'sale', 'director']);
         $ctrl = new FinanceController($db);
         if ($resourceId === 'entity' && $subResource && $method === 'GET') {
             $ctrl->listEntityExpenses($auth, $subResource, (int)($segments[3] ?? 0));
