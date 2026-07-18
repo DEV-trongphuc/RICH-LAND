@@ -1197,6 +1197,9 @@ class ContactController {
         if ($permissionsJson && isset($permissionsJson[$module][$action])) {
             $val = $permissionsJson[$module][$action];
             if (in_array($val, ['all', 'team', 'own', 'none'], true)) {
+                if ($action !== 'delete' && $val === 'none' && in_array($auth['role'], ['sale', 'sales', 'manager', 'director', 'assistant'], true)) {
+                    return 'own';
+                }
                 return $val;
             }
         }
