@@ -29,7 +29,7 @@ if (strpos($action, '?') !== false) {
 $segments = explode('/', $action);
 $baseAction = explode('&', $segments[0])[0];
 if (in_array($baseAction, [
-    'projects', 'deposits', 'cooperation-slips', 'capi', 'check-ins', 
+    'auth', 'projects', 'deposits', 'cooperation-slips', 'capi', 'check-ins', 
     'cloud-files', 'file-categories', 'tickets', 'suppliers', 'purchase-orders', 
     'pos', 'custom-fields', 'inventory', 'tags', 'pipeline-stages', 
     'users', 'reports', 'quotes', 'invoices', 'expenses', 'products',
