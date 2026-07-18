@@ -560,6 +560,12 @@ if (!in_array($action, $publicActions)) {
     list($permModule, $permActionType) = getActionModuleAndType($action);
     $resolvedScope = getModulePermissionScope($conn, $decodedUser, $permModule, $permActionType);
 
+    // get_settings is a read-only configuration fetch called by Layout, Dashboard, SalePortal, and Attendance pages
+    // We allow any authenticated user (all roles) to read settings.
+    if ($action === 'get_settings') {
+        $resolvedScope = 'all';
+    }
+
     // Bypass check if it is a self-operation (e.g. updating one's own password, unlinking one's own Zalo)
     $isSelfOperation = $isSelfEdit || $isSelfUnlink;
 
