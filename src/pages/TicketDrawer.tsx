@@ -243,9 +243,19 @@ export const TicketDrawer: React.FC<Props> = ({ isOpen, onClose, ticket, onUpdat
                       <StatRowSkeleton />
                     </div>
                   ) : comments.length === 0 ? (
-                    <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--color-text-muted)', background: 'var(--color-surface)', borderRadius: '16px', border: '1px dashed var(--color-border)' }}>
-                      <MessageSquare size={32} style={{ margin: '0 auto 1rem', opacity: 0.3 }} />
-                      Chưa có ghi chú nào. Hãy bắt đầu thảo luận!
+                    <div style={{ 
+                      display: 'flex', 
+                      flexDirection: 'column', 
+                      alignItems: 'center', 
+                      justifyContent: 'center', 
+                      padding: '3rem', 
+                      color: 'var(--color-text-muted)', 
+                      background: 'var(--color-surface)', 
+                      borderRadius: '16px', 
+                      border: '1px dashed var(--color-border)' 
+                    }}>
+                      <MessageSquare size={32} style={{ marginBottom: '1rem', opacity: 0.3 }} />
+                      <span style={{ fontSize: '0.875rem' }}>Chưa có ghi chú nào. Hãy bắt đầu thảo luận!</span>
                     </div>
                   ) : (
                     (() => {

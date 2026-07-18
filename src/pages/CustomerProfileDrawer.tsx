@@ -266,12 +266,84 @@ const renderFormattedText = (text: string, users: any[], onMentionClick?: (e: Re
   });
 };
 
+const formatMeetingTime = (dateStr?: string | null) => {
+  if (!dateStr) return '';
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return dateStr;
+  return d.toLocaleString('vi-VN', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+};
+
+const MeetingCountdown: React.FC<{ dueDate: string }> = ({ dueDate }) => {
+  const [timeLeft, setTimeLeft] = useState<string>('');
+
+  useEffect(() => {
+    const updateCountdown = () => {
+      const target = new Date(dueDate);
+      const now = new Date();
+      const diff = target.getTime() - now.getTime();
+
+      if (isNaN(target.getTime())) {
+        setTimeLeft('');
+        return;
+      }
+
+      if (diff <= 0) {
+        setTimeLeft('Đã đến giờ/Quá giờ');
+        return;
+      }
+
+      const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+      const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+      const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+
+      let result = 'Sắp gặp trong: ';
+      if (days > 0) result += `${days}d `;
+      if (hours > 0 || days > 0) result += `${hours}h `;
+      result += `${minutes}m`;
+      setTimeLeft(result);
+    };
+
+    updateCountdown();
+    const interval = setInterval(updateCountdown, 30000);
+    return () => clearInterval(interval);
+  }, [dueDate]);
+
+  if (!timeLeft) return null;
+
+  const isOverdue = timeLeft === 'Đã đến giờ/Quá giờ';
+
+  return (
+    <span style={{ 
+      fontSize: '0.72rem', 
+      fontWeight: 600, 
+      color: isOverdue ? 'var(--color-danger)' : '#2563eb', 
+      background: isOverdue ? 'rgba(239,68,68,0.08)' : 'rgba(37,99,235,0.08)',
+      padding: '2px 6px',
+      borderRadius: '4px',
+      display: 'inline-flex',
+      alignItems: 'center',
+      gap: '4px',
+      marginTop: '4px'
+    }}>
+      <Clock size={10} />
+      {timeLeft}
+    </span>
+  );
+};
+
 const ActivityComments: React.FC<{ 
   activityId: number; 
   initialCount?: number; 
   users?: any[]; 
   onMentionClick?: (e: React.MouseEvent, name: string) => void;
-}> = ({ activityId, initialCount = 0, users = [], onMentionClick }) => {
+  actions?: React.ReactNode;
+}> = ({ activityId, initialCount = 0, users = [], onMentionClick, actions }) => {
   const { addToast, showConfirm } = useUIStore();
   const { user: currentUser } = useAuth();
   const [comments, setComments] = useState<any[]>([]);
@@ -452,15 +524,18 @@ const ActivityComments: React.FC<{
 
   return (
     <div onClick={e => e.stopPropagation()} style={{ marginTop: '0.75rem', borderTop: '1px dashed var(--color-border-light)', paddingTop: '0.75rem' }}>
-      <button 
-        className="btn ghost sm" 
-        style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-primary)', padding: '4px 8px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
-        onClick={toggleExpand}
-      >
-        {expanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-        <MessageSquare size={14} />
-        Bình luận {displayCount > 0 && `(${displayCount})`}
-      </button>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <button 
+          className="btn ghost sm" 
+          style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-primary)', padding: '4px 8px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+          onClick={toggleExpand}
+        >
+          {expanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+          <MessageSquare size={14} />
+          Bình luận {displayCount > 0 && `(${displayCount})`}
+        </button>
+        {actions}
+      </div>
 
       {expanded && (
         <div style={{ marginTop: '1rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
@@ -920,6 +995,9 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
   const [reschedulingMeeting, setReschedulingMeeting] = useState<any | null>(null);
   const [newMeetingTime, setNewMeetingTime] = useState<string>('');
   const [updatingMeetingTime, setUpdatingMeetingTime] = useState(false);
+  const [cancellingMeeting, setCancellingMeeting] = useState<any | null>(null);
+  const [cancelReason, setCancelReason] = useState('');
+  const [savingCancel, setSavingCancel] = useState(false);
   const [showNoteModal, setShowNoteModal] = useState(false);
   const [editingNote, setEditingNote] = useState<any>(null);
   const [editingActivity, setEditingActivity] = useState<any>(null);
@@ -1855,7 +1933,13 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
 
         const combinedActivities = [...rawActivities, ...secondaryTasks];
         setDrawerActivities(combinedActivities);
-        setTasks(combinedActivities.filter((a: any) => a.type === 'task').map((a: any) => {
+        setTasks(combinedActivities.filter((a: any) => {
+          if (a.type === 'task') return true;
+          if (a.type === 'meeting') {
+            return a.status !== 'done' && a.status !== 'cancelled';
+          }
+          return false;
+        }).map((a: any) => {
           const link = a.body && !a.body.trim().startsWith('{"erp_task"') 
             ? (a.body.match(/Tài liệu\/Link đính kèm:\s*(.*)$/m)?.[1]?.trim() || '') 
             : '';
@@ -1891,7 +1975,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
             done: a.status === 'done',
             priority: a.priority,
             due: a.due_date ? new Date(a.due_date).toLocaleDateString('vi-VN') : '—',
-            due_date: a.due_date ? a.due_date.slice(0, 10) : '',
+            due_date: a.due_date || '',
             link,
             description,
             user_id: a.user_id,
@@ -1909,7 +1993,10 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
             contact_id: a.contact_id,
             contact_name: a.contact_name,
             related_id: a.related_id,
-            related_type: a.related_type
+            related_type: a.related_type,
+            type: a.type,
+            status: a.status,
+            rawActivity: a
           };
         }));
       }
@@ -2308,8 +2395,10 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
       type: a.type,
       status: a.status,
       user: a.user_name || 'Hệ thống',
+      avatar: a.avatar_url || undefined,
       time: a.created_at,
-      color: a.type === 'call' ? '#3b82f6' : a.type === 'meeting' ? '#BD1D2D' : a.type === 'task' ? '#f59e0b' : a.type === 'system' ? '#64748b' : a.type === 'note' ? '#6366f1' : '#10b981',
+      due_date: a.due_date,
+      color: a.status === 'cancelled' ? '#6b7280' : (a.type === 'call' ? '#3b82f6' : a.type === 'meeting' ? '#BD1D2D' : a.type === 'task' ? '#f59e0b' : a.type === 'system' ? '#64748b' : a.type === 'note' ? '#6366f1' : '#10b981'),
       icon: a.type === 'call' ? <Phone size={16} /> : a.type === 'meeting' ? <User size={16} /> : a.type === 'task' ? <CheckSquare size={16} /> : a.type === 'system' ? <History size={16} /> : a.type === 'note' ? <FileText size={16} /> : <Mail size={16} />,
       note: a.body || a.note || '',
       comment_count: a.comment_count,
@@ -2833,7 +2922,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
         addToast('Đã hoàn thành gặp gỡ', 'success');
         confetti({ particleCount: 80, spread: 60, origin: { y: 0.8 } });
         setDrawerActivities(prev => prev.map(a => a.id === ev.id ? { ...a, status: 'done' } : a));
-        setTasks(prev => prev.map(a => a.id === ev.id ? { ...a, status: 'done', done: true } : a));
+        setTasks(prev => prev.filter(a => a.id !== ev.id));
       } else {
         setMeetingToComplete(ev);
         setProofCommentText('Ảnh minh chứng hoàn thành gặp gỡ');
@@ -2846,15 +2935,35 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
     }
   };
 
-  const handleCancelMeeting = async (ev: any) => {
+  const handleCancelMeeting = (ev: any) => {
+    const rawEv = ev.rawActivity || ev;
+    setCancellingMeeting(rawEv);
+    setCancelReason('');
+  };
+
+  const submitCancelMeeting = async () => {
+    if (!cancellingMeeting) return;
+    const reason = cancelReason.trim();
+    if (!reason) {
+      addToast('Vui lòng nhập lý do hủy lịch', 'error');
+      return;
+    }
+    setSavingCancel(true);
     try {
-      await api.put(`/activities/${ev.id}`, { status: 'cancelled' });
+      await api.put(`/activities/${cancellingMeeting.id}`, { status: 'cancelled' });
+      await api.post(`/activities/${cancellingMeeting.id}/comments`, {
+        content: `Hủy lịch gặp gỡ với lý do: ${reason}`
+      });
       addToast('Đã hủy gặp gỡ', 'success');
-      setDrawerActivities(prev => prev.map(a => a.id === ev.id ? { ...a, status: 'cancelled' } : a));
-      setTasks(prev => prev.map(a => a.id === ev.id ? { ...a, status: 'cancelled', done: true } : a));
+      setDrawerActivities(prev => prev.map(a => a.id === cancellingMeeting.id ? { ...a, status: 'cancelled' } : a));
+      setTasks(prev => prev.filter(a => a.id !== cancellingMeeting.id));
+      setCancellingMeeting(null);
+      setCancelReason('');
     } catch (e: any) {
       console.error(e);
       addToast('Lỗi khi hủy gặp gỡ', 'error');
+    } finally {
+      setSavingCancel(false);
     }
   };
 
@@ -5967,85 +6076,17 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                 <div>
                                   <h4 style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--color-text)', marginBottom: '0.25rem' }}>{ev.title}</h4>
                                   <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                                    <span style={{ fontSize: '0.75rem', fontWeight: 600, color: ev.color, background: `${ev.color}15`, padding: '2px 8px', borderRadius: 'var(--radius-full)' }}>{ev.type.toUpperCase()}</span>
-                                    {ev.type === 'meeting' && ev.status === 'planned' && (
-                                      <div style={{ display: 'flex', gap: '4px', alignItems: 'center', marginLeft: '6px' }}>
-                                        <button
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            handleCompleteMeeting(ev);
-                                          }}
-                                          className="btn sm"
-                                          style={{
-                                            backgroundColor: '#10b981',
-                                            color: 'white',
-                                            border: 'none',
-                                            borderRadius: '4px',
-                                            padding: '2px 8px',
-                                            fontSize: '0.72rem',
-                                            fontWeight: 600,
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            gap: '4px',
-                                            cursor: 'pointer',
-                                            height: '22px'
-                                          }}
-                                        >
-                                          <Check size={10} />
-                                          <span>Đã gặp</span>
-                                        </button>
-                                        <button
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            handleCancelMeeting(ev);
-                                          }}
-                                          className="btn sm"
-                                          style={{
-                                            backgroundColor: '#ef4444',
-                                            color: 'white',
-                                            border: 'none',
-                                            borderRadius: '4px',
-                                            padding: '2px 8px',
-                                            fontSize: '0.72rem',
-                                            fontWeight: 600,
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            gap: '4px',
-                                            cursor: 'pointer',
-                                            height: '22px'
-                                          }}
-                                        >
-                                          <X size={10} />
-                                          <span>Hủy kèo</span>
-                                        </button>
-                                        <button
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            handleRescheduleMeetingClick(ev);
-                                          }}
-                                          className="btn sm"
-                                          style={{
-                                            backgroundColor: '#f59e0b',
-                                            color: 'white',
-                                            border: 'none',
-                                            borderRadius: '4px',
-                                            padding: '2px 8px',
-                                            fontSize: '0.72rem',
-                                            fontWeight: 600,
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            gap: '4px',
-                                            cursor: 'pointer',
-                                            height: '22px'
-                                          }}
-                                        >
-                                          <Calendar size={10} />
-                                          <span>Dời lịch</span>
-                                        </button>
-                                      </div>
+                                    <span style={{ fontSize: '0.75rem', fontWeight: 600, color: ev.color, background: `${ev.color}15`, padding: '2px 8px', borderRadius: 'var(--radius-full)' }}>
+                                      {ev.type === 'meeting' && ev.status === 'cancelled' ? 'Hủy gặp' : ev.type.toUpperCase()}
+                                    </span>
+                                    {ev.type === 'meeting' && ev.due_date && (
+                                      <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', background: 'var(--color-bg-light)', padding: '2px 8px', borderRadius: '4px', border: '1px solid var(--color-border-light)' }}>
+                                        Lịch gặp: {formatMeetingTime(ev.due_date)}
+                                      </span>
                                     )}
+
                                     <span style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                      Thực hiện bởi <Avatar name={ev.user} size="sm" /> <strong>{ev.user}</strong>
+                                      Thực hiện bởi <Avatar name={ev.user} src={ev.avatar} size="sm" /> <strong>{ev.user}</strong>
                                     </span>
                                   </div>
                                 </div>
@@ -6179,7 +6220,88 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                 );
                               })()}
                               {['call', 'email', 'meeting', 'task', 'note'].includes(ev.type) && (
-                                <ActivityComments activityId={ev.id} initialCount={Number(ev.comment_count) || 0} users={users} onMentionClick={showUserCard} />
+                                <ActivityComments 
+                                  activityId={ev.id} 
+                                  initialCount={Number(ev.comment_count) || 0} 
+                                  users={users} 
+                                  onMentionClick={showUserCard}
+                                  actions={ev.type === 'meeting' && (ev.status === 'planned' || ev.status === 'rescheduled') && (
+                                    <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                                      <button
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleCompleteMeeting(ev);
+                                        }}
+                                        className="btn sm success"
+                                        style={{
+                                          height: '24px',
+                                          fontSize: '0.75rem',
+                                          fontWeight: 600,
+                                          display: 'flex',
+                                          alignItems: 'center',
+                                          gap: '4px',
+                                          cursor: 'pointer',
+                                          border: 'none',
+                                          borderRadius: '4px',
+                                          padding: '0 10px',
+                                          backgroundColor: '#10b981',
+                                          color: 'white'
+                                        }}
+                                      >
+                                        <Check size={12} />
+                                        <span>Đã gặp</span>
+                                      </button>
+                                      <button
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleCancelMeeting(ev);
+                                        }}
+                                        className="btn sm danger"
+                                        style={{
+                                          height: '24px',
+                                          fontSize: '0.75rem',
+                                          fontWeight: 600,
+                                          display: 'flex',
+                                          alignItems: 'center',
+                                          gap: '4px',
+                                          cursor: 'pointer',
+                                          border: 'none',
+                                          borderRadius: '4px',
+                                          padding: '0 10px',
+                                          backgroundColor: '#ef4444',
+                                          color: 'white'
+                                        }}
+                                      >
+                                        <X size={12} />
+                                        <span>Hủy lịch</span>
+                                      </button>
+                                      <button
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleRescheduleMeetingClick(ev);
+                                        }}
+                                        className="btn sm warning"
+                                        style={{
+                                          height: '24px',
+                                          fontSize: '0.75rem',
+                                          fontWeight: 600,
+                                          display: 'flex',
+                                          alignItems: 'center',
+                                          gap: '4px',
+                                          cursor: 'pointer',
+                                          border: 'none',
+                                          borderRadius: '4px',
+                                          padding: '0 10px',
+                                          backgroundColor: '#f59e0b',
+                                          color: 'white'
+                                        }}
+                                      >
+                                        <Calendar size={12} />
+                                        <span>Dời lịch</span>
+                                      </button>
+                                    </div>
+                                  )}
+                                />
                               )}
                             </div>
                           </motion.div>
@@ -6876,6 +6998,12 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                         {t.title}
                                       </p>
 
+                                      {t.type === 'meeting' && !t.done && t.due_date && (
+                                        <div style={{ marginBottom: '6px' }}>
+                                          <MeetingCountdown dueDate={t.due_date} />
+                                        </div>
+                                      )}
+
                                       {/* Task Description */}
                                       {t.description && (
                                         <p style={{ 
@@ -6918,6 +7046,33 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                         </div>
                                       )}
 
+                                      {/* MEETING TYPE INLINE ACTIONS FOR TASK CARD */}
+                                      {t.type === 'meeting' && !t.done && (
+                                        <div style={{ display: 'flex', gap: '6px', marginTop: '0.5rem', flexWrap: 'wrap', pointerEvents: 'auto' }} onClick={e => e.stopPropagation()}>
+                                          <button 
+                                            className="btn success sm" 
+                                            style={{ height: '22px', fontSize: '0.7rem', padding: '0 8px', borderRadius: '4px', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '3px', border: 'none', cursor: 'pointer' }}
+                                            onClick={() => handleCompleteMeeting(t.rawActivity || t)}
+                                          >
+                                            <Check size={10} /> Đã gặp
+                                          </button>
+                                          <button 
+                                            className="btn danger sm" 
+                                            style={{ height: '22px', fontSize: '0.7rem', padding: '0 8px', borderRadius: '4px', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '3px', border: 'none', cursor: 'pointer' }}
+                                            onClick={() => handleCancelMeeting(t.rawActivity || t)}
+                                          >
+                                            <X size={10} /> Hủy lịch
+                                          </button>
+                                          <button 
+                                            className="btn warning sm" 
+                                            style={{ height: '22px', fontSize: '0.7rem', padding: '0 8px', borderRadius: '4px', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '3px', border: 'none', cursor: 'pointer', color: '#7c2d12' }}
+                                            onClick={() => setReschedulingMeeting(t.rawActivity || t)}
+                                          >
+                                            <Calendar size={10} /> Dời lịch
+                                          </button>
+                                        </div>
+                                      )}
+
                                       {/* Footer info (Due Date & Progress) */}
                                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '0.5rem', paddingTop: '0.375rem', borderTop: '1px solid var(--color-border-light)' }}>
                                         <span style={{ 
@@ -6929,7 +7084,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                           fontWeight: isOverdue && !t.done ? 600 : 'normal'
                                         }}>
                                           <Clock size={10} />
-                                          {getDueDateLabel(t.due_date, t.done)}
+                                          {t.type === 'meeting' ? `Lịch gặp: ${formatMeetingTime(t.due_date)}` : getDueDateLabel(t.due_date, t.done)}
                                         </span>
                                         
                                         {colId === 'in_progress' && (
@@ -6982,12 +7137,42 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                         <td style={{ padding: '14px 16px' }}>
                                           <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                                             <span style={{ fontWeight: 600, color: 'var(--color-text)', textDecoration: t.done ? 'line-through' : 'none' }}>{t.title}</span>
+                                            {t.type === 'meeting' && !t.done && t.due_date && (
+                                              <div style={{ marginTop: '2px' }}>
+                                                <MeetingCountdown dueDate={t.due_date} />
+                                              </div>
+                                            )}
                                             {t.description && <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', display: '-webkit-box', WebkitLineClamp: 1, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{t.description}</span>}
                                             {t.tags && (
                                               <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', marginTop: '2px' }}>
                                                 {t.tags.split(',').filter(Boolean).map((tag: string) => (
                                                   <span key={tag} style={{ fontSize: '0.6rem', padding: '0px 4px', borderRadius: '4px', background: 'rgba(16,185,129,0.06)', color: '#059669', fontWeight: 600 }}>#{tag}</span>
                                                 ))}
+                                              </div>
+                                            )}
+                                            {t.type === 'meeting' && !t.done && (
+                                              <div style={{ display: 'flex', gap: '6px', marginTop: '6px', flexWrap: 'wrap' }} onClick={e => e.stopPropagation()}>
+                                                <button 
+                                                  className="btn success sm" 
+                                                  style={{ height: '20px', fontSize: '0.65rem', padding: '0 6px', borderRadius: '4px', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '2px', border: 'none', cursor: 'pointer' }}
+                                                  onClick={() => handleCompleteMeeting(t.rawActivity || t)}
+                                                >
+                                                  <Check size={10} /> Đã gặp
+                                                </button>
+                                                <button 
+                                                  className="btn danger sm" 
+                                                  style={{ height: '20px', fontSize: '0.65rem', padding: '0 6px', borderRadius: '4px', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '2px', border: 'none', cursor: 'pointer' }}
+                                                  onClick={() => handleCancelMeeting(t.rawActivity || t)}
+                                                >
+                                                  <X size={10} /> Hủy lịch
+                                                </button>
+                                                <button 
+                                                  className="btn warning sm" 
+                                                  style={{ height: '20px', fontSize: '0.65rem', padding: '0 6px', borderRadius: '4px', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '2px', border: 'none', cursor: 'pointer', color: '#7c2d12' }}
+                                                  onClick={() => setReschedulingMeeting(t.rawActivity || t)}
+                                                >
+                                                  <Calendar size={10} /> Dời lịch
+                                                </button>
                                               </div>
                                             )}
                                           </div>
@@ -7005,7 +7190,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                         <td style={{ padding: '14px 16px', color: isOverdue ? 'var(--color-danger)' : 'var(--color-text-muted)', fontWeight: isOverdue ? 600 : 'normal' }}>
                                           <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                                             <Clock size={12} />
-                                            {getDueDateLabel(t.due_date, t.done)}
+                                            {t.type === 'meeting' ? `Lịch gặp: ${formatMeetingTime(t.due_date)}` : getDueDateLabel(t.due_date, t.done)}
                                           </div>
                                         </td>
                                         <td style={{ padding: '14px 16px' }}>
@@ -8166,7 +8351,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
 
                       // Update local state
                       setDrawerActivities(prev => prev.map(a => a.id === meetingToComplete.id ? { ...a, status: 'done' } : a));
-                      setTasks(prev => prev.map(a => a.id === meetingToComplete.id ? { ...a, status: 'done', done: true } : a));
+                      setTasks(prev => prev.filter(a => a.id !== meetingToComplete.id));
 
                       setMeetingToComplete(null);
                       fetchData();
@@ -9205,6 +9390,59 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
               >
                 {updatingMeetingTime && <Loader2 size={12} className="animate-spin" />}
                 Xác nhận dời lịch
+              </button>
+            </div>
+          </div>
+        </CustomModal>
+      )}
+
+      {cancellingMeeting && (
+        <CustomModal
+          isOpen={true}
+          onClose={() => setCancellingMeeting(null)}
+          title="Hủy lịch gặp gỡ"
+        >
+          <div style={{ padding: '1rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)' }}>
+              Nhập lý do hủy lịch gặp gỡ cho: <strong>{cancellingMeeting.title}</strong>
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.375rem' }}>
+              <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text)' }}>Lý do hủy</label>
+              <textarea
+                value={cancelReason}
+                onChange={(e) => setCancelReason(e.target.value)}
+                placeholder="Ví dụ: Khách bận đột xuất, khách không nghe máy..."
+                style={{
+                  padding: '8px 12px',
+                  borderRadius: '6px',
+                  border: '1px solid var(--color-border)',
+                  background: 'var(--color-surface)',
+                  color: 'var(--color-text)',
+                  fontSize: '0.875rem',
+                  outline: 'none',
+                  width: '100%',
+                  minHeight: '80px',
+                  resize: 'vertical'
+                }}
+              />
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', marginTop: '0.5rem' }}>
+              <button
+                type="button"
+                onClick={() => setCancellingMeeting(null)}
+                className="btn secondary sm"
+              >
+                Hủy
+              </button>
+              <button
+                type="button"
+                onClick={submitCancelMeeting}
+                disabled={savingCancel || !cancelReason.trim()}
+                className="btn primary sm"
+                style={{ display: 'flex', alignItems: 'center', gap: '4px', backgroundColor: 'var(--color-danger)', borderColor: 'var(--color-danger)' }}
+              >
+                {savingCancel && <Loader2 size={12} className="animate-spin" />}
+                Xác nhận hủy
               </button>
             </div>
           </div>

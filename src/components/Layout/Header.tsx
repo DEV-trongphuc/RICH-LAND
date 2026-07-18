@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, Command, Activity, Sun, Moon, Keyboard, ChevronDown, User, AlertTriangle, LogOut, Menu, LayoutGrid, LayoutDashboard, Users, Building2, Clock, Truck, Boxes, Receipt, Settings, CheckCircle2, Fingerprint, Bell, MessageSquare, Info, Trash2, Check, Eye, EyeOff, CheckSquare, FileText, ArrowLeft } from 'lucide-react';
+import { Search, Command, Activity, Sun, Moon, Keyboard, ChevronDown, User, AlertTriangle, LogOut, Menu, LayoutGrid, LayoutDashboard, Users, Building2, Clock, Truck, Boxes, Receipt, Settings, CheckCircle2, Fingerprint, Bell, MessageSquare, Info, Trash2, Check, Eye, EyeOff, CheckSquare, FileText, ArrowLeft, ShieldAlert } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { ToggleSwitch } from '../ui/ToggleSwitch';
 import { useUIStore } from '../../store/uiStore';
@@ -32,7 +32,19 @@ const maskPhone = (phone: string) => {
   return `${start}***${end}`;
 };
 
-export const Header = ({ onActivityFeedClick, onMenuClick, version }: { onActivityFeedClick: () => void; onMenuClick?: () => void; version?: string }) => {
+export const Header = ({ 
+  onActivityFeedClick, 
+  onMenuClick, 
+  version,
+  pendingInboxCount,
+  onUnifiedInboxClick
+}: { 
+  onActivityFeedClick: () => void; 
+  onMenuClick?: () => void; 
+  version?: string;
+  pendingInboxCount?: number;
+  onUnifiedInboxClick?: () => void;
+}) => {
   const isDemo = localStorage.getItem('RICH LAND_DEMO_MODE') === 'true';
   const { user, logout } = useAuth();
   const { showConfirm } = useUIStore();
@@ -832,6 +844,57 @@ export const Header = ({ onActivityFeedClick, onMenuClick, version }: { onActivi
             animation: 'pulse 2s infinite'
           }} />
         </button>
+
+        {/* Unified Approvals/Issues Inbox Button */}
+        {pendingInboxCount !== undefined && pendingInboxCount > 0 && (
+          <button
+            onClick={onUnifiedInboxClick}
+            style={{
+              width: 36,
+              height: 36,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: '#ef4444',
+              borderRadius: 8,
+              border: 'none',
+              background: 'none',
+              cursor: 'pointer',
+              transition: 'all 0.2s',
+              position: 'relative',
+              outline: 'none'
+            }}
+            title={t("Các vấn đề cần xử lý")}
+            onMouseEnter={e => {
+              e.currentTarget.style.background = 'var(--color-bg)';
+            }}
+            onMouseLeave={e => {
+              e.currentTarget.style.background = 'none';
+            }}
+          >
+            <ShieldAlert size={20} className="animate-pulse" style={{ color: '#ef4444' }} />
+            <span style={{
+              position: 'absolute',
+              top: 2,
+              right: 2,
+              minWidth: 16,
+              height: 16,
+              borderRadius: 8,
+              background: '#ef4444',
+              color: 'white',
+              fontSize: '10px',
+              fontWeight: 700,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '0 4px',
+              boxShadow: '0 0 0 2px var(--color-surface)',
+              lineHeight: 1
+            }}>
+              {pendingInboxCount}
+            </span>
+          </button>
+        )}
 
         {/* Notification Bell Button */}
         <button

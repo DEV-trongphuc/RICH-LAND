@@ -6742,7 +6742,12 @@ switch ($action) {
             break;
         }
         $tenantId = (int)($decodedUser['tenant_id'] ?? 1);
-        $stmtC = $conn->prepare("SELECT COUNT(*) FROM tickets WHERE tenant_id = ? AND status IN ('open', 'in_progress', 'waiting')");
+        $statusParam = $_GET['status'] ?? '';
+        if ($statusParam === 'open') {
+            $stmtC = $conn->prepare("SELECT COUNT(*) FROM tickets WHERE tenant_id = ? AND status = 'open'");
+        } else {
+            $stmtC = $conn->prepare("SELECT COUNT(*) FROM tickets WHERE tenant_id = ? AND status IN ('open', 'in_progress', 'waiting')");
+        }
         $stmtC->bind_param("i", $tenantId);
         $stmtC->execute();
         $resC = $stmtC->get_result();

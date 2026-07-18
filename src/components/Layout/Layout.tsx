@@ -105,6 +105,7 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
   
   // Sales pending signatures state
   const [salesPendingSignCount, setSalesPendingSignCount] = useState<number>(0);
+  const [supportTicketsCount, setSupportTicketsCount] = useState<number>(0);
   const [isSalesSignModalOpen, setIsSalesSignModalOpen] = useState<boolean>(false);
 
   // Global Check-In State
@@ -529,11 +530,13 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
 
 
   useEffect(() => {
-    if (user?.role === 'admin' || user?.role === 'superadmin') {
+    const role = user?.role as string;
+    if (role === 'admin' || role === 'superadmin' || role === 'super_admin' || role === 'director' || role === 'manager') {
       let ticketsCount = 0;
       let heldCount = 0;
       let checkinsCount = 0;
       let coopsCount = 0;
+      let supportCount = 0;
 
       const p1 = fetchAPI('get_reports&status=pending&date=all&pageSize=1')
         .then(res => { if (res.success) ticketsCount = res.total_count ?? 0; });
@@ -547,15 +550,24 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
             coopsCount = res.data.filter((c: any) => c.status === 'pending_manager_approval').length;
           }
         });
+      const p5 = fetchAPI('get_support_tickets_count&status=open')
+        .then(res => {
+          if (res && res.success) {
+            supportCount = res.count || 0;
+          }
+        }).catch(() => {});
 
-      Promise.all([p1, p2, p3, p4]).then(() => {
+      Promise.all([p1, p2, p3, p4, p5]).then(() => {
         setPendingTicketsCount(ticketsCount);
         setHeldLeadsCount(heldCount);
         setPendingCheckInsCount(checkinsCount);
         setPendingCoopsCount(coopsCount);
+        setSupportTicketsCount(supportCount);
         
-        if (ticketsCount > 0 || heldCount > 0 || checkinsCount > 0 || coopsCount > 0) {
-          setIsUnifiedInboxOpen(true);
+        if (location.pathname !== '/support-tickets') {
+          if (ticketsCount > 0 || heldCount > 0 || checkinsCount > 0 || coopsCount > 0 || supportCount > 0) {
+            setIsUnifiedInboxOpen(true);
+          }
         }
       }).catch(err => console.error('Error loading unified approvals:', err));
     } else if (user?.role === 'sale') {
@@ -778,6 +790,8 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
           onActivityFeedClick={() => setIsActivityFeedOpen(true)}
           onMenuClick={() => setIsMobileSidebarOpen(true)}
           version={backendVersion}
+          pendingInboxCount={pendingTicketsCount + heldLeadsCount + pendingCheckInsCount + pendingCoopsCount + supportTicketsCount}
+          onUnifiedInboxClick={() => setIsUnifiedInboxOpen(true)}
         />
 
 
@@ -866,10 +880,10 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
             </div>
             <div>
               <h3 style={{ fontSize: '1.125rem', fontWeight: 800, color: 'var(--color-text)', margin: 0, letterSpacing: '-0.02em' }}>
-                {t("Yêu cầu cần phê duyệt!")}
+                {t("Vấn đề cần xử lý!")}
               </h3>
               <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', margin: '4px 0 0', fontWeight: 500 }}>
-                {t("Bạn đang có các nhiệm vụ phê duyệt tồn đọng:")}
+                {t("Bạn đang có các vấn đề tồn đọng cần xử lý:")}
               </p>
             </div>
           </div>
@@ -1037,6 +1051,48 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
                     flexShrink: 0
                   }}>
                     <span>{t('Duyệt ngay')}</span>
+                    <ChevronRight className="chevron-arrow" size={12} style={{ transition: 'all 0.25s' }} />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* 5. Ticket hỗ trợ */}
+            {supportTicketsCount > 0 && (
+              <div 
+                onClick={() => { setIsUnifiedInboxOpen(false); navigate('/support-tickets'); }}
+                className="unified-inbox-card"
+                style={{ 
+                  '--hover-color': '#2563eb',
+                  '--hover-bg': 'rgba(37, 99, 235, 0.03)',
+                  '--hover-shadow': 'rgba(37, 99, 235, 0.15)'
+                } as any}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <div className="unified-inbox-icon" style={{ background: 'rgba(37, 99, 235, 0.08)', color: '#2563eb' }}>
+                    <HelpCircle size={18} />
+                  </div>
+                  <span style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)' }}>{t("Ticket yêu cầu hỗ trợ (IT/CS)")}</span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <span className="badge" style={{ borderRadius: '20px', padding: '4px 10px', fontWeight: 700, fontSize: '0.72rem', background: 'rgba(37, 99, 235, 0.1)', color: '#2563eb', boxShadow: '0 2px 6px rgba(37, 99, 235, 0.12)' }}>{supportTicketsCount} {t('chờ xử lý')}</span>
+                  
+                  <div style={{
+                    borderRadius: '20px',
+                    padding: '5px 12px',
+                    fontWeight: 700,
+                    fontSize: '0.72rem',
+                    color: '#fff',
+                    background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
+                    boxShadow: '0 4px 12px rgba(37, 99, 235, 0.25)',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    transition: 'all 0.2s',
+                    whiteSpace: 'nowrap',
+                    flexShrink: 0
+                  }}>
+                    <span>{t('Xử lý ngay')}</span>
                     <ChevronRight className="chevron-arrow" size={12} style={{ transition: 'all 0.25s' }} />
                   </div>
                 </div>
