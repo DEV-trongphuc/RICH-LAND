@@ -221,7 +221,7 @@ class TicketController {
                 $stmtLogs->execute([$leadId]);
                 $lastLogStatus = $stmtLogs->fetchColumn();
                 
-                if (!$lastLogStatus || !in_array($lastLogStatus, ['assigned', 'compensation', 'rule_6_month', 'fallback', 'pending_work_hours', 'success'], true)) {
+                if (!$lastLogStatus || !in_array($lastLogStatus, ['assigned', 'compensation', 'rule_6_month', 'fallback', 'pending_work_hours', 'success', 'reminder'], true)) {
                     respond(400, null, 'Chỉ duy nhất data được chia từ chiến dịch marketing mới được báo bù. Data từ Databank không được báo bù.', false);
                 }
             }
