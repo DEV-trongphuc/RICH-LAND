@@ -13,6 +13,8 @@ import toast from 'react-hot-toast';
 import { CustomSelect } from './ui/CustomSelect';
 import { AddressSelect } from './ui/AddressSelect';
 import { Avatar } from './ui/Avatar';
+import { CustomModal } from './ui/CustomModal';
+import { ToggleSwitch } from './ui/ToggleSwitch';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import styles from '../pages/EntityDrawer.module.css';
@@ -179,6 +181,13 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
   const [bankName, setBankName] = useState('');
   const [bankAccount, setBankAccount] = useState('');
   const [managerBehaviorMode, setManagerBehaviorMode] = useState('combined');
+
+  // Delete account states
+  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
+  const [deleteCheckResult, setDeleteCheckResult] = useState<any>(null);
+  const [replacementAdminId, setReplacementAdminId] = useState<string>('');
+  const [deleteConfirmText, setDeleteConfirmText] = useState<string>('');
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // 2. Personal Profile Fields
   const [dob, setDob] = useState('');
@@ -645,6 +654,53 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
       }
     } catch (err: any) {
       toast.error(t('Lỗi kết nối tải ảnh: ') + err.message);
+    }
+  };
+
+  const handleOpenDeleteConfirm = async () => {
+    if (!account?.id) return;
+    try {
+      const res = await fetchAPI(`check_delete_account&id=${account.id}`);
+      if (res && res.success) {
+        setDeleteCheckResult(res);
+        if (res.other_admins && res.other_admins.length > 0) {
+          setReplacementAdminId(String(res.other_admins[0].id));
+        }
+        setDeleteConfirmText('');
+        setIsDeleteConfirmOpen(true);
+      } else {
+        toast.error(res?.message || 'Không thể kiểm tra trạng thái xóa tài khoản');
+      }
+    } catch (err) {
+      toast.error('Lỗi kết nối máy chủ');
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    if (!account?.id) return;
+    if (deleteConfirmText !== 'DELETE') {
+      toast.error('Vui lòng nhập chính xác "DELETE" để xác nhận');
+      return;
+    }
+    setIsDeleting(true);
+    try {
+      const payload: any = {
+        method: 'POST'
+      };
+      const query = `delete_account&id=${account.id}${deleteCheckResult?.in_use ? `&replacement_id=${replacementAdminId}` : ''}`;
+      const res = await fetchAPI(query, payload);
+      if (res && res.success) {
+        toast.success(t('Xóa tài khoản nhân sự thành công!'));
+        setIsDeleteConfirmOpen(false);
+        onClose();
+        onSaveSuccess();
+      } else {
+        toast.error(res?.message || 'Không thể xóa tài khoản');
+      }
+    } catch (err) {
+      toast.error('Lỗi kết nối máy chủ');
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -1627,18 +1683,25 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
                                 onChange={val => setManagerBehaviorMode(val.toString())}
                                 width="100%"
                               />
+                              <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', display: 'block', marginTop: '6px', lineHeight: 1.4 }}>
+                                <strong>{t('Giải thích cơ chế:')}</strong>
+                                <ul style={{ paddingLeft: '1.1rem', margin: '4px 0 0', display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                                  <li><strong>{t('Trưởng nhóm kiêm Sale:')}</strong> {t('Đồng hồ bảo mật và phân chia data chạy như một nhân viên sales bình thường. Trưởng nhóm phải chấm công và có thể nhận phân bổ data từ hệ thống.')}</li>
+                                  <li><strong>{t('Trưởng nhóm thuần túy:')}</strong> {t('Không tham gia nhận chia data tự động, không cần check-in chấm công hàng ngày. Đóng vai trò quản lý cấp cao duyệt đơn đi trễ/SLA cho nhân viên.')}</li>
+                                </ul>
+                              </span>
                             </div>
                           )}
-                          <div className="form-group">
-                            <label className="form-label">{t('Trạng thái hoạt động')}</label>
-                            <CustomSelect 
-                              options={[
-                                { value: '1', label: t('Đang hoạt động') },
-                                { value: '0', label: t('Đang bị khóa') }
-                              ]}
-                              value={isActive}
-                              onChange={val => setIsActive(val.toString())}
-                              width="100%"
+                          <div className="form-group" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid var(--color-border-light)' }}>
+                            <div>
+                              <label className="form-label" style={{ margin: 0, fontWeight: 600 }}>{t('Trạng thái hoạt động')}</label>
+                              <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', display: 'block', marginTop: '2px' }}>
+                                {isActive === '1' ? t('Tài khoản đang hoạt động bình thường') : t('Tài khoản đang bị khóa')}
+                              </span>
+                            </div>
+                            <ToggleSwitch 
+                              checked={isActive === '1'}
+                              onChange={checked => setIsActive(checked ? '1' : '0')}
                             />
                           </div>
                         </>
@@ -1694,6 +1757,39 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
                           }}
                         >
                           <Link2Off size={12} /> {t('Hủy liên kết Zalo')}
+                        </button>
+                      </div>
+                    )}
+
+                    {isAdmin && account && (
+                      <div style={{
+                        marginTop: '2rem',
+                        paddingTop: '1.5rem',
+                        borderTop: '1px solid var(--color-border-light)',
+                        display: 'flex',
+                        justifyContent: 'flex-end'
+                      }}>
+                        <button
+                          type="button"
+                          onClick={handleOpenDeleteConfirm}
+                          className="btn-danger-light"
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            padding: '8px 16px',
+                            borderRadius: '8px',
+                            fontSize: '0.875rem',
+                            fontWeight: 600,
+                            border: 'none',
+                            background: 'rgba(239, 68, 68, 0.1)',
+                            color: '#ef4444',
+                            cursor: 'pointer',
+                            transition: 'all 0.2s'
+                          }}
+                        >
+                          <Trash2 size={16} />
+                          {t('Xóa tài khoản nhân sự')}
                         </button>
                       </div>
                     )}
@@ -3197,6 +3293,187 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
                 </button>
               </div>
 
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Delete Confirmation Modal */}
+      <AnimatePresence>
+        {isDeleteConfirmOpen && (
+          <div style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(15, 23, 42, 0.6)',
+            backdropFilter: 'blur(8px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 999999,
+            padding: '1.5rem'
+          }}>
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              style={{
+                background: 'var(--color-surface)',
+                borderRadius: '20px',
+                border: '1px solid var(--color-border)',
+                boxShadow: 'var(--shadow-xl)',
+                width: '450px',
+                maxWidth: '100%',
+                display: 'flex',
+                flexDirection: 'column',
+                overflow: 'hidden'
+              }}
+            >
+              {/* Header */}
+              <div style={{
+                padding: '1.25rem 1.5rem',
+                borderBottom: '1px solid var(--color-border-light)',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                background: 'rgba(239, 68, 68, 0.05)'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <div style={{
+                    width: '32px',
+                    height: '32px',
+                    borderRadius: '50%',
+                    background: 'rgba(239, 68, 68, 0.1)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: '#ef4444'
+                  }}>
+                    <AlertCircle size={16} />
+                  </div>
+                  <h3 style={{ fontWeight: 800, fontSize: '1rem', color: 'var(--color-text)', margin: 0 }}>
+                    {t('Xác nhận xóa tài khoản')}
+                  </h3>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsDeleteConfirmOpen(false)}
+                  style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--color-text-muted)', padding: '4px' }}
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              {/* Body */}
+              <div style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                <p style={{ fontSize: '0.875rem', color: 'var(--color-text-light)', margin: 0, lineHeight: 1.5 }}>
+                  {t('Hành động này không thể hoàn tác. Bạn đang thực hiện xóa vĩnh viễn tài khoản')} <strong>{username}</strong> ({name}).
+                </p>
+
+                {deleteCheckResult?.in_use && (
+                  <div style={{
+                    padding: '1rem',
+                    background: 'rgba(245, 158, 11, 0.05)',
+                    border: '1px solid rgba(245, 158, 11, 0.15)',
+                    borderRadius: '12px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '0.75rem'
+                  }}>
+                    <span style={{ fontSize: '0.8125rem', fontWeight: 700, color: '#d97706', display: 'flex', alignItems: 'center', gap: 4 }}>
+                      <Info size={14} /> {t('Tài khoản đang được sử dụng')}
+                    </span>
+                    <p style={{ fontSize: '0.75rem', color: '#b45309', margin: 0, lineHeight: 1.4 }}>
+                      {deleteCheckResult.usage.fallback && t('• Tài khoản này đang cấu hình làm Admin Fallback nhận data chia lỗi.')}
+                      {deleteCheckResult.usage.ticket && t(' • Tài khoản này đang cấu hình nhận thông báo SLA Ticket.')}
+                    </p>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                      <label className="form-label" style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text)' }}>
+                        {t('Chọn Admin/Superadmin thay thế')} <span style={{ color: 'var(--color-danger)' }}>*</span>
+                      </label>
+                      {deleteCheckResult.other_admins && deleteCheckResult.other_admins.length > 0 ? (
+                        <CustomSelect
+                          options={deleteCheckResult.other_admins.map((adm: any) => ({
+                            value: String(adm.id),
+                            label: `${adm.name} (${adm.username})`
+                          }))}
+                          value={replacementAdminId}
+                          onChange={val => setReplacementAdminId(val.toString())}
+                          width="100%"
+                        />
+                      ) : (
+                        <span style={{ fontSize: '0.75rem', color: 'var(--color-danger)', fontWeight: 600 }}>
+                          {t('Không có quản trị viên thay thế khác. Không thể thực hiện xóa.')}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <label className="form-label" style={{ fontSize: '0.8125rem', fontWeight: 700 }}>
+                    {t('Nhập "DELETE" để xác nhận xóa')}
+                  </label>
+                  <input
+                    type="text"
+                    className="form-input"
+                    placeholder="DELETE"
+                    value={deleteConfirmText}
+                    onChange={e => setDeleteConfirmText(e.target.value)}
+                    style={{
+                      height: '40px',
+                      textAlign: 'center',
+                      fontWeight: 700,
+                      letterSpacing: '2px',
+                      textTransform: 'uppercase',
+                      border: deleteConfirmText === 'DELETE' ? '1px solid var(--color-success)' : '1px solid var(--color-border)'
+                    }}
+                  />
+                </div>
+              </div>
+
+              {/* Footer */}
+              <div style={{
+                padding: '1rem 1.5rem',
+                borderTop: '1px solid var(--color-border-light)',
+                display: 'flex',
+                justifyContent: 'flex-end',
+                gap: '8px',
+                background: 'var(--color-bg-light)'
+              }}>
+                <button
+                  type="button"
+                  className="btn outline sm"
+                  onClick={() => setIsDeleteConfirmOpen(false)}
+                  disabled={isDeleting}
+                  style={{ height: '36px' }}
+                >
+                  {t('Hủy')}
+                </button>
+                <button
+                  type="button"
+                  className="btn danger sm"
+                  onClick={handleDeleteAccount}
+                  disabled={isDeleting || deleteConfirmText !== 'DELETE' || (deleteCheckResult?.in_use && !replacementAdminId)}
+                  style={{
+                    height: '36px',
+                    background: '#ef4444',
+                    color: 'white',
+                    border: 'none',
+                    fontWeight: 700,
+                    opacity: (deleteConfirmText === 'DELETE' && (!deleteCheckResult?.in_use || replacementAdminId)) ? 1 : 0.5,
+                    cursor: (deleteConfirmText === 'DELETE' && (!deleteCheckResult?.in_use || replacementAdminId)) ? 'pointer' : 'not-allowed',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px'
+                  }}
+                >
+                  {isDeleting ? <Loader2 size={14} className="spin" /> : <Trash2 size={14} />}
+                  {t('Xác nhận xóa')}
+                </button>
+              </div>
             </motion.div>
           </div>
         )}
