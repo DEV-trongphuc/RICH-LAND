@@ -2648,13 +2648,13 @@ const ConsultantsInner = () => {
 
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                             <div style={{ position: 'relative' }}>
-                              <Search size={14} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-muted)' }} />
+                              <Search size={14} style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-muted)' }} />
                               <input 
                                 className="form-input"
                                 placeholder={t('Tìm kiếm tư vấn viên theo tên, email...')}
                                 value={memberSearch}
                                 onChange={e => setMemberSearch(e.target.value)}
-                                style={{ paddingLeft: '2rem', width: '100%', fontSize: '0.8125rem' }}
+                                style={{ paddingLeft: '12px', paddingRight: '2.2rem', width: '100%', fontSize: '0.8125rem' }}
                               />
                             </div>
 
@@ -2663,7 +2663,11 @@ const ConsultantsInner = () => {
                               borderRadius: '8px', 
                               maxHeight: '350px', 
                               overflowY: 'auto',
-                              background: 'var(--color-bg)'
+                              background: 'var(--color-bg)',
+                              display: 'grid',
+                              gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+                              gap: '10px',
+                              padding: '12px'
                             }}>
                               {(() => {
                                 const systemSales = allSystemUsers.filter(u => u.role === 'sales' || u.role === 'sale');
@@ -2674,7 +2678,7 @@ const ConsultantsInner = () => {
 
                                 if (filteredSales.length === 0) {
                                   return (
-                                    <div style={{ padding: '1.5rem 1rem', textAlign: 'center', color: 'var(--color-text-muted)', fontSize: '0.8125rem' }}>
+                                    <div style={{ gridColumn: '1 / -1', padding: '1.5rem 1rem', textAlign: 'center', color: 'var(--color-text-muted)', fontSize: '0.8125rem' }}>
                                       {t('Không tìm thấy tư vấn viên nào')}
                                     </div>
                                   );
@@ -2701,14 +2705,27 @@ const ConsultantsInner = () => {
                                         display: 'flex',
                                         alignItems: 'center',
                                         gap: '0.75rem',
-                                        padding: '0.5rem 0.75rem',
-                                        borderBottom: '1px solid var(--color-border-light)',
+                                        padding: '0.625rem 0.75rem',
+                                        border: '1px solid var(--color-border-light)',
+                                        borderRadius: '8px',
                                         cursor: isWriteAuthorized ? 'pointer' : 'default',
-                                        transition: 'background 0.1s',
-                                        background: isChecked ? 'rgba(163, 20, 34, 0.05)' : 'transparent'
+                                        transition: 'all 0.15s ease',
+                                        background: isChecked ? 'rgba(163, 20, 34, 0.05)' : 'var(--color-surface)',
+                                        borderColor: isChecked ? 'var(--color-primary-light)' : 'var(--color-border-light)',
+                                        boxShadow: isChecked ? 'none' : '0 1px 2px rgba(0, 0, 0, 0.02)'
                                       }}
-                                      onMouseEnter={e => { if (!isChecked && isWriteAuthorized) e.currentTarget.style.background = 'var(--color-surface)'; }}
-                                      onMouseLeave={e => { if (!isChecked && isWriteAuthorized) e.currentTarget.style.background = 'transparent'; }}
+                                      onMouseEnter={e => {
+                                        if (isWriteAuthorized) {
+                                          e.currentTarget.style.borderColor = 'var(--color-primary)';
+                                          e.currentTarget.style.boxShadow = '0 2px 4px rgba(0, 0, 0, 0.05)';
+                                        }
+                                      }}
+                                      onMouseLeave={e => {
+                                        if (isWriteAuthorized) {
+                                          e.currentTarget.style.borderColor = isChecked ? 'var(--color-primary-light)' : 'var(--color-border-light)';
+                                          e.currentTarget.style.boxShadow = isChecked ? 'none' : '0 1px 2px rgba(0, 0, 0, 0.02)';
+                                        }
+                                      }}
                                     >
                                       <input
                                         type="checkbox"
@@ -2733,13 +2750,14 @@ const ConsultantsInner = () => {
                                           color: belongsToOtherTeam ? 'var(--color-danger)' : 'var(--color-primary)', 
                                           padding: '2px 6px', 
                                           borderRadius: 4, 
-                                          fontWeight: 600 
+                                          fontWeight: 600,
+                                          flexShrink: 0
                                         }}>
                                           {belongsToOtherTeam ? `${t('Nhóm')}: ${otherTeam ? otherTeam.name : 'Khác'}` : t('Đang trong nhóm')}
                                         </span>
                                       )}
                                       {!sale.team_id && (
-                                        <span style={{ fontSize: '0.65rem', background: 'var(--color-bg)', color: 'var(--color-text-muted)', padding: '2px 6px', borderRadius: 4 }}>
+                                        <span style={{ fontSize: '0.65rem', background: 'var(--color-bg)', color: 'var(--color-text-muted)', padding: '2px 6px', borderRadius: 4, flexShrink: 0 }}>
                                           {t('Tự do')}
                                         </span>
                                       )}
