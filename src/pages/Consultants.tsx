@@ -1379,12 +1379,11 @@ const ConsultantsInner = () => {
                         width: '42px', 
                         height: '42px', 
                         borderRadius: '12px', 
-                        background: 'linear-gradient(135deg, var(--color-primary-light, #eff6ff), #f0fdf4)', 
-                        border: '1px solid var(--color-border-light)',
+                        background: 'var(--color-primary)', 
                         display: 'flex', 
                         alignItems: 'center', 
                         justifyContent: 'center',
-                        color: 'var(--color-primary)',
+                        color: '#ffffff',
                         flexShrink: 0
                       }}>
                         <Users size={20} />
