@@ -6969,7 +6969,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
     const DATABANK_ITEMS_PER_PAGE = 10;
     const databankTotalPages = Math.ceil(publicLeads.length / DATABANK_ITEMS_PER_PAGE);
     const paginatedPublicLeads = publicLeads.slice((databankPage - 1) * DATABANK_ITEMS_PER_PAGE, databankPage * DATABANK_ITEMS_PER_PAGE);
-    const isAdmin = ['admin', 'superadmin', 'super_admin'].includes(String(user?.role || displayUser?.role || '').toLowerCase());
+    const isAdmin = ['admin', 'superadmin', 'super_admin', 'director'].includes(String(user?.role || displayUser?.role || '').toLowerCase());
 
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
@@ -7176,7 +7176,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                   {paginatedPublicLeads.map((lead) => {
                     const hasClaimed = lead.takers && lead.takers.some((t: any) => Number(t.id) === Number(displayUser?.id) || Number(t.id) === Number(displayUser?.consultant_id));
                     const isFull = lead.takers && lead.takers.length >= 2;
-                    const isAdmin = ['admin', 'superadmin', 'super_admin'].includes(String(user?.role || displayUser?.role || '').toLowerCase());
+                    const isAdmin = ['admin', 'superadmin', 'super_admin', 'director'].includes(String(user?.role || displayUser?.role || '').toLowerCase());
                     const canClaim = !hasClaimed && !isFull && isClaimingLeadId === null && !isAdmin;
 
                     return (

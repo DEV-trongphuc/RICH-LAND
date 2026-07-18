@@ -15788,15 +15788,28 @@ switch ($action) {
             respond(401, null, 'Unauthorized: Chưa đăng nhập', false);
         }
 
-        $isStaffAdmin = ($decodedUser['role'] === 'admin' || $decodedUser['role'] === 'superadmin');
+        $isStaffAdmin = ($decodedUser['role'] === 'admin' || $decodedUser['role'] === 'superadmin' || $decodedUser['role'] === 'director');
 
-        $sql = "SELECT p.id, p.full_name, p.phone, p.email, p.released_to_kho_at,
-                       (SELECT project_id FROM contacts WHERE person_id = p.id ORDER BY id ASC LIMIT 1) as project_id,
-                       (SELECT name FROM projects WHERE id = (SELECT project_id FROM contacts WHERE person_id = p.id ORDER BY id ASC LIMIT 1)) as project_name,
-                       (SELECT source FROM contacts WHERE person_id = p.id ORDER BY id ASC LIMIT 1) as original_source
-                FROM persons p
-                WHERE p.is_public = 1
-                ORDER BY p.released_to_kho_at DESC";
+        if ($isStaffAdmin) {
+            $sql = "SELECT p.id, p.full_name, p.phone, p.email, p.released_to_kho_at,
+                           (SELECT project_id FROM contacts WHERE person_id = p.id ORDER BY id ASC LIMIT 1) as project_id,
+                           (SELECT name FROM projects WHERE id = (SELECT project_id FROM contacts WHERE person_id = p.id ORDER BY id ASC LIMIT 1)) as project_name,
+                           (SELECT source FROM contacts WHERE person_id = p.id ORDER BY id ASC LIMIT 1) as original_source
+                    FROM persons p
+                    WHERE p.released_to_kho_at IS NOT NULL
+                      AND (p.is_public = 1 OR NOT EXISTS (
+                          SELECT 1 FROM contacts WHERE person_id = p.id AND status = 'dat_coc' AND deleted_at IS NULL
+                      ))
+                    ORDER BY p.released_to_kho_at DESC";
+        } else {
+            $sql = "SELECT p.id, p.full_name, p.phone, p.email, p.released_to_kho_at,
+                           (SELECT project_id FROM contacts WHERE person_id = p.id ORDER BY id ASC LIMIT 1) as project_id,
+                           (SELECT name FROM projects WHERE id = (SELECT project_id FROM contacts WHERE person_id = p.id ORDER BY id ASC LIMIT 1)) as project_name,
+                           (SELECT source FROM contacts WHERE person_id = p.id ORDER BY id ASC LIMIT 1) as original_source
+                    FROM persons p
+                    WHERE p.is_public = 1
+                    ORDER BY p.released_to_kho_at DESC";
+        }
 
         $res = $conn->query($sql);
         $publicLeads = [];

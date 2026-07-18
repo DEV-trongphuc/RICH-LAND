@@ -853,8 +853,6 @@ export default function ProjectsPage() {
   };
 
   const [isDocsModalOpen, setIsDocsModalOpen] = useState(false);
-  const [isFileModalOpen, setIsFileModalOpen] = useState(false);
-  const [fileModalProjectId, setFileModalProjectId] = useState<number | null>(null);
   const [projectDocs, setProjectDocs] = useState<ProjectDoc[]>([]);
   const [uploadingDoc, setUploadingDoc] = useState(false);
   const [editingDocKey, setEditingDocKey] = useState<string | null>(null);
@@ -4914,19 +4912,6 @@ export default function ProjectsPage() {
 
       {renderQuickCampaignsDrawer()}
 
-      {/* Embedded Files Modal/Drawer */}
-      {renderDrawer(
-        isFileModalOpen,
-        () => setIsFileModalOpen(false),
-        "Thư Mục Tài Liệu Chi Tiết",
-        fileModalProjectId ? (
-          <div style={{ height: 'calc(100vh - 120px)', overflowY: 'auto' }} className="custom-scrollbar">
-            <FilesPage embedProjectId={String(fileModalProjectId)} isEmbedded={true} />
-          </div>
-        ) : null,
-        '1000px'
-      )}
-
       {/* Project Docs Drawer */}
       {renderDrawer(
         isDocsModalOpen,
@@ -4961,8 +4946,7 @@ export default function ProjectsPage() {
                       key={idx}
                       onClick={() => {
                         if (f.type !== 'link' && selectedProj?.id) {
-                          setFileModalProjectId(selectedProj.id);
-                          setIsFileModalOpen(true);
+                          handleOpenFolderModal(f.path, selectedProj.id);
                         }
                       }}
                       style={{
@@ -5021,8 +5005,7 @@ export default function ProjectsPage() {
                           onClick={e => {
                             e.stopPropagation();
                             if (selectedProj?.id) {
-                              setFileModalProjectId(selectedProj.id);
-                              setIsFileModalOpen(true);
+                              handleOpenFolderModal(f.path, selectedProj.id);
                             }
                           }}
                         >
