@@ -865,6 +865,9 @@ export default function ProjectsPage() {
   const fetchCampaignRosters = async (camp: any) => {
     setCampaignRostersLoading(true);
     const pObjs = projects.filter(p => {
+      if (camp?.project_id && Number(p.id) === Number(camp.project_id)) {
+        return true;
+      }
       const campIds = p.campaign_ids ? p.campaign_ids.split(',').map((id: string) => id.trim()) : [];
       return campIds.includes(camp?.name);
     });
@@ -1400,16 +1403,6 @@ export default function ProjectsPage() {
                       <span style={{ color: 'var(--color-text)', fontSize: '0.95rem', fontWeight: 700, display: 'block' }}>{editingProject?.handover_year || 2026}</span>
                     </div>
 
-                    <div style={{ gridColumn: 'span 2', borderTop: '1px solid var(--color-border-light)', paddingTop: '12px' }}>
-                      <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', fontWeight: 600, opacity: 0.85, textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: '6px' }}>Đường dẫn Folder liên kết</span>
-                      <div style={{ marginTop: '4px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                        {parseFolderPaths(editingProject?.folder_path).map((f, idx) => (
-                          <div key={idx}>
-                            {renderFolderPathLink(f.path, editingProject?.id)}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
                   </div>
                 </div>
 
@@ -1572,6 +1565,44 @@ export default function ProjectsPage() {
                         </div>
                       )}
                     </div>
+                  </div>
+                </div>
+
+                {/* Section: Đường dẫn Folder liên kết */}
+                <div style={{
+                  background: '#ffffff',
+                  border: '1px solid var(--color-border-light)',
+                  borderRadius: '12px',
+                  padding: '1.5rem',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '1.25rem',
+                  boxShadow: '0 10px 30px -10px rgba(0,0,0,0.04)'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <div style={{
+                      padding: '8px',
+                      background: 'rgba(163, 20, 34, 0.08)',
+                      borderRadius: '10px',
+                      color: 'var(--color-primary)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}>
+                      <Folder size={16} />
+                    </div>
+                    <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', fontWeight: 600, opacity: 0.85, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Đường dẫn Folder liên kết</span>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    {parseFolderPaths(editingProject?.folder_path).length === 0 ? (
+                      <span style={{ color: 'var(--color-text-muted)', fontStyle: 'italic', fontSize: '0.85rem' }}>Chưa cấu hình folder liên kết</span>
+                    ) : (
+                      parseFolderPaths(editingProject?.folder_path).map((f, idx) => (
+                        <div key={idx}>
+                          {renderFolderPathLink(f.path, editingProject?.id)}
+                        </div>
+                      ))
+                    )}
                   </div>
                 </div>
 
