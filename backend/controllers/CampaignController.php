@@ -87,6 +87,12 @@ class CampaignController {
             $params[] = $auth['user_id'];
         }
 
+        $projectId = isset($_GET['project_id']) && $_GET['project_id'] !== '' ? (int)$_GET['project_id'] : 0;
+        if ($projectId > 0) {
+            $where .= " AND project_id = ?";
+            $params[] = $projectId;
+        }
+
         $page = isset($_GET['page']) ? max(1, (int)$_GET['page']) : 0;
         $limit = isset($_GET['limit']) ? max(1, (int)$_GET['limit']) : 0;
 

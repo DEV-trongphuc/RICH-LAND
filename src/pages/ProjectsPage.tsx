@@ -5,7 +5,7 @@ import { fetchAPI } from '../utils/api';
 import api from '../api/axios';
 import { useAuth } from '../contexts/AuthContext';
 import { useUIStore } from '../store/uiStore';
-import { Building2, Users, FileText, Plus, Trash2, Edit, X, Upload, Download, Check, AlertCircle, Layers, FileSpreadsheet, Link2, Globe, Search, Folder, ExternalLink, MessageSquare, Paperclip, RefreshCw, Calendar, CheckSquare, HardDrive, Info, MapPin, Briefcase, AlignLeft } from 'lucide-react';
+import { Building2, Users, FileText, Plus, Trash2, Edit, X, Upload, Download, Check, AlertCircle, Layers, FileSpreadsheet, Link2, Globe, Search, Folder, ExternalLink, MessageSquare, Paperclip, RefreshCw, Calendar, CheckSquare, HardDrive, Info, MapPin, Briefcase, AlignLeft, Filter } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { EmptyCard } from '../components/ui/EmptyCard';
 import { compressToWebP } from '../utils/imageCompress';
@@ -210,6 +210,7 @@ export default function ProjectsPage() {
   const [activeSubTab, setActiveSubTab] = useState<'projects' | 'campaigns'>('projects');
   const [campaigns, setCampaigns] = useState<any[]>([]);
   const [campaignsLoading, setCampaignsLoading] = useState(false);
+  const [campaignProjectFilter, setCampaignProjectFilter] = useState<string>('');
   const [isCampaignModalOpen, setIsCampaignModalOpen] = useState(false);
   const [editingCampaign, setEditingCampaign] = useState<any | null>(null);
   const [totalProjects, setTotalProjects] = useState(0);
@@ -2336,7 +2337,8 @@ export default function ProjectsPage() {
   const loadCampaigns = async () => {
     setCampaignsLoading(true);
     try {
-      const res = await fetchAPI(`campaigns?page=${campaignPage}&limit=${campaignPageSize}`);
+      const url = `campaigns?page=${campaignPage}&limit=${campaignPageSize}${campaignProjectFilter ? `&project_id=${campaignProjectFilter}` : ''}`;
+      const res = await fetchAPI(url);
       if (res.success) {
         if (res.data && typeof res.data === 'object' && 'data' in res.data) {
           setCampaigns(res.data.data || []);
@@ -2427,7 +2429,7 @@ export default function ProjectsPage() {
 
   useEffect(() => {
     loadCampaigns();
-  }, [campaignPage, campaignPageSize]);
+  }, [campaignPage, campaignPageSize, campaignProjectFilter]);
 
   useEffect(() => {
     loadDevelopers();
@@ -3216,140 +3218,197 @@ export default function ProjectsPage() {
 
       {/* Campaigns List Tab */}
       {activeSubTab === 'campaigns' && (
-        campaignsLoading ? (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '1.5rem' }}>
-            {Array.from({ length: 6 }).map((_, i) => (
-              <CampaignCardSkeleton key={i} />
-            ))}
+        <>
+          {/* Campaign Filter Bar */}
+          <div style={{
+            background: '#ffffff',
+            border: '1px solid var(--color-border-light)',
+            borderRadius: '16px',
+            padding: '0.75rem 1.25rem',
+            marginBottom: '1.5rem',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '12px',
+            boxShadow: 'var(--shadow-sm)',
+            width: '100%',
+            maxWidth: '380px'
+          }}>
+            <div style={{ color: 'var(--color-text-muted)', display: 'inline-flex' }}>
+              <Filter size={16} />
+            </div>
+            <span style={{ fontSize: '0.825rem', fontWeight: 700, color: 'var(--color-text)', whiteSpace: 'nowrap' }}>
+              Dự án:
+            </span>
+            <div style={{ flex: 1 }}>
+              <CustomSelect
+                options={[
+                  { value: '', label: 'Tất cả dự án' },
+                  ...projects.map(p => ({ value: String(p.id), label: p.name }))
+                ]}
+                value={campaignProjectFilter}
+                onChange={val => {
+                  setCampaignProjectFilter(String(val));
+                  setCampaignPage(1);
+                }}
+                placeholder="Chọn dự án..."
+              />
+            </div>
           </div>
-        ) : campaigns.length === 0 ? (
-          <EmptyCard
-            icon={<Layers size={48} />}
-            title="Chưa có chiến dịch nào"
-            description="Bắt đầu tạo chiến dịch marketing để quản lý nguồn lead thu về."
-          />
-        ) : (
-          <>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '1.5rem' }}>
-              {campaigns.map(camp => {
-                const associatedProj = camp.project_id 
-                  ? projects.find(p => p.id === camp.project_id)
-                  : projects.find(p => {
-                      const campIds = p.campaign_ids ? p.campaign_ids.split(',').map((id: string) => id.trim()) : [];
-                      return campIds.includes(camp.name);
-                    });
-                const docCount = parseIds(camp.document_ids).length;
-                const staffCount = parseIds(camp.user_ids).length;
 
-                return (
-                  <div 
-                    key={camp.id} 
-                    onClick={() => handleOpenCampaignView(camp)}
-                    style={{
-                      background: 'var(--color-surface)',
-                      border: '1px solid var(--color-border-light)',
-                      borderRadius: '16px',
-                      padding: '1.5rem',
-                      cursor: 'pointer',
-                      transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      justifyContent: 'space-between',
-                      boxShadow: 'var(--shadow-sm)',
-                      position: 'relative',
-                      overflow: 'hidden'
-                    }}
-                    onMouseEnter={e => {
-                      e.currentTarget.style.borderColor = 'var(--color-primary)';
-                      e.currentTarget.style.boxShadow = 'var(--shadow-md)';
-                    }}
-                    onMouseLeave={e => {
-                      e.currentTarget.style.borderColor = 'var(--color-border-light)';
-                      e.currentTarget.style.boxShadow = 'var(--shadow-sm)';
-                    }}
-                  >
-                    <div>
-                      {/* Header */}
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', gap: '12px', marginBottom: '1rem' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                          <div style={{ width: '40px', height: '40px', borderRadius: '12px', background: 'rgba(163, 20, 34, 0.06)', border: '1px solid rgba(163, 20, 34, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                            <Layers size={18} color="var(--color-primary)" />
+          {campaignsLoading ? (
+            <div style={{ display: 'grid', gridTemplateColumns: window.innerWidth <= 768 ? 'repeat(auto-fill, minmax(280px, 1fr))' : 'repeat(3, 1fr)', gap: '1.5rem' }}>
+              {Array.from({ length: 6 }).map((_, i) => (
+                <CampaignCardSkeleton key={i} />
+              ))}
+            </div>
+          ) : campaigns.length === 0 ? (
+            <EmptyCard
+              icon={<Layers size={48} />}
+              title="Chưa có chiến dịch nào"
+              description="Bắt đầu tạo chiến dịch marketing để quản lý nguồn lead thu về."
+            />
+          ) : (
+            <>
+              <div style={{ display: 'grid', gridTemplateColumns: window.innerWidth <= 768 ? 'repeat(auto-fill, minmax(280px, 1fr))' : 'repeat(3, 1fr)', gap: '1.5rem' }}>
+                {campaigns.map(camp => {
+                  const associatedProj = camp.project_id 
+                    ? projects.find(p => p.id === camp.project_id)
+                    : projects.find(p => {
+                        const campIds = p.campaign_ids ? p.campaign_ids.split(',').map((id: string) => id.trim()) : [];
+                        return campIds.includes(camp.name);
+                      });
+                  const docCount = parseIds(camp.document_ids).length;
+                  const staffCount = parseIds(camp.user_ids).length;
+
+                  return (
+                    <div 
+                      key={camp.id} 
+                      onClick={() => handleOpenCampaignView(camp)}
+                      className="card flex flex-col justify-between transition-all duration-300"
+                      style={{
+                        cursor: 'pointer',
+                        background: '#ffffff',
+                        border: '1px solid var(--color-border-light)',
+                        borderRadius: '24px',
+                        padding: '1.5rem',
+                        boxShadow: '0 10px 30px -10px rgba(0,0,0,0.06)',
+                        position: 'relative',
+                        overflow: 'hidden'
+                      }}
+                      onMouseEnter={e => {
+                        e.currentTarget.style.transform = 'translateY(-4px)';
+                        e.currentTarget.style.borderColor = 'var(--color-primary-light)';
+                        e.currentTarget.style.boxShadow = '0 20px 40px -15px rgba(0,0,0,0.1)';
+                      }}
+                      onMouseLeave={e => {
+                        e.currentTarget.style.transform = 'none';
+                        e.currentTarget.style.borderColor = 'var(--color-border-light)';
+                        e.currentTarget.style.boxShadow = '0 10px 30px -10px rgba(0,0,0,0.06)';
+                      }}
+                    >
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                        {/* Header Row */}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.75rem' }}>
+                          <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+                            <div style={{
+                              padding: '12px',
+                              background: 'linear-gradient(135deg, rgba(244, 63, 94, 0.1), rgba(225, 29, 72, 0.1))',
+                              borderRadius: '16px',
+                              color: 'var(--color-primary)',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              boxShadow: 'inset 0 0 0 1px rgba(225, 29, 72, 0.15)'
+                            }}>
+                              <Layers size={22} style={{ color: 'var(--color-primary)' }} />
+                            </div>
+                            <div>
+                              <h3 style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--color-text)', margin: 0, lineHeight: 1.35, letterSpacing: '-0.01em' }} className="line-clamp-1">{camp.name}</h3>
+                              <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', fontFamily: 'monospace', fontWeight: 600, display: 'inline-block', marginTop: '2px' }}>
+                                ID: {camp.id}
+                              </span>
+                            </div>
                           </div>
-                          <div>
-                            <h3 style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--color-text)', margin: 0 }} className="line-clamp-1">{camp.name}</h3>
-                            <span style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)', fontWeight: 600, display: 'block', marginTop: '2px' }}>ID: {camp.id}</span>
-                          </div>
-                        </div>
-                        <span 
-                          className={`badge ${camp.status === 'active' ? 'success' : 'secondary'}`} 
-                          style={{ fontSize: '0.7rem', padding: '4px 8px', borderRadius: '100px', fontWeight: 700, whiteSpace: 'nowrap', flexShrink: 0 }}
-                        >
-                          {camp.status === 'active' ? 'Hoạt động' : 'Tạm dừng'}
-                        </span>
-                      </div>
-
-                      {/* Description */}
-                      {camp.description ? (
-                        <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', marginBottom: '1.25rem', lineHeight: 1.4 }} className="line-clamp-2">
-                          {camp.description}
-                        </p>
-                      ) : (
-                        <p style={{ fontSize: '0.8rem', color: 'var(--color-text-light)', fontStyle: 'italic', marginBottom: '1.25rem' }}>
-                          Không có mô tả chi tiết
-                        </p>
-                      )}
-
-                      {/* Associated project name tag preview */}
-                      {associatedProj && (
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '1.25rem' }}>
-                          <span style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border-light)', color: 'var(--color-text)', padding: '2px 8px', borderRadius: '6px', fontSize: '0.7rem', fontWeight: 600 }}>
-                            {associatedProj.name}
+                          <span 
+                            style={{
+                              fontSize: '0.72rem',
+                              padding: '4px 10px',
+                              borderRadius: '100px',
+                              fontWeight: 700,
+                              background: camp.status === 'active' ? 'rgba(16, 185, 129, 0.08)' : 'rgba(239, 68, 68, 0.08)',
+                              color: camp.status === 'active' ? '#10b981' : '#ef4444',
+                              border: camp.status === 'active' ? '1px solid rgba(16, 185, 129, 0.15)' : '1px solid rgba(239, 68, 68, 0.15)',
+                              whiteSpace: 'nowrap',
+                              flexShrink: 0
+                            }}
+                          >
+                            {camp.status === 'active' ? 'Hoạt động' : 'Tạm dừng'}
                           </span>
                         </div>
-                      )}
-                    </div>
 
-                    {/* Footer Stats Bar */}
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--color-border-light)', paddingTop: '0.75rem', marginTop: '0.5rem', fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
-                      <div style={{ display: 'flex', gap: '0.75rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '70%' }}>
-                        <span title={associatedProj ? associatedProj.name : 'Chưa liên kết'}>Dự án: <strong>{associatedProj ? associatedProj.name : 'Chưa liên kết'}</strong></span>
-                        <span>•</span>
-                        <span><strong>{docCount}</strong> Tài liệu</span>
-                        <span>•</span>
-                        <span><strong>{staffCount}</strong> Nhân sự</span>
-                      </div>
-                      {(isManagerOrLeader || canEditCampaign(camp)) && (
-                        <div style={{ display: 'flex', gap: '6px' }} onClick={e => e.stopPropagation()}>
-                          {canEditCampaign(camp) && (
-                            <button
-                              onClick={() => {
-                                setEditingCampaign(camp);
-                                setCampaignModalMode('edit');
-                                setIsCampaignModalOpen(true);
-                              }}
-                              className="btn outline icon-only sm"
-                              title="Sửa"
-                            >
-                              <Edit size={12} />
-                            </button>
-                          )}
-                          {canDeleteCampaign(camp) && (
-                            <button
-                              onClick={() => handleDeleteCampaign(camp.id)}
-                              className="btn outline icon-only sm"
-                              style={{ color: 'var(--color-danger)', borderColor: 'rgba(239, 68, 68, 0.2)' }}
-                              title="Xóa"
-                            >
-                              <Trash2 size={12} />
-                            </button>
-                          )}
+                        {/* Description */}
+                        {camp.description ? (
+                          <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', margin: 0, lineHeight: 1.4 }} className="line-clamp-2">
+                            {camp.description}
+                          </p>
+                        ) : (
+                          <p style={{ fontSize: '0.8rem', color: 'var(--color-text-light)', fontStyle: 'italic', margin: 0 }}>
+                            Không có mô tả chi tiết
+                          </p>
+                        )}
+
+                        {/* Associated project name tag preview */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>
+                          <span style={{ color: 'var(--color-text-light)', display: 'inline-flex' }}><Building2 size={13} /></span>
+                          <span>Dự án liên kết: <strong style={{ color: 'var(--color-primary)' }}>{associatedProj ? associatedProj.name : 'Chưa liên kết'}</strong></span>
                         </div>
-                      )}
+                      </div>
+
+                      {/* Footer Stats Bar */}
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--color-border-light)', paddingTop: '0.75rem', marginTop: '1rem', fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
+                        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', background: 'var(--color-bg-light)', padding: '2px 8px', borderRadius: '6px', border: '1px solid var(--color-border-light)', fontWeight: 600 }}>
+                            <Folder size={12} style={{ color: 'var(--color-text-light)' }} />
+                            {docCount} Tài liệu
+                          </span>
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', background: 'var(--color-bg-light)', padding: '2px 8px', borderRadius: '6px', border: '1px solid var(--color-border-light)', fontWeight: 600 }}>
+                            <Users size={12} style={{ color: 'var(--color-text-light)' }} />
+                            {staffCount} Roster
+                          </span>
+                        </div>
+                        {(isManagerOrLeader || canEditCampaign(camp)) && (
+                          <div style={{ display: 'flex', gap: '6px' }} onClick={e => e.stopPropagation()}>
+                            {canEditCampaign(camp) && (
+                              <button
+                                onClick={() => {
+                                  setEditingCampaign(camp);
+                                  setCampaignModalMode('edit');
+                                  setIsCampaignModalOpen(true);
+                                }}
+                                className="btn outline icon-only sm"
+                                style={{ width: '28px', height: '28px', borderRadius: '8px', padding: 0 }}
+                                title="Sửa"
+                              >
+                                <Edit size={12} />
+                              </button>
+                            )}
+                            {canDeleteCampaign(camp) && (
+                              <button
+                                onClick={() => handleDeleteCampaign(camp.id)}
+                                className="btn outline icon-only sm"
+                                style={{ width: '28px', height: '28px', borderRadius: '8px', padding: 0, color: 'var(--color-danger)', borderColor: 'rgba(239, 68, 68, 0.2)' }}
+                                title="Xóa"
+                              >
+                                <Trash2 size={12} />
+                              </button>
+                            )}
+                          </div>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                );
-              })}
-            </div>
+                  );
+                })}
+              </div>
             <div style={{ marginTop: '1.5rem', display: 'flex', justifyContent: 'center', paddingBottom: '2.5rem' }}>
               <Pagination
                 total={totalCampaigns}
@@ -3361,7 +3420,8 @@ export default function ProjectsPage() {
               />
             </div>
           </>
-        )
+        )}
+        </>
       )}
       </div>
 
