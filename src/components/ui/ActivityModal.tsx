@@ -5,6 +5,7 @@ import { useUIStore } from '../../store/uiStore';
 import { CustomSelect } from './CustomSelect';
 import { MentionInput } from './MentionInput';
 import api from '../../api/axios';
+import { compressToWebP } from '../../utils/imageCompress';
 
 interface ActivityModalProps {
   isOpen: boolean;
@@ -64,6 +65,8 @@ export const ActivityModal: React.FC<ActivityModalProps> = ({ isOpen, onClose, e
         call_outcome: 'reached',
         call_duration: 5
       });
+      setProofImageFile(null);
+      setProofImagePreview(null);
     }
   }, [isOpen, activity]);
 
@@ -92,10 +95,32 @@ export const ActivityModal: React.FC<ActivityModalProps> = ({ isOpen, onClose, e
       if (!subject.trim()) { addToast('Vui lòng nhập tiêu đề hoạt động', 'error'); return; }
     }
 
+    if (formData.type === 'meeting' && status === 'done' && !proofImageFile) {
+      addToast('Vui lòng tải lên ảnh minh chứng để hoàn thành gặp gỡ', 'error');
+      return;
+    }
+
     setLoading(true);
     
     try {
+      let uploadedUrl = '';
+      if (formData.type === 'meeting' && status === 'done' && proofImageFile) {
+        let fileToUpload = proofImageFile;
+        if (proofImageFile.type.startsWith('image/')) {
+          fileToUpload = await compressToWebP(proofImageFile);
+        }
+        const fd = new FormData();
+        fd.append('file', fileToUpload);
+        const uploadRes = await api.post('/upload', fd, {
+          headers: { 'Content-Type': 'multipart/form-data' }
+        });
+        uploadedUrl = uploadRes.data.data?.url ?? '';
+        if (!uploadedUrl) throw new Error('Không thể tải ảnh minh chứng lên');
+      }
+
       const formattedDate = formData.due_date ? formData.due_date.replace('T', ' ') : null;
+      let activityId = activity?.id;
+
       if (activity?.id) {
         await api.put(`/activities/${activity.id}`, {
           ...formData,
@@ -106,7 +131,7 @@ export const ActivityModal: React.FC<ActivityModalProps> = ({ isOpen, onClose, e
         });
         addToast('Đã cập nhật hoạt động thành công', 'success');
       } else {
-        await api.post('/activities', {
+        const createRes = await api.post('/activities', {
           ...formData,
           due_date: formattedDate,
           subject,
@@ -116,15 +141,26 @@ export const ActivityModal: React.FC<ActivityModalProps> = ({ isOpen, onClose, e
           related_id: entityId,
           user_id: userId
         });
+        activityId = createRes.data.data?.id || createRes.data.data;
         if (formData.auto_trigger) {
           addToast('Đã kích hoạt tự động hóa Workflow', 'success');
         }
         addToast('Đã thêm hoạt động mới', 'success');
       }
+
+      if (uploadedUrl && activityId) {
+        await api.post(`/activities/${activityId}/comments`, {
+          content: 'Ảnh minh chứng hoàn thành gặp gỡ: ' + (body || ''),
+          attachments: [uploadedUrl],
+          parent_id: null
+        });
+      }
+
       if (onSuccess) onSuccess();
       onClose();
-    } catch {
-      addToast(activity?.id ? 'Lỗi khi cập nhật hoạt động' : 'Lỗi khi thêm hoạt động', 'error');
+    } catch (err: any) {
+      console.error(err);
+      addToast(err.message || (activity?.id ? 'Lỗi khi cập nhật hoạt động' : 'Lỗi khi thêm hoạt động'), 'error');
     } finally {
       setLoading(false);
     }
@@ -376,6 +412,52 @@ export const ActivityModal: React.FC<ActivityModalProps> = ({ isOpen, onClose, e
                   </div>
                 </div>
               </>
+            )}
+
+            {formData.type === 'meeting' && formData.status === 'done' && (
+              <div className="form-group" style={{ marginTop: '1.25rem' }}>
+                <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '4px', color: 'var(--color-text)', fontWeight: 600 }}>
+                  <Camera size={14} style={{ color: '#10b981' }} /> Ảnh minh chứng gặp gỡ <span style={{ color: 'var(--color-danger)' }}>*</span>
+                </label>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                  {proofImagePreview ? (
+                    <div style={{ position: 'relative', width: '100%', height: '180px', borderRadius: '10px', overflow: 'hidden', border: '1px solid var(--color-border)' }}>
+                      <img src={proofImagePreview} alt="Proof preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      <button 
+                        type="button"
+                        onClick={() => {
+                          setProofImageFile(null);
+                          setProofImagePreview(null);
+                        }}
+                        style={{ position: 'absolute', top: '8px', right: '8px', background: 'rgba(0,0,0,0.6)', color: 'white', border: 'none', borderRadius: '50%', width: '28px', height: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
+                      >
+                        <X size={14} />
+                      </button>
+                    </div>
+                  ) : (
+                    <label style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', width: '100%', height: '120px', border: '2px dashed var(--color-border)', borderRadius: '10px', cursor: 'pointer', background: 'var(--color-bg)', transition: 'border-color 0.2s', padding: '1rem' }} className="hover-lift">
+                      <Camera size={28} style={{ color: 'var(--color-text-muted)', marginBottom: '6px' }} />
+                      <span style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>Tải ảnh minh chứng lên (Ảnh gặp gỡ tại sa bàn, v.v.)</span>
+                      <input 
+                        type="file" 
+                        accept="image/*" 
+                        onChange={async (e) => {
+                          const file = e.target.files?.[0];
+                          if (!file) return;
+                          if (file.size > 5 * 1024 * 1024) {
+                            addToast('Dung lượng tệp đính kèm không được vượt quá 5MB', 'error');
+                            return;
+                          }
+                          const previewUrl = URL.createObjectURL(file);
+                          setProofImageFile(file);
+                          setProofImagePreview(previewUrl);
+                        }}
+                        style={{ display: 'none' }}
+                      />
+                    </label>
+                  )}
+                </div>
+              </div>
             )}
 
             <div className="form-group" style={{ marginTop: '1.25rem' }}>
