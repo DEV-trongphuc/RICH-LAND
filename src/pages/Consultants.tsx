@@ -2529,7 +2529,7 @@ const ConsultantsInner = () => {
                                   );
                                 })()}
                                 <input
-                                  className="form-input"
+                                  className={`form-input ${teamFormData.leader_id ? 'form-input-with-avatar' : ''}`}
                                   style={{ 
                                     background: 'var(--color-bg)', 
                                     border: '1px solid var(--color-border-light)', 

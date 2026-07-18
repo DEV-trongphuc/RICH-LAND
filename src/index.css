@@ -4213,4 +4213,8 @@ div[role="status"] {
   font-family: inherit !important;
   font-size: 0.8125rem !important;
   font-weight: 500 !important;
+}
+
+.form-input.form-input-with-avatar {
+  padding-left: 42px !important;
 }
