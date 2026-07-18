@@ -1057,57 +1057,57 @@ export default function ProjectsPage() {
             {/* KPI Summary Cards */}
             {projectStats && (
               <div className="responsive-grid-4" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.75rem', marginBottom: '0.5rem' }}>
-                <div className="stat-card" style={{ display: 'flex', flexDirection: 'column', padding: '1.25rem', background: '#ffffff', border: '1px solid var(--color-border-light)', borderRadius: '12px', boxShadow: '0 4px 20px rgba(0,0,0,0.02)' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
-                    <span className="stat-label" style={{ fontSize: '0.7rem', fontWeight: 600, color: 'var(--color-text-muted)', opacity: 0.85, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Tổng Giao dịch</span>
-                    <div style={{ width: '32px', height: '32px', borderRadius: '10px', background: 'rgba(163, 20, 34, 0.08)', color: 'var(--color-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Layers size={16} /></div>
+                <div className="stat-card" style={{ display: 'flex', flexDirection: 'column', padding: '0.75rem 1rem', background: '#ffffff', border: '1px solid var(--color-border-light)', borderRadius: '12px', boxShadow: '0 4px 20px rgba(0,0,0,0.02)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                    <span className="stat-label" style={{ fontSize: '0.6875rem', fontWeight: 600, color: 'var(--color-text-muted)', opacity: 0.85, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Tổng Giao dịch</span>
+                    <div style={{ width: '28px', height: '28px', borderRadius: '8px', background: 'rgba(163, 20, 34, 0.08)', color: 'var(--color-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Layers size={14} /></div>
                   </div>
                   <div>
-                    <div className="stat-value" style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--color-text)', lineHeight: 1 }}>
+                    <div className="stat-value" style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--color-text)', lineHeight: 1 }}>
                       {projectStats.total_deals}
                     </div>
-                    <div style={{ fontSize: '0.72rem', color: 'var(--color-text-light)', marginTop: '6px', fontWeight: 550 }}>Cơ hội bán hàng</div>
+                    <div style={{ fontSize: '0.6875rem', color: 'var(--color-text-light)', marginTop: '4px', fontWeight: 550 }}>Cơ hội bán hàng</div>
                   </div>
                 </div>
 
-                <div className="stat-card" style={{ display: 'flex', flexDirection: 'column', padding: '1.25rem', background: '#ffffff', border: '1px solid var(--color-border-light)', borderRadius: '12px', boxShadow: '0 4px 20px rgba(0,0,0,0.02)' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
-                    <span className="stat-label" style={{ fontSize: '0.7rem', fontWeight: 600, color: 'var(--color-text-muted)', opacity: 0.85, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Doanh thu thực tế</span>
-                    <div style={{ width: '32px', height: '32px', borderRadius: '10px', background: 'rgba(163, 20, 34, 0.08)', color: 'var(--color-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><CheckSquare size={16} /></div>
+                <div className="stat-card" style={{ display: 'flex', flexDirection: 'column', padding: '0.75rem 1rem', background: '#ffffff', border: '1px solid var(--color-border-light)', borderRadius: '12px', boxShadow: '0 4px 20px rgba(0,0,0,0.02)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                    <span className="stat-label" style={{ fontSize: '0.6875rem', fontWeight: 600, color: 'var(--color-text-muted)', opacity: 0.85, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Doanh thu thực tế</span>
+                    <div style={{ width: '28px', height: '28px', borderRadius: '8px', background: 'rgba(163, 20, 34, 0.08)', color: 'var(--color-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><CheckSquare size={14} /></div>
                   </div>
                   <div>
-                    <div className="stat-value" style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--color-primary)', lineHeight: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={projectStats.actual_revenue.toLocaleString('vi-VN') + ' VND'}>
+                    <div className="stat-value" style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--color-primary)', lineHeight: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={projectStats.actual_revenue.toLocaleString('vi-VN') + ' VND'}>
                       {projectStats.actual_revenue >= 1000000000 
                         ? `${(projectStats.actual_revenue / 1000000000).toFixed(2)} tỷ` 
                         : `${(projectStats.actual_revenue / 1000000).toFixed(0)} triệu`}
                     </div>
-                    <div style={{ fontSize: '0.72rem', color: 'var(--color-text-light)', marginTop: '6px', fontWeight: 550 }}>Từ hóa đơn đã thu</div>
+                    <div style={{ fontSize: '0.6875rem', color: 'var(--color-text-light)', marginTop: '4px', fontWeight: 550 }}>Từ hóa đơn đã thu</div>
                   </div>
                 </div>
 
-                <div className="stat-card" style={{ display: 'flex', flexDirection: 'column', padding: '1.25rem', background: '#ffffff', border: '1px solid var(--color-border-light)', borderRadius: '12px', boxShadow: '0 4px 20px rgba(0,0,0,0.02)' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
-                    <span className="stat-label" style={{ fontSize: '0.7rem', fontWeight: 600, color: 'var(--color-text-muted)', opacity: 0.85, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Tỷ lệ chốt</span>
-                    <div style={{ width: '32px', height: '32px', borderRadius: '10px', background: 'rgba(163, 20, 34, 0.08)', color: 'var(--color-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Users size={16} /></div>
+                <div className="stat-card" style={{ display: 'flex', flexDirection: 'column', padding: '0.75rem 1rem', background: '#ffffff', border: '1px solid var(--color-border-light)', borderRadius: '12px', boxShadow: '0 4px 20px rgba(0,0,0,0.02)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                    <span className="stat-label" style={{ fontSize: '0.6875rem', fontWeight: 600, color: 'var(--color-text-muted)', opacity: 0.85, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Tỷ lệ chốt</span>
+                    <div style={{ width: '28px', height: '28px', borderRadius: '8px', background: 'rgba(163, 20, 34, 0.08)', color: 'var(--color-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Users size={14} /></div>
                   </div>
                   <div>
-                    <div className="stat-value" style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--color-primary)', lineHeight: 1 }}>
+                    <div className="stat-value" style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--color-primary)', lineHeight: 1 }}>
                       {projectStats.win_rate}%
                     </div>
-                    <div style={{ fontSize: '0.72rem', color: 'var(--color-text-light)', marginTop: '6px', fontWeight: 550 }}>Tỷ lệ giao dịch thành công</div>
+                    <div style={{ fontSize: '0.6875rem', color: 'var(--color-text-light)', marginTop: '4px', fontWeight: 550 }}>Tỷ lệ giao dịch thành công</div>
                   </div>
                 </div>
 
-                <div className="stat-card" style={{ display: 'flex', flexDirection: 'column', padding: '1.25rem', background: '#ffffff', border: '1px solid var(--color-border-light)', borderRadius: '12px', boxShadow: '0 4px 20px rgba(0,0,0,0.02)' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
-                    <span className="stat-label" style={{ fontSize: '0.7rem', fontWeight: 600, color: 'var(--color-text-muted)', opacity: 0.85, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Đang chăm sóc</span>
-                    <div style={{ width: '32px', height: '32px', borderRadius: '10px', background: 'rgba(163, 20, 34, 0.08)', color: 'var(--color-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Building2 size={16} /></div>
+                <div className="stat-card" style={{ display: 'flex', flexDirection: 'column', padding: '0.75rem 1rem', background: '#ffffff', border: '1px solid var(--color-border-light)', borderRadius: '12px', boxShadow: '0 4px 20px rgba(0,0,0,0.02)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                    <span className="stat-label" style={{ fontSize: '0.6875rem', fontWeight: 600, color: 'var(--color-text-muted)', opacity: 0.85, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Đang chăm sóc</span>
+                    <div style={{ width: '28px', height: '28px', borderRadius: '8px', background: 'rgba(163, 20, 34, 0.08)', color: 'var(--color-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Building2 size={14} /></div>
                   </div>
                   <div>
-                    <div className="stat-value" style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--color-primary)', lineHeight: 1 }}>
+                    <div className="stat-value" style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--color-primary)', lineHeight: 1 }}>
                       {projectStats.total_leads}
                     </div>
-                    <div style={{ fontSize: '0.72rem', color: 'var(--color-text-light)', marginTop: '6px', fontWeight: 550 }}>Khách hàng tiềm năng</div>
+                    <div style={{ fontSize: '0.6875rem', color: 'var(--color-text-light)', marginTop: '4px', fontWeight: 550 }}>Khách hàng tiềm năng</div>
                   </div>
                 </div>
               </div>
@@ -1785,57 +1785,57 @@ export default function ProjectsPage() {
             {/* KPI Summary Cards */}
             {campaignStats && (
               <div className="responsive-grid-4" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.75rem', marginBottom: '1.25rem' }}>
-                <div className="stat-card" style={{ display: 'flex', flexDirection: 'column', padding: '1rem', minHeight: '100px' }}>
+                <div className="stat-card" style={{ display: 'flex', flexDirection: 'column', padding: '0.75rem 1rem', background: '#ffffff', border: '1px solid var(--color-border-light)', borderRadius: '12px', boxShadow: '0 4px 20px rgba(0,0,0,0.02)' }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-                    <span className="stat-label" style={{ fontSize: '0.6875rem', fontWeight: 800, color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Tổng Số Leads</span>
-                    <div className="stat-icon" style={{ color: 'var(--color-primary)', opacity: 0.8 }}><Layers size={18} /></div>
+                    <span className="stat-label" style={{ fontSize: '0.6875rem', fontWeight: 600, color: 'var(--color-text-muted)', opacity: 0.85, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Tổng Số Leads</span>
+                    <div style={{ width: '28px', height: '28px', borderRadius: '8px', background: 'rgba(163, 20, 34, 0.08)', color: 'var(--color-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Layers size={14} /></div>
                   </div>
-                  <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                    <div className="stat-value" style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--color-text)' }}>
+                  <div>
+                    <div className="stat-value" style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--color-text)', lineHeight: 1 }}>
                       {campaignStats.total_leads}
                     </div>
-                    <div style={{ fontSize: '0.6875rem', color: 'var(--color-text-muted)', marginTop: 2, fontWeight: 500 }}>Nhận từ kênh Ads/Sheet</div>
+                    <div style={{ fontSize: '0.6875rem', color: 'var(--color-text-light)', marginTop: '4px', fontWeight: 550 }}>Nhận từ kênh Ads/Sheet</div>
                   </div>
                 </div>
 
-                <div className="stat-card" style={{ display: 'flex', flexDirection: 'column', padding: '1rem', minHeight: '100px' }}>
+                <div className="stat-card" style={{ display: 'flex', flexDirection: 'column', padding: '0.75rem 1rem', background: '#ffffff', border: '1px solid var(--color-border-light)', borderRadius: '12px', boxShadow: '0 4px 20px rgba(0,0,0,0.02)' }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-                    <span className="stat-label" style={{ fontSize: '0.6875rem', fontWeight: 800, color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Đã Chuyển Đổi</span>
-                    <div className="stat-icon" style={{ color: '#6366f1', opacity: 0.8 }}><Users size={18} /></div>
+                    <span className="stat-label" style={{ fontSize: '0.6875rem', fontWeight: 600, color: 'var(--color-text-muted)', opacity: 0.85, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Đã Chuyển Đổi</span>
+                    <div style={{ width: '28px', height: '28px', borderRadius: '8px', background: 'rgba(163, 20, 34, 0.08)', color: 'var(--color-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Users size={14} /></div>
                   </div>
-                  <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                    <div className="stat-value" style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--color-text)' }}>
+                  <div>
+                    <div className="stat-value" style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--color-text)', lineHeight: 1 }}>
                       {campaignStats.converted_leads}
                     </div>
-                    <div style={{ fontSize: '0.6875rem', color: 'var(--color-text-muted)', marginTop: 2, fontWeight: 500 }}>Tỷ lệ: {campaignStats.conversion_rate}%</div>
+                    <div style={{ fontSize: '0.6875rem', color: 'var(--color-text-light)', marginTop: '4px', fontWeight: 550 }}>Tỷ lệ: {campaignStats.conversion_rate}%</div>
                   </div>
                 </div>
 
-                <div className="stat-card" style={{ display: 'flex', flexDirection: 'column', padding: '1rem', minHeight: '100px' }}>
+                <div className="stat-card" style={{ display: 'flex', flexDirection: 'column', padding: '0.75rem 1rem', background: '#ffffff', border: '1px solid var(--color-border-light)', borderRadius: '12px', boxShadow: '0 4px 20px rgba(0,0,0,0.02)' }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-                    <span className="stat-label" style={{ fontSize: '0.6875rem', fontWeight: 800, color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Giao Dịch Thành Công</span>
-                    <div className="stat-icon" style={{ color: '#f59e0b', opacity: 0.8 }}><CheckSquare size={18} /></div>
+                    <span className="stat-label" style={{ fontSize: '0.6875rem', fontWeight: 600, color: 'var(--color-text-muted)', opacity: 0.85, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Giao Dịch Thành Công</span>
+                    <div style={{ width: '28px', height: '28px', borderRadius: '8px', background: 'rgba(163, 20, 34, 0.08)', color: 'var(--color-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><CheckSquare size={14} /></div>
                   </div>
-                  <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                    <div className="stat-value" style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--color-text)' }}>
+                  <div>
+                    <div className="stat-value" style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--color-text)', lineHeight: 1 }}>
                       {campaignStats.won_deals}
                     </div>
-                    <div style={{ fontSize: '0.6875rem', color: 'var(--color-text-muted)', marginTop: 2, fontWeight: 500 }}>Đã chốt (Đóng Deal)</div>
+                    <div style={{ fontSize: '0.6875rem', color: 'var(--color-text-light)', marginTop: '4px', fontWeight: 550 }}>Đã chốt (Đóng Deal)</div>
                   </div>
                 </div>
 
-                <div className="stat-card" style={{ display: 'flex', flexDirection: 'column', padding: '1rem', minHeight: '100px' }}>
+                <div className="stat-card" style={{ display: 'flex', flexDirection: 'column', padding: '0.75rem 1rem', background: '#ffffff', border: '1px solid var(--color-border-light)', borderRadius: '12px', boxShadow: '0 4px 20px rgba(0,0,0,0.02)' }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-                    <span className="stat-label" style={{ fontSize: '0.6875rem', fontWeight: 800, color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Doanh Thu Thực Thu</span>
-                    <div className="stat-icon" style={{ color: '#10b981', opacity: 0.8 }}><Building2 size={18} /></div>
+                    <span className="stat-label" style={{ fontSize: '0.6875rem', fontWeight: 600, color: 'var(--color-text-muted)', opacity: 0.85, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Doanh Thu Thực Thu</span>
+                    <div style={{ width: '28px', height: '28px', borderRadius: '8px', background: 'rgba(163, 20, 34, 0.08)', color: 'var(--color-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Building2 size={14} /></div>
                   </div>
-                  <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                    <div className="stat-value" style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--color-text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={campaignStats.actual_revenue.toLocaleString('vi-VN') + ' VND'}>
+                  <div>
+                    <div className="stat-value" style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--color-primary)', lineHeight: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={campaignStats.actual_revenue.toLocaleString('vi-VN') + ' VND'}>
                       {campaignStats.actual_revenue >= 1000000000 
                         ? `${(campaignStats.actual_revenue / 1000000000).toFixed(2)} tỷ` 
                         : `${(campaignStats.actual_revenue / 1000000).toFixed(0)} triệu`}
                     </div>
-                    <div style={{ fontSize: '0.6875rem', color: 'var(--color-text-muted)', marginTop: 2, fontWeight: 500 }}>Từ hóa đơn đã thu</div>
+                    <div style={{ fontSize: '0.6875rem', color: 'var(--color-text-light)', marginTop: '4px', fontWeight: 550 }}>Từ hóa đơn đã thu</div>
                   </div>
                 </div>
               </div>
@@ -2816,38 +2816,16 @@ export default function ProjectsPage() {
         boxShadow: 'var(--shadow-sm)',
         width: '100%'
       }}>
-        {/* Left: Tab selector */}
+        {/* Left: Tab selector (Underline style) */}
         <div style={{
           display: 'flex',
-          background: 'var(--color-bg-light)',
-          border: '1px solid var(--color-border-light)',
-          padding: '4px',
-          borderRadius: '8px',
-          gap: '4px',
-          position: 'relative',
-          height: '38px',
+          gap: '1.5rem',
           alignItems: 'center',
           boxSizing: 'border-box'
         }}>
-          {/* Sliding Pill Background Indicator */}
-          <div style={{
-            position: 'absolute',
-            top: '3px',
-            left: '4px',
-            width: '110px',
-            height: '30px',
-            borderRadius: '6px',
-            background: '#ffffff',
-            boxShadow: '0 2px 8px rgba(163, 20, 34, 0.08), 0 1px 3px rgba(0,0,0,0.04)',
-            border: '1px solid rgba(163, 20, 34, 0.12)',
-            transition: 'transform 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
-            transform: `translateX(${activeSubTab === 'projects' ? '0px' : '114px'})`,
-            zIndex: 1
-          }} />
-
           {[
-            { id: 'projects', label: 'Dự án', count: totalProjects, icon: <Building2 size={13} /> },
-            { id: 'campaigns', label: 'Chiến dịch', count: totalCampaigns, icon: <Layers size={13} /> }
+            { id: 'projects', label: 'Dự án', count: totalProjects, icon: <Building2 size={15} /> },
+            { id: 'campaigns', label: 'Chiến dịch', count: totalCampaigns, icon: <Layers size={15} /> }
           ].map(tab => {
             const isSelected = activeSubTab === tab.id;
             return (
@@ -2855,11 +2833,10 @@ export default function ProjectsPage() {
                 key={tab.id}
                 onClick={() => setActiveSubTab(tab.id as any)}
                 style={{
-                  width: '110px',
-                  height: '30px',
-                  borderRadius: '6px',
+                  height: '38px',
                   border: 'none',
-                  fontSize: '0.8rem',
+                  borderBottom: isSelected ? '2px solid var(--color-primary)' : '2px solid transparent',
+                  fontSize: '0.85rem',
                   fontWeight: 700,
                   cursor: 'pointer',
                   background: 'transparent',
@@ -2867,19 +2844,19 @@ export default function ProjectsPage() {
                   display: 'inline-flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  gap: '6px',
-                  position: 'relative',
+                  gap: '8px',
+                  padding: '0 4px',
                   outline: 'none',
                   boxShadow: 'none',
-                  zIndex: 2,
-                  transition: 'color 0.2s ease'
+                  transition: 'all 0.2s ease',
+                  marginTop: '2px'
                 }}
               >
                 {tab.icon}
                 <span>{tab.label}</span>
                 <span style={{
-                  fontSize: '0.7rem',
-                  padding: '1px 5px',
+                  fontSize: '0.72rem',
+                  padding: '1px 6px',
                   borderRadius: '10px',
                   background: isSelected ? 'rgba(163, 20, 34, 0.08)' : 'rgba(0, 0, 0, 0.04)',
                   color: isSelected ? 'var(--color-primary)' : 'var(--color-text-muted)',
