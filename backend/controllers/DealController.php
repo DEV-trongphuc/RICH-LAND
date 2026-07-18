@@ -263,7 +263,7 @@ class DealController {
             SELECT n.*, u.full_name as user_name
             FROM notes n
             LEFT JOIN users u ON n.user_id = u.id
-            WHERE n.entity_type = 'deal' AND n.entity_id = ? AND n.deleted_at IS NULL AND n.type = 'internal'
+            WHERE n.entity_type = 'deal' AND n.entity_id = ? AND n.type = 'internal'
             ORDER BY n.created_at DESC
         ");
         $stmtNotes->execute([$id]);
