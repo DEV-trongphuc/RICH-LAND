@@ -2245,7 +2245,8 @@ switch ($action) {
             LEFT JOIN sheet_connections sc ON l.connection_id = sc.id
             LEFT JOIN distribution_rounds r ON dl.round_id = r.id
             LEFT JOIN consultants c ON dl.assigned_to = c.id
-            LEFT JOIN contacts c_real ON c_real.person_id = l.person_id AND c_real.owner_id = c.id AND c_real.deleted_at IS NULL
+            LEFT JOIN users u ON c.email = u.email
+            LEFT JOIN contacts c_real ON c_real.person_id = l.person_id AND c_real.owner_id = u.id AND c_real.deleted_at IS NULL
             LEFT JOIN (
                 SELECT dr1.* FROM data_reports dr1
                 INNER JOIN (
