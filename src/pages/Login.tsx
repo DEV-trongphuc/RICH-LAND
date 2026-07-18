@@ -680,20 +680,38 @@ export const Login = () => {
           .login-container {
             flex-direction: column;
             overflow-y: auto;
+            align-items: center;
+            justify-content: center;
           }
           .left-side {
-            padding: 3rem 1.5rem;
-            min-height: auto;
+            display: none;
           }
           .right-side {
             width: 100%;
-            padding: 3rem 1.5rem;
+            min-height: 100vh;
+            padding: 2rem 1.25rem;
             border-left: none;
-            border-top: 1px solid rgba(255, 255, 255, 0.08);
-            background: rgba(12, 18, 32, 0.85);
+            border-top: none;
+            background: transparent;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
           }
-          .title-main {
-            font-size: 2.75rem;
+          .login-card {
+            padding: 1.5rem 1.25rem;
+            border-radius: 24px;
+          }
+          .right-side > div {
+            gap: 1.25rem !important;
+          }
+          .logo-box {
+            width: 70px;
+            height: 70px;
+            margin-bottom: 0.5rem;
+          }
+          .logo-box + div h2 {
+            font-size: 1.5rem !important;
           }
         }
       `}</style>
