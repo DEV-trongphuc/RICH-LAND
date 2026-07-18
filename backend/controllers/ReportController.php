@@ -124,28 +124,62 @@ class ReportController
             $dealParams = $userIds;
         }
 
-        $pDeals = array_merge([$tid, $fromTs, $toTs], $dealParams);
+        // Retrieve dynamic settings
+        $resOpp = $this->db->prepare("SELECT setting_value FROM system_settings WHERE tenant_id = ? AND setting_key = 'deal_opportunity_status' LIMIT 1");
+        $resOpp->execute([$tid]);
+        $oppStatus = $resOpp->fetchColumn() ?: 'booking';
 
-        $sDeals = $this->db->prepare("
-            SELECT COUNT(*) as total_deals,
-                   COALESCE(SUM(value),0) as total_revenue
-            FROM deals
-            WHERE tenant_id=? AND deleted_at IS NULL AND created_at BETWEEN ? AND ? $dealFilterSimple
-        ");
-        $sDeals->execute($pDeals);
-        $dealStats = $sDeals->fetch(PDO::FETCH_ASSOC);
+        $resWon = $this->db->prepare("SELECT setting_value FROM system_settings WHERE tenant_id = ? AND setting_key = 'deal_won_status' LIMIT 1");
+        $resWon->execute([$tid]);
+        $wonStatus = $resWon->fetchColumn() ?: 'dong_deal';
 
+        $resHier = $this->db->prepare("SELECT setting_value FROM system_settings WHERE tenant_id = ? AND setting_key = 'pipeline_status_hierarchy' LIMIT 1");
+        $resHier->execute([$tid]);
+        $hierJson = $resHier->fetchColumn();
+        $hierarchy = $hierJson ? json_decode($hierJson, true) : ['chua_xac_dinh', 'quan_tam', 'dong_y_gap', 'da_gap', 'booking', 'dat_coc', 'dong_deal'];
+        if (!is_array($hierarchy)) {
+            $hierarchy = ['chua_xac_dinh', 'quan_tam', 'dong_y_gap', 'da_gap', 'booking', 'dat_coc', 'dong_deal'];
+        }
+
+        // Find opportunity stages from $oppStatus onwards in hierarchy
+        $oppIdx = array_search($oppStatus, $hierarchy);
+        if ($oppIdx === false) {
+            $oppIdx = array_search('booking', $hierarchy);
+            if ($oppIdx === false) {
+                $oppIdx = 0;
+            }
+        }
+        $oppStages = array_slice($hierarchy, $oppIdx);
+
+        $dealStats = ['total_deals' => 0, 'total_revenue' => 0.0];
+
+        if (!empty($oppStages)) {
+            $placeholders = implode(',', array_fill(0, count($oppStages), '?'));
+            $sDeals = $this->db->prepare("
+                SELECT COUNT(*) as total_deals,
+                       COALESCE(SUM(expected_revenue),0) as total_revenue
+                FROM contacts
+                WHERE tenant_id=? AND deleted_at IS NULL AND created_at BETWEEN ? AND ? AND pipeline_status IN ($placeholders) $dealFilterSimple
+            ");
+            $sDeals->execute(array_merge([$tid, $fromTs, $toTs], $oppStages, $dealParams));
+            $rowStats = $sDeals->fetch(PDO::FETCH_ASSOC);
+            if ($rowStats) {
+                $dealStats['total_deals'] = (int)($rowStats['total_deals'] ?? 0);
+                $dealStats['total_revenue'] = (float)($rowStats['total_revenue'] ?? 0);
+            }
+        }
+
+        // Count won deals (configured won status)
         $sWon = $this->db->prepare("
             SELECT COUNT(*) 
-            FROM deals d 
-            JOIN pipeline_stages ps ON d.stage_id=ps.id 
-            WHERE d.tenant_id=? AND d.deleted_at IS NULL AND ps.is_won=1 AND COALESCE(d.actual_close_date, d.created_at) BETWEEN ? AND ? $dealFilterAlias
+            FROM contacts 
+            WHERE tenant_id=? AND deleted_at IS NULL AND created_at BETWEEN ? AND ? AND pipeline_status = ? $dealFilterSimple
         ");
-        $sWon->execute($pDeals);
+        $sWon->execute(array_merge([$tid, $fromTs, $toTs, $wonStatus], $dealParams));
         $wonCount = (int)$sWon->fetchColumn();
 
         $sContacts = $this->db->prepare("SELECT COUNT(*) FROM contacts WHERE tenant_id=? AND deleted_at IS NULL AND created_at BETWEEN ? AND ? $dealFilterSimple");
-        $sContacts->execute($pDeals);
+        $sContacts->execute(array_merge([$tid, $fromTs, $toTs], $dealParams));
 
         // 1. Calculate Inventory Loss Value (EXPORT_INTERNAL)
         $stmtLoss = $this->db->prepare("
