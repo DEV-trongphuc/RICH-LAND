@@ -864,11 +864,28 @@ function checkNightShiftAvailability($conn, $consultantId, $currentTime)
 
     if ($isNightShiftTime) {
         $currentHour = (int)date('H');
-        $shiftDate = ($currentHour < 6) ? date('Y-m-d', strtotime('-1 day')) : date('Y-m-d');
+        $endHour = (int)explode(':', $nightShiftEnd)[0];
+        $shiftDate = ($currentHour < $endHour) ? date('Y-m-d', strtotime('-1 day')) : date('Y-m-d');
+
+        // Resolve user ID via email mapping
+        $targetUserId = null;
+        $stmtUId = $conn->prepare("SELECT u.id FROM users u JOIN consultants c ON u.email = c.email WHERE c.id = ? LIMIT 1");
+        if ($stmtUId) {
+            $stmtUId->bind_param("i", $consultantId);
+            $stmtUId->execute();
+            $uRow = $stmtUId->get_result()->fetch_assoc();
+            $stmtUId->close();
+            if ($uRow) {
+                $targetUserId = (int)$uRow['id'];
+            }
+        }
+        if (!$targetUserId) {
+            $targetUserId = $consultantId;
+        }
 
         $stmt = $conn->prepare("SELECT 1 FROM night_shift_registrations WHERE user_id = ? AND shift_date = ?");
         if ($stmt) {
-            $stmt->bind_param("is", $consultantId, $shiftDate);
+            $stmt->bind_param("is", $targetUserId, $shiftDate);
             $stmt->execute();
             $res = $stmt->get_result()->fetch_assoc();
             $stmt->close();
@@ -1737,7 +1754,7 @@ function checkConsultantGates($conn, $consultantId, $lead = null)
         // Chủ nhật = cơ chế đăng ký tự nguyện như ca đêm (đăng ký cuối tuần) + selfie check-in
         $todayStr = date('Y-m-d');
         $stmtCheckReg = $conn->prepare("SELECT 1 FROM night_shift_registrations WHERE user_id = ? AND shift_date = ?");
-        $stmtCheckReg->bind_param("is", $consultantId, $todayStr);
+        $stmtCheckReg->bind_param("is", $targetUserId, $todayStr);
         $stmtCheckReg->execute();
         $hasReg = $stmtCheckReg->get_result()->fetch_assoc();
         $stmtCheckReg->close();
