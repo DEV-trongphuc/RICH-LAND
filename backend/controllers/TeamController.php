@@ -20,7 +20,7 @@ class TeamController
         $params = [];
 
         if ($role === 'manager') {
-            $where = " WHERE (FIND_IN_SET(?, CONCAT(t.leader_id, ',', IFNULL(t.co_leader_ids, ''))) OR t.id = (SELECT team_id FROM users WHERE id = ?))";
+            $where = " WHERE (FIND_IN_SET(?, CONCAT(t.leader_id, ",", IFNULL(t.co_leader_ids, ""))) OR t.id = (SELECT team_id FROM users WHERE id = ?))";
             $params[] = $uid;
             $params[] = $uid;
         } else if (in_array($role, ['sale', 'sales'], true)) {

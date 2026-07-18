@@ -26,7 +26,7 @@ class WorkflowTaskTemplateController
         $p = [$auth['tenant_id']];
 
         if ($auth['role'] === 'manager') {
-            $stmtTeam = $this->db->prepare("SELECT id FROM teams WHERE FIND_IN_SET(?, CONCAT(leader_id, ',', IFNULL(co_leader_ids, ''))) LIMIT 1");
+            $stmtTeam = $this->db->prepare("SELECT id FROM teams WHERE FIND_IN_SET(?, CONCAT(leader_id, ",", IFNULL(co_leader_ids, ""))) LIMIT 1");
             $stmtTeam->execute([$auth['user_id']]);
             $managerTeamId = $stmtTeam->fetchColumn() ?: null;
 
@@ -60,7 +60,7 @@ class WorkflowTaskTemplateController
         $teamId = !empty($b['team_id']) ? (int)$b['team_id'] : null;
 
         if ($auth['role'] === 'manager') {
-            $stmtTeam = $this->db->prepare("SELECT id FROM teams WHERE FIND_IN_SET(?, CONCAT(leader_id, ',', IFNULL(co_leader_ids, ''))) LIMIT 1");
+            $stmtTeam = $this->db->prepare("SELECT id FROM teams WHERE FIND_IN_SET(?, CONCAT(leader_id, ",", IFNULL(co_leader_ids, ""))) LIMIT 1");
             $stmtTeam->execute([$auth['user_id']]);
             $managerTeamId = $stmtTeam->fetchColumn() ?: null;
 
@@ -128,7 +128,7 @@ class WorkflowTaskTemplateController
         $teamId = !empty($b['team_id']) ? (int)$b['team_id'] : null;
 
         if ($auth['role'] === 'manager') {
-            $stmtTeam = $this->db->prepare("SELECT id FROM teams WHERE FIND_IN_SET(?, CONCAT(leader_id, ',', IFNULL(co_leader_ids, ''))) LIMIT 1");
+            $stmtTeam = $this->db->prepare("SELECT id FROM teams WHERE FIND_IN_SET(?, CONCAT(leader_id, ",", IFNULL(co_leader_ids, ""))) LIMIT 1");
             $stmtTeam->execute([$auth['user_id']]);
             $managerTeamId = $stmtTeam->fetchColumn() ?: null;
 
@@ -195,7 +195,7 @@ class WorkflowTaskTemplateController
         }
 
         if ($auth['role'] === 'manager') {
-            $stmtTeam = $this->db->prepare("SELECT id FROM teams WHERE FIND_IN_SET(?, CONCAT(leader_id, ',', IFNULL(co_leader_ids, ''))) LIMIT 1");
+            $stmtTeam = $this->db->prepare("SELECT id FROM teams WHERE FIND_IN_SET(?, CONCAT(leader_id, ",", IFNULL(co_leader_ids, ""))) LIMIT 1");
             $stmtTeam->execute([$auth['user_id']]);
             $managerTeamId = $stmtTeam->fetchColumn() ?: null;
 

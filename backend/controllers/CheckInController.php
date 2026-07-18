@@ -33,7 +33,7 @@ class CheckInController {
 
         // RLS: Sales can only see their own check-ins. Managers see their team's (where they are leader or belong to).
         if ($auth['role'] === 'manager') {
-            $sql .= " AND (u.id = ? OR u.team_id IN (SELECT id FROM teams WHERE FIND_IN_SET(?, CONCAT(leader_id, ',', IFNULL(co_leader_ids, '')))) OR (u.team_id IS NOT NULL AND u.team_id = (SELECT team_id FROM users WHERE id = ?)))";
+            $sql .= " AND (u.id = ? OR u.team_id IN (SELECT id FROM teams WHERE FIND_IN_SET(?, CONCAT(leader_id, ",", IFNULL(co_leader_ids, "")))) OR (u.team_id IS NOT NULL AND u.team_id = (SELECT team_id FROM users WHERE id = ?)))";
             $params[] = $auth['user_id'];
             $params[] = $auth['user_id'];
             $params[] = $auth['user_id'];
@@ -241,7 +241,7 @@ class CheckInController {
             $isTeamMember = false;
             if ($targetUserTeamId !== null) {
                 $stmtCheckManager = $this->db->prepare("
-                    SELECT 1 FROM teams WHERE id = ? AND FIND_IN_SET(?, CONCAT(leader_id, ',', IFNULL(co_leader_ids, '')))
+                    SELECT 1 FROM teams WHERE id = ? AND FIND_IN_SET(?, CONCAT(leader_id, ",", IFNULL(co_leader_ids, "")))
                     UNION
                     SELECT 1 FROM users WHERE id = ? AND team_id = ? AND role = 'manager'
                 ");

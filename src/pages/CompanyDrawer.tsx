@@ -143,7 +143,8 @@ export const CompanyDrawer: React.FC<CompanyDrawerProps> = ({ isOpen, onClose, e
       addToast('Đã cập nhật thông tin công ty thành công', 'success');
       onSave(updated);
     } catch (e: any) {
-      addToast(e.response?.data?.message || 'Lỗi khi lưu thông tin công ty', 'error');
+      console.error("SAVE COMPANY ERROR:", e);
+      addToast(e.response?.data?.message || e.message || 'Lỗi khi lưu thông tin công ty', 'error');
     } finally {
       setIsSaving(false);
     }
@@ -257,7 +258,8 @@ export const CompanyDrawer: React.FC<CompanyDrawerProps> = ({ isOpen, onClose, e
 
       addToast('Đã tạo cơ hội mới thành công', 'success');
     } catch (e: any) {
-      addToast(e?.response?.data?.message || 'Lỗi khi tạo cơ hội', 'error');
+      console.error("CREATE DEAL ERROR:", e);
+      addToast(e?.response?.data?.message || e.message || 'Lỗi khi tạo cơ hội', 'error');
     } finally {
       setIsSaving(false);
     }

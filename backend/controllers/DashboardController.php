@@ -583,7 +583,7 @@ class DashboardController {
         
         $userIds = [$uid];
         if ($isManager) {
-            $stmtTeam = $this->db->prepare("SELECT id FROM users WHERE team_id IN (SELECT id FROM teams WHERE FIND_IN_SET(?, CONCAT(leader_id, ',', IFNULL(co_leader_ids, ''))))");
+            $stmtTeam = $this->db->prepare("SELECT id FROM users WHERE team_id IN (SELECT id FROM teams WHERE FIND_IN_SET(?, CONCAT(leader_id, ",", IFNULL(co_leader_ids, ""))))");
             $stmtTeam->execute([$uid]);
             $teamMemberIds = $stmtTeam->fetchAll(PDO::FETCH_COLUMN) ?: [];
             $userIds = array_merge($userIds, array_map('intval', $teamMemberIds));
