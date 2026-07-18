@@ -225,14 +225,14 @@ export const CompaniesPage: React.FC = () => {
 
       {/* Card View */}
       {!loading && viewMode === 'card' && (
-        <div className="grid-cards-responsive">
+        <div className="grid-cards-responsive" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(360px, 1fr))' }}>
           <AnimatePresence>
             {companies.map(co => (
               <motion.div
                 key={co.id}
                 className="card card-hover"
                 style={{
-                  padding: '1rem',
+                  padding: '1.25rem',
                   display: 'flex',
                   flexDirection: 'column',
                   borderRadius: '16px',
@@ -248,14 +248,14 @@ export const CompaniesPage: React.FC = () => {
               >
                 <div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.75rem' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0, flex: 1 }}>
-                      <Avatar name={co.name} src={co.logo_url} size={36} />
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: 0, flex: 1 }}>
+                      <Avatar name={co.name} src={co.logo_url} size={42} />
                       <div style={{ minWidth: 0, flex: 1 }}>
-                        <h3 style={{ fontSize: '0.9rem', fontWeight: 800, color: 'var(--color-text)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={co.name}>
+                        <h3 style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--color-text)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={co.name}>
                           {co.name}
                         </h3>
-                        <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', marginTop: '2px' }}>
-                          <span className="badge sm" style={{ background: '#f3f4f6', color: '#6b7280', fontSize: '0.6rem', padding: '1px 4px' }}>
+                        <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', marginTop: '4px' }}>
+                          <span className="badge sm" style={{ background: '#f3f4f6', color: '#6b7280', fontSize: '0.65rem', padding: '2px 6px' }}>
                             {co.industry || 'Chưa xác định'}
                           </span>
                         </div>
@@ -311,19 +311,27 @@ export const CompaniesPage: React.FC = () => {
                   )}
 
                   {/* Metadata Footer */}
-                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center', borderTop: '1px solid var(--color-border-light)', paddingTop: '0.5rem', marginTop: '0.25rem' }}>
-                    <span style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.65rem', color: 'var(--color-text-muted)' }} title="Người liên hệ">
-                      <Users size={11} />
-                      {co.contact_count || 0}
-                    </span>
-                    <span style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.65rem', color: 'var(--color-text-muted)' }} title="Quy mô">
-                      <Briefcase size={11} />
-                      {co.size || '1-10'} nv
-                    </span>
-                    {co.stage_name && (
-                      <span className="badge sm" style={{ background: (co.stage_color || '#BD1D2D') + '15', color: co.stage_color || '#BD1D2D', fontSize: '0.6rem', padding: '1px 4px' }}>
-                        {co.stage_name}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--color-border-light)', paddingTop: '0.5rem', marginTop: '0.25rem' }}>
+                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                      <span style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.65rem', color: 'var(--color-text-muted)' }} title="Người liên hệ">
+                        <Users size={11} />
+                        {co.contact_count || 0}
                       </span>
+                      <span style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.65rem', color: 'var(--color-text-muted)' }} title="Quy mô">
+                        <Briefcase size={11} />
+                        {co.size || '1-10'} nv
+                      </span>
+                      {co.stage_name && (
+                        <span className="badge sm" style={{ background: (co.stage_color || '#BD1D2D') + '15', color: co.stage_color || '#BD1D2D', fontSize: '0.6rem', padding: '1px 4px' }}>
+                          {co.stage_name}
+                        </span>
+                      )}
+                    </div>
+                    {co.dedicated_rep_id && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }} title={`Chuyên viên chăm sóc: ${co.rep_name || 'Chưa rõ'}`}>
+                        <span style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)' }}>Chuyên viên:</span>
+                        <Avatar name={co.rep_name || 'CV'} src={co.rep_avatar} size={22} />
+                      </div>
                     )}
                   </div>
                 </div>
