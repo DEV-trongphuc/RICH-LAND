@@ -90,8 +90,8 @@ class CompanyController {
         }
 
         $stmt = $this->db->prepare("
-            INSERT INTO companies (tenant_id,owner_id,created_by,name,tax_id,industry,website,social_link,phone,email,address,ward,city,country,size,status,tags,notes,stage_id,expected_revenue,legal_representative,erp_code)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+            INSERT INTO companies (tenant_id,owner_id,created_by,name,tax_id,industry,website,social_link,phone,email,address,ward,city,country,size,status,tags,notes,stage_id,expected_revenue,legal_representative,erp_code,sla_level,wholesale_price,vat_exempt,dedicated_rep_id)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
         ");
         $stmt->execute([
             $auth['tenant_id'], $b['owner_id'] ?? $auth['user_id'], $auth['user_id'],
@@ -99,7 +99,11 @@ class CompanyController {
             $b['phone']??null, $b['email']??null, $b['address']??null, $b['ward']??null, $b['city']??null,
             $b['country']??'Việt Nam', $b['size']??null, $b['status']??'prospect',
             json_encode($b['tags']??[]), $b['notes']??null, $stageId,
-            $b['expected_revenue']??0, $b['legal_representative']??null, $b['erp_code']??null
+            $b['expected_revenue']??0, $b['legal_representative']??null, $b['erp_code']??null,
+            $b['sla_level']??'standard',
+            (isset($b['wholesale_price']) && $b['wholesale_price']) ? 1 : 0,
+            (isset($b['vat_exempt']) && $b['vat_exempt']) ? 1 : 0,
+            (isset($b['dedicated_rep_id']) && $b['dedicated_rep_id'] !== '' && $b['dedicated_rep_id'] !== null) ? (int)$b['dedicated_rep_id'] : null
         ]);
         $id = (int)$this->db->lastInsertId();
         if (isset($b['custom_fields']) && is_array($b['custom_fields'])) {
@@ -142,7 +146,13 @@ class CompanyController {
             respond(403, null, 'Bạn không có quyền cập nhật thông tin công ty', false);
         }
         $b = getBody();
-        $fields = ['owner_id','name','tax_id','industry','website','social_link','phone','email','address','ward','city','country','size','status','notes','stage_id','expected_revenue','legal_representative','erp_code'];
+        if (array_key_exists('wholesale_price', $b)) $b['wholesale_price'] = $b['wholesale_price'] ? 1 : 0;
+        if (array_key_exists('vat_exempt', $b)) $b['vat_exempt'] = $b['vat_exempt'] ? 1 : 0;
+        if (array_key_exists('dedicated_rep_id', $b)) {
+            $b['dedicated_rep_id'] = ($b['dedicated_rep_id'] !== '' && $b['dedicated_rep_id'] !== null) ? (int)$b['dedicated_rep_id'] : null;
+        }
+
+        $fields = ['owner_id','name','tax_id','industry','website','social_link','phone','email','address','ward','city','country','size','status','notes','stage_id','expected_revenue','legal_representative','erp_code','sla_level','wholesale_price','vat_exempt','dedicated_rep_id'];
         $sets=[]; $params=[];
         foreach ($fields as $f) { if (array_key_exists($f,$b)) { $sets[]="$f=?"; $params[]=$b[$f]; } }
         if (isset($b['tags'])) { $sets[]='tags=?'; $params[]=json_encode($b['tags']); }
@@ -156,11 +166,12 @@ class CompanyController {
 
         // Check permission first
         $isSale = in_array($auth['role'], ['sale', 'sales'], true);
-        $check = $this->db->prepare("SELECT id FROM companies WHERE id=? AND tenant_id=? " . ($isSale ? " AND owner_id=?" : ""));
+        $check = $this->db->prepare("SELECT id, name FROM companies WHERE id=? AND tenant_id=? " . ($isSale ? " AND owner_id=?" : ""));
         $cp = [$id, $auth['tenant_id']];
         if ($isSale) $cp[] = $auth['user_id'];
         $check->execute($cp);
-        if (!$check->fetch()) respond(404, null, 'Không tìm thấy hoặc không có quyền', false);
+        $oldCompany = $check->fetch();
+        if (!$oldCompany) respond(404, null, 'Không tìm thấy hoặc không có quyền', false);
 
         // Check duplicate name
         if (!empty($b['name'])) {

@@ -49,9 +49,25 @@ export const CompanyDrawer: React.FC<CompanyDrawerProps> = ({ isOpen, onClose, e
     return disableEdit ? TABS.filter(t => t.id !== 'settings') : TABS;
   }, [disableEdit]);
 
+  const [users, setUsers] = useState<any[]>([]);
+  const [loadingUsers, setLoadingUsers] = useState(false);
+
+  const fetchUsers = async () => {
+    setLoadingUsers(true);
+    try {
+      const res = await api.get('/users');
+      setUsers(res.data.data?.items || res.data.data || []);
+    } catch {
+      setUsers([]);
+    } finally {
+      setLoadingUsers(false);
+    }
+  };
+
   useEffect(() => {
     if (isOpen) {
       document.body.style.overflow = 'hidden';
+      fetchUsers();
     } else {
       document.body.style.overflow = '';
     }
@@ -69,7 +85,8 @@ export const CompanyDrawer: React.FC<CompanyDrawerProps> = ({ isOpen, onClose, e
     
     const fieldsToCompare = [
       'name', 'email', 'phone', 'website', 'tax_id', 'address', 'city', 'ward', 'status', 'notes',
-      'industry', 'size', 'stage_id', 'expected_revenue', 'social_link', 'legal_representative', 'erp_code'
+      'industry', 'size', 'stage_id', 'expected_revenue', 'social_link', 'legal_representative', 'erp_code',
+      'sla_level', 'wholesale_price', 'vat_exempt', 'dedicated_rep_id'
     ];
     
     for (const key of fieldsToCompare) {
@@ -935,7 +952,7 @@ export const CompanyDrawer: React.FC<CompanyDrawerProps> = ({ isOpen, onClose, e
                 )}
 
                 {activeTab === 'settings' && (
-                  <div className="animate-fade">
+                  <div className="animate-fade" style={{ textAlign: 'left' }}>
                     <div className="card-panel mb-4">
                       <h4 className="panel-title">Thiết lập B2B (Company Settings)</h4>
                       <p className="text-sm text-light mb-4">Cấu hình các tùy chọn ưu đãi và mức độ chăm sóc dành riêng cho pháp nhân này.</p>
@@ -948,21 +965,37 @@ export const CompanyDrawer: React.FC<CompanyDrawerProps> = ({ isOpen, onClose, e
                             { value: 'gold', label: 'Gold (Phản hồi 12h + Hỗ trợ tận nơi)' },
                             { value: 'platinum', label: 'Platinum (Phản hồi 2h + Chuyên viên riêng)' }
                           ]}
-                          value={'standard'}
-                          onChange={() => {}}
+                          value={formData.sla_level || 'standard'}
+                          onChange={(val) => {
+                            const nextRep = val === 'platinum' ? formData.dedicated_rep_id : null;
+                            setFormData({ ...formData, sla_level: val, dedicated_rep_id: nextRep });
+                          }}
                         />
                       </div>
+
+                      {(formData.sla_level || 'standard') === 'platinum' && (
+                        <div className="form-group mb-4 animate-fade">
+                          <label className="form-label">Chuyên viên chăm sóc riêng (Dedicated Care Representative)</label>
+                          <CustomSelect 
+                            options={users.map(u => ({ value: String(u.id), label: `${u.full_name || u.name} (${u.role})` }))}
+                            value={formData.dedicated_rep_id ? String(formData.dedicated_rep_id) : null}
+                            onChange={(val) => setFormData({ ...formData, dedicated_rep_id: val ? Number(val) : null })}
+                            placeholder="Chọn chuyên viên..."
+                            searchable
+                          />
+                        </div>
+                      )}
                       
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '1rem' }}>
                         <CustomCheckbox 
                           label={<div><span style={{ fontWeight: 600, display: 'block' }}>Áp dụng Bảng giá Đại lý (Wholesale)</span><span style={{ fontSize: '0.8rem', color: 'var(--color-text-light)' }}>Công ty này sẽ tự động nhận báo giá đã chiết khấu.</span></div>}
-                          checked={true}
-                          onChange={() => {}}
+                          checked={!!formData.wholesale_price}
+                          onChange={(checked) => setFormData({ ...formData, wholesale_price: checked })}
                         />
                         <CustomCheckbox 
                           label={<div><span style={{ fontWeight: 600, display: 'block' }}>Miễn trừ thuế GTGT (VAT Exempt)</span><span style={{ fontSize: '0.8rem', color: 'var(--color-text-light)' }}>Áp dụng cho doanh nghiệp chế xuất, khu phi thuế quan.</span></div>}
-                          checked={false}
-                          onChange={() => {}}
+                          checked={!!formData.vat_exempt}
+                          onChange={(checked) => setFormData({ ...formData, vat_exempt: checked })}
                         />
                       </div>
                     </div>

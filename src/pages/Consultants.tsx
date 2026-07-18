@@ -164,6 +164,7 @@ const ConsultantsInner = () => {
     name: '',
     branch: '',
     leader_id: '',
+    co_leader_ids: [] as string[],
     description: '',
     kpi_target: '',
     max_members: '',
@@ -171,9 +172,12 @@ const ConsultantsInner = () => {
     member_ids: [] as string[]
   });
   const [searchLeader, setSearchLeader] = useState('');
+  const [searchCoLeader, setSearchCoLeader] = useState('');
   const [memberSearch, setMemberSearch] = useState('');
   const [showLeaderDropdown, setShowLeaderDropdown] = useState(false);
+  const [showCoLeaderDropdown, setShowCoLeaderDropdown] = useState(false);
   const leaderDropdownRef = useRef<HTMLDivElement>(null);
+  const coLeaderDropdownRef = useRef<HTMLDivElement>(null);
   const [confirmDeleteTeamOpen, setConfirmDeleteTeamOpen] = useState(false);
   const [deleteTeamId, setDeleteTeamId] = useState<number | null>(null);
   const [confirmLeaveTeamOpen, setConfirmLeaveTeamOpen] = useState(false);
@@ -388,6 +392,9 @@ const ConsultantsInner = () => {
       if (leaderDropdownRef.current && !leaderDropdownRef.current.contains(event.target as Node)) {
         setShowLeaderDropdown(false);
       }
+      if (coLeaderDropdownRef.current && !coLeaderDropdownRef.current.contains(event.target as Node)) {
+        setShowCoLeaderDropdown(false);
+      }
     };
     document.addEventListener('mousedown', handleOutsideClick);
     return () => document.removeEventListener('mousedown', handleOutsideClick);
@@ -510,6 +517,7 @@ const ConsultantsInner = () => {
       name: '',
       branch: '',
       leader_id: '',
+      co_leader_ids: [],
       description: '',
       kpi_target: '',
       max_members: '',
@@ -517,7 +525,9 @@ const ConsultantsInner = () => {
       member_ids: []
     });
     setSearchLeader('');
+    setSearchCoLeader('');
     setShowLeaderDropdown(false);
+    setShowCoLeaderDropdown(false);
     setTeamModalOpen(true);
   };
 
@@ -529,10 +539,12 @@ const ConsultantsInner = () => {
         setEditingTeam(data);
         const memberIds = Array.isArray(data.members) ? data.members.map((m: any) => String(m.id)) : [];
         const focusProjects = data.focus_project ? data.focus_project.split(',').map((p: any) => p.trim()).filter(Boolean) : [];
+        const coLeaderIds = data.co_leader_ids ? (Array.isArray(data.co_leader_ids) ? data.co_leader_ids.map(String) : (typeof data.co_leader_ids === 'string' && data.co_leader_ids.startsWith('[') ? JSON.parse(data.co_leader_ids).map(String) : String(data.co_leader_ids).split(',').map((id: any) => id.trim()).filter(Boolean))) : [];
         setTeamFormData({
           name: data.name,
           branch: data.branch || '',
           leader_id: data.leader_id || '',
+          co_leader_ids: coLeaderIds,
           description: data.description || '',
           kpi_target: data.kpi_target !== null && data.kpi_target !== undefined ? String(data.kpi_target) : '',
           max_members: data.max_members !== null && data.max_members !== undefined ? String(data.max_members) : '',
@@ -541,7 +553,9 @@ const ConsultantsInner = () => {
         });
         const leaderUser = allSystemUsers.find(u => Number(u.id) === Number(data.leader_id));
         setSearchLeader(leaderUser ? (leaderUser.full_name || leaderUser.name) : '');
+        setSearchCoLeader('');
         setShowLeaderDropdown(false);
+        setShowCoLeaderDropdown(false);
         setTeamModalOpen(true);
       } else {
         toast.error(res ? res.message : t('Lỗi không xác định khi tải dữ liệu'));
@@ -565,6 +579,7 @@ const ConsultantsInner = () => {
         name: teamFormData.name,
         branch: teamFormData.branch,
         leader_id: teamFormData.leader_id,
+        co_leader_ids: teamFormData.co_leader_ids,
         description: teamFormData.description,
         kpi_target: teamFormData.kpi_target,
         max_members: teamFormData.max_members,
@@ -1420,10 +1435,36 @@ const ConsultantsInner = () => {
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                           {team.leader_name ? (
-                            <>
-                              <Avatar src={leader?.avatar_url || leader?.avatar} name={team.leader_name} size={18} />
-                              <span style={{ color: 'var(--color-text)', fontWeight: 700 }}>{team.leader_name}</span>
-                            </>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                              <div style={{ display: 'flex', alignItems: 'center' }}>
+                                <Avatar src={leader?.avatar_url || leader?.avatar} name={team.leader_name} size={18} />
+                                {(() => {
+                                  const coLeaderIds = team.co_leader_ids ? (Array.isArray(team.co_leader_ids) ? team.co_leader_ids.map(String) : (typeof team.co_leader_ids === 'string' && team.co_leader_ids.startsWith('[') ? JSON.parse(team.co_leader_ids).map(String) : String(team.co_leader_ids).split(',').map((id: any) => id.trim()).filter(Boolean))) : [];
+                                  const coLeaders = coLeaderIds.map((id: string) => allSystemUsers.find(u => String(u.id) === id)).filter(Boolean);
+                                  return (
+                                    <>
+                                      {coLeaders.slice(0, 3).map((cl: any) => (
+                                        <div key={cl.id} style={{ marginLeft: '-5px', border: '1.5px solid var(--color-surface)', borderRadius: '50%', overflow: 'hidden', display: 'flex' }}>
+                                          <Avatar src={cl.avatar_url || cl.avatar} name={cl.full_name || cl.name} size={16} />
+                                        </div>
+                                      ))}
+                                      {coLeaders.length > 3 && (
+                                        <div style={{ marginLeft: '-5px', width: 16, height: 16, borderRadius: '50%', background: 'var(--color-primary-light)', color: 'var(--color-primary)', fontSize: '0.6rem', fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid var(--color-surface)' }}>
+                                          +{coLeaderIds.length - 3}
+                                        </div>
+                                      )}
+                                    </>
+                                  );
+                                })()}
+                              </div>
+                              <span style={{ color: 'var(--color-text)', fontWeight: 700 }}>
+                                {team.leader_name}
+                                {(() => {
+                                  const coLeaderIds = team.co_leader_ids ? (Array.isArray(team.co_leader_ids) ? team.co_leader_ids.map(String) : (typeof team.co_leader_ids === 'string' && team.co_leader_ids.startsWith('[') ? JSON.parse(team.co_leader_ids).map(String) : String(team.co_leader_ids).split(',').map((id: any) => id.trim()).filter(Boolean))) : [];
+                                  return coLeaderIds.length > 0 ? ` (+${coLeaderIds.length})` : '';
+                                })()}
+                              </span>
+                            </div>
                           ) : (
                             <span style={{ color: 'var(--color-text-muted)', fontStyle: 'italic' }}>{t('Chưa gán')}</span>
                           )}
@@ -1622,7 +1663,9 @@ const ConsultantsInner = () => {
               <>
                 {/* Left Side: Master Branch List */}
                 <div style={{ width: '280px', display: 'flex', flexDirection: 'column', gap: '0.75rem', flexShrink: 0 }}>
-                  <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '4px' }}>Danh sách chi nhánh ({branchList.length})</span>
+                  <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '4px', textAlign: 'left' }}>
+                    Danh sách chi nhánh ({branchList.length})
+                  </span>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', overflowY: 'auto', maxHeight: '70vh' }}>
                     {branchList.map(([bName, bTeams]) => {
                       const totalM = bTeams.reduce((sum, team) => sum + Number(team.member_count), 0);
@@ -1632,18 +1675,32 @@ const ConsultantsInner = () => {
                           key={bName}
                           onClick={() => setSelectedBranch(bName)}
                           style={{
-                            padding: '1rem',
-                            borderRadius: '12px',
-                            border: isSelected ? '1px solid var(--color-primary)' : '1px solid var(--color-border-light)',
-                            background: isSelected ? 'var(--color-primary-light)' : 'var(--color-surface)',
+                            padding: '1.125rem 1.25rem',
+                            borderRadius: '14px',
+                            border: '1px solid var(--color-border-light)',
+                            borderLeft: isSelected ? '4px solid var(--color-primary)' : '1px solid var(--color-border-light)',
+                            background: isSelected ? 'rgba(189, 29, 45, 0.03)' : 'var(--color-surface)',
                             cursor: 'pointer',
-                            transition: 'all 0.2s',
-                            boxShadow: isSelected ? 'var(--shadow-sm)' : 'none'
+                            transition: 'all 0.2s ease',
+                            boxShadow: isSelected ? '0 4px 15px -3px rgba(189, 29, 45, 0.08), 0 2px 6px -2px rgba(0, 0, 0, 0.02)' : 'none',
+                            transform: isSelected ? 'translateX(2px)' : 'none'
+                          }}
+                          onMouseEnter={e => {
+                            if (!isSelected) {
+                              e.currentTarget.style.borderColor = 'rgba(189, 29, 45, 0.3)';
+                              e.currentTarget.style.background = 'var(--color-bg-light)';
+                            }
+                          }}
+                          onMouseLeave={e => {
+                            if (!isSelected) {
+                              e.currentTarget.style.borderColor = 'var(--color-border-light)';
+                              e.currentTarget.style.background = 'var(--color-surface)';
+                            }
                           }}
                         >
                           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
                             <Building2 size={16} color={isSelected ? 'var(--color-primary)' : 'var(--color-text-muted)'} />
-                            <strong style={{ fontSize: '0.875rem', color: isSelected ? 'var(--color-primary)' : 'var(--color-text)', display: 'block', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>
+                            <strong style={{ fontSize: '0.875rem', color: isSelected ? 'var(--color-primary)' : 'var(--color-text)', display: 'block', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap', textAlign: 'left' }}>
                               {bName}
                             </strong>
                           </div>
@@ -1661,7 +1718,7 @@ const ConsultantsInner = () => {
                 {/* Right Side: Detailed Teams Grid */}
                 <div className="card" style={{ flex: 1, padding: '1.5rem', borderRadius: '16px', border: '1px solid var(--color-border-light)', background: 'var(--color-surface)', display: 'flex', flexDirection: 'column', gap: '1.25rem', overflow: 'hidden' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--color-border-light)', paddingBottom: '0.75rem' }}>
-                    <div>
+                    <div style={{ textAlign: 'left' }}>
                       <h3 style={{ fontSize: '1.125rem', fontWeight: 800, color: 'var(--color-text)', margin: 0 }}>{activeBName}</h3>
                       <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', margin: '4px 0 0 0' }}>Tổng cộng {activeBTeams.length} nhóm và {activeBTotalMembers} nhân sự phân phối</p>
                     </div>
@@ -1678,7 +1735,8 @@ const ConsultantsInner = () => {
                     lineHeight: '1.45',
                     display: 'flex',
                     alignItems: 'flex-start',
-                    gap: '8px'
+                    gap: '8px',
+                    textAlign: 'left'
                   }}>
                     <span style={{ fontSize: '1.1rem', lineHeight: 1 }}>💡</span>
                     <div>
@@ -1691,42 +1749,86 @@ const ConsultantsInner = () => {
                     </div>
                   </div>
 
-                  <div className="custom-scrollbar" style={{ flex: 1, overflowY: 'auto', display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '1rem', paddingRight: '4px', alignContent: 'start' }}>
-                    {activeBTeams.map(team => (
-                      <div 
-                        key={team.id} 
-                        onClick={() => {
-                          if (isWriteAuthorized) {
-                            openEditTeamModal(team);
-                          }
-                        }}
-                        style={{ 
-                          padding: '1rem', 
-                          background: 'var(--color-bg)', 
-                          borderRadius: '12px', 
-                          border: '1px solid var(--color-border-light)', 
-                          display: 'flex', 
-                          flexDirection: 'column', 
-                          justifyContent: 'space-between', 
-                          gap: '0.75rem',
-                          cursor: isWriteAuthorized ? 'pointer' : 'default',
-                          transition: 'all 0.2s'
-                        }}
-                        onMouseEnter={e => e.currentTarget.style.borderColor = 'var(--color-primary)'}
-                        onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--color-border-light)'}
-                      >
-                        <div>
-                          <strong style={{ fontSize: '0.875rem', color: 'var(--color-text)', display: 'block', marginBottom: '4px' }}>{team.name}</strong>
-                          <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
-                            Manager: <strong style={{ color: 'var(--color-text)' }}>{team.leader_name || 'Chưa gán'}</strong>
-                          </span>
+                  <div className="custom-scrollbar" style={{ flex: 1, overflowY: 'auto', display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '1rem', paddingRight: '4px', alignContent: 'start' }}>
+                    {activeBTeams.map(team => {
+                      const leader = allSystemUsers.find(u => Number(u.id) === Number(team.leader_id));
+                      const coLeaderIds = team.co_leader_ids ? (Array.isArray(team.co_leader_ids) ? team.co_leader_ids.map(String) : (typeof team.co_leader_ids === 'string' && team.co_leader_ids.startsWith('[') ? JSON.parse(team.co_leader_ids).map(String) : String(team.co_leader_ids).split(',').map((id: any) => id.trim()).filter(Boolean))) : [];
+                      const coLeaders = coLeaderIds.map((id: string) => allSystemUsers.find(u => String(u.id) === id)).filter(Boolean);
+
+                      return (
+                        <div 
+                          key={team.id} 
+                          onClick={() => {
+                            if (isWriteAuthorized) {
+                              openEditTeamModal(team);
+                            }
+                          }}
+                          style={{ 
+                            padding: '1.25rem', 
+                            background: 'var(--color-surface)', 
+                            borderRadius: '16px', 
+                            border: '1px solid var(--color-border-light)', 
+                            display: 'flex', 
+                            flexDirection: 'column', 
+                            gap: '0.875rem',
+                            cursor: isWriteAuthorized ? 'pointer' : 'default',
+                            transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+                            boxShadow: '0 1px 3px rgba(0,0,0,0.02)'
+                          }}
+                          className="hover-lift hover-shadow"
+                        >
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                            <strong style={{ fontSize: '0.9rem', color: 'var(--color-text)', display: 'block', fontWeight: 800, textAlign: 'left' }}>{team.name}</strong>
+                            <span className="badge info sm" style={{ fontWeight: 700, fontSize: '0.68rem', padding: '2px 8px', borderRadius: '12px', flexShrink: 0 }}>
+                              {team.member_count} sales
+                            </span>
+                          </div>
+
+                          {team.description && (
+                            <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--color-text-muted)', fontStyle: 'italic', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', lineHeight: 1.4, textAlign: 'left' }}>
+                              "{team.description}"
+                            </p>
+                          )}
+
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', background: 'var(--color-bg-light)', padding: '10px', borderRadius: '10px', border: '1px solid var(--color-border-light)' }}>
+                            {/* Manager row */}
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.78rem' }}>
+                              <span style={{ color: 'var(--color-text-muted)' }}>{t('Manager')}:</span>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                <div style={{ display: 'flex', alignItems: 'center' }}>
+                                  {leader && (
+                                    <Avatar src={leader.avatar_url || leader.avatar} name={team.leader_name} size={18} />
+                                  )}
+                                  {coLeaders.slice(0, 3).map((cl: any) => (
+                                    <div key={cl.id} style={{ marginLeft: '-5px', border: '1.5px solid var(--color-surface)', borderRadius: '50%', overflow: 'hidden', display: 'flex' }}>
+                                      <Avatar src={cl.avatar_url || cl.avatar} name={cl.full_name || cl.name} size={16} />
+                                    </div>
+                                  ))}
+                                  {coLeaders.length > 3 && (
+                                    <div style={{ marginLeft: '-5px', width: 16, height: 16, borderRadius: '50%', background: 'var(--color-primary-light)', color: 'var(--color-primary)', fontSize: '0.6rem', fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid var(--color-surface)' }}>
+                                      +{coLeaders.length - 3}
+                                    </div>
+                                  )}
+                                </div>
+                                <span style={{ color: 'var(--color-text)', fontWeight: 700 }}>
+                                  {team.leader_name || t('Chưa gán')}
+                                </span>
+                              </div>
+                            </div>
+
+                            {/* KPI target row */}
+                            {team.kpi_target && (
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.78rem', borderTop: '1px dashed var(--color-border-light)', paddingTop: '6px', marginTop: '2px' }}>
+                                <span style={{ color: 'var(--color-text-muted)' }}>KPI:</span>
+                                <strong style={{ color: 'var(--color-primary)', fontWeight: 800 }}>
+                                  {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(team.kpi_target)}
+                                </strong>
+                              </div>
+                            )}
+                          </div>
                         </div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px dotted var(--color-border)', paddingTop: '0.5rem', fontSize: '0.75rem' }}>
-                          <span style={{ color: 'var(--color-text-muted)' }}>Quy mô:</span>
-                          <span className="badge info" style={{ fontWeight: 700 }}>{team.member_count} sales</span>
-                        </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               </>
@@ -2392,16 +2494,35 @@ const ConsultantsInner = () => {
                               <label className="form-label" style={{ fontWeight: 650, fontSize: '0.8rem', color: 'var(--color-text-muted)', marginBottom: 6, display: 'block' }}>{t('Manager')}</label>
                               
                               {/* Search Input Box */}
-                              <div style={{ position: 'relative', width: '100%' }}>
+                              <div style={{ position: 'relative', width: '100%', display: 'flex', alignItems: 'center' }}>
+                                {(() => {
+                                  const selectedLeader = allSystemUsers.find(u => String(u.id) === String(teamFormData.leader_id));
+                                  if (!selectedLeader) return null;
+                                  const leaderName = selectedLeader.full_name || selectedLeader.name || '';
+                                  return (
+                                    <div style={{ position: 'absolute', left: '10px', pointerEvents: 'none', display: 'flex', alignItems: 'center', zIndex: 2 }}>
+                                      <Avatar src={selectedLeader.avatar_url || selectedLeader.avatar} name={leaderName} size={24} />
+                                    </div>
+                                  );
+                                })()}
                                 <input
                                   className="form-input"
-                                  style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border-light)', width: '100%' }}
+                                  style={{ 
+                                    background: 'var(--color-bg)', 
+                                    border: '1px solid var(--color-border-light)', 
+                                    width: '100%',
+                                    paddingLeft: teamFormData.leader_id ? '42px' : '12px',
+                                    paddingRight: '32px'
+                                  }}
                                   placeholder={t("Tìm kiếm và chọn Manager...")}
                                   value={searchLeader}
                                   onChange={e => {
                                     if (!isWriteAuthorized) return;
                                     setSearchLeader(e.target.value);
                                     setShowLeaderDropdown(true);
+                                    if (!e.target.value.trim()) {
+                                      setTeamFormData({ ...teamFormData, leader_id: '' });
+                                    }
                                   }}
                                   onFocus={() => isWriteAuthorized && setShowLeaderDropdown(true)}
                                   disabled={!isWriteAuthorized}
@@ -2414,7 +2535,7 @@ const ConsultantsInner = () => {
                                       setSearchLeader('');
                                     }}
                                     style={{
-                                      position: 'absolute', right: 12, top: 10, color: 'var(--color-text-muted)',
+                                      position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-muted)',
                                       background: 'transparent', border: 'none', cursor: 'pointer', padding: 0
                                     }}
                                   >
@@ -2459,6 +2580,126 @@ const ConsultantsInner = () => {
                                       </div>
                                     );
                                   })}
+                                </div>
+                              )}
+                            </div>
+
+                            {/* Co-Managers */}
+                            <div className="form-group" ref={coLeaderDropdownRef} style={{ position: 'relative', textAlign: 'left' }}>
+                              <label className="form-label" style={{ fontWeight: 650, fontSize: '0.8rem', color: 'var(--color-text-muted)', marginBottom: 6, display: 'block' }}>
+                                {t('Manager đồng hành (Co-Managers)')} ({teamFormData.co_leader_ids.length})
+                              </label>
+                              
+                              {/* Selected tags */}
+                              {teamFormData.co_leader_ids.length > 0 && (
+                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.375rem', marginBottom: '0.5rem' }}>
+                                  {teamFormData.co_leader_ids.map(id => {
+                                    const user = allSystemUsers.find(u => String(u.id) === String(id));
+                                    if (!user) return null;
+                                    const uName = user.full_name || user.name || '';
+                                    return (
+                                      <div 
+                                        key={id} 
+                                        style={{ 
+                                          display: 'inline-flex', 
+                                          alignItems: 'center', 
+                                          gap: '4px', 
+                                          background: 'rgba(189, 29, 45, 0.05)', 
+                                          border: '1px solid rgba(189, 29, 45, 0.15)', 
+                                          padding: '2px 8px 2px 4px', 
+                                          borderRadius: '16px', 
+                                          fontSize: '0.75rem',
+                                          fontWeight: 600,
+                                          color: 'var(--color-primary)'
+                                        }}
+                                      >
+                                        <Avatar src={user.avatar_url || user.avatar} name={uName} size={16} />
+                                        <span>{uName}</span>
+                                        {isWriteAuthorized && (
+                                          <button
+                                            type="button"
+                                            onClick={() => {
+                                              setTeamFormData({
+                                                ...teamFormData,
+                                                co_leader_ids: teamFormData.co_leader_ids.filter(cid => String(cid) !== String(id))
+                                              });
+                                            }}
+                                            style={{
+                                              background: 'transparent', border: 'none', padding: 0, cursor: 'pointer',
+                                              color: 'var(--color-primary)', display: 'flex', alignItems: 'center', marginLeft: 2
+                                            }}
+                                          >
+                                            <X size={12} />
+                                          </button>
+                                        )}
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              )}
+
+                              <div style={{ position: 'relative', width: '100%' }}>
+                                <input
+                                  className="form-input"
+                                  style={{ 
+                                    background: 'var(--color-bg)', 
+                                    border: '1px solid var(--color-border-light)', 
+                                    width: '100%'
+                                  }}
+                                  placeholder={t("Chọn thêm Manager đồng hành...")}
+                                  value={searchCoLeader}
+                                  onChange={e => {
+                                    if (!isWriteAuthorized) return;
+                                    setSearchCoLeader(e.target.value);
+                                    setShowCoLeaderDropdown(true);
+                                  }}
+                                  onFocus={() => isWriteAuthorized && setShowCoLeaderDropdown(true)}
+                                  disabled={!isWriteAuthorized}
+                                />
+                              </div>
+
+                              {showCoLeaderDropdown && (
+                                <div style={{
+                                  position: 'absolute', top: '100%', left: 0, right: 0, marginTop: 4, zIndex: 1200,
+                                  background: 'var(--color-surface)', border: '1px solid var(--color-border-light)', borderRadius: '8px',
+                                  boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)', maxHeight: 200, overflowY: 'auto'
+                                }}>
+                                  {allSystemUsers
+                                    .filter(u => {
+                                      const uName = u.full_name || u.name || '';
+                                      const matchesSearch = uName.toLowerCase().includes(searchCoLeader.toLowerCase());
+                                      const isPrimaryLeader = String(teamFormData.leader_id) === String(u.id);
+                                      const isAlreadyCoLeader = teamFormData.co_leader_ids.some(cid => String(cid) === String(u.id));
+                                      return matchesSearch && !isPrimaryLeader && !isAlreadyCoLeader;
+                                    })
+                                    .map(u => {
+                                      const uName = u.full_name || u.name || '';
+                                      return (
+                                        <div
+                                          key={u.id}
+                                          onClick={() => {
+                                            setTeamFormData({
+                                              ...teamFormData,
+                                              co_leader_ids: [...teamFormData.co_leader_ids, String(u.id)]
+                                            });
+                                            setSearchCoLeader('');
+                                            setShowCoLeaderDropdown(false);
+                                          }}
+                                          style={{
+                                            padding: '0.5rem 0.75rem', display: 'flex', alignItems: 'center', gap: '0.75rem',
+                                            cursor: 'pointer', transition: 'background 0.1s'
+                                          }}
+                                          onMouseEnter={e => { e.currentTarget.style.background = 'var(--color-bg)'; }}
+                                          onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
+                                        >
+                                          <Avatar src={u.avatar_url || u.avatar} name={uName} size={28} />
+                                          <div style={{ flex: 1, minWidth: 0, textAlign: 'left' }}>
+                                            <p style={{ fontSize: '0.8125rem', fontWeight: 500, color: 'var(--color-text)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{uName}</p>
+                                            <p style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{u.email}</p>
+                                          </div>
+                                        </div>
+                                      );
+                                    })}
                                 </div>
                               )}
                             </div>

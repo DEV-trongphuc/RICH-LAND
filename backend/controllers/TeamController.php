@@ -78,8 +78,10 @@ class TeamController
             respond(409, null, 'Tên nhóm đã tồn tại', false);
         }
 
-        $stmt = $this->db->prepare("INSERT INTO teams (name, branch, leader_id, description, kpi_target, max_members, focus_project) VALUES (?, ?, ?, ?, ?, ?, ?)");
-        $stmt->execute([$name, $branch, $leaderId, $description, $kpiTarget, $maxMembers, $focusProject]);
+        $coLeaderIds = isset($b['co_leader_ids']) ? (is_array($b['co_leader_ids']) ? json_encode(array_map('intval', $b['co_leader_ids'])) : trim($b['co_leader_ids'])) : null;
+
+        $stmt = $this->db->prepare("INSERT INTO teams (name, branch, leader_id, description, kpi_target, max_members, focus_project, co_leader_ids) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
+        $stmt->execute([$name, $branch, $leaderId, $description, $kpiTarget, $maxMembers, $focusProject, $coLeaderIds]);
         $newId = (int)$this->db->lastInsertId();
 
         // Sync members
@@ -114,7 +116,7 @@ class TeamController
         }
 
         // Log activity
-        logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'CREATE', 'team', $newId, json_encode(['name' => $name, 'branch' => $branch, 'leader_id' => $leaderId, 'description' => $description, 'kpi_target' => $kpiTarget, 'max_members' => $maxMembers, 'focus_project' => $focusProject, 'member_ids' => $b['member_ids'] ?? []]));
+        logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'CREATE', 'team', $newId, json_encode(['name' => $name, 'branch' => $branch, 'leader_id' => $leaderId, 'co_leader_ids' => $coLeaderIds, 'description' => $description, 'kpi_target' => $kpiTarget, 'max_members' => $maxMembers, 'focus_project' => $focusProject, 'member_ids' => $b['member_ids'] ?? []]));
 
         $this->show($auth, $newId);
     }
@@ -181,6 +183,11 @@ class TeamController
             }
             $sets[] = "leader_id = ?";
             $params[] = (int)$b['leader_id'];
+        }
+
+        if (array_key_exists('co_leader_ids', $b)) {
+            $sets[] = "co_leader_ids = ?";
+            $params[] = isset($b['co_leader_ids']) ? (is_array($b['co_leader_ids']) ? json_encode(array_map('intval', $b['co_leader_ids'])) : trim($b['co_leader_ids'])) : null;
         }
 
         if (array_key_exists('description', $b)) {

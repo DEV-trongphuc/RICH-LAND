@@ -62,6 +62,7 @@ CREATE TABLE IF NOT EXISTS `teams` (
   `name` varchar(255) NOT NULL,
   `leader_id` int(11) NOT NULL,
   `branch` varchar(255) DEFAULT NULL,
+  `co_leader_ids` text DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
   PRIMARY KEY (`id`),
@@ -623,6 +624,10 @@ CREATE TABLE IF NOT EXISTS `companies` (
   `erp_code` varchar(100) DEFAULT NULL,
   `tags` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL CHECK (json_valid(`tags`)),
   `notes` text DEFAULT NULL,
+  `sla_level` varchar(50) NOT NULL DEFAULT 'standard',
+  `wholesale_price` tinyint(1) NOT NULL DEFAULT 0,
+  `vat_exempt` tinyint(1) NOT NULL DEFAULT 0,
+  `dedicated_rep_id` int(11) DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
   `deleted_at` timestamp NULL DEFAULT NULL

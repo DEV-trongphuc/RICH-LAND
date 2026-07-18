@@ -18,7 +18,7 @@ $apply = (isset($_GET['apply']) && $_GET['apply'] === 'true')
       || (isset($_POST['execute_migration']) && $_POST['execute_migration'] === '1')
       || ($isCli && in_array('--apply', $argv));
 
-$targetVersion = 158;
+$targetVersion = 163;
 $currentVersion = 0;
 
 // Query current DB version
@@ -2431,6 +2431,38 @@ SQL;
             
             $conn->query("INSERT INTO system_settings (setting_key, setting_value) VALUES ('db_version', '161') ON DUPLICATE KEY UPDATE setting_value = '161'");
             $currentVersion = 161;
+        }
+
+        // Version 162 (Add co_leader_ids TEXT column to teams table)
+        if ($currentVersion < 162) {
+            $logMsg("Đang chạy cập nhật phiên bản 162 (Thêm cột co_leader_ids vào bảng teams)...", "info");
+            try {
+                $conn->query("ALTER TABLE teams ADD COLUMN co_leader_ids TEXT NULL COMMENT 'JSON array or comma-separated list of co-manager user IDs'");
+            } catch (Exception $e) {
+                $logMsg("Cột co_leader_ids đã tồn tại hoặc lỗi: " . $e->getMessage(), "warning");
+            }
+            $conn->query("INSERT INTO system_settings (setting_key, setting_value) VALUES ('db_version', '162') ON DUPLICATE KEY UPDATE setting_value = '162'");
+            $currentVersion = 162;
+        }
+
+        // Version 163 (Add B2B settings columns to companies table)
+        if ($currentVersion < 163) {
+            $logMsg("Đang chạy cập nhật phiên bản 163 (Thêm cột B2B settings vào bảng companies)...", "info");
+            try {
+                $conn->query("ALTER TABLE companies ADD COLUMN sla_level VARCHAR(50) NOT NULL DEFAULT 'standard'");
+            } catch (Exception $e) {}
+            try {
+                $conn->query("ALTER TABLE companies ADD COLUMN wholesale_price TINYINT(1) NOT NULL DEFAULT 0");
+            } catch (Exception $e) {}
+            try {
+                $conn->query("ALTER TABLE companies ADD COLUMN vat_exempt TINYINT(1) NOT NULL DEFAULT 0");
+            } catch (Exception $e) {}
+            try {
+                $conn->query("ALTER TABLE companies ADD COLUMN dedicated_rep_id INT(11) NULL DEFAULT NULL");
+            } catch (Exception $e) {}
+            
+            $conn->query("INSERT INTO system_settings (setting_key, setting_value) VALUES ('db_version', '163') ON DUPLICATE KEY UPDATE setting_value = '163'");
+            $currentVersion = 163;
         }
 
     $logMsg("Tự sửa đổi cấu trúc hoàn thành thành công.", "success");
