@@ -769,6 +769,16 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
   const [nightShiftDate, setNightShiftDate] = useState('');
   const [togglingNightShift, setTogglingNightShift] = useState(false);
 
+  const getHourLabel = (timeStr: string) => {
+    if (!timeStr) return '';
+    const parts = timeStr.split(':');
+    const hr = parseInt(parts[0], 10);
+    return isNaN(hr) ? timeStr : `${hr}h`;
+  };
+
+  const nightStartHour = getHourLabel(sysSettings?.night_shift_start_time || '18:00');
+  const nightEndHour = getHourLabel(sysSettings?.night_shift_end_time || '06:00');
+
   // Sliding tab indicator
   const [sliderStyle, setSliderStyle] = useState({ top: 0, height: 0 });
   const navContainerRef = useRef<HTMLDivElement>(null);
@@ -9154,7 +9164,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                         </div>
                         <div style={{ flex: 1 }}>
                           <h3 style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--color-text)', margin: 0, letterSpacing: '-0.01em' }}>
-                            {t('ĐĂNG KÝ TRỰC CA ĐÊM (18h-6h)')}
+                            {t(`ĐĂNG KÝ TRỰC CA ĐÊM (${nightStartHour}-${nightEndHour})`)}
                           </h3>
                           <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', marginTop: 4, marginBottom: 0, lineHeight: '1.45' }}>
                             {t('Nhận lead tự động trong ca đêm. Danh sách đăng ký tự reset vào lúc 6:00 sáng hôm sau.')}
@@ -9202,7 +9212,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                           borderRadius: '10px', border: '1px solid rgba(245, 158, 11, 0.2)', fontSize: '0.78rem', display: 'flex', alignItems: 'center', gap: 8
                         }}>
                           <Info size={14} />
-                          <span>{t('Đã quá 18:00. Bạn không thể thay đổi đăng ký trực ca đêm hôm nay.')}</span>
+                          <span>{t(`Đã quá ${sysSettings?.night_shift_start_time || '18:00'}. Bạn không thể thay đổi đăng ký trực ca đêm hôm nay.`)}</span>
                         </div>
                       )}
                     </div>

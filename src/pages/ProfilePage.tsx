@@ -62,6 +62,26 @@ export const ProfilePage: React.FC = () => {
     setOpenSections(prev => ({ ...prev, [sec]: !prev[sec] }));
   };
 
+  const [sysSettings, setSysSettings] = useState<any>(null);
+
+  useEffect(() => {
+    fetchAPI('get_settings').then(res => {
+      if (res.success) {
+        setSysSettings(res.data);
+      }
+    }).catch(err => console.error(err));
+  }, []);
+
+  const getHourLabel = (timeStr: string) => {
+    if (!timeStr) return '';
+    const parts = timeStr.split(':');
+    const hr = parseInt(parts[0], 10);
+    return isNaN(hr) ? timeStr : `${hr}h`;
+  };
+
+  const nightStartHour = getHourLabel(sysSettings?.night_shift_start_time || '18:00');
+  const nightEndHour = getHourLabel(sysSettings?.night_shift_end_time || '06:00');
+
   // Basic Profile State
   const [profileData, setProfileData] = useState({ name: '', email: '', avatar: '' });
 
@@ -915,12 +935,12 @@ export const ProfilePage: React.FC = () => {
               </div>
               <div style={{ flex: 1 }}>
                 <h3 style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--color-text)', margin: 0 }}>
-                  {isSales ? t('ĐĂNG KÝ TRỰC CA ĐÊM (18h-6h)') : t('ĐĂNG KÝ LÀM TĂNG CA / CA ĐÊM')}
+                  {isSales ? t(`ĐĂNG KÝ TRỰC CA ĐÊM (${nightStartHour}-${nightEndHour})`) : t('ĐĂNG KÝ LÀM TĂNG CA / CA ĐÊM')}
                 </h3>
                 <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', marginTop: 4, marginBottom: 0, lineHeight: '1.45' }}>
                   {isSales
                     ? t('Nhận lead tự động trong ca đêm. Danh sách đăng ký tự reset vào lúc 6:00 sáng hôm sau.')
-                    : t('Đăng ký làm việc ngoài giờ / tăng ca đêm (18h - 6h sáng hôm sau). Bản ghi này phục vụ mục đích chấm công và tính lương tăng ca.')}
+                    : t(`Đăng ký làm việc ngoài giờ / tăng ca đêm (${nightStartHour} - ${nightEndHour} sáng hôm sau). Bản ghi này phục vụ mục đích chấm công và tính lương tăng ca.`)}
                 </p>
               </div>
             </div>

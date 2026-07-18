@@ -562,7 +562,7 @@ if (!in_array($action, $publicActions)) {
 
     // Read-only configuration and own-data lookups called by Layout, Dashboard, SalePortal, and Attendance pages
     // We allow any authenticated user (all roles) to query these endpoints.
-    if (in_array($action, ['get_settings', 'get_unique_sources', 'get_calendar_stats', 'get_calendar_day_details', 'get_consultant_leaves'], true)) {
+    if (in_array($action, ['get_settings', 'get_unique_sources', 'get_calendar_stats', 'get_calendar_day_details', 'get_consultant_leaves', 'upload_avatar'], true)) {
         $resolvedScope = 'all';
     }
 
@@ -3460,11 +3460,17 @@ switch ($action) {
         $res = $stmt->get_result()->fetch_assoc();
         $stmt->close();
 
+        $nightShiftStart = '18:00';
+        $setRes = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'night_shift_start_time' LIMIT 1");
+        if ($setRes && $sRow = $setRes->fetch_assoc()) {
+            $nightShiftStart = !empty($sRow['setting_value']) ? $sRow['setting_value'] : '18:00';
+        }
+
         echo json_encode([
             'success' => true, 
             'registered' => ($res !== null),
             'shift_date' => $shiftDate,
-            'can_toggle' => (date('H:i') < '18:00')
+            'can_toggle' => (date('H:i') < $nightShiftStart)
         ]);
         break;
 
@@ -3473,8 +3479,15 @@ switch ($action) {
             echo json_encode(['success' => false, 'message' => 'Unauthorized']);
             break;
         }
-        if (date('H:i') >= '18:00') {
-            echo json_encode(['success' => false, 'message' => 'Chỉ được phép đăng ký trực đêm trước 18:00 hàng ngày.']);
+
+        $nightShiftStart = '18:00';
+        $setRes = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'night_shift_start_time' LIMIT 1");
+        if ($setRes && $sRow = $setRes->fetch_assoc()) {
+            $nightShiftStart = !empty($sRow['setting_value']) ? $sRow['setting_value'] : '18:00';
+        }
+
+        if (date('H:i') >= $nightShiftStart) {
+            echo json_encode(['success' => false, 'message' => "Chỉ được phép đăng ký trực đêm trước {$nightShiftStart} hàng ngày."]);
             break;
         }
 
