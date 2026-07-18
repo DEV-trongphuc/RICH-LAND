@@ -99,7 +99,7 @@ async function runUltraAudit() {
     { path: 'users', readRoles: ['admin', 'director', 'manager', 'sale'], writeRoles: ['admin', 'director'] },
     { path: 'cooperation-slips', readRoles: ['admin', 'director', 'manager', 'sale', 'viewer', 'assistant'], writeRoles: ['admin', 'director', 'manager', 'sale', 'assistant'] },
     { path: 'deposits', readRoles: ['admin', 'director', 'manager', 'sale', 'viewer', 'assistant'], writeRoles: ['admin', 'director', 'manager', 'sale', 'assistant'] },
-    { path: 'workflow-task-templates', readRoles: ['admin', 'director', 'manager', 'assistant'], writeRoles: ['admin', 'director', 'manager'] }
+    { path: 'workflow-task-templates', readRoles: ['admin', 'director', 'manager'], writeRoles: ['admin', 'director', 'manager'] }
   ];
 
   // 4. Boundary Validation Payload Variations (Negative Scenarios)
