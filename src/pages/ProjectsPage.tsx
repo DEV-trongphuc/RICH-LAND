@@ -2780,13 +2780,16 @@ export default function ProjectsPage() {
           padding: '2px',
           borderRadius: '8px',
           gap: '2px',
-          position: 'relative'
+          position: 'relative',
+          height: '38px',
+          alignItems: 'center',
+          boxSizing: 'border-box'
         }}>
           {/* Sliding Pill Background Indicator */}
           <div style={{
             position: 'absolute',
-            top: '2px',
-            bottom: '2px',
+            top: '1px',
+            bottom: '1px',
             width: '110px',
             borderRadius: '6px',
             background: '#ffffff',
@@ -2807,7 +2810,7 @@ export default function ProjectsPage() {
                 onClick={() => setActiveSubTab(tab.id as any)}
                 style={{
                   width: '110px',
-                  height: '28px',
+                  height: '32px',
                   borderRadius: '6px',
                   border: 'none',
                   fontSize: '0.8rem',
@@ -2851,13 +2854,9 @@ export default function ProjectsPage() {
               display: 'flex',
               alignItems: 'center',
               gap: '8px',
-              background: 'var(--color-bg-light)',
-              border: '1px solid var(--color-border-light)',
-              borderRadius: '8px',
-              padding: '2px 8px',
-              height: '32px'
+              height: '38px'
             }}>
-              <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)' }}>Dự án:</span>
+              <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--color-text-muted)', whiteSpace: 'nowrap' }}>Dự án:</span>
               <div style={{ width: '180px' }}>
                 <CustomSelect
                   options={[
@@ -2876,16 +2875,17 @@ export default function ProjectsPage() {
           )}
 
           <div style={{ 
-            fontSize: '0.75rem', 
+            fontSize: '0.8rem', 
             color: 'var(--color-text-muted)', 
-            fontWeight: 600,
+            fontWeight: 700,
             background: 'var(--color-bg-light)',
-            padding: '4px 10px',
-            borderRadius: '6px',
+            padding: '0 12px',
+            borderRadius: '8px',
             border: '1px solid var(--color-border-light)',
-            height: '24px',
+            height: '38px',
             display: 'flex',
-            alignItems: 'center'
+            alignItems: 'center',
+            boxSizing: 'border-box'
           }}>
             {activeSubTab === 'projects' 
               ? `Hiển thị ${projects.length} / ${totalProjects} dự án` 
