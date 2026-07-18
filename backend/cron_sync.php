@@ -668,6 +668,12 @@ if (!function_exists('releasePendingWorkHoursLeads')) {
                             if ($lateCompEnabled !== 1) {
                                 $shouldCompensate = false;
                             }
+                        } else {
+                            $resLeaveComp = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'leave_compensation_enabled' LIMIT 1");
+                            $leaveCompEnabled = $resLeaveComp ? (int)$resLeaveComp->fetchColumn() : 0;
+                            if ($leaveCompEnabled !== 1) {
+                                $shouldCompensate = false;
+                            }
                         }
                         if ($shouldCompensate) {
                             $compUpStmt = $conn->prepare("UPDATE round_consultants SET compensation_count = compensation_count + 1 WHERE round_id = ? AND consultant_id = ?");

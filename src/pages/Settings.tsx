@@ -234,6 +234,7 @@ const SettingsInner = () => {
   const [backpressureLimit, setBackpressureLimit] = useState<number>(5);
   const [checkinApprovalSlaMinutes, setCheckinApprovalSlaMinutes] = useState<number>(15);
   const [lateCheckinCompensationEnabled, setLateCheckinCompensationEnabled] = useState<number>(0);
+  const [leaveCompensationEnabled, setLeaveCompensationEnabled] = useState<number>(0);
   const [broadcastExclusionRules, setBroadcastExclusionRules] = useState<string>("not_lead,opt_out,active_khtn");
   const [coopEligibleStatuses, setCoopEligibleStatuses] = useState<string>("booking,da_gap,dat_coc");
   const [coopDefaultFiles, setCoopDefaultFiles] = useState<string>("UNC.png,CMND.png");
@@ -590,6 +591,7 @@ const SettingsInner = () => {
         if (json.data.backpressure_limit !== undefined) setBackpressureLimit(Number(json.data.backpressure_limit));
         if (json.data.checkin_approval_sla_minutes !== undefined) setCheckinApprovalSlaMinutes(Number(json.data.checkin_approval_sla_minutes));
         if (json.data.late_checkin_compensation_enabled !== undefined) setLateCheckinCompensationEnabled(Number(json.data.late_checkin_compensation_enabled));
+        if (json.data.leave_compensation_enabled !== undefined) setLeaveCompensationEnabled(Number(json.data.leave_compensation_enabled));
         if (json.data.broadcast_exclusion_rules !== undefined) setBroadcastExclusionRules(json.data.broadcast_exclusion_rules);
         if (json.data.coop_eligible_statuses !== undefined) setCoopEligibleStatuses(json.data.coop_eligible_statuses);
         if (json.data.coop_default_files !== undefined) setCoopDefaultFiles(json.data.coop_default_files);
@@ -954,6 +956,7 @@ const SettingsInner = () => {
       backpressure_limit: backpressureLimit,
       checkin_approval_sla_minutes: checkinApprovalSlaMinutes,
       late_checkin_compensation_enabled: lateCheckinCompensationEnabled,
+      leave_compensation_enabled: leaveCompensationEnabled,
       broadcast_exclusion_rules: broadcastExclusionRules,
       coop_eligible_statuses: coopEligibleStatuses,
       coop_default_files: coopDefaultFiles,
@@ -3654,6 +3657,21 @@ function doPost(e) {
                           </label>
                           <span style={{ fontSize: '0.725rem', color: 'var(--color-text-muted)', marginLeft: '24px', display: 'block', marginTop: '2px', lineHeight: 1.4 }}>
                             {t('Nếu tắt, Sales đi muộn bị thu hồi lead sẽ không được cộng bù lượt (mặc định tắt).')}
+                          </span>
+
+                          <label style={{ gap: '8px', cursor: 'pointer', marginTop: '0.75rem', display: 'flex', alignItems: 'center' }}>
+                            <input
+                              type="checkbox"
+                              checked={leaveCompensationEnabled === 1}
+                              onChange={e => setLeaveCompensationEnabled(e.target.checked ? 1 : 0)}
+                              style={{ width: '16px', height: '16px', accentColor: 'var(--color-primary)' }}
+                            />
+                            <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--color-text)' }}>
+                              {t('Tự động đền bù lead khi bị thu hồi do nghỉ phép/ngưng hoạt động')}
+                            </span>
+                          </label>
+                          <span style={{ fontSize: '0.725rem', color: 'var(--color-text-muted)', marginLeft: '24px', display: 'block', marginTop: '2px', lineHeight: 1.4 }}>
+                            {t('Nếu tắt, Sales xin nghỉ phép hoặc không hoạt động bị thu hồi lead sẽ không được cộng bù lượt (mặc định tắt).')}
                           </span>
                         </div>
 
