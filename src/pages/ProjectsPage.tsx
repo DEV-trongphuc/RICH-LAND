@@ -366,6 +366,16 @@ export default function ProjectsPage() {
   const [campaignPage, setCampaignPage] = useState(1);
   const [campaignPageSize, setCampaignPageSize] = useState(12);
 
+  const filteredCampaigns = React.useMemo(() => {
+    if (!campaignProjectFilter) return campaigns;
+    return campaigns.filter(c => String(c.project_id) === String(campaignProjectFilter));
+  }, [campaigns, campaignProjectFilter]);
+
+  const paginatedCampaigns = React.useMemo(() => {
+    const start = (campaignPage - 1) * campaignPageSize;
+    return filteredCampaigns.slice(start, start + campaignPageSize);
+  }, [filteredCampaigns, campaignPage, campaignPageSize]);
+
   const quickUploadInputRef = React.useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -2322,7 +2332,7 @@ export default function ProjectsPage() {
   const loadCampaigns = async () => {
     setCampaignsLoading(true);
     try {
-      const url = `campaigns?page=${campaignPage}&limit=${campaignPageSize}${campaignProjectFilter ? `&project_id=${campaignProjectFilter}` : ''}`;
+      const url = 'campaigns?limit=1000';
       const res = await fetchAPI(url);
       if (res.success) {
         if (res.data && typeof res.data === 'object' && 'data' in res.data) {
@@ -2413,13 +2423,10 @@ export default function ProjectsPage() {
   }, [projectPage, projectPageSize]);
 
   useEffect(() => {
-    loadCampaigns();
-  }, [campaignPage, campaignPageSize, campaignProjectFilter]);
-
-  useEffect(() => {
     loadDevelopers();
     loadAllFiles();
     loadUsers();
+    loadCampaigns();
   }, []);
 
   const handleSaveProject = async (e: React.FormEvent) => {
@@ -2890,7 +2897,7 @@ export default function ProjectsPage() {
           }}>
             {activeSubTab === 'projects' 
               ? `Hiển thị ${projects.length} / ${totalProjects} dự án` 
-              : `Hiển thị ${campaigns.length} / ${totalCampaigns} chiến dịch`
+              : `Hiển thị ${paginatedCampaigns.length} / ${filteredCampaigns.length} chiến dịch`
             }
           </div>
         </div>
@@ -3270,7 +3277,7 @@ export default function ProjectsPage() {
                 <CampaignCardSkeleton key={i} />
               ))}
             </div>
-          ) : campaigns.length === 0 ? (
+          ) : filteredCampaigns.length === 0 ? (
             <EmptyCard
               icon={<Layers size={48} />}
               title="Chưa có chiến dịch nào"
@@ -3279,7 +3286,7 @@ export default function ProjectsPage() {
           ) : (
             <>
               <div style={{ display: 'grid', gridTemplateColumns: window.innerWidth <= 768 ? 'repeat(auto-fill, minmax(280px, 1fr))' : 'repeat(3, 1fr)', gap: '1.5rem' }}>
-                {campaigns.map(camp => {
+                {paginatedCampaigns.map(camp => {
                   const associatedProj = camp.project_id 
                     ? projects.find(p => p.id === camp.project_id)
                     : projects.find(p => {
@@ -3420,7 +3427,7 @@ export default function ProjectsPage() {
               </div>
             <div style={{ marginTop: '1.5rem', display: 'flex', justifyContent: 'center', paddingBottom: '2.5rem' }}>
               <Pagination
-                total={totalCampaigns}
+                total={filteredCampaigns.length}
                 page={campaignPage}
                 pageSize={campaignPageSize}
                 onChange={setCampaignPage}
