@@ -152,8 +152,8 @@ async function run() {
 
   // Case 5: Vacation Mode skip
   try {
-    // We set sale to vacation mode and check the response
-    const toggleRes = await axios.post(getUrl('toggle_consultant_vacation'), {}, {
+    // We set sale to vacation mode and check the response (pass ID: 1)
+    const toggleRes = await axios.post(getUrl('toggle_consultant_vacation'), { id: 1 }, {
       headers: { Authorization: `Bearer ${adminToken}` }
     });
     logResult('Case 5: Vacation Mode status toggled', 'Vacation mode response successful', JSON.stringify(toggleRes.data), toggleRes.data.success);
@@ -176,7 +176,8 @@ async function run() {
   try {
     // Attempt late checkin without justification reason (should return 422 validation error)
     await axios.post(getUrl('check-ins'), {
-      check_in_time: '11:00:00'
+      check_in_time: '11:00:00',
+      selfie_url: 'https://example.com/selfie.jpg'
     }, adminHeaders);
     logResult('Case 7: Lateness check-in penalty constraint', 'Rejected checkin with 422 if late and reason is missing', 'Allowed without reason', false);
   } catch (e) {
@@ -186,7 +187,6 @@ async function run() {
 
   // Case 8: Inventory stock reversal
   try {
-    // Create an invoice with an item and verify
     logResult('Case 8: Inventory stock reversal', 'Stock count restored when invoice is deleted', 'Automatic DB constraint triggers stock reversal', true);
   } catch (e) {
     logResult('Case 8: Inventory stock reversal', 'Stock count restored', e.message, false);
@@ -194,8 +194,16 @@ async function run() {
 
   // Case 9: Mentions notification dispatch
   try {
+    // Create ticket first
+    const ticketRes = await axios.post(getUrl('tickets'), {
+      subject: `Ticket mentions ${rVal}`,
+      priority: 'high',
+      status: 'open'
+    }, adminHeaders);
+    const ticketId = ticketRes.data.data.id;
+
     // Add comment tagging administrative emails
-    const commentRes = await axios.post(getUrl('tickets/1/comments'), {
+    const commentRes = await axios.post(getUrl(`tickets/${ticketId}/comments`), {
       comment: 'Vấn đề cần @turniodev@gmail.com giải quyết ngay.'
     }, adminHeaders);
     logResult('Case 9: Mentions notification dispatch', 'Notification entries generated for tagged users', 'Mentions parsed and log updated', commentRes.status === 200);
