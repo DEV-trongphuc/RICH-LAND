@@ -108,26 +108,32 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
   useEffect(() => {
     if (isOpen && task && erpMeta) {
       const activeProjId = erpMeta.project_id || (task.related_type === 'project' ? task.related_id : null);
-      if (activeProjId && allowedProjects.length > 0 && !allowedProjects.some((p: any) => Number(p.id) === Number(activeProjId))) {
+      if (activeProjId && !allowedProjects.some((p: any) => Number(p.id) === Number(activeProjId))) {
         api.get(`/projects/${activeProjId}`).then(res => {
           const pObj = res.data?.data || res.data;
           if (pObj && pObj.id) {
-            setAllowedProjects(prev => [pObj, ...prev]);
+            setAllowedProjects(prev => {
+              if (prev.some((p: any) => Number(p.id) === Number(pObj.id))) return prev;
+              return [pObj, ...prev];
+            });
           }
         }).catch(() => {});
       }
 
       const activeCampId = erpMeta.campaign_id || (task.related_type === 'campaign' ? task.related_id : null);
-      if (activeCampId && allowedCampaigns.length > 0 && !allowedCampaigns.some((c: any) => Number(c.id) === Number(activeCampId))) {
+      if (activeCampId && !allowedCampaigns.some((c: any) => Number(c.id) === Number(activeCampId))) {
         api.get(`/campaigns/${activeCampId}`).then(res => {
           const cObj = res.data?.data || res.data;
           if (cObj && cObj.id) {
-            setAllowedCampaigns(prev => [cObj, ...prev]);
+            setAllowedCampaigns(prev => {
+              if (prev.some((c: any) => Number(c.id) === Number(cObj.id))) return prev;
+              return [cObj, ...prev];
+            });
           }
         }).catch(() => {});
       }
     }
-  }, [isOpen, task, erpMeta?.project_id, erpMeta?.campaign_id, allowedProjects.length > 0, allowedCampaigns.length > 0]);
+  }, [isOpen, task, erpMeta?.project_id, erpMeta?.campaign_id, allowedProjects.length, allowedCampaigns.length]);
 
   // Resource adding state
   const [showAddChecklist, setShowAddChecklist] = useState(false);

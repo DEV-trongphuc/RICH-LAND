@@ -5595,6 +5595,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                     onUpdate={() => {
                       fetchPortalTasks();
                       fetchWorkspaceTasks();
+                      window.dispatchEvent(new CustomEvent('task-updated'));
                     }}
                     users={users}
                     embedMode={true}
@@ -12230,6 +12231,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
         onUpdate={() => {
           fetchPortalTasks();
           fetchWorkspaceTasks();
+          window.dispatchEvent(new CustomEvent('task-updated'));
         }}
         users={users}
         onOpenContact={(contactId) => {

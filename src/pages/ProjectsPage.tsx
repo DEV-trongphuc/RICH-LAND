@@ -17,6 +17,7 @@ import { Pagination } from '../components/ui/Pagination';
 import { Skeleton } from '../components/ui/Skeleton';
 import { Avatar } from '../components/ui/Avatar';
 import { MentionInput } from '../components/ui/MentionInput';
+import { WorkspaceTaskDrawer } from './WorkspaceTaskDrawer';
 
 
 
@@ -251,6 +252,7 @@ export default function ProjectsPage() {
   const [editingProject, setEditingProject] = useState<Partial<Project> | null>(null);
   const [autoCode, setAutoCode] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [selectedTaskForDrawer, setSelectedTaskForDrawer] = useState<any>(null);
 
   // Quick campaigns modal state
   const [quickCampaignsModalOpen, setQuickCampaignsModalOpen] = useState(false);
@@ -341,6 +343,29 @@ export default function ProjectsPage() {
       '650px'
     );
   };
+
+  const handleOpenTask = (taskId: number) => {
+    const params = new URLSearchParams(window.location.search);
+    params.set('task_id', String(taskId));
+    navigate(`${window.location.pathname}?${params.toString()}`);
+  };
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const taskId = params.get('task_id');
+    if (taskId) {
+      const tid = Number(taskId);
+      if (tid) {
+        api.get(`/activities/${tid}`).then(res => {
+          if (res.data && res.data.success && res.data.data) {
+            setSelectedTaskForDrawer(res.data.data);
+          }
+        }).catch(err => {
+          console.error("Error loading task from URL:", err);
+        });
+      }
+    }
+  }, [window.location.search]);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -704,6 +729,21 @@ export default function ProjectsPage() {
       }
     }
   }, [editingCampaign?.id]);
+
+  useEffect(() => {
+    const handleTaskUpdated = () => {
+      if (editingProject && editingProject.id) {
+        loadLinkedTasks('project', editingProject.id);
+      }
+      if (editingCampaign && editingCampaign.id) {
+        loadLinkedTasks('campaign', editingCampaign.id);
+      }
+    };
+    window.addEventListener('task-updated', handleTaskUpdated);
+    return () => {
+      window.removeEventListener('task-updated', handleTaskUpdated);
+    };
+  }, [editingProject?.id, editingCampaign?.id]);
 
   useEffect(() => {
     if (detailComments.length > 0 && (isEditModalOpen || isCampaignModalOpen)) {
@@ -1658,21 +1698,56 @@ export default function ProjectsPage() {
                               justifyContent: 'space-between',
                               background: 'var(--color-bg-light)',
                               border: '1px solid var(--color-border-light)',
-                              padding: '10px 14px',
-                              borderRadius: '10px',
-                              fontSize: '0.85rem'
+                              padding: '12px 16px',
+                              borderRadius: '12px',
+                              fontSize: '0.85rem',
+                              cursor: 'pointer',
+                              transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+                              boxShadow: '0 2px 6px rgba(0, 0, 0, 0.01)'
                             }}
+                            onMouseEnter={e => {
+                              e.currentTarget.style.borderColor = 'var(--color-primary-light)';
+                              e.currentTarget.style.background = '#ffffff';
+                              e.currentTarget.style.transform = 'translateY(-2px)';
+                              e.currentTarget.style.boxShadow = '0 6px 16px rgba(163, 20, 34, 0.06)';
+                            }}
+                            onMouseLeave={e => {
+                              e.currentTarget.style.borderColor = 'var(--color-border-light)';
+                              e.currentTarget.style.background = 'var(--color-bg-light)';
+                              e.currentTarget.style.transform = 'none';
+                              e.currentTarget.style.boxShadow = '0 2px 6px rgba(0, 0, 0, 0.01)';
+                            }}
+                            onClick={() => handleOpenTask(task.id)}
+                            title={t('Click để xem chi tiết nhiệm vụ')}
                           >
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                              <CheckSquare size={16} color={task.status === 'done' ? 'var(--color-success)' : 'var(--color-text-muted)'} />
-                              <div>
-                                <span style={{ fontWeight: 600, color: 'var(--color-text)', display: 'block' }}>{task.subject}</span>
-                                <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)' }}>
-                                  {performer?.full_name || 'Hệ thống'}
-                                </span>
+                            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+                              <div style={{ marginTop: '3px' }}>
+                                <CheckSquare size={18} color={task.status === 'done' ? 'var(--color-success)' : 'var(--color-text-muted)'} style={{ opacity: 0.85 }} />
+                              </div>
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                <span style={{ fontWeight: 650, color: 'var(--color-text)', fontSize: '0.9rem', lineHeight: '1.2' }}>{task.subject}</span>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                  <Avatar 
+                                    src={performer?.avatar_url || performer?.avatar} 
+                                    name={performer?.full_name || performer?.name || 'Hệ thống'} 
+                                    size={18} 
+                                  />
+                                  <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 500 }}>
+                                    {performer?.full_name || 'Hệ thống'} {performer?.role ? `(${performer.role})` : ''}
+                                  </span>
+                                </div>
                               </div>
                             </div>
-                            <span style={{ fontSize: '0.72rem', fontWeight: 700, padding: '2px 8px', borderRadius: '100px', background: sc.bg, color: sc.text }}>
+                            <span style={{ 
+                              fontSize: '0.72rem', 
+                              fontWeight: 700, 
+                              padding: '4px 10px', 
+                              borderRadius: '100px', 
+                              background: sc.bg, 
+                              color: sc.text,
+                              textTransform: 'uppercase',
+                              letterSpacing: '0.03em'
+                            }}>
                               {task.status === 'done' ? 'Đã xong' : 'Chưa xong'}
                             </span>
                           </div>
@@ -2185,21 +2260,56 @@ export default function ProjectsPage() {
                               justifyContent: 'space-between',
                               background: 'var(--color-bg-light)',
                               border: '1px solid var(--color-border-light)',
-                              padding: '10px 14px',
-                              borderRadius: '10px',
-                              fontSize: '0.85rem'
+                              padding: '12px 16px',
+                              borderRadius: '12px',
+                              fontSize: '0.85rem',
+                              cursor: 'pointer',
+                              transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+                              boxShadow: '0 2px 6px rgba(0, 0, 0, 0.01)'
                             }}
+                            onMouseEnter={e => {
+                              e.currentTarget.style.borderColor = 'var(--color-primary-light)';
+                              e.currentTarget.style.background = '#ffffff';
+                              e.currentTarget.style.transform = 'translateY(-2px)';
+                              e.currentTarget.style.boxShadow = '0 6px 16px rgba(163, 20, 34, 0.06)';
+                            }}
+                            onMouseLeave={e => {
+                              e.currentTarget.style.borderColor = 'var(--color-border-light)';
+                              e.currentTarget.style.background = 'var(--color-bg-light)';
+                              e.currentTarget.style.transform = 'none';
+                              e.currentTarget.style.boxShadow = '0 2px 6px rgba(0, 0, 0, 0.01)';
+                            }}
+                            onClick={() => handleOpenTask(task.id)}
+                            title={t('Click để xem chi tiết nhiệm vụ')}
                           >
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                              <CheckSquare size={16} color={task.status === 'done' ? 'var(--color-success)' : 'var(--color-text-muted)'} />
-                              <div>
-                                <span style={{ fontWeight: 600, color: 'var(--color-text)', display: 'block' }}>{task.subject}</span>
-                                <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)' }}>
-                                  {performer?.full_name || 'Hệ thống'}
-                                </span>
+                            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+                              <div style={{ marginTop: '3px' }}>
+                                <CheckSquare size={18} color={task.status === 'done' ? 'var(--color-success)' : 'var(--color-text-muted)'} style={{ opacity: 0.85 }} />
+                              </div>
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                <span style={{ fontWeight: 650, color: 'var(--color-text)', fontSize: '0.9rem', lineHeight: '1.2' }}>{task.subject}</span>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                  <Avatar 
+                                    src={performer?.avatar_url || performer?.avatar} 
+                                    name={performer?.full_name || performer?.name || 'Hệ thống'} 
+                                    size={18} 
+                                  />
+                                  <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 500 }}>
+                                    {performer?.full_name || 'Hệ thống'} {performer?.role ? `(${performer.role})` : ''}
+                                  </span>
+                                </div>
                               </div>
                             </div>
-                            <span style={{ fontSize: '0.72rem', fontWeight: 700, padding: '2px 8px', borderRadius: '100px', background: sc.bg, color: sc.text }}>
+                            <span style={{ 
+                              fontSize: '0.72rem', 
+                              fontWeight: 700, 
+                              padding: '4px 10px', 
+                              borderRadius: '100px', 
+                              background: sc.bg, 
+                              color: sc.text,
+                              textTransform: 'uppercase',
+                              letterSpacing: '0.03em'
+                            }}>
                               {task.status === 'done' ? 'Đã xong' : 'Chưa xong'}
                             </span>
                           </div>
@@ -3459,7 +3569,10 @@ export default function ProjectsPage() {
       {/* Edit Modal (converted to Drawer) */}
       {renderDrawer(
         isEditModalOpen,
-        () => setIsEditModalOpen(false),
+        () => {
+          setIsEditModalOpen(false);
+          setEditingProject(null);
+        },
         projectModalMode === 'view' 
           ? `Chi tiết Dự án: ${editingProject?.name}` 
           : editingProject?.id ? 'Chỉnh sửa dự án' : 'Thêm dự án mới',
@@ -3780,21 +3893,56 @@ export default function ProjectsPage() {
                             justifyContent: 'space-between',
                             background: 'var(--color-bg-light)',
                             border: '1px solid var(--color-border-light)',
-                            padding: '10px 14px',
-                            borderRadius: '10px',
-                            fontSize: '0.85rem'
+                            padding: '12px 16px',
+                            borderRadius: '12px',
+                            fontSize: '0.85rem',
+                            cursor: 'pointer',
+                            transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+                            boxShadow: '0 2px 6px rgba(0, 0, 0, 0.01)'
                           }}
+                          onMouseEnter={e => {
+                            e.currentTarget.style.borderColor = 'var(--color-primary-light)';
+                            e.currentTarget.style.background = '#ffffff';
+                            e.currentTarget.style.transform = 'translateY(-2px)';
+                            e.currentTarget.style.boxShadow = '0 6px 16px rgba(163, 20, 34, 0.06)';
+                          }}
+                          onMouseLeave={e => {
+                            e.currentTarget.style.borderColor = 'var(--color-border-light)';
+                            e.currentTarget.style.background = 'var(--color-bg-light)';
+                            e.currentTarget.style.transform = 'none';
+                            e.currentTarget.style.boxShadow = '0 2px 6px rgba(0, 0, 0, 0.01)';
+                          }}
+                          onClick={() => handleOpenTask(task.id)}
+                          title={t('Click để xem chi tiết nhiệm vụ')}
                         >
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <CheckSquare size={16} color={task.status === 'done' ? 'var(--color-success)' : 'var(--color-text-muted)'} />
-                            <div>
-                              <span style={{ fontWeight: 600, color: 'var(--color-text)', display: 'block' }}>{task.subject}</span>
-                              <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)' }}>
-                                {performer?.full_name || 'Hệ thống'}
-                              </span>
+                          <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+                            <div style={{ marginTop: '3px' }}>
+                              <CheckSquare size={18} color={task.status === 'done' ? 'var(--color-success)' : 'var(--color-text-muted)'} style={{ opacity: 0.85 }} />
+                            </div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                              <span style={{ fontWeight: 650, color: 'var(--color-text)', fontSize: '0.9rem', lineHeight: '1.2' }}>{task.subject}</span>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                <Avatar 
+                                  src={performer?.avatar_url || performer?.avatar} 
+                                  name={performer?.full_name || performer?.name || 'Hệ thống'} 
+                                  size={18} 
+                                />
+                                <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 500 }}>
+                                  {performer?.full_name || 'Hệ thống'} {performer?.role ? `(${performer.role})` : ''}
+                                </span>
+                              </div>
                             </div>
                           </div>
-                          <span style={{ fontSize: '0.72rem', fontWeight: 700, padding: '2px 8px', borderRadius: '100px', background: sc.bg, color: sc.text }}>
+                          <span style={{ 
+                            fontSize: '0.72rem', 
+                            fontWeight: 700, 
+                            padding: '4px 10px', 
+                            borderRadius: '100px', 
+                            background: sc.bg, 
+                            color: sc.text,
+                            textTransform: 'uppercase',
+                            letterSpacing: '0.03em'
+                          }}>
                             {task.status === 'done' ? 'Đã xong' : 'Chưa xong'}
                           </span>
                         </div>
@@ -4997,7 +5145,10 @@ export default function ProjectsPage() {
       {/* Campaign Create/Edit Modal (converted to Drawer) */}
       {renderDrawer(
         isCampaignModalOpen,
-        () => setIsCampaignModalOpen(false),
+        () => {
+          setIsCampaignModalOpen(false);
+          setEditingCampaign(null);
+        },
         campaignModalMode === 'view' 
           ? `Chi tiết Chiến dịch: ${editingCampaign?.name}` 
           : editingCampaign?.id ? 'Chỉnh sửa Chiến dịch' : 'Thêm Chiến dịch mới',
@@ -5256,21 +5407,56 @@ export default function ProjectsPage() {
                             justifyContent: 'space-between',
                             background: 'var(--color-bg-light)',
                             border: '1px solid var(--color-border-light)',
-                            padding: '10px 14px',
-                            borderRadius: '10px',
-                            fontSize: '0.85rem'
+                            padding: '12px 16px',
+                            borderRadius: '12px',
+                            fontSize: '0.85rem',
+                            cursor: 'pointer',
+                            transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+                            boxShadow: '0 2px 6px rgba(0, 0, 0, 0.01)'
                           }}
+                          onMouseEnter={e => {
+                            e.currentTarget.style.borderColor = 'var(--color-primary-light)';
+                            e.currentTarget.style.background = '#ffffff';
+                            e.currentTarget.style.transform = 'translateY(-2px)';
+                            e.currentTarget.style.boxShadow = '0 6px 16px rgba(163, 20, 34, 0.06)';
+                          }}
+                          onMouseLeave={e => {
+                            e.currentTarget.style.borderColor = 'var(--color-border-light)';
+                            e.currentTarget.style.background = 'var(--color-bg-light)';
+                            e.currentTarget.style.transform = 'none';
+                            e.currentTarget.style.boxShadow = '0 2px 6px rgba(0, 0, 0, 0.01)';
+                          }}
+                          onClick={() => handleOpenTask(task.id)}
+                          title={t('Click để xem chi tiết nhiệm vụ')}
                         >
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <CheckSquare size={16} color={task.status === 'done' ? 'var(--color-success)' : 'var(--color-text-muted)'} />
-                            <div>
-                              <span style={{ fontWeight: 600, color: 'var(--color-text)', display: 'block' }}>{task.subject}</span>
-                              <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)' }}>
-                                {performer?.full_name || 'Hệ thống'}
-                              </span>
+                          <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+                            <div style={{ marginTop: '3px' }}>
+                              <CheckSquare size={18} color={task.status === 'done' ? 'var(--color-success)' : 'var(--color-text-muted)'} style={{ opacity: 0.85 }} />
+                            </div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                              <span style={{ fontWeight: 650, color: 'var(--color-text)', fontSize: '0.9rem', lineHeight: '1.2' }}>{task.subject}</span>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                <Avatar 
+                                  src={performer?.avatar_url || performer?.avatar} 
+                                  name={performer?.full_name || performer?.name || 'Hệ thống'} 
+                                  size={18} 
+                                />
+                                <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 500 }}>
+                                  {performer?.full_name || 'Hệ thống'} {performer?.role ? `(${performer.role})` : ''}
+                                </span>
+                              </div>
                             </div>
                           </div>
-                          <span style={{ fontSize: '0.72rem', fontWeight: 700, padding: '2px 8px', borderRadius: '100px', background: sc.bg, color: sc.text }}>
+                          <span style={{ 
+                            fontSize: '0.72rem', 
+                            fontWeight: 700, 
+                            padding: '4px 10px', 
+                            borderRadius: '100px', 
+                            background: sc.bg, 
+                            color: sc.text,
+                            textTransform: 'uppercase',
+                            letterSpacing: '0.03em'
+                          }}>
                             {task.status === 'done' ? 'Đã xong' : 'Chưa xong'}
                           </span>
                         </div>
@@ -5818,6 +6004,21 @@ export default function ProjectsPage() {
           )}
         </div>
       </CustomModal>
+
+      <WorkspaceTaskDrawer
+        isOpen={!!selectedTaskForDrawer}
+        onClose={() => {
+          setSelectedTaskForDrawer(null);
+          const params = new URLSearchParams(window.location.search);
+          params.delete('task_id');
+          navigate(`${window.location.pathname}${params.toString() ? '?' + params.toString() : ''}`, { replace: true });
+        }}
+        task={selectedTaskForDrawer}
+        onUpdate={() => {
+          window.dispatchEvent(new CustomEvent('task-updated'));
+        }}
+        users={users}
+      />
     </div>
   );
 }
