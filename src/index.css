@@ -4055,6 +4055,10 @@ html, body {
 }
 
 @media (max-width: 768px) {
+  html {
+    font-size: 13px !important;
+  }
+
   .app-layout-main-wrapper {
     height: 100dvh !important;
     max-height: 100dvh !important;
@@ -4063,87 +4067,87 @@ html, body {
 
   /* Thu nhỏ page title & page subtitle tránh to quá khổ */
   .page-title {
-    font-size: 1.25rem !important;
+    font-size: 1.1rem !important;
     font-weight: 700 !important;
     letter-spacing: -0.015em !important;
   }
   .page-subtitle {
-    font-size: 0.75rem !important;
+    font-size: 0.65rem !important;
     margin-top: 2px !important;
   }
 
   /* Thu nhỏ padding của cards */
   .card, .card-panel, .card-table {
-    padding: 1rem !important;
+    padding: 0.875rem !important;
     border-radius: 12px !important;
   }
 
   /* Thu nhỏ size chữ và label form */
   .form-label {
-    font-size: 0.75rem !important;
+    font-size: 0.7rem !important;
     font-weight: 600 !important;
     margin-bottom: 4px !important;
     color: var(--color-text-light) !important;
   }
   .form-group {
-    margin-bottom: 0.875rem !important;
+    margin-bottom: 0.75rem !important;
   }
 
   /* Thu nhỏ kích thước input, select, textarea */
   .form-input, .form-select, select, input:not([type="checkbox"]):not([type="radio"]), textarea {
-    padding: 8px 12px !important;
-    font-size: 0.8125rem !important;
+    padding: 6px 10px !important;
+    font-size: 0.75rem !important;
     border-radius: 8px !important;
-    height: 38px !important;
+    height: 35px !important;
   }
   textarea {
     height: auto !important;
-    min-height: 80px !important;
+    min-height: 70px !important;
   }
 
   /* Thu nhỏ nút bấm để ngón tay dễ thao tác và không bị thô */
   .btn {
-    padding: 8px 14px !important;
-    font-size: 0.8rem !important;
-    height: 38px !important;
+    padding: 6px 12px !important;
+    font-size: 0.75rem !important;
+    height: 35px !important;
     border-radius: 8px !important;
   }
   .btn.sm, .btn-icon.sm {
-    padding: 6px 10px !important;
-    font-size: 0.75rem !important;
-    height: 30px !important;
+    padding: 4px 8px !important;
+    font-size: 0.7rem !important;
+    height: 28px !important;
   }
 
   /* Thu nhỏ chiều cao header thanh công cụ di động */
   .portal-header {
-    height: 54px !important;
-    padding: 0 1rem !important;
+    height: 48px !important;
+    padding: 0 0.75rem !important;
   }
 
   /* Thu nhỏ font chữ trong các bảng dữ liệu để hiển thị nhiều thông tin hơn */
   .table th, .table td, table th, table td {
-    font-size: 0.8rem !important;
-    padding: 10px 8px !important;
+    font-size: 0.7rem !important;
+    padding: 8px 6px !important;
   }
 
   /* Thu nhỏ các thẻ badge / tag để đỡ chiếm không gian */
   .badge, .tag {
-    font-size: 0.65rem !important;
-    padding: 2px 6px !important;
+    font-size: 0.6rem !important;
+    padding: 1px 5px !important;
     border-radius: 4px !important;
   }
 
   /* Thu nhỏ cỡ chữ của các trường thông tin trong trang chi tiết / profile */
   .detail-label, .info-label {
-    font-size: 0.75rem !important;
+    font-size: 0.7rem !important;
   }
   .detail-value, .info-value {
-    font-size: 0.825rem !important;
+    font-size: 0.75rem !important;
   }
 
   /* Tối ưu kích thước font chữ modal & drawer content */
   .modal-title, .drawer-title {
-    font-size: 1.1rem !important;
+    font-size: 0.95rem !important;
   }
 
   /* Thu nhỏ và tối ưu hóa stat cards KPI trên di động */
