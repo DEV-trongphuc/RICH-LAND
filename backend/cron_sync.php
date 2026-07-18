@@ -488,6 +488,7 @@ if (!function_exists('releasePendingWorkHoursLeads')) {
             $leaveStart = $row['leave_start'] ?? null;
             $leaveEnd = $row['leave_end'] ?? null;
             $today = date('Y-m-d');
+            $isLateCheckinRealloc = false;
             
             // Check if consultant is actually on leave or inactive, or if it is a pending log
             $isActuallyOnLeaveOrInactive = false;
@@ -554,6 +555,7 @@ if (!function_exists('releasePendingWorkHoursLeads')) {
                         if (time() > $gracePeriodExpires) {
                             logSync("Lead ID {$row['lead_id']}: check-in grace period expired for consultant {$row['consultant_name']}. Triggering reallocation...");
                             $isActuallyOnLeaveOrInactive = true;
+                            $isLateCheckinRealloc = true;
                         }
                     }
                 }
@@ -657,12 +659,22 @@ if (!function_exists('releasePendingWorkHoursLeads')) {
                     $upLog->execute();
                     $upLog->close();
 
-                    // Bù lead cho Sale bị thu hồi (tăng compensation_count lên 1) để đảm bảo "Bù lead đồ đầy đủ" - chỉ khi Sale cũ có tồn tại
+                    // Bù lead cho Sale bị thu hồi - chỉ khi Sale cũ có tồn tại
                     if ($row['round_id'] > 0 && $row['assigned_to'] !== null) {
-                        $compUpStmt = $conn->prepare("UPDATE round_consultants SET compensation_count = compensation_count + 1 WHERE round_id = ? AND consultant_id = ?");
-                        $compUpStmt->bind_param("ii", $row['round_id'], $row['assigned_to']);
-                        $compUpStmt->execute();
-                        $compUpStmt->close();
+                        $shouldCompensate = true;
+                        if ($isLateCheckinRealloc) {
+                            $resLateComp = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'late_checkin_compensation_enabled' LIMIT 1");
+                            $lateCompEnabled = $resLateComp ? (int)$resLateComp->fetchColumn() : 0;
+                            if ($lateCompEnabled !== 1) {
+                                $shouldCompensate = false;
+                            }
+                        }
+                        if ($shouldCompensate) {
+                            $compUpStmt = $conn->prepare("UPDATE round_consultants SET compensation_count = compensation_count + 1 WHERE round_id = ? AND consultant_id = ?");
+                            $compUpStmt->bind_param("ii", $row['round_id'], $row['assigned_to']);
+                            $compUpStmt->execute();
+                            $compUpStmt->close();
+                        }
                     }
                     
                     logDistribution($conn, $row['lead_id'], $assignedConsultantId, $row['round_id'], $newStatus, $logMsg, false);
