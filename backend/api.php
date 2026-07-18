@@ -4224,7 +4224,7 @@ switch ($action) {
             $stmtChk = $conn->prepare("
                 SELECT l.assigned_to, l.is_accepted, l.last_interaction_date,
                        COALESCE(
-                           (SELECT NULLIF(lead_recall_minutes, 0) FROM sync_connections WHERE id = l.connection_id),
+                           (SELECT NULLIF(lead_recall_minutes, 0) FROM sheet_connections WHERE id = l.connection_id),
                            (SELECT CAST(setting_value AS UNSIGNED) FROM system_settings WHERE setting_key = 'lead_response_timeout_minutes' LIMIT 1),
                            2
                        ) as lead_recall_minutes
