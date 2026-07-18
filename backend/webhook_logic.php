@@ -1829,60 +1829,6 @@ function checkConsultantGates($conn, $consultantId, $lead = null)
         return "Failed Gate 4: Backpressure valve limit exceeded ($khtnCnt >= $backpressureLimit 'Chưa Xác Định' leads)";
     }
 
-    // GATE 5: Hạn mức (Quota) của Sales
-    $limitDay = (int) get_system_setting($conn, 'databank_limit_per_day');
-    $limitHour = (int) get_system_setting($conn, 'databank_limit_per_hour');
-    $limitMonth = (int) get_system_setting($conn, 'databank_limit_per_month');
-
-    if ($limitDay <= 0) $limitDay = 2;
-    if ($limitHour <= 0) $limitHour = 3;
-    if ($limitMonth <= 0) $limitMonth = 300;
-
-    // Check hourly
-    $stmtHour = $conn->prepare("
-        SELECT COUNT(*) as cnt 
-        FROM distribution_logs 
-        WHERE assigned_to = ? 
-          AND received_at >= DATE_SUB(NOW(), INTERVAL 1 HOUR)
-    ");
-    $stmtHour->bind_param("i", $consultantId);
-    $stmtHour->execute();
-    $hourCnt = (int) ($stmtHour->get_result()->fetch_assoc()['cnt'] ?? 0);
-    $stmtHour->close();
-    if ($hourCnt >= $limitHour) {
-        return "Failed Gate 5: Hourly limit reached ($hourCnt >= $limitHour)";
-    }
-
-    // Check daily
-    $stmtDay = $conn->prepare("
-        SELECT COUNT(*) as cnt 
-        FROM distribution_logs 
-        WHERE assigned_to = ? 
-          AND DATE(received_at) = CURDATE()
-    ");
-    $stmtDay->bind_param("i", $consultantId);
-    $stmtDay->execute();
-    $dayCnt = (int) ($stmtDay->get_result()->fetch_assoc()['cnt'] ?? 0);
-    $stmtDay->close();
-    if ($dayCnt >= $limitDay) {
-        return "Failed Gate 5: Daily limit reached ($dayCnt >= $limitDay)";
-    }
-
-    // Check monthly
-    $stmtMonth = $conn->prepare("
-        SELECT COUNT(*) as cnt 
-        FROM distribution_logs 
-        WHERE assigned_to = ? 
-          AND received_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)
-    ");
-    $stmtMonth->bind_param("i", $consultantId);
-    $stmtMonth->execute();
-    $monthCnt = (int) ($stmtMonth->get_result()->fetch_assoc()['cnt'] ?? 0);
-    $stmtMonth->close();
-    if ($monthCnt >= $limitMonth) {
-        return "Failed Gate 5: Monthly limit reached ($monthCnt >= $limitMonth)";
-    }
-
     return true;
 }
 
