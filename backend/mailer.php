@@ -11,35 +11,32 @@ use PHPMailer\PHPMailer\Exception;
 
 function _getBaseHtml($title, $subtitle, $contentHtml)
 {
-    $headerSub = !empty($title) ? mb_strtoupper($title, 'UTF-8') : 'DATA ROUTING ENGINE';
+    $headerSub = !empty($title) ? mb_strtoupper($title, 'UTF-8') : 'HỆ THỐNG GIAO DATA';
 
     return '
-    <div style="background-color: #f8fafc; padding: 40px 0; font-family: \'Inter\', Helvetica, Arial, sans-serif;">
-        <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);">
+    <div style="background-color: #f1f5f9; padding: 40px 10px; font-family: \'Inter\', -apple-system, BlinkMacSystemFont, \'Segoe UI\', Roboto, Helvetica, Arial, sans-serif;">
+        <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.05); border: 1px solid #e2e8f0;">
             
             <!-- Header -->
-            <div style="background: linear-gradient(135deg, #BD1D2D, #8C111E); padding: 40px 20px; text-align: center;">
-                <div style="margin-bottom: 16px; text-align: center;">
-                    <div style="display: inline-block; background: rgba(255,255,255,0.25); border-radius: 50%; width: 56px; height: 56px; line-height: 56px; text-align: center; vertical-align: middle;">
-                        <img src="https://open.domation.net/richland/Compress_ICON.png" alt="Rich Land Logo" style="width: 32px; height: 32px; vertical-align: middle; display: inline-block; border-radius: 50%;" />
-                    </div>
+            <div style="background: linear-gradient(135deg, #BD1D2D 0%, #8C111E 100%); padding: 35px 24px; text-align: center; border-bottom: 3px solid #BD1D2D;">
+                <div style="margin-bottom: 12px; text-align: center;">
+                    <img src="https://rich-land.vercel.app/imgs/logo-rich-land-viet-nam-trang.webp" alt="Rich Land Logo" style="max-height: 50px; max-width: 240px; vertical-align: middle; display: inline-block; object-fit: contain;" />
                 </div>
-                <h1 style="color: #ffffff; font-size: 28px; margin: 0; font-weight: 900; letter-spacing: 2px; text-align: center;">RICH LAND</h1>
-                <p style="color: rgba(255,255,255,0.95); font-size: 14px; margin: 8px 0 0; letter-spacing: 1px; text-transform: uppercase; font-weight: 700; text-align: center;">' . $headerSub . '</p>
+                <p style="color: rgba(255,255,255,0.9); font-size: 13px; margin: 6px 0 0; letter-spacing: 1.5px; text-transform: uppercase; font-weight: 700; text-align: center;">' . $headerSub . '</p>
             </div>
             
             <!-- Content -->
-            <div style="padding: 40px 30px;">
-                <div style="color: #475569; font-size: 15px; line-height: 1.6;">
+            <div style="padding: 35px 30px; background-color: #ffffff;">
+                <div style="color: #334155; font-size: 15px; line-height: 1.6; font-weight: 400;">
                     ' . $contentHtml . '
                 </div>
             </div>
             
             <!-- Footer -->
-            <div style="background-color: #f8fafc; padding: 24px; text-align: center; border-top: 1px solid #e2e8f0;">
-                <p style="color: #64748b; font-size: 13px; margin: 0; line-height: 1.6;">
+            <div style="background-color: #f8fafc; padding: 24px 30px; text-align: center; border-top: 1px solid #f1f5f9;">
+                <p style="color: #64748b; font-size: 12px; margin: 0; line-height: 1.6; font-weight: 500;">
                     © ' . date("Y") . ' Rich Land Ecosystem. All rights reserved.<br/>
-                    Email này được gửi tự động từ hệ thống quản trị RICH LAND.
+                    Email này được gửi tự động từ hệ thống quản trị RICH LAND. Vui lòng không phản hồi email này.
                 </p>
             </div>
         </div>
