@@ -1567,6 +1567,8 @@ function processManualLead($conn, $leadData, $override_round_id, $override_consu
             if ($relStmt) {
                 $relStmt->bind_param("s", $lockKey);
                 $relStmt->execute();
+                $relRes = $relStmt->get_result();
+                if ($relRes) $relRes->close();
                 $relStmt->close();
             }
         }
@@ -2534,7 +2536,7 @@ switch ($action) {
             'report_error_reasons' => get_normalized_report_error_reasons($conn),
             'is_allowed_to_report' => true,
             'stats' => [
-                'total_received' => count(array_filter($leads, function($l) { return $l['status'] !== 'reminder'; })),
+                'total_received' => count($leads),
                 'tickets_total' => (int) ($ticketStats['total'] ?? 0),
                 'tickets_approved' => (int) ($ticketStats['approved'] ?? 0),
                 'tickets_rejected' => (int) ($ticketStats['rejected'] ?? 0),
@@ -15221,6 +15223,8 @@ switch ($action) {
                     if ($relStmt) {
                         $relStmt->bind_param("s", $lockKey);
                         $relStmt->execute();
+                        $relRes = $relStmt->get_result();
+                        if ($relRes) $relRes->close();
                         $relStmt->close();
                     }
                 }

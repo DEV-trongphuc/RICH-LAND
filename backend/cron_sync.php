@@ -1987,6 +1987,8 @@ foreach ($connections as $connItem) {
                 if ($relStmt) {
                     $relStmt->bind_param("s", $lockKey);
                     $relStmt->execute();
+                    $relRes = $relStmt->get_result();
+                    if ($relRes) $relRes->close();
                 }
             }
         }
