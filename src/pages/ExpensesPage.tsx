@@ -132,6 +132,29 @@ export const ExpensesPage: React.FC = () => {
 
   useEffect(() => { fetchExpenses(); }, [fetchExpenses]);
 
+  useEffect(() => {
+    if (location.state?.openCreate) {
+      setEditItem(null);
+      setVendorSearch('');
+      const defaultEntities = location.state.defaultContact 
+        ? [{ 
+            entity_type: 'contact', 
+            entity_id: location.state.defaultContact.id, 
+            name: location.state.defaultContact.name, 
+            avatar_url: location.state.defaultContact.avatar_url || ''
+          }]
+        : [];
+      setForm({
+        ...EMPTY_FORM,
+        entities: defaultEntities
+      });
+      setShowModal(true);
+      
+      // Clear navigation state
+      navigate(location.pathname, { replace: true });
+    }
+  }, [location.state, navigate]);
+
   // KPIs from server-side summary
   const totalAmt = Number(summary.total || 0);
   const approvedAmt = Number(summary.approved || 0);

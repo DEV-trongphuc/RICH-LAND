@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Building2, FileText, FileBadge, Tag as TagIcon, Phone, Mail, MapPin, Search, Calendar, Users, Briefcase, Plus, HelpCircle, Globe, Settings, Download, Trash2, Edit, Pencil, Loader2, History } from 'lucide-react';
 import { CustomSelect } from '../components/ui/CustomSelect';
@@ -36,6 +37,7 @@ const TABS = [
 
 export const CompanyDrawer: React.FC<CompanyDrawerProps> = ({ isOpen, onClose, entity, onSave }) => {
   const { user: currentUser } = useAuth();
+  const navigate = useNavigate();
   const isSale = currentUser && ['sales', 'sale'].includes((currentUser.role || '').toLowerCase());
   const isViewer = currentUser?.role === 'viewer';
   const disableEdit = isViewer;
@@ -907,6 +909,26 @@ export const CompanyDrawer: React.FC<CompanyDrawerProps> = ({ isOpen, onClose, e
                   <div className="animate-fade">
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
                       <h4 className="panel-title" style={{ margin: 0 }}>Lịch sử Hóa đơn & Thanh toán</h4>
+                      {!disableEdit && (
+                        <button 
+                          className="btn primary sm" 
+                          onClick={() => {
+                            const primaryContact = subContacts.find(sc => sc.isPrimary) || subContacts[0];
+                            if (primaryContact) {
+                              useUIStore.getState().setShowPOS({
+                                id: primaryContact.id,
+                                first_name: primaryContact.name.split(' ')[0],
+                                last_name: primaryContact.name.split(' ').slice(1).join(' ') || '',
+                                phone: primaryContact.phone
+                              });
+                            } else {
+                              useUIStore.getState().setShowPOS(true);
+                            }
+                          }}
+                        >
+                          <Plus size={14}/> Tạo hóa đơn (POS)
+                        </button>
+                      )}
                     </div>
                     {loadingInvoices ? (
                       <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--color-text-muted)' }}>
@@ -941,6 +963,27 @@ export const CompanyDrawer: React.FC<CompanyDrawerProps> = ({ isOpen, onClose, e
                   <div className="animate-fade">
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
                       <h4 className="panel-title" style={{ margin: 0 }}>Quản lý Chi phí Doanh nghiệp</h4>
+                      {!disableEdit && (
+                        <button 
+                          className="btn primary sm" 
+                          onClick={() => {
+                            const primaryContact = subContacts.find(sc => sc.isPrimary) || subContacts[0];
+                            navigate('/expenses', { 
+                              state: { 
+                                openCreate: true, 
+                                defaultContact: primaryContact ? {
+                                  id: primaryContact.id,
+                                  name: primaryContact.name,
+                                  avatar_url: ''
+                                } : null
+                              } 
+                            });
+                            onClose();
+                          }}
+                        >
+                          <Plus size={14}/> Thêm chi phí
+                        </button>
+                      )}
                     </div>
                     {loadingExpenses ? (
                       <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--color-text-muted)' }}>

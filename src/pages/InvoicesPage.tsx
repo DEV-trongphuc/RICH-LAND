@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { createPortal } from 'react-dom';
 import {
   FileText, Plus, Search, Download, CheckCircle2, Clock, AlertCircle,
@@ -30,6 +31,8 @@ const fmtDate = (d: any) => {
 
 export const InvoicesPage: React.FC = () => {
   const { addToast, showConfirm, closeConfirm } = useUIStore();
+  const location = useLocation();
+  const navigate = useNavigate();
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [period, setPeriod] = useState<Period>('this_month');
@@ -69,6 +72,14 @@ export const InvoicesPage: React.FC = () => {
   }, [page, dateRange, statusFilter, search]);
 
   useEffect(() => { fetchInvoices(); }, [fetchInvoices]);
+
+  useEffect(() => {
+    if (location.state?.openCreate) {
+      const contact = location.state.defaultContact;
+      useUIStore.getState().setShowPOS(contact || true);
+      navigate(location.pathname, { replace: true });
+    }
+  }, [location.state, navigate]);
 
   // ESC key to close modals
   useEffect(() => {
