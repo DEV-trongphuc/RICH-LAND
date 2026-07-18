@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Calendar, Clock, AlignLeft, Phone, Mail, Users, CheckSquare, Zap, PhoneOutgoing, PhoneIncoming } from 'lucide-react';
+import { X, Calendar, Clock, AlignLeft, Phone, Mail, Users, CheckSquare, Zap, PhoneOutgoing, PhoneIncoming, Camera } from 'lucide-react';
 import { useUIStore } from '../../store/uiStore';
 import { CustomSelect } from './CustomSelect';
 import { MentionInput } from './MentionInput';
@@ -41,6 +41,8 @@ export const ActivityModal: React.FC<ActivityModalProps> = ({ isOpen, onClose, e
     call_outcome: 'reached' as 'reached' | 'no_answer' | 'voicemail' | 'busy' | 'wrong_number',
     call_duration: 5
   });
+  const [proofImageFile, setProofImageFile] = useState<File | null>(null);
+  const [proofImagePreview, setProofImagePreview] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
