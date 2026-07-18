@@ -1283,7 +1283,25 @@ export const Header = ({ onActivityFeedClick, onMenuClick, version }: { onActivi
           const isAdmin = role === 'admin' || role === 'superadmin' || role === 'super_admin';
 
           const getItemColor = (itemName: string) => {
-            return { bg: 'linear-gradient(135deg, var(--color-primary), #8a0f1b)', color: '#ffffff' };
+            const lowercase = itemName.toLowerCase();
+            if (lowercase.includes('dashboard')) return { bg: 'linear-gradient(135deg, #3b82f6, #1d4ed8)', color: '#ffffff' };
+            if (lowercase.includes('bàn làm việc') || lowercase.includes('chấm công') || lowercase.includes('hoạt động')) return { bg: 'linear-gradient(135deg, #10b981, #047857)', color: '#ffffff' };
+            if (lowercase.includes('báo cáo') || lowercase.includes('thống kê')) return { bg: 'linear-gradient(135deg, #6366f1, #4338ca)', color: '#ffffff' };
+            if (lowercase.includes('databank') || lowercase.includes('kho data')) return { bg: 'linear-gradient(135deg, #f59e0b, #b45309)', color: '#ffffff' };
+            if (lowercase.includes('khách hàng') || lowercase.includes('contacts')) return { bg: 'linear-gradient(135deg, #06b6d4, #0891b2)', color: '#ffffff' };
+            if (lowercase.includes('pipeline') || lowercase.includes('chi phí')) return { bg: 'linear-gradient(135deg, #f43f5e, #be123c)', color: '#ffffff' };
+            if (lowercase.includes('phân bổ') || lowercase.includes('chiến dịch')) return { bg: 'linear-gradient(135deg, #ff7a00, #d05300)', color: '#ffffff' };
+            if (lowercase.includes('đối soát') || lowercase.includes('phân quyền')) return { bg: 'linear-gradient(135deg, #ec4899, #be185d)', color: '#ffffff' };
+            if (lowercase.includes('ai') || lowercase.includes('gatekeeper')) return { bg: 'linear-gradient(135deg, #14b8a6, #0f766e)', color: '#ffffff' };
+            if (lowercase.includes('ticket')) return { bg: 'linear-gradient(135deg, #0ea5e9, #0369a1)', color: '#ffffff' };
+            if (lowercase.includes('dự án') || lowercase.includes('công ty')) return { bg: 'linear-gradient(135deg, #64748b, #475569)', color: '#ffffff' };
+            if (lowercase.includes('giỏ hàng') || lowercase.includes('sản phẩm')) return { bg: 'linear-gradient(135deg, #a855f7, #7e22ce)', color: '#ffffff' };
+            if (lowercase.includes('tài liệu')) return { bg: 'linear-gradient(135deg, #eab308, #a16207)', color: '#ffffff' };
+            if (lowercase.includes('chủ đầu tư')) return { bg: 'linear-gradient(135deg, #84cc16, #4d7c0f)', color: '#ffffff' };
+            if (lowercase.includes('báo giá') || lowercase.includes('hóa đơn')) return { bg: 'linear-gradient(135deg, #10b981, #059669)', color: '#ffffff' };
+            if (lowercase.includes('đặt cọc') || lowercase.includes('hợp tác')) return { bg: 'linear-gradient(135deg, #6366f1, #4f46e5)', color: '#ffffff' };
+            if (lowercase.includes('chi nhánh') || lowercase.includes('team') || lowercase.includes('nhân viên')) return { bg: 'linear-gradient(135deg, #8b5cf6, #5b21b6)', color: '#ffffff' };
+            return { bg: 'linear-gradient(135deg, #475569, #334155)', color: '#ffffff' };
           };
 
           const ITEM_DESC: Record<string, string> = {
@@ -1350,7 +1368,7 @@ export const Header = ({ onActivityFeedClick, onMenuClick, version }: { onActivi
           const recentItems = recentTargets
             .map(name => allVisibleItems.find(item => item.name === name))
             .filter(Boolean)
-            .slice(0, 9);
+            .slice(0, isMobile ? 9 : 7);
 
           return (
             <div style={{ paddingRight: '4px' }}>
