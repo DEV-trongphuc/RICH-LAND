@@ -128,7 +128,11 @@ const AppTabs = () => {
     }
     return <Navigate to="/" replace />;
   } else if (isAdminPath) {
-    if (!['admin', 'superadmin', 'super_admin', 'director'].includes(user?.role || '')) {
+    if (currentPath === '/settings') {
+      if (!['admin', 'superadmin', 'super_admin'].includes(user?.role || '')) {
+        return <Navigate to="/" replace />;
+      }
+    } else if (!['admin', 'superadmin', 'super_admin', 'director'].includes(user?.role || '')) {
       return <Navigate to="/" replace />;
     }
   }

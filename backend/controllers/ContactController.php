@@ -1196,6 +1196,10 @@ class ContactController {
             return 'all';
         }
 
+        if (in_array($auth['role'], ['sale', 'sales'], true) && $module === 'deals') {
+            return $action === 'delete' ? 'none' : 'own';
+        }
+
         if ($permissionsJson && isset($permissionsJson[$module][$action])) {
             $val = $permissionsJson[$module][$action];
             if (in_array($val, ['all', 'team', 'own', 'none'], true)) {
@@ -1208,7 +1212,13 @@ class ContactController {
 
         // Default fallbacks
         $role = $auth['role'];
-        if ($role === 'director' || $role === 'assistant') {
+        if ($role === 'director') {
+            if ($module === 'settings') {
+                return 'none';
+            }
+            return 'all';
+        }
+        if ($role === 'assistant') {
             return $action === 'delete' ? 'none' : 'all';
         }
         if ($role === 'manager') {

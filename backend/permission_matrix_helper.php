@@ -12,6 +12,10 @@ if (!function_exists('getModulePermissionScope')) {
             return 'all';
         }
         
+        if (($role === 'sale' || $role === 'sales') && $module === 'deals') {
+            return $action === 'delete' ? 'none' : 'own';
+        }
+        
         // Check if the user has custom permissions in their decoded context or fetched live
         $permissions = $decodedUser['permissions'] ?? null;
         if (isset($permissions) && is_array($permissions)) {
@@ -23,7 +27,10 @@ if (!function_exists('getModulePermissionScope')) {
         
         // Fallback based on role
         if ($role === 'director') {
-            return $action === 'delete' ? 'none' : 'all';
+            if ($module === 'settings') {
+                return 'none';
+            }
+            return 'all';
         }
         if ($role === 'manager') {
             return $action === 'delete' ? 'none' : 'team';

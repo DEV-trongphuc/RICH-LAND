@@ -2,12 +2,14 @@ import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Search, User, FileText, Settings, CreditCard, ChevronRight, CheckSquare, Phone, Activity, Package, BarChart3 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useAuthStore } from '../../store/authStore';
 
 export const CommandPalette = () => {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
   const navigate = useNavigate();
   const inputRef = useRef<HTMLInputElement>(null);
+  const user = useAuthStore(state => state.user);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -40,8 +42,8 @@ export const CommandPalette = () => {
     { title: 'Hóa đơn & Bán hàng', icon: <FileText size={16}/>, action: () => handleAction('/invoices') },
     { title: 'Hoạt động & Lịch (Activities)', icon: <Activity size={16}/>, action: () => handleAction('/activities') },
     { title: 'Báo cáo & Phân tích', icon: <BarChart3 size={16}/>, action: () => handleAction('/reports') },
-    { title: 'Cài đặt hệ thống', icon: <Settings size={16}/>, action: () => handleAction('/settings') },
-  ].filter(r => r.title.toLowerCase().includes(search.toLowerCase()));
+    { title: 'Cài đặt hệ thống', icon: <Settings size={16}/>, action: () => handleAction('/settings'), visible: ['admin', 'superadmin', 'super_admin'].includes(user?.role || '') },
+  ].filter(r => (r.visible !== false) && r.title.toLowerCase().includes(search.toLowerCase()));
 
   return (
     <AnimatePresence>

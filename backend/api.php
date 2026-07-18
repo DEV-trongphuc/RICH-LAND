@@ -248,6 +248,11 @@ function getModulePermissionScope($conn, $auth, $module, $action)
         return 'all';
     }
 
+    // Force sales role to have only 'own' (or 'none' for delete) on deals module
+    if (in_array($auth['role'], ['sale', 'sales'], true) && $module === 'deals') {
+        return $action === 'delete' ? 'none' : 'own';
+    }
+
     $permissionsJson = $auth['permissions'] ?? null;
     if ($permissionsJson === null) {
         $stmt = $conn->prepare("SELECT permissions_json FROM users WHERE id = ? LIMIT 1");
@@ -272,7 +277,10 @@ function getModulePermissionScope($conn, $auth, $module, $action)
     // Default fallbacks based on role
     $role = $auth['role'];
     if ($role === 'director') {
-        return $action === 'delete' ? 'none' : 'all';
+        if ($module === 'settings') {
+            return 'none';
+        }
+        return 'all';
     }
     if ($role === 'manager') {
         return $action === 'delete' ? 'none' : 'team';

@@ -90,7 +90,7 @@ export const getModulePermissionScope = (
   
   // Default fallbacks based on role if not configured in permissions_json
   const role = user.role;
-  if (role === 'director') return action === 'delete' ? 'none' : 'all';
+  if (role === 'director') return module === 'settings' ? 'none' : 'all';
   if (role === 'manager') return action === 'delete' ? 'none' : 'team';
   if (role === 'assistant') {
     if (module === 'leads') return action === 'delete' ? 'none' : 'all';
