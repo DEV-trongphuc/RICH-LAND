@@ -3749,95 +3749,135 @@ function doPost(e) {
                         <h4 style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)', margin: 0 }}>{t('Quy tắc Rớt nhiệt & Phân phối')}</h4>
                       </div>
                       
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                        <div>
-                          <label className="form-label" style={{ fontWeight: 600 }}>{t('Số ngày tự động rớt nhiệt (Decay)')}</label>
-                          <div style={{ display: 'flex', alignItems: 'center', position: 'relative' }}>
-                            <input
-                              type="number"
-                              className="form-input"
-                              style={{ paddingRight: '3.5rem' }}
-                              value={temperatureDecayDays}
-                              onChange={e => setTemperatureDecayDays(Number(e.target.value))}
-                              min={1}
-                            />
-                            <span style={{ position: 'absolute', right: '12px', fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>{t('ngày')}</span>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                        {/* Nhóm A: Quy Tắc Nhiệt Độ (Decay & Gợi ý) */}
+                        <div style={{
+                          background: 'var(--color-bg-light)',
+                          padding: '1.25rem',
+                          borderRadius: '10px',
+                          border: '1px solid var(--color-border-light)',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '1rem'
+                        }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', borderBottom: '1px dashed var(--color-border-light)', paddingBottom: '8px', marginBottom: '4px' }}>
+                            <Activity size={14} style={{ color: 'var(--color-primary)' }} />
+                            <h5 style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text)', margin: 0 }}>
+                              {t('Quy Tắc Nhiệt Độ (Decay & Gợi ý)')}
+                            </h5>
                           </div>
-                          <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px', display: 'block', lineHeight: 1.4 }}>
-                            {t('Mặc định: 5 ngày không tương tác chất lượng.')}
-                          </span>
+
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                            <div>
+                              <label className="form-label" style={{ fontWeight: 600 }}>{t('Số ngày tự động rớt nhiệt (Decay)')}</label>
+                              <div style={{ display: 'flex', alignItems: 'center', position: 'relative' }}>
+                                <input
+                                  type="number"
+                                  className="form-input"
+                                  style={{ paddingRight: '3.5rem' }}
+                                  value={temperatureDecayDays}
+                                  onChange={e => setTemperatureDecayDays(Number(e.target.value))}
+                                  min={1}
+                                />
+                                <span style={{ position: 'absolute', right: '12px', fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>{t('ngày')}</span>
+                              </div>
+                              <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px', display: 'block', lineHeight: 1.4 }}>
+                                {t('Mặc định: 5 ngày không tương tác chất lượng.')}
+                              </span>
+                            </div>
+
+                            <div>
+                              <label className="form-label" style={{ fontWeight: 600 }}>{t('Thời lượng cuộc gọi gợi ý Ấm (nối đồng)')}</label>
+                              <div style={{ display: 'flex', alignItems: 'center', position: 'relative' }}>
+                                <input
+                                  type="number"
+                                  className="form-input"
+                                  style={{ paddingRight: '3.5rem' }}
+                                  value={tempSuggestionCallDuration}
+                                  onChange={e => setTempSuggestionCallDuration(Number(e.target.value))}
+                                  min={1}
+                                />
+                                <span style={{ position: 'absolute', right: '12px', fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>{t('giây')}</span>
+                              </div>
+                              <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px', display: 'block', lineHeight: 1.4 }}>
+                                {t('Thời lượng cuộc gọi tối thiểu (nối đồng) để đề xuất khách hàng là Ấm (Mặc định: 300 giây).')}
+                              </span>
+                            </div>
+
+                            <div>
+                              <label className="form-label" style={{ fontWeight: 600 }}>{t('Số tương tác tối thiểu gợi ý Ấm')}</label>
+                              <div style={{ display: 'flex', alignItems: 'center', position: 'relative' }}>
+                                <input
+                                  type="number"
+                                  className="form-input"
+                                  style={{ paddingRight: '3.5rem' }}
+                                  value={tempSuggestionRequiredNotes}
+                                  onChange={e => setTempSuggestionRequiredNotes(Number(e.target.value))}
+                                  min={1}
+                                />
+                                <span style={{ position: 'absolute', right: '12px', fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>{t('lượt')}</span>
+                              </div>
+                              <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px', display: 'block', lineHeight: 1.4 }}>
+                                {t('Số lượt tương tác ghi chú tối thiểu trước đó để đề xuất khách hàng là Ấm (Mặc định: 2 lượt).')}
+                              </span>
+                            </div>
+                          </div>
                         </div>
 
-                        <div>
-                          <label className="form-label" style={{ fontWeight: 600 }}>{t('Thời lượng cuộc gọi gợi ý Ấm (nối đồng)')}</label>
-                          <div style={{ display: 'flex', alignItems: 'center', position: 'relative' }}>
-                            <input
-                              type="number"
-                              className="form-input"
-                              style={{ paddingRight: '3.5rem' }}
-                              value={tempSuggestionCallDuration}
-                              onChange={e => setTempSuggestionCallDuration(Number(e.target.value))}
-                              min={1}
-                            />
-                            <span style={{ position: 'absolute', right: '12px', fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>{t('giây')}</span>
+                        {/* Nhóm B: Điều Phối & Chống Ôm (Backpressure) */}
+                        <div style={{
+                          background: 'var(--color-bg-light)',
+                          padding: '1.25rem',
+                          borderRadius: '10px',
+                          border: '1px solid var(--color-border-light)',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '1rem'
+                        }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', borderBottom: '1px dashed var(--color-border-light)', paddingBottom: '8px', marginBottom: '4px' }}>
+                            <Layers size={14} style={{ color: 'var(--color-primary)' }} />
+                            <h5 style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text)', margin: 0 }}>
+                              {t('Điều Phối & Chống Ôm (Backpressure)')}
+                            </h5>
                           </div>
-                          <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px', display: 'block', lineHeight: 1.4 }}>
-                            {t('Thời lượng cuộc gọi tối thiểu (nối đồng) để đề xuất khách hàng là Ấm (Mặc định: 300 giây).')}
-                          </span>
-                        </div>
 
-                        <div>
-                          <label className="form-label" style={{ fontWeight: 600 }}>{t('Số tương tác tối thiểu gợi ý Ấm')}</label>
-                          <div style={{ display: 'flex', alignItems: 'center', position: 'relative' }}>
-                            <input
-                              type="number"
-                              className="form-input"
-                              style={{ paddingRight: '3.5rem' }}
-                              value={tempSuggestionRequiredNotes}
-                              onChange={e => setTempSuggestionRequiredNotes(Number(e.target.value))}
-                              min={1}
-                            />
-                            <span style={{ position: 'absolute', right: '12px', fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>{t('lượt')}</span>
-                          </div>
-                          <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px', display: 'block', lineHeight: 1.4 }}>
-                            {t('Số lượt tương tác ghi chú tối thiểu trước đó để đề xuất khách hàng là Ấm (Mặc định: 2 lượt).')}
-                          </span>
-                        </div>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                            <div>
+                              <label className="form-label" style={{ fontWeight: 600 }}>{t('Hạn mức chống ôm (Backpressure)')}</label>
+                              <div style={{ display: 'flex', alignItems: 'center', position: 'relative' }}>
+                                <input
+                                  type="number"
+                                  className="form-input"
+                                  style={{ paddingRight: '3.5rem' }}
+                                  value={backpressureLimit}
+                                  onChange={e => setBackpressureLimit(Number(e.target.value))}
+                                  min={1}
+                                />
+                                <span style={{ position: 'absolute', right: '12px', fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>{t('lead')}</span>
+                              </div>
+                              <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px', display: 'block', lineHeight: 1.4 }}>
+                                {t('Hạn mức data Chưa Xác Định tối đa trước khi chặn chia lead mới.')}
+                              </span>
+                            </div>
 
-                        <div>
-                          <label className="form-label" style={{ fontWeight: 600 }}>{t('Hạn mức chống ôm (Backpressure)')}</label>
-                          <div style={{ display: 'flex', alignItems: 'center', position: 'relative' }}>
-                            <input
-                              type="number"
-                              className="form-input"
-                              style={{ paddingRight: '3.5rem' }}
-                              value={backpressureLimit}
-                              onChange={e => setBackpressureLimit(Number(e.target.value))}
-                              min={1}
-                            />
-                            <span style={{ position: 'absolute', right: '12px', fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>{t('lead')}</span>
+                            <div>
+                              <label className="form-label" style={{ fontWeight: 600 }}>{t('Chờ chia song song Chưa XĐ')}</label>
+                              <div style={{ display: 'flex', alignItems: 'center', position: 'relative' }}>
+                                <input
+                                  type="number"
+                                  className="form-input"
+                                  style={{ paddingRight: '3.5rem' }}
+                                  value={uncontactedLeadShareHours}
+                                  onChange={e => setUncontactedLeadShareHours(Number(e.target.value))}
+                                  min={1}
+                                />
+                                <span style={{ position: 'absolute', right: '12px', fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>{t('giờ')}</span>
+                              </div>
+                              <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px', display: 'block', lineHeight: 1.4 }}>
+                                {t('Chia thêm 1 TVV nếu lead Chưa XĐ không tiến triển.')}
+                              </span>
+                            </div>
                           </div>
-                          <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px', display: 'block', lineHeight: 1.4 }}>
-                            {t('Hạn mức data Chưa Xác Định tối đa trước khi chặn chia lead mới.')}
-                          </span>
-                        </div>
-
-                        <div>
-                          <label className="form-label" style={{ fontWeight: 600 }}>{t('Chờ chia song song Chưa XĐ')}</label>
-                          <div style={{ display: 'flex', alignItems: 'center', position: 'relative' }}>
-                            <input
-                              type="number"
-                              className="form-input"
-                              style={{ paddingRight: '3.5rem' }}
-                              value={uncontactedLeadShareHours}
-                              onChange={e => setUncontactedLeadShareHours(Number(e.target.value))}
-                              min={1}
-                            />
-                            <span style={{ position: 'absolute', right: '12px', fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>{t('giờ')}</span>
-                          </div>
-                          <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px', display: 'block', lineHeight: 1.4 }}>
-                            {t('Chia thêm 1 TVV nếu lead Chưa XĐ không tiến triển.')}
-                          </span>
                         </div>
                       </div>
                     </div>
