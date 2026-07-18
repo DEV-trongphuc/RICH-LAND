@@ -1640,7 +1640,7 @@ const ConsultantsInner = () => {
           )}
         </div>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem', width: '100%', textAlign: 'left' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', width: '100%', textAlign: 'left' }}>
           {(() => {
             const branchMap: Record<string, any[]> = {};
             teams.forEach(team => {
@@ -1677,6 +1677,10 @@ const ConsultantsInner = () => {
               );
             }
 
+            const filteredBranches = selectedBranch
+              ? branchList.filter(([bName]) => bName === selectedBranch)
+              : branchList;
+
             return (
               <>
                 {/* Branch Config/Setting Info Banner */}
@@ -1703,8 +1707,69 @@ const ConsultantsInner = () => {
                   </div>
                 </div>
 
+                {/* Branch Top Filter Chip Bar */}
+                <div className="no-scrollbar" style={{
+                  display: 'flex',
+                  gap: '0.5rem',
+                  overflowX: 'auto',
+                  paddingBottom: '4px',
+                  width: '100%'
+                }}>
+                  {/* "Tất cả" Chip */}
+                  <button
+                    onClick={() => setSelectedBranch('')}
+                    style={{
+                      padding: '8px 16px',
+                      borderRadius: '30px',
+                      border: '1px solid ' + (selectedBranch === '' ? 'var(--color-primary)' : 'var(--color-border-light)'),
+                      background: selectedBranch === '' ? 'rgba(189, 29, 45, 0.08)' : 'var(--color-surface)',
+                      color: selectedBranch === '' ? 'var(--color-primary)' : 'var(--color-text-light)',
+                      fontSize: '0.8rem',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      transition: 'all 0.2s',
+                      whiteSpace: 'nowrap',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px'
+                    }}
+                  >
+                    <Building2 size={14} />
+                    {t('Tất cả')} ({teams.length})
+                  </button>
+
+                  {/* Individual Branch Chips */}
+                  {branchList.map(([bName, bTeams]) => {
+                    const isSelected = selectedBranch === bName;
+                    return (
+                      <button
+                        key={bName}
+                        onClick={() => setSelectedBranch(bName)}
+                        style={{
+                          padding: '8px 16px',
+                          borderRadius: '30px',
+                          border: '1px solid ' + (isSelected ? 'var(--color-primary)' : 'var(--color-border-light)'),
+                          background: isSelected ? 'rgba(189, 29, 45, 0.08)' : 'var(--color-surface)',
+                          color: isSelected ? 'var(--color-primary)' : 'var(--color-text-light)',
+                          fontSize: '0.8rem',
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                          transition: 'all 0.2s',
+                          whiteSpace: 'nowrap',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '6px'
+                        }}
+                      >
+                        <MapPin size={14} />
+                        {bName} ({bTeams.length})
+                      </button>
+                    );
+                  })}
+                </div>
+
                 {/* List of Branches with their respective teams */}
-                {branchList.map(([bName, bTeams]) => {
+                {filteredBranches.map(([bName, bTeams]) => {
                   const totalM = bTeams.reduce((sum, team) => sum + Number(team.member_count), 0);
                   return (
                     <div 
@@ -1762,7 +1827,7 @@ const ConsultantsInner = () => {
                             fontWeight: 700,
                             color: 'var(--color-text)'
                           }}>
-                            {bTeams.length} Nhóm
+                            {bTeams.length} {t('Nhóm')}
                           </span>
                           <span style={{
                             padding: '4px 10px',
@@ -1773,7 +1838,7 @@ const ConsultantsInner = () => {
                             fontWeight: 700,
                             color: 'var(--color-text)'
                           }}>
-                            {totalM} Nhân sự
+                            {totalM} {t('Nhân sự')}
                           </span>
                         </div>
                       </div>
