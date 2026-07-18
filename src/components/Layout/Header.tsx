@@ -1041,16 +1041,15 @@ export const Header = ({ onActivityFeedClick, onMenuClick, version }: { onActivi
         <div
           onMouseEnter={() => setIsProfileMenuOpen(true)}
           onMouseLeave={() => setIsProfileMenuOpen(false)}
-          style={{ position: 'relative' }}
+          style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
         >
+          <div style={{ width: '1px', height: '24px', background: 'var(--color-border)' }} />
           <div 
             onClick={handleProfileClick}
             style={{
               display: 'flex',
               alignItems: 'center',
               gap: '0.625rem',
-              paddingLeft: '0.875rem',
-              borderLeft: '1px solid var(--color-border)',
               cursor: 'pointer',
               padding: '4px 8px',
               borderRadius: '6px',

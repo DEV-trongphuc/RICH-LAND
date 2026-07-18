@@ -1025,7 +1025,7 @@ ul {
 
 /* Tables */
 .table-wrap {
-  overflow-x: auto;
+  overflow-x: auto !important;
 }
 
 table {
