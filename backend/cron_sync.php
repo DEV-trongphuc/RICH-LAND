@@ -466,10 +466,12 @@ if (!function_exists('releasePendingWorkHoursLeads')) {
                        l.source as lead_source, l.type as lead_type, l.note as lead_note,
                        c.name as consultant_name, c.email as consultant_email, c.work_start_time, c.work_end_time, c.work_schedule,
                        c.status as consultant_status, c.leave_start, c.leave_end,
+                       u.id AS user_id,
                        r.round_name, r.cc_emails
                 FROM distribution_logs dl
                 JOIN leads l ON dl.lead_id = l.id
                 LEFT JOIN consultants c ON dl.assigned_to = c.id
+                LEFT JOIN users u ON c.email = u.email
                 LEFT JOIN distribution_rounds r ON dl.round_id = r.id
                 WHERE dl.status = 'pending_work_hours' OR dl.status = 'pending'";
                  
@@ -512,11 +514,12 @@ if (!function_exists('releasePendingWorkHoursLeads')) {
                     // Check if consultant has checked in today (Gate 2 Check-in constraint)
                     $hasCheckIn = false;
                     $dayOfWeek = date('N'); // 1 (Mon) - 7 (Sun)
+                    $targetUserId = (int)($row['user_id'] ?: $row['assigned_to']);
                     
                     if ($dayOfWeek >= 1 && $dayOfWeek <= 6) { // Mon-Sat
                         $stmtCheck = $conn->prepare("SELECT 1 FROM check_ins WHERE user_id = ? AND check_in_date = ? AND status = 'approved' LIMIT 1");
                         if ($stmtCheck) {
-                            $stmtCheck->bind_param("is", $row['assigned_to'], $today);
+                            $stmtCheck->bind_param("is", $targetUserId, $today);
                             $stmtCheck->execute();
                             $hasCheckIn = (bool)$stmtCheck->get_result()->fetch_assoc();
                             $stmtCheck->close();
@@ -524,7 +527,7 @@ if (!function_exists('releasePendingWorkHoursLeads')) {
                     } else if ($dayOfWeek == 7) { // Sun
                         $stmtCheckReg = $conn->prepare("SELECT 1 FROM night_shift_registrations WHERE user_id = ? AND shift_date = ? LIMIT 1");
                         if ($stmtCheckReg) {
-                            $stmtCheckReg->bind_param("is", $row['assigned_to'], $today);
+                            $stmtCheckReg->bind_param("is", $targetUserId, $today);
                             $stmtCheckReg->execute();
                             $hasReg = (bool)$stmtCheckReg->get_result()->fetch_assoc();
                             $stmtCheckReg->close();
@@ -532,7 +535,7 @@ if (!function_exists('releasePendingWorkHoursLeads')) {
                             if ($hasReg) {
                                 $stmtCheck = $conn->prepare("SELECT 1 FROM check_ins WHERE user_id = ? AND check_in_date = ? AND status = 'approved' LIMIT 1");
                                 if ($stmtCheck) {
-                                    $stmtCheck->bind_param("is", $row['assigned_to'], $today);
+                                    $stmtCheck->bind_param("is", $targetUserId, $today);
                                     $stmtCheck->execute();
                                     $hasCheckIn = (bool)$stmtCheck->get_result()->fetch_assoc();
                                     $stmtCheck->close();
@@ -776,11 +779,12 @@ if (!function_exists('releasePendingWorkHoursLeads')) {
                     $hasCheckIn = false;
                     $todayStr = date('Y-m-d');
                     $dayOfWeek = date('N'); // 1 (Mon) - 7 (Sun)
+                    $targetUserId = (int)($row['user_id'] ?: $row['assigned_to']);
                     
                     if ($dayOfWeek >= 1 && $dayOfWeek <= 6) { // Mon-Sat
                         $stmtCheck = $conn->prepare("SELECT 1 FROM check_ins WHERE user_id = ? AND check_in_date = ? AND status = 'approved' LIMIT 1");
                         if ($stmtCheck) {
-                            $stmtCheck->bind_param("is", $row['assigned_to'], $todayStr);
+                            $stmtCheck->bind_param("is", $targetUserId, $todayStr);
                             $stmtCheck->execute();
                             $hasCheckIn = (bool)$stmtCheck->get_result()->fetch_assoc();
                             $stmtCheck->close();
@@ -789,7 +793,7 @@ if (!function_exists('releasePendingWorkHoursLeads')) {
                         // Weekend registration + approved check-in
                         $stmtCheckReg = $conn->prepare("SELECT 1 FROM night_shift_registrations WHERE user_id = ? AND shift_date = ? LIMIT 1");
                         if ($stmtCheckReg) {
-                            $stmtCheckReg->bind_param("is", $row['assigned_to'], $todayStr);
+                            $stmtCheckReg->bind_param("is", $targetUserId, $todayStr);
                             $stmtCheckReg->execute();
                             $hasReg = (bool)$stmtCheckReg->get_result()->fetch_assoc();
                             $stmtCheckReg->close();
@@ -797,7 +801,7 @@ if (!function_exists('releasePendingWorkHoursLeads')) {
                             if ($hasReg) {
                                 $stmtCheck = $conn->prepare("SELECT 1 FROM check_ins WHERE user_id = ? AND check_in_date = ? AND status = 'approved' LIMIT 1");
                                 if ($stmtCheck) {
-                                    $stmtCheck->bind_param("is", $row['assigned_to'], $todayStr);
+                                    $stmtCheck->bind_param("is", $targetUserId, $todayStr);
                                     $stmtCheck->execute();
                                     $hasCheckIn = (bool)$stmtCheck->get_result()->fetch_assoc();
                                     $stmtCheck->close();

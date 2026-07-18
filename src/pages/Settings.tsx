@@ -108,25 +108,25 @@ const SettingsInner = () => {
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
   const [collapsedHelps, setCollapsedHelps] = useState<Record<string, boolean>>({
-    fallback: true,
-    business_limits: true,
-    starvation_prevention: true,
-    duplicate_filter: true,
-    pipeline_stages: true,
-    tag_management: true,
-    legacy_mapping: true,
-    error_reasons: true,
-    auto_approve_ticket: true,
-    email_config: true,
-    zalo_bot: true,
-    automated_reports: true,
-    ai_assistant: true,
-    workflow_templates: true,
-    database_maintenance: true
+    fallback: false,
+    business_limits: false,
+    starvation_prevention: false,
+    duplicate_filter: false,
+    pipeline_stages: false,
+    tag_management: false,
+    legacy_mapping: false,
+    error_reasons: false,
+    auto_approve_ticket: false,
+    email_config: false,
+    zalo_bot: false,
+    automated_reports: false,
+    ai_assistant: false,
+    workflow_templates: false,
+    database_maintenance: false
   });
 
   const renderHelpBanner = (tabKey: string, title: string, content: React.ReactNode) => {
-    const isCollapsed = collapsedHelps[tabKey] ?? true;
+    const isCollapsed = collapsedHelps[tabKey] ?? false;
     return (
       <div style={{
         background: 'var(--color-surface)',
@@ -3572,10 +3572,13 @@ function doPost(e) {
                 </p>
 
                 {renderHelpBanner('business_limits', t('Giải thích cơ chế Nghiệp vụ & Hạn mức'), (
-                  <ul style={{ paddingLeft: '1.25rem', margin: 0, display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                    <li><strong>{t('Tự động rớt nhiệt (Decay):')}</strong> {t('Sau số ngày quy định, nếu Sale không cập nhật bất kỳ tương tác/ghi chú mới nào trên Lead, trạng thái sẽ chuyển thành "Rớt nhiệt" và lead tự động bị thu hồi về Databank.')}</li>
-                    <li><strong>{t('Thời gian chờ nhận lead:')}</strong> {t('Thời hạn tính bằng phút để Sale click "Tiếp nhận" khi nhận được thông báo chia số mới, quá giờ sẽ tự động chuyển cho Sale tiếp theo.')}</li>
+                  <ul style={{ paddingLeft: '1.25rem', margin: 0, display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <li><strong>{t('Tự động rớt nhiệt (Decay):')}</strong> {t('Sau số ngày quy định, nếu Sale không cập nhật bất kỳ tương tác/ghi chú chất lượng nào trên Lead, trạng thái sẽ chuyển thành "Rớt nhiệt" và lead tự động bị thu hồi về Databank.')}</li>
+                    <li><strong>{t('Thời gian chờ nhận lead & Đền bù SLA:')}</strong> {t('Thời hạn tính bằng phút để Sale click "Tiếp nhận" khi nhận được thông báo chia số mới, quá giờ sẽ tự động chuyển cho Sale tiếp theo. Nếu cấu hình đền bù khi trễ check-in hoặc nghỉ phép được bật, Sale bị thu hồi sẽ được cộng đền bù lượt chia số khác vào ví cá nhân để nhận số khác khi online trở lại.')}</li>
                     <li><strong>{t('Hạn mức chống ôm (Backpressure):')}</strong> {t('Nếu Sale đang giữ số lượng lead Chưa Xác Định vượt quá hạn mức này, hệ thống sẽ tạm dừng chia lead mới cho Sale đó cho tới khi họ xử lý xong.')}</li>
+                    <li><strong>{t('Ca trực đêm & Khung giờ vàng:')}</strong> {t('Trong ca trực đêm, lead mới sẽ đổ vào hàng chờ đặc biệt hoặc được xử lý bởi Roster trực đêm riêng biệt. Khung giờ vàng là thời gian cao điểm, thuật toán chia số sẽ tăng tần suất quét và rút ngắn SLA phản hồi của Sale.')}</li>
+                    <li><strong>{t('Hạn mức Databank:')}</strong> {t('Giới hạn số lượng khách hàng tối đa một nhân viên được chủ động rút từ Kho Data chung về ví cá nhân (theo giờ, ngày, tháng) nhằm ngăn chặn việc gom giữ tài nguyên trái phép.')}</li>
+                    <li><strong>{t('Quy tắc cọc & Bể cọc (Rule 1 & 2):')}</strong> {t('Nếu khách hàng hủy đặt cọc trước khi phát sinh bất kỳ doanh thu thực tế nào cho công ty, trạng thái của KHTN/Person sẽ bị hạ về mức trước đó (ví dụ: Booking hoặc Đã Gặp), đồng hồ bảo mật được kích hoạt chạy lại bình thường và Person này có thể tự động được giải phóng ra lại Kho data chung (Databank) nếu hết hạn. Nếu đã phát sinh doanh thu thực thu (đã đóng đợt 1), Person đó bắt buộc phải được giữ nguyên trạng thái Đặt Cọc để bảo toàn lịch sử giao dịch.')}</li>
                   </ul>
                 ))}
 
@@ -4222,10 +4225,10 @@ function doPost(e) {
                 </p>
 
                 {renderHelpBanner('duplicate_filter', t('Giải thích cơ chế Nhận diện & Lọc Trùng Lặp'), (
-                  <ul style={{ paddingLeft: '1.25rem', margin: 0, display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                    <li><strong>{t('Thời hạn nhận diện trùng lặp:')}</strong> {t('Mặc định là 6 tháng. Khi phát hiện khách đăng ký trùng số điện thoại/email trong khoảng thời gian này, lead tự động về Sale cũ phụ trách.')}</li>
-                    <li><strong>{t('Giao lại khi Sale cũ off:')}</strong> {t('Nếu bật, khi phát hiện trùng số nhưng Sale cũ nghỉ phép/nghỉ việc, lead được xem là mới và tự động chia lại cho Sale mới hoạt động.')}</li>
-                    <li><strong>{t('Dữ liệu ánh xạ lịch sử:')}</strong> {t('Luôn được giữ nguyên Sale phụ trách cũ và đồng bộ ngầm để tránh spam thông báo.')}</li>
+                  <ul style={{ paddingLeft: '1.25rem', margin: 0, display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <li><strong>{t('Thời hạn nhận diện trùng lặp:')}</strong> {t('Mặc định là 6 tháng. Khi phát hiện khách đăng ký trùng số điện thoại/email trong khoảng thời gian này, lead tự động định tuyến về Sale cũ phụ trách để chăm sóc tiếp.')}</li>
+                    <li><strong>{t('Giao lại khi Sale cũ không hoạt động:')}</strong> {t('Nếu Sale cũ phụ trách đã nghỉ việc, bị khóa tài khoản hoặc đang xin nghỉ phép/off ca trực, hệ thống sẽ tự động coi đây là lead mới và chuyển tiếp chia vòng (Round-Robin) cho Sale khác đang hoạt động để tránh trôi khách hàng.')}</li>
+                    <li><strong>{t('Dữ liệu ánh xạ lịch sử:')}</strong> {t('Đồng bộ ngầm và bảo mật thông tin liên hệ, đồng thời ghi lại nhật ký phân chia cũ để phục vụ kiểm toán.')}</li>
                   </ul>
                 ))}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
