@@ -3077,14 +3077,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
     return params.get('status') || 'all';
   });
 
-  const uncontactedCount = useMemo(() => {
-    return (data.leads || []).filter((l: any) => 
-      Number(l.is_accepted) === 1 && 
-      l.contact_id && 
-      !l.contact_last_contact && 
-      l.status !== 'reminder'
-    ).length;
-  }, [data.leads]);
+  const uncontactedCount = data.uncontacted_count || 0;
 
   useEffect(() => {
     sessionStorage.setItem('sale-uncontacted-count', String(uncontactedCount));

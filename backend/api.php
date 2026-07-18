@@ -2500,25 +2500,23 @@ switch ($action) {
         }
 
         $uncontactedCount = 0;
-        if ($saleId > 0) {
-            $stmtKhtn = $conn->prepare("
-                SELECT COUNT(*) as cnt 
-                FROM leads l
-                INNER JOIN consultants cons ON l.assigned_to = cons.id
-                INNER JOIN contacts c ON c.person_id = l.person_id AND c.owner_id = cons.id AND c.deleted_at IS NULL
-                WHERE l.assigned_to = ?
-                  AND l.status != 'reminder'
-                  AND l.is_accepted = 1
-                  AND l.source NOT IN ('ca_nhan', 'gioi_thieu')
-                  AND NOT EXISTS (SELECT 1 FROM activities WHERE related_type = 'contact' AND related_id = c.id)
-                  AND NOT EXISTS (SELECT 1 FROM notes WHERE entity_type = 'contact' AND entity_id = c.id)
-            ");
-            if ($stmtKhtn) {
-                $stmtKhtn->bind_param("i", $saleId);
-                $stmtKhtn->execute();
-                $uncontactedCount = (int) ($stmtKhtn->get_result()->fetch_assoc()['cnt'] ?? 0);
-                $stmtKhtn->close();
+        $uncontactedQuery = "
+            SELECT COUNT(*) as cnt 
+            FROM contacts c
+            WHERE c.deleted_at IS NULL
+              AND NOT EXISTS (SELECT 1 FROM activities WHERE related_type = 'contact' AND related_id = c.id)
+              AND NOT EXISTS (SELECT 1 FROM notes WHERE entity_type = 'contact' AND entity_id = c.id)
+        ";
+        if ($isSale) {
+            $uncontactedQuery .= " AND c.owner_id = " . (int)$saleId;
+        } else {
+            if ($saleFilterId !== null) {
+                $uncontactedQuery .= " AND c.owner_id = " . (int)$saleFilterId;
             }
+        }
+        $resUncontacted = $conn->query($uncontactedQuery);
+        if ($resUncontacted) {
+            $uncontactedCount = (int) ($resUncontacted->fetch_assoc()['cnt'] ?? 0);
         }
         $leadRecallMinutes = (int) get_system_setting($conn, 'lead_response_timeout_minutes');
 
