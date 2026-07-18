@@ -374,7 +374,7 @@ class TeamController
     public function getComments(array $auth, int $teamId): void {
         $this->requireTeamAccess($auth, $teamId);
         $stmt = $this->db->prepare("
-            SELECT c.*, u.full_name as user_name, COALESCE(u.avatar_url, u.avatar) as avatar_url 
+            SELECT c.*, u.full_name as user_name, u.avatar_url 
             FROM comments c
             JOIN users u ON c.user_id = u.id
             WHERE c.entity_type = 'team' AND c.entity_id = ? AND c.tenant_id = ?

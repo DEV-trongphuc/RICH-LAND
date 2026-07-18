@@ -4554,24 +4554,18 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                     className="hover-lift active-press"
                   >
                     <div>
-                      {/* Header row: Team Name and Branch */}
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', gap: '8px' }}>
+                      {/* Header row: Team Name */}
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                         <h3 style={{ fontWeight: 800, fontSize: '0.95rem', color: 'var(--color-text)', margin: 0, lineHeight: 1.3 }}>
                           {team.name}
                         </h3>
                         {team.branch && (
-                          <span className="badge info" style={{ 
-                            fontSize: '0.65rem', 
-                            padding: '2px 8px', 
-                            borderRadius: '12px', 
-                            flexShrink: 1, 
-                            whiteSpace: 'normal', 
-                            wordBreak: 'break-word', 
-                            textAlign: 'right',
-                            maxWidth: isMobile ? '60%' : '300px'
-                          }}>
-                            {team.branch}
-                          </span>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.72rem', color: 'var(--color-text-muted)', marginTop: '2px' }}>
+                            <Building2 size={12} style={{ flexShrink: 0 }} />
+                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', lineHeight: 1.2 }}>
+                              {team.branch}
+                            </span>
+                          </div>
                         )}
                       </div>
                       

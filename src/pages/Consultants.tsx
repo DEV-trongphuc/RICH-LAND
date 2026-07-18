@@ -1338,7 +1338,7 @@ const ConsultantsInner = () => {
       </div>
       ) : activeTab === 'teams' ? (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1.5rem', padding: '0.25rem' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, 1fr)', gap: isMobile ? '1rem' : '1.5rem', padding: '0.25rem' }}>
             {teamsLoading ? (
               [...Array(3)].map((_, i) => (
                 <div key={i} className="card animate-pulse" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem', minHeight: '200px' }}>
@@ -1482,19 +1482,42 @@ const ConsultantsInner = () => {
                         </span>
                       </div>
 
-                      {/* KPI */}
+                      {/* Thành viên (Avatars) */}
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.8125rem' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--color-text-muted)' }}>
-                          <TrendingUp size={14} />
-                          <span>{t('KPI doanh thu tháng')}:</span>
+                          <Users size={14} />
+                          <span>{t('Thành viên')}:</span>
                         </div>
-                        {team.kpi_target !== null && team.kpi_target !== undefined ? (
-                          <strong style={{ color: 'var(--color-primary)', fontWeight: 800 }}>
-                            {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(team.kpi_target)}
-                          </strong>
-                        ) : (
-                          <span style={{ color: 'var(--color-text-muted)', fontStyle: 'italic' }}>{t('Chưa thiết lập')}</span>
-                        )}
+                        <div style={{ display: 'flex', alignItems: 'center' }}>
+                          {(() => {
+                            const members = allSystemUsers.filter(u => String(u.team_id) === String(team.id));
+                            return (
+                              <>
+                                <div style={{ display: 'flex', alignItems: 'center', marginRight: '6px' }}>
+                                  {members.slice(0, 5).map((m: any, idx: number) => (
+                                    <div key={m.id} style={{ 
+                                      marginLeft: idx > 0 ? '-8px' : '0', 
+                                      border: '1.5px solid var(--color-surface)', 
+                                      borderRadius: '50%', 
+                                      overflow: 'hidden', 
+                                      display: 'flex',
+                                      boxShadow: 'var(--shadow-sm)'
+                                    }}>
+                                      <Avatar src={m.avatar_url || m.avatar} name={m.full_name || m.name || 'User'} size={20} />
+                                    </div>
+                                  ))}
+                                </div>
+                                {members.length > 5 ? (
+                                  <span className="badge info sm" style={{ fontWeight: 800, fontSize: '0.7rem', padding: '2px 6px', borderRadius: '10px' }}>
+                                    +{members.length - 5}
+                                  </span>
+                                ) : (
+                                  members.length === 0 && <span style={{ color: 'var(--color-text-muted)', fontStyle: 'italic' }}>{t('Trống')}</span>
+                                )}
+                              </>
+                            );
+                          })()}
+                        </div>
                       </div>
 
                       {/* Dự án */}
