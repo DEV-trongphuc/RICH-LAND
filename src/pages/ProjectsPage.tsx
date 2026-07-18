@@ -2774,7 +2774,7 @@ export default function ProjectsPage() {
         background: '#ffffff',
         border: '1px solid var(--color-border-light)',
         borderRadius: '12px',
-        padding: '0.5rem 0.75rem',
+        padding: '0.625rem 1.25rem',
         marginBottom: '1.25rem',
         boxShadow: 'var(--shadow-sm)',
         width: '100%'
