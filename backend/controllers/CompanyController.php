@@ -56,7 +56,7 @@ class CompanyController {
     }
 
     public function store(array $auth): void {
-        if (in_array($auth['role'], ['sales', 'sale', 'viewer'], true)) {
+        if ($auth['role'] === 'viewer') {
             respond(403, null, 'Bạn không có quyền thêm công ty mới', false);
         }
         $b = getBody();
@@ -90,15 +90,16 @@ class CompanyController {
         }
 
         $stmt = $this->db->prepare("
-            INSERT INTO companies (tenant_id,owner_id,created_by,name,tax_id,industry,website,social_link,phone,email,address,ward,city,country,size,status,tags,notes,stage_id)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+            INSERT INTO companies (tenant_id,owner_id,created_by,name,tax_id,industry,website,social_link,phone,email,address,ward,city,country,size,status,tags,notes,stage_id,expected_revenue,legal_representative,erp_code)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
         ");
         $stmt->execute([
             $auth['tenant_id'], $b['owner_id'] ?? $auth['user_id'], $auth['user_id'],
             $b['name'], $b['tax_id']??null, $b['industry']??null, $b['website']??null, $b['social_link']??null,
             $b['phone']??null, $b['email']??null, $b['address']??null, $b['ward']??null, $b['city']??null,
             $b['country']??'Việt Nam', $b['size']??null, $b['status']??'prospect',
-            json_encode($b['tags']??[]), $b['notes']??null, $stageId
+            json_encode($b['tags']??[]), $b['notes']??null, $stageId,
+            $b['expected_revenue']??0, $b['legal_representative']??null, $b['erp_code']??null
         ]);
         $id = (int)$this->db->lastInsertId();
         if (isset($b['custom_fields']) && is_array($b['custom_fields'])) {
@@ -120,7 +121,8 @@ class CompanyController {
             WHERE c.id=? AND c.tenant_id=? AND c.deleted_at IS NULL";
         
         $p = [$id, $auth['tenant_id']];
-        if ($auth['role'] === 'sales') {
+        $isSale = in_array($auth['role'], ['sale', 'sales'], true);
+        if ($isSale) {
             // Can see company if owner OR manages a contact in that company
             $sql .= " AND (c.owner_id=? OR EXISTS (SELECT 1 FROM contacts ct2 WHERE ct2.company_id=c.id AND ct2.owner_id=? AND ct2.deleted_at IS NULL))";
             $p[] = $auth['user_id'];
@@ -136,11 +138,11 @@ class CompanyController {
     }
 
     public function update(array $auth, int $id): void {
-        if (in_array($auth['role'], ['sales', 'sale', 'viewer'], true)) {
+        if ($auth['role'] === 'viewer') {
             respond(403, null, 'Bạn không có quyền cập nhật thông tin công ty', false);
         }
         $b = getBody();
-        $fields = ['owner_id','name','tax_id','industry','website','social_link','phone','email','address','ward','city','country','size','status','notes','stage_id'];
+        $fields = ['owner_id','name','tax_id','industry','website','social_link','phone','email','address','ward','city','country','size','status','notes','stage_id','expected_revenue','legal_representative','erp_code'];
         $sets=[]; $params=[];
         foreach ($fields as $f) { if (array_key_exists($f,$b)) { $sets[]="$f=?"; $params[]=$b[$f]; } }
         if (isset($b['tags'])) { $sets[]='tags=?'; $params[]=json_encode($b['tags']); }
@@ -153,9 +155,10 @@ class CompanyController {
         }
 
         // Check permission first
-        $check = $this->db->prepare("SELECT id FROM companies WHERE id=? AND tenant_id=? " . ($auth['role'] === 'sales' ? " AND owner_id=?" : ""));
+        $isSale = in_array($auth['role'], ['sale', 'sales'], true);
+        $check = $this->db->prepare("SELECT id FROM companies WHERE id=? AND tenant_id=? " . ($isSale ? " AND owner_id=?" : ""));
         $cp = [$id, $auth['tenant_id']];
-        if ($auth['role'] === 'sales') $cp[] = $auth['user_id'];
+        if ($isSale) $cp[] = $auth['user_id'];
         $check->execute($cp);
         if (!$check->fetch()) respond(404, null, 'Không tìm thấy hoặc không có quyền', false);
 

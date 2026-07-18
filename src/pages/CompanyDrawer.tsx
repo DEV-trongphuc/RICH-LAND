@@ -24,19 +24,21 @@ interface CompanyDrawerProps {
 }
 
 const TABS = [
-  { id: 'info', label: 'Thông tin công ty', icon: <Building2 size={16} /> },
-  { id: 'activities', label: 'Hoạt động & Lịch', icon: <History size={16} /> },
-  { id: 'contacts', label: 'Người liên hệ', icon: <Users size={16} /> },
-  { id: 'deals', label: 'Cơ hội bán hàng', icon: <Briefcase size={16} /> },
-  { id: 'docs', label: 'Hợp đồng & Tài liệu', icon: <FileBadge size={16} /> },
-  { id: 'settings', label: 'Thiết lập & Cài đặt', icon: <Settings size={16} /> },
+  { id: 'info', label: 'Thông tin', icon: <Building2 size={16} /> },
+  { id: 'activities', label: 'Hoạt động', icon: <History size={16} /> },
+  { id: 'contacts', label: 'Liên hệ', icon: <Users size={16} /> },
+  { id: 'deals', label: 'Cơ hội', icon: <Briefcase size={16} /> },
+  { id: 'invoices', label: 'Hóa đơn', icon: <FileText size={16} /> },
+  { id: 'expenses', label: 'Chi phí', icon: <Plus size={16} /> },
+  { id: 'docs', label: 'Tài liệu', icon: <FileBadge size={16} /> },
+  { id: 'settings', label: 'Thiết lập', icon: <Settings size={16} /> },
 ];
 
 export const CompanyDrawer: React.FC<CompanyDrawerProps> = ({ isOpen, onClose, entity, onSave }) => {
   const { user: currentUser } = useAuth();
   const isSale = currentUser && ['sales', 'sale'].includes((currentUser.role || '').toLowerCase());
   const isViewer = currentUser?.role === 'viewer';
-  const disableEdit = isSale || isViewer;
+  const disableEdit = isViewer;
   const { addToast, showConfirm } = useUIStore();
   const [activeTab, setActiveTab] = useState('info');
   const [formData, setFormData] = useState(entity || {});
@@ -168,6 +170,37 @@ export const CompanyDrawer: React.FC<CompanyDrawerProps> = ({ isOpen, onClose, e
     }
   };
 
+  const [invoices, setInvoices] = useState<any[]>([]);
+  const [loadingInvoices, setLoadingInvoices] = useState(false);
+  const [expenses, setExpenses] = useState<any[]>([]);
+  const [loadingExpenses, setLoadingExpenses] = useState(false);
+
+  const fetchInvoices = async () => {
+    if (!entity?.id) return;
+    setLoadingInvoices(true);
+    try {
+      const r = await api.get('/invoices', { params: { company_id: entity.id, limit: 100 } });
+      setInvoices(r.data.data?.items || r.data.data || []);
+    } catch {
+      setInvoices([]);
+    } finally {
+      setLoadingInvoices(false);
+    }
+  };
+
+  const fetchExpenses = async () => {
+    if (!entity?.id) return;
+    setLoadingExpenses(true);
+    try {
+      const r = await api.get('/expenses', { params: { company_id: entity.id, limit: 100 } });
+      setExpenses(r.data.data?.items || r.data.data || []);
+    } catch {
+      setExpenses([]);
+    } finally {
+      setLoadingExpenses(false);
+    }
+  };
+
   const handleCreateDeal = async () => {
     if (!dealForm.title.trim() || isSaving) return;
     try {
@@ -199,6 +232,8 @@ export const CompanyDrawer: React.FC<CompanyDrawerProps> = ({ isOpen, onClose, e
 
   useEffect(() => {
     if (activeTab === 'activities') fetchActivities();
+    if (activeTab === 'invoices') fetchInvoices();
+    if (activeTab === 'expenses') fetchExpenses();
   }, [activeTab]);
   
   useEffect(() => {
@@ -225,6 +260,9 @@ export const CompanyDrawer: React.FC<CompanyDrawerProps> = ({ isOpen, onClose, e
           .then(r => setDeals(r.data.data?.items || r.data.data || []))
           .catch(() => setDeals([]))
           .finally(() => setDealsLoading(false));
+
+        fetchInvoices();
+        fetchExpenses();
     }
   }, [entity]);
 
@@ -754,7 +792,77 @@ export const CompanyDrawer: React.FC<CompanyDrawerProps> = ({ isOpen, onClose, e
                       </div>
                     )}
                   </div>
-                )}                {activeTab === 'docs' && (
+                )}
+
+                {activeTab === 'invoices' && (
+                  <div className="animate-fade">
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+                      <h4 className="panel-title" style={{ margin: 0 }}>Lịch sử Hóa đơn & Thanh toán</h4>
+                    </div>
+                    {loadingInvoices ? (
+                      <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--color-text-muted)' }}>
+                        <Loader2 size={24} className="spin" style={{ margin: '0 auto' }} />
+                      </div>
+                    ) : invoices.length === 0 ? (
+                      <div className="card-panel" style={{ textAlign: 'center', padding: '2rem', color: 'var(--color-text-muted)' }}>
+                        <FileText size={32} style={{ margin: '0 auto 1rem', opacity: 0.4 }} />
+                        <p style={{ fontWeight: 600 }}>Chưa có hóa đơn nào</p>
+                      </div>
+                    ) : (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                        {invoices.map((inv: any) => (
+                          <div key={inv.id} className="card-panel" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1rem' }}>
+                            <div>
+                              <h4 style={{ fontWeight: 600, fontSize: '0.9rem', color: 'var(--color-primary)' }}>{inv.invoice_number || `INV-${inv.id}`}</h4>
+                              <p className="text-xs text-light mt-1">
+                                Tiêu đề: <strong>{inv.title || 'Hóa đơn dịch vụ'}</strong> • Tổng tiền: <strong style={{ color: 'var(--color-text)' }}>{new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(inv.total || 0)}</strong>
+                              </p>
+                            </div>
+                            <span className={`badge ${inv.status === 'paid' ? 'success' : inv.status === 'pending' ? 'warning' : 'danger'}`}>
+                              {inv.status === 'paid' ? 'Đã thanh toán' : inv.status === 'pending' ? 'Chờ thanh toán' : 'Quá hạn'}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {activeTab === 'expenses' && (
+                  <div className="animate-fade">
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+                      <h4 className="panel-title" style={{ margin: 0 }}>Quản lý Chi phí Doanh nghiệp</h4>
+                    </div>
+                    {loadingExpenses ? (
+                      <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--color-text-muted)' }}>
+                        <Loader2 size={24} className="spin" style={{ margin: '0 auto' }} />
+                      </div>
+                    ) : expenses.length === 0 ? (
+                      <div className="card-panel" style={{ textAlign: 'center', padding: '2rem', color: 'var(--color-text-muted)' }}>
+                        <Plus size={32} style={{ margin: '0 auto 1rem', opacity: 0.4 }} />
+                        <p style={{ fontWeight: 600 }}>Chưa ghi nhận chi phí nào</p>
+                      </div>
+                    ) : (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                        {expenses.map((exp: any) => (
+                          <div key={exp.id} className="card-panel" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1rem' }}>
+                            <div>
+                              <h4 style={{ fontWeight: 600, fontSize: '0.9rem', color: 'var(--color-danger)' }}>{exp.title}</h4>
+                              <p className="text-xs text-light mt-1">
+                                Số tiền: <strong style={{ color: 'var(--color-text)' }}>{new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(exp.amount || 0)}</strong> • Loại: {exp.category || 'Khác'}
+                              </p>
+                            </div>
+                            <span className={`badge ${exp.status === 'approved' ? 'success' : exp.status === 'rejected' ? 'danger' : 'warning'}`}>
+                              {exp.status === 'approved' ? 'Đã duyệt' : exp.status === 'rejected' ? 'Từ chối' : 'Chờ duyệt'}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {activeTab === 'docs' && (
                   <div className="animate-fade">
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
                       <h4 className="panel-title" style={{ margin: 0 }}>Tài liệu Doanh nghiệp</h4>
