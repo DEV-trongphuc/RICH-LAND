@@ -24,8 +24,10 @@ class CompanyController {
         if (!in_array($sortBy, $allowedSort)) $sortBy = 'created_at';
         if (!in_array(strtoupper($order), ['ASC', 'DESC'])) $order = 'DESC';
 
-        if ($auth['role'] === 'sales') {
-            $where[] = 'c.owner_id = ?';
+        if (in_array($auth['role'], ['sale', 'sales'], true)) {
+            $where[] = '(c.owner_id = ? OR c.dedicated_rep_id = ? OR EXISTS (SELECT 1 FROM contacts ct2 WHERE ct2.company_id=c.id AND ct2.owner_id=? AND ct2.deleted_at IS NULL))';
+            $params[] = $auth['user_id'];
+            $params[] = $auth['user_id'];
             $params[] = $auth['user_id'];
         }
         if ($search) { $where[] = 'MATCH(c.name,c.email) AGAINST(? IN BOOLEAN MODE)'; $params[] = "$search*"; }
@@ -127,8 +129,9 @@ class CompanyController {
         $p = [$id, $auth['tenant_id']];
         $isSale = in_array($auth['role'], ['sale', 'sales'], true);
         if ($isSale) {
-            // Can see company if owner OR manages a contact in that company
-            $sql .= " AND (c.owner_id=? OR EXISTS (SELECT 1 FROM contacts ct2 WHERE ct2.company_id=c.id AND ct2.owner_id=? AND ct2.deleted_at IS NULL))";
+            // Can see company if owner OR manages a contact in that company OR is dedicated rep
+            $sql .= " AND (c.owner_id=? OR c.dedicated_rep_id=? OR EXISTS (SELECT 1 FROM contacts ct2 WHERE ct2.company_id=c.id AND ct2.owner_id=? AND ct2.deleted_at IS NULL))";
+            $p[] = $auth['user_id'];
             $p[] = $auth['user_id'];
             $p[] = $auth['user_id'];
         }
@@ -166,9 +169,15 @@ class CompanyController {
 
         // Check permission first
         $isSale = in_array($auth['role'], ['sale', 'sales'], true);
-        $check = $this->db->prepare("SELECT id, name FROM companies WHERE id=? AND tenant_id=? " . ($isSale ? " AND owner_id=?" : ""));
+        $sqlCheck = "SELECT c.id, c.name FROM companies c WHERE c.id=? AND c.tenant_id=? ";
         $cp = [$id, $auth['tenant_id']];
-        if ($isSale) $cp[] = $auth['user_id'];
+        if ($isSale) {
+            $sqlCheck .= " AND (c.owner_id=? OR c.dedicated_rep_id=? OR EXISTS (SELECT 1 FROM contacts ct2 WHERE ct2.company_id=c.id AND ct2.owner_id=? AND ct2.deleted_at IS NULL))";
+            $cp[] = $auth['user_id'];
+            $cp[] = $auth['user_id'];
+            $cp[] = $auth['user_id'];
+        }
+        $check = $this->db->prepare($sqlCheck);
         $check->execute($cp);
         $oldCompany = $check->fetch();
         if (!$oldCompany) respond(404, null, 'Không tìm thấy hoặc không có quyền', false);
@@ -215,8 +224,10 @@ class CompanyController {
 
         $sql = "UPDATE companies SET stage_id=? WHERE id=? AND tenant_id=?";
         $p = [$b['stage_id'], $id, $auth['tenant_id']];
-        if ($auth['role'] === 'sales') {
-            $sql .= " AND owner_id=?";
+        if (in_array($auth['role'], ['sale', 'sales'], true)) {
+            $sql .= " AND (owner_id=? OR dedicated_rep_id=? OR EXISTS (SELECT 1 FROM contacts ct2 WHERE ct2.company_id=companies.id AND ct2.owner_id=? AND ct2.deleted_at IS NULL))";
+            $p[] = $auth['user_id'];
+            $p[] = $auth['user_id'];
             $p[] = $auth['user_id'];
         }
         $stmt = $this->db->prepare($sql);

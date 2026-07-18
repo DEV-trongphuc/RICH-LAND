@@ -1102,31 +1102,27 @@ export const CompanyDrawer: React.FC<CompanyDrawerProps> = ({ isOpen, onClose, e
                           ]}
                           value={formData.sla_level || 'standard'}
                           onChange={(val) => {
-                            const nextRep = val === 'platinum' ? formData.dedicated_rep_id : null;
-                            setFormData({ ...formData, sla_level: val, dedicated_rep_id: nextRep });
+                            setFormData({ ...formData, sla_level: val });
                           }}
                         />
                       </div>
 
-                      {(formData.sla_level || 'standard') === 'platinum' && (
-                        <div className="form-group mb-4 animate-fade">
-                          <label className="form-label">Chuyên viên chăm sóc riêng (Dedicated Care Representative)</label>
-                          <CustomSelect 
-                            options={users.map(u => ({ 
-                              value: String(u.id), 
-                              label: u.full_name || u.name,
-                              avatar: u.avatar_url || u.avatar,
-                              sublabel: u.role
-                            }))}
-                            value={formData.dedicated_rep_id ? String(formData.dedicated_rep_id) : null}
-                            onChange={(val) => setFormData({ ...formData, dedicated_rep_id: val ? Number(val) : null })}
-                            placeholder="Chọn chuyên viên..."
-                            searchable
-                            showAvatars={true}
-                          />
-                        </div>
-                      )}
-                      
+                      <div className="form-group mb-4">
+                        <label className="form-label">Chuyên viên chăm sóc riêng (Dedicated Care Representative)</label>
+                        <CustomSelect 
+                          options={users.map(u => ({ 
+                            value: String(u.id), 
+                            label: u.full_name || u.name,
+                            avatar: u.avatar_url || u.avatar,
+                            sublabel: u.role
+                          }))}
+                          value={formData.dedicated_rep_id ? String(formData.dedicated_rep_id) : null}
+                          onChange={(val) => setFormData({ ...formData, dedicated_rep_id: val ? Number(val) : null })}
+                          placeholder="Chọn chuyên viên..."
+                          searchable
+                          showAvatars={true}
+                        />
+                      </div>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '1rem' }}>
                         <CustomCheckbox 
                           label={<div><span style={{ fontWeight: 600, display: 'block' }}>Áp dụng Bảng giá Đại lý (Wholesale)</span><span style={{ fontSize: '0.8rem', color: 'var(--color-text-light)' }}>Công ty này sẽ tự động nhận báo giá đã chiết khấu.</span></div>}
