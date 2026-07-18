@@ -1847,7 +1847,7 @@ fetch("${webhookUrl(selected.webhook_token)}", {
                     <span style={{ fontSize: '0.75rem', color: '#94a3b8', cursor: 'pointer' }}>{t('(?) Cơ chế hoạt động?')}</span>
                   </div>
 
-                  <div className="responsive-grid-5" style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 8 }}>
+                  <div className="responsive-grid-5" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(90px, 1fr))', gap: 8 }}>
                     {[
                       { id: '5p', icon: <Zap size={20} />, time: '5p', label: t('NHANH') },
                       { id: '15p', icon: <Clock size={20} />, time: '15p', label: t('CHUẨN') },
@@ -2225,7 +2225,7 @@ fetch("${webhookUrl(selected.webhook_token)}", {
                     <label className="form-label" style={{ fontWeight: 800, color: 'var(--color-text-light)', textTransform: 'uppercase', fontSize: '0.75rem', letterSpacing: 0.5, margin: 0 }}>{t('Chu kỳ đồng bộ')}</label>
                   </div>
 
-                  <div className="responsive-grid-5" style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 8 }}>
+                  <div className="responsive-grid-5" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(90px, 1fr))', gap: 8 }}>
                     {[
                       { id: '5p', icon: <Zap size={20} />, time: '5p', label: t('NHANH') },
                       { id: '15p', icon: <Clock size={20} />, time: '15p', label: t('CHUẨN') },
@@ -2276,7 +2276,7 @@ fetch("${webhookUrl(selected.webhook_token)}", {
                     <label className="form-label" style={{ fontWeight: 800, color: 'var(--color-text-light)', textTransform: 'uppercase', fontSize: '0.75rem', letterSpacing: 0.5, margin: 0 }}>{t('Chế độ đồng bộ')}</label>
                   </div>
 
-                  <div className="responsive-grid-1-1" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                  <div className="responsive-grid-1-1" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 8 }}>
                     <div
                       onClick={() => setEditSyncMode('all')}
                       style={{
