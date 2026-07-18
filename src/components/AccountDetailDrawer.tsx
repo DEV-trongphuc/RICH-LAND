@@ -1676,8 +1676,8 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
                               <label className="form-label">{t('Chế độ hoạt động Trưởng nhóm')}</label>
                               <CustomSelect 
                                 options={[
-                                  { value: 'combined', label: t('Trưởng nhóm kiêm Sale (Nhận data, chấm công như Sale)') },
-                                  { value: 'pure', label: t('Trưởng nhóm thuần túy (Không nhận data, không chấm công, duyệt công)') }
+                                  { value: 'combined', label: t('Trưởng nhóm kiêm Sale') },
+                                  { value: 'pure', label: t('Trưởng nhóm thuần túy') }
                                 ]}
                                 value={managerBehaviorMode}
                                 onChange={val => setManagerBehaviorMode(val.toString())}
