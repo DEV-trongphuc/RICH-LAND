@@ -18,6 +18,7 @@ import { Skeleton } from '../components/ui/Skeleton';
 import { Avatar } from '../components/ui/Avatar';
 import { MentionInput } from '../components/ui/MentionInput';
 import { WorkspaceTaskDrawer } from './WorkspaceTaskDrawer';
+import { FilesPage } from './FilesPage';
 
 
 
@@ -852,6 +853,8 @@ export default function ProjectsPage() {
   };
 
   const [isDocsModalOpen, setIsDocsModalOpen] = useState(false);
+  const [isFileModalOpen, setIsFileModalOpen] = useState(false);
+  const [fileModalProjectId, setFileModalProjectId] = useState<number | null>(null);
   const [projectDocs, setProjectDocs] = useState<ProjectDoc[]>([]);
   const [uploadingDoc, setUploadingDoc] = useState(false);
   const [editingDocKey, setEditingDocKey] = useState<string | null>(null);
@@ -4911,6 +4914,19 @@ export default function ProjectsPage() {
 
       {renderQuickCampaignsDrawer()}
 
+      {/* Embedded Files Modal/Drawer */}
+      {renderDrawer(
+        isFileModalOpen,
+        () => setIsFileModalOpen(false),
+        "Thư Mục Tài Liệu Chi Tiết",
+        fileModalProjectId ? (
+          <div style={{ height: 'calc(100vh - 120px)', overflowY: 'auto' }} className="custom-scrollbar">
+            <FilesPage embedProjectId={String(fileModalProjectId)} isEmbedded={true} />
+          </div>
+        ) : null,
+        '1000px'
+      )}
+
       {/* Project Docs Drawer */}
       {renderDrawer(
         isDocsModalOpen,
@@ -4943,6 +4959,12 @@ export default function ProjectsPage() {
                   {parseFolderPaths(selectedProj.folder_path).map((f, idx) => (
                     <div 
                       key={idx}
+                      onClick={() => {
+                        if (f.type !== 'link' && selectedProj?.id) {
+                          setFileModalProjectId(selectedProj.id);
+                          setIsFileModalOpen(true);
+                        }
+                      }}
                       style={{
                         padding: '0.85rem 1rem',
                         border: '1px solid var(--color-border)',
@@ -4951,7 +4973,23 @@ export default function ProjectsPage() {
                         justifyContent: 'space-between',
                         alignItems: 'center',
                         background: f.type === 'link' ? 'rgba(59, 130, 246, 0.04)' : 'rgba(16, 185, 129, 0.04)',
-                        borderColor: f.type === 'link' ? 'rgba(59, 130, 246, 0.15)' : 'rgba(16, 185, 129, 0.15)'
+                        borderColor: f.type === 'link' ? 'rgba(59, 130, 246, 0.15)' : 'rgba(16, 185, 129, 0.15)',
+                        cursor: f.type === 'link' ? 'default' : 'pointer',
+                        transition: 'all 0.2s ease'
+                      }}
+                      onMouseEnter={e => {
+                        if (f.type !== 'link') {
+                          e.currentTarget.style.borderColor = 'rgba(16, 185, 129, 0.3)';
+                          e.currentTarget.style.background = 'rgba(16, 185, 129, 0.08)';
+                          e.currentTarget.style.transform = 'translateY(-1px)';
+                        }
+                      }}
+                      onMouseLeave={e => {
+                        if (f.type !== 'link') {
+                          e.currentTarget.style.borderColor = 'rgba(16, 185, 129, 0.15)';
+                          e.currentTarget.style.background = 'rgba(16, 185, 129, 0.04)';
+                          e.currentTarget.style.transform = 'none';
+                        }
                       }}
                     >
                       <div style={{ flex: 1, minWidth: 0, marginRight: '1rem' }}>
@@ -4970,21 +5008,27 @@ export default function ProjectsPage() {
                           rel="noopener noreferrer"
                           className="btn success sm"
                           style={{ borderRadius: '10px', fontSize: '0.75rem', height: '32px', display: 'inline-flex', alignItems: 'center', gap: '6px', whiteSpace: 'nowrap', textDecoration: 'none', background: '#3b82f6', color: '#fff', border: 'none' }}
+                          onClick={e => e.stopPropagation()}
                         >
                           <ExternalLink size={12} />
                           Mở Link
                         </a>
                       ) : (
-                        <a
-                          href={`/files?project_id=${selectedProj.id}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
+                        <button
+                          type="button"
                           className="btn success sm"
-                          style={{ borderRadius: '10px', fontSize: '0.75rem', height: '32px', display: 'inline-flex', alignItems: 'center', gap: '6px', whiteSpace: 'nowrap', textDecoration: 'none', background: 'var(--color-primary)', color: '#fff', border: 'none' }}
+                          style={{ borderRadius: '10px', fontSize: '0.75rem', height: '32px', display: 'inline-flex', alignItems: 'center', gap: '6px', whiteSpace: 'nowrap', background: 'var(--color-primary)', color: '#fff', border: 'none', cursor: 'pointer' }}
+                          onClick={e => {
+                            e.stopPropagation();
+                            if (selectedProj?.id) {
+                              setFileModalProjectId(selectedProj.id);
+                              setIsFileModalOpen(true);
+                            }
+                          }}
                         >
                           <Folder size={12} />
                           Kho tài liệu
-                        </a>
+                        </button>
                       )}
                     </div>
                   ))}

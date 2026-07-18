@@ -70,7 +70,7 @@ class CampaignController {
         $params = [$tenantId];
 
         $bypassRoster = (int)($_GET['bypass_roster'] ?? 0);
-        $isRosterRestricted = in_array($auth['role'], ['sale', 'sales', 'manager', 'director'], true);
+        $isRosterRestricted = in_array($auth['role'], ['sale', 'sales', 'manager'], true);
         if ($isRosterRestricted && !$bypassRoster) {
             $where .= " AND (
                 FIND_IN_SET(?, user_ids) 

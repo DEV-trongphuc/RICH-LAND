@@ -17,7 +17,12 @@ import { CustomSelect } from '../components/ui/CustomSelect';
 import { Pagination } from '../components/ui/Pagination';
 import { useAuthStore } from '../store/authStore';
 
-export const FilesPage: React.FC = () => {
+interface FilesPageProps {
+  embedProjectId?: string;
+  isEmbedded?: boolean;
+}
+
+export const FilesPage: React.FC<FilesPageProps> = ({ embedProjectId, isEmbedded = false }) => {
   const { addToast, showConfirm } = useUIStore();
   const userRole = useAuthStore.getState().user?.role;
   const isSale = userRole === 'sale';
@@ -69,7 +74,7 @@ export const FilesPage: React.FC = () => {
     }
   };
 
-  const [selectedProjectId, setSelectedProjectId] = useState<string>('all');
+  const [selectedProjectId, setSelectedProjectId] = useState<string>(embedProjectId || 'all');
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
   const [totalSizeBytes, setTotalSizeBytes] = useState(0);
@@ -79,7 +84,7 @@ export const FilesPage: React.FC = () => {
   // Restored modal state fields
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [uploadFormData, setUploadFormData] = useState({ name: '', category: 'general', project_id: '', campaign_id: '' });
+  const [uploadFormData, setUploadFormData] = useState({ name: '', category: 'general', project_id: embedProjectId || '', campaign_id: '' });
   const [showEditModal, setShowEditModal] = useState(false);
   const [editingFile, setEditingFile] = useState<any>(null);
   const [editFormData, setEditFormData] = useState({ id: 0, name: '', category: 'general', visibility: 'shared', project_id: '', campaign_id: '' });
@@ -109,12 +114,17 @@ export const FilesPage: React.FC = () => {
   useEffect(() => {
     fetchProjects();
     fetchCampaigns();
-    const params = new URLSearchParams(window.location.search);
-    const pId = params.get('project_id');
-    if (pId) {
-      setSelectedProjectId(pId);
+    if (embedProjectId) {
+      setSelectedProjectId(embedProjectId);
+      setUploadFormData(prev => ({ ...prev, project_id: embedProjectId }));
+    } else {
+      const params = new URLSearchParams(window.location.search);
+      const pId = params.get('project_id');
+      if (pId) {
+        setSelectedProjectId(pId);
+      }
     }
-  }, []);
+  }, [embedProjectId]);
 
   const fetchFiles = async () => {
     setLoading(true);
@@ -157,7 +167,7 @@ export const FilesPage: React.FC = () => {
     }
 
     setSelectedFile(file);
-    setUploadFormData({ name: file.name.split('.')[0], category: category === 'all' ? 'general' : category, project_id: '', campaign_id: '' });
+    setUploadFormData({ name: file.name.split('.')[0], category: category === 'all' ? 'general' : category, project_id: embedProjectId || '', campaign_id: '' });
     setShowUploadModal(true);
     // Clear input so same file can be selected again
     e.target.value = '';
@@ -187,7 +197,7 @@ export const FilesPage: React.FC = () => {
       addToast('Đã tải tệp lên thành công', 'success');
       setShowUploadModal(false);
       setSelectedFile(null);
-      setUploadFormData({ name: '', category: 'general', project_id: '', campaign_id: '' });
+      setUploadFormData({ name: '', category: 'general', project_id: embedProjectId || '', campaign_id: '' });
       fetchFiles();
     } catch (e: any) {
       addToast('Lỗi khi tải tệp lên', 'error');
@@ -356,17 +366,18 @@ export const FilesPage: React.FC = () => {
   };
 
   return (
-    <div className="page-container" style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
-      <div className="page-header" style={{ marginBottom: '2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
-        <div>
-          <h1 className="page-title" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            {activeTab === 'shared' ? <Globe style={{ color: 'var(--color-primary)' }} /> : <User style={{ color: 'var(--color-indigo)' }} />}
-            {activeTab === 'shared' ? 'Kho Tài liệu chung' : 'Tài liệu cá nhân'}
-          </h1>
-          <p className="page-subtitle" style={{ marginTop: '4px' }}>
-            {activeTab === 'shared' ? 'Lưu trữ các biểu mẫu, quy trình và tài liệu dùng chung cho toàn đội ngũ' : 'Không gian lưu trữ riêng tư chỉ mình bạn có thể truy cập'}
-          </p>
-        </div>
+    <div className={isEmbedded ? "" : "page-container"} style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden', padding: isEmbedded ? 0 : undefined }}>
+      {!isEmbedded && (
+        <div className="page-header" style={{ marginBottom: '2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+          <div>
+            <h1 className="page-title" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              {activeTab === 'shared' ? <Globe style={{ color: 'var(--color-primary)' }} /> : <User style={{ color: 'var(--color-indigo)' }} />}
+              {activeTab === 'shared' ? 'Kho Tài liệu chung' : 'Tài liệu cá nhân'}
+            </h1>
+            <p className="page-subtitle" style={{ marginTop: '4px' }}>
+              {activeTab === 'shared' ? 'Lưu trữ các biểu mẫu, quy trình và tài liệu dùng chung cho toàn đội ngũ' : 'Không gian lưu trữ riêng tư chỉ mình bạn có thể truy cập'}
+            </p>
+          </div>
         <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
            {/* Pill Tab Switcher */}
            <div style={{ 
@@ -470,9 +481,10 @@ export const FilesPage: React.FC = () => {
                <span className="hide-on-mobile"> Tải tệp mới</span>
              </button>
            )}
-           <input type="file" ref={fileInputRef} style={{ display: 'none' }} onChange={handleFileSelect} />
         </div>
       </div>
+      )}
+      <input type="file" ref={fileInputRef} style={{ display: 'none' }} onChange={handleFileSelect} />
 
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
         {/* Main Content Area */}
@@ -625,21 +637,23 @@ export const FilesPage: React.FC = () => {
                  </div>
 
                  {/* Project Filter Dropdown */}
-                 <div style={{ width: '200px', flexShrink: 0 }}>
-                   <CustomSelect
-                     options={[
-                       { value: 'all', label: 'Tất cả dự án' },
-                       ...projects.map(p => ({ value: String(p.id), label: p.name }))
-                     ]}
-                     value={selectedProjectId}
-                     onChange={val => {
-                       setPage(1);
-                       setSelectedProjectId(String(val));
-                     }}
-                     placeholder="Lọc theo dự án"
-                     searchable
-                   />
-                 </div>
+                 {!isEmbedded && (
+                    <div style={{ width: '200px', flexShrink: 0 }}>
+                      <CustomSelect
+                        options={[
+                          { value: 'all', label: 'Tất cả dự án' },
+                          ...projects.map(p => ({ value: String(p.id), label: p.name }))
+                        ]}
+                        value={selectedProjectId}
+                        onChange={val => {
+                          setPage(1);
+                          setSelectedProjectId(String(val));
+                        }}
+                        placeholder="Lọc theo dự án"
+                        searchable
+                      />
+                    </div>
+                  )}
                </div>
                
                {/* View Switcher (with OS-style 8px border-radius) */}

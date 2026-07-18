@@ -81,14 +81,18 @@ class ProjectController {
             }
         }
 
-        $isRosterRestricted = in_array($auth['role'], ['sale', 'sales', 'manager', 'director'], true);
+        $isRosterRestricted = in_array($auth['role'], ['sale', 'sales', 'manager'], true);
         if (!$isRosterRestricted) {
             return;
         }
 
         // Check if user is in roster for this project
-        $stmt = $this->db->prepare("SELECT 1 FROM project_roster WHERE project_id = ? AND user_id = ?");
-        $stmt->execute([$projectId, $auth['user_id']]);
+        $stmt = $this->db->prepare("
+            SELECT 1 FROM project_roster WHERE project_id = ? AND user_id = ?
+            UNION
+            SELECT 1 FROM projects WHERE id = ? AND (created_by = ? OR FIND_IN_SET(?, manager_ids))
+        ");
+        $stmt->execute([$projectId, $auth['user_id'], $projectId, $auth['user_id'], $auth['user_id']]);
         if (!$stmt->fetch()) {
             respond(403, null, 'Bạn không thuộc roster của dự án này để truy cập tài liệu', false);
         }
@@ -145,9 +149,15 @@ class ProjectController {
         $params = [$auth['tenant_id']];
         
         $bypassRoster = (int)($_GET['bypass_roster'] ?? 0);
-        $isRosterRestricted = in_array($role, ['sale', 'sales', 'manager', 'director'], true);
+        $isRosterRestricted = in_array($role, ['sale', 'sales', 'manager'], true);
         if ($isRosterRestricted && !$bypassRoster) {
-            $where .= " AND p.id IN (SELECT project_id FROM project_roster WHERE user_id = ?)";
+            $where .= " AND (
+                p.id IN (SELECT project_id FROM project_roster WHERE user_id = ?)
+                OR FIND_IN_SET(?, p.manager_ids)
+                OR p.created_by = ?
+            )";
+            $params[] = $uid;
+            $params[] = $uid;
             $params[] = $uid;
         }
 
