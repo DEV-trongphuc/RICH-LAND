@@ -332,7 +332,7 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
       return takers;
     }
     if (['sale', 'sales'].includes(currentUserRole)) {
-      return takers.filter((taker: any) => Number(taker.id) === currentUserId);
+      return [];
     }
     if (currentUserRole === 'manager') {
       const managedTeamIds = teamsList.map((t: any) => Number(t.id));
@@ -342,7 +342,7 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
         return takerUser && takerUser.team_id && managedTeamIds.includes(Number(takerUser.team_id));
       });
     }
-    return takers.filter((taker: any) => Number(taker.id) === currentUserId);
+    return [];
   };
 
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {

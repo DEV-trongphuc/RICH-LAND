@@ -7234,7 +7234,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                                 if (['admin', 'superadmin', 'super_admin', 'director'].includes(currentUserRole)) {
                                   displayTakers = lead.takers;
                                 } else if (['sale', 'sales'].includes(currentUserRole)) {
-                                  displayTakers = lead.takers.filter((taker: any) => Number(taker.id) === currentUserId);
+                                  displayTakers = [];
                                 } else if (currentUserRole === 'manager') {
                                   const managedTeamIds = teamsList.map((t: any) => Number(t.id));
                                   displayTakers = lead.takers.filter((taker: any) => {
@@ -7243,7 +7243,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                                     return takerUser && takerUser.team_id && managedTeamIds.includes(Number(takerUser.team_id));
                                   });
                                 } else {
-                                  displayTakers = lead.takers.filter((taker: any) => Number(taker.id) === currentUserId);
+                                  displayTakers = [];
                                 }
                               }
                               
