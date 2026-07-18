@@ -3144,6 +3144,25 @@ function doPost(e) {
                   <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 4 }}>
                     {t('Mọi cảnh báo bộ lọc (Blacklist/Trùng), yêu cầu duyệt ticket đền bù, và báo cáo tổng kết ngày sẽ được gửi vào Group Chat này.')}
                   </p>
+                  <div style={{
+                    marginTop: '8px',
+                    padding: '12px',
+                    background: 'var(--color-bg-dark)',
+                    borderLeft: '4px solid var(--color-primary)',
+                    borderRadius: '8px',
+                    fontSize: '0.8rem',
+                    color: 'var(--color-text-muted)',
+                    lineHeight: '1.5'
+                  }}>
+                    <strong style={{ color: 'var(--color-text)', display: 'block', marginBottom: '4px' }}>
+                      💡 {t('Hướng dẫn lấy Chat ID:')}
+                    </strong>
+                    <ol style={{ margin: 0, paddingLeft: '1.2rem', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                      <li>{t('Thêm Zalo Bot này vào Group Admin của bạn.')}</li>
+                      <li>{t('Gửi tin nhắn')} <code>/id</code>, <code>/chatid</code> {t('hoặc')} <code>/info</code> {t('vào Group.')}</li>
+                      <li>{t('Bot sẽ tự động phản hồi lại mã Chat ID của Group đó (ví dụ: group.123456...). Hãy copy mã này và dán vào ô cấu hình phía trên.')}</li>
+                    </ol>
+                  </div>
                 </div>
 
                 <div style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 12, padding: '1rem' }}>
