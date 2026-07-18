@@ -500,6 +500,64 @@ if (!function_exists('releasePendingWorkHoursLeads')) {
                     $isActuallyOnLeaveOrInactive = true;
                 }
             }
+
+            // Check-in grace period timeout verification for pending_work_hours
+            if (!$isActuallyOnLeaveOrInactive && $row['log_status'] === 'pending_work_hours') {
+                $whStart = $row['work_start_time'] ?? '00:00';
+                $whEnd = $row['work_end_time'] ?? '23:59';
+                $workSchedule = $row['work_schedule'] ?? null;
+                
+                if (isConsultantInWorkHours($currentTime, $whStart, $whEnd, $workSchedule)) {
+                    // Check if consultant has checked in today (Gate 2 Check-in constraint)
+                    $hasCheckIn = false;
+                    $dayOfWeek = date('N'); // 1 (Mon) - 7 (Sun)
+                    
+                    if ($dayOfWeek >= 1 && $dayOfWeek <= 6) { // Mon-Sat
+                        $stmtCheck = $conn->prepare("SELECT 1 FROM check_ins WHERE user_id = ? AND check_in_date = ? AND status = 'approved' LIMIT 1");
+                        if ($stmtCheck) {
+                            $stmtCheck->bind_param("is", $row['assigned_to'], $today);
+                            $stmtCheck->execute();
+                            $hasCheckIn = (bool)$stmtCheck->get_result()->fetch_assoc();
+                            $stmtCheck->close();
+                        }
+                    } else if ($dayOfWeek == 7) { // Sun
+                        $stmtCheckReg = $conn->prepare("SELECT 1 FROM night_shift_registrations WHERE user_id = ? AND shift_date = ? LIMIT 1");
+                        if ($stmtCheckReg) {
+                            $stmtCheckReg->bind_param("is", $row['assigned_to'], $today);
+                            $stmtCheckReg->execute();
+                            $hasReg = (bool)$stmtCheckReg->get_result()->fetch_assoc();
+                            $stmtCheckReg->close();
+                            
+                            if ($hasReg) {
+                                $stmtCheck = $conn->prepare("SELECT 1 FROM check_ins WHERE user_id = ? AND check_in_date = ? AND status = 'approved' LIMIT 1");
+                                if ($stmtCheck) {
+                                    $stmtCheck->bind_param("is", $row['assigned_to'], $today);
+                                    $stmtCheck->execute();
+                                    $hasCheckIn = (bool)$stmtCheck->get_result()->fetch_assoc();
+                                    $stmtCheck->close();
+                                }
+                            }
+                        }
+                    }
+                    
+                    if (!$hasCheckIn) {
+                        // Exceeded grace period check
+                        $resTimeout = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'lead_response_timeout_minutes' LIMIT 1");
+                        $timeoutMins = $resTimeout ? (int)$resTimeout->fetchColumn() : 2;
+                        if ($timeoutMins <= 0) {
+                            $timeoutMins = 2;
+                        }
+                        
+                        $gracePeriodStart = strtotime($today . ' ' . $whStart . ':00');
+                        $gracePeriodExpires = $gracePeriodStart + ($timeoutMins * 60);
+                        
+                        if (time() > $gracePeriodExpires) {
+                            logSync("Lead ID {$row['lead_id']}: check-in grace period expired for consultant {$row['consultant_name']}. Triggering reallocation...");
+                            $isActuallyOnLeaveOrInactive = true;
+                        }
+                    }
+                }
+            }
             
             if ($isActuallyOnLeaveOrInactive) {
                 logSync("Lead ID {$row['lead_id']} is pending or owner is inactive. Checking for new allocation...");
