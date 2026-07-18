@@ -171,6 +171,34 @@ export default function ProjectsPage() {
   const { t } = useLanguage();
   const [showInfoModal, setShowInfoModal] = useState(false);
   const [showRosterModal, setShowRosterModal] = useState(false);
+  const [showFolderModal, setShowFolderModal] = useState(false);
+  const [folderModalPath, setFolderModalPath] = useState('');
+  const [folderModalProjectId, setFolderModalProjectId] = useState<number | null>(null);
+  const [folderFiles, setFolderFiles] = useState<any[]>([]);
+  const [folderFilesLoading, setFolderFilesLoading] = useState(false);
+
+  const loadFolderFiles = async (projectId: number) => {
+    setFolderFilesLoading(true);
+    try {
+      const res = await fetchAPI(`cloud-files?project_id=${projectId}&limit=100`);
+      if (res.success) {
+        const data = res.data?.items || res.data || [];
+        setFolderFiles(data);
+      }
+    } catch (e) {
+      console.error('Failed to load folder files', e);
+    } finally {
+      setFolderFilesLoading(false);
+    }
+  };
+
+  const handleOpenFolderModal = (path: string, projectId: number) => {
+    setFolderModalPath(path);
+    setFolderModalProjectId(projectId);
+    setFolderFiles([]);
+    setShowFolderModal(true);
+    loadFolderFiles(projectId);
+  };
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
     return (document.documentElement.getAttribute('data-theme') as 'light' | 'dark') || 'light';
   });
@@ -958,20 +986,20 @@ export default function ProjectsPage() {
             display: 'inline-flex', 
             alignItems: 'center', 
             gap: '8px',
-            background: 'rgba(189, 29, 45, 0.05)',
-            border: '1px solid rgba(189, 29, 45, 0.1)',
+            background: 'rgba(163, 20, 34, 0.05)',
+            border: '1px solid rgba(163, 20, 34, 0.15)',
             padding: '6px 12px',
             borderRadius: '10px',
             fontSize: '0.825rem',
             transition: 'all 0.2s ease'
           }}
           onMouseEnter={e => {
-            e.currentTarget.style.background = 'rgba(189, 29, 45, 0.1)';
-            e.currentTarget.style.borderColor = 'rgba(189, 29, 45, 0.2)';
+            e.currentTarget.style.background = 'rgba(163, 20, 34, 0.08)';
+            e.currentTarget.style.borderColor = 'rgba(163, 20, 34, 0.2)';
           }}
           onMouseLeave={e => {
-            e.currentTarget.style.background = 'rgba(189, 29, 45, 0.05)';
-            e.currentTarget.style.borderColor = 'rgba(189, 29, 45, 0.1)';
+            e.currentTarget.style.background = 'rgba(163, 20, 34, 0.05)';
+            e.currentTarget.style.borderColor = 'rgba(163, 20, 34, 0.15)';
           }}
         >
           <HardDrive size={14} />
@@ -980,38 +1008,44 @@ export default function ProjectsPage() {
       );
     }
     
-    const linkUrl = projectId ? `/files?project_id=${projectId}` : '/files';
     return (
-      <a 
-        href={linkUrl} 
-        target="_blank" 
-        rel="noopener noreferrer" 
+      <button 
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          if (projectId) {
+            handleOpenFolderModal(path, projectId);
+          } else {
+            addToast('Không tìm thấy dự án liên kết', 'error');
+          }
+        }}
         style={{ 
           color: 'var(--color-primary)', 
-          textDecoration: 'none', 
+          border: '1px solid rgba(163, 20, 34, 0.15)',
+          background: 'rgba(163, 20, 34, 0.05)',
+          cursor: 'pointer',
           fontWeight: 700, 
           display: 'inline-flex', 
           alignItems: 'center', 
           gap: '8px',
-          background: 'rgba(189, 29, 45, 0.05)',
-          border: '1px solid rgba(189, 29, 45, 0.1)',
           padding: '6px 12px',
           borderRadius: '10px',
           fontSize: '0.825rem',
-          transition: 'all 0.2s ease'
+          transition: 'all 0.2s ease',
+          outline: 'none'
         }}
         onMouseEnter={e => {
-          e.currentTarget.style.background = 'rgba(189, 29, 45, 0.1)';
-          e.currentTarget.style.borderColor = 'rgba(189, 29, 45, 0.2)';
+          e.currentTarget.style.background = 'rgba(163, 20, 34, 0.08)';
+          e.currentTarget.style.borderColor = 'rgba(163, 20, 34, 0.2)';
         }}
         onMouseLeave={e => {
-          e.currentTarget.style.background = 'rgba(189, 29, 45, 0.05)';
-          e.currentTarget.style.borderColor = 'rgba(189, 29, 45, 0.1)';
+          e.currentTarget.style.background = 'rgba(163, 20, 34, 0.05)';
+          e.currentTarget.style.borderColor = 'rgba(163, 20, 34, 0.15)';
         }}
       >
         <Folder size={14} />
-        <span>{path} (Xem trong Kho tài liệu)</span>
-      </a>
+        <span>{path} (Xem thư mục)</span>
+      </button>
     );
   };
 
@@ -1851,7 +1885,7 @@ export default function ProjectsPage() {
                     <div style={{ gridColumn: 'span 2' }}>
                       <span style={{ fontSize: '0.825rem', color: 'var(--color-text-muted)', fontWeight: 750, display: 'block', marginBottom: '4px' }}>Đường dẫn Folder</span>
                       <div style={{ marginTop: '4px' }}>
-                        {renderFolderPathLink(editingCampaign?.folder_path)}
+                        {renderFolderPathLink(editingCampaign?.folder_path, editingCampaign?.project_id)}
                       </div>
                     </div>
                     {editingCampaign?.reference_url && (
@@ -2303,6 +2337,9 @@ export default function ProjectsPage() {
       if (res.success || res.id) {
         addToast('Đã tải tài liệu lên thành công!', 'success');
         loadAllFiles();
+        if (projectId) {
+          loadFolderFiles(projectId);
+        }
         const newFileId = String(res.data?.id || res.id);
         if (newFileId) {
           if (editingProject) {
@@ -2784,9 +2821,9 @@ export default function ProjectsPage() {
           display: 'flex',
           background: 'var(--color-bg-light)',
           border: '1px solid var(--color-border-light)',
-          padding: '2px',
+          padding: '4px',
           borderRadius: '8px',
-          gap: '2px',
+          gap: '4px',
           position: 'relative',
           height: '38px',
           alignItems: 'center',
@@ -2795,15 +2832,16 @@ export default function ProjectsPage() {
           {/* Sliding Pill Background Indicator */}
           <div style={{
             position: 'absolute',
-            top: '1px',
-            bottom: '1px',
+            top: '3px',
+            left: '4px',
             width: '110px',
+            height: '30px',
             borderRadius: '6px',
             background: '#ffffff',
             boxShadow: '0 2px 8px rgba(163, 20, 34, 0.08), 0 1px 3px rgba(0,0,0,0.04)',
             border: '1px solid rgba(163, 20, 34, 0.12)',
             transition: 'transform 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
-            transform: `translateX(${activeSubTab === 'projects' ? '0px' : '112px'})`,
+            transform: `translateX(${activeSubTab === 'projects' ? '0px' : '114px'})`,
             zIndex: 1
           }} />
 
@@ -2818,7 +2856,7 @@ export default function ProjectsPage() {
                 onClick={() => setActiveSubTab(tab.id as any)}
                 style={{
                   width: '110px',
-                  height: '32px',
+                  height: '30px',
                   borderRadius: '6px',
                   border: 'none',
                   fontSize: '0.8rem',
@@ -5033,7 +5071,7 @@ export default function ProjectsPage() {
                   <div style={{ gridColumn: 'span 2' }}>
                     <span style={{ fontSize: '0.825rem', color: 'var(--color-text-muted)', fontWeight: 750, display: 'block', marginBottom: '4px' }}>Đường dẫn Folder</span>
                     <div style={{ marginTop: '4px' }}>
-                      {renderFolderPathLink(editingCampaign?.folder_path)}
+                      {renderFolderPathLink(editingCampaign?.folder_path, editingCampaign?.project_id)}
                     </div>
                   </div>
                   {editingCampaign?.reference_url && (
@@ -5718,6 +5756,89 @@ export default function ProjectsPage() {
               </div>
             ))}
           </div>
+        </div>
+      </CustomModal>
+
+      {/* Folder Contents Modal */}
+      <CustomModal
+        isOpen={showFolderModal}
+        onClose={() => setShowFolderModal(false)}
+        title={`Thư mục: ${folderModalPath}`}
+        width="800px"
+      >
+        <div style={{ padding: '0.5rem 0', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', margin: 0 }}>
+              Danh sách tài liệu thuộc thư mục dự án này ({folderFiles.length} tệp tin):
+            </span>
+            {folderModalProjectId && (
+              <div>
+                <input 
+                  type="file" 
+                  id="folder-modal-upload" 
+                  style={{ display: 'none' }} 
+                  onChange={(e) => folderModalProjectId && handleQuickUpload(e, folderModalProjectId)} 
+                />
+                <button
+                  type="button"
+                  onClick={() => document.getElementById('folder-modal-upload')?.click()}
+                  className="btn primary sm"
+                  style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', fontWeight: 700, borderRadius: '8px', padding: '6px 12px' }}
+                >
+                  <Upload size={14} />
+                  Tải tệp lên
+                </button>
+              </div>
+            )}
+          </div>
+
+          {folderFilesLoading ? (
+            <div style={{ display: 'flex', justifyContent: 'center', padding: '2rem 0' }}>
+              <RefreshCw className="spin" size={24} color="var(--color-text-muted)" />
+            </div>
+          ) : folderFiles.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '3rem 1.5rem', color: 'var(--color-text-muted)', border: '1px dashed var(--color-border-light)', borderRadius: '12px', background: 'var(--color-bg-light)' }}>
+              <Folder size={32} style={{ color: 'var(--color-text-light)', marginBottom: '8px' }} />
+              <p style={{ margin: 0, fontSize: '0.85rem', fontWeight: 600 }}>Thư mục trống</p>
+              <p style={{ margin: '4px 0 0 0', fontSize: '0.75rem', color: 'var(--color-text-light)' }}>Chưa có tài liệu nào được tải lên cho dự án này.</p>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '350px', overflowY: 'auto', paddingRight: '4px' }}>
+              {folderFiles.map((fileObj: any) => (
+                <div 
+                  key={fileObj.id} 
+                  style={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    justifyContent: 'space-between', 
+                    padding: '10px 14px', 
+                    background: 'var(--color-bg-light)', 
+                    border: '1px solid var(--color-border-light)', 
+                    borderRadius: '12px',
+                    transition: 'all 0.2s ease'
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', overflow: 'hidden' }}>
+                    <FileText size={16} style={{ color: 'var(--color-primary)', flexShrink: 0 }} />
+                    <span style={{ fontWeight: 650, color: 'var(--color-text)', fontSize: '0.85rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={fileObj.name}>
+                      {fileObj.name}
+                    </span>
+                  </div>
+                  <a
+                    href={`${import.meta.env.VITE_API_URL ?? '/backend'}/${fileObj.file_path}`}
+                    download={fileObj.name}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="btn outline sm"
+                    style={{ fontSize: '0.75rem', height: '28px', padding: '0 10px', display: 'flex', alignItems: 'center', gap: '4px', fontWeight: 700, borderRadius: '6px' }}
+                  >
+                    <Download size={12} />
+                    Tải về
+                  </a>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </CustomModal>
     </div>
