@@ -957,26 +957,9 @@ if (!function_exists('recallInactiveLeads')) {
             return;
         }
 
-        $timeoutNormal = (int) get_system_setting($conn, 'lead_response_timeout_minutes') ?: 2;
-        $timeoutOvertime = (int) get_system_setting($conn, 'lead_response_timeout_overtime_minutes') ?: $timeoutNormal;
-        
-        $nightShiftStart = get_system_setting($conn, 'night_shift_start_time') ?: '18:00';
-        $nightShiftEnd = get_system_setting($conn, 'night_shift_end_time') ?: '06:00';
-
         $leads = [];
         foreach ($allLeads as $row) {
-            $lastTime = date('H:i', strtotime($row['last_interaction_date']));
-            $isOvertime = false;
-            if ($nightShiftStart < $nightShiftEnd) {
-                $isOvertime = ($lastTime >= $nightShiftStart && $lastTime <= $nightShiftEnd);
-            } else {
-                $isOvertime = ($lastTime >= $nightShiftStart || $lastTime <= $nightShiftEnd);
-            }
-
-            $leadRecallMins = (int)$row['connection_recall_minutes'];
-            if ($leadRecallMins <= 0) {
-                $leadRecallMins = $isOvertime ? $timeoutOvertime : $timeoutNormal;
-            }
+            $leadRecallMins = get_lead_recall_minutes($conn, $row['last_interaction_date'], $row['connection_recall_minutes']);
 
             $elapsedSeconds = time() - strtotime($row['last_interaction_date']);
             if ($elapsedSeconds >= $leadRecallMins * 60) {

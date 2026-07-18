@@ -56,24 +56,43 @@ if (!function_exists('get_lead_recall_minutes')) {
     function get_lead_recall_minutes($conn, $lastInteractionDate, $connectionRecallMins = 0) {
         $connectionRecallMins = (int)$connectionRecallMins;
         if ($connectionRecallMins > 0) {
-            return $connectionRecallMins;
-        }
-
-        $timeoutNormal = (int) get_system_setting($conn, 'lead_response_timeout_minutes') ?: 2;
-        $timeoutOvertime = (int) get_system_setting($conn, 'lead_response_timeout_overtime_minutes') ?: $timeoutNormal;
-
-        $nightShiftStart = get_system_setting($conn, 'night_shift_start_time') ?: '18:00';
-        $nightShiftEnd = get_system_setting($conn, 'night_shift_end_time') ?: '06:00';
-
-        $lastTime = date('H:i', strtotime($lastInteractionDate));
-        $isOvertime = false;
-        if ($nightShiftStart < $nightShiftEnd) {
-            $isOvertime = ($lastTime >= $nightShiftStart && $lastTime <= $nightShiftEnd);
+            // If the connection has a custom recall minutes, we still apply Golden Hours shortening to it!
+            $leadRecallMins = $connectionRecallMins;
         } else {
-            $isOvertime = ($lastTime >= $nightShiftStart || $lastTime <= $nightShiftEnd);
+            $timeoutNormal = (int) get_system_setting($conn, 'lead_response_timeout_minutes') ?: 2;
+            $timeoutOvertime = (int) get_system_setting($conn, 'lead_response_timeout_overtime_minutes') ?: $timeoutNormal;
+
+            $nightShiftStart = get_system_setting($conn, 'night_shift_start_time') ?: '18:00';
+            $nightShiftEnd = get_system_setting($conn, 'night_shift_end_time') ?: '06:00';
+
+            $lastTime = date('H:i', strtotime($lastInteractionDate));
+            $isOvertime = false;
+            if ($nightShiftStart < $nightShiftEnd) {
+                $isOvertime = ($lastTime >= $nightShiftStart && $lastTime <= $nightShiftEnd);
+            } else {
+                $isOvertime = ($lastTime >= $nightShiftStart || $lastTime <= $nightShiftEnd);
+            }
+
+            $leadRecallMins = $isOvertime ? $timeoutOvertime : $timeoutNormal;
         }
 
-        return $isOvertime ? $timeoutOvertime : $timeoutNormal;
+        // Apply golden hours shortening if current time is golden hours
+        $goldenHoursStart = get_system_setting($conn, 'golden_hours_start_time') ?: '06:00';
+        $goldenHoursEnd = get_system_setting($conn, 'golden_hours_end_time') ?: '08:30';
+        
+        $currentTime = date('H:i');
+        $isGoldenHour = false;
+        if ($goldenHoursStart < $goldenHoursEnd) {
+            $isGoldenHour = ($currentTime >= $goldenHoursStart && $currentTime <= $goldenHoursEnd);
+        } else {
+            $isGoldenHour = ($currentTime >= $goldenHoursStart || $currentTime <= $goldenHoursEnd);
+        }
+
+        if ($isGoldenHour) {
+            $leadRecallMins = max(1, (int)ceil($leadRecallMins / 2));
+        }
+
+        return $leadRecallMins;
     }
 }
 
