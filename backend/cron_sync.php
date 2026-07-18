@@ -540,11 +540,9 @@ if (!function_exists('releasePendingWorkHoursLeads')) {
                             }
                         }
                     }
-                    
                     if (!$hasCheckIn) {
                         // Exceeded grace period check
-                        $resTimeout = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'lead_response_timeout_minutes' LIMIT 1");
-                        $timeoutMins = $resTimeout ? (int)$resTimeout->fetchColumn() : 2;
+                        $timeoutMins = (int) get_system_setting($conn, 'lead_response_timeout_minutes');
                         if ($timeoutMins <= 0) {
                             $timeoutMins = 2;
                         }
@@ -663,14 +661,12 @@ if (!function_exists('releasePendingWorkHoursLeads')) {
                     if ($row['round_id'] > 0 && $row['assigned_to'] !== null) {
                         $shouldCompensate = true;
                         if ($isLateCheckinRealloc) {
-                            $resLateComp = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'late_checkin_compensation_enabled' LIMIT 1");
-                            $lateCompEnabled = $resLateComp ? (int)$resLateComp->fetchColumn() : 0;
+                            $lateCompEnabled = (int) get_system_setting($conn, 'late_checkin_compensation_enabled');
                             if ($lateCompEnabled !== 1) {
                                 $shouldCompensate = false;
                             }
                         } else {
-                            $resLeaveComp = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'leave_compensation_enabled' LIMIT 1");
-                            $leaveCompEnabled = $resLeaveComp ? (int)$resLeaveComp->fetchColumn() : 0;
+                            $leaveCompEnabled = (int) get_system_setting($conn, 'leave_compensation_enabled');
                             if ($leaveCompEnabled !== 1) {
                                 $shouldCompensate = false;
                             }
