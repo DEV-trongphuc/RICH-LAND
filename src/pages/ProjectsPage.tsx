@@ -240,6 +240,8 @@ export default function ProjectsPage() {
     return baseName.substring(0, cutLen) + '...' + ext;
   };
   const [activeSubTab, setActiveSubTab] = useState<'projects' | 'campaigns'>('projects');
+  const [projectTasksPage, setProjectTasksPage] = useState(1);
+  const [campaignTasksPage, setCampaignTasksPage] = useState(1);
   const [campaigns, setCampaigns] = useState<any[]>([]);
   const [campaignsLoading, setCampaignsLoading] = useState(false);
   const [campaignProjectFilter, setCampaignProjectFilter] = useState<string>('');
@@ -687,14 +689,52 @@ export default function ProjectsPage() {
     setLoadingLinkedTasks(true);
     try {
       const res = await fetchAPI(`activities?related_type=${entityType}&related_id=${entityId}&limit=100`);
+      let directItems = [];
       if (res && res.items) {
-        setLinkedTasks(res.items);
+        directItems = res.items;
       } else if (res.success && res.data && Array.isArray(res.data.items)) {
-        setLinkedTasks(res.data.items);
+        directItems = res.data.items;
       } else if (res.data && Array.isArray(res.data)) {
-        setLinkedTasks(res.data);
+        directItems = res.data;
+      }
+
+      if (entityType === 'campaign') {
+        const parentProjId = editingCampaign?.project_id;
+        if (parentProjId) {
+          const projRes = await fetchAPI(`activities?related_type=project&related_id=${parentProjId}&limit=1000`);
+          let projItems = [];
+          if (projRes && projRes.items) {
+            projItems = projRes.items;
+          } else if (projRes.success && projRes.data && Array.isArray(projRes.data.items)) {
+            projItems = projRes.data.items;
+          } else if (projRes.data && Array.isArray(projRes.data)) {
+            projItems = projRes.data;
+          }
+
+          const matchedProjItems = projItems.filter((task: any) => {
+            if (task.body) {
+              try {
+                const parsed = JSON.parse(task.body);
+                return Number(parsed?.erp_task?.campaign_id) === Number(entityId);
+              } catch {
+                return false;
+              }
+            }
+            return false;
+          });
+
+          const allItems = [...directItems];
+          matchedProjItems.forEach((task: any) => {
+            if (!allItems.some(t => t.id === task.id)) {
+              allItems.push(task);
+            }
+          });
+          setLinkedTasks(allItems);
+        } else {
+          setLinkedTasks(directItems);
+        }
       } else {
-        setLinkedTasks([]);
+        setLinkedTasks(directItems);
       }
     } catch (e) {
       console.error(e);
@@ -710,6 +750,7 @@ export default function ProjectsPage() {
       loadDetailComments('project', editingProject.id);
       loadLinkedTasks('project', editingProject.id);
       loadProjectStats(editingProject.id);
+      setProjectTasksPage(1);
     } else {
       setProjectRoster([]);
       setDetailComments([]);
@@ -723,6 +764,7 @@ export default function ProjectsPage() {
       loadDetailComments('campaign', editingCampaign.id);
       loadLinkedTasks('campaign', editingCampaign.id);
       loadCampaignStats(editingCampaign.id);
+      setCampaignTasksPage(1);
     } else {
       setCampaignStats(null);
       if (!editingProject) {
@@ -1568,6 +1610,84 @@ export default function ProjectsPage() {
                   </div>
                 </div>
 
+                {/* Section: Chiến dịch liên kết */}
+                <div style={{
+                  background: '#ffffff',
+                  border: '1px solid var(--color-border-light)',
+                  borderRadius: '12px',
+                  padding: '1.5rem',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '1.25rem',
+                  boxShadow: '0 10px 30px -10px rgba(0,0,0,0.04)'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <div style={{
+                      padding: '8px',
+                      background: 'rgba(189, 29, 45, 0.08)',
+                      borderRadius: '10px',
+                      color: 'var(--color-primary)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}>
+                      <Megaphone size={16} />
+                    </div>
+                    <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', fontWeight: 600, opacity: 0.85, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Chiến dịch liên kết</span>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    {(() => {
+                      const linkedCamps = campaigns.filter(c => 
+                        String(c.project_id) === String(editingProject?.id) || 
+                        (editingProject?.campaign_ids && editingProject.campaign_ids.split(',').map((s: string) => s.trim()).includes(c.name))
+                      );
+
+                      if (linkedCamps.length === 0) {
+                        return (
+                          <span style={{ color: 'var(--color-text-muted)', fontStyle: 'italic', fontSize: '0.85rem' }}>Chưa liên kết chiến dịch</span>
+                        );
+                      }
+
+                      return (
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                          {linkedCamps.map(camp => (
+                            <span
+                              key={camp.id}
+                              onClick={() => handleOpenCampaignView(camp)}
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '8px',
+                                fontSize: '0.8rem',
+                                fontWeight: 700,
+                                background: 'var(--color-bg-light)',
+                                padding: '8px 12px',
+                                borderRadius: '10px',
+                                border: '1px solid var(--color-border-light)',
+                                color: 'var(--color-primary)',
+                                cursor: 'pointer',
+                                transition: 'all 0.2s ease'
+                              }}
+                              className="hover-lift"
+                              onMouseEnter={e => {
+                                e.currentTarget.style.borderColor = 'var(--color-primary-light)';
+                                e.currentTarget.style.background = '#ffffff';
+                              }}
+                              onMouseLeave={e => {
+                                e.currentTarget.style.borderColor = 'var(--color-border-light)';
+                                e.currentTarget.style.background = 'var(--color-bg-light)';
+                              }}
+                            >
+                              <Megaphone size={14} style={{ flexShrink: 0 }} />
+                              {camp.name}
+                            </span>
+                          ))}
+                        </div>
+                      );
+                    })()}
+                  </div>
+                </div>
+
                 {/* Section: Đường dẫn Folder liên kết */}
                 <div style={{
                   background: '#ffffff',
@@ -1714,127 +1834,157 @@ export default function ProjectsPage() {
                     </div>
                   ) : (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                      {linkedTasks.map(task => {
-                        const statusColors: any = {
-                          planned: { bg: 'rgba(245, 158, 11, 0.08)', text: 'var(--color-warning)' },
-                          done: { bg: 'rgba(16, 185, 129, 0.08)', text: 'var(--color-success)' },
-                          cancelled: { bg: 'rgba(239, 68, 68, 0.08)', text: 'var(--color-danger)' }
+                      {(() => {
+                        const priorityWeight: Record<string, number> = {
+                          high: 3,
+                          medium: 2,
+                          low: 1
                         };
-                        const sc = statusColors[task.status] || statusColors.planned;
-                        const performer = users.find(u => Number(u.id) === Number(task.user_id));
-                        let linkedCampaign = null;
-                        if (task.related_type === 'campaign') {
-                          linkedCampaign = campaigns.find(c => Number(c.id) === Number(task.related_id));
-                        } else if (task.body) {
-                          try {
-                            const parsed = JSON.parse(task.body);
-                            const campId = parsed?.erp_task?.campaign_id;
-                            if (campId) {
-                              linkedCampaign = campaigns.find(c => Number(c.id) === Number(campId));
-                            }
-                          } catch { /* silent */ }
-                        }
+                        const getPriorityWeight = (p: string) => priorityWeight[p] || 2;
+
+                        const sortedTasks = [...linkedTasks].sort((a, b) => {
+                          const weightA = getPriorityWeight(a.priority);
+                          const weightB = getPriorityWeight(b.priority);
+                          if (weightB !== weightA) {
+                            return weightB - weightA;
+                          }
+                          if (a.due_date && b.due_date) {
+                            return new Date(a.due_date).getTime() - new Date(b.due_date).getTime();
+                          }
+                          if (a.due_date) return -1;
+                          if (b.due_date) return 1;
+                          return 0;
+                        });
+
+                        const totalPages = Math.ceil(sortedTasks.length / 10);
+                        const startIndex = (projectTasksPage - 1) * 10;
+                        const paginatedTasks = sortedTasks.slice(startIndex, startIndex + 10);
+
                         return (
-                          <div
-                            key={task.id}
-                            style={{
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'space-between',
-                              background: 'var(--color-bg-light)',
-                              border: '1px solid var(--color-border-light)',
-                              padding: '12px 16px',
-                              borderRadius: '12px',
-                              fontSize: '0.85rem',
-                              cursor: 'pointer',
-                              transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
-                              boxShadow: '0 2px 6px rgba(0, 0, 0, 0.01)'
-                            }}
-                            onMouseEnter={e => {
-                              e.currentTarget.style.borderColor = 'var(--color-primary-light)';
-                              e.currentTarget.style.background = '#ffffff';
-                              e.currentTarget.style.transform = 'translateY(-2px)';
-                              e.currentTarget.style.boxShadow = '0 6px 16px rgba(163, 20, 34, 0.06)';
-                            }}
-                            onMouseLeave={e => {
-                              e.currentTarget.style.borderColor = 'var(--color-border-light)';
-                              e.currentTarget.style.background = 'var(--color-bg-light)';
-                              e.currentTarget.style.transform = 'none';
-                              e.currentTarget.style.boxShadow = '0 2px 6px rgba(0, 0, 0, 0.01)';
-                            }}
-                            onClick={() => handleOpenTask(task.id)}
-                            title={t('Click để xem chi tiết nhiệm vụ')}
-                          >
-                            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
-                              <div style={{ marginTop: '3px' }}>
-                                <CheckSquare size={18} color={task.status === 'done' ? 'var(--color-success)' : 'var(--color-text-muted)'} style={{ opacity: 0.85 }} />
-                              </div>
-                              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                                <span style={{ fontWeight: 650, color: 'var(--color-text)', fontSize: '0.9rem', lineHeight: '1.2' }}>{task.subject}</span>
-                                <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
-                                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                    <Avatar 
-                                      src={performer?.avatar_url || performer?.avatar} 
-                                      name={performer?.full_name || performer?.name || 'Hệ thống'} 
-                                      size={18} 
-                                    />
-                                    <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 500 }}>
-                                      {performer?.full_name || 'Hệ thống'} {performer?.role ? `(${performer.role})` : ''}
-                                    </span>
+                          <>
+                            {paginatedTasks.map(task => {
+                              const statusColors: any = {
+                                planned: { bg: 'rgba(245, 158, 11, 0.08)', text: 'var(--color-warning)' },
+                                done: { bg: 'rgba(16, 185, 129, 0.08)', text: 'var(--color-success)' },
+                                cancelled: { bg: 'rgba(239, 68, 68, 0.08)', text: 'var(--color-danger)' }
+                              };
+                              const sc = statusColors[task.status] || statusColors.planned;
+                              const performer = users.find(u => Number(u.id) === Number(task.user_id));
+                              return (
+                                <div
+                                  key={task.id}
+                                  style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'space-between',
+                                    background: 'var(--color-bg-light)',
+                                    border: '1px solid var(--color-border-light)',
+                                    padding: '12px 16px',
+                                    borderRadius: '12px',
+                                    fontSize: '0.85rem',
+                                    cursor: 'pointer',
+                                    transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+                                    boxShadow: '0 2px 6px rgba(0, 0, 0, 0.01)'
+                                  }}
+                                  onMouseEnter={e => {
+                                    e.currentTarget.style.borderColor = 'var(--color-primary-light)';
+                                    e.currentTarget.style.background = '#ffffff';
+                                    e.currentTarget.style.transform = 'translateY(-2px)';
+                                    e.currentTarget.style.boxShadow = '0 6px 16px rgba(163, 20, 34, 0.06)';
+                                  }}
+                                  onMouseLeave={e => {
+                                    e.currentTarget.style.borderColor = 'var(--color-border-light)';
+                                    e.currentTarget.style.background = 'var(--color-bg-light)';
+                                    e.currentTarget.style.transform = 'none';
+                                    e.currentTarget.style.boxShadow = '0 2px 6px rgba(0, 0, 0, 0.01)';
+                                  }}
+                                  onClick={() => handleOpenTask(task.id)}
+                                  title={t('Click để xem chi tiết nhiệm vụ')}
+                                >
+                                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+                                    <div style={{ marginTop: '3px' }}>
+                                      <CheckSquare size={18} color={task.status === 'done' ? 'var(--color-success)' : 'var(--color-text-muted)'} style={{ opacity: 0.85 }} />
+                                    </div>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                      <span style={{ fontWeight: 650, color: 'var(--color-text)', fontSize: '0.9rem', lineHeight: '1.2' }}>{task.subject}</span>
+                                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                        <Avatar 
+                                          src={performer?.avatar_url || performer?.avatar} 
+                                          name={performer?.full_name || performer?.name || 'Hệ thống'} 
+                                          size={18} 
+                                        />
+                                        <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 500 }}>
+                                          {performer?.full_name || 'Hệ thống'} {performer?.role ? `(${performer.role})` : ''}
+                                        </span>
+                                      </div>
+                                    </div>
                                   </div>
-                                  {linkedCampaign && (
-                                    <span 
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        handleOpenCampaignView(linkedCampaign);
-                                      }}
-                                      style={{
-                                        display: 'inline-flex',
-                                        alignItems: 'center',
-                                        gap: '4px',
-                                        fontSize: '0.7rem',
-                                        fontWeight: 700,
-                                        background: 'rgba(189, 29, 45, 0.08)',
-                                        color: 'var(--color-primary)',
-                                        padding: '3px 8px',
-                                        borderRadius: '6px',
-                                        cursor: 'pointer',
-                                        transition: 'all 0.2s',
-                                        border: '1px solid rgba(189, 29, 45, 0.15)',
-                                        verticalAlign: 'middle'
-                                      }}
-                                      className="hover-lift"
-                                      onMouseEnter={e => {
-                                        e.currentTarget.style.background = 'var(--color-primary)';
-                                        e.currentTarget.style.color = '#ffffff';
-                                      }}
-                                      onMouseLeave={e => {
-                                        e.currentTarget.style.background = 'rgba(189, 29, 45, 0.08)';
-                                        e.currentTarget.style.color = 'var(--color-primary)';
-                                      }}
-                                    >
-                                      <Megaphone size={10} />
-                                      {linkedCampaign.name}
-                                    </span>
-                                  )}
+                                  <span style={{ 
+                                    fontSize: '0.72rem', 
+                                    fontWeight: 700, 
+                                    padding: '4px 10px', 
+                                    borderRadius: '100px', 
+                                    background: sc.bg, 
+                                    color: sc.text,
+                                    textTransform: 'uppercase',
+                                    letterSpacing: '0.03em'
+                                  }}>
+                                    {task.status === 'done' ? 'Đã xong' : 'Chưa xong'}
+                                  </span>
                                 </div>
+                              );
+                            })}
+
+                            {totalPages > 1 && (
+                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', marginTop: '1rem' }}>
+                                <button
+                                  disabled={projectTasksPage === 1}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setProjectTasksPage(p => Math.max(1, p - 1));
+                                  }}
+                                  style={{
+                                    background: '#ffffff',
+                                    border: '1px solid var(--color-border-light)',
+                                    padding: '6px 12px',
+                                    borderRadius: '8px',
+                                    fontSize: '0.75rem',
+                                    fontWeight: 600,
+                                    cursor: projectTasksPage === 1 ? 'not-allowed' : 'pointer',
+                                    opacity: projectTasksPage === 1 ? 0.5 : 1,
+                                    color: 'var(--color-text)'
+                                  }}
+                                >
+                                  Trước
+                                </button>
+                                <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>
+                                  Trang {projectTasksPage} / {totalPages}
+                                </span>
+                                <button
+                                  disabled={projectTasksPage === totalPages}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setProjectTasksPage(p => Math.min(totalPages, p + 1));
+                                  }}
+                                  style={{
+                                    background: '#ffffff',
+                                    border: '1px solid var(--color-border-light)',
+                                    padding: '6px 12px',
+                                    borderRadius: '8px',
+                                    fontSize: '0.75rem',
+                                    fontWeight: 600,
+                                    cursor: projectTasksPage === totalPages ? 'not-allowed' : 'pointer',
+                                    opacity: projectTasksPage === totalPages ? 0.5 : 1,
+                                    color: 'var(--color-text)'
+                                  }}
+                                >
+                                  Sau
+                                </button>
                               </div>
-                            </div>
-                            <span style={{ 
-                              fontSize: '0.72rem', 
-                              fontWeight: 700, 
-                              padding: '4px 10px', 
-                              borderRadius: '100px', 
-                              background: sc.bg, 
-                              color: sc.text,
-                              textTransform: 'uppercase',
-                              letterSpacing: '0.03em'
-                            }}>
-                              {task.status === 'done' ? 'Đã xong' : 'Chưa xong'}
-                            </span>
-                          </div>
+                            )}
+                          </>
                         );
-                      })}
+                      })()}
                     </div>
                   )}
                 </div>
@@ -2215,10 +2365,47 @@ export default function ProjectsPage() {
                           return campIds.includes(editingCampaign?.name);
                         });
 
+                    const campaignManagers = parseIds(editingCampaign?.manager_ids).map(id => users.find(u => Number(u.id) === Number(id))).filter(Boolean);
+                    const campaignStaff = parseIds(editingCampaign?.user_ids).map(id => users.find(u => Number(u.id) === Number(id))).filter(Boolean);
+
                     if (associatedProjs.length === 0) {
                       return (
-                        <div style={{ padding: '1rem', background: 'var(--color-bg-light)', border: '1px dashed var(--color-border)', borderRadius: '12px', textAlign: 'center', color: 'var(--color-text-muted)', fontSize: '0.8rem' }}>
-                          Chưa liên kết dự án nào
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                          <div style={{ padding: '1rem', background: 'var(--color-bg-light)', border: '1px dashed var(--color-border)', borderRadius: '12px', textAlign: 'center', color: 'var(--color-text-muted)', fontSize: '0.8rem', marginBottom: '1rem' }}>
+                            Chưa liên kết dự án nào
+                          </div>
+
+                          <div style={{ borderTop: '1px solid var(--color-border-light)', paddingTop: '1rem' }}>
+                            <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 600, display: 'block', marginBottom: '8px' }}>Manager phụ trách chiến dịch:</span>
+                            {campaignManagers.length === 0 ? (
+                              <span style={{ fontSize: '0.75rem', color: 'var(--color-text-light)', fontStyle: 'italic' }}>Chưa phân công manager</span>
+                            ) : (
+                              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                                {campaignManagers.map((member: any) => (
+                                  <span key={member.id} style={{ background: '#ffffff', border: '1px solid var(--color-border)', padding: '2px 8px', borderRadius: '100px', fontSize: '0.7rem', fontWeight: 600, color: 'var(--color-text)', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                                    <Avatar src={member.avatar_url || member.avatar} name={member.full_name || member.fullname || member.name || member.username} size={16} />
+                                    {member.full_name || member.fullname || member.name || member.username}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+
+                          <div style={{ marginTop: '1rem' }}>
+                            <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 600, display: 'block', marginBottom: '8px' }}>Nhân sự phụ trách chiến dịch:</span>
+                            {campaignStaff.length === 0 ? (
+                              <span style={{ fontSize: '0.75rem', color: 'var(--color-text-light)', fontStyle: 'italic' }}>Chưa phân công nhân sự</span>
+                            ) : (
+                              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                                {campaignStaff.map((member: any) => (
+                                  <span key={member.id} style={{ background: '#ffffff', border: '1px solid var(--color-border)', padding: '2px 8px', borderRadius: '100px', fontSize: '0.7rem', fontWeight: 600, color: 'var(--color-text)', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                                    <Avatar src={member.avatar_url || member.avatar} name={member.full_name || member.fullname || member.name || member.username} size={16} />
+                                    {member.full_name || member.fullname || member.name || member.username}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+                          </div>
                         </div>
                       );
                     }
@@ -2226,13 +2413,11 @@ export default function ProjectsPage() {
                     return (
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                         {associatedProjs.map(proj => {
-                          const docIds = proj.document_ids ? proj.document_ids.split(',').map((id: string) => id.trim()) : [];
-                          const projDocs = allFiles.filter(f => docIds.includes(String(f.id)));
-                          const rosterList = campaignRosters[proj.id] || [];
+                          const projManagers = parseIds(proj.manager_ids).map(id => users.find(u => Number(u.id) === Number(id))).filter(Boolean);
 
                           return (
-                            <div key={proj.id} style={{ border: '1px solid var(--color-border-light)', borderRadius: '12px', padding: '1rem', background: 'var(--color-bg-light)' }}>
-                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem', borderBottom: '1px dotted var(--color-border-light)', paddingBottom: '0.5rem' }}>
+                            <div key={proj.id} style={{ border: '1px solid var(--color-border-light)', borderRadius: '12px', padding: '1rem', background: 'var(--color-bg-light)', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px dotted var(--color-border-light)', paddingBottom: '0.5rem' }}>
                                 <span 
                                   onClick={() => {
                                     setEditingProject(proj);
@@ -2247,47 +2432,16 @@ export default function ProjectsPage() {
                                 <span style={{ fontSize: '0.75rem', fontFamily: 'monospace', color: 'var(--color-text-muted)' }}>{proj.code}</span>
                               </div>
 
-                              <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginBottom: '8px', display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '6px' }}>
-                                <span>Thư mục:</span> 
-                                {parseFolderPaths(proj.folder_path).map((f, idx) => (
-                                  <span key={idx}>{renderFolderPathLink(f.path, proj.id)}</span>
-                                ))}
-                              </div>
-
-                              <div style={{ marginBottom: '8px' }}>
-                                <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 600, display: 'block', marginBottom: '4px' }}>Tài liệu:</span>
-                                {projDocs.length === 0 ? (
-                                  <span style={{ fontSize: '0.75rem', color: 'var(--color-text-light)', fontStyle: 'italic' }}>Không có tài liệu</span>
-                                ) : (
-                                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                                    {projDocs.map(doc => (
-                                      <a
-                                        key={doc.id}
-                                        href={`${import.meta.env.VITE_API_URL ?? '/backend'}/${doc.file_path}`}
-                                        download={doc.name}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        style={{ color: 'var(--color-primary)', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '0.75rem', fontWeight: 600 }}
-                                      >
-                                        <FileText size={12} style={{ flexShrink: 0 }} /> {doc.name}
-                                      </a>
-                                    ))}
-                                  </div>
-                                )}
-                              </div>
-
                               <div>
-                                <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 600, display: 'block', marginBottom: '4px' }}>Nhân sự phụ trách:</span>
-                                {campaignRostersLoading ? (
-                                  <span style={{ fontSize: '0.75rem', color: 'var(--color-text-light)' }}>Đang tải...</span>
-                                ) : rosterList.length === 0 ? (
-                                  <span style={{ fontSize: '0.75rem', color: 'var(--color-text-light)', fontStyle: 'italic' }}>Chưa phân công</span>
+                                <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 600, display: 'block', marginBottom: '4px' }}>Quản lý dự án:</span>
+                                {projManagers.length === 0 ? (
+                                  <span style={{ fontSize: '0.75rem', color: 'var(--color-text-light)', fontStyle: 'italic' }}>Chưa phân công quản lý</span>
                                 ) : (
                                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                                    {rosterList.map(member => (
+                                    {projManagers.map((member: any) => (
                                       <span key={member.id} style={{ background: '#ffffff', border: '1px solid var(--color-border)', padding: '2px 8px', borderRadius: '100px', fontSize: '0.7rem', fontWeight: 600, color: 'var(--color-text)', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                                        <Avatar src={member.avatar_url || member.avatar} name={member.full_name || member.name} size={16} />
-                                        {member.full_name || member.name}
+                                        <Avatar src={member.avatar_url || member.avatar} name={member.full_name || member.fullname || member.name || member.username} size={16} />
+                                        {member.full_name || member.fullname || member.name || member.username}
                                       </span>
                                     ))}
                                   </div>
@@ -2296,6 +2450,40 @@ export default function ProjectsPage() {
                             </div>
                           );
                         })}
+
+                        <div style={{ borderTop: '1px solid var(--color-border-light)', paddingTop: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                          <div>
+                            <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 600, display: 'block', marginBottom: '6px' }}>Manager phụ trách chiến dịch:</span>
+                            {campaignManagers.length === 0 ? (
+                              <span style={{ fontSize: '0.75rem', color: 'var(--color-text-light)', fontStyle: 'italic' }}>Chưa phân công manager</span>
+                            ) : (
+                              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                                {campaignManagers.map((member: any) => (
+                                  <span key={member.id} style={{ background: '#ffffff', border: '1px solid var(--color-border)', padding: '2px 8px', borderRadius: '100px', fontSize: '0.7rem', fontWeight: 600, color: 'var(--color-text)', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                                    <Avatar src={member.avatar_url || member.avatar} name={member.full_name || member.fullname || member.name || member.username} size={16} />
+                                    {member.full_name || member.fullname || member.name || member.username}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+
+                          <div>
+                            <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 600, display: 'block', marginBottom: '6px' }}>Nhân sự phụ trách chiến dịch:</span>
+                            {campaignStaff.length === 0 ? (
+                              <span style={{ fontSize: '0.75rem', color: 'var(--color-text-light)', fontStyle: 'italic' }}>Chưa phân công nhân sự</span>
+                            ) : (
+                              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                                {campaignStaff.map((member: any) => (
+                                  <span key={member.id} style={{ background: '#ffffff', border: '1px solid var(--color-border)', padding: '2px 8px', borderRadius: '100px', fontSize: '0.7rem', fontWeight: 600, color: 'var(--color-text)', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                                    <Avatar src={member.avatar_url || member.avatar} name={member.full_name || member.fullname || member.name || member.username} size={16} />
+                                    {member.full_name || member.fullname || member.name || member.username}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        </div>
                       </div>
                     );
                   })()}
@@ -2325,78 +2513,157 @@ export default function ProjectsPage() {
                     </div>
                   ) : (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                      {linkedTasks.map(task => {
-                        const statusColors: any = {
-                          planned: { bg: 'rgba(245, 158, 11, 0.08)', text: 'var(--color-warning)' },
-                          done: { bg: 'rgba(16, 185, 129, 0.08)', text: 'var(--color-success)' },
-                          cancelled: { bg: 'rgba(239, 68, 68, 0.08)', text: 'var(--color-danger)' }
+                      {(() => {
+                        const priorityWeight: Record<string, number> = {
+                          high: 3,
+                          medium: 2,
+                          low: 1
                         };
-                        const sc = statusColors[task.status] || statusColors.planned;
-                        const performer = users.find(u => Number(u.id) === Number(task.user_id));
+                        const getPriorityWeight = (p: string) => priorityWeight[p] || 2;
+
+                        const sortedTasks = [...linkedTasks].sort((a, b) => {
+                          const weightA = getPriorityWeight(a.priority);
+                          const weightB = getPriorityWeight(b.priority);
+                          if (weightB !== weightA) {
+                            return weightB - weightA;
+                          }
+                          if (a.due_date && b.due_date) {
+                            return new Date(a.due_date).getTime() - new Date(b.due_date).getTime();
+                          }
+                          if (a.due_date) return -1;
+                          if (b.due_date) return 1;
+                          return 0;
+                        });
+
+                        const totalPages = Math.ceil(sortedTasks.length / 10);
+                        const startIndex = (campaignTasksPage - 1) * 10;
+                        const paginatedTasks = sortedTasks.slice(startIndex, startIndex + 10);
+
                         return (
-                          <div
-                            key={task.id}
-                            style={{
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'space-between',
-                              background: 'var(--color-bg-light)',
-                              border: '1px solid var(--color-border-light)',
-                              padding: '12px 16px',
-                              borderRadius: '12px',
-                              fontSize: '0.85rem',
-                              cursor: 'pointer',
-                              transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
-                              boxShadow: '0 2px 6px rgba(0, 0, 0, 0.01)'
-                            }}
-                            onMouseEnter={e => {
-                              e.currentTarget.style.borderColor = 'var(--color-primary-light)';
-                              e.currentTarget.style.background = '#ffffff';
-                              e.currentTarget.style.transform = 'translateY(-2px)';
-                              e.currentTarget.style.boxShadow = '0 6px 16px rgba(163, 20, 34, 0.06)';
-                            }}
-                            onMouseLeave={e => {
-                              e.currentTarget.style.borderColor = 'var(--color-border-light)';
-                              e.currentTarget.style.background = 'var(--color-bg-light)';
-                              e.currentTarget.style.transform = 'none';
-                              e.currentTarget.style.boxShadow = '0 2px 6px rgba(0, 0, 0, 0.01)';
-                            }}
-                            onClick={() => handleOpenTask(task.id)}
-                            title={t('Click để xem chi tiết nhiệm vụ')}
-                          >
-                            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
-                              <div style={{ marginTop: '3px' }}>
-                                <CheckSquare size={18} color={task.status === 'done' ? 'var(--color-success)' : 'var(--color-text-muted)'} style={{ opacity: 0.85 }} />
-                              </div>
-                              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                                <span style={{ fontWeight: 650, color: 'var(--color-text)', fontSize: '0.9rem', lineHeight: '1.2' }}>{task.subject}</span>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                  <Avatar 
-                                    src={performer?.avatar_url || performer?.avatar} 
-                                    name={performer?.full_name || performer?.name || 'Hệ thống'} 
-                                    size={18} 
-                                  />
-                                  <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 500 }}>
-                                    {performer?.full_name || 'Hệ thống'} {performer?.role ? `(${performer.role})` : ''}
+                          <>
+                            {paginatedTasks.map(task => {
+                              const statusColors: any = {
+                                planned: { bg: 'rgba(245, 158, 11, 0.08)', text: 'var(--color-warning)' },
+                                done: { bg: 'rgba(16, 185, 129, 0.08)', text: 'var(--color-success)' },
+                                cancelled: { bg: 'rgba(239, 68, 68, 0.08)', text: 'var(--color-danger)' }
+                              };
+                              const sc = statusColors[task.status] || statusColors.planned;
+                              const performer = users.find(u => Number(u.id) === Number(task.user_id));
+                              return (
+                                <div
+                                  key={task.id}
+                                  style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'space-between',
+                                    background: 'var(--color-bg-light)',
+                                    border: '1px solid var(--color-border-light)',
+                                    padding: '12px 16px',
+                                    borderRadius: '12px',
+                                    fontSize: '0.85rem',
+                                    cursor: 'pointer',
+                                    transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+                                    boxShadow: '0 2px 6px rgba(0, 0, 0, 0.01)'
+                                  }}
+                                  onMouseEnter={e => {
+                                    e.currentTarget.style.borderColor = 'var(--color-primary-light)';
+                                    e.currentTarget.style.background = '#ffffff';
+                                    e.currentTarget.style.transform = 'translateY(-2px)';
+                                    e.currentTarget.style.boxShadow = '0 6px 16px rgba(163, 20, 34, 0.06)';
+                                  }}
+                                  onMouseLeave={e => {
+                                    e.currentTarget.style.borderColor = 'var(--color-border-light)';
+                                    e.currentTarget.style.background = 'var(--color-bg-light)';
+                                    e.currentTarget.style.transform = 'none';
+                                    e.currentTarget.style.boxShadow = '0 2px 6px rgba(0, 0, 0, 0.01)';
+                                  }}
+                                  onClick={() => handleOpenTask(task.id)}
+                                  title={t('Click để xem chi tiết nhiệm vụ')}
+                                >
+                                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+                                    <div style={{ marginTop: '3px' }}>
+                                      <CheckSquare size={18} color={task.status === 'done' ? 'var(--color-success)' : 'var(--color-text-muted)'} style={{ opacity: 0.85 }} />
+                                    </div>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                      <span style={{ fontWeight: 650, color: 'var(--color-text)', fontSize: '0.9rem', lineHeight: '1.2' }}>{task.subject}</span>
+                                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                        <Avatar 
+                                          src={performer?.avatar_url || performer?.avatar} 
+                                          name={performer?.full_name || performer?.name || 'Hệ thống'} 
+                                          size={18} 
+                                        />
+                                        <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 500 }}>
+                                          {performer?.full_name || 'Hệ thống'} {performer?.role ? `(${performer.role})` : ''}
+                                        </span>
+                                      </div>
+                                    </div>
+                                  </div>
+                                  <span style={{ 
+                                    fontSize: '0.72rem', 
+                                    fontWeight: 700, 
+                                    padding: '4px 10px', 
+                                    borderRadius: '100px', 
+                                    background: sc.bg, 
+                                    color: sc.text,
+                                    textTransform: 'uppercase',
+                                    letterSpacing: '0.03em'
+                                  }}>
+                                    {task.status === 'done' ? 'Đã xong' : 'Chưa xong'}
                                   </span>
                                 </div>
+                              );
+                            })}
+
+                            {totalPages > 1 && (
+                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', marginTop: '1rem' }}>
+                                <button
+                                  disabled={campaignTasksPage === 1}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setCampaignTasksPage(p => Math.max(1, p - 1));
+                                  }}
+                                  style={{
+                                    background: '#ffffff',
+                                    border: '1px solid var(--color-border-light)',
+                                    padding: '6px 12px',
+                                    borderRadius: '8px',
+                                    fontSize: '0.75rem',
+                                    fontWeight: 600,
+                                    cursor: campaignTasksPage === 1 ? 'not-allowed' : 'pointer',
+                                    opacity: campaignTasksPage === 1 ? 0.5 : 1,
+                                    color: 'var(--color-text)'
+                                  }}
+                                >
+                                  Trước
+                                </button>
+                                <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>
+                                  Trang {campaignTasksPage} / {totalPages}
+                                </span>
+                                <button
+                                  disabled={campaignTasksPage === totalPages}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setCampaignTasksPage(p => Math.min(totalPages, p + 1));
+                                  }}
+                                  style={{
+                                    background: '#ffffff',
+                                    border: '1px solid var(--color-border-light)',
+                                    padding: '6px 12px',
+                                    borderRadius: '8px',
+                                    fontSize: '0.75rem',
+                                    fontWeight: 600,
+                                    cursor: campaignTasksPage === totalPages ? 'not-allowed' : 'pointer',
+                                    opacity: campaignTasksPage === totalPages ? 0.5 : 1,
+                                    color: 'var(--color-text)'
+                                  }}
+                                >
+                                  Sau
+                                </button>
                               </div>
-                            </div>
-                            <span style={{ 
-                              fontSize: '0.72rem', 
-                              fontWeight: 700, 
-                              padding: '4px 10px', 
-                              borderRadius: '100px', 
-                              background: sc.bg, 
-                              color: sc.text,
-                              textTransform: 'uppercase',
-                              letterSpacing: '0.03em'
-                            }}>
-                              {task.status === 'done' ? 'Đã xong' : 'Chưa xong'}
-                            </span>
-                          </div>
+                            )}
+                          </>
                         );
-                      })}
+                      })()}
                     </div>
                   )}
                 </div>
