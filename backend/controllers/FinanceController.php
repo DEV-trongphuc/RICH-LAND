@@ -95,27 +95,15 @@ class FinanceController
             $userIds = array_merge($userIds, array_map('intval', $teamMemberIds));
         }
 
-        if ($isSale) {
-            if ($contactId) {
-                $stmtContact = $this->db->prepare("SELECT owner_id FROM contacts WHERE id = ? AND tenant_id = ?");
-                $stmtContact->execute([(int)$contactId, $tid]);
-                $ownerId = $stmtContact->fetchColumn();
-                if ($ownerId && (int)$ownerId !== $uid) {
-                    respond(403, null, 'Bạn không có quyền xem hóa đơn của liên hệ này', false);
-                }
-            } else {
+        if ($contactId) {
+            if (!$this->checkContactAccess($uid, (int)$contactId, $tid, $role)) {
+                respond(403, null, 'Bạn không có quyền xem hóa đơn của liên hệ này', false);
+            }
+        } else {
+            if ($isSale) {
                 $where[] = 'i.created_by = ?';
                 $params[] = $uid;
-            }
-        } else if ($isManager) {
-            if ($contactId) {
-                $stmtContact = $this->db->prepare("SELECT owner_id FROM contacts WHERE id = ? AND tenant_id = ?");
-                $stmtContact->execute([(int)$contactId, $tid]);
-                $ownerId = $stmtContact->fetchColumn();
-                if ($ownerId && !in_array((int)$ownerId, $userIds, true)) {
-                    respond(403, null, 'Bạn không có quyền xem hóa đơn của liên hệ này', false);
-                }
-            } else {
+            } else if ($isManager) {
                 $placeholders = implode(',', array_fill(0, count($userIds), '?'));
                 $where[] = "i.created_by IN ($placeholders)";
                 $params = array_merge($params, $userIds);
@@ -1043,41 +1031,19 @@ class FinanceController
             $userIds = array_merge($userIds, array_map('intval', $teamMemberIds));
         }
 
-        if ($isSale) {
-            if ($type === 'contact') {
-                $stmtContact = $this->db->prepare("SELECT owner_id FROM contacts WHERE id = ? AND tenant_id = ?");
-                $stmtContact->execute([$id, $tid]);
-                $ownerId = $stmtContact->fetchColumn();
-                if ($ownerId && (int)$ownerId !== $uid) {
-                    respond(403, null, 'Bạn không có quyền xem chi phí của liên hệ này', false);
-                }
-            } else if ($type === 'deal') {
-                $stmtDeal = $this->db->prepare("SELECT owner_id FROM deals WHERE id = ? AND tenant_id = ?");
-                $stmtDeal->execute([$id, $tid]);
-                $ownerId = $stmtDeal->fetchColumn();
-                if ($ownerId && (int)$ownerId !== $uid) {
-                    respond(403, null, 'Bạn không có quyền xem chi phí của cơ hội này', false);
-                }
-            } else {
+        if ($type === 'contact') {
+            if (!$this->checkContactAccess($uid, (int)$id, $tid, $role)) {
+                respond(403, null, 'Bạn không có quyền xem chi phí của liên hệ này', false);
+            }
+        } else if ($type === 'deal') {
+            if (!$this->checkDealAccess($uid, (int)$id, $tid, $role)) {
+                respond(403, null, 'Bạn không có quyền xem chi phí của cơ hội này', false);
+            }
+        } else {
+            if ($isSale) {
                 $where .= " AND e.created_by=?";
                 $p[] = $uid;
-            }
-        } else if ($isManager) {
-            if ($type === 'contact') {
-                $stmtContact = $this->db->prepare("SELECT owner_id FROM contacts WHERE id = ? AND tenant_id = ?");
-                $stmtContact->execute([$id, $tid]);
-                $ownerId = $stmtContact->fetchColumn();
-                if ($ownerId && !in_array((int)$ownerId, $userIds, true)) {
-                    respond(403, null, 'Bạn không có quyền xem chi phí của liên hệ này', false);
-                }
-            } else if ($type === 'deal') {
-                $stmtDeal = $this->db->prepare("SELECT owner_id FROM deals WHERE id = ? AND tenant_id = ?");
-                $stmtDeal->execute([$id, $tid]);
-                $ownerId = $stmtDeal->fetchColumn();
-                if ($ownerId && !in_array((int)$ownerId, $userIds, true)) {
-                    respond(403, null, 'Bạn không có quyền xem chi phí của cơ hội này', false);
-                }
-            } else {
+            } else if ($isManager) {
                 $placeholders = implode(',', array_fill(0, count($userIds), '?'));
                 $where .= " AND e.created_by IN ($placeholders)";
                 $p = array_merge($p, $userIds);
@@ -1231,5 +1197,76 @@ class FinanceController
         $exp = $sExp->fetch() ?: ['total_expenses' => 0, 'approved_expenses' => 0];
 
         respond(200, array_merge($inv, $exp));
+    }
+
+    private function checkContactAccess(int $uid, int $contactId, int $tid, string $role): bool {
+        if (in_array($role, ['admin', 'superadmin', 'super_admin', 'director', 'assistant'], true)) {
+            return true;
+        }
+        
+        $stmt = $this->db->prepare("SELECT owner_id, collaborator_ids FROM contacts WHERE id = ? AND tenant_id = ?");
+        $stmt->execute([$contactId, $tid]);
+        $row = $stmt->fetch();
+        if (!$row) return false;
+        
+        $ownerId = (int)$row['owner_id'];
+        $collabs = array_filter(array_map('intval', explode(',', $row['collaborator_ids'] ?? '')));
+        
+        $userIds = [$uid];
+        if ($role === 'manager') {
+            $stmtTeam = $this->db->prepare("SELECT id FROM users WHERE team_id IN (SELECT id FROM teams WHERE leader_id = ?)");
+            $stmtTeam->execute([$uid]);
+            $teamMemberIds = $stmtTeam->fetchAll(PDO::FETCH_COLUMN) ?: [];
+            $userIds = array_merge($userIds, array_map('intval', $teamMemberIds));
+        }
+        
+        if (in_array($ownerId, $userIds, true)) {
+            return true;
+        }
+        if (!empty(array_intersect($collabs, $userIds))) {
+            return true;
+        }
+        
+        foreach ($userIds as $teamUid) {
+            $checkC = $this->db->prepare("SELECT id FROM cooperation_slips WHERE contact_id = ? AND JSON_CONTAINS(JSON_KEYS(CASE WHEN (shares_json IS NOT NULL AND JSON_VALID(shares_json)) THEN shares_json ELSE '{}' END), JSON_QUOTE(CAST(? AS CHAR)))");
+            $checkC->execute([$contactId, $teamUid]);
+            if ($checkC->fetch()) {
+                return true;
+            }
+        }
+        
+        return false;
+    }
+
+    private function checkDealAccess(int $uid, int $dealId, int $tid, string $role): bool {
+        if (in_array($role, ['admin', 'superadmin', 'super_admin', 'director', 'assistant'], true)) {
+            return true;
+        }
+        
+        $stmt = $this->db->prepare("SELECT owner_id, contact_id FROM deals WHERE id = ? AND tenant_id = ?");
+        $stmt->execute([$dealId, $tid]);
+        $deal = $stmt->fetch();
+        if (!$deal) return false;
+        
+        $ownerId = (int)$deal['owner_id'];
+        $contactId = (int)$deal['contact_id'];
+        
+        $userIds = [$uid];
+        if ($role === 'manager') {
+            $stmtTeam = $this->db->prepare("SELECT id FROM users WHERE team_id IN (SELECT id FROM teams WHERE leader_id = ?)");
+            $stmtTeam->execute([$uid]);
+            $teamMemberIds = $stmtTeam->fetchAll(PDO::FETCH_COLUMN) ?: [];
+            $userIds = array_merge($userIds, array_map('intval', $teamMemberIds));
+        }
+        
+        if (in_array($ownerId, $userIds, true)) {
+            return true;
+        }
+        
+        if ($contactId > 0) {
+            return $this->checkContactAccess($uid, $contactId, $tid, $role);
+        }
+        
+        return false;
     }
 }

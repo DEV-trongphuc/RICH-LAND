@@ -28,7 +28,14 @@ class TicketController {
         }
         
         if ($auth['role'] === 'sales' || $auth['role'] === 'sale') {
-            $where[] = '(t.created_by = ? OR t.assignee_id = ?)';
+            $where[] = '(t.created_by = ? OR t.assignee_id = ? OR EXISTS (
+                SELECT 1 FROM contacts c 
+                WHERE c.tenant_id = t.tenant_id 
+                  AND JSON_CONTAINS(t.related_contacts, CAST(c.id AS CHAR)) 
+                  AND (c.owner_id = ? OR FIND_IN_SET(?, c.collaborator_ids))
+            ))';
+            $params[] = $auth['user_id'];
+            $params[] = $auth['user_id'];
             $params[] = $auth['user_id'];
             $params[] = $auth['user_id'];
         } else if ($auth['role'] === 'manager') {
@@ -40,9 +47,27 @@ class TicketController {
                 SELECT id FROM users WHERE team_id IN (
                     SELECT id FROM teams WHERE leader_id = ?
                 ) OR team_id = (SELECT team_id FROM users WHERE id = ?)
+            ) OR EXISTS (
+                SELECT 1 FROM contacts c 
+                WHERE c.tenant_id = t.tenant_id 
+                  AND JSON_CONTAINS(t.related_contacts, CAST(c.id AS CHAR)) 
+                  AND (
+                      c.owner_id = ? 
+                      OR FIND_IN_SET(?, c.collaborator_ids)
+                      OR c.owner_id IN (
+                          SELECT id FROM users WHERE team_id IN (
+                              SELECT id FROM teams WHERE leader_id = ?
+                          ) OR team_id = (SELECT team_id FROM users WHERE id = ?)
+                      )
+                  )
             ))';
             $params[] = $auth['user_id'];
             $params[] = $auth['user_id'];
+            $params[] = $auth['user_id'];
+            $params[] = $auth['user_id'];
+            $params[] = $auth['user_id'];
+            $params[] = $auth['user_id'];
+            // Added params for manager related contacts check:
             $params[] = $auth['user_id'];
             $params[] = $auth['user_id'];
             $params[] = $auth['user_id'];
@@ -111,12 +136,29 @@ class TicketController {
     private function checkTicketAccess(array $auth, int $ticketId): bool {
         if (in_array($auth['role'], ['admin', 'super_admin', 'superadmin', 'director'], true)) return true;
         
-        $sql = "SELECT id FROM tickets WHERE id=? AND tenant_id=? AND (created_by = ? OR assignee_id = ?";
-        $params = [$ticketId, $auth['tenant_id'], $auth['user_id'], $auth['user_id']];
+        $sql = "SELECT id FROM tickets WHERE id=? AND tenant_id=? AND (created_by = ? OR assignee_id = ? OR EXISTS (
+            SELECT 1 FROM contacts c 
+            WHERE c.tenant_id = tickets.tenant_id 
+              AND JSON_CONTAINS(tickets.related_contacts, CAST(c.id AS CHAR)) 
+              AND (c.owner_id = ? OR FIND_IN_SET(?, c.collaborator_ids))
+        )";
+        $params = [$ticketId, $auth['tenant_id'], $auth['user_id'], $auth['user_id'], $auth['user_id'], $auth['user_id']];
         
         if ($auth['role'] === 'manager') {
             $sql .= " OR created_by IN (SELECT id FROM users WHERE team_id IN (SELECT id FROM teams WHERE leader_id = ?) OR team_id = (SELECT team_id FROM users WHERE id = ?))
-                      OR assignee_id IN (SELECT id FROM users WHERE team_id IN (SELECT id FROM teams WHERE leader_id = ?) OR team_id = (SELECT team_id FROM users WHERE id = ?))";
+                      OR assignee_id IN (SELECT id FROM users WHERE team_id IN (SELECT id FROM teams WHERE leader_id = ?) OR team_id = (SELECT team_id FROM users WHERE id = ?))
+                      OR EXISTS (
+                          SELECT 1 FROM contacts c 
+                          WHERE c.tenant_id = tickets.tenant_id 
+                            AND JSON_CONTAINS(tickets.related_contacts, CAST(c.id AS CHAR)) 
+                            AND c.owner_id IN (
+                                SELECT id FROM users WHERE team_id IN (
+                                    SELECT id FROM teams WHERE leader_id = ?
+                                ) OR team_id = (SELECT team_id FROM users WHERE id = ?)
+                            )
+                      )";
+            $params[] = $auth['user_id'];
+            $params[] = $auth['user_id'];
             $params[] = $auth['user_id'];
             $params[] = $auth['user_id'];
             $params[] = $auth['user_id'];
