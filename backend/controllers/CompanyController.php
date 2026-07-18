@@ -158,7 +158,7 @@ class CompanyController {
         if (isset($b['tags'])) { $sets[]='tags=?'; $params[]=json_encode($b['tags']); }
         if (!$sets && !isset($b['custom_fields'])) respond(422, null, 'Không có dữ liệu để cập nhật', false);
 
-        if (array_key_exists('stage_id', $b)) {
+        if (array_key_exists('stage_id', $b) && !empty($b['stage_id'])) {
             $sStage = $this->db->prepare("SELECT id FROM pipeline_stages WHERE id=? AND tenant_id=?");
             $sStage->execute([(int)$b['stage_id'], $auth['tenant_id']]);
             if (!$sStage->fetch()) respond(404, null, 'Giai đoạn không hợp lệ', false);

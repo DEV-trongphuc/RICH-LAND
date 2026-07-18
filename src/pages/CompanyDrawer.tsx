@@ -44,6 +44,7 @@ export const CompanyDrawer: React.FC<CompanyDrawerProps> = ({ isOpen, onClose, e
   const [formData, setFormData] = useState(entity || {});
   const [tags, setTags] = useState<string[]>(entity?.tags || []);
   const [isSaving, setIsSaving] = useState(false);
+  const [errors, setErrors] = useState<Record<string, boolean>>({});
 
   const visibleTabs = useMemo(() => {
     return disableEdit ? TABS.filter(t => t.id !== 'settings') : TABS;
@@ -107,18 +108,33 @@ export const CompanyDrawer: React.FC<CompanyDrawerProps> = ({ isOpen, onClose, e
     if (isSaving) return;
     try {
       setIsSaving(true);
+      // Validate
+      setErrors({});
+      const newErrors: Record<string, boolean> = {};
+
+      if (!formData.name || !formData.name.trim()) {
+        newErrors.name = true;
+        addToast('Tên công ty là bắt buộc.', 'error');
+      }
+
       const payload = { ...formData, tags };
       if (formData.custom_fields && Array.isArray(formData.custom_fields)) {
         for (const f of formData.custom_fields) {
           const isEmpty = f.value === undefined || f.value === null || f.value === '' || (Array.isArray(f.value) && f.value.length === 0);
           if (f.is_required && isEmpty) {
+            newErrors[`cf_${f.id}`] = true;
             addToast(`Trường "${f.label}" là bắt buộc.`, 'error');
-            setIsSaving(false);
-            return;
           }
         }
         payload.custom_fields = formData.custom_fields.map((f: any) => ({ field_id: f.id, value: f.value }));
       }
+
+      if (Object.keys(newErrors).length > 0) {
+        setErrors(newErrors);
+        setIsSaving(false);
+        return;
+      }
+
       const res = await api.put(`/companies/${entity.id}`, payload);
       const updated = res.data.data;
       setFormData(updated);
@@ -406,7 +422,21 @@ export const CompanyDrawer: React.FC<CompanyDrawerProps> = ({ isOpen, onClose, e
                       <div className="grid grid-2">
                         <div className="form-group" style={{ gridColumn: 'span 2' }}>
                           <label className="form-label">Tên công ty <span style={{ color: 'var(--color-danger)' }}>*</span></label>
-                          <input className="form-input" placeholder="Tên đầy đủ của doanh nghiệp..." value={formData?.name || ''} onChange={e => setFormData((prev: any) => ({ ...prev, name: e.target.value }))} />
+                          <input 
+                            className="form-input" 
+                            placeholder="Tên đầy đủ của doanh nghiệp..." 
+                            value={formData?.name || ''} 
+                            onChange={e => {
+                              setFormData((prev: any) => ({ ...prev, name: e.target.value }));
+                              if (e.target.value.trim() && errors.name) {
+                                setErrors(prev => ({ ...prev, name: false }));
+                              }
+                            }} 
+                            style={{
+                              borderColor: errors.name ? 'var(--color-danger, #bd1d2d)' : undefined,
+                              boxShadow: errors.name ? '0 0 0 2px rgba(189, 29, 45, 0.1)' : undefined
+                            }}
+                          />
                         </div>
                         <div className="form-group">
                           <label className="form-label">Mã số thuế (Tax ID)</label>
@@ -531,36 +561,80 @@ export const CompanyDrawer: React.FC<CompanyDrawerProps> = ({ isOpen, onClose, e
                             <div className="form-group" key={field.id}>
                               <label className="form-label">{field.label} {field.is_required ? <span style={{color: 'var(--color-danger)'}}>*</span> : ''}</label>
                               {field.field_type === 'text' && (
-                                <input className="form-input" value={field.value || ''} onChange={e => {
-                                  const newFields = [...formData.custom_fields];
-                                  newFields[index].value = e.target.value;
-                                  setFormData({ ...formData, custom_fields: newFields });
-                                }} />
+                                <input 
+                                  className="form-input" 
+                                  value={field.value || ''} 
+                                  onChange={e => {
+                                    const newFields = [...formData.custom_fields];
+                                    newFields[index].value = e.target.value;
+                                    setFormData({ ...formData, custom_fields: newFields });
+                                    if (e.target.value.trim() && errors[`cf_${field.id}`]) {
+                                      setErrors(prev => ({ ...prev, [`cf_${field.id}`]: false }));
+                                    }
+                                  }} 
+                                  style={{
+                                    borderColor: errors[`cf_${field.id}`] ? 'var(--color-danger, #bd1d2d)' : undefined,
+                                    boxShadow: errors[`cf_${field.id}`] ? '0 0 0 2px rgba(189, 29, 45, 0.1)' : undefined
+                                  }}
+                                />
                               )}
                               {field.field_type === 'number' && (
-                                <input type="number" className="form-input" value={field.value || ''} onChange={e => {
-                                  const newFields = [...formData.custom_fields];
-                                  newFields[index].value = e.target.value;
-                                  setFormData({ ...formData, custom_fields: newFields });
-                                }} />
+                                <input 
+                                  type="number" 
+                                  className="form-input" 
+                                  value={field.value || ''} 
+                                  onChange={e => {
+                                    const newFields = [...formData.custom_fields];
+                                    newFields[index].value = e.target.value;
+                                    setFormData({ ...formData, custom_fields: newFields });
+                                    if (e.target.value.trim() && errors[`cf_${field.id}`]) {
+                                      setErrors(prev => ({ ...prev, [`cf_${field.id}`]: false }));
+                                    }
+                                  }} 
+                                  style={{
+                                    borderColor: errors[`cf_${field.id}`] ? 'var(--color-danger, #bd1d2d)' : undefined,
+                                    boxShadow: errors[`cf_${field.id}`] ? '0 0 0 2px rgba(189, 29, 45, 0.1)' : undefined
+                                  }}
+                                />
                               )}
                               {field.field_type === 'date' && (
-                                <input type="date" className="form-input" value={field.value || ''} onChange={e => {
-                                  const newFields = [...formData.custom_fields];
-                                  newFields[index].value = e.target.value;
-                                  setFormData({ ...formData, custom_fields: newFields });
-                                }} />
+                                <input 
+                                  type="date" 
+                                  className="form-input" 
+                                  value={field.value || ''} 
+                                  onChange={e => {
+                                    const newFields = [...formData.custom_fields];
+                                    newFields[index].value = e.target.value;
+                                    setFormData({ ...formData, custom_fields: newFields });
+                                    if (e.target.value.trim() && errors[`cf_${field.id}`]) {
+                                      setErrors(prev => ({ ...prev, [`cf_${field.id}`]: false }));
+                                    }
+                                  }} 
+                                  style={{
+                                    borderColor: errors[`cf_${field.id}`] ? 'var(--color-danger, #bd1d2d)' : undefined,
+                                    boxShadow: errors[`cf_${field.id}`] ? '0 0 0 2px rgba(189, 29, 45, 0.1)' : undefined
+                                  }}
+                                />
                               )}
                               {field.field_type === 'dropdown' && (
-                                <CustomSelect 
-                                  options={(field.options || []).map((o:any) => ({ value: o, label: o }))} 
-                                  value={field.value || ''} 
-                                  onChange={val => {
-                                    const newFields = [...formData.custom_fields];
-                                    newFields[index].value = val.toString();
-                                    setFormData({ ...formData, custom_fields: newFields });
-                                  }} 
-                                />
+                                <div style={{
+                                  border: errors[`cf_${field.id}`] ? '1px solid var(--color-danger, #bd1d2d)' : undefined,
+                                  borderRadius: errors[`cf_${field.id}`] ? '8px' : undefined,
+                                  boxShadow: errors[`cf_${field.id}`] ? '0 0 0 2px rgba(189, 29, 45, 0.1)' : undefined
+                                }}>
+                                  <CustomSelect 
+                                    options={(field.options || []).map((o:any) => ({ value: o, label: o }))} 
+                                    value={field.value || ''} 
+                                    onChange={val => {
+                                      const newFields = [...formData.custom_fields];
+                                      newFields[index].value = val.toString();
+                                      setFormData({ ...formData, custom_fields: newFields });
+                                      if (val.toString().trim() && errors[`cf_${field.id}`]) {
+                                        setErrors(prev => ({ ...prev, [`cf_${field.id}`]: false }));
+                                      }
+                                    }} 
+                                  />
+                                </div>
                               )}
                               {field.field_type === 'checkbox' && (
                                 <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', height: '40px' }}>
@@ -709,27 +783,27 @@ export const CompanyDrawer: React.FC<CompanyDrawerProps> = ({ isOpen, onClose, e
                               <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                                 <label style={{ fontSize: '0.7rem', fontWeight: 600, color: 'var(--color-text-light)' }}>Số điện thoại</label>
                                 <div style={{ position: 'relative' }}>
-                                  <Phone size={13} style={{ position: 'absolute', left: '10px', top: '11px', color: 'var(--color-text-muted)' }} />
                                   <input 
                                     className="form-input" 
-                                    style={{ height: '36px', fontSize: '0.85rem', paddingLeft: '28px' }} 
+                                    style={{ height: '36px', fontSize: '0.85rem', paddingLeft: '12px', paddingRight: '28px' }} 
                                     value={sc.phone} 
                                     onChange={e => setSubContacts(subContacts.map(x => x.id === sc.id ? {...x, phone: e.target.value} : x))} 
                                     placeholder="Số điện thoại..."
                                   />
+                                  <Phone size={13} style={{ position: 'absolute', right: '10px', top: '11px', color: 'var(--color-text-muted)' }} />
                                 </div>
                               </div>
                               <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                                 <label style={{ fontSize: '0.7rem', fontWeight: 600, color: 'var(--color-text-light)' }}>Email</label>
                                 <div style={{ position: 'relative' }}>
-                                  <Mail size={13} style={{ position: 'absolute', left: '10px', top: '11px', color: 'var(--color-text-muted)' }} />
                                   <input 
                                     className="form-input" 
-                                    style={{ height: '36px', fontSize: '0.85rem', paddingLeft: '28px' }} 
+                                    style={{ height: '36px', fontSize: '0.85rem', paddingLeft: '12px', paddingRight: '28px' }} 
                                     value={sc.email} 
                                     onChange={e => setSubContacts(subContacts.map(x => x.id === sc.id ? {...x, email: e.target.value} : x))} 
                                     placeholder="Email..."
                                   />
+                                  <Mail size={13} style={{ position: 'absolute', right: '10px', top: '11px', color: 'var(--color-text-muted)' }} />
                                 </div>
                               </div>
                             </div>
@@ -977,11 +1051,17 @@ export const CompanyDrawer: React.FC<CompanyDrawerProps> = ({ isOpen, onClose, e
                         <div className="form-group mb-4 animate-fade">
                           <label className="form-label">Chuyên viên chăm sóc riêng (Dedicated Care Representative)</label>
                           <CustomSelect 
-                            options={users.map(u => ({ value: String(u.id), label: `${u.full_name || u.name} (${u.role})` }))}
+                            options={users.map(u => ({ 
+                              value: String(u.id), 
+                              label: u.full_name || u.name,
+                              avatar: u.avatar_url || u.avatar,
+                              sublabel: u.role
+                            }))}
                             value={formData.dedicated_rep_id ? String(formData.dedicated_rep_id) : null}
                             onChange={(val) => setFormData({ ...formData, dedicated_rep_id: val ? Number(val) : null })}
                             placeholder="Chọn chuyên viên..."
                             searchable
+                            showAvatars={true}
                           />
                         </div>
                       )}
