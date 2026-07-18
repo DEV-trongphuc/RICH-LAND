@@ -247,14 +247,19 @@ const SettingsInner = () => {
   const [coopEligibleStatuses, setCoopEligibleStatuses] = useState<string>("booking,da_gap,dat_coc");
   const [coopDefaultFiles, setCoopDefaultFiles] = useState<string>("UNC.png,CMND.png");
 
-  const [securityTimerChuaXacDinh, setSecurityTimerChuaXacDinh] = useState<string>("+3 hours");
-  const [securityTimerQuanTam, setSecurityTimerQuanTam] = useState<string>("+1 day");
-  const [securityTimerThienChi, setSecurityTimerThienChi] = useState<string>("+3 days");
-  const [securityTimerDongYGap, setSecurityTimerDongYGap] = useState<string>("+4 days");
-  const [securityTimerDaGap, setSecurityTimerDaGap] = useState<string>("+5 days");
-  const [securityTimerBooking, setSecurityTimerBooking] = useState<string>("+3 months");
+  const [securityTimers, setSecurityTimers] = useState<Record<string, string>>({
+    chua_xac_dinh: '+3 hours',
+    quan_tam: '+1 day',
+    thien_chi: '+3 days',
+    dong_y_gap: '+4 days',
+    da_gap: '+5 days',
+    booking: '+3 months'
+  });
   const [databankApplicableSources, setDatabankApplicableSources] = useState<string>("R3_Fb,R3,R2,broadcast");
   const [availableSources, setAvailableSources] = useState<string[]>([]);
+  const [standardCommissionRate, setStandardCommissionRate] = useState<number>(0.03);
+  const [lockoutReasonCountThreshold, setLockoutReasonCountThreshold] = useState<number>(3);
+  const [maxParallelSalesPerClient, setMaxParallelSalesPerClient] = useState<number>(2);
 
   const [pipelineStatusHierarchy, setPipelineStatusHierarchy] = useState<string[]>([
     'chua_xac_dinh', 'quan_tam', 'dong_y_gap', 'da_gap', 'booking', 'dat_coc', 'dong_deal'
@@ -604,13 +609,37 @@ const SettingsInner = () => {
         if (json.data.broadcast_exclusion_rules !== undefined) setBroadcastExclusionRules(json.data.broadcast_exclusion_rules);
         if (json.data.coop_eligible_statuses !== undefined) setCoopEligibleStatuses(json.data.coop_eligible_statuses);
         if (json.data.coop_default_files !== undefined) setCoopDefaultFiles(json.data.coop_default_files);
-        if (json.data.security_timer_chua_xac_dinh !== undefined) setSecurityTimerChuaXacDinh(json.data.security_timer_chua_xac_dinh);
-        if (json.data.security_timer_quan_tam !== undefined) setSecurityTimerQuanTam(json.data.security_timer_quan_tam);
-        if (json.data.security_timer_thien_chi !== undefined) setSecurityTimerThienChi(json.data.security_timer_thien_chi);
-        if (json.data.security_timer_dong_y_gap !== undefined) setSecurityTimerDongYGap(json.data.security_timer_dong_y_gap);
-        if (json.data.security_timer_da_gap !== undefined) setSecurityTimerDaGap(json.data.security_timer_da_gap);
-        if (json.data.security_timer_booking !== undefined) setSecurityTimerBooking(json.data.security_timer_booking);
+        const timers: Record<string, string> = {
+          chua_xac_dinh: '+3 hours',
+          quan_tam: '+1 day',
+          thien_chi: '+3 days',
+          dong_y_gap: '+4 days',
+          da_gap: '+5 days',
+          booking: '+3 months'
+        };
+        Object.keys(json.data).forEach(key => {
+          if (key.startsWith('security_timer_')) {
+            const statusSlug = key.replace('security_timer_', '');
+            timers[statusSlug] = json.data[key];
+          }
+        });
+        setSecurityTimers(timers);
         if (json.data.databank_applicable_sources !== undefined) setDatabankApplicableSources(json.data.databank_applicable_sources);
+        if (json.data.pipeline_status_hierarchy) {
+          try {
+            const parsed = JSON.parse(json.data.pipeline_status_hierarchy);
+            if (Array.isArray(parsed)) setPipelineStatusHierarchy(parsed);
+          } catch { /* ignore */ }
+        }
+        if (json.data.pipeline_status_labels) {
+          try {
+            const parsed = JSON.parse(json.data.pipeline_status_labels);
+            if (parsed && typeof parsed === 'object') setPipelineStatusLabels(parsed);
+          } catch { /* ignore */ }
+        }
+        if (json.data.standard_commission_rate !== undefined) setStandardCommissionRate(Number(json.data.standard_commission_rate));
+        if (json.data.lockout_reason_count_threshold !== undefined) setLockoutReasonCountThreshold(Number(json.data.lockout_reason_count_threshold));
+        if (json.data.max_parallel_sales_per_client !== undefined) setMaxParallelSalesPerClient(Number(json.data.max_parallel_sales_per_client));
         setTicketAutoApproveEnabled(json.data.ticket_auto_approve_enabled === '1' || json.data.ticket_auto_approve_enabled === 1);
         setTicketAutoApproveKeywords(json.data.ticket_auto_approve_keywords || '');
         if (json.data.report_error_reasons) {
@@ -911,7 +940,7 @@ const SettingsInner = () => {
 
   const handleSave = async () => {
     setSaving(true);
-    const payload = {
+    const payload: any = {
       email_provider: provider,
       appscript_webhook_url: appscriptUrl,
       frontend_url: frontendUrl,
@@ -970,13 +999,10 @@ const SettingsInner = () => {
       broadcast_exclusion_rules: broadcastExclusionRules,
       coop_eligible_statuses: coopEligibleStatuses,
       coop_default_files: coopDefaultFiles,
-      security_timer_chua_xac_dinh: securityTimerChuaXacDinh,
-      security_timer_quan_tam: securityTimerQuanTam,
-      security_timer_thien_chi: securityTimerThienChi,
-      security_timer_dong_y_gap: securityTimerDongYGap,
-      security_timer_da_gap: securityTimerDaGap,
-      security_timer_booking: securityTimerBooking,
       databank_applicable_sources: databankApplicableSources,
+      standard_commission_rate: standardCommissionRate,
+      lockout_reason_count_threshold: lockoutReasonCountThreshold,
+      max_parallel_sales_per_client: maxParallelSalesPerClient,
       gemini_api_key: geminiApiKey,
       gemini_model: geminiModel,
       ai_screener_enabled: aiScreenerEnabled ? '1' : '0',
@@ -986,6 +1012,10 @@ const SettingsInner = () => {
       ai_screener_manual_action: aiScreenerManualAction,
       ai_screener_manual_rules: aiScreenerManualRules
     };
+
+    Object.keys(securityTimers).forEach(statusSlug => {
+      payload[`security_timer_${statusSlug}`] = securityTimers[statusSlug];
+    });
 
     try {
       const json = await fetchAPI('save_settings', {
@@ -1472,6 +1502,77 @@ const SettingsInner = () => {
         <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px', display: 'block' }}>
           {t(helpText)}
         </span>
+      </div>
+    );
+  };
+
+  const renderInlineDurationInput = (statusSlug: string) => {
+    const value = securityTimers[statusSlug] || '+3 days';
+    const { num, unit } = parseSecurityTimer(value);
+
+    const onChange = (newVal: string) => {
+      setSecurityTimers(prev => ({
+        ...prev,
+        [statusSlug]: newVal
+      }));
+    };
+
+    return (
+      <div style={{ 
+        display: 'flex', 
+        alignItems: 'center', 
+        border: '1px solid var(--color-border)', 
+        borderRadius: 'var(--radius-md)', 
+        background: 'var(--color-surface)',
+        overflow: 'hidden',
+        height: '32px',
+        width: '180px',
+        boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+      }}>
+        <input
+          type="number"
+          min="1"
+          value={num}
+          onChange={e => {
+            const newNum = Math.max(1, parseInt(e.target.value, 10) || 1);
+            onChange(`+${newNum} ${unit}`);
+          }}
+          style={{ 
+            border: 'none', 
+            outline: 'none',
+            padding: '0 8px', 
+            width: '55px', 
+            textAlign: 'center',
+            fontSize: '0.8125rem',
+            background: 'transparent',
+            color: 'var(--color-text)',
+            fontWeight: 600,
+          }}
+        />
+        <div style={{ width: '1px', height: '100%', background: 'var(--color-border)' }} />
+        <select
+          value={unit}
+          onChange={e => {
+            onChange(`+${num} ${e.target.value}`);
+          }}
+          style={{
+            border: 'none',
+            outline: 'none',
+            padding: '0 8px',
+            background: 'transparent',
+            color: 'var(--color-text-muted)',
+            fontSize: '0.75rem',
+            fontWeight: 600,
+            cursor: 'pointer',
+            flex: 1,
+            height: '100%',
+          }}
+        >
+          <option value="hours">{t('Giờ')}</option>
+          <option value="days">{t('Ngày')}</option>
+          <option value="weeks">{t('Tuần')}</option>
+          <option value="months">{t('Tháng')}</option>
+        </select>
       </div>
     );
   };
@@ -3867,14 +3968,32 @@ function doPost(e) {
                           {t('Số lead databank tối đa Sale được nhận/tháng.')}
                         </span>
                       </div>
+
+                      <div>
+                        <label className="form-label">{t('Số Sale tối đa nhận trùng 1 khách')}</label>
+                        <div style={{ display: 'flex', alignItems: 'center', position: 'relative' }}>
+                          <input
+                            type="number"
+                            className="form-input"
+                            style={{ paddingRight: '4.5rem' }}
+                            value={maxParallelSalesPerClient}
+                            onChange={e => setMaxParallelSalesPerClient(Number(e.target.value))}
+                            min={1}
+                          />
+                          <span style={{ position: 'absolute', right: '12px', fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>{t('Sale / khách')}</span>
+                        </div>
+                        <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px', display: 'block' }}>
+                          {t('Số lượng Sale tối đa được claim trùng chăm sóc song song.')}
+                        </span>
+                      </div>
                     </div>
                   </div>
 
-                  {/* Nhóm 4: Thời hạn bảo mật & Nguồn ra kho */}
+                  {/* Nhóm 4: Nguồn ra kho & Khóa trùng Databank */}
                   <div style={{ background: 'var(--color-bg-secondary)', padding: '1.25rem', borderRadius: 'var(--radius-xl)', border: '1px solid var(--color-border)', marginTop: '1.25rem' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '1rem' }}>
                       <Clock size={15} style={{ color: 'var(--color-primary)' }} />
-                      <h4 style={{ fontSize: '0.9375rem', fontWeight: 700, color: 'var(--color-text)' }}>{t('Cấu hình Thời hạn bảo mật & Nguồn ra kho Databank')}</h4>
+                      <h4 style={{ fontSize: '0.9375rem', fontWeight: 700, color: 'var(--color-text)' }}>{t('Cấu hình Nguồn ra kho & Khóa trùng Databank')}</h4>
                     </div>
 
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.25rem', marginBottom: '1.25rem' }}>
@@ -3934,12 +4053,24 @@ function doPost(e) {
                           </div>
                         )}
                       </div>
-                      {renderDurationInput('Thời gian Chưa Xác Định', securityTimerChuaXacDinh, setSecurityTimerChuaXacDinh, 'Hạn bảo mật mặc định (ví dụ: +3 hours).')}
-                      {renderDurationInput('Thời gian Quan Tâm', securityTimerQuanTam, setSecurityTimerQuanTam, 'Hạn bảo mật mặc định (ví dụ: +1 day).')}
-                      {renderDurationInput('Thời gian Thiện Chí', securityTimerThienChi, setSecurityTimerThienChi, 'Hạn bảo mật mặc định (ví dụ: +3 days).')}
-                      {renderDurationInput('Thời gian Đồng Ý Gặp', securityTimerDongYGap, setSecurityTimerDongYGap, 'Hạn bảo mật mặc định (ví dụ: +4 days).')}
-                      {renderDurationInput('Thời gian Đã Gặp', securityTimerDaGap, setSecurityTimerDaGap, 'Hạn bảo mật mặc định (ví dụ: +5 days).')}
-                      {renderDurationInput('Thời gian Booking', securityTimerBooking, setSecurityTimerBooking, 'Hạn bảo mật mặc định (ví dụ: +3 months).')}
+
+                      <div>
+                        <label className="form-label">{t('Khóa trùng lý do lỗi (Databank)')}</label>
+                        <div style={{ display: 'flex', alignItems: 'center', position: 'relative' }}>
+                          <input
+                            type="number"
+                            className="form-input"
+                            style={{ paddingRight: '3.5rem' }}
+                            value={lockoutReasonCountThreshold}
+                            onChange={e => setLockoutReasonCountThreshold(Number(e.target.value))}
+                            min={1}
+                          />
+                          <span style={{ position: 'absolute', right: '12px', fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>{t('lần')}</span>
+                        </div>
+                        <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px', display: 'block', lineHeight: 1.4 }}>
+                          {t('Số lần báo lỗi trùng lý do trong chiến dịch trước khi khóa vĩnh viễn lead ra kho.')}
+                        </span>
+                      </div>
                     </div>
                   </div>
 
@@ -3980,6 +4111,25 @@ function doPost(e) {
                         />
                         <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px', display: 'block', lineHeight: 1.4 }}>
                           {t('Trạng thái đích nếu khách hàng từng có lịch sử đặt chỗ/booking (ví dụ: Booking).')}
+                        </span>
+                      </div>
+
+                      <div>
+                        <label className="form-label">{t('Phí môi giới tiêu chuẩn (%)')}</label>
+                        <div style={{ display: 'flex', alignItems: 'center', position: 'relative' }}>
+                          <input
+                            type="number"
+                            step="0.1"
+                            className="form-input"
+                            style={{ paddingRight: '3.5rem' }}
+                            value={standardCommissionRate * 100}
+                            onChange={e => setStandardCommissionRate(Number(e.target.value) / 100)}
+                            min={0}
+                          />
+                          <span style={{ position: 'absolute', right: '12px', fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>%</span>
+                        </div>
+                        <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px', display: 'block', lineHeight: 1.4 }}>
+                          {t('Tỷ lệ phí môi giới tiêu chuẩn khi tính hoa hồng đổi căn mặc định.')}
                         </span>
                       </div>
                     </div>
@@ -4627,6 +4777,14 @@ function doPost(e) {
                               <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 600, userSelect: 'none' }}>
                                 {t('Cho phép hợp tác')}
                               </span>
+                            </div>
+
+                            {/* 5. Security Timer inline input */}
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginLeft: '24px' }}>
+                              <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>
+                                {t('Hạn bảo mật:')}
+                              </span>
+                              {renderInlineDurationInput(status)}
                             </div>
                           </div>
 

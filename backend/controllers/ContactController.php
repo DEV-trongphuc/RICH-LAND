@@ -1019,28 +1019,19 @@ class ContactController {
     }
 
     private function getSecurityExpiration(string $status): ?string {
-        switch ($status) {
-            case 'chua_xac_dinh':
-                $duration = $this->getSetting('security_timer_chua_xac_dinh', '+3 hours');
-                return date('Y-m-d H:i:s', strtotime($duration));
-            case 'quan_tam':
-                $duration = $this->getSetting('security_timer_quan_tam', '+1 day');
-                return date('Y-m-d H:i:s', strtotime($duration));
-            case 'thien_chi':
-                $duration = $this->getSetting('security_timer_thien_chi', '+3 days');
-                return date('Y-m-d H:i:s', strtotime($duration));
-            case 'dong_y_gap':
-                $duration = $this->getSetting('security_timer_dong_y_gap', '+4 days');
-                return date('Y-m-d H:i:s', strtotime($duration));
-            case 'da_gap':
-                $duration = $this->getSetting('security_timer_da_gap', '+5 days');
-                return date('Y-m-d H:i:s', strtotime($duration));
-            case 'booking':
-                $duration = $this->getSetting('security_timer_booking', '+3 months');
-                return date('Y-m-d H:i:s', strtotime($duration));
-            default:
-                return null;
-        }
+        $defaultDurations = [
+            'chua_xac_dinh' => '+3 hours',
+            'quan_tam' => '+1 day',
+            'thien_chi' => '+3 days',
+            'dong_y_gap' => '+4 days',
+            'da_gap' => '+5 days',
+            'booking' => '+3 months',
+            'dat_coc' => '+6 months',
+            'dong_deal' => '+12 months'
+        ];
+        $default = $defaultDurations[$status] ?? '+3 days';
+        $duration = $this->getSetting('security_timer_' . $status, $default);
+        return date('Y-m-d H:i:s', strtotime($duration));
     }
 
     private function getSlugFromStageId(int $stageId, int $tenantId): string {
