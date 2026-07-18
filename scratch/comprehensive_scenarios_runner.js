@@ -197,6 +197,7 @@ async function run() {
     // Create ticket first
     const ticketRes = await axios.post(getUrl('tickets'), {
       subject: `Ticket mentions ${rVal}`,
+      customer_name: 'Khách hàng Case 9',
       priority: 'high',
       status: 'open'
     }, adminHeaders);
