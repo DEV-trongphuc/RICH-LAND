@@ -5,6 +5,8 @@ if (($_GET['token'] ?? '') !== 'RichLand_Diag_Secure_Token_2026_9e88d6c701fbc6b7
     die('Unauthorized');
 }
 
+require_once __DIR__ . '/env.php';
+require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/config/Database.php';
 
 try {
