@@ -91,6 +91,10 @@
 }
 
 @media (max-width: 768px) {
+  .page-container {
+    padding: 0.5rem 0 1rem 0 !important;
+  }
+
   .responsive-grid-4 {
     grid-template-columns: repeat(2, 1fr) !important;
     gap: 0.75rem !important;
@@ -213,6 +217,19 @@
     align-items: flex-start !important;
     gap: 0.5rem !important;
     margin-bottom: 1rem !important;
+  }
+  .page-header > div:last-child,
+  .page-header .header-actions {
+    width: 100% !important;
+    display: flex !important;
+    flex-wrap: wrap !important;
+    gap: 6px !important;
+    justify-content: flex-start !important;
+  }
+  .page-header > div:last-child button,
+  .page-header .header-actions button {
+    flex-grow: 1 !important;
+    justify-content: center !important;
   }
   .page-title {
     font-size: 1.35rem !important;
@@ -3226,13 +3243,13 @@ th.col-check {
 /* Custom responsive adjustments for Settings page header and Quick Add Lead Modal */
 @media (max-width: 768px) {
   .settings-page-header {
-    flex-direction: row !important;
-    align-items: center !important;
-    justify-content: space-between !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 0.75rem !important;
   }
 
   .settings-page-header>div:first-child {
-    max-width: calc(100% - 50px) !important;
+    max-width: 100% !important;
   }
 
   .quick-add-modal-body {

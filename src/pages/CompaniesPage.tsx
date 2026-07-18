@@ -20,6 +20,12 @@ const PAGE_SIZE = 10;
 export const CompaniesPage: React.FC = () => {
   const { user } = useAuth();
   const isSale = user && ['sales', 'sale'].includes((user.role || '').toLowerCase());
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const { addToast, showConfirm, closeConfirm } = useUIStore();
   const [companies, setCompanies] = useState<any[]>([]);
@@ -142,19 +148,19 @@ export const CompaniesPage: React.FC = () => {
           <h1 className="page-title">Công ty</h1>
           <p className="page-subtitle">{loading ? '...' : `${total} công ty khách hàng`}</p>
         </div>
-        <div className="flex gap-2">
-          <button className="btn-icon" onClick={fetchCompanies} title="Làm mới">
+        <div style={{ display: 'flex', gap: '6px', alignItems: 'center', width: isMobile ? '100%' : 'auto', flexWrap: 'wrap' }}>
+          <button className="btn-icon" onClick={fetchCompanies} title="Làm mới" style={{ flexShrink: 0 }}>
             <RefreshCw size={16} />
           </button>
           {!isSale && (
             <>
-              <button className="btn outline" onClick={() => setShowImportExport(true)} title="Nhập/Xuất">
+              <button className="btn outline" onClick={() => setShowImportExport(true)} title="Nhập/Xuất" style={{ flex: isMobile ? 1 : 'none', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '4px' }}>
                 <Download size={16} />
-                <span className="hide-on-mobile"> Nhập/Xuất</span>
+                <span>Nhập/Xuất</span>
               </button>
-              <button className="btn primary" onClick={openCreate} title="Thêm công ty">
+              <button className="btn primary" onClick={openCreate} title="Thêm công ty" style={{ flex: isMobile ? 1 : 'none', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '4px' }}>
                 <Plus size={16} />
-                <span className="hide-on-mobile"> Thêm công ty</span>
+                <span>Thêm công ty</span>
               </button>
             </>
           )}
@@ -163,14 +169,14 @@ export const CompaniesPage: React.FC = () => {
 
       {/* Filter Bar */}
       <div className="card" style={{ marginBottom: '1rem', padding: '0.75rem', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-        <div style={{ display: 'flex', gap: '8px', width: '100%', alignItems: 'center' }}>
-          <div className="filter-search" style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: '8px', width: '100%', alignItems: isMobile ? 'stretch' : 'center' }}>
+          <div className="filter-search" style={{ flex: 1, minWidth: 0, width: '100%' }}>
             <Search size={15} style={{ color: 'var(--color-text-muted)' }} />
             <input placeholder="Tìm tên công ty, ngành nghề..." style={{ fontSize: '0.85rem' }} value={search} onChange={e => setSearch(e.target.value)} />
             {search && <button onClick={() => setSearch('')}><X size={14} /></button>}
           </div>
           
-          <div className="mobile-only" style={{ width: '130px', flexShrink: 0 }}>
+          <div className="mobile-only" style={{ width: isMobile ? '100%' : '130px', flexShrink: 0 }}>
             <CustomSelect
               value={statusFilter}
               onChange={val => setStatusFilter(val as any)}

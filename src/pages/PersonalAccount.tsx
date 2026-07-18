@@ -13,6 +13,12 @@ import styles from './EntityDrawer.module.css';
 const PersonalAccountInner = () => {
   const { t } = useLanguage();
   const { user, login, logout } = useAuth();
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
   
   const [activeTab, setActiveTab] = useState<'profile' | 'password' | 'activity'>('profile');
   const [loading, setLoading] = useState(false);
@@ -215,7 +221,8 @@ const PersonalAccountInner = () => {
 
       <div className={styles.drawerBody} style={{
         display: 'flex',
-        minHeight: '600px',
+        flexDirection: isMobile ? 'column' : 'row',
+        minHeight: isMobile ? 'auto' : '600px',
         background: 'var(--color-surface)',
         borderRadius: '16px',
         border: '1px solid var(--color-border)',
@@ -225,13 +232,15 @@ const PersonalAccountInner = () => {
         
         {/* Left Column: Sidebar with Avatar & Vertical Tabs */}
         <div className={styles.sidebarTabs} style={{
-          width: '280px',
-          borderRight: '1px solid var(--color-border)',
-          padding: '2rem 1.5rem',
+          width: isMobile ? '100%' : '280px',
+          borderRight: isMobile ? 'none' : '1px solid var(--color-border)',
+          borderBottom: isMobile ? '1px solid var(--color-border)' : 'none',
+          padding: isMobile ? '1.5rem 1rem' : '2rem 1.5rem',
           background: 'var(--color-bg-light)',
           display: 'flex',
           flexDirection: 'column',
-          gap: '1.5rem'
+          gap: '1.25rem',
+          flexShrink: 0
         }}>
           {/* Avatar block */}
           <div style={{ textAlign: 'center' }}>
@@ -290,14 +299,24 @@ const PersonalAccountInner = () => {
             </div>
           </div>
 
-          {/* Navigation Buttons Stacked Vertically */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', borderTop: '1px solid var(--color-border)', paddingTop: '1.5rem' }}>
+          {/* Navigation Buttons Stacked Vertically / Horizontally */}
+          <div style={{ 
+            display: 'flex', 
+            flexDirection: isMobile ? 'row' : 'column', 
+            gap: '6px', 
+            borderTop: isMobile ? 'none' : '1px solid var(--color-border)', 
+            paddingTop: isMobile ? '0' : '1.5rem',
+            overflowX: isMobile ? 'auto' : 'visible',
+            scrollbarWidth: 'none',
+            width: '100%',
+            flexShrink: 0
+          }} className="hide-scrollbar">
             <button
               onClick={() => setActiveTab('profile')}
               className={`${styles.sidebarTabBtn} ${activeTab === 'profile' ? styles.active : ''}`}
               style={{
-                width: '100%', textAlign: 'left', display: 'flex', alignItems: 'center', gap: '10px',
-                padding: '10px 14px', borderRadius: '8px', fontSize: '0.8125rem'
+                width: isMobile ? 'auto' : '100%', textAlign: 'left', display: 'flex', alignItems: 'center', gap: '10px',
+                padding: '10px 14px', borderRadius: '8px', fontSize: '0.8125rem', whiteSpace: 'nowrap', flexShrink: 0
               }}
             >
               <User size={16} />
@@ -307,8 +326,8 @@ const PersonalAccountInner = () => {
               onClick={() => setActiveTab('password')}
               className={`${styles.sidebarTabBtn} ${activeTab === 'password' ? styles.active : ''}`}
               style={{
-                width: '100%', textAlign: 'left', display: 'flex', alignItems: 'center', gap: '10px',
-                padding: '10px 14px', borderRadius: '8px', fontSize: '0.8125rem'
+                width: isMobile ? 'auto' : '100%', textAlign: 'left', display: 'flex', alignItems: 'center', gap: '10px',
+                padding: '10px 14px', borderRadius: '8px', fontSize: '0.8125rem', whiteSpace: 'nowrap', flexShrink: 0
               }}
             >
               <Key size={16} />
@@ -318,8 +337,8 @@ const PersonalAccountInner = () => {
               onClick={() => setActiveTab('activity')}
               className={`${styles.sidebarTabBtn} ${activeTab === 'activity' ? styles.active : ''}`}
               style={{
-                width: '100%', textAlign: 'left', display: 'flex', alignItems: 'center', gap: '10px',
-                padding: '10px 14px', borderRadius: '8px', fontSize: '0.8125rem'
+                width: isMobile ? 'auto' : '100%', textAlign: 'left', display: 'flex', alignItems: 'center', gap: '10px',
+                padding: '10px 14px', borderRadius: '8px', fontSize: '0.8125rem', whiteSpace: 'nowrap', flexShrink: 0
               }}
             >
               <Activity size={16} />
@@ -331,9 +350,9 @@ const PersonalAccountInner = () => {
         {/* Right Column: Profile details Content Area */}
         <div className={styles.contentArea} style={{
           flex: 1,
-          padding: '2.5rem',
+          padding: isMobile ? '1.5rem 0 1rem 0' : '2.5rem',
           background: 'var(--color-surface)',
-          overflowY: 'auto'
+          overflowY: isMobile ? 'visible' : 'auto'
         }}>
             {/* Tab 1: Profile */}
             {activeTab === 'profile' && (

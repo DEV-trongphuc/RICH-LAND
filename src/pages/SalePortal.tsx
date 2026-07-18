@@ -4560,7 +4560,16 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                           {team.name}
                         </h3>
                         {team.branch && (
-                          <span className="badge info" style={{ fontSize: '0.65rem', padding: '2px 8px', borderRadius: '12px', flexShrink: 0 }}>
+                          <span className="badge info" style={{ 
+                            fontSize: '0.65rem', 
+                            padding: '2px 8px', 
+                            borderRadius: '12px', 
+                            flexShrink: 1, 
+                            whiteSpace: 'normal', 
+                            wordBreak: 'break-word', 
+                            textAlign: 'right',
+                            maxWidth: isMobile ? '60%' : '300px'
+                          }}>
                             {team.branch}
                           </span>
                         )}

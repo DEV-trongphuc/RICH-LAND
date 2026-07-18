@@ -1947,15 +1947,31 @@ export const Header = ({ onActivityFeedClick, onMenuClick, version }: { onActivi
           ) : (
             <>
               {/* Header Controls */}
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--color-border-light)', paddingBottom: '0.75rem', marginBottom: '1rem' }}>
+              <div style={{ 
+                display: 'flex', 
+                flexDirection: isMobile ? 'column' : 'row', 
+                justifyContent: 'space-between', 
+                alignItems: isMobile ? 'stretch' : 'center', 
+                borderBottom: '1px solid var(--color-border-light)', 
+                paddingBottom: '0.75rem', 
+                marginBottom: '1rem',
+                gap: '8px'
+              }}>
                 {/* Filter Tabs */}
-                <div style={{ display: 'flex', gap: '0.75rem' }}>
+                <div style={{ 
+                  display: 'flex', 
+                  gap: '0.5rem', 
+                  overflowX: isMobile ? 'auto' : 'visible', 
+                  scrollbarWidth: 'none',
+                  paddingBottom: isMobile ? '4px' : '0',
+                  borderBottom: isMobile ? '1px dashed var(--color-border-light)' : 'none'
+                }} className="hide-scrollbar">
                   {(['all', 'unread', 'read'] as const).map(tab => (
                     <button
                       key={tab}
                       onClick={() => setNotifFilter(tab)}
                       style={{
-                        padding: '6px 16px',
+                        padding: '6px 14px',
                         borderRadius: '20px',
                         fontSize: '0.8125rem',
                         fontWeight: 600,
@@ -1964,7 +1980,9 @@ export const Header = ({ onActivityFeedClick, onMenuClick, version }: { onActivi
                         transition: 'all 0.2s',
                         background: notifFilter === tab ? 'var(--color-primary-light)' : 'transparent',
                         color: notifFilter === tab ? 'var(--color-primary)' : 'var(--color-text-muted)',
-                        outline: 'none'
+                        outline: 'none',
+                        whiteSpace: 'nowrap',
+                        flexShrink: 0
                       }}
                     >
                       {tab === 'all' && t("Tất cả")}
@@ -1975,7 +1993,7 @@ export const Header = ({ onActivityFeedClick, onMenuClick, version }: { onActivi
                 </div>
 
                 {/* Actions */}
-                <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+                <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', justifyContent: isMobile ? 'flex-end' : 'flex-start', flexWrap: 'wrap' }}>
                   {unreadCount > 0 && (
                     <button
                       onClick={handleMarkAllRead}

@@ -55,6 +55,13 @@ interface InventoryLog {
 export default function InventoryPage() {
   const { user } = useAuth();
   const isSale = user?.role === 'sale' || user?.role === 'viewer';
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   const [batches, setBatches] = useState<Batch[]>([]);
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState<'list' | 'card'>('list');
@@ -254,13 +261,13 @@ export default function InventoryPage() {
     <div className="page-container anim-fade-up">
       <div className="page-header" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', borderBottom: '1px solid var(--color-border-light)', paddingBottom: '1.25rem', marginBottom: '1.5rem', alignItems: 'stretch' }}>
         {/* Row 1: Title & Actions */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', flexWrap: 'wrap', gap: '1rem' }}>
+        <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', justifyContent: 'space-between', alignItems: isMobile ? 'stretch' : 'center', width: '100%', flexWrap: 'wrap', gap: '1rem' }}>
           <div>
             <h1 className="page-title" style={{ margin: 0 }}>Giỏ hàng &amp; Căn hộ</h1>
             <p className="page-subtitle" style={{ margin: '4px 0 0' }}>Quản lý giỏ hàng căn hộ, lô đất dự án và lịch sử giao dịch.</p>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap', width: isMobile ? '100%' : 'auto' }}>
             <button 
               onClick={handleExport} 
               style={{ 
@@ -277,7 +284,8 @@ export default function InventoryPage() {
                 color: 'var(--color-text)',
                 cursor: 'pointer',
                 fontWeight: 600,
-                transition: 'all 0.2s'
+                transition: 'all 0.2s',
+                flex: isMobile ? '1 1 calc(50% - 4px)' : 'none'
               }} 
               title="Xuất Excel/CSV"
             >
@@ -303,7 +311,8 @@ export default function InventoryPage() {
                     color: 'var(--color-text)',
                     cursor: 'pointer',
                     fontWeight: 600,
-                    transition: 'all 0.2s'
+                    transition: 'all 0.2s',
+                    flex: isMobile ? '1 1 calc(50% - 4px)' : 'none'
                   }} 
                   title="Đồng bộ Google Sheets"
                 >
@@ -327,7 +336,8 @@ export default function InventoryPage() {
                     color: 'white',
                     cursor: 'pointer',
                     fontWeight: 600,
-                    transition: 'all 0.2s'
+                    transition: 'all 0.2s',
+                    flex: isMobile ? '1 1 100%' : 'none'
                   }} 
                   title="Khai báo căn / lô"
                 >
@@ -340,7 +350,7 @@ export default function InventoryPage() {
         </div>
 
         {/* Row 2: Tabs Switcher */}
-        <div style={{ display: 'flex', width: '100%', justifyContent: 'flex-start' }}>
+        <div style={{ display: 'flex', width: '100%', justifyContent: 'flex-start', overflowX: isMobile ? 'auto' : 'visible', scrollbarWidth: 'none' }} className="hide-scrollbar">
           {/* Pill Tab Switcher */}
           <div style={{ 
             display: 'flex', 
@@ -349,7 +359,8 @@ export default function InventoryPage() {
             padding: '2px', 
             borderRadius: '8px',
             gap: '2px', 
-            position: 'relative'
+            position: 'relative',
+            flexShrink: 0
           }}>
             <button 
               style={{ 
@@ -368,7 +379,8 @@ export default function InventoryPage() {
                 position: 'relative',
                 display: 'inline-flex',
                 alignItems: 'center',
-                gap: '6px'
+                gap: '6px',
+                flexShrink: 0
               }} 
               onClick={() => setActiveTab('batches')}
             >
@@ -411,7 +423,8 @@ export default function InventoryPage() {
                 position: 'relative',
                 display: 'inline-flex',
                 alignItems: 'center',
-                gap: '6px'
+                gap: '6px',
+                flexShrink: 0
               }} 
               onClick={() => setActiveTab('history')}
             >
@@ -454,7 +467,8 @@ export default function InventoryPage() {
                 position: 'relative',
                 display: 'inline-flex',
                 alignItems: 'center',
-                gap: '6px'
+                gap: '6px',
+                flexShrink: 0
               }} 
               onClick={() => setActiveTab('purchase_orders')}
             >
@@ -497,7 +511,7 @@ export default function InventoryPage() {
       {activeTab !== 'purchase_orders' && (
         <>
           {/* Stats Cards */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem', marginBottom: '1.5rem' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)', gap: isMobile ? '0.5rem' : '1rem', marginBottom: '1.5rem' }}>
             {[
               { label: 'Tổng số căn / lô', value: String(batches.length), icon: Layers, color: 'var(--color-primary)', sub: 'căn hộ / lô đất đang quản lý' },
               { label: 'Căn còn trống (Available)', value: String(batches.filter(b => b.current_qty > 5).length), icon: CheckCircle, color: '#10b981', sub: 'sẵn sàng giao dịch' },
@@ -519,8 +533,19 @@ export default function InventoryPage() {
           </div>
 
       {/* Filters */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', background: 'var(--color-surface)', padding: '0.75rem 1rem', borderRadius: 'var(--radius-xl)', border: '1px solid var(--color-border)', marginBottom: '1.5rem', boxShadow: 'var(--shadow-sm)' }}>
-        <div className="filter-search" style={{ flex: 1, minWidth: 0 }}>
+      <div style={{ 
+        display: 'flex', 
+        flexDirection: isMobile ? 'column' : 'row',
+        alignItems: isMobile ? 'stretch' : 'center', 
+        gap: '0.75rem', 
+        background: 'var(--color-surface)', 
+        padding: '0.75rem 1rem', 
+        borderRadius: 'var(--radius-xl)', 
+        border: '1px solid var(--color-border)', 
+        marginBottom: '1.5rem', 
+        boxShadow: 'var(--shadow-sm)' 
+      }}>
+        <div className="filter-search" style={{ flex: 1, minWidth: 0, width: '100%' }}>
           <Search size={18} style={{ color: 'var(--color-text-muted)' }} />
           <input 
             placeholder="Tìm theo tên căn, mã căn (Block - Số tầng), dự án..." 
@@ -529,8 +554,16 @@ export default function InventoryPage() {
           />
         </div>
         
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexShrink: 0 }}>
-          <div style={{ width: 180 }}>
+        <div style={{ 
+          display: 'flex', 
+          alignItems: 'center', 
+          gap: '0.5rem', 
+          flexShrink: 0,
+          width: isMobile ? '100%' : 'auto',
+          justifyContent: isMobile ? 'space-between' : 'flex-start',
+          flexWrap: 'wrap'
+        }}>
+          <div style={{ flex: isMobile ? 1 : 'none', width: isMobile ? 'calc(50% - 4px)' : 180, minWidth: 120 }}>
             <CustomSelect
               options={[
                 { value: 'all', label: 'Tất cả trạng thái' },
@@ -542,7 +575,7 @@ export default function InventoryPage() {
               onChange={(val) => { setStatusFilter(String(val)); setPage(1); }}
             />
           </div>
-          <div style={{ width: 160 }}>
+          <div style={{ flex: isMobile ? 1 : 'none', width: isMobile ? 'calc(50% - 4px)' : 160, minWidth: 120 }}>
             <CustomSelect
               options={[
                 { value: 'date_desc', label: 'Mới nhất trước' },
@@ -554,8 +587,8 @@ export default function InventoryPage() {
               onChange={(val) => { setSortBy(String(val)); setPage(1); }}
             />
           </div>
-          <div style={{ width: '1px', height: 24, background: 'var(--color-border)' }} />
-          <div style={{ display: 'flex', background: 'var(--color-bg)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', padding: '3px' }}>
+          {!isMobile && <div style={{ width: '1px', height: 24, background: 'var(--color-border)' }} />}
+          <div style={{ display: 'flex', background: 'var(--color-bg)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', padding: '3px', marginLeft: isMobile ? 'auto' : '0' }}>
             <button title="Danh sách" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 32, height: 32, borderRadius: 'var(--radius-sm)', background: viewMode === 'list' ? 'var(--color-surface)' : 'transparent', color: viewMode === 'list' ? 'var(--color-primary)' : 'var(--color-text-muted)', border: 'none', cursor: 'pointer', transition: 'all 0.15s' }} onClick={() => setViewMode('list')}><List size={16} /></button>
             <button title="Lưới thẻ" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 32, height: 32, borderRadius: 'var(--radius-sm)', background: viewMode === 'card' ? 'var(--color-surface)' : 'transparent', color: viewMode === 'card' ? 'var(--color-primary)' : 'var(--color-text-muted)', border: 'none', cursor: 'pointer', transition: 'all 0.15s' }} onClick={() => setViewMode('card')}><LayoutGrid size={16} /></button>
           </div>

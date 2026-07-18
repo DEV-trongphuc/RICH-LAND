@@ -97,6 +97,13 @@ const DEFAULT_REPORT_REASONS = [
 const SettingsInner = () => {
   const { t } = useLanguage();
   const { showConfirm } = useUIStore();
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
@@ -1493,7 +1500,7 @@ const SettingsInner = () => {
   const showTestEmailButton = true;
 
   return (
-    <div style={{ padding: '0.75rem 2rem 2rem', display: 'flex', flexDirection: 'column', gap: '1.25rem', animation: 'fadeIn 0.3s', minWidth: 0 }}>
+    <div style={{ padding: isMobile ? '0.5rem 0 1rem 0' : '0.75rem 2rem 2rem', display: 'flex', flexDirection: 'column', gap: '1.25rem', animation: 'fadeIn 0.3s', minWidth: 0 }}>
       <div className="page-header settings-page-header" style={{
         position: 'sticky',
         top: '-1.25rem',
@@ -1504,8 +1511,10 @@ const SettingsInner = () => {
         borderBottom: '1px solid var(--color-border)',
         marginBottom: '0.25rem',
         display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between'
+        flexDirection: isMobile ? 'column' : 'row',
+        alignItems: isMobile ? 'stretch' : 'center',
+        justifyContent: 'space-between',
+        gap: isMobile ? '12px' : '0.5rem'
       }}>
         <div>
           <h1 className="page-title" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -1513,7 +1522,7 @@ const SettingsInner = () => {
           </h1>
           <p className="page-subtitle">{t('Cấu hình Email, Webhooks và các tích hợp nâng cao.')}</p>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap', width: isMobile ? '100%' : 'auto', justifyContent: isMobile ? 'flex-end' : 'flex-start' }}>
           {showTestEmailButton && (
             <button
               className="btn outline"
