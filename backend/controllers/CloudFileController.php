@@ -267,10 +267,20 @@ class CloudFileController {
         }
 
         // Permission check: Only uploader or admin/manager
-        $checkStmt = $this->db->prepare("SELECT uploaded_by, category FROM cloud_files WHERE id = ? AND tenant_id = ?");
+        $checkStmt = $this->db->prepare("SELECT name, uploaded_by, category FROM cloud_files WHERE id = ? AND tenant_id = ?");
         $checkStmt->execute([$id, $tid]);
         $file = $checkStmt->fetch();
         if (!$file) respond(404, null, 'Không tìm thấy tệp tin', false);
+
+        // Enforce original extension
+        $origExt = pathinfo($file['name'], PATHINFO_EXTENSION);
+        if (!empty($origExt)) {
+            $newExt = pathinfo($name, PATHINFO_EXTENSION);
+            if (strtolower($newExt) !== strtolower($origExt)) {
+                $name .= '.' . $origExt;
+            }
+        }
+
         if (in_array($auth['role'], ['sales', 'sale'], true)) {
             if ((int)$file['uploaded_by'] !== (int)$auth['user_id']) {
                 respond(403, null, 'Bạn không có quyền sửa thông tin tệp tin của người khác', false);

@@ -7228,17 +7228,23 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                       className="hover-lift"
                                       title="Đổi tên tài liệu"
                                       onClick={() => {
+                                        const ext = doc.name.includes('.') ? doc.name.slice(doc.name.lastIndexOf('.')) : '';
+                                        const baseName = ext ? doc.name.slice(0, doc.name.lastIndexOf('.')) : doc.name;
                                         showConfirm({
                                           title: 'Đổi tên tài liệu',
                                           message: `Nhập tên mới cho tài liệu "${doc.name}":`,
                                           requirePromptInput: true,
-                                          promptPlaceholder: doc.name,
+                                          promptPlaceholder: baseName,
                                           confirmText: 'Lưu',
                                           cancelText: 'Hủy',
                                           onConfirm: async (newName) => {
                                             if (newName && newName.trim()) {
                                               try {
-                                                await api.put(`/cloud-files/${doc.id}`, { name: newName.trim(), category: doc.category || 'general' });
+                                                let finalName = newName.trim();
+                                                if (ext && !finalName.toLowerCase().endsWith(ext.toLowerCase())) {
+                                                  finalName += ext;
+                                                }
+                                                await api.put(`/cloud-files/${doc.id}`, { name: finalName, category: doc.category || 'general' });
                                                 fetchData();
                                                 addToast('Đã đổi tên tài liệu.', 'success');
                                               } catch (err) {
