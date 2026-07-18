@@ -1683,29 +1683,55 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
                                 onChange={val => setManagerBehaviorMode(val.toString())}
                                 width="100%"
                               />
-                              <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', display: 'block', marginTop: '6px', lineHeight: 1.4 }}>
-                                <strong>{t('Giải thích cơ chế:')}</strong>
-                                <ul style={{ paddingLeft: '1.1rem', margin: '4px 0 0', display: 'flex', flexDirection: 'column', gap: '3px' }}>
-                                  <li><strong>{t('Trưởng nhóm kiêm Sale:')}</strong> {t('Đồng hồ bảo mật và phân chia data chạy như một nhân viên sales bình thường. Trưởng nhóm phải chấm công và có thể nhận phân bổ data từ hệ thống.')}</li>
-                                  <li><strong>{t('Trưởng nhóm thuần túy:')}</strong> {t('Không tham gia nhận chia data tự động, không cần check-in chấm công hàng ngày. Đóng vai trò quản lý cấp cao duyệt đơn đi trễ/SLA cho nhân viên.')}</li>
-                                </ul>
-                              </span>
                             </div>
                           )}
-                          <div className="form-group" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid var(--color-border-light)' }}>
-                            <div>
-                              <label className="form-label" style={{ margin: 0, fontWeight: 600 }}>{t('Trạng thái hoạt động')}</label>
-                              <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', display: 'block', marginTop: '2px' }}>
-                                {isActive === '1' ? t('Tài khoản đang hoạt động bình thường') : t('Tài khoản đang bị khóa')}
-                              </span>
-                            </div>
-                            <ToggleSwitch 
-                              checked={isActive === '1'}
-                              onChange={checked => setIsActive(checked ? '1' : '0')}
-                            />
-                          </div>
                         </>
                       )}
+                    </div>
+
+                    {/* Manager Mode Explanation (if role === 'manager') */}
+                    {role === 'manager' && (
+                      <div style={{
+                        padding: '1rem',
+                        background: 'var(--color-bg)',
+                        border: '1px solid var(--color-border-light)',
+                        borderRadius: '12px',
+                        fontSize: '0.8125rem',
+                        lineHeight: 1.5,
+                        color: 'var(--color-text-muted)'
+                      }}>
+                        <div style={{ fontWeight: 700, color: 'var(--color-text)', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <Info size={14} style={{ color: 'var(--color-primary)' }} />
+                          {t('Thông tin về Chế độ hoạt động Trưởng nhóm:')}
+                        </div>
+                        <ul style={{ paddingLeft: '1.25rem', margin: 0, display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                          <li><strong>{t('Trưởng nhóm kiêm Sale:')}</strong> {t('Đồng hồ bảo mật và phân chia data chạy như một nhân viên sales bình thường. Trưởng nhóm phải chấm công và có thể nhận phân bổ data từ hệ thống.')}</li>
+                          <li><strong>{t('Trưởng nhóm thuần túy:')}</strong> {t('Không tham gia nhận chia data tự động, không cần check-in chấm công hàng ngày. Đóng vai trò quản lý cấp cao duyệt đơn đi trễ/SLA cho nhân viên.')}</li>
+                        </ul>
+                      </div>
+                    )}
+
+                    {/* Active Status Toggle (Full-width row) */}
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      paddingTop: '1.25rem',
+                      borderTop: '1px solid var(--color-border-light)',
+                      marginTop: '0.5rem'
+                    }}>
+                      <div>
+                        <span style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)', display: 'block' }}>
+                          {t('Trạng thái hoạt động')}
+                        </span>
+                        <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', display: 'block', marginTop: '2px' }}>
+                          {isActive === '1' ? t('Tài khoản đang hoạt động bình thường và được phép đăng nhập') : t('Tài khoản đang bị khóa và không thể truy cập hệ thống')}
+                        </span>
+                      </div>
+                      <ToggleSwitch 
+                        checked={isActive === '1'}
+                        onChange={checked => setIsActive(checked ? '1' : '0')}
+                      />
                     </div>
 
                     {account && zaloChatId && (
