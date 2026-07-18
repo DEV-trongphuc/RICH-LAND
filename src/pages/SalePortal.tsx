@@ -1121,9 +1121,11 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
     if (!token) return;
     setLoadingTasks(true);
     try {
-      const res = await api.get('/activities?type=task&status=planned&limit=100');
+      const res = await api.get('/activities?status=planned&limit=200');
       if (res.data && res.data.data) {
-        setPortalTasks(res.data.data.items || res.data.data || []);
+        const raw = res.data.data.items || res.data.data || [];
+        const filtered = raw.filter((item: any) => item.type === 'task' || item.type === 'meeting');
+        setPortalTasks(filtered);
       }
     } catch (e) {
       console.error(e);
@@ -1322,7 +1324,9 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
     try {
       let url = '/activities?limit=5000';
       if (wsActivityType && wsActivityType !== 'all') {
-        url += `&type=${wsActivityType}`;
+        if (wsActivityType !== 'task') {
+          url += `&type=${wsActivityType}`;
+        }
       }
       if (wsRelatedType) {
         url += `&related_type=${wsRelatedType}`;
@@ -1340,7 +1344,10 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
 
       const res = await api.get(url);
       if (res.data && res.data.data) {
-        const rawTasks = res.data.data.items || res.data.data || [];
+        let rawTasks = res.data.data.items || res.data.data || [];
+        if (wsActivityType === 'task') {
+          rawTasks = rawTasks.filter((item: any) => item.type === 'task' || (item.type === 'meeting' && item.status === 'planned'));
+        }
         setWsTasks(rawTasks);
         triggerRecurrenceCheck(rawTasks);
       }

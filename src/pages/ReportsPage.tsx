@@ -15,7 +15,7 @@ const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#0d9488', '#ec4899'
 const T_LABEL: Record<string, string> = {
   'call': 'Cuộc gọi',
   'email': 'Email',
-  'meeting': 'Cuộc họp',
+  'meeting': 'Gặp gỡ',
   'task': 'Công việc',
   'note': 'Ghi chú'
 };
@@ -933,7 +933,7 @@ export const ReportsPage: React.FC = () => {
             <div className="table-wrap" style={{ maxHeight: '280px', overflowY: 'auto', overflowX: 'auto' }}>
               <table style={{ minWidth: 700 }}>
                 <thead>
-                  <tr><th>Nhân viên</th><th>Cuộc gọi</th><th>Email</th><th>Cuộc họp</th><th>Task</th><th>Ghi chú</th><th>Tổng</th></tr>
+                  <tr><th>Nhân viên</th><th>Cuộc gọi</th><th>Email</th><th>Gặp gỡ</th><th>Task</th><th>Ghi chú</th><th>Tổng</th></tr>
                 </thead>
                   <tbody>
                     {(() => {

@@ -19,9 +19,9 @@ interface ActivityModalProps {
 
 const TYPES = [
   { id: 'call', label: 'Cuộc gọi', icon: <Phone size={16} />, color: 'var(--color-primary)' },
+  { id: 'zalo_connect', label: 'Zalo', icon: <img src="https://stc-zpl.zdn.vn/favicon.ico" style={{ width: 16, height: 16, objectFit: 'contain' }} alt="Zalo" />, color: '#0084FF' },
   { id: 'email', label: 'Email', icon: <Mail size={16} />, color: '#10b981' },
-  { id: 'meeting', label: 'Cuộc họp', icon: <Users size={16} />, color: '#f59e0b' },
-  { id: 'zalo_connect', label: 'Đã connect ZALO', icon: <img src="https://stc-zpl.zdn.vn/favicon.ico" style={{ width: 16, height: 16, objectFit: 'contain' }} alt="Zalo" />, color: '#0084FF' },
+  { id: 'meeting', label: 'Gặp gỡ', icon: <Users size={16} />, color: '#f59e0b' },
   { id: 'note', label: 'Ghi chú', icon: <AlignLeft size={16} />, color: '#f59e0b' }
 ];
 

@@ -5889,31 +5889,35 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                 <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
                                   <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
                                     <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--color-text)', marginRight: '4px' }}>{new Date(ev.time).toLocaleDateString('vi-VN')}</span>
-                                    <button
-                                      className="btn ghost sm"
-                                      style={{ padding: '2px', height: '24px', width: '24px', color: 'var(--color-text-muted)', opacity: 0.5 }}
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        const rawAct = drawerActivities.find((x: any) => x.id === ev.id);
-                                        if (rawAct) {
-                                          setEditingActivity(rawAct);
-                                          setShowActivityModal(true);
-                                        }
-                                      }}
-                                      onMouseEnter={e => e.currentTarget.style.opacity = '1'}
-                                      onMouseLeave={e => e.currentTarget.style.opacity = '0.5'}
-                                    >
-                                      <Pencil size={12} />
-                                    </button>
-                                    <button
-                                      className="btn ghost sm"
-                                      style={{ padding: '2px', height: '24px', width: '24px', color: 'var(--color-danger)', opacity: 0.5 }}
-                                      onClick={(e) => { e.stopPropagation(); deleteActivity(ev.id); }}
-                                      onMouseEnter={e => e.currentTarget.style.opacity = '1'}
-                                      onMouseLeave={e => e.currentTarget.style.opacity = '0.5'}
-                                    >
-                                      <Trash2 size={12} />
-                                    </button>
+                                    {currentUser && ['admin', 'superadmin', 'super_admin', 'director'].includes(currentUser.role) && (
+                                      <>
+                                        <button
+                                          className="btn ghost sm"
+                                          style={{ padding: '2px', height: '24px', width: '24px', color: 'var(--color-text-muted)', opacity: 0.5 }}
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            const rawAct = drawerActivities.find((x: any) => x.id === ev.id);
+                                            if (rawAct) {
+                                              setEditingActivity(rawAct);
+                                              setShowActivityModal(true);
+                                            }
+                                          }}
+                                          onMouseEnter={e => e.currentTarget.style.opacity = '1'}
+                                          onMouseLeave={e => e.currentTarget.style.opacity = '0.5'}
+                                        >
+                                          <Pencil size={12} />
+                                        </button>
+                                        <button
+                                          className="btn ghost sm"
+                                          style={{ padding: '2px', height: '24px', width: '24px', color: 'var(--color-danger)', opacity: 0.5 }}
+                                          onClick={(e) => { e.stopPropagation(); deleteActivity(ev.id); }}
+                                          onMouseEnter={e => e.currentTarget.style.opacity = '1'}
+                                          onMouseLeave={e => e.currentTarget.style.opacity = '0.5'}
+                                        >
+                                          <Trash2 size={12} />
+                                        </button>
+                                      </>
+                                    )}
                                   </div>
                                   <p style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>{new Date(ev.time).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}</p>
                                 </div>

@@ -20,7 +20,7 @@ import { MentionInput } from '../components/ui/MentionInput';
 const PAGE_SIZE = 10;
 
 const TYPES = ['call', 'email', 'meeting', 'task', 'note'];
-const T_LABEL: Record<string, string> = { call: 'Cuộc gọi', email: 'Email', meeting: 'Cuộc họp', task: 'Task', note: 'Ghi chú' };
+const T_LABEL: Record<string, string> = { call: 'Cuộc gọi', email: 'Email', meeting: 'Gặp gỡ', task: 'Task', note: 'Ghi chú' };
 const T_ICON: Record<string, React.ReactNode> = {
   call: <Phone size={14} />, email: <Mail size={14} />, meeting: <Users size={14} />,
   task: <CheckCircle2 size={14} />, note: <AlignLeft size={14} />
