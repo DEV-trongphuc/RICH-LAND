@@ -5,7 +5,7 @@ import { fetchAPI } from '../utils/api';
 import api from '../api/axios';
 import { useAuth } from '../contexts/AuthContext';
 import { useUIStore } from '../store/uiStore';
-import { Building2, Users, FileText, Plus, Trash2, Edit, X, Upload, Download, Check, AlertCircle, Layers, FileSpreadsheet, Link2, Globe, Search, Folder, ExternalLink, MessageSquare, Paperclip, RefreshCw, Calendar, CheckSquare, HardDrive, Info, MapPin, AlignLeft, Briefcase } from 'lucide-react';
+import { Building2, Users, FileText, Plus, Trash2, Edit, X, Upload, Download, Check, AlertCircle, Layers, FileSpreadsheet, Link2, Globe, Search, Folder, ExternalLink, MessageSquare, Paperclip, RefreshCw, Calendar, CheckSquare, HardDrive, Info, MapPin, Briefcase, AlignLeft } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { EmptyCard } from '../components/ui/EmptyCard';
 import { compressToWebP } from '../utils/imageCompress';
@@ -66,6 +66,49 @@ interface ProjectDoc {
   created_at: string;
   isLinkedOnly?: boolean;
 }
+
+interface ReferenceLink {
+  title: string;
+  url: string;
+}
+
+interface FolderPathObj {
+  type: 'link' | 'select';
+  path: string;
+}
+
+const parseReferenceLinks = (urlStr: string | undefined): ReferenceLink[] => {
+  if (!urlStr) return [];
+  try {
+    const parsed = JSON.parse(urlStr);
+    if (Array.isArray(parsed)) {
+      return parsed.map((item: any) => ({
+        title: String(item.title || 'Website / Link tham khảo'),
+        url: String(item.url || '')
+      }));
+    }
+  } catch (e) {
+    // Legacy single URL string
+  }
+  return [{ title: 'Website / Link tham khảo', url: urlStr }];
+};
+
+const parseFolderPaths = (pathStr: string | undefined): FolderPathObj[] => {
+  if (!pathStr) return [];
+  try {
+    const parsed = JSON.parse(pathStr);
+    if (Array.isArray(parsed)) {
+      return parsed.map((item: any) => ({
+        type: item.type === 'link' || item.type === 'select' ? item.type : 'link',
+        path: String(item.path || '')
+      }));
+    }
+  } catch (e) {
+    // Legacy single path
+  }
+  const isUrl = pathStr.startsWith('http://') || pathStr.startsWith('https://');
+  return [{ type: isUrl ? 'link' : 'select', path: pathStr }];
+};
 
 const ProjectCardSkeleton = () => (
   <div className="card" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem', border: '1px solid var(--color-border-light)' }}>
@@ -178,10 +221,6 @@ export default function ProjectsPage() {
   const [editingProject, setEditingProject] = useState<Partial<Project> | null>(null);
   const [autoCode, setAutoCode] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
-
-  const [newRefLinkName, setNewRefLinkName] = useState('');
-  const [newRefLinkUrl, setNewRefLinkUrl] = useState('');
-  const [newFolderLinkUrl, setNewFolderLinkUrl] = useState('');
 
   // Quick campaigns modal state
   const [quickCampaignsModalOpen, setQuickCampaignsModalOpen] = useState(false);
@@ -1117,65 +1156,58 @@ export default function ProjectsPage() {
                         {editingProject?.status === 'active' ? 'Đang mở bán' : 'Tạm dừng bán'}
                       </span>
                     </div>
-                    {(() => {
-                      const val = editingProject?.reference_url;
-                      if (!val) return null;
-                      let refLinks: Array<{ name: string; url: string }> = [];
-                      if (val.startsWith('[')) {
-                        try {
-                          refLinks = JSON.parse(val);
-                        } catch (e) {
-                          refLinks = [{ name: 'Liên kết tham khảo', url: val }];
-                        }
-                      } else {
-                        refLinks = [{ name: 'Liên kết tham khảo', url: val }];
-                      }
-                      
-                      if (refLinks.length === 0) return null;
-                      return (
-                        <div style={{ gridColumn: 'span 2', marginTop: '4px', borderTop: '1px solid var(--color-border-light)', paddingTop: '12px' }}>
-                          <span style={{ fontSize: '0.72rem', color: 'var(--color-text-light)', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: '8px' }}>Website / Link tham khảo</span>
-                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                            {refLinks.map((link, idx) => {
-                              const isSheet = link.url.includes('docs.google.com/spreadsheets') || link.url.includes('google.com/sheets');
-                              return (
-                                <a
-                                  key={idx}
-                                  href={link.url}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  style={{
-                                    display: 'inline-flex',
-                                    alignItems: 'center',
-                                    gap: '8px',
-                                    background: isSheet ? 'rgba(16, 185, 129, 0.05)' : 'rgba(59, 130, 246, 0.05)',
-                                    border: isSheet ? '1px solid rgba(16, 185, 129, 0.1)' : '1px solid rgba(59, 130, 246, 0.1)',
-                                    padding: '8px 14px',
-                                    borderRadius: '12px',
-                                    color: isSheet ? '#10b981' : 'var(--color-primary)',
-                                    textDecoration: 'none',
-                                    fontWeight: 700,
-                                    fontSize: '0.825rem',
-                                    transition: 'all 0.2s ease'
-                                  }}
-                                  onMouseEnter={e => {
-                                    e.currentTarget.style.background = isSheet ? 'rgba(16, 185, 129, 0.1)' : 'rgba(59, 130, 246, 0.1)';
-                                    e.currentTarget.style.borderColor = isSheet ? 'rgba(16, 185, 129, 0.2)' : 'rgba(59, 130, 246, 0.2)';
-                                  }}
-                                  onMouseLeave={e => {
-                                    e.currentTarget.style.background = isSheet ? 'rgba(16, 185, 129, 0.05)' : 'rgba(59, 130, 246, 0.05)';
-                                    e.currentTarget.style.borderColor = isSheet ? 'rgba(16, 185, 129, 0.1)' : 'rgba(59, 130, 246, 0.1)';
-                                  }}
-                                >
-                                  {isSheet ? <FileSpreadsheet size={14} /> : <Link2 size={14} />}
-                                  <span>{link.name}</span>
-                                </a>
-                              );
-                            })}
-                          </div>
+                    {editingProject?.reference_url && parseReferenceLinks(editingProject.reference_url).length > 0 && (
+                      <div style={{ gridColumn: 'span 2', marginTop: '4px', borderTop: '1px solid var(--color-border-light)', paddingTop: '12px' }}>
+                        <span style={{ fontSize: '0.72rem', color: 'var(--color-text-light)', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: '8px' }}>Website &amp; Tài liệu tham khảo</span>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                          {parseReferenceLinks(editingProject.reference_url).map((link, idx) => {
+                            if (!link.url) return null;
+                            const isGoogleSheets = link.url.includes('docs.google.com/spreadsheets') || link.url.includes('google.com/sheets');
+                            return (
+                              <a
+                                key={idx}
+                                href={link.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                style={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '8px',
+                                  background: isGoogleSheets ? 'rgba(16, 185, 129, 0.05)' : 'rgba(59, 130, 246, 0.05)',
+                                  border: isGoogleSheets ? '1px solid rgba(16, 185, 129, 0.1)' : '1px solid rgba(59, 130, 246, 0.1)',
+                                  padding: '8px 14px',
+                                  borderRadius: '12px',
+                                  color: isGoogleSheets ? '#10b981' : 'var(--color-primary)',
+                                  textDecoration: 'none',
+                                  fontWeight: 700,
+                                  fontSize: '0.825rem',
+                                  transition: 'all 0.2s ease',
+                                  boxShadow: '0 2px 4px rgba(0,0,0,0.01)'
+                                }}
+                                onMouseEnter={e => {
+                                  e.currentTarget.style.background = isGoogleSheets ? 'rgba(16, 185, 129, 0.1)' : 'rgba(59, 130, 246, 0.1)';
+                                  e.currentTarget.style.borderColor = isGoogleSheets ? 'rgba(16, 185, 129, 0.2)' : 'rgba(59, 130, 246, 0.2)';
+                                  e.currentTarget.style.transform = 'translateY(-1px)';
+                                }}
+                                onMouseLeave={e => {
+                                  e.currentTarget.style.background = isGoogleSheets ? 'rgba(16, 185, 129, 0.05)' : 'rgba(59, 130, 246, 0.05)';
+                                  e.currentTarget.style.borderColor = isGoogleSheets ? '1px solid rgba(16, 185, 129, 0.1)' : '1px solid rgba(59, 130, 246, 0.1)';
+                                  e.currentTarget.style.transform = 'none';
+                                }}
+                              >
+                                {isGoogleSheets ? (
+                                  <FileSpreadsheet size={14} color="#10b981" />
+                                ) : (
+                                  <Globe size={14} />
+                                )}
+                                <span>{link.title}</span>
+                                <ExternalLink size={12} style={{ opacity: 0.6 }} />
+                              </a>
+                            );
+                          })}
                         </div>
-                      );
-                    })()}
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -1320,30 +1352,12 @@ export default function ProjectsPage() {
 
                     <div style={{ gridColumn: 'span 2', borderTop: '1px solid var(--color-border-light)', paddingTop: '12px' }}>
                       <span style={{ fontSize: '0.72rem', color: 'var(--color-text-light)', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: '6px' }}>Đường dẫn Folder liên kết</span>
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '4px' }}>
-                        {(() => {
-                          const val = editingProject?.folder_path;
-                          if (!val) return <span style={{ color: 'var(--color-text-light)', fontStyle: 'italic', fontSize: '0.85rem' }}>Không có folder liên kết</span>;
-                          let folderPaths: string[] = [];
-                          if (val.startsWith('[')) {
-                            try {
-                              folderPaths = JSON.parse(val);
-                            } catch (e) {
-                              folderPaths = [val];
-                            }
-                          } else {
-                            folderPaths = val.split(',').map(s => s.trim()).filter(Boolean);
-                          }
-                          
-                          if (folderPaths.length === 0) {
-                            return <span style={{ color: 'var(--color-text-light)', fontStyle: 'italic', fontSize: '0.85rem' }}>Không có folder liên kết</span>;
-                          }
-                          return folderPaths.map((path, idx) => (
-                            <div key={idx} style={{ display: 'inline-flex' }}>
-                              {renderFolderPathLink(path, editingProject?.id)}
-                            </div>
-                          ));
-                        })()}
+                      <div style={{ marginTop: '4px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        {parseFolderPaths(editingProject?.folder_path).map((f, idx) => (
+                          <div key={idx}>
+                            {renderFolderPathLink(f.path, editingProject?.id)}
+                          </div>
+                        ))}
                       </div>
                     </div>
                   </div>
@@ -2047,27 +2061,10 @@ export default function ProjectsPage() {
                               </div>
 
                               <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginBottom: '8px', display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '6px' }}>
-                                <span>Thư mục:</span>
-                                {(() => {
-                                  const val = proj.folder_path;
-                                  if (!val) return <span style={{ color: 'var(--color-text-light)', fontStyle: 'italic', fontSize: '0.75rem' }}>Không có folder liên kết</span>;
-                                  let folderPaths: string[] = [];
-                                  if (val.startsWith('[')) {
-                                    try {
-                                      folderPaths = JSON.parse(val);
-                                    } catch (e) {
-                                      folderPaths = [val];
-                                    }
-                                  } else {
-                                    folderPaths = val.split(',').map(s => s.trim()).filter(Boolean);
-                                  }
-                                  if (folderPaths.length === 0) return <span style={{ color: 'var(--color-text-light)', fontStyle: 'italic', fontSize: '0.75rem' }}>Không có folder liên kết</span>;
-                                  return folderPaths.map((path, idx) => (
-                                    <span key={idx} style={{ display: 'inline-flex' }}>
-                                      {renderFolderPathLink(path, proj.id)}
-                                    </span>
-                                  ));
-                                })()}
+                                <span>Thư mục:</span> 
+                                {parseFolderPaths(proj.folder_path).map((f, idx) => (
+                                  <span key={idx}>{renderFolderPathLink(f.path, proj.id)}</span>
+                                ))}
                               </div>
 
                               <div style={{ marginBottom: '8px' }}>
@@ -3832,13 +3829,22 @@ export default function ProjectsPage() {
 
                   <div>
                     <label className="form-label" style={{ fontWeight: 600 }}>Trạng thái bán</label>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 0.875rem', background: 'var(--color-bg-light)', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border-light)', height: '38px', boxSizing: 'border-box' }}>
+                    <div style={{ 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      justifyContent: 'space-between', 
+                      padding: '0 12px', 
+                      background: 'var(--color-bg-light)', 
+                      borderRadius: 'var(--radius-md)', 
+                      border: '1px solid var(--color-border-light)', 
+                      height: '42px' 
+                    }}>
                       <div>
-                        <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--color-text)' }}>Cho phép mở bán</span>
+                        <span style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>Cho phép mở bán</span>
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <span style={{ fontSize: '0.72rem', fontWeight: 700, color: editingProject?.status === 'active' ? 'var(--color-success)' : 'var(--color-text-muted)' }}>
-                          {editingProject?.status === 'active' ? 'Đang mở bán' : 'Tạm dừng'}
+                        <span style={{ fontSize: '0.75rem', fontWeight: 600, color: editingProject?.status === 'active' ? 'var(--color-success)' : 'var(--color-text-muted)' }}>
+                          {editingProject?.status === 'active' ? 'Đang mở bán' : 'Tạm dừng bán'}
                         </span>
                         <ToggleSwitch
                           checked={editingProject?.status === 'active'}
@@ -3857,39 +3863,79 @@ export default function ProjectsPage() {
                     />
                   </div>
 
-                  <div style={{ gridColumn: 'span 2' }}>
-                    <label className="form-label" style={{ fontWeight: 600 }}>Website hoặc Link tham khảo (GG Sheets, tài liệu...)</label>
-                    
-                    {/* List of current reference links */}
+                  <div style={{ gridColumn: 'span 2', borderTop: '1px solid var(--color-border-light)', paddingTop: '16px', marginTop: '8px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                      <label className="form-label" style={{ marginBottom: 0 }}>Website &amp; Tài liệu tham khảo liên kết</label>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const currentLinks = parseReferenceLinks(editingProject?.reference_url);
+                          const nextLinks = [...currentLinks, { title: 'Tài liệu tham khảo', url: '' }];
+                          setEditingProject(prev => ({ ...prev, reference_url: JSON.stringify(nextLinks) }));
+                        }}
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          color: 'var(--color-primary)',
+                          fontSize: '0.75rem',
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '4px',
+                          padding: 0
+                        }}
+                      >
+                        <Plus size={12} />
+                        <span>Thêm Link mới</span>
+                      </button>
+                    </div>
+
                     {(() => {
-                      const val = editingProject?.reference_url;
-                      if (!val) return null;
-                      let refLinks: Array<{ name: string; url: string }> = [];
-                      if (val.startsWith('[')) {
-                        try {
-                          refLinks = JSON.parse(val);
-                        } catch (e) {
-                          refLinks = [{ name: 'Liên kết tham khảo', url: val }];
-                        }
-                      } else {
-                        refLinks = [{ name: 'Liên kết tham khảo', url: val }];
+                      const currentLinks = parseReferenceLinks(editingProject?.reference_url);
+                      if (currentLinks.length === 0) {
+                        return (
+                          <div style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', fontStyle: 'italic', padding: '8px 12px', background: 'var(--color-bg-light)', border: '1px dashed var(--color-border)', borderRadius: '10px' }}>
+                            Chưa có đường dẫn tham khảo nào. Bấm "Thêm Link mới" để cấu hình.
+                          </div>
+                        );
                       }
-                      if (refLinks.length === 0) return null;
                       return (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '10px' }}>
-                          {refLinks.map((link, idx) => (
-                            <div key={idx} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 12px', background: 'var(--color-bg-light)', borderRadius: '10px', border: '1px solid var(--color-border-light)' }}>
-                              <div style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-                                <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--color-text)' }}>{link.name}</span>
-                                <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }} title={link.url}>{link.url}</span>
-                              </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                          {currentLinks.map((link, idx) => (
+                            <div key={idx} style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                              <input
+                                type="text"
+                                value={link.title}
+                                onChange={e => {
+                                  const updated = [...currentLinks];
+                                  updated[idx].title = e.target.value;
+                                  setEditingProject(prev => ({ ...prev, reference_url: JSON.stringify(updated) }));
+                                }}
+                                className="form-input"
+                                placeholder="Tên liên kết (Ví dụ: GG Sheets Phí)"
+                                style={{ flex: 1 }}
+                              />
+                              <input
+                                type="text"
+                                value={link.url}
+                                onChange={e => {
+                                  const updated = [...currentLinks];
+                                  updated[idx].url = e.target.value;
+                                  setEditingProject(prev => ({ ...prev, reference_url: JSON.stringify(updated) }));
+                                }}
+                                className="form-input"
+                                placeholder="https://..."
+                                style={{ flex: 2 }}
+                              />
                               <button
                                 type="button"
                                 onClick={() => {
-                                  const updated = refLinks.filter((_, i) => i !== idx);
-                                  setEditingProject(prev => ({ ...prev, reference_url: updated.length > 0 ? JSON.stringify(updated) : '' }));
+                                  const updated = currentLinks.filter((_, i) => i !== idx);
+                                  setEditingProject(prev => ({ ...prev, reference_url: JSON.stringify(updated) }));
                                 }}
-                                style={{ background: 'none', border: 'none', color: 'var(--color-danger)', cursor: 'pointer', padding: '4px', display: 'flex', alignItems: 'center' }}
+                                className="btn secondary sm"
+                                style={{ color: 'var(--color-danger)', borderColor: 'rgba(239, 68, 68, 0.2)', width: '38px', height: '38px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                               >
                                 <Trash2 size={14} />
                               </button>
@@ -3898,58 +3944,6 @@ export default function ProjectsPage() {
                         </div>
                       );
                     })()}
-
-                    {/* Form row to add a new reference link */}
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr auto', gap: '8px', alignItems: 'end' }}>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                        <span style={{ fontSize: '0.72rem', color: 'var(--color-text-light)', fontWeight: 600 }}>Tên hiển thị</span>
-                        <input
-                          type="text"
-                          value={newRefLinkName}
-                          onChange={e => setNewRefLinkName(e.target.value)}
-                          className="form-input"
-                          style={{ height: '36px' }}
-                          placeholder="ví dụ: Bảng giá, Website..."
-                        />
-                      </div>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                        <span style={{ fontSize: '0.72rem', color: 'var(--color-text-light)', fontWeight: 600 }}>Đường dẫn liên kết (URL)</span>
-                        <input
-                          type="text"
-                          value={newRefLinkUrl}
-                          onChange={e => setNewRefLinkUrl(e.target.value)}
-                          className="form-input"
-                          style={{ height: '36px' }}
-                          placeholder="https://docs.google.com/..."
-                        />
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (!newRefLinkUrl.trim()) return;
-                          const name = newRefLinkName.trim() || 'Liên kết tham khảo';
-                          const val = editingProject?.reference_url;
-                          let refLinks: Array<{ name: string; url: string }> = [];
-                          if (val && val.startsWith('[')) {
-                            try {
-                              refLinks = JSON.parse(val);
-                            } catch (e) {
-                              refLinks = [{ name: 'Liên kết tham khảo', url: val }];
-                            }
-                          } else if (val) {
-                            refLinks = [{ name: 'Liên kết tham khảo', url: val }];
-                          }
-                          const updated = [...refLinks, { name, url: newRefLinkUrl.trim() }];
-                          setEditingProject(prev => ({ ...prev, reference_url: JSON.stringify(updated) }));
-                          setNewRefLinkName('');
-                          setNewRefLinkUrl('');
-                        }}
-                        className="btn primary sm"
-                        style={{ height: '36px', padding: '0 12px', borderRadius: '10px' }}
-                      >
-                        + Thêm
-                      </button>
-                    </div>
                   </div>
                 </div>
               </div>
@@ -4198,142 +4192,141 @@ export default function ProjectsPage() {
                 gap: '1rem',
                 boxShadow: 'var(--shadow-sm)'
               }}>
-                <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 800, color: 'var(--color-primary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Thư mục &amp; Tài liệu</h4>
+                <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 800, color: 'var(--color-primary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Thư mục & Tài liệu</h4>
                 
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-                  <div>
-                    <label className="form-label" style={{ fontWeight: 600 }}>Đường dẫn Folder liên kết (Thêm nhiều được)</label>
-                    
-                    {/* List of current folder links */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                  <div style={{ borderTop: '1px solid var(--color-border-light)', paddingTop: '16px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                      <label className="form-label" style={{ marginBottom: 0 }}>Đường dẫn Folder liên kết</label>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const currentFolders = parseFolderPaths(editingProject?.folder_path);
+                          const nextFolders = [...currentFolders, { type: 'link' as const, path: '' }];
+                          setEditingProject(prev => ({ ...prev, folder_path: JSON.stringify(nextFolders) }));
+                        }}
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          color: 'var(--color-primary)',
+                          fontSize: '0.75rem',
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '4px',
+                          padding: 0
+                        }}
+                      >
+                        <Plus size={12} />
+                        <span>Thêm Thư mục</span>
+                      </button>
+                    </div>
+
                     {(() => {
-                      const val = editingProject?.folder_path;
-                      if (!val) return null;
-                      let folderPaths: string[] = [];
-                      if (val.startsWith('[')) {
-                        try {
-                          folderPaths = JSON.parse(val);
-                        } catch (e) {
-                          folderPaths = [val];
-                        }
-                      } else {
-                        folderPaths = val.split(',').map(s => s.trim()).filter(Boolean);
+                      const currentFolders = parseFolderPaths(editingProject?.folder_path);
+                      if (currentFolders.length === 0) {
+                        return (
+                          <div style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', fontStyle: 'italic', padding: '8px 12px', background: 'var(--color-bg-light)', border: '1px dashed var(--color-border)', borderRadius: '10px' }}>
+                            Chưa liên kết thư mục nào. Bấm "Thêm Thư mục" để cấu hình.
+                          </div>
+                        );
                       }
-                      if (folderPaths.length === 0) return null;
                       return (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '10px' }}>
-                          {folderPaths.map((path, idx) => {
-                            const isUrl = path.startsWith('http://') || path.startsWith('https://');
-                            return (
-                              <div key={idx} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 12px', background: 'var(--color-bg-light)', borderRadius: '10px', border: '1px solid var(--color-border-light)' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', overflow: 'hidden' }}>
-                                  {isUrl ? <HardDrive size={14} color="var(--color-primary)" /> : <Folder size={14} color="var(--color-primary)" />}
-                                  <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--color-text)', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }} title={path}>{path}</span>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                          {currentFolders.map((f, idx) => (
+                            <div key={idx} style={{ background: 'var(--color-bg-light)', padding: '12px', borderRadius: '12px', border: '1px solid var(--color-border-light)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <div style={{ display: 'flex', background: '#ffffff', padding: '2px', borderRadius: '8px', border: '1px solid var(--color-border-light)' }}>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      const updated = [...currentFolders];
+                                      updated[idx].type = 'link';
+                                      setEditingProject(prev => ({ ...prev, folder_path: JSON.stringify(updated) }));
+                                    }}
+                                    style={{
+                                      padding: '4px 8px',
+                                      borderRadius: '6px',
+                                      border: 'none',
+                                      background: f.type === 'link' ? 'var(--color-primary)' : 'transparent',
+                                      color: f.type === 'link' ? 'white' : 'var(--color-text-muted)',
+                                      fontSize: '0.7rem',
+                                      fontWeight: 700,
+                                      cursor: 'pointer'
+                                    }}
+                                  >
+                                    Dán Link (Drive)
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      const updated = [...currentFolders];
+                                      updated[idx].type = 'select';
+                                      setEditingProject(prev => ({ ...prev, folder_path: JSON.stringify(updated) }));
+                                    }}
+                                    style={{
+                                      padding: '4px 8px',
+                                      borderRadius: '6px',
+                                      border: 'none',
+                                      background: f.type === 'select' ? 'var(--color-primary)' : 'transparent',
+                                      color: f.type === 'select' ? 'white' : 'var(--color-text-muted)',
+                                      fontSize: '0.7rem',
+                                      fontWeight: 700,
+                                      cursor: 'pointer'
+                                    }}
+                                  >
+                                    Chọn thư mục
+                                  </button>
                                 </div>
                                 <button
                                   type="button"
                                   onClick={() => {
-                                    const updated = folderPaths.filter((_, i) => i !== idx);
-                                    setEditingProject(prev => ({ ...prev, folder_path: updated.length > 0 ? JSON.stringify(updated) : '' }));
+                                    const updated = currentFolders.filter((_, i) => i !== idx);
+                                    setEditingProject(prev => ({ ...prev, folder_path: JSON.stringify(updated) }));
                                   }}
-                                  style={{ background: 'none', border: 'none', color: 'var(--color-danger)', cursor: 'pointer', padding: '4px', display: 'flex', alignItems: 'center' }}
+                                  style={{
+                                    background: 'none',
+                                    border: 'none',
+                                    color: 'var(--color-danger)',
+                                    cursor: 'pointer',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    padding: '4px'
+                                  }}
                                 >
                                   <Trash2 size={14} />
                                 </button>
                               </div>
-                            );
-                          })}
+                              {f.type === 'link' ? (
+                                <input
+                                  type="text"
+                                  value={f.path}
+                                  onChange={e => {
+                                    const updated = [...currentFolders];
+                                    updated[idx].path = e.target.value;
+                                    setEditingProject(prev => ({ ...prev, folder_path: JSON.stringify(updated) }));
+                                  }}
+                                  className="form-input"
+                                  placeholder="Dán link thư mục Google Drive..."
+                                />
+                              ) : (
+                                <CustomSelect
+                                  options={fileCategories.map(cat => ({ value: cat.label, label: cat.label }))}
+                                  value={f.path}
+                                  onChange={val => {
+                                    const updated = [...currentFolders];
+                                    updated[idx].path = String(val);
+                                    setEditingProject(prev => ({ ...prev, folder_path: JSON.stringify(updated) }));
+                                  }}
+                                  placeholder="Chọn thư mục từ /files..."
+                                />
+                              )}
+                            </div>
+                          ))}
                         </div>
                       );
                     })()}
-
-                    {/* Mode selector */}
-                    <div style={{ display: 'flex', background: 'var(--color-bg)', padding: '4px', borderRadius: '10px', marginBottom: '12px', border: '1px solid var(--color-border-light)' }}>
-                      <button
-                        type="button"
-                        onClick={() => setFolderLinkType('link')}
-                        style={{
-                          flex: 1,
-                          padding: '8px 12px',
-                          borderRadius: '8px',
-                          border: 'none',
-                          background: folderLinkType === 'link' ? 'var(--color-primary)' : 'transparent',
-                          color: folderLinkType === 'link' ? 'white' : 'var(--color-text-muted)',
-                          fontSize: '0.75rem',
-                          fontWeight: 700,
-                          cursor: 'pointer',
-                          transition: 'all 0.2s ease',
-                          boxShadow: folderLinkType === 'link' ? '0 2px 4px rgba(163, 20, 34, 0.2)' : 'none'
-                        }}
-                      >
-                        Dán Link (Drive...)
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setFolderLinkType('select')}
-                        style={{
-                          flex: 1,
-                          padding: '8px 12px',
-                          borderRadius: '8px',
-                          border: 'none',
-                          background: folderLinkType === 'select' ? 'var(--color-primary)' : 'transparent',
-                          color: folderLinkType === 'select' ? 'white' : 'var(--color-text-muted)',
-                          fontSize: '0.75rem',
-                          fontWeight: 700,
-                          cursor: 'pointer',
-                          transition: 'all 0.2s ease',
-                          boxShadow: folderLinkType === 'select' ? '0 2px 4px rgba(163, 20, 34, 0.2)' : 'none'
-                        }}
-                      >
-                        Chọn thư mục có sẵn
-                      </button>
-                    </div>
-
-                    {/* Input control and add button */}
-                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                      <div style={{ flex: 1 }}>
-                        {folderLinkType === 'link' ? (
-                          <input
-                            type="text"
-                            value={newFolderLinkUrl}
-                            onChange={e => setNewFolderLinkUrl(e.target.value)}
-                            className="form-input"
-                            style={{ height: '36px' }}
-                            placeholder="Dán link thư mục Google Drive..."
-                          />
-                        ) : (
-                          <CustomSelect
-                            options={fileCategories.map(cat => ({ value: cat.label, label: cat.label }))}
-                            value={newFolderLinkUrl}
-                            onChange={val => setNewFolderLinkUrl(val as string)}
-                            placeholder="Chọn thư mục từ /files..."
-                          />
-                        )}
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (!newFolderLinkUrl.trim()) return;
-                          const val = editingProject?.folder_path;
-                          let folderPaths: string[] = [];
-                          if (val && val.startsWith('[')) {
-                            try {
-                              folderPaths = JSON.parse(val);
-                            } catch (e) {
-                              folderPaths = [val];
-                            }
-                          } else if (val) {
-                            folderPaths = val.split(',').map(s => s.trim()).filter(Boolean);
-                          }
-                          const updated = [...folderPaths, newFolderLinkUrl.trim()];
-                          setEditingProject(prev => ({ ...prev, folder_path: JSON.stringify(updated) }));
-                          setNewFolderLinkUrl('');
-                        }}
-                        className="btn primary sm"
-                        style={{ height: '36px', padding: '0 12px', borderRadius: '10px' }}
-                      >
-                        + Thêm
-                      </button>
-                    </div>
                   </div>
 
                   <div>
@@ -4685,49 +4678,56 @@ export default function ProjectsPage() {
           return (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
               {/* Linked Folder Area */}
-              {selectedProj?.folder_path && (
-                <div style={{
-                  padding: '1rem',
-                  border: '1px solid var(--color-border)',
-                  borderRadius: 'var(--radius-lg)',
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  background: 'rgba(16, 185, 129, 0.04)',
-                  borderColor: 'rgba(16, 185, 129, 0.2)'
-                }}>
-                  <div style={{ flex: 1, minWidth: 0, marginRight: '1rem' }}>
-                    <h4 style={{ margin: 0, fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <Folder size={16} color="#10b981" />
-                      Thư mục liên kết
-                    </h4>
-                    <p style={{ margin: '4px 0 0', fontSize: '0.75rem', color: 'var(--color-text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {selectedProj.folder_path}
-                    </p>
-                  </div>
-                  {selectedProj.folder_path.startsWith('http') ? (
-                    <a
-                      href={selectedProj.folder_path}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="btn success sm"
-                      style={{ borderRadius: '100px', display: 'inline-flex', alignItems: 'center', gap: '6px', whiteSpace: 'nowrap', textDecoration: 'none', background: '#10b981', color: '#fff', border: 'none' }}
+              {selectedProj?.folder_path && parseFolderPaths(selectedProj.folder_path).length > 0 && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  {parseFolderPaths(selectedProj.folder_path).map((f, idx) => (
+                    <div 
+                      key={idx}
+                      style={{
+                        padding: '0.85rem 1rem',
+                        border: '1px solid var(--color-border)',
+                        borderRadius: 'var(--radius-lg)',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        background: f.type === 'link' ? 'rgba(59, 130, 246, 0.04)' : 'rgba(16, 185, 129, 0.04)',
+                        borderColor: f.type === 'link' ? 'rgba(59, 130, 246, 0.15)' : 'rgba(16, 185, 129, 0.15)'
+                      }}
                     >
-                      <ExternalLink size={14} />
-                      Mở Google Drive
-                    </a>
-                  ) : (
-                    <a
-                      href={`/files?project_id=${selectedProj.id}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="btn success sm"
-                      style={{ borderRadius: '100px', display: 'inline-flex', alignItems: 'center', gap: '6px', whiteSpace: 'nowrap', textDecoration: 'none', background: 'var(--color-primary)', color: '#fff', border: 'none' }}
-                    >
-                      <Folder size={14} />
-                      Kho tài liệu
-                    </a>
-                  )}
+                      <div style={{ flex: 1, minWidth: 0, marginRight: '1rem' }}>
+                        <h4 style={{ margin: 0, fontSize: '0.825rem', fontWeight: 700, color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          {f.type === 'link' ? <HardDrive size={15} color="#3b82f6" /> : <Folder size={15} color="#10b981" />}
+                          {f.type === 'link' ? 'Google Drive liên kết' : 'Thư mục tài liệu'}
+                        </h4>
+                        <p style={{ margin: '2px 0 0', fontSize: '0.72rem', color: 'var(--color-text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {f.path}
+                        </p>
+                      </div>
+                      {f.type === 'link' ? (
+                        <a
+                          href={f.path}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="btn success sm"
+                          style={{ borderRadius: '10px', fontSize: '0.75rem', height: '32px', display: 'inline-flex', alignItems: 'center', gap: '6px', whiteSpace: 'nowrap', textDecoration: 'none', background: '#3b82f6', color: '#fff', border: 'none' }}
+                        >
+                          <ExternalLink size={12} />
+                          Mở Link
+                        </a>
+                      ) : (
+                        <a
+                          href={`/files?project_id=${selectedProj.id}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="btn success sm"
+                          style={{ borderRadius: '10px', fontSize: '0.75rem', height: '32px', display: 'inline-flex', alignItems: 'center', gap: '6px', whiteSpace: 'nowrap', textDecoration: 'none', background: 'var(--color-primary)', color: '#fff', border: 'none' }}
+                        >
+                          <Folder size={12} />
+                          Kho tài liệu
+                        </a>
+                      )}
+                    </div>
+                  ))}
                 </div>
               )}
               {/* Upload Area for Admins */}
@@ -5050,27 +5050,10 @@ export default function ProjectsPage() {
                             </div>
 
                             <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginBottom: '8px', display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '6px' }}>
-                              <span>Thư mục:</span>
-                              {(() => {
-                                const val = proj.folder_path;
-                                if (!val) return <span style={{ color: 'var(--color-text-light)', fontStyle: 'italic', fontSize: '0.75rem' }}>Không có folder liên kết</span>;
-                                let folderPaths: string[] = [];
-                                if (val.startsWith('[')) {
-                                  try {
-                                    folderPaths = JSON.parse(val);
-                                  } catch (e) {
-                                    folderPaths = [val];
-                                  }
-                                } else {
-                                  folderPaths = val.split(',').map(s => s.trim()).filter(Boolean);
-                                }
-                                if (folderPaths.length === 0) return <span style={{ color: 'var(--color-text-light)', fontStyle: 'italic', fontSize: '0.75rem' }}>Không có folder liên kết</span>;
-                                return folderPaths.map((path, idx) => (
-                                  <span key={idx} style={{ display: 'inline-flex' }}>
-                                    {renderFolderPathLink(path, proj.id)}
-                                  </span>
-                                ));
-                              })()}
+                              <span>Thư mục:</span> 
+                              {parseFolderPaths(proj.folder_path).map((f, idx) => (
+                                <span key={idx}>{renderFolderPathLink(f.path, proj.id)}</span>
+                              ))}
                             </div>
 
                             <div style={{ marginBottom: '8px' }}>
