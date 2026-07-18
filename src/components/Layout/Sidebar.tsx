@@ -73,7 +73,7 @@ export const SIDEBAR_GROUPS: SidebarGroup[] = [
       { name: 'Team', href: '/consultants?tab=teams', icon: Users, hideForRoles: ['assistant', 'viewer'] },
       { name: 'Nhân viên kinh doanh', href: '/consultants', icon: Users, hideForRoles: ['assistant', 'viewer'] },
       { name: 'Quản lý chấm công', href: '/attendance', icon: Clock, hideForRoles: ['assistant', 'sale', 'viewer', 'sales'] },
-      { name: 'Chấm công', href: '/attendance', icon: Clock, hideForRoles: ['admin', 'superadmin', 'super_admin', 'manager', 'viewer'] }
+      { name: 'Chấm công', href: '/attendance', icon: Clock, hideForRoles: ['admin', 'superadmin', 'super_admin', 'manager', 'viewer', 'director'] }
     ]
   },
   {
