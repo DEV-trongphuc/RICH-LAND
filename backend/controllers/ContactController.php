@@ -44,7 +44,7 @@ class ContactController {
         $sortBy  = $_GET['sort'] ?? 'created_at';
         $order   = $_GET['order'] ?? 'DESC';
 
-        $where  = ['c.tenant_id = ?', 'c.deleted_at IS NULL'];
+        $where  = ['c.tenant_id = ?', 'c.deleted_at IS NULL', 'c.owner_id IS NOT NULL'];
         $params = [$tid];
 
         // Validating sort fields
