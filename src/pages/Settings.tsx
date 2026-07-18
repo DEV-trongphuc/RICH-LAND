@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useUIStore } from '../store/uiStore';
 import { withRouterFreezer } from '../components/RouterFreezer';
-import { Mail, Settings2, Save, Send, Server, Database, Activity, ChevronDown, ChevronUp, Zap, Shield, MessageCircle, RefreshCw, Settings as SettingsIcon, BarChart2, Clock, Calendar, Users, CheckCircle, Plus, Trash2, Edit2, FileSpreadsheet, Upload, Download, X, Search, UserCheck, FileText, Tag, Scale, Layers, HelpCircle, Filter, Briefcase } from 'lucide-react';
+import { Mail, Settings2, Save, Send, Server, Database, Activity, ChevronDown, ChevronUp, Zap, Shield, MessageCircle, RefreshCw, Settings as SettingsIcon, BarChart2, Clock, Calendar, Users, CheckCircle, Plus, Trash2, Edit2, FileSpreadsheet, Upload, Download, X, Search, UserCheck, FileText, Tag, Scale, Layers, HelpCircle, Filter, Briefcase, GripVertical } from 'lucide-react';
 import { CustomSelect } from '../components/ui/CustomSelect';
 import { ToggleSwitch } from '../components/ui/ToggleSwitch';
 import { CustomModal } from '../components/ui/CustomModal';
@@ -275,6 +275,7 @@ const SettingsInner = () => {
   });
   const [dealOpportunityStatus, setDealOpportunityStatus] = useState<string>('booking');
   const [dealWonStatus, setDealWonStatus] = useState<string>('dong_deal');
+  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
 
   // States
   const [provider, setProvider] = useState('appscript');
@@ -936,6 +937,28 @@ const SettingsInner = () => {
         }
       }
     });
+  };
+
+  const handleDragStart = (e: React.DragEvent, index: number) => {
+    setDraggedIndex(index);
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', index.toString());
+  };
+
+  const handleDragOver = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    if (draggedIndex === null || draggedIndex === index) return;
+    
+    const newHierarchy = [...pipelineStatusHierarchy];
+    const draggedItem = newHierarchy[draggedIndex];
+    newHierarchy.splice(draggedIndex, 1);
+    newHierarchy.splice(index, 0, draggedItem);
+    setPipelineStatusHierarchy(newHierarchy);
+    setDraggedIndex(index);
+  };
+
+  const handleDragEnd = () => {
+    setDraggedIndex(null);
   };
 
   const handleSave = async () => {
@@ -4685,6 +4708,16 @@ function doPost(e) {
                       return (
                         <div
                           key={index}
+                          draggable={true}
+                          onDragStart={(e) => {
+                            if ((e.target as HTMLElement).tagName === 'INPUT' || (e.target as HTMLElement).tagName === 'SELECT' || (e.target as HTMLElement).tagName === 'BUTTON' || (e.target as HTMLElement).closest('.form-input')) {
+                              e.preventDefault();
+                              return;
+                            }
+                            handleDragStart(e, index);
+                          }}
+                          onDragOver={(e) => handleDragOver(e, index)}
+                          onDragEnd={handleDragEnd}
                           style={{
                             border: `1px solid ${isDuplicate ? 'var(--color-danger)' : 'var(--color-border)'}`,
                             borderRadius: '12px',
@@ -4692,11 +4725,18 @@ function doPost(e) {
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'space-between',
-                            background: isDuplicate ? 'var(--color-danger-light)' : 'var(--color-surface)',
-                            transition: 'all 0.2s'
+                            background: isDuplicate ? 'var(--color-danger-light)' : (draggedIndex === index ? 'var(--color-bg-secondary)' : 'var(--color-surface)'),
+                            opacity: draggedIndex === index ? 0.5 : 1,
+                            transition: 'all 0.2s',
+                            cursor: 'grab'
                           }}
                         >
                           <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flex: 1, minWidth: 0 }}>
+                            {/* Drag Handle */}
+                            <div style={{ color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', marginRight: '-4px', cursor: 'grab' }}>
+                              <GripVertical size={16} />
+                            </div>
+
                             {/* 1. Index */}
                             <span style={{ fontWeight: 800, color: isDuplicate ? 'var(--color-danger)' : 'var(--color-primary)', width: '30px', flexShrink: 0 }}>
                               #{index + 1}
@@ -4789,36 +4829,6 @@ function doPost(e) {
                           </div>
 
                           <div style={{ display: 'flex', gap: '6px', marginLeft: '12px' }}>
-                            <button
-                              type="button"
-                              disabled={index === 0}
-                              onClick={() => {
-                                const newHierarchy = [...pipelineStatusHierarchy];
-                                const temp = newHierarchy[index];
-                                newHierarchy[index] = newHierarchy[index - 1];
-                                newHierarchy[index - 1] = temp;
-                                setPipelineStatusHierarchy(newHierarchy);
-                              }}
-                              className="btn outline"
-                              style={{ padding: '6px 10px', fontSize: '0.75rem', height: '32px', opacity: index === 0 ? 0.3 : 1 }}
-                            >
-                              ↑
-                            </button>
-                            <button
-                              type="button"
-                              disabled={index === pipelineStatusHierarchy.length - 1}
-                              onClick={() => {
-                                const newHierarchy = [...pipelineStatusHierarchy];
-                                const temp = newHierarchy[index];
-                                newHierarchy[index] = newHierarchy[index + 1];
-                                newHierarchy[index + 1] = temp;
-                                setPipelineStatusHierarchy(newHierarchy);
-                              }}
-                              className="btn outline"
-                              style={{ padding: '6px 10px', fontSize: '0.75rem', height: '32px', opacity: index === pipelineStatusHierarchy.length - 1 ? 0.3 : 1 }}
-                            >
-                              ↓
-                            </button>
                             <button
                               type="button"
                               onClick={() => {
