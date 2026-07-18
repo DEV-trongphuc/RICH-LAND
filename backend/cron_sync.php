@@ -2287,15 +2287,16 @@ function assignParallelLeads($conn) {
             }
             
             $cStmt = $conn->prepare("
-                SELECT c.id, rc.receive_ratio, rc.skip_count
+                SELECT c.id, u.id AS user_id, rc.receive_ratio, rc.skip_count
                 FROM round_consultants rc
                 JOIN consultants c ON rc.consultant_id = c.id
+                LEFT JOIN users u ON c.email = u.email
                 WHERE rc.round_id = ?
                   AND rc.is_active = 1
                   AND c.status = 'active'
                   AND c.vacation_mode = 0
                   AND (c.leave_start IS NULL OR CURDATE() < c.leave_start OR (c.leave_end IS NOT NULL AND c.leave_end < CURDATE()))
-                  AND c.id != ?
+                  AND u.id != ?
                 ORDER BY c.id ASC
             ");
             $cStmt->bind_param("ii", $roundId, $ownerId);
@@ -2326,6 +2327,7 @@ function assignParallelLeads($conn) {
             
             $candidate = $consultants[$nextIdx];
             $secondSaleId = (int)$candidate['id'];
+            $secondUserId = (int)($candidate['user_id'] ?: $candidate['id']);
             
             $upd1 = $conn->prepare("UPDATE contacts SET parallel_assigned = 1 WHERE id = ?");
             $upd1->bind_param("i", $contactId);
@@ -2348,7 +2350,7 @@ function assignParallelLeads($conn) {
             ");
             $createdBy = 1;
             $tenantId = (int)$row['tenant_id'];
-            $stmtIns->bind_param("iiiiissssssss", $tenantId, $personId, $projectId, $secondSaleId, $createdBy, $row['first_name'], $row['last_name'], $row['email'], $row['phone'], $row['source'], $secExpiresTime, $row['notes'], $row['customer_type']);
+            $stmtIns->bind_param("iiiiissssssss", $tenantId, $personId, $projectId, $secondUserId, $createdBy, $row['first_name'], $row['last_name'], $row['email'], $row['phone'], $row['source'], $secExpiresTime, $row['notes'], $row['customer_type']);
             $stmtIns->execute();
             $secondContactId = $stmtIns->insert_id;
             $stmtIns->close();
