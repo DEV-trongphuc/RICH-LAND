@@ -5,7 +5,7 @@ import { fetchAPI } from '../utils/api';
 import api from '../api/axios';
 import { useAuth } from '../contexts/AuthContext';
 import { useUIStore } from '../store/uiStore';
-import { Building2, Users, FileText, Plus, Trash2, Edit, X, Upload, Download, Check, AlertCircle, Layers, FileSpreadsheet, Link2, Globe, Search, Folder, ExternalLink, MessageSquare, Paperclip, RefreshCw, Calendar, CheckSquare, HardDrive, Info, MapPin, Briefcase, AlignLeft, Filter, History } from 'lucide-react';
+import { Building2, Users, FileText, Plus, Trash2, Edit, X, Upload, Download, Check, AlertCircle, Layers, FileSpreadsheet, Link2, Globe, Search, Folder, ExternalLink, MessageSquare, Paperclip, RefreshCw, Calendar, CheckSquare, HardDrive, Info, MapPin, Briefcase, AlignLeft, Filter, History, Megaphone } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { EmptyCard } from '../components/ui/EmptyCard';
 import { compressToWebP } from '../utils/imageCompress';
@@ -1691,6 +1691,18 @@ export default function ProjectsPage() {
                         };
                         const sc = statusColors[task.status] || statusColors.planned;
                         const performer = users.find(u => Number(u.id) === Number(task.user_id));
+                        let linkedCampaign = null;
+                        if (task.related_type === 'campaign') {
+                          linkedCampaign = campaigns.find(c => Number(c.id) === Number(task.related_id));
+                        } else if (task.body) {
+                          try {
+                            const parsed = JSON.parse(task.body);
+                            const campId = parsed?.erp_task?.campaign_id;
+                            if (campId) {
+                              linkedCampaign = campaigns.find(c => Number(c.id) === Number(campId));
+                            }
+                          } catch { /* silent */ }
+                        }
                         return (
                           <div
                             key={task.id}
@@ -1726,17 +1738,54 @@ export default function ProjectsPage() {
                               <div style={{ marginTop: '3px' }}>
                                 <CheckSquare size={18} color={task.status === 'done' ? 'var(--color-success)' : 'var(--color-text-muted)'} style={{ opacity: 0.85 }} />
                               </div>
-                              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                                 <span style={{ fontWeight: 650, color: 'var(--color-text)', fontSize: '0.9rem', lineHeight: '1.2' }}>{task.subject}</span>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                  <Avatar 
-                                    src={performer?.avatar_url || performer?.avatar} 
-                                    name={performer?.full_name || performer?.name || 'Hệ thống'} 
-                                    size={18} 
-                                  />
-                                  <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 500 }}>
-                                    {performer?.full_name || 'Hệ thống'} {performer?.role ? `(${performer.role})` : ''}
-                                  </span>
+                                <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                    <Avatar 
+                                      src={performer?.avatar_url || performer?.avatar} 
+                                      name={performer?.full_name || performer?.name || 'Hệ thống'} 
+                                      size={18} 
+                                    />
+                                    <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 500 }}>
+                                      {performer?.full_name || 'Hệ thống'} {performer?.role ? `(${performer.role})` : ''}
+                                    </span>
+                                  </div>
+                                  {linkedCampaign && (
+                                    <span 
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleOpenCampaignView(linkedCampaign);
+                                      }}
+                                      style={{
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        gap: '4px',
+                                        fontSize: '0.7rem',
+                                        fontWeight: 700,
+                                        background: 'rgba(189, 29, 45, 0.08)',
+                                        color: 'var(--color-primary)',
+                                        padding: '3px 8px',
+                                        borderRadius: '6px',
+                                        cursor: 'pointer',
+                                        transition: 'all 0.2s',
+                                        border: '1px solid rgba(189, 29, 45, 0.15)',
+                                        verticalAlign: 'middle'
+                                      }}
+                                      className="hover-lift"
+                                      onMouseEnter={e => {
+                                        e.currentTarget.style.background = 'var(--color-primary)';
+                                        e.currentTarget.style.color = '#ffffff';
+                                      }}
+                                      onMouseLeave={e => {
+                                        e.currentTarget.style.background = 'rgba(189, 29, 45, 0.08)';
+                                        e.currentTarget.style.color = 'var(--color-primary)';
+                                      }}
+                                    >
+                                      <Megaphone size={10} />
+                                      {linkedCampaign.name}
+                                    </span>
+                                  )}
                                 </div>
                               </div>
                             </div>
