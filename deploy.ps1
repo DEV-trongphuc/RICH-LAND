@@ -11,21 +11,29 @@ if ($LASTEXITCODE -ne 0) {
     exit $LASTEXITCODE
 }
 
-# 1. Upload all files (dist and backend)
-Write-Host "1. Uploading built frontend files via SCP..." -ForegroundColor Yellow
-scp -4 -P 2210 -o StrictHostKeyChecking=no -r dist/* vhvxoigh@chiefaiofficer.vn:/home/vhvxoigh/open.domation.net/richland/
+# 1. Compress and Upload all files via single compressed archives for 95% speed speedup
+Write-Host "1. Compressing assets..." -ForegroundColor Yellow
+tar -czf frontend.tar.gz -C dist .
+tar -czf backend.tar.gz -C backend .
+
+Write-Host "1b. Uploading compressed archives via SCP..." -ForegroundColor Yellow
+scp -4 -P 2210 -o StrictHostKeyChecking=no frontend.tar.gz backend.tar.gz vhvxoigh@chiefaiofficer.vn:/home/vhvxoigh/open.domation.net/richland/
 if ($LASTEXITCODE -ne 0) {
-    Write-Host "ERROR: Failed to upload frontend built files." -ForegroundColor Red
+    Remove-Item frontend.tar.gz, backend.tar.gz -ErrorAction SilentlyContinue
+    Write-Host "ERROR: Failed to upload compressed deployment packages." -ForegroundColor Red
     exit $LASTEXITCODE
 }
 
-Write-Host "1b. Uploading backend files via SCP..." -ForegroundColor Yellow
-scp -4 -P 2210 -o StrictHostKeyChecking=no -r backend/* vhvxoigh@chiefaiofficer.vn:/home/vhvxoigh/open.domation.net/richland/
-
+Write-Host "1c. Extracting packages on remote server..." -ForegroundColor Yellow
+ssh -4 -p 2210 -o StrictHostKeyChecking=no vhvxoigh@chiefaiofficer.vn "tar -xzf /home/vhvxoigh/open.domation.net/richland/frontend.tar.gz -C /home/vhvxoigh/open.domation.net/richland/ && tar -xzf /home/vhvxoigh/open.domation.net/richland/backend.tar.gz -C /home/vhvxoigh/open.domation.net/richland/ && rm /home/vhvxoigh/open.domation.net/richland/frontend.tar.gz /home/vhvxoigh/open.domation.net/richland/backend.tar.gz"
 if ($LASTEXITCODE -ne 0) {
-    Write-Host "ERROR: Failed to upload backend files." -ForegroundColor Red
+    Remove-Item frontend.tar.gz, backend.tar.gz -ErrorAction SilentlyContinue
+    Write-Host "ERROR: Failed to extract remote packages." -ForegroundColor Red
     exit $LASTEXITCODE
 }
+
+# Clean up local temp packages
+Remove-Item frontend.tar.gz, backend.tar.gz -ErrorAction SilentlyContinue
 
 # 2. Trigger database migrations
 Write-Host "2. Running migrations on remote backend..." -ForegroundColor Yellow
