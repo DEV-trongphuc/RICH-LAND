@@ -552,7 +552,7 @@ switch ($resource) {
         if ($method === 'GET') $ctrl->stages($auth);
         elseif (!$resourceId && $method === 'POST') { requireRole($auth, ['admin','manager','director']); $ctrl->storeStage($auth); }
         elseif ($resourceId  && $method === 'PUT')  { requireRole($auth, ['admin','manager','director']); $ctrl->updateStage($auth, (int)$resourceId); }
-        elseif ($resourceId  && $method === 'DELETE') { requireRole($auth, ['admin']); $ctrl->destroyStage($auth, (int)$resourceId); }
+        elseif ($resourceId  && $method === 'DELETE') { requireRole($auth, ['admin', 'director']); $ctrl->destroyStage($auth, (int)$resourceId); }
         else respond(404, null, 'Route không tồn tại', false);
         break;
 
@@ -589,7 +589,7 @@ switch ($resource) {
         elseif (!$resourceId && $method === 'POST')   { requireRole($auth, ['admin','manager','director']); $ctrl->store($auth); }
         elseif ($resourceId  && $method === 'GET')    $ctrl->show($auth, (int)$resourceId);
         elseif ($resourceId  && $method === 'PUT')    { requireRole($auth, ['admin','manager','director']); $ctrl->update($auth, (int)$resourceId); }
-        elseif ($resourceId  && $method === 'DELETE') { requireRole($auth, ['admin']); $ctrl->destroy($auth, (int)$resourceId); }
+        elseif ($resourceId  && $method === 'DELETE') { requireRole($auth, ['admin', 'director']); $ctrl->destroy($auth, (int)$resourceId); }
         else respond(404, null, 'Route không tồn tại', false);
         break;
 
@@ -612,10 +612,10 @@ switch ($resource) {
         $auth = requireAuth();
         $ctrl = new UserController($db);
         if     (!$resourceId && $method === 'GET')    { requireRole($auth, ['admin', 'super_admin', 'superadmin', 'manager', 'sales', 'sale', 'director']); $ctrl->index($auth); }
-        elseif (!$resourceId && $method === 'POST')   { requireRole($auth, ['admin', 'super_admin']); $ctrl->store($auth); }
+        elseif (!$resourceId && $method === 'POST')   { requireRole($auth, ['admin', 'super_admin', 'director']); $ctrl->store($auth); }
         elseif ($resourceId  && $method === 'GET')    $ctrl->show($auth, (int)$resourceId);
         elseif ($resourceId  && $method === 'PUT')    $ctrl->update($auth, (int)$resourceId);
-        elseif ($resourceId  && $method === 'DELETE') { requireRole($auth, ['admin', 'super_admin']); $ctrl->destroy($auth, (int)$resourceId); }
+        elseif ($resourceId  && $method === 'DELETE') { requireRole($auth, ['admin', 'super_admin', 'director']); $ctrl->destroy($auth, (int)$resourceId); }
         else respond(404, null, 'Route không tồn tại', false);
         break;
 

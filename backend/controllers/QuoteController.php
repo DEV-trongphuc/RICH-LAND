@@ -420,7 +420,7 @@ class QuoteController {
             $permissionsJson = json_decode($resQ['permissions_json'], true);
         }
 
-        if (in_array($auth['role'], ['admin', 'superadmin', 'super_admin'], true)) {
+        if (in_array($auth['role'], ['admin', 'superadmin', 'super_admin', 'director'], true)) {
             return 'all';
         }
 

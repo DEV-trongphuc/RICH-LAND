@@ -121,7 +121,7 @@ class UserController {
 
         // Admin lockout prevention
         if ($auth['user_id'] === $id) {
-            if (isset($b['role']) && !in_array($b['role'], ['admin', 'super_admin', 'superadmin'], true)) {
+            if (isset($b['role']) && !in_array($b['role'], ['admin', 'super_admin', 'superadmin', 'director'], true)) {
                 respond(403, null, 'Bạn không thể tự tước quyền quản trị của chính mình', false);
             }
             if (isset($b['is_active']) && !$b['is_active']) {

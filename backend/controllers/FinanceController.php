@@ -1085,8 +1085,8 @@ class FinanceController
 
     public function approveExpense(array $auth, int $id): void
     {
-        if (!in_array($auth['role'], ['admin', 'manager', 'super_admin'], true)) respond(403, null, 'Bạn không có quyền duyệt chi phí', false);
-        requireRole($auth, ['admin', 'manager', 'super_admin']);
+        if (!in_array($auth['role'], ['admin', 'manager', 'super_admin', 'superadmin', 'director'], true)) respond(403, null, 'Bạn không có quyền duyệt chi phí', false);
+        requireRole($auth, ['admin', 'manager', 'super_admin', 'superadmin', 'director']);
 
         // Find creator of the expense
         $stmtExp = $this->db->prepare("SELECT created_by, title, amount FROM expenses WHERE id=? AND tenant_id=?");
