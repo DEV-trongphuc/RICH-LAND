@@ -2567,6 +2567,28 @@ SQL;
             $currentVersion = 169;
         }
 
+        // Version 170 (Convert activities.type from ENUM to VARCHAR and repair empty/invalid types)
+        if ($currentVersion < 170) {
+            $logMsg("Đang chạy cập nhật phiên bản 170 (Chuyển đổi cột type từ ENUM sang VARCHAR để hỗ trợ zalo_connect)...", "info");
+            try {
+                $conn->query("ALTER TABLE activities MODIFY COLUMN type VARCHAR(50) NOT NULL DEFAULT 'task'");
+                $logMsg("Đã chuyển đổi thành công cột type sang VARCHAR.", "success");
+            } catch (Throwable $t) {
+                $logMsg("Lỗi khi chuyển đổi cột type: " . $t->getMessage(), "error");
+            }
+
+            // Repair empty types
+            try {
+                $conn->query("UPDATE activities SET type = 'zalo_connect' WHERE type = '' OR type IS NULL");
+                $logMsg("Đã sửa các hoạt động có type rỗng/NULL về 'zalo_connect'.", "success");
+            } catch (Throwable $t) {
+                $logMsg("Lỗi khi sửa type rỗng: " . $t->getMessage(), "error");
+            }
+
+            $conn->query("INSERT INTO system_settings (setting_key, setting_value) VALUES ('db_version', '170') ON DUPLICATE KEY UPDATE setting_value = '170'");
+            $currentVersion = 170;
+        }
+
     $logMsg("Tự sửa đổi cấu trúc hoàn thành thành công.", "success");
 
     $logMsg("Hệ thống đã cập nhật thành công lên phiên bản mới nhất: " . $currentVersion, "success");
