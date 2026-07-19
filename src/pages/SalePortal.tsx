@@ -772,7 +772,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
   const [nightShiftDeadline, setNightShiftDeadline] = useState('');
   const [togglingNightShift, setTogglingNightShift] = useState(false);
   const currentHour = new Date().getHours();
-  const isOvertime = nightShiftRegistered ? (currentHour >= 18 || currentHour < 6) : (currentHour >= 18 && currentHour < 22);
+  const isOvertime = (currentHour >= 18 && currentHour < 22) || (currentHour >= 0 && currentHour < 6);
 
   // Weekend shift state variables
   const [weekendShiftAllow, setWeekendShiftAllow] = useState(false);
