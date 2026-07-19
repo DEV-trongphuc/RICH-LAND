@@ -967,7 +967,7 @@ export default function ProjectsPage() {
 
   const canDeleteProject = (proj: Project) => {
     if (!user) return false;
-    if (isSystemAdmin) return true;
+    if (isSystemAdmin || user.role === 'director') return true;
     return String(proj.created_by) === String(user.id);
   };
 

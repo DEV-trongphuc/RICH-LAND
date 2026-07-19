@@ -399,12 +399,10 @@ class ProjectController {
         $stmtProj = $this->db->prepare("SELECT created_by FROM projects WHERE id = ? AND tenant_id = ?");
         $stmtProj->execute([$id, $auth['tenant_id']]);
         $creatorId = $stmtProj->fetchColumn();
-        if ($creatorId !== false && $creatorId !== null) {
-            $isAdmin = in_array($auth['role'], ['admin', 'superadmin', 'super_admin'], true);
-            if (!$isAdmin && (int)$creatorId !== (int)$auth['user_id']) {
-                respond(403, null, 'Chỉ Admin hoặc người tạo dự án mới được xóa', false);
+            $isAdminOrDirector = in_array($auth['role'], ['admin', 'superadmin', 'super_admin', 'director'], true);
+            if (!$isAdminOrDirector && (int)$creatorId !== (int)$auth['user_id']) {
+                respond(403, null, 'Chỉ Admin, Director hoặc người tạo dự án mới được xóa', false);
             }
-        }
         
         $stmt = $this->db->prepare("DELETE FROM projects WHERE id = ? AND tenant_id = ?");
         $stmt->execute([$id, $auth['tenant_id']]);
