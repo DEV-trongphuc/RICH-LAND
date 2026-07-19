@@ -68,7 +68,7 @@ export const Header = ({
   const managerBehaviorMode = user?.manager_behavior_mode || 'combined';
   const isSales = user?.role === 'sale' || (user?.role === 'manager' && managerBehaviorMode === 'combined');
   const currentHour = new Date().getHours();
-  const isOvertime = headerNightShiftRegistered ? (currentHour >= 18 || currentHour < 6) : (currentHour >= 18 && currentHour < 22);
+  const isOvertime = (currentHour >= 18 && currentHour < 22) || (currentHour >= 0 && currentHour < 6);
 
 
   const [uncontactedCount, setUncontactedCount] = useState(() => {
