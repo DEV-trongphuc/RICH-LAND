@@ -16,6 +16,8 @@ import { CustomModal } from '../components/ui/CustomModal';
 import { Pagination } from '../components/ui/Pagination';
 import { Skeleton } from '../components/ui/Skeleton';
 import { Avatar } from '../components/ui/Avatar';
+import { Mail, Phone, Copy } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { MentionInput } from '../components/ui/MentionInput';
 import { WorkspaceTaskDrawer } from './WorkspaceTaskDrawer';
 import { FilesPage } from './FilesPage';
@@ -229,6 +231,7 @@ export default function ProjectsPage() {
   const [developers, setDevelopers] = useState<any[]>([]);
   const [allFiles, setAllFiles] = useState<any[]>([]);
   const [users, setUsers] = useState<any[]>([]);
+  const [quickUserCard, setQuickUserCard] = useState<{ id: number; name: string; role: string; email?: string; phone?: string; vacationMode?: number; avatarUrl?: string; visible: boolean; x: number; y: number } | null>(null);
   const [projectModalMode, setProjectModalMode] = useState<'view' | 'edit' | 'create'>('view');
   const [campaignModalMode, setCampaignModalMode] = useState<'view' | 'edit' | 'create'>('view');
 
@@ -601,7 +604,7 @@ export default function ProjectsPage() {
               <span style={{ fontSize: '0.68rem', color: 'var(--color-text-muted)' }}>{comment.created_at ? new Date(comment.created_at).toLocaleString('vi-VN') : ''}</span>
             </div>
             <p style={{ margin: 0, color: 'var(--color-text-light)', whiteSpace: 'pre-wrap', lineHeight: '1.4' }}>
-              {comment.body}
+              {renderFormattedText(comment.body)}
             </p>
             {!isReply && (
               <button
@@ -1029,6 +1032,53 @@ export default function ProjectsPage() {
     return String(camp.created_by) === String(user.id);
   };
 
+  const resolveAttachmentUrl = (url: string | null | undefined): string => {
+    if (!url) return '';
+    if (url.startsWith('http')) return url;
+    let cleanPath = url.replace(/^\/+/, '');
+    if (cleanPath.includes('storage/uploads/')) {
+      cleanPath = cleanPath.replace('storage/uploads/', 'uploads/');
+    }
+    if (cleanPath.startsWith('backend/')) {
+      cleanPath = cleanPath.substring('backend/'.length);
+    }
+    const apiBase = import.meta.env.VITE_API_URL || '/backend';
+    let baseUrl = apiBase;
+    if (baseUrl.includes('api.php')) {
+      baseUrl = baseUrl.split('api.php')[0];
+    }
+    baseUrl = baseUrl.replace(/\/+$/, '');
+    return `${baseUrl}/${cleanPath}`;
+  };
+
+  const showUserCard = (e: React.MouseEvent, name: string) => {
+    e.stopPropagation();
+    const cleanName = (n: string) => (n || '').trim().replace(/\s+/g, '_').toLowerCase().replace(/_\([^)]+\)/g, '').replace(/\([^)]+\)/g, '');
+    const searchVal = cleanName(name);
+    const matchedUser = users.find((u: any) => {
+      const uName = cleanName(u.full_name || u.name || u.username || '');
+      return uName === searchVal || uName.includes(searchVal) || searchVal.includes(uName);
+    });
+
+    setQuickUserCard({
+      id: matchedUser?.id || 0,
+      name: matchedUser?.full_name || name,
+      role: matchedUser?.role || 'sales',
+      email: matchedUser?.email,
+      phone: matchedUser?.phone || matchedUser?.phone_number || '',
+      vacationMode: matchedUser?.vacation_mode,
+      avatarUrl: (matchedUser?.avatar_url || matchedUser?.avatar) ? resolveAttachmentUrl(matchedUser.avatar_url || matchedUser.avatar || '') : '',
+      visible: true,
+      x: e.clientX,
+      y: e.clientY
+    });
+  };
+
+  const copyToClipboard = (text: string, label: string) => {
+    navigator.clipboard.writeText(text);
+    addToast(`Đã sao chép ${label} vào bộ nhớ tạm!`, 'success');
+  };
+
   const renderFormattedText = (text: string) => {
     if (!text) return '';
     const regex = /(https?:\/\/[^\s]+|@[\p{L}\p{N}_()]+)/gu;
@@ -1056,11 +1106,11 @@ export default function ProjectsPage() {
 
         const displayName = taggedUser?.full_name || taggedUser?.name || taggedUser?.fullname || taggedUser?.username || part.substring(1).replace(/_/g, ' ');
         const avatarUrl = taggedUser?.avatar_url || taggedUser?.avatar;
-        const initial = displayName ? displayName.charAt(0).toUpperCase() : '?';
 
         return (
           <span
             key={index}
+            onClick={(e) => showUserCard(e, displayName)}
             style={{
               display: 'inline-flex',
               alignItems: 'center',
@@ -1073,7 +1123,8 @@ export default function ProjectsPage() {
               margin: '0 2px',
               fontWeight: 600,
               fontSize: '0.85em',
-              verticalAlign: 'middle'
+              verticalAlign: 'middle',
+              cursor: 'pointer'
             }}
           >
             <Avatar name={displayName} src={avatarUrl} size={16} />
@@ -3387,6 +3438,160 @@ export default function ProjectsPage() {
 
   return (
     <div className="page-container anim-fade-up" style={{ color: 'var(--color-text)', height: 'auto', minHeight: '100%', display: 'flex', flexDirection: 'column' }}>
+      <AnimatePresence>
+        {quickUserCard && quickUserCard.visible && (
+          <>
+            <div
+              style={{ position: 'fixed', inset: 0, zIndex: 3000 }}
+              onClick={() => setQuickUserCard(null)}
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 10 }}
+              style={{
+                position: 'fixed',
+                top: quickUserCard.y + 15,
+                left: quickUserCard.x - 130,
+                zIndex: 3001,
+                width: 270,
+                background: 'var(--color-surface)',
+                borderRadius: '20px',
+                boxShadow: '0 20px 48px -10px rgba(163, 20, 34, 0.18), 0 8px 24px -6px rgba(0,0,0,0.06)',
+                border: '1px solid rgba(163, 20, 34, 0.12)',
+                overflow: 'hidden'
+              }}
+            >
+              <div style={{ height: 75, background: 'linear-gradient(135deg, var(--color-primary) 0%, #8a0f1b 100%)' }} />
+              <div style={{ padding: '0 1.25rem 1.25rem', textAlign: 'center', marginTop: -32 }}>
+                <div style={{ 
+                  width: 64, 
+                  height: 64, 
+                  borderRadius: '50%', 
+                  background: 'var(--color-surface)', 
+                  margin: '0 auto 0.5rem', 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'center', 
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.08)', 
+                  border: '4px solid var(--color-surface)', 
+                  fontSize: '1.5rem', 
+                  fontWeight: 800, 
+                  color: 'var(--color-primary)',
+                  overflow: 'hidden'
+                }}>
+                  {quickUserCard.avatarUrl ? (
+                    <img 
+                      src={quickUserCard.avatarUrl} 
+                      alt={quickUserCard.name} 
+                      style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+                    />
+                  ) : (
+                    quickUserCard.name.charAt(0).toUpperCase()
+                  )}
+                </div>
+                <h4 style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--color-text)', marginBottom: '2px' }}>
+                  {quickUserCard.name}
+                </h4>
+                <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', display: 'block', marginBottom: '6px', fontWeight: 600 }}>
+                  RL-{String(quickUserCard.id).padStart(4, '0')}
+                </span>
+                
+                <p style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--color-primary)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '8px' }}>
+                  {['admin', 'superadmin', 'super_admin'].includes(quickUserCard.role.toLowerCase()) 
+                    ? 'Quản trị viên' 
+                    : ['manager', 'director'].includes(quickUserCard.role.toLowerCase()) 
+                      ? 'Trưởng nhóm kinh doanh' 
+                      : 'Nhân viên kinh doanh'}
+                </p>
+                
+                <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '12px' }}>
+                  <span style={{ 
+                    fontSize: '0.65rem', 
+                    padding: '3px 8px', 
+                    borderRadius: '100px', 
+                    background: quickUserCard.vacationMode === 1 ? 'rgba(245, 158, 11, 0.08)' : 'rgba(16, 185, 129, 0.08)', 
+                    color: quickUserCard.vacationMode === 1 ? '#d97706' : '#059669', 
+                    border: quickUserCard.vacationMode === 1 ? '1px solid rgba(245, 158, 11, 0.15)' : '1px solid rgba(16, 185, 129, 0.15)',
+                    fontWeight: 700,
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '4px'
+                  }}>
+                    <span style={{ 
+                      width: 6, 
+                      height: 6, 
+                      borderRadius: '50%', 
+                      background: quickUserCard.vacationMode === 1 ? '#d97706' : '#059669' 
+                    }} />
+                    {quickUserCard.vacationMode === 1 ? 'Nghỉ phép (Tạm ngưng nhận lead)' : 'Đang hoạt động (Sẵn sàng nhận lead)'}
+                  </span>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', width: '100%' }}>
+                  {quickUserCard.email && (
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 10px', background: 'var(--color-bg)', borderRadius: '10px', border: '1px solid var(--color-border-light)' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={quickUserCard.email}>
+                        <Mail size={12} style={{ color: 'var(--color-primary)', flexShrink: 0 }} />
+                        <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{quickUserCard.email}</span>
+                      </div>
+                      <button
+                        type="button"
+                        className="btn-icon xs"
+                        onClick={() => copyToClipboard(quickUserCard.email || '', 'email')}
+                        style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: '4px', color: 'var(--color-text-muted)', display: 'inline-flex', borderRadius: '4px' }}
+                        title="Sao chép email"
+                      >
+                        <Copy size={11} />
+                      </button>
+                    </div>
+                  )}
+                  {quickUserCard.phone && (
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 10px', background: 'var(--color-bg)', borderRadius: '10px', border: '1px solid var(--color-border-light)' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={quickUserCard.phone}>
+                        <Phone size={12} style={{ color: 'var(--color-primary)', flexShrink: 0 }} />
+                        <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text)' }}>{quickUserCard.phone}</span>
+                      </div>
+                      <button
+                        type="button"
+                        className="btn-icon xs"
+                        onClick={() => copyToClipboard(quickUserCard.phone || '', 'số điện thoại')}
+                        style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: '4px', color: 'var(--color-text-muted)', display: 'inline-flex', borderRadius: '4px' }}
+                        title="Sao chép số điện thoại"
+                      >
+                        <Copy size={11} />
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                <div style={{ display: 'flex', gap: '8px', marginTop: '12px', width: '100%' }}>
+                  {quickUserCard.email && (
+                    <a 
+                      href={`mailto:${quickUserCard.email}`} 
+                      className="btn primary sm" 
+                      style={{ flex: 1, height: '32px', fontSize: '0.75rem', fontWeight: 700, borderRadius: '8px', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+                    >
+                      <Mail size={12} />
+                      Email
+                    </a>
+                  )}
+                  {quickUserCard.phone && (
+                    <a 
+                      href={`tel:${quickUserCard.phone}`} 
+                      className="btn outline sm" 
+                      style={{ flex: 1, height: '32px', fontSize: '0.75rem', fontWeight: 700, borderRadius: '8px', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+                    >
+                      <Phone size={12} />
+                      Gọi điện
+                    </a>
+                  )}
+                </div>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
 
       {/* Header */}
       <div style={{

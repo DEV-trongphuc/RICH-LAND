@@ -596,9 +596,9 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
                 style={{
                   backgroundColor: cell.isCurrentMonth
                     ? isWeekend
-                      ? 'var(--color-calendar-weekend, rgba(142, 142, 147, 0.04))'
+                      ? 'rgba(142, 142, 147, 0.02)'
                       : 'var(--color-surface)'
-                    : 'var(--color-bg)',
+                    : 'rgba(142, 142, 147, 0.05)',
                   minHeight: '96px',
                   padding: '8px 10px',
                   display: 'flex',

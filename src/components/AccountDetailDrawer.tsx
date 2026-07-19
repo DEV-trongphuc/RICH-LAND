@@ -2395,7 +2395,7 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
                       {!useCustomWorkHours ? (
                         <div style={{ padding: '12px 16px', background: 'rgba(59, 130, 246, 0.04)', borderRadius: '10px', border: '1px solid rgba(59, 130, 246, 0.12)', marginBottom: '1rem' }}>
                           <p style={{ fontSize: '0.75rem', color: 'var(--color-primary)', margin: 0, fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px' }}>
-                            ℹ️ Đang áp dụng giờ làm việc chung của công ty. Kích hoạt nút gạt ở trên nếu muốn cấu hình lịch làm việc riêng biệt cho nhân sự này.
+                            <Info size={14} style={{ marginRight: "6px" }} /> Đang áp dụng giờ làm việc chung của công ty. Kích hoạt nút gạt ở trên nếu muốn cấu hình lịch làm việc riêng biệt cho nhân sự này.
                           </p>
                         </div>
                       ) : null}
@@ -2516,14 +2516,14 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
                       {/* Section: Roster and Shift Registrations */}
                       <div style={{ borderTop: '1px solid var(--color-border-light)', marginTop: '1.5rem', paddingTop: '1rem' }}>
                         <h4 style={{ fontWeight: 700, fontSize: '0.875rem', marginBottom: '0.75rem', color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                          📅 Lịch trực đã đăng ký (Data Roster)
+                          <Calendar size={14} style={{ marginRight: "6px" }} /> Lịch trực đã đăng ký (Data Roster)
                         </h4>
                         
                         <div style={{ display: 'grid', gridTemplateColumns: isMobileOrTablet ? '1fr' : '1fr 1fr', gap: '1.25rem' }}>
                           {/* Column 1: Lịch trực ngày lễ */}
                           <div style={{ background: 'var(--color-bg-light)', padding: '1rem', borderRadius: '12px', border: '1px solid var(--color-border-light)' }}>
                             <h5 style={{ fontWeight: 700, fontSize: '0.8rem', color: 'var(--color-text)', marginBottom: '0.75rem', borderBottom: '1px solid var(--color-border-light)', paddingBottom: '6px' }}>
-                              🎉 Trực lễ ({holidayShifts.length})
+                              Trực lễ ({holidayShifts.length})
                             </h5>
                             {holidayShifts.length === 0 ? (
                               <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontStyle: 'italic', margin: 0 }}>Chưa có đăng ký trực lễ.</p>
@@ -2547,7 +2547,7 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
                           {/* Column 2: Lịch trực tuần (Đêm & Cuối tuần) */}
                           <div style={{ background: 'var(--color-bg-light)', padding: '1rem', borderRadius: '12px', border: '1px solid var(--color-border-light)' }}>
                             <h5 style={{ fontWeight: 700, fontSize: '0.8rem', color: 'var(--color-text)', marginBottom: '0.75rem', borderBottom: '1px solid var(--color-border-light)', paddingBottom: '6px' }}>
-                              🌙 Trực đêm & Cuối tuần ({nightShifts.length + weekendShifts.length})
+                              Trực đêm & Cuối tuần ({nightShifts.length + weekendShifts.length})
                             </h5>
                             {nightShifts.length === 0 && weekendShifts.length === 0 ? (
                               <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontStyle: 'italic', margin: 0 }}>Chưa có đăng ký trực tuần.</p>
