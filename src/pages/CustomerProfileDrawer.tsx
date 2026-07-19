@@ -3732,46 +3732,12 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                     <h3 style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--color-text)', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'flex', alignItems: 'center' }}>
                       {fullName}
                       {((formData.dl_status || contact?.dl_status) === 'databank_claim' || (formData.source || contact?.source) === 'databank') ? (
-                        <span 
-                          title="Khách hàng từ Databank" 
-                          style={{ 
-                            marginLeft: '6px', 
-                            display: 'inline-flex', 
-                            alignItems: 'center', 
-                            gap: '3px', 
-                            padding: '1px 5px', 
-                            fontSize: '0.6rem', 
-                            fontWeight: 700,
-                            borderRadius: '4px', 
-                            color: '#d97706', 
-                            background: '#fef3c7', 
-                            border: '1px solid #fde68a',
-                            textTransform: 'uppercase',
-                            flexShrink: 0
-                          }}
-                        >
-                          <Layers size={9} /> Kho
+                        <span title="Khách hàng từ Databank" style={{ display: 'inline-flex', marginLeft: '6px', color: '#d97706', flexShrink: 0 }}>
+                          <Layers size={13} />
                         </span>
                       ) : (!(formData.dl_status || contact?.dl_status) && (formData.source || contact?.source) !== 'databank') ? (
-                        <span 
-                          title="Khách hàng cá nhân" 
-                          style={{ 
-                            marginLeft: '6px', 
-                            display: 'inline-flex', 
-                            alignItems: 'center', 
-                            gap: '3px', 
-                            padding: '1px 5px', 
-                            fontSize: '0.6rem', 
-                            fontWeight: 700,
-                            borderRadius: '4px', 
-                            color: 'var(--color-primary)', 
-                            background: 'rgba(59, 130, 246, 0.08)', 
-                            border: '1px solid rgba(59, 130, 246, 0.15)',
-                            textTransform: 'uppercase',
-                            flexShrink: 0
-                          }}
-                        >
-                          <User size={9} /> Cá nhân
+                        <span title="Khách hàng cá nhân" style={{ display: 'inline-flex', marginLeft: '6px', color: '#3b82f6', flexShrink: 0 }}>
+                          <User size={13} />
                         </span>
                       ) : null}
                     </h3>
@@ -3920,46 +3886,12 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                         <h2 style={{ fontSize: '1.35rem', fontWeight: 800, color: 'var(--color-text)', letterSpacing: '-0.02em', wordBreak: 'break-word', display: 'flex', alignItems: 'center', gap: '6px' }}>
                           {fullName}
                           {((formData.dl_status || contact?.dl_status) === 'databank_claim' || (formData.source || contact?.source) === 'databank') ? (
-                            <span 
-                              title="Khách hàng từ Databank" 
-                              style={{ 
-                                display: 'inline-flex', 
-                                alignItems: 'center', 
-                                gap: '4px', 
-                                padding: '2px 6px', 
-                                fontSize: '0.65rem', 
-                                fontWeight: 700,
-                                borderRadius: '6px', 
-                                color: '#d97706', 
-                                background: '#fef3c7', 
-                                border: '1px solid #fde68a',
-                                textTransform: 'uppercase',
-                                letterSpacing: '0.2px',
-                                flexShrink: 0
-                              }}
-                            >
-                              <Layers size={10} /> Kho Databank
+                            <span title="Khách hàng từ Databank" style={{ display: 'inline-flex', marginLeft: '6px', color: '#d97706', flexShrink: 0 }}>
+                              <Layers size={15} />
                             </span>
                           ) : (!(formData.dl_status || contact?.dl_status) && (formData.source || contact?.source) !== 'databank') ? (
-                            <span 
-                              title="Khách hàng cá nhân" 
-                              style={{ 
-                                display: 'inline-flex', 
-                                alignItems: 'center', 
-                                gap: '4px', 
-                                padding: '2px 6px', 
-                                fontSize: '0.65rem', 
-                                fontWeight: 700,
-                                borderRadius: '6px', 
-                                color: 'var(--color-primary)', 
-                                background: 'rgba(59, 130, 246, 0.08)', 
-                                border: '1px solid rgba(59, 130, 246, 0.15)',
-                                textTransform: 'uppercase',
-                                letterSpacing: '0.2px',
-                                flexShrink: 0
-                              }}
-                            >
-                              <User size={10} /> Cá nhân
+                            <span title="Khách hàng cá nhân" style={{ display: 'inline-flex', marginLeft: '6px', color: '#3b82f6', flexShrink: 0 }}>
+                              <User size={15} />
                             </span>
                           ) : null}
                           <button

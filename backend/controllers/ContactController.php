@@ -40,6 +40,7 @@ class ContactController {
         $tag     = $_GET['tag'] ?? '';
         $from    = $_GET['from'] ?? '';
         $to      = $_GET['to'] ?? '';
+        $dataType = $_GET['data_type'] ?? '';
         $dateField = $_GET['date_field'] ?? 'created_at';
         $sortBy  = $_GET['sort'] ?? 'created_at';
         $order   = $_GET['order'] ?? 'DESC';
@@ -134,6 +135,30 @@ class ContactController {
         if ($projectId !== '') { $where[] = 'c.project_id = ?'; $params[] = (int)$projectId; }
         if ($campaignId !== '') { $where[] = 'c.campaign_id = ?'; $params[] = (int)$campaignId; }
         if ($tag !== '') { $where[] = 'c.tags LIKE ?'; $params[] = '%"' . $tag . '"%'; }
+        
+        if ($dataType !== '') {
+            if ($dataType === 'coop') {
+                $where[] = "c.collaborator_ids IS NOT NULL AND c.collaborator_ids != ''";
+            } else if ($dataType === 'databank') {
+                $where[] = "(c.source = 'databank' OR EXISTS (
+                    SELECT 1 FROM distribution_logs dl
+                    INNER JOIN leads l ON dl.lead_id = l.id
+                    WHERE l.person_id = c.person_id AND dl.status = 'databank_claim'
+                ))";
+            } else if ($dataType === 'distributed') {
+                $where[] = "EXISTS (
+                    SELECT 1 FROM distribution_logs dl
+                    INNER JOIN leads l ON dl.lead_id = l.id
+                    WHERE l.person_id = c.person_id AND dl.status != 'databank_claim'
+                ) AND c.source != 'databank'";
+            } else if ($dataType === 'personal') {
+                $where[] = "NOT EXISTS (
+                    SELECT 1 FROM distribution_logs dl
+                    INNER JOIN leads l ON dl.lead_id = l.id
+                    WHERE l.person_id = c.person_id
+                ) AND c.source != 'databank'";
+            }
+        }
         
         if ($from !== '') {
             $whereField = in_array($dateField, ['created_at', 'updated_at', 'last_contact']) ? $dateField : 'created_at';

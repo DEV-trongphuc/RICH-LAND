@@ -240,6 +240,7 @@ export const ContactsPage: React.FC = () => {
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
   const [filterStatus, setFilterStatus] = useState('');
   const [filterSource, setFilterSource] = useState('');
+  const [filterDataType, setFilterDataType] = useState('');
   const [filterOwnerId, setFilterOwnerId] = useState('');
   const [filterProjectId, setFilterProjectId] = useState('');
   const [filterCampaignId, setFilterCampaignId] = useState('');
@@ -276,7 +277,8 @@ export const ContactsPage: React.FC = () => {
     toDate: '',
     beforeDate: '',
     afterDate: '',
-    dateActive: false
+    dateActive: false,
+    dataType: ''
   });
 
   useEffect(() => {
@@ -415,6 +417,7 @@ export const ContactsPage: React.FC = () => {
       if (activeFilters.projectId) params.project_id = activeFilters.projectId;
       if (activeFilters.campaignId) params.campaign_id = activeFilters.campaignId;
       if (activeFilters.tag) params.tag = activeFilters.tag;
+      if (activeFilters.dataType) params.data_type = activeFilters.dataType;
 
       if (activeFilters.dateActive) {
         params.date_field = activeFilters.dateField;
@@ -577,7 +580,8 @@ export const ContactsPage: React.FC = () => {
       toDate: filterToDate,
       beforeDate: filterBeforeDate,
       afterDate: filterAfterDate,
-      dateActive: !!dateActive
+      dateActive: !!dateActive,
+      dataType: filterDataType
     });
   };
 
@@ -608,7 +612,8 @@ export const ContactsPage: React.FC = () => {
       toDate: '',
       beforeDate: '',
       afterDate: '',
-      dateActive: false
+      dateActive: false,
+      dataType: ''
     });
   };
 
@@ -672,6 +677,7 @@ export const ContactsPage: React.FC = () => {
     if (activeFilters.projectId) params.set('project_id', activeFilters.projectId);
     if (activeFilters.campaignId) params.set('campaign_id', activeFilters.campaignId);
     if (activeFilters.tag) params.set('tag', activeFilters.tag);
+    if (activeFilters.dataType) params.set('data_type', activeFilters.dataType);
     if (activeFilters.dateActive) {
       params.set('date_field', activeFilters.dateField);
       params.set('date_type', activeFilters.dateType);
@@ -1097,6 +1103,22 @@ export const ContactsPage: React.FC = () => {
                     })()}
                   </div>
 
+                  {/* Nhóm nguồn data */}
+                  <div className="form-group">
+                    <label className="form-label" style={{ fontWeight: 600, fontSize: '0.8125rem', marginBottom: '4px', display: 'block' }}>Phân loại nguồn data</label>
+                    <CustomSelect
+                      value={filterDataType}
+                      onChange={v => setFilterDataType(v)}
+                      options={[
+                        { value: '', label: 'Tất cả loại data' },
+                        { value: 'coop', label: 'Data Co-op' },
+                        { value: 'databank', label: 'Data Kho Databank' },
+                        { value: 'distributed', label: 'Data hệ thống chia' },
+                        { value: 'personal', label: 'Data cá nhân tự nhập' }
+                      ]}
+                    />
+                  </div>
+
                   {/* Nguồn */}
                   <div className="form-group">
                     <label className="form-label" style={{ fontWeight: 600, fontSize: '0.8125rem', marginBottom: '4px', display: 'block' }}>Nguồn khách hàng</label>
@@ -1374,46 +1396,12 @@ export const ContactsPage: React.FC = () => {
                                 <p style={{ fontWeight: 700, fontSize: '0.875rem', color: 'var(--color-text)', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center' }}>
                                   {fullName}
                                   {c.dl_status === 'databank_claim' || c.source === 'databank' ? (
-                                    <span 
-                                      title="Khách hàng từ Databank" 
-                                      style={{ 
-                                        marginLeft: '6px', 
-                                        display: 'inline-flex', 
-                                        alignItems: 'center', 
-                                        gap: '3px', 
-                                        padding: '1px 5px', 
-                                        fontSize: '0.625rem', 
-                                        fontWeight: 700,
-                                        borderRadius: '4px', 
-                                        color: '#d97706', 
-                                        background: '#fef3c7', 
-                                        border: '1px solid #fde68a',
-                                        textTransform: 'uppercase',
-                                        flexShrink: 0
-                                      }}
-                                    >
-                                      <Layers size={9} /> Kho
+                                    <span title="Khách hàng từ Databank" style={{ display: 'inline-flex', marginLeft: '6px', color: '#d97706', flexShrink: 0 }}>
+                                      <Layers size={13} />
                                     </span>
                                   ) : !c.dl_status && c.source !== 'databank' ? (
-                                    <span 
-                                      title="Khách hàng cá nhân" 
-                                      style={{ 
-                                        marginLeft: '6px', 
-                                        display: 'inline-flex', 
-                                        alignItems: 'center', 
-                                        gap: '3px', 
-                                        padding: '1px 5px', 
-                                        fontSize: '0.625rem', 
-                                        fontWeight: 700,
-                                        borderRadius: '4px', 
-                                        color: 'var(--color-primary)', 
-                                        background: 'rgba(59, 130, 246, 0.08)', 
-                                        border: '1px solid rgba(59, 130, 246, 0.15)',
-                                        textTransform: 'uppercase',
-                                        flexShrink: 0
-                                      }}
-                                    >
-                                      <User size={9} /> Cá nhân
+                                    <span title="Khách hàng cá nhân" style={{ display: 'inline-flex', marginLeft: '6px', color: '#3b82f6', flexShrink: 0 }}>
+                                      <User size={13} />
                                     </span>
                                   ) : null}
                                 </p>
@@ -1497,17 +1485,54 @@ export const ContactsPage: React.FC = () => {
                         )}
                         {columns.find(col => col.id === 'owner')?.visible && (
                           <td style={{ padding: '1rem', borderBottom: '1px solid var(--color-border)' }}>
-                            {c.owner_name ? (
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                                <Avatar name={c.owner_name} src={c.owner_avatar} size={32} />
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                                  <span style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)', whiteSpace: 'nowrap' }}>{c.owner_name}</span>
-                                  <span style={{ fontSize: '0.725rem', color: 'var(--color-text-muted)', fontWeight: 500, whiteSpace: 'nowrap' }}>
-                                    Cập nhật: {c.updated_at ? new Date(c.updated_at).toLocaleDateString('vi-VN') : '—'}
-                                  </span>
+                            {c.owner_name ? (() => {
+                              const collabs = (c.collaborator_ids || '')
+                                .split(',')
+                                .map((s: string) => s.trim())
+                                .filter(Boolean)
+                                .map((id: string) => users.find(u => String(u.id) === String(id)))
+                                .filter(Boolean);
+                              
+                              if (collabs.length > 0) {
+                                return (
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center' }}>
+                                      <div style={{ position: 'relative', zIndex: 10 }}>
+                                        <Avatar name={c.owner_name} src={c.owner_avatar} size={32} title={`Chủ sở hữu: ${c.owner_name}`} />
+                                      </div>
+                                      {collabs.map((col, idx) => (
+                                        <div key={col.id} style={{ marginLeft: '-8px', position: 'relative', zIndex: 9 - idx }}>
+                                          <Avatar name={col.full_name} src={col.avatar_url || col.avatar} size={32} title={`Hợp tác: ${col.full_name}`} />
+                                        </div>
+                                      ))}
+                                    </div>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                                      <span style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                        {c.owner_name}
+                                        <span style={{ fontSize: '0.7rem', fontWeight: 500, color: 'var(--color-text-muted)' }}>
+                                          (+{collabs.length})
+                                        </span>
+                                      </span>
+                                      <span style={{ fontSize: '0.725rem', color: 'var(--color-text-muted)', fontWeight: 500, whiteSpace: 'nowrap' }}>
+                                        Cập nhật: {c.updated_at ? new Date(c.updated_at).toLocaleDateString('vi-VN') : '—'}
+                                      </span>
+                                    </div>
+                                  </div>
+                                );
+                              }
+
+                              return (
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                  <Avatar name={c.owner_name} src={c.owner_avatar} size={32} />
+                                  <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                                    <span style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)', whiteSpace: 'nowrap' }}>{c.owner_name}</span>
+                                    <span style={{ fontSize: '0.725rem', color: 'var(--color-text-muted)', fontWeight: 500, whiteSpace: 'nowrap' }}>
+                                      Cập nhật: {c.updated_at ? new Date(c.updated_at).toLocaleDateString('vi-VN') : '—'}
+                                    </span>
+                                  </div>
                                 </div>
-                              </div>
-                            ) : (
+                              );
+                            })() : (
                               <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                                 <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'var(--color-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-text-muted)' }}>
                                   <User size={16} />
@@ -1679,46 +1704,12 @@ export const ContactsPage: React.FC = () => {
                               <h3 style={{ fontWeight: 800, fontSize: '0.95rem', color: 'var(--color-text)', marginBottom: '2px', lineHeight: 1.2, display: 'flex', alignItems: 'center' }}>
                                 {fullName}
                                 {c.dl_status === 'databank_claim' || c.source === 'databank' ? (
-                                  <span 
-                                    title="Khách hàng từ Databank" 
-                                    style={{ 
-                                      marginLeft: '6px', 
-                                      display: 'inline-flex', 
-                                      alignItems: 'center', 
-                                      gap: '3px', 
-                                      padding: '2px 6px', 
-                                      fontSize: '0.625rem', 
-                                      fontWeight: 700,
-                                      borderRadius: '6px', 
-                                      color: '#d97706', 
-                                      background: '#fef3c7', 
-                                      border: '1px solid #fde68a',
-                                      textTransform: 'uppercase',
-                                      flexShrink: 0
-                                    }}
-                                  >
-                                    <Layers size={10} /> Kho Databank
+                                  <span title="Khách hàng từ Databank" style={{ display: 'inline-flex', marginLeft: '6px', color: '#d97706', flexShrink: 0 }}>
+                                    <Layers size={14} />
                                   </span>
                                 ) : !c.dl_status && c.source !== 'databank' ? (
-                                  <span 
-                                    title="Khách hàng cá nhân" 
-                                    style={{ 
-                                      marginLeft: '6px', 
-                                      display: 'inline-flex', 
-                                      alignItems: 'center', 
-                                      gap: '3px', 
-                                      padding: '2px 6px', 
-                                      fontSize: '0.625rem', 
-                                      fontWeight: 700,
-                                      borderRadius: '6px', 
-                                      color: 'var(--color-primary)', 
-                                      background: 'rgba(59, 130, 246, 0.08)', 
-                                      border: '1px solid rgba(59, 130, 246, 0.15)',
-                                      textTransform: 'uppercase',
-                                      flexShrink: 0
-                                    }}
-                                  >
-                                    <User size={10} /> Cá nhân
+                                  <span title="Khách hàng cá nhân" style={{ display: 'inline-flex', marginLeft: '6px', color: '#3b82f6', flexShrink: 0 }}>
+                                    <User size={14} />
                                   </span>
                                 ) : null}
                               </h3>
