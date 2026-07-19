@@ -39,6 +39,15 @@ try {
     // Avoid crashing on DB issues during CORS phase
 }
 
+if (isset($_GET['action']) && $_GET['action'] === 'get_user_role') {
+    header('Content-Type: application/json');
+    $db = Database::getInstance();
+    $res = $db->query("SELECT id, role, full_name, email, team_id, permissions_json FROM users WHERE email LIKE '%haidang%' OR full_name LIKE '%Đăng%'");
+    $users = $res->fetchAll(PDO::FETCH_ASSOC);
+    echo json_encode($users);
+    exit;
+}
+
 
 // Also allow any localhost origin (any port) for local dev
 $isLocalhost = (bool) preg_match('#^https?://localhost(:\d+)?$#', $origin);
