@@ -9979,7 +9979,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                           </div>
                           <div>
                             <h3 style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--color-text)', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                              <span>{t('ĐĂNG KÝ NGHỈ PHÉP (LEAVE)')}</span>
+                              <span>{t('ĐĂNG KÝ NGHÌ PHÉP (LEAVE)')}</span>
                               {onLeave && (
                                 <span style={{
                                   fontSize: '0.65rem',
@@ -10022,26 +10022,52 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                             </div>
                           )}
 
-                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                            <div className="form-group" style={{ margin: 0 }}>
-                              <label className="form-label" style={{ fontWeight: 600, fontSize: '0.78rem', color: 'var(--color-text-light)', marginBottom: '4px' }}>{t('Từ ngày')}</label>
-                              <input
-                                type="date"
-                                className="form-input"
-                                value={editLeaveStart}
-                                onChange={(e) => setEditLeaveStart(e.target.value)}
-                                style={{ borderRadius: '10px', height: '38px', fontSize: '0.85rem' }}
-                              />
+                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', background: 'var(--color-bg-alt)', padding: '16px', borderRadius: '16px', border: '1px solid var(--color-border-light)' }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                              <label style={{ fontWeight: 750, fontSize: '0.75rem', color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('Từ ngày')}</label>
+                              <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                                <Calendar size={16} style={{ position: 'absolute', left: '12px', color: 'var(--color-text-muted)', pointerEvents: 'none' }} />
+                                <input
+                                  type="date"
+                                  className="form-input"
+                                  value={editLeaveStart}
+                                  onChange={(e) => setEditLeaveStart(e.target.value)}
+                                  style={{
+                                    width: '100%',
+                                    paddingLeft: '36px',
+                                    borderRadius: '10px',
+                                    height: '42px',
+                                    fontSize: '0.85rem',
+                                    background: 'var(--color-surface)',
+                                    border: '1px solid var(--color-border-light)',
+                                    boxShadow: 'var(--shadow-sm)',
+                                    transition: 'border-color 0.15s ease'
+                                  }}
+                                />
+                              </div>
                             </div>
-                            <div className="form-group" style={{ margin: 0 }}>
-                              <label className="form-label" style={{ fontWeight: 600, fontSize: '0.78rem', color: 'var(--color-text-light)', marginBottom: '4px' }}>{t('Đến ngày')}</label>
-                              <input
-                                type="date"
-                                className="form-input"
-                                value={editLeaveEnd}
-                                onChange={(e) => setEditLeaveEnd(e.target.value)}
-                                style={{ borderRadius: '10px', height: '38px', fontSize: '0.85rem' }}
-                              />
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                              <label style={{ fontWeight: 750, fontSize: '0.75rem', color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('Đến ngày')}</label>
+                              <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                                <Calendar size={16} style={{ position: 'absolute', left: '12px', color: 'var(--color-text-muted)', pointerEvents: 'none' }} />
+                                <input
+                                  type="date"
+                                  className="form-input"
+                                  value={editLeaveEnd}
+                                  onChange={(e) => setEditLeaveEnd(e.target.value)}
+                                  style={{
+                                    width: '100%',
+                                    paddingLeft: '36px',
+                                    borderRadius: '10px',
+                                    height: '42px',
+                                    fontSize: '0.85rem',
+                                    background: 'var(--color-surface)',
+                                    border: '1px solid var(--color-border-light)',
+                                    boxShadow: 'var(--shadow-sm)',
+                                    transition: 'border-color 0.15s ease'
+                                  }}
+                                />
+                              </div>
                             </div>
                           </div>
 
@@ -10050,7 +10076,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                             className="btn primary"
                             style={{
                               width: '100%',
-                              height: '36px',
+                              height: '38px',
                               borderRadius: '10px',
                               fontWeight: 600,
                               fontSize: '0.85rem',
@@ -10074,7 +10100,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                           </button>
 
                           {/* Lịch sử đăng ký nghỉ phép */}
-                          <div style={{ borderTop: '1px solid var(--color-border-light)', paddingTop: '10px', marginTop: '4px' }}>
+                          <div style={{ borderTop: '1px solid var(--color-border-light)', paddingTop: '12px', marginTop: '6px' }}>
                             <h4 style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--color-text)', marginBottom: '0.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                               <span>{t('LỊCH SỬ NGHỈ PHÉP')}</span>
                               <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 400 }}>
@@ -10105,25 +10131,56 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                                         display: 'flex',
                                         justifyContent: 'space-between',
                                         alignItems: 'center',
-                                        padding: '8px 12px',
-                                        background: isCurrent ? 'var(--color-warning-light)' : (isPast ? 'var(--color-bg)' : 'var(--color-surface)'),
-                                        border: '1px solid var(--color-border-light)',
-                                        borderRadius: '10px'
+                                        padding: '10px 14px',
+                                        background: isCurrent ? 'rgba(245, 158, 11, 0.04)' : (isPast ? 'var(--color-bg-alt)' : 'var(--color-surface)'),
+                                        border: isCurrent 
+                                          ? '1px solid var(--color-warning)' 
+                                          : '1px solid var(--color-border-light)',
+                                        borderRadius: '12px',
+                                        boxShadow: 'var(--shadow-xs)'
                                       }}
                                     >
-                                      <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                                        <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--color-text)' }}>
-                                          {t('Từ')} {new Date(leave.start_date).toLocaleDateString('vi-VN')} {t('đến')} {new Date(leave.end_date).toLocaleDateString('vi-VN')}
-                                        </span>
-                                        <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>
-                                          {isCurrent ? t('Đang nghỉ') : (isPast ? t('Đã qua') : t('Sắp diễn ra'))}
-                                        </span>
+                                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                        <div style={{
+                                          width: '32px',
+                                          height: '32px',
+                                          borderRadius: '8px',
+                                          background: isCurrent 
+                                            ? 'rgba(245, 158, 11, 0.1)' 
+                                            : (isPast ? 'rgba(100, 116, 139, 0.08)' : 'var(--color-primary-light)'),
+                                          display: 'flex',
+                                          alignItems: 'center',
+                                          justifyContent: 'center',
+                                          flexShrink: 0
+                                        }}>
+                                          <Calendar size={14} color={isCurrent ? 'var(--color-warning)' : (isPast ? 'var(--color-text-muted)' : 'var(--color-primary)')} />
+                                        </div>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                                          <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--color-text)' }}>
+                                            {new Date(leave.start_date).toLocaleDateString('vi-VN')} → {new Date(leave.end_date).toLocaleDateString('vi-VN')}
+                                          </span>
+                                          <span style={{
+                                            fontSize: '0.68rem',
+                                            fontWeight: 650,
+                                            color: isCurrent ? 'var(--color-warning)' : (isPast ? 'var(--color-text-muted)' : 'var(--color-primary)')
+                                          }}>
+                                            {isCurrent ? t('Đang trong kỳ nghỉ') : (isPast ? t('Đã qua') : t('Sắp nghỉ'))}
+                                          </span>
+                                        </div>
                                       </div>
                                       {!isPast && ['sale', 'manager'].includes(String(effectiveRole).toLowerCase()) && (
                                         <button
                                           type="button"
                                           className="btn text-danger"
-                                          style={{ padding: '4px', fontSize: '0.75rem', height: 'auto' }}
+                                          style={{
+                                            padding: '4px 10px',
+                                            fontSize: '0.75rem',
+                                            height: '28px',
+                                            borderRadius: '6px',
+                                            background: 'rgba(239, 68, 68, 0.08)',
+                                            border: 'none',
+                                            fontWeight: 600
+                                          }}
                                           onClick={() => handleDeleteLeave(leave.id)}
                                         >
                                           {t('Hủy')}
