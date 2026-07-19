@@ -4641,7 +4641,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                 {(!isMobileOrTablet || activeTab) && (
                   <div 
                     className={styles.contentArea} 
-                    style={isMobileOrTablet ? { width: '100%', padding: '0', display: 'flex', flexDirection: 'column', flex: 1, overflowY: 'auto' } : undefined}
+                    style={isMobileOrTablet ? { width: '100%', minWidth: 0, boxSizing: 'border-box', padding: '0', display: 'flex', flexDirection: 'column', flex: 1, overflowY: 'auto', overflowX: 'hidden' } : undefined}
                   >
                     {isMobileOrTablet && activeTab && (
                       <div style={{
@@ -4678,7 +4678,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                       </div>
                     )}
 
-                    <div style={isMobileOrTablet ? { padding: '16px', flex: 1 } : undefined}>
+                    <div style={isMobileOrTablet ? { padding: '16px', flex: 1, width: '100%', minWidth: 0, boxSizing: 'border-box', overflowX: 'hidden' } : undefined}>
 
                   {/* INFO TAB */}
                   {activeTab === 'info' && (
