@@ -126,7 +126,6 @@ const ALLOWED_PORTAL_ROLES = ['sale', 'sales', 'superadmin', 'admin', 'super_adm
 
 const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePortalProps) => {
   const navigate = useNavigate();
-  const isOvertime = new Date().getHours() >= 18 && new Date().getHours() < 22;
   const routerLocation = useLocation();
   const loc = location || routerLocation;
   const { user, token, login, logout } = useAuth();
@@ -772,6 +771,8 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
   const isTodayWeekend = new Date().getDay() === 0 || new Date().getDay() === 6;
   const [nightShiftDeadline, setNightShiftDeadline] = useState('');
   const [togglingNightShift, setTogglingNightShift] = useState(false);
+  const currentHour = new Date().getHours();
+  const isOvertime = nightShiftRegistered ? (currentHour >= 18 || currentHour < 6) : (currentHour >= 18 && currentHour < 22);
 
   // Weekend shift state variables
   const [weekendShiftAllow, setWeekendShiftAllow] = useState(false);

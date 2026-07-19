@@ -64,9 +64,12 @@ export const Header = ({
 
   const [headerVacationMode, setHeaderVacationMode] = useState<boolean>(false);
   const [headerCheckIn, setHeaderCheckIn] = useState<any>(null);
+  const [headerNightShiftRegistered, setHeaderNightShiftRegistered] = useState<boolean>(false);
   const managerBehaviorMode = user?.manager_behavior_mode || 'combined';
   const isSales = user?.role === 'sale' || (user?.role === 'manager' && managerBehaviorMode === 'combined');
-  const isOvertime = new Date().getHours() >= 18 && new Date().getHours() < 22;
+  const currentHour = new Date().getHours();
+  const isOvertime = headerNightShiftRegistered ? (currentHour >= 18 || currentHour < 6) : (currentHour >= 18 && currentHour < 22);
+
 
   const [uncontactedCount, setUncontactedCount] = useState(() => {
     return Number(sessionStorage.getItem('sale-uncontacted-count')) || 0;
@@ -475,6 +478,14 @@ export const Header = ({
 
   const fetchHeaderPortalData = async () => {
     if (!isSales) return;
+    try {
+      const nightRes = await fetchAPI('get_night_shift_status');
+      if (nightRes && nightRes.success) {
+        setHeaderNightShiftRegistered(nightRes.registered);
+      }
+    } catch (err) {
+      console.error("Error fetching night shift status in Header:", err);
+    }
     try {
       const res = await fetchAPI('check-ins&today_only=1');
       if (res.success) {
