@@ -1919,7 +1919,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
       email: user?.email,
       phone: user?.phone || user?.phone_number || '',
       vacationMode: user?.vacation_mode,
-      avatarUrl: user?.avatar_url || user?.avatar || '',
+      avatarUrl: (user?.avatar_url || user?.avatar) ? resolveAttachmentUrl(user.avatar_url || user.avatar || '') : '',
       visible: true,
       x: e.clientX,
       y: e.clientY
