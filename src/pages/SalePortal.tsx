@@ -9832,6 +9832,10 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                               const reg = weeklyRegistrations.find(r => r.shift_date === day.date);
                               const isApproved = reg ? (reg.approved === 1 || reg.approved === true) : false;
 
+                              const today = new Date();
+                              const todayStr = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0');
+                              const isPastDay = day.date < todayStr;
+
                               // Determine background, border and text colors based on state
                               let borderStyle = '1px solid var(--color-border-light)';
                               let backgroundStyle = 'var(--color-bg-alt)';
@@ -9847,6 +9851,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                                 <div
                                   key={day.date}
                                   onClick={() => {
+                                    if (isPastDay) return;
                                     if (['sale', 'manager'].includes(String(effectiveRole).toLowerCase())) {
                                       setWeeklyShiftDates(prev => 
                                         prev.includes(day.date) 
@@ -9860,7 +9865,10 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                                     borderRadius: '12px',
                                     border: borderStyle,
                                     background: backgroundStyle,
-                                    cursor: ['sale', 'manager'].includes(String(effectiveRole).toLowerCase()) ? 'pointer' : 'default',
+                                    cursor: isPastDay 
+                                      ? 'not-allowed' 
+                                      : (['sale', 'manager'].includes(String(effectiveRole).toLowerCase()) ? 'pointer' : 'default'),
+                                    opacity: isPastDay ? 0.5 : 1,
                                     display: 'flex',
                                     flexDirection: 'column',
                                     alignItems: 'center',
@@ -10150,10 +10158,10 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                       display: 'flex',
                       justifyContent: 'space-between',
                       alignItems: 'center',
-                      background: 'var(--color-primary-light)',
+                      background: 'rgba(100, 116, 139, 0.04)',
                       padding: '12px 16px',
                       borderRadius: '12px',
-                      border: '1px solid rgba(189, 29, 45, 0.1)'
+                      border: '1px solid var(--color-border-light)'
                     }}>
                       <span style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)' }}>
                         {t('Tất cả các ngày trong tuần')}
@@ -10161,11 +10169,10 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                       <span style={{
                         fontSize: '0.875rem',
                         fontWeight: 700,
-                        color: 'var(--color-primary)',
-                        background: 'var(--color-surface)',
+                        color: 'var(--color-text-muted)',
+                        background: 'rgba(100, 116, 139, 0.08)',
                         padding: '6px 12px',
                         borderRadius: '20px',
-                        boxShadow: 'var(--shadow-sm)',
                         display: 'inline-flex',
                         alignItems: 'center',
                         gap: '6px'
@@ -10174,7 +10181,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                       </span>
                     </div>
                   ) : (
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '10px' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                       {Object.entries(DAY_LABELS).map(([dayKey, dayLabel]) => {
                         const config = editWorkSchedule[dayKey] || { active: true, start: editWorkStartTime, end: editWorkEndTime };
                         const isActive = config.active;
@@ -10202,8 +10209,8 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                               <span style={{
                                 fontSize: '0.8rem',
                                 fontWeight: 700,
-                                color: 'var(--color-primary)',
-                                background: 'var(--color-primary-light)',
+                                color: 'var(--color-text-muted)',
+                                background: 'rgba(100, 116, 139, 0.08)',
                                 padding: '4px 10px',
                                 borderRadius: '20px',
                                 display: 'inline-flex',
@@ -10218,8 +10225,8 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                                 borderRadius: '20px',
                                 fontSize: '0.75rem',
                                 fontWeight: 700,
-                                background: 'rgba(100, 116, 139, 0.08)',
-                                color: 'var(--color-text-muted)'
+                                background: 'rgba(16, 185, 129, 0.1)',
+                                color: 'var(--color-success)'
                               }}>
                                 {t('Nghỉ')}
                               </span>
