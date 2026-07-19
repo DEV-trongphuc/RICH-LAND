@@ -1453,7 +1453,7 @@ const IntegrationsInner = () => {
                     }}
                   >
                     <div style={{
-                      width: 18, height: 18, borderRadius: '50%', background: 'white',
+                      width: 18, height: 18, borderRadius: '50%', background: 'var(--color-surface)',
                       position: 'absolute', top: 3, left: selected.require_both_contact ? 23 : 3,
                       transition: 'left 0.3s', boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
                     }} />
@@ -1478,7 +1478,7 @@ const IntegrationsInner = () => {
                     }}
                   >
                     <div style={{
-                      width: 18, height: 18, borderRadius: '50%', background: 'white',
+                      width: 18, height: 18, borderRadius: '50%', background: 'var(--color-surface)',
                       position: 'absolute', top: 3, left: selected.notify_admin ? 23 : 3,
                       transition: 'left 0.3s', boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
                     }} />

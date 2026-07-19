@@ -5182,7 +5182,7 @@ function doPost(e) {
                     >
                       <div style={{
                         position: 'absolute', top: 3, width: 16, height: 16, borderRadius: '50%',
-                        background: 'white', boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+                        background: 'var(--color-surface)', boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
                         left: ticketAutoApproveEnabled ? 21 : 3, transition: 'left 0.2s'
                       }} />
                     </div>
@@ -5276,7 +5276,7 @@ function doPost(e) {
                                     >
                                       <div style={{
                                         position: 'absolute', top: 2, width: 14, height: 14, borderRadius: '50%',
-                                        background: 'white', boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
+                                        background: 'var(--color-surface)', boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
                                         left: rule.active ? 16 : 2, transition: 'left 0.2s'
                                       }} />
                                     </div>
@@ -6686,7 +6686,7 @@ function doPost(e) {
             >
               <div style={{
                 position: 'absolute', top: 3, width: 18, height: 18, borderRadius: '50%',
-                background: 'white', left: ruleActive ? 23 : 3, transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+                background: 'var(--color-surface)', left: ruleActive ? 23 : 3, transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
                 boxShadow: '0 1px 3px rgba(0,0,0,0.15)'
               }} />
             </div>

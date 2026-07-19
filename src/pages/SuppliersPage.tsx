@@ -227,7 +227,7 @@ export const SuppliersPage: React.FC = () => {
         alignItems: 'center',
         flexWrap: 'wrap',
         gap: '0.75rem',
-        background: '#ffffff',
+        background: 'var(--color-surface)',
         border: '1px solid var(--color-border-light)',
         borderRadius: '12px',
         padding: '0.625rem 1.25rem',
@@ -281,7 +281,7 @@ export const SuppliersPage: React.FC = () => {
                 height: '30px',
                 borderRadius: '6px',
                 border: '1px solid var(--color-border-light)',
-                background: '#ffffff',
+                background: 'var(--color-surface)',
                 fontSize: '0.8rem',
                 fontWeight: 650,
                 color: 'var(--color-text)',
@@ -307,7 +307,7 @@ export const SuppliersPage: React.FC = () => {
                 height: '30px',
                 borderRadius: '6px',
                 border: '1px solid var(--color-border-light)',
-                background: '#ffffff',
+                background: 'var(--color-surface)',
                 fontSize: '0.8rem',
                 fontWeight: 650,
                 color: 'var(--color-text)',
@@ -521,7 +521,7 @@ export const SuppliersPage: React.FC = () => {
                 }}
               >
                 {/* Header */}
-                <div className={styles.header} style={{ borderBottom: '1px solid var(--color-border-light)', padding: '1.25rem 1.5rem', background: '#ffffff', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div className={styles.header} style={{ borderBottom: '1px solid var(--color-border-light)', padding: '1.25rem 1.5rem', background: 'var(--color-surface)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                     <Avatar name={formData.name || 'C'} size={40} />
                     <div style={{ textAlign: 'left' }}>
@@ -574,7 +574,7 @@ export const SuppliersPage: React.FC = () => {
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '24px', alignItems: 'stretch' }}>
                     
                     {/* Left Column: Enterprise Info */}
-                    <div style={{ background: '#ffffff', border: '1px solid var(--color-border-light)', borderRadius: '10px', padding: '20px' }}>
+                    <div style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border-light)', borderRadius: '10px', padding: '20px' }}>
                       <h3 style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)', textTransform: 'uppercase', borderBottom: '1px solid var(--color-border-light)', paddingBottom: '10px', marginBottom: '16px', textAlign: 'left' }}>
                         Thông tin doanh nghiệp
                       </h3>
@@ -707,7 +707,7 @@ export const SuppliersPage: React.FC = () => {
                       </div>
 
                       {/* Right Column: Contact Info & Transaction Details */}
-                      <div style={{ background: '#ffffff', border: '1px solid var(--color-border-light)', borderRadius: '10px', padding: '20px' }}>
+                      <div style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border-light)', borderRadius: '10px', padding: '20px' }}>
                         <h3 style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)', textTransform: 'uppercase', borderBottom: '1px solid var(--color-border-light)', paddingBottom: '10px', marginBottom: '16px', textAlign: 'left' }}>
                           Thông tin liên hệ & Giao dịch
                         </h3>
@@ -815,7 +815,7 @@ export const SuppliersPage: React.FC = () => {
                     </div>
 
                     {/* Bottom Section: Typical Projects & Notes */}
-                    <div style={{ background: '#ffffff', border: '1px solid var(--color-border-light)', borderRadius: '10px', padding: '20px', textAlign: 'left' }}>
+                    <div style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border-light)', borderRadius: '10px', padding: '20px', textAlign: 'left' }}>
                       <h3 style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)', textTransform: 'uppercase', borderBottom: '1px solid var(--color-border-light)', paddingBottom: '10px', marginBottom: '16px' }}>
                         Dự án tiêu biểu & Ghi chú
                       </h3>
@@ -871,7 +871,7 @@ export const SuppliersPage: React.FC = () => {
                                 gap: '6px',
                                 minHeight: '38px',
                                 padding: '6px 12px',
-                                background: '#ffffff',
+                                background: 'var(--color-surface)',
                                 border: '1px solid var(--color-border)',
                                 borderRadius: '8px',
                                 alignItems: 'center',
@@ -944,7 +944,7 @@ export const SuppliersPage: React.FC = () => {
                                     top: '100%',
                                     left: 0,
                                     right: 0,
-                                    background: '#ffffff',
+                                    background: 'var(--color-surface)',
                                     border: '1px solid var(--color-border)',
                                     borderRadius: '8px',
                                     boxShadow: 'var(--shadow-lg)',
@@ -990,7 +990,7 @@ export const SuppliersPage: React.FC = () => {
                                     top: '100%',
                                     left: 0,
                                     right: 0,
-                                    background: '#ffffff',
+                                    background: 'var(--color-surface)',
                                     border: '1px solid var(--color-border)',
                                     borderRadius: '8px',
                                     boxShadow: 'var(--shadow-lg)',

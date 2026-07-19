@@ -172,7 +172,7 @@ export const ImportExportModal: React.FC<ImportExportModalProps> = ({ isOpen, on
                   onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--color-border)'; e.currentTarget.style.background = 'var(--color-bg)'; }}
                   onClick={() => { if(onExport) onExport('csv'); onClose(); }}
                 >
-                  <div style={{ width: 48, height: 48, background: 'white', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: 'var(--shadow-sm)' }}>
+                  <div style={{ width: 48, height: 48, background: 'var(--color-surface)', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: 'var(--shadow-sm)' }}>
                     <FileText size={24} color="var(--color-primary)" />
                   </div>
                   <div>

@@ -130,7 +130,7 @@ export const Avatar: React.FC<AvatarProps> = ({ src, name, size = 'md', classNam
             border: '1.5px solid var(--color-surface, #ffffff)',
             boxShadow: '0 1px 3px rgba(0,0,0,0.15)',
             zIndex: 1,
-            backgroundColor: '#ffffff',
+            backgroundColor: 'var(--color-surface)',
             objectFit: 'cover'
           }}
         />

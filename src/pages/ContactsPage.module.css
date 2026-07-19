@@ -4,7 +4,7 @@
 .viewToggle { display: flex; background: var(--color-bg); padding: 4px; border-radius: 10px; margin-left: auto; gap: 4px; border: 1px solid var(--color-border-light); }
 .viewBtn { padding: 6px 12px; border-radius: 6px; color: var(--color-text-muted); transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); cursor: pointer; border: none; background: transparent; display: flex; align-items: center; justify-content: center; }
 .viewBtn:hover { color: var(--color-text); }
-.viewActive { background: white; color: var(--color-primary); box-shadow: 0 2px 8px rgba(0,0,0,0.08); font-weight: 600; }
+.viewActive { background: var(--color-surface); color: var(--color-primary); box-shadow: 0 2px 8px rgba(0,0,0,0.08); font-weight: 600; }
 .heatLegend { display: flex; align-items: center; gap: 0.75rem; }
 .heatItem { display: flex; align-items: center; gap: 0.375rem; }
 .tableCard { overflow: hidden; }
@@ -12,7 +12,7 @@
 
 /* Card grid - 3 cards per row */
 .cardGrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; }
-.contactCard { padding: 1.5rem; overflow: hidden; border-radius: var(--radius-xl); box-shadow: 0 4px 15px rgba(0,0,0,0.04); border: 1px solid var(--color-border-light); background: #fff; transition: all 0.2s ease; display: flex; flex-direction: column; gap: 1rem; }
+.contactCard { padding: 1.5rem; overflow: hidden; border-radius: var(--radius-xl); box-shadow: 0 4px 15px rgba(0,0,0,0.04); border: 1px solid var(--color-border-light); background: var(--color-surface); transition: all 0.2s ease; display: flex; flex-direction: column; gap: 1rem; }
 .contactCard:hover { box-shadow: 0 8px 25px rgba(0,0,0,0.08); transform: translateY(-2px); }
 
 .cardHeader { display: flex; justify-content: space-between; align-items: flex-start; }

@@ -471,7 +471,7 @@ export const NotificationPreviewModal: React.FC<NotificationPreviewModalProps> =
             }}>
               {/* Email Headers (No MINTH CRM references) */}
               <div style={{
-                background: '#ffffff',
+                background: 'var(--color-surface)',
                 padding: '16px',
                 borderBottom: '1px solid #e2e8f0',
                 display: 'flex',
@@ -515,7 +515,7 @@ export const NotificationPreviewModal: React.FC<NotificationPreviewModalProps> =
                 justifyContent: 'center'
               }}>
                 <div style={{
-                  background: '#ffffff',
+                  background: 'var(--color-surface)',
                   width: '100%',
                   maxWidth: '560px',
                   borderRadius: '16px',
@@ -563,7 +563,7 @@ export const NotificationPreviewModal: React.FC<NotificationPreviewModalProps> =
 
                   {/* Email Footer */}
                   <div style={{
-                    backgroundColor: '#ffffff',
+                    backgroundColor: 'var(--color-surface)',
                     padding: '24px',
                     textAlign: 'center',
                     borderTop: '1px solid #e2e8f0'
@@ -619,7 +619,7 @@ export const NotificationPreviewModal: React.FC<NotificationPreviewModalProps> =
                   width: '32px',
                   height: '32px',
                   borderRadius: '50%',
-                  background: '#ffffff',
+                  background: 'var(--color-surface)',
                   color: '#0068ff',
                   display: 'flex',
                   alignItems: 'center',
@@ -682,7 +682,7 @@ export const NotificationPreviewModal: React.FC<NotificationPreviewModalProps> =
 
                   {/* Message Bubble */}
                   <div style={{
-                    background: '#ffffff',
+                    background: 'var(--color-surface)',
                     borderRadius: '12px',
                     borderTopLeftRadius: '2px',
                     padding: '10px 12px',
@@ -700,7 +700,7 @@ export const NotificationPreviewModal: React.FC<NotificationPreviewModalProps> =
 
               {/* Bottom Chat bar mockup */}
               <div style={{
-                background: '#ffffff',
+                background: 'var(--color-surface)',
                 padding: '8px 12px',
                 borderTop: '1px solid #e2e8f0',
                 display: 'flex',

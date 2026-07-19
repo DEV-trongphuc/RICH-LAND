@@ -42,7 +42,7 @@ export const ToggleSwitch = ({ checked, onChange, small = false }: ToggleSwitchP
           width: knobSize,
           height: knobSize,
           borderRadius: 999,
-          background: '#ffffff',
+          background: 'var(--color-surface)',
           boxShadow: '0 2px 4px rgba(0,0,0,0.12)'
         }}
       />

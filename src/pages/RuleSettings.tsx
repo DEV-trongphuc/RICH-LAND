@@ -71,7 +71,7 @@ const SortableRuleItem = ({ rule, idx, connections, onEdit, onDelete, isDragDisa
             </div>
           )}
           <div style={{
-            width: 30, height: 30, borderRadius: '50%', background: 'white', border: '1px solid var(--color-border)',
+            width: 30, height: 30, borderRadius: '50%', background: 'var(--color-surface)', border: '1px solid var(--color-border)',
             display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.875rem', fontWeight: 800, color: 'var(--color-primary)',
             marginTop: 8, boxShadow: 'var(--shadow-sm)'
           }}>
@@ -1030,7 +1030,7 @@ const RuleSettingsInner = () => {
                           width: 20,
                           height: 20,
                           borderRadius: '50%',
-                          background: '#fff',
+                          background: 'var(--color-surface)',
                           position: 'absolute',
                           top: 2,
                           left: branch.inject?.enabled ? 22 : 2,

@@ -44,7 +44,7 @@
 
 .success { background: #ecfdf5; color: #065f46; border-color: #a7f3d0; }
 .error   { background: #fef2f2; color: #991b1b; border-color: #fca5a5; }
-.warning { background: #fffbeb; color: #92400e; border-color: #fde68a; }
+.warning { background: var(--color-surface)beb; color: #92400e; border-color: #fde68a; }
 .info    { background: #eff6ff; color: #1e40af; border-color: #bfdbfe; }
 
 [data-theme="dark"] .success { background: #064e3b; color: #a7f3d0; border-color: #065f46; }

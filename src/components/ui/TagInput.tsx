@@ -145,7 +145,7 @@ export const TagInput: React.FC<TagInputProps> = ({
             exit={{ opacity: 0, y: 4 }}
             style={{
               position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 100,
-              marginTop: '0.5rem', background: 'white', borderRadius: 'var(--radius-lg)',
+              marginTop: '0.5rem', background: 'var(--color-surface)', borderRadius: 'var(--radius-lg)',
               border: '1px solid var(--color-border)', boxShadow: 'var(--shadow-lg)',
               maxHeight: '200px', overflowY: 'auto', padding: '0.5rem'
             }}

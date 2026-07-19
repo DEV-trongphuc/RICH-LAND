@@ -2263,7 +2263,7 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
                     width: '16px',
                     height: '16px',
                     borderRadius: '50%',
-                    background: 'white',
+                    background: 'var(--color-surface)',
                     position: 'absolute',
                     top: '2px',
                     left: formData.require_approval === 1 ? 20 : 2,

@@ -441,7 +441,7 @@ export const InvoicesPage: React.FC = () => {
             <style>{`
               @media print {
                 body {
-                  background: white !important;
+                  background: var(--color-surface) !important;
                   color: black !important;
                 }
                 #root {
@@ -465,14 +465,14 @@ export const InvoicesPage: React.FC = () => {
                   box-shadow: none !important;
                   border: none !important;
                   border-radius: 0 !important;
-                  background: white !important;
+                  background: var(--color-surface) !important;
                   position: static !important;
                   transform: none !important;
                   overflow: visible !important;
                 }
                 .invoice-paper-content {
                   padding: 0 !important;
-                  background: white !important;
+                  background: var(--color-surface) !important;
                 }
                 .invoice-info-box {
                   border: none !important;

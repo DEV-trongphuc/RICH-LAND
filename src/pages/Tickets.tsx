@@ -1155,7 +1155,7 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
               >
                 <div style={{
                   position: 'absolute', top: 3, width: 14, height: 14, borderRadius: '50%',
-                  background: 'white', boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
+                  background: 'var(--color-surface)', boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
                   left: ticketAutoApprove ? 19 : 3, transition: 'left 0.2s'
                 }} />
               </div>
@@ -1441,7 +1441,7 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
                 >
                   <div style={{
                     position: 'absolute', top: 3, width: 14, height: 14, borderRadius: '50%',
-                    background: 'white', boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
+                    background: 'var(--color-surface)', boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
                     left: ticketAutoApprove ? 19 : 3, transition: 'left 0.2s'
                   }} />
                 </div>
@@ -3792,7 +3792,7 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
               >
                 <div style={{
                   position: 'absolute', top: 3, width: 20, height: 20, borderRadius: '50%',
-                  background: 'white', left: ticketAutoApprove ? 25 : 3, transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+                  background: 'var(--color-surface)', left: ticketAutoApprove ? 25 : 3, transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
                   boxShadow: '0 1px 3px rgba(0,0,0,0.15)'
                 }} />
               </div>
@@ -3887,7 +3887,7 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
                               >
                                 <div style={{
                                   position: 'absolute', top: 2, width: 14, height: 14, borderRadius: '50%',
-                                  background: 'white', boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
+                                  background: 'var(--color-surface)', boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
                                   left: rule.active ? 16 : 2, transition: 'left 0.2s'
                                 }} />
                               </div>
@@ -4083,7 +4083,7 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
               >
                 <div style={{
                   position: 'absolute', top: 3, width: 18, height: 18, borderRadius: '50%',
-                  background: 'white', left: ruleActive ? 23 : 3, transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+                  background: 'var(--color-surface)', left: ruleActive ? 23 : 3, transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
                   boxShadow: '0 1px 3px rgba(0,0,0,0.15)'
                 }} />
               </div>
@@ -5079,7 +5079,7 @@ const TicketSettingsModal = ({ open, onClose }: { open: boolean; onClose: () => 
                       }}>
                         <div style={{
                           position: 'absolute', top: 3, width: 16, height: 16, borderRadius: '50%',
-                          background: 'white', boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+                          background: 'var(--color-surface)', boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
                           left: isSelected ? 21 : 3, transition: 'left 0.2s'
                         }} />
                       </div>

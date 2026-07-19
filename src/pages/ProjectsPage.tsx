@@ -619,7 +619,7 @@ export default function ProjectsPage() {
 
     return (
       <div style={{
-        background: '#ffffff',
+        background: 'var(--color-surface)',
         border: '1px solid var(--color-border-light)',
         borderRadius: '16px',
         padding: '1.5rem',
@@ -864,7 +864,7 @@ export default function ProjectsPage() {
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
-            background: '#ffffff',
+            background: 'var(--color-surface)',
             position: 'sticky',
             top: 0,
             zIndex: 10
@@ -1218,7 +1218,7 @@ export default function ProjectsPage() {
                     display: 'flex', 
                     flexDirection: 'column', 
                     padding: '0.75rem 1rem', 
-                    background: '#ffffff', 
+                    background: 'var(--color-surface)', 
                     border: '1px solid var(--color-border-light)', 
                     borderRadius: '12px', 
                     boxShadow: '0 4px 20px rgba(0,0,0,0.02)',
@@ -1249,7 +1249,7 @@ export default function ProjectsPage() {
                 </div>
 
                 {/* 2. Cơ Hội Bán Hàng */}
-                <div className="stat-card" style={{ display: 'flex', flexDirection: 'column', padding: '0.75rem 1rem', background: '#ffffff', border: '1px solid var(--color-border-light)', borderRadius: '12px', boxShadow: '0 4px 20px rgba(0,0,0,0.02)' }}>
+                <div className="stat-card" style={{ display: 'flex', flexDirection: 'column', padding: '0.75rem 1rem', background: 'var(--color-surface)', border: '1px solid var(--color-border-light)', borderRadius: '12px', boxShadow: '0 4px 20px rgba(0,0,0,0.02)' }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
                     <span className="stat-label" style={{ fontSize: '0.6875rem', fontWeight: 600, color: 'var(--color-text-muted)', opacity: 0.85, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Cơ Hội Bán Hàng</span>
                     <div style={{ width: '28px', height: '28px', borderRadius: '8px', background: 'rgba(100, 116, 139, 0.08)', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Layers size={14} /></div>
@@ -1263,7 +1263,7 @@ export default function ProjectsPage() {
                 </div>
 
                 {/* 3. Doanh Thu */}
-                <div className="stat-card" style={{ display: 'flex', flexDirection: 'column', padding: '0.75rem 1rem', background: '#ffffff', border: '1px solid var(--color-border-light)', borderRadius: '12px', boxShadow: '0 4px 20px rgba(0,0,0,0.02)' }}>
+                <div className="stat-card" style={{ display: 'flex', flexDirection: 'column', padding: '0.75rem 1rem', background: 'var(--color-surface)', border: '1px solid var(--color-border-light)', borderRadius: '12px', boxShadow: '0 4px 20px rgba(0,0,0,0.02)' }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
                     <span className="stat-label" style={{ fontSize: '0.6875rem', fontWeight: 600, color: 'var(--color-text-muted)', opacity: 0.85, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Doanh Thu</span>
                     <div style={{ width: '28px', height: '28px', borderRadius: '8px', background: 'rgba(100, 116, 139, 0.08)', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Building2 size={14} /></div>
@@ -1279,7 +1279,7 @@ export default function ProjectsPage() {
                 </div>
 
                 {/* 4. Tỷ Lệ Chốt */}
-                <div className="stat-card" style={{ display: 'flex', flexDirection: 'column', padding: '0.75rem 1rem', background: '#ffffff', border: '1px solid var(--color-border-light)', borderRadius: '12px', boxShadow: '0 4px 20px rgba(0,0,0,0.02)' }}>
+                <div className="stat-card" style={{ display: 'flex', flexDirection: 'column', padding: '0.75rem 1rem', background: 'var(--color-surface)', border: '1px solid var(--color-border-light)', borderRadius: '12px', boxShadow: '0 4px 20px rgba(0,0,0,0.02)' }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
                     <span className="stat-label" style={{ fontSize: '0.6875rem', fontWeight: 600, color: 'var(--color-text-muted)', opacity: 0.85, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Tỷ Lệ Chốt</span>
                     <div style={{ width: '28px', height: '28px', borderRadius: '8px', background: 'rgba(100, 116, 139, 0.08)', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><CheckSquare size={14} /></div>
@@ -1300,7 +1300,7 @@ export default function ProjectsPage() {
                 
                 {/* Section 1: Thông tin cơ bản */}
                 <div style={{
-                  background: '#ffffff',
+                  background: 'var(--color-surface)',
                   border: '1px solid var(--color-border-light)',
                   borderRadius: '12px',
                   padding: '1.5rem',
@@ -1400,7 +1400,7 @@ export default function ProjectsPage() {
 
                 {/* Section 2: Vị trí & Quy mô & Pháp lý */}
                 <div style={{
-                  background: '#ffffff',
+                  background: 'var(--color-surface)',
                   border: '1px solid var(--color-border-light)',
                   borderRadius: '12px',
                   padding: '1.5rem',
@@ -1542,7 +1542,7 @@ export default function ProjectsPage() {
 
                 {/* Section 4: Mô tả chi tiết */}
                 <div style={{
-                  background: '#ffffff',
+                  background: 'var(--color-surface)',
                   border: '1px solid var(--color-border-light)',
                   borderRadius: '12px',
                   padding: '1.5rem',
@@ -1580,7 +1580,7 @@ export default function ProjectsPage() {
                 
                 {/* Section 3: Nhân sự & Tài liệu */}
                 <div style={{
-                  background: '#ffffff',
+                  background: 'var(--color-surface)',
                   border: '1px solid var(--color-border-light)',
                   borderRadius: '12px',
                   padding: '1.5rem',
@@ -1704,7 +1704,7 @@ export default function ProjectsPage() {
 
                 {/* Section: Chiến dịch liên kết */}
                 <div style={{
-                  background: '#ffffff',
+                  background: 'var(--color-surface)',
                   border: '1px solid var(--color-border-light)',
                   borderRadius: '12px',
                   padding: '1.5rem',
@@ -1784,7 +1784,7 @@ export default function ProjectsPage() {
 
                 {/* Section: Đường dẫn Folder liên kết */}
                 <div style={{
-                  background: '#ffffff',
+                  background: 'var(--color-surface)',
                   border: '1px solid var(--color-border-light)',
                   borderRadius: '12px',
                   padding: '1.5rem',
@@ -1825,7 +1825,7 @@ export default function ProjectsPage() {
 
                 {/* Section: Tài liệu liên kết */}
                 <div style={{
-                  background: '#ffffff',
+                  background: 'var(--color-surface)',
                   border: '1px solid var(--color-border-light)',
                   borderRadius: '12px',
                   padding: '1.5rem',
@@ -1899,7 +1899,7 @@ export default function ProjectsPage() {
 
                 {/* Linked Tasks */}
                 <div style={{
-                  background: '#ffffff',
+                  background: 'var(--color-surface)',
                   border: '1px solid var(--color-border-light)',
                   borderRadius: '12px',
                   padding: '1.5rem',
@@ -2045,7 +2045,7 @@ export default function ProjectsPage() {
                                     setProjectTasksPage(p => Math.max(1, p - 1));
                                   }}
                                   style={{
-                                    background: '#ffffff',
+                                    background: 'var(--color-surface)',
                                     border: '1px solid var(--color-border-light)',
                                     padding: '6px 12px',
                                     borderRadius: '8px',
@@ -2068,7 +2068,7 @@ export default function ProjectsPage() {
                                     setProjectTasksPage(p => Math.min(totalPages, p + 1));
                                   }}
                                   style={{
-                                    background: '#ffffff',
+                                    background: 'var(--color-surface)',
                                     border: '1px solid var(--color-border-light)',
                                     padding: '6px 12px',
                                     borderRadius: '8px',
@@ -2096,7 +2096,7 @@ export default function ProjectsPage() {
         ) : (
           /* Changelog Tab View */
           <div style={{
-            background: '#ffffff',
+            background: 'var(--color-surface)',
             border: '1px solid var(--color-border-light)',
             borderRadius: '16px',
             padding: '1.5rem',
@@ -2169,7 +2169,7 @@ export default function ProjectsPage() {
                     display: 'flex', 
                     flexDirection: 'column', 
                     padding: '0.75rem 1rem', 
-                    background: '#ffffff', 
+                    background: 'var(--color-surface)', 
                     border: '1px solid var(--color-border-light)', 
                     borderRadius: '12px', 
                     boxShadow: '0 4px 20px rgba(0,0,0,0.02)',
@@ -2200,7 +2200,7 @@ export default function ProjectsPage() {
                 </div>
 
                 {/* 2. Cơ Hội Bán Hàng */}
-                <div className="stat-card" style={{ display: 'flex', flexDirection: 'column', padding: '0.75rem 1rem', background: '#ffffff', border: '1px solid var(--color-border-light)', borderRadius: '12px', boxShadow: '0 4px 20px rgba(0,0,0,0.02)' }}>
+                <div className="stat-card" style={{ display: 'flex', flexDirection: 'column', padding: '0.75rem 1rem', background: 'var(--color-surface)', border: '1px solid var(--color-border-light)', borderRadius: '12px', boxShadow: '0 4px 20px rgba(0,0,0,0.02)' }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
                     <span className="stat-label" style={{ fontSize: '0.6875rem', fontWeight: 600, color: 'var(--color-text-muted)', opacity: 0.85, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Cơ Hội Bán Hàng</span>
                     <div style={{ width: '28px', height: '28px', borderRadius: '8px', background: 'rgba(100, 116, 139, 0.08)', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Layers size={14} /></div>
@@ -2214,7 +2214,7 @@ export default function ProjectsPage() {
                 </div>
 
                 {/* 3. Doanh Thu */}
-                <div className="stat-card" style={{ display: 'flex', flexDirection: 'column', padding: '0.75rem 1rem', background: '#ffffff', border: '1px solid var(--color-border-light)', borderRadius: '12px', boxShadow: '0 4px 20px rgba(0,0,0,0.02)' }}>
+                <div className="stat-card" style={{ display: 'flex', flexDirection: 'column', padding: '0.75rem 1rem', background: 'var(--color-surface)', border: '1px solid var(--color-border-light)', borderRadius: '12px', boxShadow: '0 4px 20px rgba(0,0,0,0.02)' }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
                     <span className="stat-label" style={{ fontSize: '0.6875rem', fontWeight: 600, color: 'var(--color-text-muted)', opacity: 0.85, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Doanh Thu</span>
                     <div style={{ width: '28px', height: '28px', borderRadius: '8px', background: 'rgba(100, 116, 139, 0.08)', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Building2 size={14} /></div>
@@ -2230,7 +2230,7 @@ export default function ProjectsPage() {
                 </div>
 
                 {/* 4. Tỷ Lệ Chốt */}
-                <div className="stat-card" style={{ display: 'flex', flexDirection: 'column', padding: '0.75rem 1rem', background: '#ffffff', border: '1px solid var(--color-border-light)', borderRadius: '12px', boxShadow: '0 4px 20px rgba(0,0,0,0.02)' }}>
+                <div className="stat-card" style={{ display: 'flex', flexDirection: 'column', padding: '0.75rem 1rem', background: 'var(--color-surface)', border: '1px solid var(--color-border-light)', borderRadius: '12px', boxShadow: '0 4px 20px rgba(0,0,0,0.02)' }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
                     <span className="stat-label" style={{ fontSize: '0.6875rem', fontWeight: 600, color: 'var(--color-text-muted)', opacity: 0.85, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Tỷ Lệ Chốt</span>
                     <div style={{ width: '28px', height: '28px', borderRadius: '8px', background: 'rgba(100, 116, 139, 0.08)', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><CheckSquare size={14} /></div>
@@ -2251,7 +2251,7 @@ export default function ProjectsPage() {
                 
                 {/* Section 1: Thông tin cơ bản */}
                 <div style={{
-                  background: '#ffffff',
+                  background: 'var(--color-surface)',
                   border: '1px solid var(--color-border-light)',
                   borderRadius: '16px',
                   padding: '1.5rem',
@@ -2328,7 +2328,7 @@ export default function ProjectsPage() {
 
                 {/* Campaign Timeline Section */}
                 <div style={{
-                  background: '#ffffff',
+                  background: 'var(--color-surface)',
                   border: '1px solid var(--color-border-light)',
                   borderRadius: '16px',
                   padding: '1.5rem',
@@ -2415,7 +2415,7 @@ export default function ProjectsPage() {
 
                 {/* Section 3: Mô tả chiến dịch */}
                 <div style={{
-                  background: '#ffffff',
+                  background: 'var(--color-surface)',
                   border: '1px solid var(--color-border-light)',
                   borderRadius: '16px',
                   padding: '1.5rem',
@@ -2440,7 +2440,7 @@ export default function ProjectsPage() {
                 
                 {/* Section 2: Dự án & Nhân sự phụ trách */}
                 <div style={{
-                  background: '#ffffff',
+                  background: 'var(--color-surface)',
                   border: '1px solid var(--color-border-light)',
                   borderRadius: '16px',
                   padding: '1.5rem',
@@ -2479,7 +2479,7 @@ export default function ProjectsPage() {
                             ) : (
                               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
                                 {campaignManagers.map((member: any) => (
-                                  <span key={member.id} style={{ background: '#ffffff', border: '1px solid var(--color-border)', padding: '2px 8px', borderRadius: '100px', fontSize: '0.7rem', fontWeight: 600, color: 'var(--color-text)', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                                  <span key={member.id} style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', padding: '2px 8px', borderRadius: '100px', fontSize: '0.7rem', fontWeight: 600, color: 'var(--color-text)', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
                                     <Avatar src={member.avatar_url || member.avatar} name={member.full_name || member.fullname || member.name || member.username} size={16} />
                                     {member.full_name || member.fullname || member.name || member.username}
                                   </span>
@@ -2495,7 +2495,7 @@ export default function ProjectsPage() {
                             ) : (
                               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
                                 {campaignStaff.map((member: any) => (
-                                  <span key={member.id} style={{ background: '#ffffff', border: '1px solid var(--color-border)', padding: '2px 8px', borderRadius: '100px', fontSize: '0.7rem', fontWeight: 600, color: 'var(--color-text)', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                                  <span key={member.id} style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', padding: '2px 8px', borderRadius: '100px', fontSize: '0.7rem', fontWeight: 600, color: 'var(--color-text)', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
                                     <Avatar src={member.avatar_url || member.avatar} name={member.full_name || member.fullname || member.name || member.username} size={16} />
                                     {member.full_name || member.fullname || member.name || member.username}
                                   </span>
@@ -2536,7 +2536,7 @@ export default function ProjectsPage() {
                                 ) : (
                                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
                                     {projManagers.map((member: any) => (
-                                      <span key={member.id} style={{ background: '#ffffff', border: '1px solid var(--color-border)', padding: '2px 8px', borderRadius: '100px', fontSize: '0.7rem', fontWeight: 600, color: 'var(--color-text)', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                                      <span key={member.id} style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', padding: '2px 8px', borderRadius: '100px', fontSize: '0.7rem', fontWeight: 600, color: 'var(--color-text)', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
                                         <Avatar src={member.avatar_url || member.avatar} name={member.full_name || member.fullname || member.name || member.username} size={16} />
                                         {member.full_name || member.fullname || member.name || member.username}
                                       </span>
@@ -2556,7 +2556,7 @@ export default function ProjectsPage() {
                             ) : (
                               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
                                 {campaignManagers.map((member: any) => (
-                                  <span key={member.id} style={{ background: '#ffffff', border: '1px solid var(--color-border)', padding: '2px 8px', borderRadius: '100px', fontSize: '0.7rem', fontWeight: 600, color: 'var(--color-text)', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                                  <span key={member.id} style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', padding: '2px 8px', borderRadius: '100px', fontSize: '0.7rem', fontWeight: 600, color: 'var(--color-text)', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
                                     <Avatar src={member.avatar_url || member.avatar} name={member.full_name || member.fullname || member.name || member.username} size={16} />
                                     {member.full_name || member.fullname || member.name || member.username}
                                   </span>
@@ -2572,7 +2572,7 @@ export default function ProjectsPage() {
                             ) : (
                               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
                                 {campaignStaff.map((member: any) => (
-                                  <span key={member.id} style={{ background: '#ffffff', border: '1px solid var(--color-border)', padding: '2px 8px', borderRadius: '100px', fontSize: '0.7rem', fontWeight: 600, color: 'var(--color-text)', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                                  <span key={member.id} style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', padding: '2px 8px', borderRadius: '100px', fontSize: '0.7rem', fontWeight: 600, color: 'var(--color-text)', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
                                     <Avatar src={member.avatar_url || member.avatar} name={member.full_name || member.fullname || member.name || member.username} size={16} />
                                     {member.full_name || member.fullname || member.name || member.username}
                                   </span>
@@ -2588,7 +2588,7 @@ export default function ProjectsPage() {
 
                 {/* Linked Tasks */}
                 <div style={{
-                  background: '#ffffff',
+                  background: 'var(--color-surface)',
                   border: '1px solid var(--color-border-light)',
                   borderRadius: '16px',
                   padding: '1.5rem',
@@ -2720,7 +2720,7 @@ export default function ProjectsPage() {
                                     setCampaignTasksPage(p => Math.max(1, p - 1));
                                   }}
                                   style={{
-                                    background: '#ffffff',
+                                    background: 'var(--color-surface)',
                                     border: '1px solid var(--color-border-light)',
                                     padding: '6px 12px',
                                     borderRadius: '8px',
@@ -2743,7 +2743,7 @@ export default function ProjectsPage() {
                                     setCampaignTasksPage(p => Math.min(totalPages, p + 1));
                                   }}
                                   style={{
-                                    background: '#ffffff',
+                                    background: 'var(--color-surface)',
                                     border: '1px solid var(--color-border-light)',
                                     padding: '6px 12px',
                                     borderRadius: '8px',
@@ -2771,7 +2771,7 @@ export default function ProjectsPage() {
         ) : (
           /* Changelog Tab View */
           <div style={{
-            background: '#ffffff',
+            background: 'var(--color-surface)',
             border: '1px solid var(--color-border-light)',
             borderRadius: '16px',
             padding: '1.5rem',
@@ -3508,7 +3508,7 @@ export default function ProjectsPage() {
                   className="card flex flex-col justify-between transition-all duration-300"
                   style={{
                     cursor: 'pointer',
-                    background: '#ffffff',
+                    background: 'var(--color-surface)',
                     border: '1px solid var(--color-border-light)',
                     borderRadius: '24px',
                     padding: '1.5rem',
@@ -3914,7 +3914,7 @@ export default function ProjectsPage() {
                       className="card flex flex-col justify-between transition-all duration-300"
                       style={{
                         cursor: 'pointer',
-                        background: '#ffffff',
+                        background: 'var(--color-surface)',
                         border: '1px solid var(--color-border-light)',
                         borderRadius: '24px',
                         padding: '1.5rem',
@@ -4122,7 +4122,7 @@ export default function ProjectsPage() {
               
               {/* Section 1: Thông tin cơ bản */}
               <div style={{
-                background: '#ffffff',
+                background: 'var(--color-surface)',
                 border: '1px solid var(--color-border-light)',
                 borderRadius: '16px',
                 padding: '1.5rem',
@@ -4190,7 +4190,7 @@ export default function ProjectsPage() {
 
               {/* Section 2: Vị trí & Quy mô & Pháp lý */}
               <div style={{
-                background: '#ffffff',
+                background: 'var(--color-surface)',
                 border: '1px solid var(--color-border-light)',
                 borderRadius: '16px',
                 padding: '1.5rem',
@@ -4248,7 +4248,7 @@ export default function ProjectsPage() {
 
               {/* Section 4: Mô tả chi tiết */}
               <div style={{
-                background: '#ffffff',
+                background: 'var(--color-surface)',
                 border: '1px solid var(--color-border-light)',
                 borderRadius: '16px',
                 padding: '1.5rem',
@@ -4273,7 +4273,7 @@ export default function ProjectsPage() {
               
               {/* Section 3: Nhân sự & Tài liệu */}
               <div style={{
-                background: '#ffffff',
+                background: 'var(--color-surface)',
                 border: '1px solid var(--color-border-light)',
                 borderRadius: '16px',
                 padding: '1.5rem',
@@ -4388,7 +4388,7 @@ export default function ProjectsPage() {
 
               {/* Linked Tasks */}
               <div style={{
-                background: '#ffffff',
+                background: 'var(--color-surface)',
                 border: '1px solid var(--color-border-light)',
                 borderRadius: '16px',
                 padding: '1.5rem',
@@ -4503,7 +4503,7 @@ export default function ProjectsPage() {
               
               {/* Card 1: Thông tin cơ bản */}
               <div style={{
-                background: '#ffffff',
+                background: 'var(--color-surface)',
                 border: '1px solid var(--color-border-light)',
                 borderRadius: '16px',
                 padding: '1.5rem',
@@ -4723,7 +4723,7 @@ export default function ProjectsPage() {
 
               {/* Card 2: Vị trí & Tiến độ */}
               <div style={{
-                background: '#ffffff',
+                background: 'var(--color-surface)',
                 border: '1px solid var(--color-border-light)',
                 borderRadius: '16px',
                 padding: '1.5rem',
@@ -4851,7 +4851,7 @@ export default function ProjectsPage() {
 
               {/* Card 3: Mô tả */}
               <div style={{
-                background: '#ffffff',
+                background: 'var(--color-surface)',
                 border: '1px solid var(--color-border-light)',
                 borderRadius: '16px',
                 padding: '1.5rem',
@@ -4877,7 +4877,7 @@ export default function ProjectsPage() {
               
               {/* Card 1: Nhân sự quản lý */}
               <div style={{
-                background: '#ffffff',
+                background: 'var(--color-surface)',
                 border: '1px solid var(--color-border-light)',
                 borderRadius: '16px',
                 padding: '1.5rem',
@@ -4956,7 +4956,7 @@ export default function ProjectsPage() {
 
               {/* Card 2: Tài liệu & Liên kết */}
               <div style={{
-                background: '#ffffff',
+                background: 'var(--color-surface)',
                 border: '1px solid var(--color-border-light)',
                 borderRadius: '16px',
                 padding: '1.5rem',
@@ -5010,7 +5010,7 @@ export default function ProjectsPage() {
                           {currentFolders.map((f, idx) => (
                             <div key={idx} style={{ background: 'var(--color-bg-light)', padding: '12px', borderRadius: '12px', border: '1px solid var(--color-border-light)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                <div style={{ display: 'flex', background: '#ffffff', padding: '2px', borderRadius: '8px', border: '1px solid var(--color-border-light)' }}>
+                                <div style={{ display: 'flex', background: 'var(--color-surface)', padding: '2px', borderRadius: '8px', border: '1px solid var(--color-border-light)' }}>
                                   <button
                                     type="button"
                                     onClick={() => {
@@ -5803,7 +5803,7 @@ export default function ProjectsPage() {
               
               {/* Section 1: Thông tin cơ bản */}
               <div style={{
-                background: '#ffffff',
+                background: 'var(--color-surface)',
                 border: '1px solid var(--color-border-light)',
                 borderRadius: '16px',
                 padding: '1.5rem',
@@ -5877,7 +5877,7 @@ export default function ProjectsPage() {
 
               {/* Section 3: Mô tả chiến dịch */}
               <div style={{
-                background: '#ffffff',
+                background: 'var(--color-surface)',
                 border: '1px solid var(--color-border-light)',
                 borderRadius: '16px',
                 padding: '1.5rem',
@@ -5902,7 +5902,7 @@ export default function ProjectsPage() {
               
               {/* Section 2: Dự án liên kết & Nhân sự */}
               <div style={{
-                background: '#ffffff',
+                background: 'var(--color-surface)',
                 border: '1px solid var(--color-border-light)',
                 borderRadius: '16px',
                 padding: '1.5rem',
@@ -5990,7 +5990,7 @@ export default function ProjectsPage() {
                               ) : (
                                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
                                   {rosterList.map(member => (
-                                    <span key={member.id} style={{ background: '#ffffff', border: '1px solid var(--color-border)', padding: '2px 8px', borderRadius: '100px', fontSize: '0.7rem', fontWeight: 600, color: 'var(--color-text)', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                                    <span key={member.id} style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', padding: '2px 8px', borderRadius: '100px', fontSize: '0.7rem', fontWeight: 600, color: 'var(--color-text)', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
                                       <Avatar src={member.avatar_url || member.avatar} name={member.full_name || member.name} size={16} />
                                       {member.full_name || member.name}
                                     </span>
@@ -6008,7 +6008,7 @@ export default function ProjectsPage() {
 
               {/* Linked Tasks */}
               <div style={{
-                background: '#ffffff',
+                background: 'var(--color-surface)',
                 border: '1px solid var(--color-border-light)',
                 borderRadius: '16px',
                 padding: '1.5rem',
@@ -6123,7 +6123,7 @@ export default function ProjectsPage() {
               
               {/* Card 1: Thông tin cơ bản */}
               <div style={{
-                background: '#ffffff',
+                background: 'var(--color-surface)',
                 border: '1px solid var(--color-border-light)',
                 borderRadius: '16px',
                 padding: '1.5rem',
@@ -6195,7 +6195,7 @@ export default function ProjectsPage() {
 
               {/* Card 2: Mô tả */}
               <div style={{
-                background: '#ffffff',
+                background: 'var(--color-surface)',
                 border: '1px solid var(--color-border-light)',
                 borderRadius: '16px',
                 padding: '1.5rem',
@@ -6222,7 +6222,7 @@ export default function ProjectsPage() {
               
               {/* Card 1: Nhân sự & Dự án liên kết */}
               <div style={{
-                background: '#ffffff',
+                background: 'var(--color-surface)',
                 border: '1px solid var(--color-border-light)',
                 borderRadius: '16px',
                 padding: '1.5rem',
@@ -6282,7 +6282,7 @@ export default function ProjectsPage() {
 
               {/* Card 2: Tài liệu & Thư mục */}
               <div style={{
-                background: '#ffffff',
+                background: 'var(--color-surface)',
                 border: '1px solid var(--color-border-light)',
                 borderRadius: '16px',
                 padding: '1.5rem',

@@ -4932,7 +4932,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                     width: '14px',
                                     height: '14px',
                                     borderRadius: '50%',
-                                    background: 'white',
+                                    background: 'var(--color-surface)',
                                     position: 'absolute',
                                     top: '2px',
                                     left: zaloSource === 'primary' && formData.phone?.trim() ? '16px' : '2px',
@@ -4994,7 +4994,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                     width: '14px',
                                     height: '14px',
                                     borderRadius: '50%',
-                                    background: 'white',
+                                    background: 'var(--color-surface)',
                                     position: 'absolute',
                                     top: '2px',
                                     left: zaloSource === 'secondary' && formData.mobile?.trim() ? '16px' : '2px',
@@ -5585,7 +5585,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                           </div>
                         </div>
 
-                        <div className="card-panel" style={{ padding: '1.5rem', background: '#ffffff', border: '1px solid var(--color-border-light)' }}>
+                        <div className="card-panel" style={{ padding: '1.5rem', background: 'var(--color-surface)', border: '1px solid var(--color-border-light)' }}>
                           <div>
                             <label className="form-label" style={{ fontWeight: 700, marginBottom: '1rem', display: 'block', fontSize: '0.9375rem' }}>Gắn thẻ thông minh</label>
                             <TagInput
@@ -10092,7 +10092,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                     style={{ display: 'block', width: '100%', padding: '10px', border: '1px solid var(--color-border)', borderRadius: '6px', background: 'var(--color-bg-light)', fontSize: '0.8125rem', cursor: 'pointer' }}
                   />
                   {uploadedSignatureImg && (
-                    <div style={{ marginTop: '1rem', padding: '1rem', border: '1px solid var(--color-border)', borderRadius: '8px', background: 'white', display: 'flex', justifyContent: 'center', alignItems: 'center', boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.02)' }}>
+                    <div style={{ marginTop: '1rem', padding: '1rem', border: '1px solid var(--color-border)', borderRadius: '8px', background: 'var(--color-surface)', display: 'flex', justifyContent: 'center', alignItems: 'center', boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.02)' }}>
                       <img src={uploadedSignatureImg} alt="Preview Chữ ký" style={{ maxHeight: '150px', objectFit: 'contain' }} />
                     </div>
                   )}
@@ -10417,7 +10417,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
             </div>
 
             {/* Invoice Layout */}
-            <div className="card-panel" style={{ background: '#fff', border: '1px solid var(--color-border)', borderRadius: '16px', padding: '1.5rem', boxShadow: 'var(--shadow-sm)', marginBottom: '1.5rem' }}>
+            <div className="card-panel" style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: '16px', padding: '1.5rem', boxShadow: 'var(--shadow-sm)', marginBottom: '1.5rem' }}>
               <div style={{ textAlign: 'center', marginBottom: '1.25rem', borderBottom: '2px dashed var(--color-border-light)', paddingBottom: '1.25rem' }}>
                 <h4 style={{ textTransform: 'uppercase', letterSpacing: '0.1em', fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 700, marginBottom: '0.25rem' }}>Richland Data Automation</h4>
                 <h2 style={{ textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 800, fontSize: '1.2rem', color: 'var(--color-text)', margin: 0 }}>HÓA ĐƠN CHI PHÍ</h2>

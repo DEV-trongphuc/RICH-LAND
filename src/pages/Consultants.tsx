@@ -3473,7 +3473,7 @@ const ConsultantsInner = () => {
                                           alignItems: 'center',
                                           gap: '6px',
                                           padding: '4px 10px',
-                                          background: '#ffffff',
+                                          background: 'var(--color-surface)',
                                           border: '1px solid var(--color-border-light)',
                                           borderRadius: '6px',
                                           textDecoration: 'none',
@@ -3509,7 +3509,7 @@ const ConsultantsInner = () => {
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', height: '100%' }}>
                             
                             {/* Post Comment Section */}
-                            <div style={{ background: '#ffffff', border: '1px solid var(--color-border-light)', padding: '16px', borderRadius: '12px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                            <div style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border-light)', padding: '16px', borderRadius: '12px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
                               {teamReplyTo && (
                                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(163, 20, 34, 0.06)', padding: '6px 12px', borderRadius: '8px', fontSize: '0.72rem', color: 'var(--color-primary)', fontWeight: 700 }}>
                                   <span>Đang trả lời {teamReplyTo.userName}</span>
@@ -3626,7 +3626,7 @@ const ConsultantsInner = () => {
                             </div>
 
                             {/* Comments List Feed */}
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', flex: 1, overflowY: 'auto', background: '#ffffff', border: '1px solid var(--color-border-light)', borderRadius: '12px', padding: '16px', maxHeight: '350px' }} className="custom-scrollbar">
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', flex: 1, overflowY: 'auto', background: 'var(--color-surface)', border: '1px solid var(--color-border-light)', borderRadius: '12px', padding: '16px', maxHeight: '350px' }} className="custom-scrollbar">
                               {loadingTeamComments ? (
                                 <div style={{ display: 'flex', justifyContent: 'center', padding: '2rem' }}>
                                   <RefreshCw className="spin" size={18} color="var(--color-text-muted)" />

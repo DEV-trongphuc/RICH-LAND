@@ -143,7 +143,7 @@ export const PeriodFilter: React.FC<PeriodFilterProps> = ({ value, onChange, cus
             exit={{ opacity: 0, y: 8, scale: 0.95 }}
             style={{
               position: 'absolute', top: 'calc(100% + 8px)', right: 0,
-              background: 'white', border: '1px solid var(--color-border-light)',
+              background: 'var(--color-surface)', border: '1px solid var(--color-border-light)',
               borderRadius: 'var(--radius-xl)', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)',
               zIndex: 500, padding: '0.75rem', minWidth: '220px',
             }}

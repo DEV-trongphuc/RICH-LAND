@@ -39,7 +39,7 @@ export const QRCodeCallModal: React.FC = () => {
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
               style={{
-                width: '100%', maxWidth: 400, background: 'white',
+                width: '100%', maxWidth: 400, background: 'var(--color-surface)',
                 borderRadius: 'var(--radius-2xl)', boxShadow: 'var(--shadow-2xl)',
                 overflow: 'hidden'
               }}
@@ -50,7 +50,7 @@ export const QRCodeCallModal: React.FC = () => {
                     <Smartphone size={20} />
                   </div>
                   <div>
-                    <h3 style={{ fontWeight: 800, fontSize: '1.125rem', margin: 0 }}>Quét mã để gọi</h3>
+                    <h3 style={{ fontWeight: 800, fontSize: '1.125rem', margin: 0, color: 'var(--color-text)' }}>Quét mã để gọi</h3>
                     <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', margin: 0 }}>{phone}</p>
                   </div>
                 </div>
@@ -62,7 +62,7 @@ export const QRCodeCallModal: React.FC = () => {
               <div style={{ padding: '2.5rem', textAlign: 'center' }}>
                 <div style={{ 
                   width: 240, height: 240, margin: '0 auto 2rem', 
-                  padding: '20px', background: '#f8fafc', borderRadius: '24px',
+                  padding: '20px', background: '#ffffff', borderRadius: '24px',
                   border: '1px solid var(--color-border-light)',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.02)'

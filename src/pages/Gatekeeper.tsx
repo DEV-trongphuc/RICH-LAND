@@ -1524,7 +1524,7 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
             >
               <div style={{
                 position: 'absolute', top: 3, width: 14, height: 14, borderRadius: '50%',
-                background: 'white', boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
+                background: 'var(--color-surface)', boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
                 left: aiScreenerEnabled ? 19 : 3, transition: 'left 0.2s'
               }} />
             </div>
@@ -2315,7 +2315,7 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
                 >
                   <div style={{
                     position: 'absolute', top: 3, width: 14, height: 14, borderRadius: '50%',
-                    background: 'white', boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
+                    background: 'var(--color-surface)', boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
                     left: aiScreenerEnabled ? 19 : 3, transition: 'left 0.2s'
                   }} />
                 </div>
