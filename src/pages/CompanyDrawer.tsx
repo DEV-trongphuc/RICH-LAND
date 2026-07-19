@@ -580,87 +580,115 @@ export const CompanyDrawer: React.FC<CompanyDrawerProps> = ({ isOpen, onClose, e
             {/* Mobile Profile Block (only rendered at root menu level) */}
             {isMobileOrTablet && !activeTab && (
               <div style={{
-                padding: '1.5rem 1rem',
+                padding: '1.25rem 1rem',
                 borderBottom: '1px solid var(--color-border-light)',
                 background: 'var(--color-surface)',
                 display: 'flex',
                 flexDirection: 'column',
-                alignItems: 'center',
-                textAlign: 'center',
-                gap: '1rem',
+                gap: '12px',
                 flexShrink: 0
               }}>
-                <div 
-                  className={styles.avatarContainer}
-                  style={{ 
-                    background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)', 
-                    fontSize: '1.5rem', 
-                    width: 72, 
-                    height: 72, 
-                    borderRadius: '50%',
-                    position: 'relative',
-                    boxShadow: '0 4px 12px rgba(37, 99, 235, 0.3)',
-                    cursor: disableEdit ? 'default' : 'pointer',
-                    color: 'white',
-                    fontWeight: 700,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    overflow: 'hidden'
-                  }}
-                  onClick={() => {
-                    if (!disableEdit) {
-                      document.getElementById('company-logo-upload')?.click();
-                    }
-                  }}
-                >
-                  {formData?.logo_url ? (
-                    <img 
-                      src={formData.logo_url.startsWith('http') ? formData.logo_url : `${import.meta.env.VITE_API_URL || '/backend'}/${formData.logo_url}`} 
-                      alt="Company Logo" 
-                      style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
-                    />
-                  ) : (
-                    formData?.name?.[0] || 'C'
-                  )}
-                  {!disableEdit && (
-                    <div className={styles.avatarOverlay}>
-                      <Camera size={18} />
-                    </div>
-                  )}
+                {/* Row 1: Avatar Left, Name & Phone & Email Right */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '16px', width: '100%' }}>
+                  {/* Left: Avatar Container */}
+                  <div 
+                    className={styles.avatarContainer}
+                    style={{ 
+                      background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)', 
+                      fontSize: '1.25rem', 
+                      width: 60, 
+                      height: 60, 
+                      borderRadius: '50%',
+                      position: 'relative',
+                      boxShadow: '0 4px 12px rgba(37, 99, 235, 0.2)',
+                      cursor: disableEdit ? 'default' : 'pointer',
+                      color: 'white',
+                      fontWeight: 700,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      overflow: 'hidden',
+                      flexShrink: 0
+                    }}
+                    onClick={() => {
+                      if (!disableEdit) {
+                        document.getElementById('company-logo-upload')?.click();
+                      }
+                    }}
+                  >
+                    {formData?.logo_url ? (
+                      <img 
+                        src={formData.logo_url.startsWith('http') ? formData.logo_url : `${import.meta.env.VITE_API_URL || '/backend'}/${formData.logo_url}`} 
+                        alt="Company Logo" 
+                        style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+                      />
+                    ) : (
+                      formData?.name?.[0] || 'C'
+                    )}
+                    {!disableEdit && (
+                      <div className={styles.avatarOverlay}>
+                        <Camera size={14} />
+                      </div>
+                    )}
+                  </div>
+                  
+                  {/* Right: Basic Info */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: 1, minWidth: 0 }}>
+                    <h2 style={{ fontSize: '1.05rem', fontWeight: 800, color: 'var(--color-text)', margin: '0 0 2px 0', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {formData?.name || 'Tên Công Ty'}
+                    </h2>
+                    <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <Phone size={12} style={{ color: 'var(--color-primary)', flexShrink: 0 }} /> {formData?.phone || 'Chưa có SĐT'}
+                    </span>
+                    <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: '6px', minWidth: 0 }}>
+                      <Mail size={12} style={{ color: 'var(--color-text-light)', flexShrink: 0 }} /> 
+                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {formData?.email || 'Chưa có Email'}
+                      </span>
+                    </span>
+                  </div>
                 </div>
                 
-                <div>
-                  <h2 style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--color-text)', margin: '0 0 0.25rem 0' }}>{formData?.name || 'Tên Công Ty'}</h2>
-                  <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', margin: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
-                    <Briefcase size={14} /> {formData?.industry || 'Chưa cập nhật ngành nghề'}
-                  </p>
-                  <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', margin: '0.25rem 0 0 0' }}>
-                    MST: {formData?.tax_id || 'Chưa cập nhật'}
-                  </p>
-                  
-                  <div style={{ 
-                    display: 'flex', 
-                    flexDirection: 'column', 
-                    gap: '0.35rem', 
-                    marginTop: '0.75rem',
-                    alignItems: 'center'
-                  }}>
-                    <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <Phone size={12} /> {formData?.phone || 'Chưa có SĐT'}
+                {/* Row 2: Secondary / Auxiliary Info Card */}
+                <div style={{
+                  background: 'var(--color-bg)',
+                  border: '1px solid var(--color-border-light)',
+                  borderRadius: '12px',
+                  padding: '12px 14px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '8px',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.01)'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
+                    <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <Briefcase size={12} /> {formData?.industry || 'Chưa cập nhật ngành nghề'}
                     </span>
-                    <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <Mail size={12} /> {formData?.email || 'Chưa có Email'}
-                    </span>
-                    <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <Globe size={12} /> {formData?.website || 'Chưa có Website'}
+                    <span className={`badge ${formData?.status === 'active' ? 'success' : formData?.status === 'inactive' ? 'danger' : 'warning'}`} style={{ fontSize: '0.7rem', padding: '2px 8px' }}>
+                      {formData?.status === 'active' ? 'Hoạt động' : formData?.status === 'inactive' ? 'Ngừng' : 'Tiềm năng'}
                     </span>
                   </div>
                   
-                  <div style={{ marginTop: '0.875rem' }}>
-                    <span className={`badge ${formData?.status === 'active' ? 'success' : formData?.status === 'inactive' ? 'danger' : 'warning'}`}>
-                      {formData?.status === 'active' ? 'Hoạt động' : formData?.status === 'inactive' ? 'Ngừng' : 'Tiềm năng'}
-                    </span>
+                  <div style={{ height: '1px', background: 'var(--color-border-light)' }} />
+                  
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem' }}>
+                      <span style={{ color: 'var(--color-text-muted)' }}>Mã số thuế:</span>
+                      <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>{formData?.tax_id?.trim() || 'Chưa cập nhật'}</span>
+                    </div>
+                    {formData?.website && (
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', minWidth: 0 }}>
+                        <span style={{ color: 'var(--color-text-muted)', flexShrink: 0 }}>Website:</span>
+                        <a 
+                          href={formData.website.startsWith('http') ? formData.website : `https://${formData.website}`} 
+                          target="_blank" 
+                          rel="noopener noreferrer" 
+                          style={{ fontWeight: 600, color: 'var(--color-primary)', display: 'flex', alignItems: 'center', gap: '4px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                        >
+                          <Globe size={11} /> {formData.website}
+                        </a>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>

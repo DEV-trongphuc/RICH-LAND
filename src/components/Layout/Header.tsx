@@ -846,7 +846,7 @@ export const Header = ({
         </button>
 
         {/* Unified Approvals/Issues Inbox Button */}
-        {pendingInboxCount !== undefined && (
+        {!['sale', 'sales'].includes(user?.role || '') && pendingInboxCount !== undefined && (
           <button
             onClick={onUnifiedInboxClick}
             style={{
