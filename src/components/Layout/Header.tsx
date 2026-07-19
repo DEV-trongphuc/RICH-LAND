@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Search, Command, Activity, Sun, Moon, Keyboard, ChevronDown, User, AlertTriangle, LogOut, Menu, LayoutGrid, LayoutDashboard, Users, Building2, Clock, Truck, Boxes, Receipt, Settings, CheckCircle2, Fingerprint, Bell, MessageSquare, Info, Trash2, Check, Eye, EyeOff, CheckSquare, FileText, ArrowLeft, ShieldAlert } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
@@ -54,6 +54,8 @@ export const Header = ({
   const navigate = useNavigate();
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
 
+
+
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth <= 768);
     window.addEventListener('resize', handleResize);
@@ -86,6 +88,97 @@ export const Header = ({
   const [unreadCount, setUnreadCount] = useState(0);
   const [notifAvatars, setNotifAvatars] = useState<any>({});
   const [isNotifModalOpen, setIsNotifModalOpen] = useState(false);
+
+  // --- Tab Title Flashing & Browser Push notifications ---
+  const prevNotifIds = useRef<Set<number>>(new Set());
+  const flashIntervalRef = useRef<any>(null);
+  const isWindowFocused = useRef(true);
+
+  // Stop title flashing
+  const stopFlashingTitle = () => {
+    if (flashIntervalRef.current) {
+      clearInterval(flashIntervalRef.current);
+      flashIntervalRef.current = null;
+    }
+    let cleanTitle = document.title;
+    if (cleanTitle.startsWith('🔴 ') || cleanTitle.startsWith('🔔 ')) {
+      cleanTitle = cleanTitle.replace(/^(🔴|🔔)\s*(?:\(\d+\)\s*)?/, '');
+    }
+    document.title = cleanTitle;
+  };
+
+  // Start title flashing
+  const startFlashingTitle = (count: number) => {
+    stopFlashingTitle(); // Reset first
+    if (count <= 0) return;
+    
+    let isRedDot = true;
+    const baseTitle = document.title.replace(/^(🔴|🔔)\s*(?:\(\d+\)\s*)?/, '');
+    
+    flashIntervalRef.current = setInterval(() => {
+      if (isRedDot) {
+        document.title = `🔴 (${count}) ${baseTitle}`;
+      } else {
+        document.title = `🔔 (${count}) ${baseTitle}`;
+      }
+      isRedDot = !isRedDot;
+    }, 1000);
+  };
+
+  // Window Focus Events
+  useEffect(() => {
+    const handleFocus = () => {
+      isWindowFocused.current = true;
+      stopFlashingTitle();
+    };
+    const handleBlur = () => {
+      isWindowFocused.current = false;
+    };
+    
+    window.addEventListener('focus', handleFocus);
+    window.addEventListener('blur', handleBlur);
+    
+    return () => {
+      window.removeEventListener('focus', handleFocus);
+      window.removeEventListener('blur', handleBlur);
+      if (flashIntervalRef.current) {
+        clearInterval(flashIntervalRef.current);
+      }
+    };
+  }, []);
+
+  // Request browser permission for notifications
+  const requestBrowserNotificationPermission = () => {
+    if ('Notification' in window) {
+      Notification.requestPermission().then(permission => {
+        // Trigger state refresh to update settings UI
+        setNotifications(prev => [...prev]);
+        if (permission === 'granted') {
+          toast.success('Đã kích hoạt thông báo trình duyệt thành công!');
+          new Notification('RICH LAND', {
+            body: 'Bạn đã kích hoạt nhận thông báo trình duyệt thành công.',
+            icon: '/LOGO.jpg'
+          });
+        } else {
+          toast('Bạn đã từ chối nhận thông báo trình duyệt.', { icon: '⚠️' });
+        }
+      });
+    }
+  };
+
+  // Auto-request or check on mount
+  useEffect(() => {
+    if ('Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission();
+    }
+  }, []);
+
+  // When notification modal opens, stop flashing title
+  useEffect(() => {
+    if (isNotifModalOpen) {
+      stopFlashingTitle();
+    }
+  }, [isNotifModalOpen]);
   const [notifFilter, setNotifFilter] = useState<'all' | 'unread' | 'read'>('all');
 
   const [showNotifSettings, setShowNotifSettings] = useState(false);
@@ -103,9 +196,50 @@ export const Header = ({
     try {
       const res = await fetchAPI('notifications');
       if (res.success && res.data) {
-        setNotifications(res.data.items || []);
-        setUnreadCount(res.data.unread_count || 0);
+        const items = res.data.items || [];
+        const newUnreadCount = res.data.unread_count || 0;
+        
+        setNotifications(items);
+        setUnreadCount(newUnreadCount);
         setNotifAvatars(res.data.avatars || {});
+        
+        if (newUnreadCount === 0) {
+          stopFlashingTitle();
+        }
+
+        // Browser notification trigger logic
+        if (items.length > 0) {
+          const isFirstLoad = prevNotifIds.current.size === 0;
+          let hasNewUnread = false;
+          let latestNotif = null;
+          
+          items.forEach((item) => {
+            if (!prevNotifIds.current.has(item.id)) {
+              prevNotifIds.current.add(item.id);
+              if (!isFirstLoad && !item.is_read) {
+                hasNewUnread = true;
+                if (!latestNotif) {
+                  latestNotif = item;
+                }
+              }
+            }
+          });
+          
+          if (newUnreadCount > 0 && hasNewUnread && latestNotif) {
+            // Trigger desktop notification
+            if ('Notification' in window && Notification.permission === 'granted') {
+              new Notification(latestNotif.title || 'Thông báo RICH LAND', {
+                body: latestNotif.body || 'Bạn có thông báo mới.',
+                icon: '/LOGO.jpg'
+              });
+            }
+            
+            // Trigger tab title flash if not focused or modal is not open
+            if (!isWindowFocused.current || !isNotifModalOpen) {
+              startFlashingTitle(newUnreadCount);
+            }
+          }
+        }
       }
     } catch (err) {
       console.error("Error fetching notifications:", err);
@@ -1932,6 +2066,96 @@ export const Header = ({
               </div>
               
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', overflowY: 'auto', maxHeight: '55vh', paddingRight: '4px' }} className="custom-scrollbar">
+                {/* Browser Notifications Preference */}
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    padding: '14px 16px',
+                    borderRadius: '12px',
+                    background: 'var(--color-surface)',
+                    border: '1px solid var(--color-border-light)',
+                    gap: '1rem',
+                    boxShadow: '0 2px 6px rgba(0, 0, 0, 0.01)',
+                    marginBottom: '4px'
+                  }}
+                >
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', flex: 1, minWidth: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                      <span style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)' }}>
+                        Thông báo trình duyệt (Browser Push)
+                      </span>
+                      <span style={{
+                        fontSize: '0.625rem',
+                        fontWeight: 700,
+                        color: 'var(--color-primary)',
+                        background: 'var(--color-primary-light)',
+                        padding: '2px 6px',
+                        borderRadius: '10px',
+                        textTransform: 'uppercase'
+                      }}>
+                        Khuyên dùng
+                      </span>
+                    </div>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', lineHeight: 1.4 }}>
+                      Nhận thông báo đẩy trực tiếp trên màn hình thiết bị ngay khi có thông báo mới.
+                    </span>
+                  </div>
+                  
+                  {(() => {
+                    if (!('Notification' in window)) {
+                      return <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>Không hỗ trợ</span>;
+                    }
+                    const perm = Notification.permission;
+                    if (perm === 'granted') {
+                      return (
+                        <span style={{ fontSize: '0.75rem', color: 'var(--color-success)', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--color-success)', display: 'inline-block' }} />
+                          Đã kích hoạt
+                        </span>
+                      );
+                    }
+                    if (perm === 'denied') {
+                      return (
+                        <button
+                          type="button"
+                          onClick={() => alert('Vui lòng vào cài đặt trình duyệt để cho phép trang web này gửi thông báo.')}
+                          style={{
+                            padding: '6px 12px',
+                            background: 'rgba(239, 68, 68, 0.08)',
+                            color: '#ef4444',
+                            border: '1px solid rgba(239, 68, 68, 0.2)',
+                            borderRadius: '8px',
+                            fontSize: '0.75rem',
+                            fontWeight: 700,
+                            cursor: 'pointer'
+                          }}
+                        >
+                          Bị chặn (Xem HD)
+                        </button>
+                      );
+                    }
+                    return (
+                      <button
+                        type="button"
+                        onClick={requestBrowserNotificationPermission}
+                        style={{
+                          padding: '6px 12px',
+                          background: 'var(--color-primary-light)',
+                          color: 'var(--color-primary)',
+                          border: '1px solid var(--color-primary-hover)',
+                          borderRadius: '8px',
+                          fontSize: '0.75rem',
+                          fontWeight: 700,
+                          cursor: 'pointer'
+                        }}
+                      >
+                        Bật thông báo
+                      </button>
+                    );
+                  })()}
+                </div>
                 {[
                   { key: 'email_warning', title: 'Cảnh báo trùng số & rửa nguồn', desc: 'Cảnh báo khi có trùng số điện thoại hoặc các hành vi rửa nguồn data.', isImportant: true },
                   { key: 'email_mention', title: 'Nhắc nhở & gắn thẻ (@)', desc: 'Khi bạn được gắn thẻ vào bình luận dự án, công việc hoặc ticket.', isImportant: true },
