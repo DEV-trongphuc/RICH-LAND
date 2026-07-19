@@ -96,9 +96,7 @@ function runDailyReportCron($conn)
     $lastRunDate = $settings['last_daily_report_date'] ?? '';
     $botToken = $settings['zalo_bot_token'] ?? '';
 
-    if (empty($botToken)) {
-        return;
-    }
+
 
     $today = date('Y-m-d');
     $currentTime = date('H:i');
