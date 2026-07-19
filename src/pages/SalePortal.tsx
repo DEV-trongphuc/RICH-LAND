@@ -10435,7 +10435,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                           {/* Grid with 7 days */}
                           <div style={{
                             display: 'grid',
-                            gridTemplateColumns: isMobile ? 'repeat(3, 1fr)' : 'repeat(auto-fit, minmax(110px, 1fr))',
+                            gridTemplateColumns: isMobile ? 'repeat(4, 1fr)' : 'repeat(auto-fit, minmax(110px, 1fr))',
                             gap: '8px',
                             marginTop: '0.25rem'
                           }}>
@@ -10494,7 +10494,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                                   className="weekly-date-card"
                                 >
                                   <span style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--color-text)' }}>
-                                    {day.name}
+                                    {isMobile ? day.name.replace('Thứ ', 'T') : day.name}
                                   </span>
                                   <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>
                                     {new Date(day.date).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' })}

@@ -204,8 +204,40 @@ const TABS = [
   { id: 'deals', label: 'Phiếu đặt cọc', icon: <CreditCard size={16} /> },
   { id: 'quotes', label: 'Báo giá', icon: <ShoppingCart size={16} /> },
   { id: 'expenses', label: 'Chi phí', icon: <DollarSign size={16} /> },
-  { id: 'tickets', label: 'Hỗ trợ/Khiếu nại', icon: <LifeBuoy size={16} /> },
 ];
+
+const renderColoredTabIcon = (tabId: string, IconComponent: any) => {
+  let bgColor = 'var(--color-primary)';
+  switch (tabId) {
+    case 'info': bgColor = '#ef4444'; break;
+    case 'tags': bgColor = '#ec4899'; break;
+    case 'cooperation': bgColor = '#f59e0b'; break;
+    case 'tasks': bgColor = '#10b981'; break;
+    case 'docs': bgColor = '#8b5cf6'; break;
+    case 'timeline': bgColor = '#3b82f6'; break;
+    case 'scoring': bgColor = '#06b6d4'; break;
+    case 'ttl1': bgColor = '#14b8a6'; break;
+    case 'invoices': bgColor = '#f43f5e'; break;
+    case 'deals': bgColor = '#eab308'; break;
+    case 'quotes': bgColor = '#10b981'; break;
+    case 'expenses': bgColor = '#ef4444'; break;
+    case 'tickets': bgColor = '#6b7280'; break;
+  }
+  return (
+    <div style={{
+      width: '28px',
+      height: '28px',
+      borderRadius: '7px',
+      backgroundColor: bgColor,
+      display: 'grid',
+      placeItems: 'center',
+      flexShrink: 0
+    }}>
+      {React.cloneElement(IconComponent, { size: 15, color: 'white', style: { display: 'block', width: '15px', height: '15px', margin: 'auto' } })}
+    </div>
+  );
+};
+
 
 const renderFormattedText = (text: string, users: any[], onMentionClick?: (e: React.MouseEvent, name: string) => void) => {
   if (!text) return '';
@@ -4254,7 +4286,10 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                               display: 'flex',
                               flexDirection: 'column',
                               gap: '10px',
-                              borderRadius: '12px',
+                              borderTopLeftRadius: '12px',
+                              borderTopRightRadius: '12px',
+                              borderBottomLeftRadius: '0px',
+                              borderBottomRightRadius: '0px',
                               marginBottom: '1rem'
                             }}>
                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', width: '100%' }}>
@@ -4338,7 +4373,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                               </div>
 
                               {/* Row 2: Owner & Last Interaction */}
-                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', fontSize: '0.7rem', color: 'var(--color-text-muted)', paddingTop: '8px', borderTop: '1px solid var(--color-border-light)' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', fontSize: '0.7rem', color: 'var(--color-text-muted)', paddingTop: '8px', borderTop: 'none' }}>
                                 <div 
                                   style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }}
                                   onClick={(e) => showUserCard(e, formData.owner_name)}
@@ -4401,9 +4436,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                           onClick={() => setActiveTab(tab.id)}
                                         >
                                           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                            <span style={{ color: 'var(--color-primary)', display: 'flex', alignItems: 'center' }}>
-                                              {tab.icon}
-                                            </span>
+                                            {renderColoredTabIcon(tab.id, tab.icon)}
                                             <span style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>{tab.label}</span>
                                           </div>
                                           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -4485,8 +4518,8 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                         onClick={() => setActiveTab(tab.id)}
                                         style={{ padding: '11px 0.875rem', fontSize: '0.85rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', gap: '8px' }}
                                       >
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                          {tab.icon}
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                          {renderColoredTabIcon(tab.id, tab.icon)}
                                           <span>{tab.label}</span>
                                         </div>
                                         {tab.id === 'tasks' && tasks.filter(t => !t.done).length > 0 && (
