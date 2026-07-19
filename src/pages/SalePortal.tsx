@@ -9443,6 +9443,21 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                           <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', marginTop: 4, marginBottom: 0, lineHeight: '1.45' }}>
                             {t('Nhận lead tự động trong ca đêm. Danh sách đăng ký tự reset vào lúc 6:00 sáng hôm sau.')}
                           </p>
+                          {nightShiftDeadline && (
+                            <span style={{
+                              fontSize: '0.72rem',
+                              fontWeight: 600,
+                              color: 'var(--color-text-muted)',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              marginTop: '6px',
+                              background: 'rgba(100, 116, 139, 0.08)',
+                              padding: '2px 8px',
+                              borderRadius: '4px'
+                            }}>
+                              {t('Hạn chót đăng ký:')} {nightShiftDeadline} {t('hôm nay')}
+                            </span>
+                          )}
                         </div>
                       </div>
 
@@ -9462,12 +9477,18 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                           <span style={{
                             fontSize: '0.8rem',
                             fontWeight: 700,
-                            color: nightShiftRegistered ? 'var(--color-success)' : 'var(--color-text-muted)',
-                            background: nightShiftRegistered ? 'rgba(16, 185, 129, 0.1)' : 'rgba(100, 116, 139, 0.08)',
+                            color: nightShiftRegistered 
+                              ? 'var(--color-success)' 
+                              : (nightShiftCanToggle ? 'var(--color-text-muted)' : 'var(--color-danger)'),
+                            background: nightShiftRegistered 
+                              ? 'rgba(16, 185, 129, 0.1)' 
+                              : (nightShiftCanToggle ? 'rgba(100, 116, 139, 0.08)' : 'var(--color-danger-light)'),
                             padding: '3px 8px',
                             borderRadius: '6px'
                           }}>
-                            {nightShiftRegistered ? t('Đã đăng ký trực') : t('Chưa đăng ký')}
+                            {nightShiftRegistered 
+                              ? t('Đã đăng ký trực') 
+                              : (nightShiftCanToggle ? t('Chưa đăng ký') : t('Đã hết hạn đăng ký'))}
                           </span>
                           {['sale', 'manager'].includes(String(effectiveRole).toLowerCase()) && (
                             <div style={{ opacity: nightShiftCanToggle ? 1 : 0.5, pointerEvents: nightShiftCanToggle ? 'auto' : 'none' }}>
@@ -9482,15 +9503,14 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
 
                       {!nightShiftCanToggle && (
                         <div style={{
-                          background: 'var(--color-warning-light)', color: 'var(--color-warning)', padding: '10px 14px',
-                          borderRadius: '10px', border: '1px solid rgba(245, 158, 11, 0.2)', fontSize: '0.78rem', display: 'flex', alignItems: 'center', gap: 8
+                          background: 'var(--color-danger-light)', color: 'var(--color-danger)', padding: '10px 14px',
+                          borderRadius: '10px', border: '1px solid rgba(239, 68, 68, 0.2)', fontSize: '0.78rem', display: 'flex', alignItems: 'center', gap: 8
                         }}>
                           <Info size={14} />
-                          <span>{t(`Đã quá ${sysSettings?.night_shift_start_time || '18:00'}. Bạn không thể thay đổi đăng ký trực ca đêm hôm nay.`)}</span>
+                          <span>{t(`Quá hạn đăng ký (${nightShiftDeadline}). Bạn không thể thay đổi đăng ký trực ca đêm hôm nay.`)}</span>
                         </div>
                       )}
                     </div>
-
                     {/* Weekend Shift Registration Card */}
                     {weekendShiftAllow && (
                       <div className="card" style={{
@@ -9529,92 +9549,133 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
 
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                           {/* Saturday */}
-                          {weekendShiftSat && (
-                            <div style={{
-                              display: 'flex',
-                              justifyContent: 'space-between',
-                              alignItems: 'center',
-                              background: 'var(--color-bg-alt)',
-                              padding: '10px 14px',
-                              borderRadius: '12px',
-                              border: '1px solid var(--color-border-light)'
-                            }}>
-                              <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                                <span style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text)' }}>
-                                  {t('Thứ Bảy')} ({new Date(weekendShiftSat.date).toLocaleDateString('vi-VN')})
-                                </span>
-                                <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)' }}>
-                                  {weekendShiftSat.deadline_time ? `${t('Hạn đăng ký:')} ${new Date(weekendShiftSat.deadline_time).toLocaleString('vi-VN')}` : ''}
-                                </span>
+                          {weekendShiftSat && (() => {
+                            const satWorkConfig = editWorkSchedule?.["6"] || editWorkSchedule?.[6];
+                            const isSatWorkday = satWorkConfig?.active;
+                            const satHours = isSatWorkday ? `${satWorkConfig.start} - ${satWorkConfig.end}` : '';
+
+                            return (
+                              <div style={{
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                alignItems: 'center',
+                                background: 'var(--color-bg-alt)',
+                                padding: '10px 14px',
+                                borderRadius: '12px',
+                                border: '1px solid var(--color-border-light)'
+                              }}>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                                  <span style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text)' }}>
+                                    {t('Thứ Bảy')} ({new Date(weekendShiftSat.date).toLocaleDateString('vi-VN')})
+                                  </span>
+                                  {isSatWorkday ? (
+                                    <span style={{
+                                      fontSize: '0.7rem',
+                                      fontWeight: 600,
+                                      color: 'var(--color-text-muted)',
+                                      background: 'rgba(100, 116, 139, 0.08)',
+                                      padding: '2px 8px',
+                                      borderRadius: '4px',
+                                      width: 'fit-content',
+                                      marginTop: '2px'
+                                    }}>
+                                      {t('Lịch hành chính:')} {satHours}
+                                    </span>
+                                  ) : (
+                                    <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)' }}>
+                                      {weekendShiftSat.deadline_time ? `${t('Hạn đăng ký:')} ${new Date(weekendShiftSat.deadline_time).toLocaleString('vi-VN')}` : ''}
+                                    </span>
+                                  )}
+                                </div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                  <span style={{
+                                    fontSize: '0.8rem',
+                                    fontWeight: 700,
+                                    color: weekendShiftSat.registered ? (weekendShiftSat.approved ? 'var(--color-success)' : 'var(--color-warning)') : 'var(--color-text-muted)',
+                                    background: weekendShiftSat.registered ? (weekendShiftSat.approved ? 'rgba(16, 185, 129, 0.1)' : 'rgba(245, 158, 11, 0.1)') : 'rgba(100, 116, 139, 0.08)',
+                                    padding: '3px 8px',
+                                    borderRadius: '6px'
+                                  }}>
+                                    {weekendShiftSat.registered ? (weekendShiftSat.approved ? t('Đã duyệt trực') : t('Chờ duyệt')) : t('Chưa đăng ký')}
+                                  </span>
+                                  {['sale', 'manager'].includes(String(effectiveRole).toLowerCase()) && (
+                                    <div style={{ opacity: weekendShiftSat.can_toggle ? 1 : 0.5, pointerEvents: weekendShiftSat.can_toggle ? 'auto' : 'none' }}>
+                                      <ToggleSwitch
+                                        checked={weekendShiftSat.registered}
+                                        onChange={() => handleToggleWeekendShift(weekendShiftSat.date, weekendShiftSat.registered)}
+                                      />
+                                    </div>
+                                  )}
+                                </div>
                               </div>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                <span style={{
-                                  fontSize: '0.8rem',
-                                  fontWeight: 700,
-                                  color: weekendShiftSat.registered ? (weekendShiftSat.approved ? 'var(--color-success)' : 'var(--color-warning)') : 'var(--color-text-muted)',
-                                  background: weekendShiftSat.registered ? (weekendShiftSat.approved ? 'rgba(16, 185, 129, 0.1)' : 'rgba(245, 158, 11, 0.1)') : 'rgba(100, 116, 139, 0.08)',
-                                  padding: '3px 8px',
-                                  borderRadius: '6px'
-                                }}>
-                                  {weekendShiftSat.registered ? (weekendShiftSat.approved ? t('Đã duyệt trực') : t('Chờ duyệt')) : t('Chưa đăng ký')}
-                                </span>
-                                {['sale', 'manager'].includes(String(effectiveRole).toLowerCase()) && (
-                                  <div style={{ opacity: weekendShiftSat.can_toggle ? 1 : 0.5, pointerEvents: weekendShiftSat.can_toggle ? 'auto' : 'none' }}>
-                                    <ToggleSwitch
-                                      checked={weekendShiftSat.registered}
-                                      onChange={() => handleToggleWeekendShift(weekendShiftSat.date, weekendShiftSat.registered)}
-                                    />
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-                          )}
+                            );
+                          })()}
 
                           {/* Sunday */}
-                          {weekendShiftSun && (
-                            <div style={{
-                              display: 'flex',
-                              justifyContent: 'space-between',
-                              alignItems: 'center',
-                              background: 'var(--color-bg-alt)',
-                              padding: '10px 14px',
-                              borderRadius: '12px',
-                              border: '1px solid var(--color-border-light)'
-                            }}>
-                              <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                                <span style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text)' }}>
-                                  {t('Chủ Nhật')} ({new Date(weekendShiftSun.date).toLocaleDateString('vi-VN')})
-                                </span>
-                                <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)' }}>
-                                  {weekendShiftSun.deadline_time ? `${t('Hạn đăng ký:')} ${new Date(weekendShiftSun.deadline_time).toLocaleString('vi-VN')}` : ''}
-                                </span>
+                          {weekendShiftSun && (() => {
+                            const sunWorkConfig = editWorkSchedule?.["7"] || editWorkSchedule?.[7];
+                            const isSunWorkday = sunWorkConfig?.active;
+                            const sunHours = isSunWorkday ? `${sunWorkConfig.start} - ${sunWorkConfig.end}` : '';
+
+                            return (
+                              <div style={{
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                alignItems: 'center',
+                                background: 'var(--color-bg-alt)',
+                                padding: '10px 14px',
+                                borderRadius: '12px',
+                                border: '1px solid var(--color-border-light)'
+                              }}>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                                  <span style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text)' }}>
+                                    {t('Chủ Nhật')} ({new Date(weekendShiftSun.date).toLocaleDateString('vi-VN')})
+                                  </span>
+                                  {isSunWorkday ? (
+                                    <span style={{
+                                      fontSize: '0.7rem',
+                                      fontWeight: 600,
+                                      color: 'var(--color-text-muted)',
+                                      background: 'rgba(100, 116, 139, 0.08)',
+                                      padding: '2px 8px',
+                                      borderRadius: '4px',
+                                      width: 'fit-content',
+                                      marginTop: '2px'
+                                    }}>
+                                      {t('Lịch hành chính:')} {sunHours}
+                                    </span>
+                                  ) : (
+                                    <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)' }}>
+                                      {weekendShiftSun.deadline_time ? `${t('Hạn đăng ký:')} ${new Date(weekendShiftSun.deadline_time).toLocaleString('vi-VN')}` : ''}
+                                    </span>
+                                  )}
+                                </div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                  <span style={{
+                                    fontSize: '0.8rem',
+                                    fontWeight: 700,
+                                    color: weekendShiftSun.registered ? (weekendShiftSun.approved ? 'var(--color-success)' : 'var(--color-warning)') : 'var(--color-text-muted)',
+                                    background: weekendShiftSun.registered ? (weekendShiftSun.approved ? 'rgba(16, 185, 129, 0.1)' : 'rgba(245, 158, 11, 0.1)') : 'rgba(100, 116, 139, 0.08)',
+                                    padding: '3px 8px',
+                                    borderRadius: '6px'
+                                  }}>
+                                    {weekendShiftSun.registered ? (weekendShiftSun.approved ? t('Đã duyệt trực') : t('Chờ duyệt')) : t('Chưa đăng ký')}
+                                  </span>
+                                  {['sale', 'manager'].includes(String(effectiveRole).toLowerCase()) && (
+                                    <div style={{ opacity: weekendShiftSun.can_toggle ? 1 : 0.5, pointerEvents: weekendShiftSun.can_toggle ? 'auto' : 'none' }}>
+                                      <ToggleSwitch
+                                        checked={weekendShiftSun.registered}
+                                        onChange={() => handleToggleWeekendShift(weekendShiftSun.date, weekendShiftSun.registered)}
+                                      />
+                                    </div>
+                                  )}
+                                </div>
                               </div>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                <span style={{
-                                  fontSize: '0.8rem',
-                                  fontWeight: 700,
-                                  color: weekendShiftSun.registered ? (weekendShiftSun.approved ? 'var(--color-success)' : 'var(--color-warning)') : 'var(--color-text-muted)',
-                                  background: weekendShiftSun.registered ? (weekendShiftSun.approved ? 'rgba(16, 185, 129, 0.1)' : 'rgba(245, 158, 11, 0.1)') : 'rgba(100, 116, 139, 0.08)',
-                                  padding: '3px 8px',
-                                  borderRadius: '6px'
-                                }}>
-                                  {weekendShiftSun.registered ? (weekendShiftSun.approved ? t('Đã duyệt trực') : t('Chờ duyệt')) : t('Chưa đăng ký')}
-                                </span>
-                                {['sale', 'manager'].includes(String(effectiveRole).toLowerCase()) && (
-                                  <div style={{ opacity: weekendShiftSun.can_toggle ? 1 : 0.5, pointerEvents: weekendShiftSun.can_toggle ? 'auto' : 'none' }}>
-                                    <ToggleSwitch
-                                      checked={weekendShiftSun.registered}
-                                      onChange={() => handleToggleWeekendShift(weekendShiftSun.date, weekendShiftSun.registered)}
-                                    />
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-                          )}
+                            );
+                          })()}
                         </div>
                       </div>
                     )}
-
                     {/* Holiday Shift Registration Card */}
                     {holidayShifts.length > 0 && (
                       <div className="card" style={{
@@ -10084,43 +10145,36 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                     </p>
                   </div>
 
-
-
                   {scheduleMode === 'daily' ? (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-                        <div style={{ flex: 1 }}>
-                          <label className="form-label" style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', display: 'block', marginBottom: '6px', fontWeight: 600 }}>
-                            {t('Bắt đầu làm việc')}
-                          </label>
-                          <input
-                            type="time"
-                            className="form-input"
-                            value={editWorkStartTime}
-                            disabled={true}
-                            style={{ fontSize: '1.1rem', fontWeight: 700, textAlign: 'center', letterSpacing: '0.05em', background: 'var(--color-bg-alt)', cursor: 'default' }}
-                          />
-                        </div>
-                        <div style={{ fontSize: '1.5rem', color: 'var(--color-text-muted)', paddingTop: '20px' }}>→</div>
-                        <div style={{ flex: 1 }}>
-                          <label className="form-label" style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', display: 'block', marginBottom: '6px', fontWeight: 600 }}>
-                            {t('Kết thúc làm việc')}
-                          </label>
-                          <input
-                            type="time"
-                            className="form-input"
-                            value={editWorkEndTime}
-                            disabled={true}
-                            style={{ fontSize: '1.1rem', fontWeight: 700, textAlign: 'center', letterSpacing: '0.05em', background: 'var(--color-bg-alt)', cursor: 'default' }}
-                          />
-                        </div>
-                      </div>
-                      <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', margin: 0, lineHeight: 1.4 }}>
-                        💡 {t('Lưu ý: Thời gian làm việc của bạn do Ban Quản Trị thiết lập quy định.')}
-                      </p>
+                    <div style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      background: 'var(--color-primary-light)',
+                      padding: '12px 16px',
+                      borderRadius: '12px',
+                      border: '1px solid rgba(189, 29, 45, 0.1)'
+                    }}>
+                      <span style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)' }}>
+                        {t('Tất cả các ngày trong tuần')}
+                      </span>
+                      <span style={{
+                        fontSize: '0.875rem',
+                        fontWeight: 700,
+                        color: 'var(--color-primary)',
+                        background: 'var(--color-surface)',
+                        padding: '6px 12px',
+                        borderRadius: '20px',
+                        boxShadow: 'var(--shadow-sm)',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '6px'
+                      }}>
+                        {editWorkStartTime} - {editWorkEndTime}
+                      </span>
                     </div>
                   ) : (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '10px' }}>
                       {Object.entries(DAY_LABELS).map(([dayKey, dayLabel]) => {
                         const config = editWorkSchedule[dayKey] || { active: true, start: editWorkStartTime, end: editWorkEndTime };
                         const isActive = config.active;
@@ -10129,58 +10183,47 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                           <div
                             key={dayKey}
                             style={{
-                              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                              padding: '10px 14px', borderRadius: '12px', border: '1px solid var(--color-border-light)',
-                              background: isActive ? 'var(--color-surface)' : 'var(--color-bg)',
-                              transition: 'all 0.2s',
-                              boxShadow: isActive ? 'var(--shadow-xs)' : 'none',
-                              opacity: isActive ? 1 : 0.8
+                              display: 'flex',
+                              justifyContent: 'space-between',
+                              alignItems: 'center',
+                              padding: '10px 14px',
+                              borderRadius: '12px',
+                              border: isActive ? '1px solid var(--color-border-light)' : '1px dashed var(--color-border-light)',
+                              background: isActive ? 'var(--color-surface)' : 'var(--color-bg-alt)',
+                              opacity: isActive ? 1 : 0.65,
+                              transition: 'all 0.2s'
                             }}
                           >
-                            {/* Day Label with disabled checkbox */}
-                            <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'default', margin: 0, userSelect: 'none' }}>
-                              <input
-                                type="checkbox"
-                                className="custom-checkbox"
-                                checked={isActive}
-                                disabled={true}
-                                style={{ cursor: 'default' }}
-                              />
-                              <span style={{ fontWeight: 700, fontSize: '0.9rem', color: isActive ? 'var(--color-text)' : 'var(--color-text-muted)' }}>
-                                {t(dayLabel)}
-                              </span>
-                            </label>
+                            <span style={{ fontWeight: 700, fontSize: '0.875rem', color: isActive ? 'var(--color-text)' : 'var(--color-text-muted)' }}>
+                              {t(dayLabel)}
+                            </span>
 
-                            {/* Day Hour Inputs / Offline badge */}
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                              {isActive ? (
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                  <input
-                                    type="time"
-                                    className="form-input"
-                                    style={{ width: '92px', height: '34px', fontSize: '0.8rem', padding: '0 6px', textAlign: 'center', borderRadius: '6px', background: 'var(--color-bg-alt)', cursor: 'default' }}
-                                    value={config.start || editWorkStartTime}
-                                    disabled={true}
-                                  />
-                                  <span style={{ color: 'var(--color-text-muted)', fontSize: '0.8rem' }}>-</span>
-                                  <input
-                                    type="time"
-                                    className="form-input"
-                                    style={{ width: '92px', height: '34px', fontSize: '0.8rem', padding: '0 6px', textAlign: 'center', borderRadius: '6px', background: 'var(--color-bg-alt)', cursor: 'default' }}
-                                    value={config.end || editWorkEndTime}
-                                    disabled={true}
-                                  />
-                                </div>
-                              ) : (
-                                <span style={{
-                                  padding: '2px 8px', borderRadius: '6px', fontSize: '0.725rem', fontWeight: 700,
-                                  background: 'var(--color-danger-light)',
-                                  color: 'var(--color-danger)'
-                                }}>
-                                  {t('Nghỉ')}
-                                </span>
-                              )}
-                            </div>
+                            {isActive ? (
+                              <span style={{
+                                fontSize: '0.8rem',
+                                fontWeight: 700,
+                                color: 'var(--color-primary)',
+                                background: 'var(--color-primary-light)',
+                                padding: '4px 10px',
+                                borderRadius: '20px',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '4px'
+                              }}>
+                                {config.start || editWorkStartTime} - {config.end || editWorkEndTime}
+                              </span>
+                            ) : (
+                              <span style={{
+                                padding: '4px 10px',
+                                borderRadius: '20px',
+                                fontSize: '0.75rem',
+                                fontWeight: 700,
+                                background: 'rgba(100, 116, 139, 0.08)',
+                                color: 'var(--color-text-muted)'
+                              }}>
+                                {t('Nghỉ')}
+                              </span>
+                            )}
                           </div>
                         );
                       })}
