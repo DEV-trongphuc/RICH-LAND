@@ -1118,10 +1118,13 @@ export default function ProjectsPage() {
             gap: '8px',
             background: 'rgba(100, 116, 139, 0.05)',
             border: '1px solid rgba(100, 116, 139, 0.12)',
-            padding: '6px 12px',
+            padding: '0 12px',
             borderRadius: '10px',
             fontSize: '0.825rem',
-            transition: 'all 0.2s ease'
+            transition: 'all 0.2s ease',
+            height: '32px',
+            boxSizing: 'border-box',
+            fontFamily: 'inherit'
           }}
           onMouseEnter={e => {
             e.currentTarget.style.background = 'rgba(100, 116, 139, 0.08)';
@@ -1171,11 +1174,14 @@ export default function ProjectsPage() {
           display: 'inline-flex', 
           alignItems: 'center', 
           gap: '8px',
-          padding: '6px 12px',
+          padding: '0 12px',
           borderRadius: '10px',
           fontSize: '0.825rem',
           transition: 'all 0.2s ease',
-          outline: 'none'
+          outline: 'none',
+          height: '32px',
+          boxSizing: 'border-box',
+          fontFamily: 'inherit'
         }}
         onMouseEnter={e => {
           e.currentTarget.style.background = 'rgba(100, 116, 139, 0.08)';
@@ -1186,7 +1192,7 @@ export default function ProjectsPage() {
           e.currentTarget.style.borderColor = 'rgba(100, 116, 139, 0.12)';
         }}
       >
-        <Folder size={14} color="#f59e0b" fill="#f59e0b" />
+        <Folder size={14} color="#f59e0b" fill="#f59e0b" style={{ flexShrink: 0 }} />
         <span>{path}</span>
       </button>
     );
