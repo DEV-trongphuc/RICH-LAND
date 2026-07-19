@@ -10,6 +10,7 @@ import { useUIStore } from '../../store/uiStore';
 import { Avatar } from './Avatar';
 import { numberToVietnameseText } from '../../utils/numberToText';
 import { useAuth } from '../../contexts/AuthContext';
+import { compressToWebP } from '../../utils/imageCompress';
 
 interface Props {
   isOpen: boolean;
@@ -46,6 +47,35 @@ export const CreateExpenseModal: React.FC<Props> = ({ isOpen, onClose, initialEn
     image_url: '',
   });
   const [loading, setLoading] = useState(false);
+  const [uploadingImg, setUploadingImg] = useState(false);
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploadingImg(true);
+    try {
+      const compressedFile = await compressToWebP(file);
+      const uploadData = new FormData();
+      uploadData.append('file', compressedFile);
+      if (formData.image_url) {
+        uploadData.append('previous_url', formData.image_url);
+      }
+      const res = await api.post('/upload', uploadData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      if (res.data && res.data.success && res.data.data?.url) {
+        setFormData(prev => ({ ...prev, image_url: res.data.data.url }));
+        addToast('Tải lên và nén ảnh hóa đơn thành công!', 'success');
+      } else {
+        addToast('Tải ảnh thất bại', 'error');
+      }
+    } catch (err: any) {
+      addToast('Lỗi khi nén & tải ảnh: ' + (err.message || err), 'error');
+    } finally {
+      setUploadingImg(false);
+    }
+  };
 
   // Entities selection
   const [selectedContacts, setSelectedContacts] = useState<any[]>([]);
@@ -547,15 +577,98 @@ export const CreateExpenseModal: React.FC<Props> = ({ isOpen, onClose, initialEn
               )}
             </div>
 
-            {/* Receipt Image link */}
+            {/* Receipt Image link & Upload */}
             <div className="form-group" style={{ marginTop: '0.5rem' }}>
-              <label className="form-label">Link ảnh chụp hóa đơn / chứng từ đính kèm</label>
-              <input
-                className="form-input"
-                placeholder="https://imgur.com/..., https://uploads/..."
-                value={formData.image_url}
-                onChange={e => setFormData({ ...formData, image_url: e.target.value })}
-              />
+              <label className="form-label" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span>Ảnh chụp hóa đơn / chứng từ đính kèm</span>
+                {formData.image_url && (
+                  <button 
+                    type="button" 
+                    className="btn-icon-bare text-danger" 
+                    onClick={() => setFormData(prev => ({ ...prev, image_url: '' }))}
+                    style={{ fontSize: '0.75rem', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '4px', cursor: 'pointer', padding: 0 }}
+                  >
+                    Xóa ảnh
+                  </button>
+                )}
+              </label>
+              
+              {formData.image_url ? (
+                /* Image Preview Mode */
+                <div style={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  gap: '12px', 
+                  padding: '10px', 
+                  border: '1px solid var(--color-border-light)', 
+                  borderRadius: '10px',
+                  background: 'var(--color-bg-alt)',
+                  position: 'relative'
+                }}>
+                  <img 
+                    src={formData.image_url.startsWith('http') ? formData.image_url : `${import.meta.env.VITE_API_URL || '/backend'}/${formData.image_url.replace(/^\//, '')}`} 
+                    alt="Hóa đơn đính kèm" 
+                    style={{ 
+                      width: '64px', 
+                      height: '64px', 
+                      borderRadius: '8px', 
+                      objectFit: 'cover',
+                      border: '1px solid var(--color-border)'
+                    }} 
+                  />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <p style={{ margin: 0, fontSize: '0.8rem', fontWeight: 700, color: 'var(--color-text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      Đã tải lên ảnh hóa đơn
+                    </p>
+                    <a 
+                      href={formData.image_url.startsWith('http') ? formData.image_url : `${import.meta.env.VITE_API_URL || '/backend'}/${formData.image_url.replace(/^\//, '')}`}
+                      target="_blank" 
+                      rel="noopener noreferrer" 
+                      style={{ fontSize: '0.75rem', color: 'var(--color-primary)', fontWeight: 600, textDecoration: 'underline' }}
+                    >
+                      Xem ảnh gốc
+                    </a>
+                  </div>
+                </div>
+              ) : (
+                /* Upload Button / Drag Drop */
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <input
+                    type="text"
+                    className="form-input"
+                    placeholder="Dán link ảnh hoặc tải lên file bên cạnh..."
+                    value={formData.image_url}
+                    onChange={e => setFormData({ ...formData, image_url: e.target.value })}
+                    style={{ flex: 1 }}
+                  />
+                  <label style={{ 
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '6px',
+                    height: '38px',
+                    padding: '0 16px',
+                    borderRadius: '8px',
+                    border: '1px dashed var(--color-border)',
+                    background: 'var(--color-surface)',
+                    color: 'var(--color-text)',
+                    fontSize: '0.8rem',
+                    fontWeight: 700,
+                    cursor: uploadingImg ? 'not-allowed' : 'pointer',
+                    whiteSpace: 'nowrap',
+                    transition: 'all 0.15s ease'
+                  }}>
+                    <input 
+                      type="file" 
+                      accept="image/*" 
+                      onChange={handleImageUpload} 
+                      style={{ display: 'none' }} 
+                      disabled={uploadingImg}
+                    />
+                    {uploadingImg ? 'Đang tải lên...' : 'Tải ảnh lên'}
+                  </label>
+                </div>
+              )}
             </div>
             </fieldset>
           </div>
