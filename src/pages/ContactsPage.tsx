@@ -290,6 +290,15 @@ export const ContactsPage: React.FC = () => {
       newParams.delete('status');
       setSearchParams(newParams, { replace: true });
     }
+
+    const projectIdParam = searchParams.get('project_id');
+    if (projectIdParam) {
+      setFilterProjectId(projectIdParam);
+      setActiveFilters(prev => ({ ...prev, projectId: projectIdParam }));
+      const newParams = new URLSearchParams(searchParams);
+      newParams.delete('project_id');
+      setSearchParams(newParams, { replace: true });
+    }
   }, [searchParams, setSearchParams]);
 
   useEffect(() => {

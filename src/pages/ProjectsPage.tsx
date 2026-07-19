@@ -1067,26 +1067,26 @@ export default function ProjectsPage() {
           target="_blank" 
           rel="noopener noreferrer" 
           style={{ 
-            color: 'var(--color-primary)', 
+            color: '#64748b', 
             textDecoration: 'none', 
             fontWeight: 700, 
             display: 'inline-flex', 
             alignItems: 'center', 
             gap: '8px',
-            background: 'rgba(163, 20, 34, 0.05)',
-            border: '1px solid rgba(163, 20, 34, 0.15)',
+            background: 'rgba(100, 116, 139, 0.05)',
+            border: '1px solid rgba(100, 116, 139, 0.12)',
             padding: '6px 12px',
             borderRadius: '10px',
             fontSize: '0.825rem',
             transition: 'all 0.2s ease'
           }}
           onMouseEnter={e => {
-            e.currentTarget.style.background = 'rgba(163, 20, 34, 0.08)';
-            e.currentTarget.style.borderColor = 'rgba(163, 20, 34, 0.2)';
+            e.currentTarget.style.background = 'rgba(100, 116, 139, 0.08)';
+            e.currentTarget.style.borderColor = 'rgba(100, 116, 139, 0.2)';
           }}
           onMouseLeave={e => {
-            e.currentTarget.style.background = 'rgba(163, 20, 34, 0.05)';
-            e.currentTarget.style.borderColor = 'rgba(163, 20, 34, 0.15)';
+            e.currentTarget.style.background = 'rgba(100, 116, 139, 0.05)';
+            e.currentTarget.style.borderColor = 'rgba(100, 116, 139, 0.12)';
           }}
         >
           <HardDrive size={14} />
@@ -1107,9 +1107,9 @@ export default function ProjectsPage() {
           }
         }}
         style={{ 
-          color: 'var(--color-primary)', 
-          border: '1px solid rgba(163, 20, 34, 0.15)',
-          background: 'rgba(163, 20, 34, 0.05)',
+          color: '#64748b', 
+          border: '1px solid rgba(100, 116, 139, 0.12)',
+          background: 'rgba(100, 116, 139, 0.05)',
           cursor: 'pointer',
           fontWeight: 700, 
           display: 'inline-flex', 
@@ -1122,12 +1122,12 @@ export default function ProjectsPage() {
           outline: 'none'
         }}
         onMouseEnter={e => {
-          e.currentTarget.style.background = 'rgba(163, 20, 34, 0.08)';
-          e.currentTarget.style.borderColor = 'rgba(163, 20, 34, 0.2)';
+          e.currentTarget.style.background = 'rgba(100, 116, 139, 0.08)';
+          e.currentTarget.style.borderColor = 'rgba(100, 116, 139, 0.2)';
         }}
         onMouseLeave={e => {
-          e.currentTarget.style.background = 'rgba(163, 20, 34, 0.05)';
-          e.currentTarget.style.borderColor = 'rgba(163, 20, 34, 0.15)';
+          e.currentTarget.style.background = 'rgba(100, 116, 139, 0.05)';
+          e.currentTarget.style.borderColor = 'rgba(100, 116, 139, 0.12)';
         }}
       >
         <Folder size={14} />
@@ -1144,10 +1144,38 @@ export default function ProjectsPage() {
             {/* KPI Summary Cards */}
             {projectStats && (
               <div className="responsive-grid-4" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.75rem', marginBottom: '0.5rem' }}>
-                <div className="stat-card" style={{ display: 'flex', flexDirection: 'column', padding: '0.75rem 1rem', background: '#ffffff', border: '1px solid var(--color-border-light)', borderRadius: '12px', boxShadow: '0 4px 20px rgba(0,0,0,0.02)' }}>
+                <div 
+                  className="stat-card" 
+                  onClick={user && ['admin', 'superadmin', 'super_admin', 'director'].includes(user.role) ? () => {
+                    if (editingProject?.id) {
+                      navigate(`/contacts?project_id=${editingProject.id}`);
+                    }
+                  } : undefined}
+                  style={{ 
+                    display: 'flex', 
+                    flexDirection: 'column', 
+                    padding: '0.75rem 1rem', 
+                    background: '#ffffff', 
+                    border: '1px solid var(--color-border-light)', 
+                    borderRadius: '12px', 
+                    boxShadow: '0 4px 20px rgba(0,0,0,0.02)',
+                    cursor: user && ['admin', 'superadmin', 'super_admin', 'director'].includes(user.role) ? 'pointer' : 'default',
+                    transition: 'all 0.2s ease'
+                  }}
+                  onMouseEnter={user && ['admin', 'superadmin', 'super_admin', 'director'].includes(user.role) ? e => {
+                    e.currentTarget.style.transform = 'translateY(-2px)';
+                    e.currentTarget.style.boxShadow = '0 6px 24px rgba(0,0,0,0.04)';
+                    e.currentTarget.style.borderColor = 'var(--color-primary-light)';
+                  } : undefined}
+                  onMouseLeave={user && ['admin', 'superadmin', 'super_admin', 'director'].includes(user.role) ? e => {
+                    e.currentTarget.style.transform = 'none';
+                    e.currentTarget.style.boxShadow = '0 4px 20px rgba(0,0,0,0.02)';
+                    e.currentTarget.style.borderColor = 'var(--color-border-light)';
+                  } : undefined}
+                >
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
                     <span className="stat-label" style={{ fontSize: '0.6875rem', fontWeight: 600, color: 'var(--color-text-muted)', opacity: 0.85, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Tổng Giao dịch</span>
-                    <div style={{ width: '28px', height: '28px', borderRadius: '8px', background: 'rgba(163, 20, 34, 0.08)', color: 'var(--color-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Layers size={14} /></div>
+                    <div style={{ width: '28px', height: '28px', borderRadius: '8px', background: 'rgba(100, 116, 139, 0.08)', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Layers size={14} /></div>
                   </div>
                   <div>
                     <div className="stat-value" style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--color-text)', lineHeight: 1 }}>
@@ -1218,9 +1246,9 @@ export default function ProjectsPage() {
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                     <div style={{
                       padding: '8px',
-                      background: 'rgba(163, 20, 34, 0.08)',
+                      background: 'rgba(100, 116, 139, 0.08)',
                       borderRadius: '10px',
-                      color: 'var(--color-primary)',
+                      color: 'var(--color-text-muted)',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center'
@@ -1268,11 +1296,11 @@ export default function ProjectsPage() {
                                   display: 'inline-flex',
                                   alignItems: 'center',
                                   gap: '8px',
-                                  background: isGoogleSheets ? 'rgba(16, 185, 129, 0.05)' : 'rgba(163, 20, 34, 0.05)',
-                                  border: isGoogleSheets ? '1px solid rgba(16, 185, 129, 0.1)' : '1px solid rgba(163, 20, 34, 0.15)',
+                                  background: isGoogleSheets ? 'rgba(16, 185, 129, 0.05)' : 'rgba(100, 116, 139, 0.05)',
+                                  border: isGoogleSheets ? '1px solid rgba(16, 185, 129, 0.1)' : '1px solid rgba(100, 116, 139, 0.12)',
                                   padding: '8px 14px',
                                   borderRadius: '12px',
-                                  color: isGoogleSheets ? '#10b981' : 'var(--color-primary)',
+                                  color: isGoogleSheets ? '#10b981' : '#64748b',
                                   textDecoration: 'none',
                                   fontWeight: 700,
                                   fontSize: '0.825rem',
@@ -1280,13 +1308,13 @@ export default function ProjectsPage() {
                                   boxShadow: '0 2px 4px rgba(0,0,0,0.01)'
                                 }}
                                 onMouseEnter={e => {
-                                  e.currentTarget.style.background = isGoogleSheets ? 'rgba(16, 185, 129, 0.1)' : 'rgba(163, 20, 34, 0.1)';
-                                  e.currentTarget.style.borderColor = isGoogleSheets ? 'rgba(16, 185, 129, 0.2)' : 'rgba(163, 20, 34, 0.2)';
+                                  e.currentTarget.style.background = isGoogleSheets ? 'rgba(16, 185, 129, 0.1)' : 'rgba(100, 116, 139, 0.08)';
+                                  e.currentTarget.style.borderColor = isGoogleSheets ? 'rgba(16, 185, 129, 0.2)' : 'rgba(100, 116, 139, 0.2)';
                                   e.currentTarget.style.transform = 'translateY(-1px)';
                                 }}
                                 onMouseLeave={e => {
-                                  e.currentTarget.style.background = isGoogleSheets ? 'rgba(16, 185, 129, 0.05)' : 'rgba(163, 20, 34, 0.05)';
-                                  e.currentTarget.style.borderColor = isGoogleSheets ? '1px solid rgba(16, 185, 129, 0.1)' : '1px solid rgba(163, 20, 34, 0.1)';
+                                  e.currentTarget.style.background = isGoogleSheets ? 'rgba(16, 185, 129, 0.05)' : 'rgba(100, 116, 139, 0.05)';
+                                  e.currentTarget.style.borderColor = isGoogleSheets ? '1px solid rgba(16, 185, 129, 0.1)' : 'rgba(100, 116, 139, 0.12)';
                                   e.currentTarget.style.transform = 'none';
                                 }}
                               >
@@ -1320,9 +1348,9 @@ export default function ProjectsPage() {
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                     <div style={{
                       padding: '8px',
-                      background: 'rgba(163, 20, 34, 0.08)',
+                      background: 'rgba(100, 116, 139, 0.08)',
                       borderRadius: '10px',
-                      color: 'var(--color-primary)',
+                      color: 'var(--color-text-muted)',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center'
@@ -1462,9 +1490,9 @@ export default function ProjectsPage() {
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                     <div style={{
                       padding: '8px',
-                      background: 'rgba(163, 20, 34, 0.08)',
+                      background: 'rgba(100, 116, 139, 0.08)',
                       borderRadius: '10px',
-                      color: 'var(--color-primary)',
+                      color: 'var(--color-text-muted)',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center'
@@ -1500,9 +1528,9 @@ export default function ProjectsPage() {
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                     <div style={{
                       padding: '8px',
-                      background: 'rgba(163, 20, 34, 0.08)',
+                      background: 'rgba(100, 116, 139, 0.08)',
                       borderRadius: '10px',
-                      color: 'var(--color-primary)',
+                      color: 'var(--color-text-muted)',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center'
@@ -1601,7 +1629,7 @@ export default function ProjectsPage() {
                               </div>
                             )}
                           </div>
-                          <span style={{ fontSize: '0.78rem', fontWeight: 800, color: 'var(--color-primary)', marginLeft: '10px' }}>
+                          <span style={{ fontSize: '0.78rem', fontWeight: 800, color: 'var(--color-text-muted)', marginLeft: '10px' }}>
                             ({projectRoster.length} nhân sự)
                           </span>
                         </div>
@@ -1624,9 +1652,9 @@ export default function ProjectsPage() {
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                     <div style={{
                       padding: '8px',
-                      background: 'rgba(189, 29, 45, 0.08)',
+                      background: 'rgba(100, 116, 139, 0.08)',
                       borderRadius: '10px',
-                      color: 'var(--color-primary)',
+                      color: 'var(--color-text-muted)',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center'
@@ -1664,13 +1692,13 @@ export default function ProjectsPage() {
                                 padding: '8px 12px',
                                 borderRadius: '10px',
                                 border: '1px solid var(--color-border-light)',
-                                color: 'var(--color-primary)',
+                                color: '#64748b',
                                 cursor: 'pointer',
                                 transition: 'all 0.2s ease'
                               }}
                               className="hover-lift"
                               onMouseEnter={e => {
-                                e.currentTarget.style.borderColor = 'var(--color-primary-light)';
+                                  e.currentTarget.style.borderColor = 'rgba(100, 116, 139, 0.2)';
                                 e.currentTarget.style.background = '#ffffff';
                               }}
                               onMouseLeave={e => {
@@ -1702,9 +1730,9 @@ export default function ProjectsPage() {
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                     <div style={{
                       padding: '8px',
-                      background: 'rgba(163, 20, 34, 0.08)',
+                      background: 'rgba(100, 116, 139, 0.08)',
                       borderRadius: '10px',
-                      color: 'var(--color-primary)',
+                      color: 'var(--color-text-muted)',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center'
@@ -1740,9 +1768,9 @@ export default function ProjectsPage() {
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                     <div style={{
                       padding: '8px',
-                      background: 'rgba(163, 20, 34, 0.08)',
+                      background: 'rgba(100, 116, 139, 0.08)',
                       borderRadius: '10px',
-                      color: 'var(--color-primary)',
+                      color: 'var(--color-text-muted)',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center'
@@ -1767,7 +1795,7 @@ export default function ProjectsPage() {
                             target="_blank"
                             rel="noopener noreferrer"
                             style={{ 
-                              color: 'var(--color-primary)', 
+                              color: '#64748b', 
                               textDecoration: 'none', 
                               display: 'inline-flex', 
                               alignItems: 'center', 
@@ -1781,7 +1809,7 @@ export default function ProjectsPage() {
                               transition: 'all 0.2s ease'
                             }}
                             onMouseEnter={e => {
-                              e.currentTarget.style.borderColor = 'var(--color-primary-light)';
+                              e.currentTarget.style.borderColor = 'rgba(100, 116, 139, 0.2)';
                               e.currentTarget.style.background = '#ffffff';
                             }}
                             onMouseLeave={e => {
@@ -1811,9 +1839,9 @@ export default function ProjectsPage() {
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                     <div style={{
                       padding: '8px',
-                      background: 'rgba(163, 20, 34, 0.08)',
+                      background: 'rgba(100, 116, 139, 0.08)',
                       borderRadius: '10px',
-                      color: 'var(--color-primary)',
+                      color: 'var(--color-text-muted)',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center'
