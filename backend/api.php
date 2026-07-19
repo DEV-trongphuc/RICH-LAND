@@ -577,7 +577,7 @@ if (!in_array($action, $publicActions)) {
         'get_night_shift_status', 'register_night_shift',
         'get_weekend_shift_status', 'register_weekend_shift',
         'get_holiday_shift_status', 'register_holiday_shift',
-        'register_weekly_shifts'
+        'register_weekly_shifts', 'get_connections'
     ], true)) {
         $resolvedScope = 'all';
     }
