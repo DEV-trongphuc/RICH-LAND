@@ -2283,6 +2283,18 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
       }
 
       if (tabToLoad === 'deals' || tabToLoad === 'cooperation') {
+        api.get(`/cloud-files?contact_id=${contact.id}&limit=1000`)
+          .then(res => {
+            const docsData = res.data.data?.items || [];
+            const mappedDocs = docsData.map((d: any) => ({
+              id: d.id,
+              name: d.name,
+              category: d.category
+            }));
+            setDocs(mappedDocs);
+          })
+          .catch(err => console.error("Error pre-fetching cloud-files for cooperation check:", err));
+
         const depositsRes = await api.get(`/deposits?contact_id=${contact.id}`);
         const depositsList = (depositsRes.data.data || []).map((d: any) => ({
           id: d.id,
@@ -6025,28 +6037,71 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                             flexDirection: 'column',
                             gap: '8px'
                           }}>
-                            {coopEligibleStatuses.length > 0 && (
-                              <div style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', display: 'flex', gap: '6px', alignItems: 'flex-start' }}>
-                                <span style={{ color: 'var(--color-primary)', fontWeight: 'bold' }}>•</span>
-                                <span>
-                                  Trạng thái được tạo: <strong>
-                                    {coopEligibleStatuses.map(s => {
-                                      const found = pipelineStages?.find(stage => stage.id === s);
-                                      return found ? found.name : s;
-                                    }).join(', ')}
-                                  </strong>
-                                </span>
-                              </div>
-                            )}
-                            
-                            {coopDefaultFiles.length > 0 && (
-                              <div style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', display: 'flex', gap: '6px', alignItems: 'flex-start' }}>
-                                <span style={{ color: 'var(--color-primary)', fontWeight: 'bold' }}>•</span>
-                                <span>
-                                  Tài liệu đính kèm bắt buộc: <strong>{coopDefaultFiles.join(', ')}</strong>
-                                </span>
-                              </div>
-                            )}
+                            {(() => {
+                              const currentStatus = baseData?.pipeline_status || contact?.pipeline_status || 'chua_xac_dinh';
+                              const isStatusOk = coopEligibleStatuses.includes(currentStatus);
+                              
+                              const checkCoopFileExists = (fileKeyword: string) => {
+                                const cleanKeyword = fileKeyword.split('.')[0].toLowerCase().trim();
+                                if (!cleanKeyword) return false;
+                                const coopFiles = coopSlip?.attachment_url ? coopSlip.attachment_url.split(',') : [];
+                                let exists = coopFiles.some((f: string) => {
+                                  const filename = f.split('/').pop() || '';
+                                  const lower = filename.toLowerCase();
+                                  if (cleanKeyword === 'unc' || cleanKeyword === 'uy nhiem chi' || cleanKeyword === 'ủy nhiệm chi') {
+                                    return lower.includes('unc') || lower.includes('uy nhiem chi') || lower.includes('ủy nhiệm chi');
+                                  }
+                                  return lower.includes(cleanKeyword);
+                                });
+                                if (!exists && Array.isArray(docs)) {
+                                  exists = docs.some((d: any) => {
+                                    const lower = d.name.toLowerCase();
+                                    if (cleanKeyword === 'unc' || cleanKeyword === 'uy nhiem chi' || cleanKeyword === 'ủy nhiệm chi') {
+                                      return lower.includes('unc') || lower.includes('uy nhiem chi') || lower.includes('ủy nhiệm chi');
+                                    }
+                                    return lower.includes(cleanKeyword);
+                                  });
+                                }
+                                return exists;
+                              };
+                              
+                              const isDocsOk = coopDefaultFiles.length === 0 || coopDefaultFiles.every(f => checkCoopFileExists(f));
+                              
+                              return (
+                                <>
+                                  {coopEligibleStatuses.length > 0 && (
+                                    <div style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', display: 'flex', gap: '6px', alignItems: 'flex-start' }}>
+                                      {isStatusOk ? (
+                                        <CheckCircle2 size={14} style={{ color: 'var(--color-success)', flexShrink: 0, marginTop: '2px' }} />
+                                      ) : (
+                                        <span style={{ color: 'var(--color-primary)', fontWeight: 'bold' }}>•</span>
+                                      )}
+                                      <span>
+                                        Trạng thái được tạo: <strong>
+                                          {coopEligibleStatuses.map(s => {
+                                            const found = pipelineStages?.find(stage => stage.id === s);
+                                            return found ? found.name : s;
+                                          }).join(', ')}
+                                        </strong>
+                                      </span>
+                                    </div>
+                                  )}
+                                  
+                                  {coopDefaultFiles.length > 0 && (
+                                    <div style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', display: 'flex', gap: '6px', alignItems: 'flex-start' }}>
+                                      {isDocsOk ? (
+                                        <CheckCircle2 size={14} style={{ color: 'var(--color-success)', flexShrink: 0, marginTop: '2px' }} />
+                                      ) : (
+                                        <span style={{ color: 'var(--color-primary)', fontWeight: 'bold' }}>•</span>
+                                      )}
+                                      <span>
+                                        Tài liệu đính kèm bắt buộc: <strong>{coopDefaultFiles.join(', ')}</strong>
+                                      </span>
+                                    </div>
+                                  )}
+                                </>
+                              );
+                            })()}
                           </div>
 
                           {!isViewer && (
