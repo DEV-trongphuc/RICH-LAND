@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
-  X, Camera, ChevronDown, ChevronUp, Save, Trash2, Download, 
+  X, Camera, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Save, Trash2, Download, 
   Paperclip, Loader2, Eye, EyeOff, User, Shield, Info, Send, 
   Link2Off, RefreshCw, KeyRound, Building2, Calendar, Clock, Plus, FileText,
   CreditCard, PhoneCall, Lock, Search, Check, Award, AlertCircle
@@ -148,7 +148,7 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  const [activeTab, setActiveTab] = useState<'personal' | 'erp' | 'account' | 'bank' | 'emergency' | 'schedule' | 'documents' | 'certificates' | 'hr_records'>('personal');
+  const [activeTab, setActiveTab] = useState<'personal' | 'erp' | 'account' | 'bank' | 'emergency' | 'schedule' | 'documents' | 'certificates' | 'hr_records' | ''>(() => window.innerWidth <= 1024 ? '' : 'personal');
   const [addressTemporary, setAddressTemporary] = useState('');
   const [certificates, setCertificates] = useState<{ id: string, name: string, code: string, issuer: string, link: string, image: string, issuedDate: string, expiryDate: string }[]>([]);
   const [hrRecords, setHrRecords] = useState<{ id: string, type: 'award' | 'warning' | 'discipline', title: string, date: string, amount: string, reason: string, decisionNumber: string, documentLink: string }[]>([]);
@@ -166,6 +166,24 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
 
   const toggleSection = (sec: string) => {
     setOpenSections(prev => ({ ...prev, [sec]: !prev[sec] }));
+  };
+
+  const renderColoredIcon = (IconComponent: any, bgColor: string) => {
+    return (
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        width: '28px',
+        height: '28px',
+        borderRadius: '6px',
+        backgroundColor: bgColor,
+        color: 'white',
+        flexShrink: 0
+      }}>
+        <IconComponent size={14} />
+      </div>
+    );
   };
 
   // 1. Basic Account Fields
@@ -1090,164 +1108,341 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
           ) : (
             <>
               {/* Sidebar Tabs */}
-              <div className={styles.sidebarTabs} style={isMobileOrTablet ? { borderRight: 'none', borderBottom: '1px solid var(--color-border)', width: '100%', height: 'auto', padding: '1rem' } : { width: '240px', flexShrink: 0, display: 'flex', flexDirection: 'column', gap: '0.75rem', borderRight: '1px solid var(--color-border)', padding: '1.5rem 1rem', background: 'var(--color-surface)', height: '100%' }}>
-                {/* Profile Card inside Sidebar */}
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', paddingBottom: '1.25rem', borderBottom: '1px solid var(--color-border-light)', marginBottom: '0.75rem' }}>
-                  <div style={{ position: 'relative', cursor: 'pointer' }} onClick={() => fileInputRef.current?.click()}>
-                    <Avatar src={avatar} name={name || 'S'} size={72} />
-                    <div style={{
-                      position: 'absolute',
-                      bottom: 0,
-                      right: 0,
-                      backgroundColor: 'var(--color-primary)',
-                      color: 'white',
-                      borderRadius: '50%',
-                      padding: '4px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      border: '2px solid var(--color-surface)',
-                      boxShadow: 'var(--shadow-sm)'
-                    }}>
-                      <Camera size={12} />
-                    </div>
-                    {isUploadingAvatar && (
+              {/* Sidebar Tabs */}
+              {(!isMobileOrTablet || !activeTab) && (
+                <div 
+                  className={!isMobileOrTablet ? styles.sidebarTabs : undefined} 
+                  style={isMobileOrTablet ? { 
+                    width: '100%', 
+                    display: 'flex', 
+                    flexDirection: 'column', 
+                    gap: '1rem', 
+                    padding: '1.25rem 1rem', 
+                    overflowY: 'auto', 
+                    background: 'var(--color-bg)',
+                    height: '100%'
+                  } : { width: '240px', flexShrink: 0, display: 'flex', flexDirection: 'column', gap: '0.75rem', borderRight: '1px solid var(--color-border)', padding: '1.5rem 1rem', background: 'var(--color-surface)', height: '100%' }}
+                >
+                  {/* Profile Card inside Sidebar */}
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', paddingBottom: '1.25rem', borderBottom: '1px solid var(--color-border-light)', marginBottom: '0.75rem' }}>
+                    <div style={{ position: 'relative', cursor: 'pointer' }} onClick={() => fileInputRef.current?.click()}>
+                      <Avatar src={avatar} name={name || 'S'} size={72} />
                       <div style={{
                         position: 'absolute',
-                        inset: 0,
-                        backgroundColor: 'rgba(0,0,0,0.5)',
+                        bottom: 0,
+                        right: 0,
+                        backgroundColor: 'var(--color-primary)',
+                        color: 'white',
                         borderRadius: '50%',
+                        padding: '4px',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        color: 'white'
+                        border: '2px solid var(--color-surface)',
+                        boxShadow: 'var(--shadow-sm)'
                       }}>
-                        <Loader2 size={16} className="spin" />
+                        <Camera size={12} />
                       </div>
-                    )}
+                      {isUploadingAvatar && (
+                        <div style={{
+                          position: 'absolute',
+                          inset: 0,
+                          backgroundColor: 'rgba(0,0,0,0.5)',
+                          borderRadius: '50%',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          color: 'white'
+                        }}>
+                          <Loader2 size={16} className="spin" />
+                        </div>
+                      )}
+                    </div>
+                    <div style={{ textAlign: 'center', marginTop: 4 }}>
+                      <h4 style={{ fontSize: '0.875rem', fontWeight: 700, margin: 0, color: 'var(--color-text)', wordBreak: 'break-word' }}>{name || t('Chưa cập nhật')}</h4>
+                      <p style={{ fontSize: '0.725rem', color: 'var(--color-text-muted)', margin: '2px 0 0' }}>
+                        {employeeId ? `${t('Mã nhân viên')}: ${employeeId}` : ''}
+                      </p>
+                    </div>
+                    <input 
+                      type="file" 
+                      ref={fileInputRef} 
+                      style={{ display: 'none' }} 
+                      accept="image/*" 
+                      onChange={handleAvatarUpload} 
+                    />
                   </div>
-                  <div style={{ textAlign: 'center', marginTop: 4 }}>
-                    <h4 style={{ fontSize: '0.875rem', fontWeight: 700, margin: 0, color: 'var(--color-text)', wordBreak: 'break-word' }}>{name || t('Chưa cập nhật')}</h4>
-                    <p style={{ fontSize: '0.725rem', color: 'var(--color-text-muted)', margin: '2px 0 0' }}>
-                      {employeeId ? `${t('Mã nhân viên')}: ${employeeId}` : ''}
-                    </p>
-                  </div>
-                  <input 
-                    type="file" 
-                    ref={fileInputRef} 
-                    style={{ display: 'none' }} 
-                    accept="image/*" 
-                    onChange={handleAvatarUpload} 
-                  />
-                </div>
 
-                {/* Tab buttons */}
-                <div style={{ display: 'flex', flexDirection: isMobileOrTablet ? 'row' : 'column', gap: '0.25rem', overflowX: isMobileOrTablet ? 'auto' : 'visible', overflowY: isMobileOrTablet ? 'visible' : 'auto', flex: 1 }}>
-                  <button
-                    type="button"
-                    className={`${styles.sidebarTabBtn} ${activeTab === 'personal' ? styles.sidebarTabActive : ''}`}
-                    onClick={() => setActiveTab('personal')}
-                    style={{ padding: '10px 0.75rem', fontSize: '0.825rem', display: 'flex', alignItems: 'center', gap: '8px', width: isMobileOrTablet ? 'auto' : '100%', border: 'none', background: activeTab === 'personal' ? 'var(--color-bg-light)' : 'transparent', borderRadius: '8px', cursor: 'pointer', textAlign: 'left', fontWeight: activeTab === 'personal' ? 700 : 500 }}
-                  >
-                    <User size={15} />
-                    <span style={{ whiteSpace: 'nowrap' }}>{t('Thông tin cá nhân')}</span>
-                  </button>
-                  <button
-                    type="button"
-                    className={`${styles.sidebarTabBtn} ${activeTab === 'erp' ? styles.sidebarTabActive : ''}`}
-                    onClick={() => setActiveTab('erp')}
-                    style={{ padding: '10px 0.75rem', fontSize: '0.825rem', display: 'flex', alignItems: 'center', gap: '8px', width: isMobileOrTablet ? 'auto' : '100%', border: 'none', background: activeTab === 'erp' ? 'var(--color-bg-light)' : 'transparent', borderRadius: '8px', cursor: 'pointer', textAlign: 'left', fontWeight: activeTab === 'erp' ? 700 : 500 }}
-                  >
-                    <Building2 size={15} />
-                    <span style={{ whiteSpace: 'nowrap' }}>{t('Hồ sơ & ERP')}</span>
-                  </button>
-                  <button
-                    type="button"
-                    className={`${styles.sidebarTabBtn} ${activeTab === 'certificates' ? styles.sidebarTabActive : ''}`}
-                    onClick={() => setActiveTab('certificates')}
-                    style={{ padding: '10px 0.75rem', fontSize: '0.825rem', display: 'flex', alignItems: 'center', gap: '8px', width: isMobileOrTablet ? 'auto' : '100%', border: 'none', background: activeTab === 'certificates' ? 'var(--color-bg-light)' : 'transparent', borderRadius: '8px', cursor: 'pointer', textAlign: 'left', fontWeight: activeTab === 'certificates' ? 700 : 500 }}
-                  >
-                    <Award size={15} />
-                    <span style={{ whiteSpace: 'nowrap' }}>{t('Bằng cấp & Chứng chỉ')}</span>
-                  </button>
-                  <button
-                    type="button"
-                    className={`${styles.sidebarTabBtn} ${activeTab === 'hr_records' ? styles.sidebarTabActive : ''}`}
-                    onClick={() => setActiveTab('hr_records')}
-                    style={{ padding: '10px 0.75rem', fontSize: '0.825rem', display: 'flex', alignItems: 'center', gap: '8px', width: isMobileOrTablet ? 'auto' : '100%', border: 'none', background: activeTab === 'hr_records' ? 'var(--color-bg-light)' : 'transparent', borderRadius: '8px', cursor: 'pointer', textAlign: 'left', fontWeight: activeTab === 'hr_records' ? 700 : 500 }}
-                  >
-                    <AlertCircle size={15} />
-                    <span style={{ whiteSpace: 'nowrap' }}>{t('Khen thưởng & Kỷ luật')}</span>
-                  </button>
-                  <button
-                    type="button"
-                    className={`${styles.sidebarTabBtn} ${activeTab === 'bank' ? styles.sidebarTabActive : ''}`}
-                    onClick={() => setActiveTab('bank')}
-                    style={{ padding: '10px 0.75rem', fontSize: '0.825rem', display: 'flex', alignItems: 'center', gap: '8px', width: isMobileOrTablet ? 'auto' : '100%', border: 'none', background: activeTab === 'bank' ? 'var(--color-bg-light)' : 'transparent', borderRadius: '8px', cursor: 'pointer', textAlign: 'left', fontWeight: activeTab === 'bank' ? 700 : 500 }}
-                  >
-                    <CreditCard size={15} />
-                    <span style={{ whiteSpace: 'nowrap' }}>{t('Tài khoản Ngân hàng')}</span>
-                  </button>
-                  <button
-                    type="button"
-                    className={`${styles.sidebarTabBtn} ${activeTab === 'emergency' ? styles.sidebarTabActive : ''}`}
-                    onClick={() => setActiveTab('emergency')}
-                    style={{ padding: '10px 0.75rem', fontSize: '0.825rem', display: 'flex', alignItems: 'center', gap: '8px', width: isMobileOrTablet ? 'auto' : '100%', border: 'none', background: activeTab === 'emergency' ? 'var(--color-bg-light)' : 'transparent', borderRadius: '8px', cursor: 'pointer', textAlign: 'left', fontWeight: activeTab === 'emergency' ? 700 : 500 }}
-                  >
-                    <Shield size={15} />
-                    <span style={{ whiteSpace: 'nowrap' }}>{t('Liên hệ khẩn cấp')}</span>
-                  </button>
-                  <button
-                    type="button"
-                    className={`${styles.sidebarTabBtn} ${activeTab === 'schedule' ? styles.sidebarTabActive : ''}`}
-                    onClick={() => setActiveTab('schedule')}
-                    style={{ padding: '10px 0.75rem', fontSize: '0.825rem', display: 'flex', alignItems: 'center', gap: '8px', width: isMobileOrTablet ? 'auto' : '100%', border: 'none', background: activeTab === 'schedule' ? 'var(--color-bg-light)' : 'transparent', borderRadius: '8px', cursor: 'pointer', textAlign: 'left', fontWeight: activeTab === 'schedule' ? 700 : 500 }}
-                  >
-                    <Calendar size={15} />
-                    <span style={{ whiteSpace: 'nowrap' }}>{t('Lịch trực nhận data')}</span>
-                  </button>
-                  <button
-                    type="button"
-                    className={`${styles.sidebarTabBtn} ${activeTab === 'documents' ? styles.sidebarTabActive : ''}`}
-                    onClick={() => setActiveTab('documents')}
-                    style={{ padding: '10px 0.75rem', fontSize: '0.825rem', display: 'flex', alignItems: 'center', gap: '8px', width: isMobileOrTablet ? 'auto' : '100%', border: 'none', background: activeTab === 'documents' ? 'var(--color-bg-light)' : 'transparent', borderRadius: '8px', cursor: 'pointer', textAlign: 'left', fontWeight: activeTab === 'documents' ? 700 : 500 }}
-                  >
-                    <Paperclip size={15} />
-                    <span style={{ whiteSpace: 'nowrap' }}>{t('Lưu trữ tài liệu')}</span>
-                  </button>
+                  {/* Tab buttons */}
+                  {isMobileOrTablet ? (
+                    /* ── Mobile iOS-style list menu ── */
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.875rem', width: '100%' }}>
+                      {/* Group 1: Cá nhân & Lịch trực */}
+                      <div style={{ fontSize: '0.65rem', fontWeight: 750, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', paddingLeft: '4px' }}>
+                        {t('Cá nhân & Lịch trực')}
+                      </div>
+                      <div style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border-light)', borderRadius: '12px', overflow: 'hidden', display: 'flex', flexDirection: 'column', boxShadow: '0 2px 8px rgba(0,0,0,0.02)' }}>
+                        <button
+                          type="button"
+                          onClick={() => setActiveTab('schedule')}
+                          style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px', background: 'transparent', border: 'none', borderBottom: '1px solid var(--color-border-light)', width: '100%', cursor: 'pointer', textAlign: 'left' }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', color: 'var(--color-text)' }}>
+                            {renderColoredIcon(Calendar, '#f09a37')}
+                            <span style={{ fontSize: '0.875rem', fontWeight: 600 }}>{t('Lịch trực nhận data')}</span>
+                          </div>
+                          <ChevronRight size={14} style={{ color: 'var(--color-text-muted)' }} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setActiveTab('personal')}
+                          style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px', background: 'transparent', border: 'none', width: '100%', cursor: 'pointer', textAlign: 'left' }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', color: 'var(--color-text)' }}>
+                            {renderColoredIcon(User, '#eb4e3d')}
+                            <span style={{ fontSize: '0.875rem', fontWeight: 600 }}>{t('Thông tin cá nhân')}</span>
+                          </div>
+                          <ChevronRight size={14} style={{ color: 'var(--color-text-muted)' }} />
+                        </button>
+                      </div>
 
-                  {!isMobileOrTablet && (
-                    <div style={{ height: '1px', backgroundColor: 'var(--color-border-light)', margin: '6px 0.5rem' }} />
+                      {/* Group 2: Quản lý hồ sơ */}
+                      <div style={{ fontSize: '0.65rem', fontWeight: 750, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', paddingLeft: '4px', marginTop: '0.5rem' }}>
+                        {t('Quản lý hồ sơ')}
+                      </div>
+                      <div style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border-light)', borderRadius: '12px', overflow: 'hidden', display: 'flex', flexDirection: 'column', boxShadow: '0 2px 8px rgba(0,0,0,0.02)' }}>
+                        <button
+                          type="button"
+                          onClick={() => setActiveTab('erp')}
+                          style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px', background: 'transparent', border: 'none', borderBottom: '1px solid var(--color-border-light)', width: '100%', cursor: 'pointer', textAlign: 'left' }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', color: 'var(--color-text)' }}>
+                            {renderColoredIcon(Building2, '#5856d6')}
+                            <span style={{ fontSize: '0.875rem', fontWeight: 600 }}>{t('Hồ sơ & ERP')}</span>
+                          </div>
+                          <ChevronRight size={14} style={{ color: 'var(--color-text-muted)' }} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setActiveTab('certificates')}
+                          style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px', background: 'transparent', border: 'none', borderBottom: '1px solid var(--color-border-light)', width: '100%', cursor: 'pointer', textAlign: 'left' }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', color: 'var(--color-text)' }}>
+                            {renderColoredIcon(Award, '#f2a20b')}
+                            <span style={{ fontSize: '0.875rem', fontWeight: 600 }}>{t('Bằng cấp & Chứng chỉ')}</span>
+                          </div>
+                          <ChevronRight size={14} style={{ color: 'var(--color-text-muted)' }} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setActiveTab('hr_records')}
+                          style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px', background: 'transparent', border: 'none', borderBottom: '1px solid var(--color-border-light)', width: '100%', cursor: 'pointer', textAlign: 'left' }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', color: 'var(--color-text)' }}>
+                            {renderColoredIcon(AlertCircle, '#ff9500')}
+                            <span style={{ fontSize: '0.875rem', fontWeight: 600 }}>{t('Khen thưởng & Kỷ luật')}</span>
+                          </div>
+                          <ChevronRight size={14} style={{ color: 'var(--color-text-muted)' }} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setActiveTab('bank')}
+                          style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px', background: 'transparent', border: 'none', borderBottom: '1px solid var(--color-border-light)', width: '100%', cursor: 'pointer', textAlign: 'left' }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', color: 'var(--color-text)' }}>
+                            {renderColoredIcon(CreditCard, '#34c759')}
+                            <span style={{ fontSize: '0.875rem', fontWeight: 600 }}>{t('Tài khoản Ngân hàng')}</span>
+                          </div>
+                          <ChevronRight size={14} style={{ color: 'var(--color-text-muted)' }} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setActiveTab('emergency')}
+                          style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px', background: 'transparent', border: 'none', borderBottom: '1px solid var(--color-border-light)', width: '100%', cursor: 'pointer', textAlign: 'left' }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', color: 'var(--color-text)' }}>
+                            {renderColoredIcon(Shield, '#ff2d55')}
+                            <span style={{ fontSize: '0.875rem', fontWeight: 600 }}>{t('Liên hệ khẩn cấp')}</span>
+                          </div>
+                          <ChevronRight size={14} style={{ color: 'var(--color-text-muted)' }} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setActiveTab('documents')}
+                          style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px', background: 'transparent', border: 'none', width: '100%', cursor: 'pointer', textAlign: 'left' }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', color: 'var(--color-text)' }}>
+                            {renderColoredIcon(Paperclip, '#8e8e93')}
+                            <span style={{ fontSize: '0.875rem', fontWeight: 600 }}>{t('Lưu trữ tài liệu')}</span>
+                          </div>
+                          <ChevronRight size={14} style={{ color: 'var(--color-text-muted)' }} />
+                        </button>
+                      </div>
+
+                      {/* Group 3: Quản trị hệ thống */}
+                      <div style={{ fontSize: '0.65rem', fontWeight: 750, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', paddingLeft: '4px', marginTop: '0.5rem' }}>
+                        {t('Quản trị hệ thống')}
+                      </div>
+                      <div style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border-light)', borderRadius: '12px', overflow: 'hidden', display: 'flex', flexDirection: 'column', boxShadow: '0 2px 8px rgba(0,0,0,0.02)' }}>
+                        <button
+                          type="button"
+                          onClick={() => setActiveTab('account')}
+                          style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px', background: 'rgba(239, 68, 68, 0.05)', color: 'var(--color-danger)', border: 'none', width: '100%', cursor: 'pointer', textAlign: 'left' }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                            {renderColoredIcon(Lock, '#ef4444')}
+                            <span style={{ fontSize: '0.875rem', fontWeight: 600 }}>{t('Tài khoản & Quyền')}</span>
+                          </div>
+                          <ChevronRight size={14} style={{ color: 'var(--color-danger)' }} />
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    /* ── Desktop Tab Menu ── */
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', overflowY: 'auto', flex: 1 }}>
+                      <button
+                        type="button"
+                        className={`${styles.sidebarTabBtn} ${activeTab === 'personal' ? styles.sidebarTabActive : ''}`}
+                        onClick={() => setActiveTab('personal')}
+                        style={{ padding: '10px 0.75rem', fontSize: '0.825rem', display: 'flex', alignItems: 'center', gap: '8px', width: '100%', border: 'none', background: activeTab === 'personal' ? 'var(--color-bg-light)' : 'transparent', borderRadius: '8px', cursor: 'pointer', textAlign: 'left', fontWeight: activeTab === 'personal' ? 700 : 500 }}
+                      >
+                        <User size={15} />
+                        <span style={{ whiteSpace: 'nowrap' }}>{t('Thông tin cá nhân')}</span>
+                      </button>
+                      <button
+                        type="button"
+                        className={`${styles.sidebarTabBtn} ${activeTab === 'erp' ? styles.sidebarTabActive : ''}`}
+                        onClick={() => setActiveTab('erp')}
+                        style={{ padding: '10px 0.75rem', fontSize: '0.825rem', display: 'flex', alignItems: 'center', gap: '8px', width: '100%', border: 'none', background: activeTab === 'erp' ? 'var(--color-bg-light)' : 'transparent', borderRadius: '8px', cursor: 'pointer', textAlign: 'left', fontWeight: activeTab === 'erp' ? 700 : 500 }}
+                      >
+                        <Building2 size={15} />
+                        <span style={{ whiteSpace: 'nowrap' }}>{t('Hồ sơ & ERP')}</span>
+                      </button>
+                      <button
+                        type="button"
+                        className={`${styles.sidebarTabBtn} ${activeTab === 'certificates' ? styles.sidebarTabActive : ''}`}
+                        onClick={() => setActiveTab('certificates')}
+                        style={{ padding: '10px 0.75rem', fontSize: '0.825rem', display: 'flex', alignItems: 'center', gap: '8px', width: '100%', border: 'none', background: activeTab === 'certificates' ? 'var(--color-bg-light)' : 'transparent', borderRadius: '8px', cursor: 'pointer', textAlign: 'left', fontWeight: activeTab === 'certificates' ? 700 : 500 }}
+                      >
+                        <Award size={15} />
+                        <span style={{ whiteSpace: 'nowrap' }}>{t('Bằng cấp & Chứng chỉ')}</span>
+                      </button>
+                      <button
+                        type="button"
+                        className={`${styles.sidebarTabBtn} ${activeTab === 'hr_records' ? styles.sidebarTabActive : ''}`}
+                        onClick={() => setActiveTab('hr_records')}
+                        style={{ padding: '10px 0.75rem', fontSize: '0.825rem', display: 'flex', alignItems: 'center', gap: '8px', width: '100%', border: 'none', background: activeTab === 'hr_records' ? 'var(--color-bg-light)' : 'transparent', borderRadius: '8px', cursor: 'pointer', textAlign: 'left', fontWeight: activeTab === 'hr_records' ? 700 : 500 }}
+                      >
+                        <AlertCircle size={15} />
+                        <span style={{ whiteSpace: 'nowrap' }}>{t('Khen thưởng & Kỷ luật')}</span>
+                      </button>
+                      <button
+                        type="button"
+                        className={`${styles.sidebarTabBtn} ${activeTab === 'bank' ? styles.sidebarTabActive : ''}`}
+                        onClick={() => setActiveTab('bank')}
+                        style={{ padding: '10px 0.75rem', fontSize: '0.825rem', display: 'flex', alignItems: 'center', gap: '8px', width: '100%', border: 'none', background: activeTab === 'bank' ? 'var(--color-bg-light)' : 'transparent', borderRadius: '8px', cursor: 'pointer', textAlign: 'left', fontWeight: activeTab === 'bank' ? 700 : 500 }}
+                      >
+                        <CreditCard size={15} />
+                        <span style={{ whiteSpace: 'nowrap' }}>{t('Tài khoản Ngân hàng')}</span>
+                      </button>
+                      <button
+                        type="button"
+                        className={`${styles.sidebarTabBtn} ${activeTab === 'emergency' ? styles.sidebarTabActive : ''}`}
+                        onClick={() => setActiveTab('emergency')}
+                        style={{ padding: '10px 0.75rem', fontSize: '0.825rem', display: 'flex', alignItems: 'center', gap: '8px', width: '100%', border: 'none', background: activeTab === 'emergency' ? 'var(--color-bg-light)' : 'transparent', borderRadius: '8px', cursor: 'pointer', textAlign: 'left', fontWeight: activeTab === 'emergency' ? 700 : 500 }}
+                      >
+                        <Shield size={15} />
+                        <span style={{ whiteSpace: 'nowrap' }}>{t('Liên hệ khẩn cấp')}</span>
+                      </button>
+                      <button
+                        type="button"
+                        className={`${styles.sidebarTabBtn} ${activeTab === 'schedule' ? styles.sidebarTabActive : ''}`}
+                        onClick={() => setActiveTab('schedule')}
+                        style={{ padding: '10px 0.75rem', fontSize: '0.825rem', display: 'flex', alignItems: 'center', gap: '8px', width: '100%', border: 'none', background: activeTab === 'schedule' ? 'var(--color-bg-light)' : 'transparent', borderRadius: '8px', cursor: 'pointer', textAlign: 'left', fontWeight: activeTab === 'schedule' ? 700 : 500 }}
+                      >
+                        <Calendar size={15} />
+                        <span style={{ whiteSpace: 'nowrap' }}>{t('Lịch trực nhận data')}</span>
+                      </button>
+                      <button
+                        type="button"
+                        className={`${styles.sidebarTabBtn} ${activeTab === 'documents' ? styles.sidebarTabActive : ''}`}
+                        onClick={() => setActiveTab('documents')}
+                        style={{ padding: '10px 0.75rem', fontSize: '0.825rem', display: 'flex', alignItems: 'center', gap: '8px', width: '100%', border: 'none', background: activeTab === 'documents' ? 'var(--color-bg-light)' : 'transparent', borderRadius: '8px', cursor: 'pointer', textAlign: 'left', fontWeight: activeTab === 'documents' ? 700 : 500 }}
+                      >
+                        <Paperclip size={15} />
+                        <span style={{ whiteSpace: 'nowrap' }}>{t('Lưu trữ tài liệu')}</span>
+                      </button>
+
+                      <div style={{ height: '1px', backgroundColor: 'var(--color-border-light)', margin: '6px 0.5rem' }} />
+
+                      <button
+                        type="button"
+                        className={`${styles.sidebarTabBtn} ${activeTab === 'account' ? styles.sidebarTabActive : ''}`}
+                        onClick={() => setActiveTab('account')}
+                        style={{ 
+                          padding: '10px 0.75rem', 
+                          fontSize: '0.825rem', 
+                          display: 'flex', 
+                          alignItems: 'center', 
+                          gap: '8px', 
+                          width: '100%', 
+                          border: 'none', 
+                          background: activeTab === 'account' ? 'rgba(239, 68, 68, 0.08)' : 'transparent', 
+                          borderRadius: '8px', 
+                          cursor: 'pointer', 
+                          textAlign: 'left', 
+                          fontWeight: activeTab === 'account' ? 700 : 500,
+                          color: 'var(--color-danger)'
+                        }}
+                      >
+                        <Lock size={15} color="var(--color-danger)" />
+                        <span style={{ whiteSpace: 'nowrap' }}>{t('Tài khoản & Quyền')}</span>
+                      </button>
+                    </div>
                   )}
-                  <button
-                    type="button"
-                    className={`${styles.sidebarTabBtn} ${activeTab === 'account' ? styles.sidebarTabActive : ''}`}
-                    onClick={() => setActiveTab('account')}
-                    style={{ 
-                      padding: '10px 0.75rem', 
-                      fontSize: '0.825rem', 
-                      display: 'flex', 
-                      alignItems: 'center', 
-                      gap: '8px', 
-                      width: isMobileOrTablet ? 'auto' : '100%', 
-                      border: 'none', 
-                      background: activeTab === 'account' ? 'rgba(239, 68, 68, 0.08)' : 'transparent', 
-                      borderRadius: '8px', 
-                      cursor: 'pointer', 
-                      textAlign: 'left', 
-                      fontWeight: activeTab === 'account' ? 700 : 500,
-                      color: 'var(--color-danger)'
-                    }}
-                  >
-                    <Lock size={15} color="var(--color-danger)" />
-                    <span style={{ whiteSpace: 'nowrap' }}>{t('Tài khoản & Quyền')}</span>
-                  </button>
                 </div>
-              </div>
+              )}
 
               {/* Main Content Area */}
-              <div className={styles.contentArea} style={{ flex: 1, padding: '1.5rem', overflowY: 'auto', backgroundColor: 'var(--color-bg)' }}>
-                <form id="account-detail-form" onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+              {(!isMobileOrTablet || activeTab) && (
+                <div 
+                  className={!isMobileOrTablet ? styles.contentArea : undefined} 
+                  style={isMobileOrTablet ? { 
+                    flex: 1, 
+                    padding: '1.25rem 1rem', 
+                    overflowY: 'auto', 
+                    backgroundColor: 'var(--color-bg)', 
+                    width: '100%',
+                    display: 'flex',
+                    flexDirection: 'column'
+                  } : undefined}
+                >
+                  {isMobileOrTablet && activeTab && (
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab('')}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        padding: '8px 12px',
+                        borderRadius: '8px',
+                        border: '1px solid var(--color-border)',
+                        background: 'var(--color-surface)',
+                        color: 'var(--color-text)',
+                        fontSize: '0.825rem',
+                        fontWeight: 650,
+                        cursor: 'pointer',
+                        marginBottom: '1rem',
+                        boxShadow: 'var(--shadow-sm)',
+                        alignSelf: 'flex-start'
+                      }}
+                    >
+                      <ChevronLeft size={14} />
+                      {t('Quay lại')}
+                    </button>
+                  )}
+                  <form id="account-detail-form" onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
 
               {/* CARD 1: THÔNG TIN CÁ NHÂN */}
               {activeTab === 'personal' && (
@@ -2786,6 +2981,7 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
 
               </form>
             </div>
+          )}
           </>
         )}
       </div>

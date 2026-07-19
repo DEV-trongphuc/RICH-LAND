@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Building2, FileText, FileBadge, Tag as TagIcon, Phone, Mail, MapPin, Search, Calendar, Users, Briefcase, Plus, HelpCircle, Globe, Settings, Download, Trash2, Edit, Pencil, Loader2, History } from 'lucide-react';
+import { X, Building2, FileText, FileBadge, Tag as TagIcon, Phone, Mail, MapPin, Search, Calendar, Users, Briefcase, Plus, HelpCircle, Globe, Settings, Download, Trash2, Edit, Pencil, Loader2, History, ChevronLeft, ChevronRight } from 'lucide-react';
 import { CustomSelect } from '../components/ui/CustomSelect';
 import { CustomCheckbox } from '../components/ui/CustomCheckbox';
 import { AddressSelect } from '../components/ui/AddressSelect';
@@ -42,7 +42,33 @@ export const CompanyDrawer: React.FC<CompanyDrawerProps> = ({ isOpen, onClose, e
   const isViewer = currentUser?.role === 'viewer';
   const disableEdit = isViewer;
   const { addToast, showConfirm } = useUIStore();
-  const [activeTab, setActiveTab] = useState('info');
+  const [isMobileOrTablet, setIsMobileOrTablet] = useState(window.innerWidth <= 1024);
+
+  useEffect(() => {
+    const handleResize = () => setIsMobileOrTablet(window.innerWidth <= 1024);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  const renderColoredIcon = (IconComponent: any, bgColor: string) => {
+    return (
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        width: '28px',
+        height: '28px',
+        borderRadius: '6px',
+        backgroundColor: bgColor,
+        color: 'white',
+        flexShrink: 0
+      }}>
+        <IconComponent size={14} />
+      </div>
+    );
+  };
+
+  const [activeTab, setActiveTab] = useState(() => window.innerWidth <= 1024 ? '' : 'info');
   const [formData, setFormData] = useState(entity || {});
   const [tags, setTags] = useState<string[]>(entity?.tags || []);
   const [isSaving, setIsSaving] = useState(false);
@@ -419,20 +445,121 @@ export const CompanyDrawer: React.FC<CompanyDrawerProps> = ({ isOpen, onClose, e
             {/* Layout Split: Left Sidebar & Content */}
             <div className={styles.drawerBody}>
               {/* Sidebar Tabs */}
-              <div className={styles.sidebarTabs}>
-                {visibleTabs.map(tab => (
-                  <button 
-                    key={tab.id} 
-                    className={`${styles.sidebarTabBtn} ${activeTab === tab.id ? styles.sidebarTabActive : ''}`}
-                    onClick={() => setActiveTab(tab.id)}
-                  >
-                    {tab.icon} {tab.label}
-                  </button>
-                ))}
-              </div>
+              {(!isMobileOrTablet || !activeTab) && (
+                <div 
+                  className={!isMobileOrTablet ? styles.sidebarTabs : undefined}
+                  style={isMobileOrTablet ? {
+                    width: '100%',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '0.875rem',
+                    padding: '1.25rem 1rem',
+                    overflowY: 'auto',
+                    background: 'var(--color-bg)',
+                    height: '100%'
+                  } : undefined}
+                >
+                  {isMobileOrTablet ? (
+                    /* ── Mobile iOS-style list menu ── */
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.875rem', width: '100%' }}>
+                      <div style={{ fontSize: '0.65rem', fontWeight: 750, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', paddingLeft: '4px' }}>
+                        Thông tin & Giao dịch
+                      </div>
+                      <div style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border-light)', borderRadius: '12px', overflow: 'hidden', display: 'flex', flexDirection: 'column', boxShadow: '0 2px 8px rgba(0,0,0,0.02)' }}>
+                        {visibleTabs.map((tab, idx) => {
+                          let bgColor = '#8e8e93';
+                          if (tab.id === 'info') bgColor = '#eb4e3d';
+                          else if (tab.id === 'activities') bgColor = '#f09a37';
+                          else if (tab.id === 'contacts') bgColor = '#007af5';
+                          else if (tab.id === 'deals') bgColor = '#34c759';
+                          else if (tab.id === 'invoices') bgColor = '#5856d6';
+                          else if (tab.id === 'expenses') bgColor = '#ff2d55';
+                          else if (tab.id === 'docs') bgColor = '#3b82f6';
+                          else if (tab.id === 'settings') bgColor = '#555555';
+
+                          let IconComp = tab.icon.type;
+
+                          return (
+                            <button
+                              key={tab.id}
+                              type="button"
+                              onClick={() => setActiveTab(tab.id)}
+                              style={{ 
+                                display: 'flex', 
+                                alignItems: 'center', 
+                                justifyContent: 'space-between', 
+                                padding: '14px 16px', 
+                                background: 'transparent', 
+                                border: 'none', 
+                                borderBottom: idx < visibleTabs.length - 1 ? '1px solid var(--color-border-light)' : 'none', 
+                                width: '100%', 
+                                cursor: 'pointer', 
+                                textAlign: 'left' 
+                              }}
+                            >
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', color: 'var(--color-text)' }}>
+                                {renderColoredIcon(IconComp, bgColor)}
+                                <span style={{ fontSize: '0.875rem', fontWeight: 600 }}>{tab.label}</span>
+                              </div>
+                              <ChevronRight size={14} style={{ color: 'var(--color-text-muted)' }} />
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ) : (
+                    visibleTabs.map(tab => (
+                      <button 
+                        key={tab.id} 
+                        className={`${styles.sidebarTabBtn} ${activeTab === tab.id ? styles.sidebarTabActive : ''}`}
+                        onClick={() => setActiveTab(tab.id)}
+                      >
+                        {tab.icon} {tab.label}
+                      </button>
+                    ))
+                  )}
+                </div>
+              )}
 
               {/* Content Area */}
-              <div className={styles.contentArea}>
+              {(!isMobileOrTablet || activeTab) && (
+                <div 
+                  className={!isMobileOrTablet ? styles.contentArea : undefined}
+                  style={isMobileOrTablet ? {
+                    flex: 1,
+                    padding: '1.25rem 1rem',
+                    overflowY: 'auto',
+                    backgroundColor: 'var(--color-bg)',
+                    width: '100%',
+                    display: 'flex',
+                    flexDirection: 'column'
+                  } : undefined}
+                >
+                  {isMobileOrTablet && activeTab && (
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab('')}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        padding: '8px 12px',
+                        borderRadius: '8px',
+                        border: '1px solid var(--color-border)',
+                        background: 'var(--color-surface)',
+                        color: 'var(--color-text)',
+                        fontSize: '0.825rem',
+                        fontWeight: 655,
+                        cursor: 'pointer',
+                        marginBottom: '1rem',
+                        boxShadow: 'var(--shadow-sm)',
+                        alignSelf: 'flex-start'
+                      }}
+                    >
+                      <ChevronLeft size={14} />
+                      Quay lại
+                    </button>
+                  )}
                 {activeTab === 'info' && (
                   <fieldset disabled={disableEdit} style={{ border: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '1.5rem', width: '100%' }} className="animate-fade">
                     <div className="card-panel">
@@ -1161,6 +1288,7 @@ export const CompanyDrawer: React.FC<CompanyDrawerProps> = ({ isOpen, onClose, e
                   </div>
                 )}
               </div>
+            )}
             </div>
 
             {/* Footer */}

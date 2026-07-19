@@ -8548,7 +8548,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                           padding: '14px 16px',
                           background: 'transparent',
                           border: 'none',
-                          borderBottom: ['sale', 'manager'].includes(String(effectiveRole).toLowerCase()) ? 'none' : '1px solid var(--color-border-light)',
+                          borderBottom: 'none',
                           width: '100%',
                           cursor: 'pointer',
                           textAlign: 'left'
@@ -8560,36 +8560,11 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                         </div>
                         <ChevronRight size={14} style={{ color: 'var(--color-text-muted)' }} />
                       </button>
-
-                      {!['sale', 'manager'].includes(String(effectiveRole).toLowerCase()) && (
-                        <button
-                          type="button"
-                          onClick={() => setProfileActiveTab('erp')}
-                          style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'space-between',
-                            padding: '14px 16px',
-                            background: 'transparent',
-                            border: 'none',
-                            width: '100%',
-                            cursor: 'pointer',
-                            textAlign: 'left'
-                          }}
-                        >
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', color: 'var(--color-text)' }}>
-                            {renderColoredIcon(Layers, '#5856d6')}
-                            <span style={{ fontSize: '0.875rem', fontWeight: 600 }}>{t('Hồ sơ & ERP')}</span>
-                          </div>
-                          <ChevronRight size={14} style={{ color: 'var(--color-text-muted)' }} />
-                        </button>
-                      )}
                     </div>
 
                     {/* Group 2: Quản lý hồ sơ */}
-                    {['sale', 'manager'].includes(String(effectiveRole).toLowerCase()) && (
-                      <>
-                        <div style={{ fontSize: '0.65rem', fontWeight: 750, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', paddingLeft: '4px', marginTop: '0.5rem' }}>
+                    <div>
+                      <div style={{ fontSize: '0.65rem', fontWeight: 750, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', paddingLeft: '4px', marginTop: '0.5rem' }}>
                           {t('Quản lý hồ sơ')}
                         </div>
                         <div style={{
@@ -8761,8 +8736,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                             <ChevronRight size={14} style={{ color: 'var(--color-text-muted)' }} />
                           </button>
                         </div>
-                      </>
-                    )}
+                      </div>
                   </div>
                 ) : (
                   /* ── Desktop Tab Menu ── */

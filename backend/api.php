@@ -2419,48 +2419,152 @@ switch ($action) {
         $ticketStats = $stmtT->get_result()->fetch_assoc();
         $stmtT->close();
 
-        // 4. Query distribution by round
-        $whereClauseNoReminder = $whereClause . " AND dl.status != 'reminder'";
-        $sqlByRound = "
-            SELECT r.round_name, COUNT(dl.id) as count
-            FROM distribution_logs dl
-            JOIN leads l ON dl.lead_id = l.id
-            JOIN distribution_rounds r ON dl.round_id = r.id
-            WHERE $whereClauseNoReminder
-            GROUP BY dl.round_id
-        ";
-        $stmtBR = $conn->prepare($sqlByRound);
-        if (!empty($types)) {
-            $stmtBR->bind_param($types, ...$params);
+        // Compute contacts count covering manually entered, claimed, and distributed leads
+        $contactsDateCondition = "1=1";
+        if ($dateMode === 'today') {
+            $contactsDateCondition = "c.created_at >= CURDATE() AND c.created_at < DATE_ADD(CURDATE(), INTERVAL 1 DAY)";
+        } elseif ($dateMode === 'this_week') {
+            $contactsDateCondition = "c.created_at >= DATE_SUB(CURDATE(), INTERVAL WEEKDAY(CURDATE()) DAY) AND c.created_at < DATE_ADD(DATE_SUB(CURDATE(), INTERVAL WEEKDAY(CURDATE()) DAY), INTERVAL 7 DAY)";
+        } elseif ($dateMode === 'last_week') {
+            $contactsDateCondition = "c.created_at >= DATE_SUB(DATE_SUB(CURDATE(), INTERVAL WEEKDAY(CURDATE()) DAY), INTERVAL 7 DAY) AND c.created_at < DATE_SUB(CURDATE(), INTERVAL WEEKDAY(CURDATE()) DAY)";
+        } elseif ($dateMode === 'two_weeks_ago') {
+            $contactsDateCondition = "c.created_at >= DATE_SUB(DATE_SUB(CURDATE(), INTERVAL WEEKDAY(CURDATE()) DAY), INTERVAL 14 DAY) AND c.created_at < DATE_SUB(DATE_SUB(CURDATE(), INTERVAL WEEKDAY(CURDATE()) DAY), INTERVAL 7 DAY)";
+        } elseif ($dateMode === 'yesterday') {
+            $contactsDateCondition = "c.created_at >= DATE_SUB(CURDATE(), INTERVAL 1 DAY) AND c.created_at < CURDATE()";
+        } elseif ($dateMode === '7_days') {
+            $contactsDateCondition = "c.created_at >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)";
+        } elseif ($dateMode === '30_days') {
+            $contactsDateCondition = "c.created_at >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)";
+        } elseif ($dateMode === 'this_month') {
+            $contactsDateCondition = "c.created_at >= DATE_FORMAT(CURDATE(), '%Y-%m-01') AND c.created_at < DATE_ADD(DATE_FORMAT(CURDATE(), '%Y-%m-01'), INTERVAL 1 MONTH)";
+        } elseif ($dateMode === 'last_month') {
+            $contactsDateCondition = "c.created_at >= DATE_SUB(DATE_FORMAT(CURDATE(), '%Y-%m-01'), INTERVAL 1 MONTH) AND c.created_at < DATE_FORMAT(CURDATE(), '%Y-%m-01')";
+        } elseif ($dateMode === 'this_year') {
+            $contactsDateCondition = "c.created_at >= DATE_FORMAT(CURDATE(), '%Y-01-01')";
+        } elseif ($dateMode === 'custom' && !empty($startDate) && !empty($endDate)) {
+            $startEsc = $conn->real_escape_string($startDate);
+            $endEsc = $conn->real_escape_string($endDate);
+            $contactsDateCondition = "c.created_at >= '$startEsc 00:00:00' AND c.created_at <= '$endEsc 23:59:59'";
         }
-        $stmtBR->execute();
-        $resBR = $stmtBR->get_result();
-        $byRound = [];
-        while ($row = $resBR->fetch_assoc()) {
-            $byRound[] = $row;
-        }
-        $stmtBR->close();
 
-        // 5. Query distribution by hour
+        $contactsWhere = ["c.tenant_id = ?", "c.deleted_at IS NULL"];
+        $contactsParams = [$tid];
+        $contactsTypes = "i";
+
+        if ($isSale) {
+            $contactsWhere[] = "c.owner_id = ?";
+            $contactsParams[] = $saleId;
+            $contactsTypes .= "i";
+        } else {
+            if ($saleFilterId !== null) {
+                $contactsWhere[] = "c.owner_id = ?";
+                $contactsParams[] = $saleFilterId;
+                $contactsTypes .= "i";
+            }
+        }
+
+        $contactsWhereClause = implode(" AND ", $contactsWhere) . " AND " . $contactsDateCondition;
+
+        $stmtContactsCount = $conn->prepare("SELECT COUNT(*) as cnt FROM contacts c WHERE $contactsWhereClause");
+        $contactsCount = 0;
+        if ($stmtContactsCount) {
+            $stmtContactsCount->bind_param($contactsTypes, ...$contactsParams);
+            $stmtContactsCount->execute();
+            $contactsCount = (int) ($stmtContactsCount->get_result()->fetch_assoc()['cnt'] ?? 0);
+            $stmtContactsCount->close();
+        }
+
+        // TỪ DATABANK
+        $stmtDatabank = $conn->prepare("
+            SELECT COUNT(DISTINCT c.id) as cnt 
+            FROM contacts c 
+            WHERE $contactsWhereClause 
+              AND (c.source = 'databank' OR EXISTS (
+                  SELECT 1 FROM leads l2 
+                  JOIN distribution_logs dl2 ON dl2.lead_id = l2.id 
+                  WHERE l2.person_id = c.person_id AND dl2.assigned_to = c.owner_id AND dl2.status = 'databank_claim'
+              ))
+        ");
+        $databankCount = 0;
+        if ($stmtDatabank) {
+            $stmtDatabank->bind_param($contactsTypes, ...$contactsParams);
+            $stmtDatabank->execute();
+            $databankCount = (int) ($stmtDatabank->get_result()->fetch_assoc()['cnt'] ?? 0);
+            $stmtDatabank->close();
+        }
+
+        // ĐƯỢC CHIA
+        $stmtDistributed = $conn->prepare("
+            SELECT COUNT(DISTINCT c.id) as cnt 
+            FROM contacts c 
+            WHERE $contactsWhereClause 
+              AND (c.source != 'databank' AND EXISTS (
+                  SELECT 1 FROM leads l2 
+                  JOIN distribution_logs dl2 ON dl2.lead_id = l2.id 
+                  WHERE l2.person_id = c.person_id AND dl2.assigned_to = c.owner_id AND dl2.status IN ('assigned', 'compensation', 'rule_6_month', 'pending_work_hours', 'fallback', 'success')
+              ))
+        ");
+        $distributedCount = 0;
+        if ($stmtDistributed) {
+            $stmtDistributed->bind_param($contactsTypes, ...$contactsParams);
+            $stmtDistributed->execute();
+            $distributedCount = (int) ($stmtDistributed->get_result()->fetch_assoc()['cnt'] ?? 0);
+            $stmtDistributed->close();
+        }
+
+        // TỰ NHẬP
+        $selfCount = max(0, $contactsCount - $databankCount - $distributedCount);
+
+        // 4. Query distribution by round using contacts table
+        $sqlByRound = "
+            SELECT COALESCE(r.round_name, 'Tự nhập / Khác') as round_name, COUNT(c.id) as count
+            FROM contacts c
+            LEFT JOIN leads l ON c.person_id = l.person_id
+            LEFT JOIN (
+                SELECT lead_id, assigned_to, MAX(round_id) as round_id 
+                FROM distribution_logs 
+                WHERE status != 'silent'
+                GROUP BY lead_id, assigned_to
+            ) dl ON dl.lead_id = l.id AND dl.assigned_to = c.owner_id
+            LEFT JOIN distribution_rounds r ON dl.round_id = r.id
+            WHERE $contactsWhereClause
+            GROUP BY COALESCE(r.round_name, 'Tự nhập / Khác')
+        ";
+        $byRound = [];
+        $stmtBR = $conn->prepare($sqlByRound);
+        if ($stmtBR) {
+            if (!empty($contactsTypes)) {
+                $stmtBR->bind_param($contactsTypes, ...$contactsParams);
+            }
+            $stmtBR->execute();
+            $resBR = $stmtBR->get_result();
+            while ($row = $resBR->fetch_assoc()) {
+                $byRound[] = $row;
+            }
+            $stmtBR->close();
+        }
+
+        // 5. Query distribution by hour using contacts table
         $sqlByHour = "
-            SELECT HOUR(dl.received_at) as hr, COUNT(dl.id) as count
-            FROM distribution_logs dl
-            JOIN leads l ON dl.lead_id = l.id
-            WHERE $whereClauseNoReminder
-            GROUP BY HOUR(dl.received_at)
+            SELECT HOUR(c.created_at) as hr, COUNT(c.id) as count
+            FROM contacts c
+            WHERE $contactsWhereClause
+            GROUP BY HOUR(c.created_at)
             ORDER BY hr ASC
         ";
-        $stmtBH = $conn->prepare($sqlByHour);
-        if (!empty($types)) {
-            $stmtBH->bind_param($types, ...$params);
-        }
-        $stmtBH->execute();
-        $resBH = $stmtBH->get_result();
         $byHour = array_fill(0, 24, 0);
-        while ($row = $resBH->fetch_assoc()) {
-            $byHour[(int) $row['hr']] = (int) $row['count'];
+        $stmtBH = $conn->prepare($sqlByHour);
+        if ($stmtBH) {
+            if (!empty($contactsTypes)) {
+                $stmtBH->bind_param($contactsTypes, ...$contactsParams);
+            }
+            $stmtBH->execute();
+            $resBH = $stmtBH->get_result();
+            while ($row = $resBH->fetch_assoc()) {
+                $byHour[(int) $row['hr']] = (int) $row['count'];
+            }
+            $stmtBH->close();
         }
-        $stmtBH->close();
 
         // 6. Query active consultants list if user is admin
         $consultantsList = [];
@@ -2551,7 +2655,10 @@ switch ($action) {
             'report_error_reasons' => get_normalized_report_error_reasons($conn),
             'is_allowed_to_report' => true,
             'stats' => [
-                'total_received' => $totalCount,
+                'total_received' => $contactsCount,
+                'distributed_count' => $distributedCount,
+                'databank_count' => $databankCount,
+                'self_count' => $selfCount,
                 'tickets_total' => (int) ($ticketStats['total'] ?? 0),
                 'tickets_approved' => (int) ($ticketStats['approved'] ?? 0),
                 'tickets_rejected' => (int) ($ticketStats['rejected'] ?? 0),
