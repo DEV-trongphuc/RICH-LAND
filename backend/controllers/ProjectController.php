@@ -900,8 +900,8 @@ class ProjectController {
         $stmtActRev->execute([$projectId]);
         $actualRevenue = (float)$stmtActRev->fetchColumn();
         
-        // Total leads (lead status)
-        $stmtLeads = $this->db->prepare("SELECT COUNT(*) FROM contacts WHERE project_id = ? AND status = 'lead' AND deleted_at IS NULL");
+        // Total leads (all non-deleted contacts under this project)
+        $stmtLeads = $this->db->prepare("SELECT COUNT(*) FROM contacts WHERE project_id = ? AND deleted_at IS NULL");
         $stmtLeads->execute([$projectId]);
         $totalLeads = (int)$stmtLeads->fetchColumn();
         

@@ -1131,7 +1131,7 @@ export default function ProjectsPage() {
         }}
       >
         <Folder size={14} />
-        <span>{path} (Xem thư mục)</span>
+        <span>{path}</span>
       </button>
     );
   };
@@ -1693,24 +1693,24 @@ export default function ProjectsPage() {
                                 display: 'inline-flex',
                                 alignItems: 'center',
                                 gap: '8px',
-                                fontSize: '0.8rem',
+                                fontSize: '0.825rem',
                                 fontWeight: 700,
-                                background: 'var(--color-bg-light)',
-                                padding: '8px 12px',
+                                background: 'rgba(100, 116, 139, 0.05)',
+                                padding: '6px 12px',
                                 borderRadius: '10px',
-                                border: '1px solid var(--color-border-light)',
+                                border: '1px solid rgba(100, 116, 139, 0.12)',
                                 color: '#64748b',
                                 cursor: 'pointer',
                                 transition: 'all 0.2s ease'
                               }}
                               className="hover-lift"
                               onMouseEnter={e => {
-                                  e.currentTarget.style.borderColor = 'rgba(100, 116, 139, 0.2)';
-                                e.currentTarget.style.background = '#ffffff';
+                                e.currentTarget.style.borderColor = 'rgba(100, 116, 139, 0.2)';
+                                e.currentTarget.style.background = 'rgba(100, 116, 139, 0.08)';
                               }}
                               onMouseLeave={e => {
-                                e.currentTarget.style.borderColor = 'var(--color-border-light)';
-                                e.currentTarget.style.background = 'var(--color-bg-light)';
+                                e.currentTarget.style.borderColor = 'rgba(100, 116, 139, 0.12)';
+                                e.currentTarget.style.background = 'rgba(100, 116, 139, 0.05)';
                               }}
                             >
                               <Megaphone size={14} style={{ flexShrink: 0 }} />
