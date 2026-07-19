@@ -6062,9 +6062,9 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
             border-color: #f59e0b !important;
           }
         `}</style>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
           {/* Dashboard header */}
-          <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+          <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', marginBottom: '0px' }}>
             <div>
               <h1 className="page-title">{t("Tổng quan Phân bổ Data")}</h1>
               <p className="page-subtitle" style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', margin: '4px 0 0' }}>{t("Phân tích hiệu suất giao data theo thời gian thực — Hệ thống đang hoạt động trơn tru.")}</p>
@@ -6163,18 +6163,18 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
           .welcome-banner {
             position: relative;
             overflow: hidden;
-            background: linear-gradient(135deg, #161212 0%, #291012 50%, #120e0e 100%) !important;
-            border: 1px solid rgba(189, 29, 45, 0.35) !important;
+            background: linear-gradient(135deg, rgba(189, 29, 45, 0.05) 0%, rgba(255, 255, 255, 0.98) 100%) !important;
+            border: 1px solid rgba(189, 29, 45, 0.22) !important;
             border-radius: 20px !important;
-            box-shadow: 0 12px 36px rgba(0, 0, 0, 0.3), 0 1px 0 rgba(255, 255, 255, 0.06) inset !important;
+            box-shadow: 0 10px 30px rgba(189, 29, 45, 0.06), 0 1px 0 rgba(255, 255, 255, 0.9) inset !important;
             transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1) !important;
-            padding: 2rem 2.25rem !important;
+            padding: 1.75rem 2.25rem !important;
             display: flex;
             flex-direction: row;
             align-items: center;
             justify-content: space-between;
             flex-wrap: wrap;
-            gap: 1.75rem;
+            gap: 1.5rem;
             margin-bottom: 0.25rem;
           }
           .welcome-banner::before {
@@ -6185,13 +6185,13 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
             width: 350px;
             height: 350px;
             border-radius: 50%;
-            background: radial-gradient(circle, rgba(189, 29, 45, 0.1) 0%, transparent 70%);
+            background: radial-gradient(circle, rgba(189, 29, 45, 0.06) 0%, transparent 70%);
             pointer-events: none;
           }
           .welcome-banner:hover {
             transform: translateY(-2px);
-            box-shadow: 0 18px 45px rgba(189, 29, 45, 0.18), 0 1px 0 rgba(255, 255, 255, 0.08) inset !important;
-            border-color: rgba(189, 29, 45, 0.5) !important;
+            box-shadow: 0 14px 35px rgba(189, 29, 45, 0.12), 0 1px 0 rgba(255, 255, 255, 0.95) inset !important;
+            border-color: rgba(189, 29, 45, 0.35) !important;
           }
           .welcome-action-btn {
             transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
@@ -6209,47 +6209,48 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
             background: linear-gradient(135deg, #BD1D2D 0%, #a31422 100%) !important;
             border: none !important;
             color: white !important;
-            box-shadow: 0 4px 14px rgba(189, 29, 45, 0.45) !important;
+            box-shadow: 0 4px 14px rgba(189, 29, 45, 0.35) !important;
           }
           .welcome-action-btn.primary-btn:hover {
             transform: translateY(-2px);
-            box-shadow: 0 8px 20px rgba(189, 29, 45, 0.6) !important;
-            filter: brightness(1.15);
+            box-shadow: 0 8px 20px rgba(189, 29, 45, 0.5) !important;
+            filter: brightness(1.1);
           }
           .welcome-action-btn.outline-btn {
-            background: rgba(255, 255, 255, 0.04) !important;
-            border: 1px solid rgba(255, 255, 255, 0.15) !important;
-            color: #ffffff !important;
+            background: #ffffff !important;
+            border: 1px solid rgba(189, 29, 45, 0.2) !important;
+            color: #BD1D2D !important;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.03) !important;
           }
           .welcome-action-btn.outline-btn:hover {
-            background: rgba(189, 29, 45, 0.15) !important;
-            border-color: rgba(189, 29, 45, 0.5) !important;
-            color: #ffffff !important;
+            background: rgba(189, 29, 45, 0.05) !important;
+            border-color: #BD1D2D !important;
+            color: #BD1D2D !important;
             transform: translateY(-2px);
-            box-shadow: 0 8px 20px rgba(189, 29, 45, 0.25) !important;
+            box-shadow: 0 6px 16px rgba(189, 29, 45, 0.12) !important;
           }
           .welcome-task-row {
-            background: rgba(255, 255, 255, 0.04) !important;
-            border: 1px solid rgba(255, 255, 255, 0.12) !important;
+            background: #ffffff !important;
+            border: 1px solid rgba(189, 29, 45, 0.12) !important;
             border-radius: 12px !important;
             padding: 10px 16px !important;
             display: flex;
             align-items: center;
             gap: 12px;
             font-size: 0.825rem;
-            color: #ffffff !important;
+            color: #1e1b1b !important;
             font-weight: 700 !important;
             transition: all 0.2s ease;
             cursor: pointer;
             text-decoration: none;
-            box-shadow: 0 2px 6px rgba(0,0,0,0.15) !important;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.03) !important;
           }
           .welcome-task-row:hover {
-            background: rgba(189, 29, 45, 0.12) !important;
-            border-color: rgba(189, 29, 45, 0.35) !important;
-            color: #ffffff !important;
+            background: rgba(189, 29, 45, 0.04) !important;
+            border-color: rgba(189, 29, 45, 0.25) !important;
+            color: #BD1D2D !important;
             transform: translateX(4px);
-            box-shadow: 0 4px 12px rgba(189, 29, 45, 0.25) !important;
+            box-shadow: 0 4px 12px rgba(189, 29, 45, 0.1) !important;
           }
         `}</style>
 
@@ -6261,7 +6262,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                 name={displayUser?.name || 'User'} 
                 src={displayUser?.avatar} 
                 size={60} 
-                style={{ border: '2.5px solid rgba(189, 29, 45, 0.45)', boxShadow: '0 0 16px rgba(189, 29, 45, 0.3)' }}
+                style={{ border: '2.5px solid rgba(189, 29, 45, 0.45)', boxShadow: '0 0 16px rgba(189, 29, 45, 0.15)' }}
               />
               <span className="animate-pulse" style={{
                 position: 'absolute',
@@ -6271,13 +6272,13 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                 height: 14,
                 borderRadius: '50%',
                 backgroundColor: '#10b981',
-                border: '2.5px solid #161212',
+                border: '2.5px solid #ffffff',
                 boxShadow: '0 0 10px #10b981'
               }} />
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', minWidth: 0 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
-                <h2 style={{ fontSize: '1.35rem', fontWeight: 800, color: '#ffffff', margin: 0, letterSpacing: '-0.3px', textShadow: '0 2px 4px rgba(0,0,0,0.3)' }}>
+                <h2 style={{ fontSize: '1.35rem', fontWeight: 800, color: '#18181b', margin: 0, letterSpacing: '-0.3px' }}>
                   {t('Xin chào')}, {displayUser?.name || 'Thành viên'}
                 </h2>
                 <span style={{ 
@@ -6288,21 +6289,21 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                   padding: '4px 12px', 
                   borderRadius: '20px', 
                   textTransform: 'uppercase',
-                  boxShadow: '0 2px 8px rgba(189, 29, 45, 0.5)',
+                  boxShadow: '0 2px 8px rgba(189, 29, 45, 0.3)',
                   letterSpacing: '0.6px'
                 }}>
                   {displayUser?.role === 'sale' ? t('Tư vấn viên') : displayUser?.role === 'sales' ? t('Tư vấn viên') : displayUser?.role}
                 </span>
               </div>
               
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', fontSize: '0.825rem', color: '#e4e4e7' }}>
-                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontWeight: 600 }}>
-                  <Clock size={13} style={{ color: '#ff4d5a' }} />
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', fontSize: '0.825rem', color: '#3f3f46' }}>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontWeight: 700 }}>
+                  <Clock size={13} style={{ color: '#BD1D2D' }} />
                   {getCurrentDateVi()}
                 </span>
                 {!isAdmin && (
                   <>
-                    <span style={{ color: 'rgba(255, 255, 255, 0.25)' }}>•</span>
+                    <span style={{ color: 'rgba(0, 0, 0, 0.15)' }}>•</span>
                     {(() => {
                       if (!todayCheckIn) {
                         return (
@@ -6310,9 +6311,9 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                             display: 'inline-flex',
                             alignItems: 'center',
                             gap: '4px',
-                            background: 'rgba(239, 68, 68, 0.25)',
-                            color: '#ff8a8a',
-                            border: '1px solid rgba(239, 68, 68, 0.4)',
+                            background: 'rgba(239, 68, 68, 0.1)',
+                            color: '#b91c1c',
+                            border: '1px solid rgba(239, 68, 68, 0.2)',
                             padding: '3px 10px',
                             borderRadius: '12px',
                             fontWeight: 800
@@ -6329,9 +6330,9 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                             display: 'inline-flex',
                             alignItems: 'center',
                             gap: '4px',
-                            background: 'rgba(16, 185, 129, 0.25)',
-                            color: '#5ef08f',
-                            border: '1px solid rgba(16, 185, 129, 0.4)',
+                            background: 'rgba(16, 185, 129, 0.1)',
+                            color: '#15803d',
+                            border: '1px solid rgba(16, 185, 129, 0.2)',
                             padding: '3px 10px',
                             borderRadius: '12px',
                             fontWeight: 800
@@ -6347,9 +6348,9 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                             display: 'inline-flex',
                             alignItems: 'center',
                             gap: '4px',
-                            background: 'rgba(245, 158, 11, 0.25)',
-                            color: '#ffe066',
-                            border: '1px solid rgba(245, 158, 11, 0.4)',
+                            background: 'rgba(245, 158, 11, 0.1)',
+                            color: '#b45309',
+                            border: '1px solid rgba(245, 158, 11, 0.2)',
                             padding: '3px 10px',
                             borderRadius: '12px',
                             fontWeight: 800
@@ -6365,9 +6366,9 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                             display: 'inline-flex',
                             alignItems: 'center',
                             gap: '4px',
-                            background: 'rgba(239, 68, 68, 0.25)',
-                            color: '#ff8a8a',
-                            border: '1px solid rgba(239, 68, 68, 0.4)',
+                            background: 'rgba(239, 68, 68, 0.1)',
+                            color: '#b91c1c',
+                            border: '1px solid rgba(239, 68, 68, 0.2)',
                             padding: '3px 10px',
                             borderRadius: '12px',
                             fontWeight: 800
@@ -6387,7 +6388,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
 
           {/* Middle section: Issues/Tasks */}
           <div style={{ flex: '2 1 380px', display: 'flex', flexDirection: 'column', gap: '10px', minWidth: '280px' }}>
-            <h4 style={{ margin: 0, fontSize: '0.72rem', fontWeight: 800, color: '#f4f4f5', textTransform: 'uppercase', letterSpacing: '1px', opacity: 0.9 }}>
+            <h4 style={{ margin: 0, fontSize: '0.72rem', fontWeight: 800, color: '#3f3f46', textTransform: 'uppercase', letterSpacing: '1px', opacity: 0.95 }}>
               {t('Nhiệm vụ & Vấn đề cần giải quyết')}
             </h4>
             {issues.length > 0 ? (
@@ -6398,9 +6399,9 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                     onClick={issue.action}
                     className="welcome-task-row"
                   >
-                    {issue.type === 'coop' && <FileText size={14} style={{ color: '#fbbf24' }} />}
-                    {issue.type === 'task' && <CheckSquare size={14} style={{ color: '#60a5fa' }} />}
-                    {issue.type === 'checkin' && <AlertCircle size={14} style={{ color: '#ff8a8a' }} />}
+                    {issue.type === 'coop' && <FileText size={14} style={{ color: '#d97706' }} />}
+                    {issue.type === 'task' && <CheckSquare size={14} style={{ color: '#2563eb' }} />}
+                    {issue.type === 'checkin' && <AlertCircle size={14} style={{ color: '#dc2626' }} />}
                     <span style={{ flex: 1 }}>{issue.text}</span>
                   </div>
                 ))}
@@ -6414,8 +6415,8 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                 background: 'rgba(16, 185, 129, 0.08)', 
                 border: '1px solid rgba(16, 185, 129, 0.25)', 
                 borderRadius: '12px', 
-                color: '#5ef08f',
-                boxShadow: '0 2px 8px rgba(16, 185, 129, 0.1)'
+                color: '#15803d',
+                boxShadow: '0 2px 8px rgba(16, 185, 129, 0.05)'
               }}>
                 <CheckCircle2 size={16} style={{ flexShrink: 0 }} />
                 <span style={{ fontSize: '0.825rem', fontWeight: 700 }}>
