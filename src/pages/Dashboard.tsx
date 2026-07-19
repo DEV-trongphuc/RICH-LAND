@@ -242,10 +242,10 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
       // BUG-06 fix: Xử lý lỗi riêng từng API, không để lỗi một cái 'nuốt' cái kia
       const metric = showHealthModal ? healthChartMetric : 'lead';
       const [statsJson, logsJson, settingsJson, connectionsJson] = await Promise.all([
-        fetchAPI(`get_dashboard_stats&date=${encodeURIComponent(dateFilter)}&chart_mode=${displayChartMode}&chart_metric=${metric}`),
-        fetchAPI('get_logs&exclude_status=silent&page=1&pageSize=5'),
-        fetchAPI('get_settings'),
-        fetchAPI('get_connections')
+        fetchAPI(`get_dashboard_stats&date=${encodeURIComponent(dateFilter)}&chart_mode=${displayChartMode}&chart_metric=${metric}`).catch(e => ({ success: false, message: e.message })),
+        fetchAPI('get_logs&exclude_status=silent&page=1&pageSize=5').catch(e => ({ success: false, message: e.message })),
+        fetchAPI('get_settings').catch(e => ({ success: false, message: e.message })),
+        fetchAPI('get_connections').catch(e => ({ success: false, message: e.message }))
       ]);
 
       // Kiểm tra xem request đã bị hủy chưa (user đổi filter trước khi response về)
