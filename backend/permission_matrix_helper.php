@@ -74,7 +74,11 @@ if (!function_exists('getActionModuleAndType')) {
         
         $module = 'settings';
         
-        if (in_array($action, ['get_reports', 'approve_report', 'reject_report', 'get_my_activity_logs', 'compensate_approved_no_comp', 'get_active_compensation_logs', 'get_sale_portal_data'])) {
+        if (in_array($action, [
+            'get_reports', 'approve_report', 'reject_report', 'get_my_activity_logs', 
+            'compensate_approved_no_comp', 'get_active_compensation_logs', 'get_sale_portal_data',
+            'get_dashboard_stats', 'get_logs'
+        ], true)) {
             $module = 'leads';
         } else if (strpos($action, 'lead') !== false || strpos($action, 'consultant') !== false || strpos($action, 'round') !== false || strpos($action, 'rule') !== false || strpos($action, 'night_shift') !== false) {
             $module = 'leads';
