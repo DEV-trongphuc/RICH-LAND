@@ -2186,6 +2186,35 @@ function releaseExpiredLeadsToKho($conn) {
 
             logSync("Soft-deleted expired contact ID $contactId (Person ID $personId) for Owner ID $ownerId");
 
+            // Send in-app notification & email about contact expiry/revocation
+            $stmtOwner = $conn->prepare("SELECT email, full_name FROM users WHERE id = ?");
+            $stmtOwner->bind_param("i", $ownerId);
+            $stmtOwner->execute();
+            $ownerRow = $stmtOwner->get_result()->fetch_assoc();
+            $stmtOwner->close();
+
+            $clientName = trim($row['first_name'] . ' ' . $row['last_name']) ?: 'Khách hàng ẩn danh';
+            $notifTitle = "Thu hồi khách hàng do hết hạn bảo mật";
+            $notifBody = "Khách hàng $clientName đã bị thu hồi khỏi danh sách của bạn do hết hạn bảo mật.";
+            
+            $stmtNotif = $conn->prepare("
+                INSERT INTO notifications (user_id, tenant_id, title, body, type, link) 
+                VALUES (?, ?, ?, ?, 'contact_expired', '/contacts')
+            ");
+            $stmtNotif->bind_param("iiss", $ownerId, $tenantId, $notifTitle, $notifBody);
+            $stmtNotif->execute();
+            $stmtNotif->close();
+
+            if ($ownerRow && !empty($ownerRow['email'])) {
+                require_once __DIR__ . '/mailer.php';
+                $emailSubject = "[RICH LAND] Thông báo thu hồi khách hàng: " . $clientName;
+                $emailTitle = "THU HỒI KHÁCH HÀNG HẾT HẠN BẢO MẬT";
+                $emailContent = "Chào <strong>" . htmlspecialchars($ownerRow['full_name']) . "</strong>,<br/><br/>" .
+                                "Khách hàng <strong>" . htmlspecialchars($clientName) . "</strong> đã bị thu hồi khỏi danh sách chăm sóc của bạn do hết hạn bảo mật tương tác mà không phát sinh cập nhật mới.<br/>" .
+                                "Vui lòng liên hệ Admin nếu có bất kỳ thắc mắc nào.";
+                sendEmailNotification($ownerRow['email'], $emailSubject, $emailTitle, $emailContent, '', false);
+            }
+
             // 2. Check if there are any other active contacts left for this Person
             $stmtActive = $conn->prepare("SELECT COUNT(*) as active_cnt FROM contacts WHERE person_id = ? AND deleted_at IS NULL");
             $stmtActive->bind_param("i", $personId);

@@ -539,8 +539,8 @@ class DealController {
 
             $stmtNewDeal = $this->db->prepare("
                 INSERT INTO deals (tenant_id, stage_id, contact_id, company_id, owner_id, created_by,
-                    title, description, priority, value, probability, source, tags, switched_from_deal_id)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    title, description, priority, value, probability, expected_close_date, source, tags, switched_from_deal_id)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ");
             $stmtNewDeal->execute([
                 $auth['tenant_id'],
@@ -554,11 +554,21 @@ class DealController {
                 $oldDeal['priority'],
                 $newPrice,
                 $oldDeal['probability'],
+                $oldDeal['expected_close_date'],
                 $oldDeal['source'],
                 $oldDeal['tags'],
                 $id // switched_from_deal_id
             ]);
             $newDealId = (int)$this->db->lastInsertId();
+
+            // Copy custom field values from the old deal to the new deal
+            $stmtCF = $this->db->prepare("
+                INSERT INTO custom_field_values (custom_field_id, entity_id, value_text, value_number, value_date, value_json, created_at, updated_at)
+                SELECT custom_field_id, ?, value_text, value_number, value_date, value_json, NOW(), NOW()
+                FROM custom_field_values
+                WHERE entity_id = ?
+            ");
+            $stmtCF->execute([$newDealId, $id]);
 
             // Insert into history for the new deal
             $this->db->prepare("INSERT INTO deal_stage_history (deal_id, from_stage, to_stage, moved_by) VALUES (?, NULL, ?, ?)")
