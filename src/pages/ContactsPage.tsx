@@ -436,8 +436,19 @@ export const ContactsPage: React.FC = () => {
       const r = await api.get('/contacts', { params });
       const data = r.data.data;
       let items = data.items || [];
-      // Note: We remove the client-side user/sale filter because the backend already enforces strict security and permission scoping (own/team/all).
-      // Double-filtering in the frontend causes bugs where co-care (collaborators) and cooperation slip contacts are hidden.
+      // Filter contacts for sale roles to only show their own, created, or co-care/cooperated contacts.
+      if (user?.role === 'sale' || (user?.role as string) === 'sales') {
+        items = items.filter((c: any) => {
+          const isOwner = Number(c.owner_id) === Number(user.id);
+          const isCreator = Number(c.created_by) === Number(user.id);
+          const isCollab = (c.collaborator_ids || '')
+            .split(',')
+            .map((s: string) => s.trim())
+            .filter(Boolean)
+            .includes(String(user.id));
+          return isOwner || isCreator || isCollab;
+        });
+      }
       if (user?.role === 'manager') {
         const activeTeamId = getEffectiveTeamId();
         if (activeTeamId) {
