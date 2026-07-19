@@ -56,28 +56,43 @@ class ContactController {
         $scope = $this->getScope($auth, 'leads', 'read');
         if ($scope === 'all') {
             // No filters
-        } else if ($scope === 'team') {
-            $where[] = '(c.owner_id = ? OR c.owner_id IN (
-                SELECT id FROM users WHERE team_id IN (
-                    SELECT id FROM teams WHERE FIND_IN_SET(?, CONCAT(leader_id, CHAR(44), COALESCE(co_leader_ids, leader_id)))
-                ) OR team_id = (SELECT team_id FROM users WHERE id = ?)
-            ) OR FIND_IN_SET(?, c.collaborator_ids) OR c.id IN (
-                SELECT contact_id FROM cooperation_slips 
-                WHERE JSON_CONTAINS(JSON_KEYS(CASE WHEN (shares_json IS NOT NULL AND JSON_VALID(shares_json)) THEN shares_json ELSE "{}" END), JSON_QUOTE(CAST(? AS CHAR)))
-            ))';
-            $params[] = $auth['user_id'];
-            $params[] = $auth['user_id'];
-            $params[] = $auth['user_id'];
-            $params[] = $auth['user_id'];
-            $params[] = $auth['user_id'];
-        } else if ($scope === 'own') {
-            $where[] = '(c.owner_id = ? OR FIND_IN_SET(?, c.collaborator_ids) OR c.id IN (
-                SELECT contact_id FROM cooperation_slips 
-                WHERE JSON_CONTAINS(JSON_KEYS(CASE WHEN (shares_json IS NOT NULL AND JSON_VALID(shares_json)) THEN shares_json ELSE "{}" END), JSON_QUOTE(CAST(? AS CHAR)))
-            ))';
-            $params[] = $auth['user_id'];
-            $params[] = $auth['user_id'];
-            $params[] = $auth['user_id'];
+        } else if ($scope === 'team' || $scope === 'own') {
+            $teamMemberIds = [$auth['user_id']];
+            if ($scope === 'team') {
+                $stmtTeam = $this->db->prepare("
+                    SELECT id FROM users 
+                    WHERE team_id IN (
+                        SELECT id FROM teams 
+                        WHERE FIND_IN_SET(?, CONCAT(leader_id, CHAR(44), COALESCE(co_leader_ids, leader_id)))
+                    ) OR team_id = (SELECT team_id FROM users WHERE id = ?)
+                ");
+                $stmtTeam->execute([$auth['user_id'], $auth['user_id']]);
+                $fetchedIds = $stmtTeam->fetchAll(PDO::FETCH_COLUMN);
+                if ($fetchedIds) {
+                    foreach ($fetchedIds as $fid) {
+                        $teamMemberIds[] = (int)$fid;
+                    }
+                }
+                $teamMemberIds = array_unique($teamMemberIds);
+            }
+
+            $idsClause = implode(',', $teamMemberIds);
+            
+            $collabChecks = [];
+            foreach ($teamMemberIds as $id) {
+                $collabChecks[] = "FIND_IN_SET(" . (int)$id . ", c.collaborator_ids)";
+            }
+            $collabClause = implode(' OR ', $collabChecks);
+            
+            $coopChecks = [];
+            foreach ($teamMemberIds as $id) {
+                $coopChecks[] = "JSON_CONTAINS(JSON_KEYS(CASE WHEN (shares_json IS NOT NULL AND JSON_VALID(shares_json)) THEN shares_json ELSE '{}' END), JSON_QUOTE(CAST(" . (int)$id . " AS CHAR)))";
+            }
+            $coopClause = implode(' OR ', $coopChecks);
+
+            $where[] = "(c.owner_id IN ($idsClause) OR c.created_by IN ($idsClause) OR ($collabClause) OR c.id IN (
+                SELECT contact_id FROM cooperation_slips WHERE $coopClause
+            ))";
         } else {
             $where[] = '1=0';
         }

@@ -2551,7 +2551,7 @@ switch ($action) {
             'report_error_reasons' => get_normalized_report_error_reasons($conn),
             'is_allowed_to_report' => true,
             'stats' => [
-                'total_received' => count($leads),
+                'total_received' => $totalCount,
                 'tickets_total' => (int) ($ticketStats['total'] ?? 0),
                 'tickets_approved' => (int) ($ticketStats['approved'] ?? 0),
                 'tickets_rejected' => (int) ($ticketStats['rejected'] ?? 0),

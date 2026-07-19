@@ -4238,40 +4238,26 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
               setWsStatus('planned');
               setWsTaskFilter('all');
             }}
+            className="stat-card"
             style={{
-              padding: isMobile ? '0.5rem 0.625rem' : '0.625rem 0.875rem',
-              borderRadius: '8px',
-              border: wsDatePreset === 'overdue' ? '1px solid var(--color-danger)' : '1px solid var(--color-border-light)',
-              borderLeft: `4px solid var(--color-danger)`,
-              background: wsDatePreset === 'overdue' ? 'rgba(239, 68, 68, 0.05)' : 'var(--color-surface)',
+              padding: '0.75rem 1rem',
+              borderRadius: 'var(--radius-lg)',
+              border: wsDatePreset === 'overdue' ? '1.5px solid var(--color-danger)' : '1px solid var(--color-border)',
+              background: wsDatePreset === 'overdue' ? 'rgba(239, 68, 68, 0.04)' : 'var(--color-surface)',
               cursor: 'pointer',
               display: 'flex',
-              alignItems: 'center',
-              gap: isMobile ? '0.375rem' : '0.625rem',
-              transition: 'all 0.15s ease',
-              boxShadow: 'var(--shadow-sm)'
+              flexDirection: 'column',
+              justifyContent: 'space-between',
+              minHeight: isMobile ? '82px' : '96px',
+              transition: 'all 0.15s ease'
             }}
           >
-            <div style={{
-              width: '28px',
-              height: '28px',
-              borderRadius: '50%',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              background: 'rgba(239, 68, 68, 0.08)',
-              color: 'var(--color-danger)',
-              flexShrink: 0
-            }}>
-              <Clock size={15} />
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+              <span className="stat-label" style={{ fontSize: '0.6875rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('Quá hạn')}</span>
+              <div className="stat-icon" style={{ color: 'var(--color-danger)', opacity: 0.8 }}><Clock size={16} /></div>
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
-              <span style={{ fontSize: '0.65rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.3px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                {t('Quá hạn')}
-              </span>
-              <span style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--color-danger)', marginTop: '2px', lineHeight: 1.1 }}>
-                {workspaceStats.overdue}
-              </span>
+            <div className="stat-value" style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--color-danger)', margin: '4px 0 0', lineHeight: 1.1 }}>
+              {workspaceStats.overdue}
             </div>
           </div>
 
@@ -4282,40 +4268,26 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
               setWsStatus('planned');
               setWsTaskFilter('all');
             }}
+            className="stat-card"
             style={{
-              padding: isMobile ? '0.5rem 0.625rem' : '0.625rem 0.875rem',
-              borderRadius: '8px',
-              border: wsDatePreset === 'today' ? '1px solid var(--color-warning)' : '1px solid var(--color-border-light)',
-              borderLeft: `4px solid var(--color-warning)`,
-              background: wsDatePreset === 'today' ? 'rgba(245, 158, 11, 0.05)' : 'var(--color-surface)',
+              padding: '0.75rem 1rem',
+              borderRadius: 'var(--radius-lg)',
+              border: wsDatePreset === 'today' ? '1.5px solid var(--color-warning)' : '1px solid var(--color-border)',
+              background: wsDatePreset === 'today' ? 'rgba(245, 158, 11, 0.04)' : 'var(--color-surface)',
               cursor: 'pointer',
               display: 'flex',
-              alignItems: 'center',
-              gap: isMobile ? '0.375rem' : '0.625rem',
-              transition: 'all 0.15s ease',
-              boxShadow: 'var(--shadow-sm)'
+              flexDirection: 'column',
+              justifyContent: 'space-between',
+              minHeight: isMobile ? '82px' : '96px',
+              transition: 'all 0.15s ease'
             }}
           >
-            <div style={{
-              width: '28px',
-              height: '28px',
-              borderRadius: '50%',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              background: 'rgba(245, 158, 11, 0.08)',
-              color: 'var(--color-warning)',
-              flexShrink: 0
-            }}>
-              <Calendar size={15} />
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+              <span className="stat-label" style={{ fontSize: '0.6875rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('Đến hạn')}</span>
+              <div className="stat-icon" style={{ color: 'var(--color-warning)', opacity: 0.8 }}><Calendar size={16} /></div>
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
-              <span style={{ fontSize: '0.65rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.3px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                {t('Đến hạn')}
-              </span>
-              <span style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--color-warning)', marginTop: '2px', lineHeight: 1.1 }}>
-                {workspaceStats.dueToday}
-              </span>
+            <div className="stat-value" style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--color-warning)', margin: '4px 0 0', lineHeight: 1.1 }}>
+              {workspaceStats.dueToday}
             </div>
           </div>
 
@@ -4326,40 +4298,26 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
               setWsStatus('planned');
               setWsTaskFilter('all');
             }}
+            className="stat-card"
             style={{
-              padding: isMobile ? '0.5rem 0.625rem' : '0.625rem 0.875rem',
-              borderRadius: '8px',
-              border: wsDatePreset === 'tomorrow' ? '1px solid var(--color-info)' : '1px solid var(--color-border-light)',
-              borderLeft: `4px solid var(--color-info)`,
-              background: wsDatePreset === 'tomorrow' ? 'rgba(59, 130, 246, 0.05)' : 'var(--color-surface)',
+              padding: '0.75rem 1rem',
+              borderRadius: 'var(--radius-lg)',
+              border: wsDatePreset === 'tomorrow' ? '1.5px solid var(--color-info)' : '1px solid var(--color-border)',
+              background: wsDatePreset === 'tomorrow' ? 'rgba(59, 130, 246, 0.04)' : 'var(--color-surface)',
               cursor: 'pointer',
               display: 'flex',
-              alignItems: 'center',
-              gap: isMobile ? '0.375rem' : '0.625rem',
-              transition: 'all 0.15s ease',
-              boxShadow: 'var(--shadow-sm)'
+              flexDirection: 'column',
+              justifyContent: 'space-between',
+              minHeight: isMobile ? '82px' : '96px',
+              transition: 'all 0.15s ease'
             }}
           >
-            <div style={{
-              width: '28px',
-              height: '28px',
-              borderRadius: '50%',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              background: 'rgba(59, 130, 246, 0.08)',
-              color: 'var(--color-info)',
-              flexShrink: 0
-            }}>
-              <ArrowUpRight size={15} />
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+              <span className="stat-label" style={{ fontSize: '0.6875rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('Sắp đến hạn')}</span>
+              <div className="stat-icon" style={{ color: 'var(--color-info)', opacity: 0.8 }}><ArrowUpRight size={16} /></div>
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
-              <span style={{ fontSize: '0.65rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.3px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                {t('Sắp đến hạn')}
-              </span>
-              <span style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--color-info)', marginTop: '2px', lineHeight: 1.1 }}>
-                {workspaceStats.upcoming}
-              </span>
+            <div className="stat-value" style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--color-info)', margin: '4px 0 0', lineHeight: 1.1 }}>
+              {workspaceStats.upcoming}
             </div>
           </div>
 
@@ -4370,40 +4328,26 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
               setWsStatus('all');
               setWsDatePreset('all');
             }}
+            className="stat-card"
             style={{
-              padding: isMobile ? '0.5rem 0.625rem' : '0.625rem 0.875rem',
-              borderRadius: '8px',
-              border: wsTaskFilter === 'approve_by_me' ? '1px solid #8b5cf6' : '1px solid var(--color-border-light)',
-              borderLeft: `4px solid #8b5cf6`,
-              background: wsTaskFilter === 'approve_by_me' ? 'rgba(139, 92, 246, 0.05)' : 'var(--color-surface)',
+              padding: '0.75rem 1rem',
+              borderRadius: 'var(--radius-lg)',
+              border: wsTaskFilter === 'approve_by_me' ? '1.5px solid #8b5cf6' : '1px solid var(--color-border)',
+              background: wsTaskFilter === 'approve_by_me' ? 'rgba(139, 92, 246, 0.04)' : 'var(--color-surface)',
               cursor: 'pointer',
               display: 'flex',
-              alignItems: 'center',
-              gap: isMobile ? '0.375rem' : '0.625rem',
-              transition: 'all 0.15s ease',
-              boxShadow: 'var(--shadow-sm)'
+              flexDirection: 'column',
+              justifyContent: 'space-between',
+              minHeight: isMobile ? '82px' : '96px',
+              transition: 'all 0.15s ease'
             }}
           >
-            <div style={{
-              width: '28px',
-              height: '28px',
-              borderRadius: '50%',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              background: 'rgba(139, 92, 246, 0.08)',
-              color: '#8b5cf6',
-              flexShrink: 0
-            }}>
-              <UserCheck size={15} />
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+              <span className="stat-label" style={{ fontSize: '0.6875rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('Chờ tôi duyệt')}</span>
+              <div className="stat-icon" style={{ color: '#8b5cf6', opacity: 0.8 }}><UserCheck size={16} /></div>
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
-              <span style={{ fontSize: '0.65rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.3px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                {t('Chờ tôi duyệt')}
-              </span>
-              <span style={{ fontSize: '1.15rem', fontWeight: 800, color: '#8b5cf6', marginTop: '2px', lineHeight: 1.1 }}>
-                {workspaceStats.pendingApproval}
-              </span>
+            <div className="stat-value" style={{ fontSize: '1.5rem', fontWeight: 800, color: '#8b5cf6', margin: '4px 0 0', lineHeight: 1.1 }}>
+              {workspaceStats.pendingApproval}
             </div>
           </div>
         </div>

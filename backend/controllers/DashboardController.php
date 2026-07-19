@@ -113,12 +113,18 @@ class DashboardController {
             $qContacts = "SELECT COUNT(*) FROM contacts WHERE tenant_id=? AND deleted_at IS NULL AND created_at BETWEEN ? AND ?";
             $pContacts = [$tid, $fTs, $tTs];
             if ($isSale) { 
-                $qContacts .= " AND owner_id=?"; 
+                $qContacts .= " AND (owner_id=? OR created_by=? OR FIND_IN_SET(?, collaborator_ids) OR id IN (
+                    SELECT contact_id FROM cooperation_slips 
+                    WHERE JSON_CONTAINS(JSON_KEYS(CASE WHEN (shares_json IS NOT NULL AND JSON_VALID(shares_json)) THEN shares_json ELSE '{}' END), JSON_QUOTE(CAST(? AS CHAR)))
+                ))"; 
+                $pContacts[] = $uid; 
+                $pContacts[] = $uid; 
+                $pContacts[] = $uid; 
                 $pContacts[] = $uid; 
             } else if ($isManager) {
                 $placeholders = implode(',', array_fill(0, count($userIds), '?'));
-                $qContacts .= " AND owner_id IN ($placeholders)";
-                $pContacts = array_merge($pContacts, $userIds);
+                $qContacts .= " AND (owner_id IN ($placeholders) OR created_by IN ($placeholders))";
+                $pContacts = array_merge($pContacts, $userIds, $userIds);
             }
             $newContacts = (int)$this->queryScalar($qContacts, $pContacts);
 
@@ -191,12 +197,18 @@ class DashboardController {
         $qTotalContacts = "SELECT COUNT(*) FROM contacts WHERE tenant_id=? AND deleted_at IS NULL";
         $pTotalContacts = [$tid];
         if ($isSale) { 
-            $qTotalContacts .= " AND owner_id=?"; 
+            $qTotalContacts .= " AND (owner_id=? OR created_by=? OR FIND_IN_SET(?, collaborator_ids) OR id IN (
+                SELECT contact_id FROM cooperation_slips 
+                WHERE JSON_CONTAINS(JSON_KEYS(CASE WHEN (shares_json IS NOT NULL AND JSON_VALID(shares_json)) THEN shares_json ELSE '{}' END), JSON_QUOTE(CAST(? AS CHAR)))
+            ))"; 
+            $pTotalContacts[] = $uid; 
+            $pTotalContacts[] = $uid; 
+            $pTotalContacts[] = $uid; 
             $pTotalContacts[] = $uid; 
         } else if ($isManager) {
             $placeholders = implode(',', array_fill(0, count($userIds), '?'));
-            $qTotalContacts .= " AND owner_id IN ($placeholders)";
-            $pTotalContacts = array_merge($pTotalContacts, $userIds);
+            $qTotalContacts .= " AND (owner_id IN ($placeholders) OR created_by IN ($placeholders))";
+            $pTotalContacts = array_merge($pTotalContacts, $userIds, $userIds);
         }
         $totalContacts = (int)$this->queryScalar($qTotalContacts, $pTotalContacts);
 

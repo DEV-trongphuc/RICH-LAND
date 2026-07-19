@@ -457,32 +457,7 @@ export const ContactsPage: React.FC = () => {
 
       const r = await api.get('/contacts', { params });
       const data = r.data.data;
-      let items = data.items || [];
-      // Filter contacts for sale roles to only show their own, created, or co-care/cooperated contacts.
-      if (user?.role === 'sale' || (user?.role as string) === 'sales') {
-        items = items.filter((c: any) => {
-          const isOwner = Number(c.owner_id) === Number(user.id);
-          const isCreator = Number(c.created_by) === Number(user.id);
-          const isCollab = (c.collaborator_ids || '')
-            .split(',')
-            .map((s: string) => s.trim())
-            .filter(Boolean)
-            .includes(String(user.id));
-          return isOwner || isCreator || isCollab;
-        });
-      }
-      if (user?.role === 'manager') {
-        const activeTeamId = getEffectiveTeamId();
-        if (activeTeamId) {
-          const teamMemberIds = users
-            .filter((u: any) => String(u.team_id) === String(activeTeamId))
-            .map((u: any) => u.id);
-          if (!teamMemberIds.includes(user.id)) {
-            teamMemberIds.push(user.id);
-          }
-          items = items.filter((c: any) => teamMemberIds.includes(Number(c.owner_id)) || teamMemberIds.includes(Number(c.created_by)));
-        }
-      }
+      const items = data.items || [];
       setContacts(items.map((c: any) => ({ ...c, score: calcScore(c) })));
       setTotal(data.total || items.length);
     } catch (e: any) {
