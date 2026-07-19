@@ -2294,9 +2294,11 @@ function releaseExpiredLeadsToKho($conn) {
                 $stmtL->execute();
                 $lRow = $stmtL->get_result()->fetch_assoc();
                 $stmtL->close();
-                $leadId = $lRow ? $lRow['id'] : 0;
+                $leadId = $lRow ? (int)$lRow['id'] : null;
                 
-                logDistribution($conn, $leadId, null, null, 'released_to_kho', 'Hết hạn bảo mật, tự động đưa ra Kho chung', false);
+                if ($leadId !== null && $leadId > 0) {
+                    logDistribution($conn, $leadId, null, null, 'released_to_kho', 'Hết hạn bảo mật, tự động đưa ra Kho chung', false);
+                }
                 logSync("Released Person ID $personId to Kho chung.");
             }
 
