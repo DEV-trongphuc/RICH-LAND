@@ -170,6 +170,7 @@ class ContactController {
         }
 
         $whereStr = implode(' AND ', $where);
+        @file_put_contents(__DIR__ . '/../debug_scope.txt', "user_id: " . $auth['user_id'] . " | role: " . $auth['role'] . " | scope: " . $scope . " | where: " . $whereStr . "\n");
 
         $count = $this->db->prepare("SELECT COUNT(*) FROM contacts c WHERE $whereStr");
         $count->execute($params);
