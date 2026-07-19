@@ -12,7 +12,7 @@ class CheckInController {
         // Option to check only today's check-in for the logged-in user (useful for dashboard/buttons)
         if (isset($_GET['today_only']) && $_GET['today_only'] == '1') {
             $stmt = $this->db->prepare("
-                SELECT c.*, u.work_start_time, u.full_name as user_name
+                SELECT c.*, IF(u.use_custom_work_hours = 1, u.work_start_time, (SELECT setting_value FROM system_settings WHERE setting_key = 'global_work_start_time' LIMIT 1)) AS work_start_time, u.full_name as user_name
                 FROM check_ins c
                 JOIN users u ON c.user_id = u.id
                 WHERE c.user_id = ? AND c.check_in_date = ?
@@ -24,7 +24,7 @@ class CheckInController {
 
         $isManager = in_array($auth['role'], ['admin', 'superadmin', 'super_admin', 'assistant', 'manager', 'director'], true);
         
-        $sql = "SELECT c.*, u.full_name as user_name, u.email as user_email, u.avatar_url as user_avatar, u.work_start_time
+        $sql = "SELECT c.*, u.full_name as user_name, u.email as user_email, u.avatar_url as user_avatar, IF(u.use_custom_work_hours = 1, u.work_start_time, (SELECT setting_value FROM system_settings WHERE setting_key = 'global_work_start_time' LIMIT 1)) AS work_start_time
                 FROM check_ins c
                 JOIN users u ON c.user_id = u.id
                 WHERE u.tenant_id = ?";
@@ -217,9 +217,21 @@ class CheckInController {
         }
 
         // Fetch user work_start_time
-        $stmtUser = $this->db->prepare("SELECT work_start_time FROM users WHERE id = ?");
+        $stmtUser = $this->db->prepare("SELECT work_start_time, use_custom_work_hours FROM users WHERE id = ?");
         $stmtUser->execute([$auth['user_id']]);
-        $workStartTime = $stmtUser->fetchColumn() ?: '08:00';
+        $uRow = $stmtUser->fetch();
+        
+        $workStartTime = '08:00';
+        if ($uRow) {
+            if ((int)$uRow['use_custom_work_hours'] === 1) {
+                $workStartTime = $uRow['work_start_time'] ?: '08:00';
+            } else {
+                $stmtGlobal = $this->db->prepare("SELECT setting_value FROM system_settings WHERE setting_key = 'global_work_start_time' LIMIT 1");
+                $stmtGlobal->execute();
+                $globalStart = $stmtGlobal->fetchColumn();
+                $workStartTime = $globalStart ?: '08:00';
+            }
+        }
 
         $status = 'approved';
         $isLate = false;
