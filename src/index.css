@@ -4662,7 +4662,7 @@ div[role="status"] {
   flex-shrink: 0;
 }
 /* Premium SVG Card Decorations */
-.stat-card {
+.stat-card, .stat-kpi {
   position: relative !important;
   overflow: hidden !important;
 }
@@ -4677,19 +4677,19 @@ div[role="status"] {
   transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.4s cubic-bezier(0.4, 0, 0.2, 1) !important;
   z-index: 1 !important;
 }
-.stat-card:hover .decor-svg {
+.stat-card:hover .decor-svg, .stat-kpi:hover .decor-svg {
   transform: scale(1.2) rotate(6deg) !important;
   opacity: 0.14 !important;
 }
-.stat-icon {
+.stat-icon, .stat-kpi__icon {
   transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1) !important;
   position: relative !important;
   z-index: 2 !important;
 }
-.stat-card:hover .stat-icon {
+.stat-card:hover .stat-icon, .stat-kpi:hover .stat-kpi__icon {
   transform: scale(1.1) rotate(-8deg) !important;
 }
-.stat-value, .stat-label, .stat-change, .stat-desc {
+.stat-value, .stat-label, .stat-change, .stat-desc, .stat-kpi__value, .stat-kpi__label, .stat-kpi__sub, .stat-kpi__change {
   position: relative !important;
   z-index: 2 !important;
 }

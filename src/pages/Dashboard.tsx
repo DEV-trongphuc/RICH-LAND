@@ -23,7 +23,7 @@ import { KpiCardSkeleton, Skeleton, ChartSkeleton } from '../components/ui/Skele
 
 import { Avatar } from '../components/ui/Avatar';
 import { WarRoomFlightDeck } from '../components/Dashboard/WarRoomFlightDeck';
-import { useAuthStore } from '../store/authStore';
+import { useAuth } from '../contexts/AuthContext';
 
 const parseServerDate = (dateStr: string) => {
   if (!dateStr) return new Date();
@@ -37,7 +37,7 @@ const parseServerDate = (dateStr: string) => {
 
 const DashboardInner = ({ isActive }: { isActive: boolean }) => {
   const { t, language } = useLanguage();
-  const user = useAuthStore(state => state.user);
+  const { user } = useAuth();
   const daysOfWeek = [
     t('Thứ 2'),
     t('Thứ 3'),
@@ -637,59 +637,6 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
         }
       `}</style>
 
-      {/* Header */}
-      <div className="page-header" style={{ animation: 'slideUp 0.4s ease-out both', animationDelay: '50ms' }}>
-        <div>
-          <h1 className="page-title">{t("Tổng quan Phân bổ Data")}</h1>
-          <p className="page-subtitle">{t("Phân tích hiệu suất giao data theo thời gian thực — Hệ thống đang hoạt động trơn tru.")}</p>
-        </div>
-        <div className="mobile-w-full" style={{ display: 'flex', gap: '8px', alignItems: 'center', width: 'auto' }}>
-          <div className="mobile-flex-1" style={{ position: 'relative', zIndex: 100, width: 200 }}>
-            <CustomSelect
-              options={dateOptions}
-              value={dateFilter}
-              onChange={(val) => {
-                if (val === 'Tùy chỉnh') {
-                  setShowDateModal(true);
-                  return;
-                }
-                handleUpdateDateFilter(String(val));
-              }}
-              width="100%"
-            />
-          </div>
-
-
-          {/* Button to open Connection Health Modal styled purple as "Hệ thống" */}
-          <button
-            className="btn primary"
-            onClick={() => setShowHealthModal(true)}
-            title={t("Kiểm tra kết nối hệ thống")}
-            style={{
-              height: 38,
-              padding: '0 16px',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              borderRadius: 'var(--radius-md)',
-              background: 'linear-gradient(135deg, #BD1D2D 0%, #a31422 100%)',
-              color: '#fff',
-              border: 'none',
-              boxShadow: '0 2px 6px rgba(189, 29, 45, 0.25)',
-              cursor: 'pointer',
-              fontWeight: 600,
-              flexShrink: 0
-            }}
-          >
-            <Server size={15} />
-            <span>
-              <span className="hide-on-mobile">{t("Tài nguyên sử dụng")}</span>
-              <span className="mobile-only">{t("Tài nguyên")}</span>
-            </span>
-          </button>
-        </div>
-      </div>
-
       {/* Personalized Welcome Card with Premium Aesthetics */}
       {(() => {
         const issues = [];
@@ -728,6 +675,31 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
           if (role === 'director') return t('Giám đốc');
           if (role === 'manager') return t('Quản lý');
           return role;
+        };
+
+        const getRoleBadgeStyle = (role: string) => {
+          if (role === 'superadmin' || role === 'super_admin') {
+            return {
+              background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+              boxShadow: '0 2px 8px rgba(245, 158, 11, 0.4)'
+            };
+          }
+          if (role === 'director') {
+            return {
+              background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
+              boxShadow: '0 2px 8px rgba(37, 99, 235, 0.4)'
+            };
+          }
+          if (role === 'manager') {
+            return {
+              background: 'linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%)',
+              boxShadow: '0 2px 8px rgba(139, 92, 246, 0.4)'
+            };
+          }
+          return {
+            background: 'linear-gradient(135deg, #BD1D2D 0%, #a31422 100%)',
+            boxShadow: '0 2px 8px rgba(189, 29, 45, 0.5)'
+          };
         };
 
         return (
@@ -831,8 +803,8 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
               <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem', flex: '1 1 340px', minWidth: 0 }}>
                 <div style={{ position: 'relative', flexShrink: 0 }}>
                   <Avatar 
-                    name={user?.full_name || 'User'} 
-                    src={user?.avatar_url} 
+                    name={user?.name || 'User'} 
+                    src={user?.avatar} 
                     size={60} 
                     style={{ border: '2.5px solid rgba(189, 29, 45, 0.45)', boxShadow: '0 0 16px rgba(189, 29, 45, 0.3)' }}
                   />
@@ -851,18 +823,17 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', minWidth: 0 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
                     <h2 style={{ fontSize: '1.35rem', fontWeight: 800, color: '#ffffff', margin: 0, letterSpacing: '-0.3px', textShadow: '0 2px 4px rgba(0,0,0,0.3)' }}>
-                      {t('Xin chào')}, {user?.full_name || 'Ban điều hành'}
+                      {t('Xin chào')}, {user?.name || 'Ban điều hành'}
                     </h2>
                     <span style={{ 
                       fontSize: '0.68rem', 
                       fontWeight: 900, 
                       color: '#ffffff', 
-                      background: 'linear-gradient(135deg, #BD1D2D 0%, #a31422 100%)', 
                       padding: '4px 12px', 
                       borderRadius: '20px', 
                       textTransform: 'uppercase',
-                      boxShadow: '0 2px 8px rgba(189, 29, 45, 0.5)',
-                      letterSpacing: '0.6px'
+                      letterSpacing: '0.6px',
+                      ...getRoleBadgeStyle(user?.role || '')
                     }}>
                       {getRoleLabel(user?.role || '')}
                     </span>
@@ -902,17 +873,17 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
                   <div style={{ 
                     display: 'flex', 
                     alignItems: 'center', 
-                    gap: '12px', 
-                    padding: '12px 18px', 
-                    background: 'rgba(16, 185, 129, 0.08)', 
-                    border: '1px solid rgba(16, 185, 129, 0.25)', 
+                    gap: '10px', 
+                    padding: '10px 16px', 
+                    background: 'rgba(255, 255, 255, 0.03)', 
+                    border: '1px dashed rgba(255, 255, 255, 0.15)', 
                     borderRadius: '12px', 
-                    color: '#5ef08f',
-                    boxShadow: '0 2px 8px rgba(16, 185, 129, 0.1)'
+                    color: 'var(--color-text-muted)',
+                    boxShadow: '0 2px 6px rgba(0, 0, 0, 0.05)'
                   }}>
-                    <CheckCircle2 size={16} style={{ flexShrink: 0 }} />
-                    <span style={{ fontSize: '0.825rem', fontWeight: 700 }}>
-                      {t('Tuyệt vời! Không có yêu cầu phê duyệt nào đang chờ xử lý hôm nay. Chúc bạn một ngày làm việc hiệu quả! 🚀')}
+                    <CheckCircle2 size={15} style={{ color: '#10b981', flexShrink: 0 }} />
+                    <span style={{ fontSize: '0.8rem', fontWeight: 650 }}>
+                      {t('Không có yêu cầu phê duyệt nào đang chờ xử lý.')}
                     </span>
                   </div>
                 )}
@@ -920,25 +891,67 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
 
               {/* Right section: Quick Actions */}
               <div style={{ display: 'flex', gap: '8px', flexShrink: 0, flexWrap: 'wrap', width: isMobile ? '100%' : 'auto', justifyContent: isMobile ? 'flex-start' : 'flex-end' }}>
-                <button 
-                  onClick={() => navigate('/rules')}
-                  className="welcome-action-btn primary-btn"
-                >
-                  <Settings size={14} />
-                  {t('Cấu hình chia')}
-                </button>
-                <button 
-                  onClick={() => setShowWarRoom(true)}
-                  className="welcome-action-btn outline-btn"
-                >
-                  <Zap size={14} />
-                  {t('War Room')}
-                </button>
+                
               </div>
             </div>
           </>
         );
       })()}
+
+      {/* Header */}
+      <div className="page-header" style={{ animation: 'slideUp 0.4s ease-out both', animationDelay: '50ms' }}>
+        <div>
+          <h1 className="page-title">{t("Tổng quan Phân bổ Data")}</h1>
+          <p className="page-subtitle">{t("Phân tích hiệu suất giao data theo thời gian thực — Hệ thống đang hoạt động trơn tru.")}</p>
+        </div>
+        <div className="mobile-w-full" style={{ display: 'flex', gap: '8px', alignItems: 'center', width: 'auto' }}>
+          <div className="mobile-flex-1" style={{ position: 'relative', zIndex: 100, width: 200 }}>
+            <CustomSelect
+              options={dateOptions}
+              value={dateFilter}
+              onChange={(val) => {
+                if (val === 'Tùy chỉnh') {
+                  setShowDateModal(true);
+                  return;
+                }
+                handleUpdateDateFilter(String(val));
+              }}
+              width="100%"
+            />
+          </div>
+
+
+          {/* Button to open Connection Health Modal styled purple as "Hệ thống" */}
+          <button
+            className="btn primary"
+            onClick={() => setShowHealthModal(true)}
+            title={t("Kiểm tra kết nối hệ thống")}
+            style={{
+              height: 38,
+              padding: '0 16px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              borderRadius: 'var(--radius-md)',
+              background: 'linear-gradient(135deg, #BD1D2D 0%, #a31422 100%)',
+              color: '#fff',
+              border: 'none',
+              boxShadow: '0 2px 6px rgba(189, 29, 45, 0.25)',
+              cursor: 'pointer',
+              fontWeight: 600,
+              flexShrink: 0
+            }}
+          >
+            <Server size={15} />
+            <span>
+              <span className="hide-on-mobile">{t("Tài nguyên sử dụng")}</span>
+              <span className="mobile-only">{t("Tài nguyên")}</span>
+            </span>
+          </button>
+        </div>
+      </div>
+
+      
 
       {/* AI Pre-screener evaluation strip */}
       {aiScreenerEnabled && (
@@ -1087,23 +1100,79 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
           ))
         ) : kpiCards.map((card) => {
           const Icon = card.icon;
+          
+          const getIconBgColor = (color: string) => {
+            if (color === '#a31422') return 'rgba(163, 20, 34, 0.08)';
+            if (color === '#3b82f6') return 'rgba(59, 130, 246, 0.08)';
+            if (color === '#f59e0b') return 'rgba(245, 158, 11, 0.08)';
+            if (color === '#ef4444') return 'rgba(239, 68, 68, 0.08)';
+            return 'rgba(100, 116, 139, 0.08)';
+          };
+
           return (
             <div
               key={`kpi-card-${card.id}`}
-              className={`stat-card ${card.id}-card`}
+              className={`stat-card hover-lift ${card.id}-card`}
               style={{
                 minHeight: '140px',
                 display: 'flex',
                 flexDirection: 'column',
                 cursor: 'pointer',
                 animation: 'slideUp 0.4s ease-out both',
-                animationDelay: '180ms'
+                animationDelay: '180ms',
+                position: 'relative',
+                overflow: 'hidden',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.02)'
               }}
               onClick={() => navigate(`/data?status=${card.statusValue}`)}
             >
+              {card.id === 'total' && (
+                <div className="decor-svg" style={{ color: '#a31422' }}>
+                  <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: '100%', height: '100%' }}>
+                    <circle cx="30" cy="50" r="10" stroke="currentColor" strokeWidth="2" />
+                    <circle cx="70" cy="30" r="10" stroke="currentColor" strokeWidth="2" />
+                    <circle cx="70" cy="70" r="10" stroke="currentColor" strokeWidth="2" />
+                    <path d="M40 50 H 55 V 30 H 60 M 55 50 V 70 H 60" stroke="currentColor" strokeWidth="2" />
+                  </svg>
+                </div>
+              )}
+              {card.id === 'distributed' && (
+                <div className="decor-svg" style={{ color: '#3b82f6' }}>
+                  <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: '100%', height: '100%' }}>
+                    <circle cx="45" cy="35" r="15" stroke="currentColor" strokeWidth="2" />
+                    <path d="M20 75 C 20 60, 31 50, 45 50 C 59 50, 70 60, 70 75" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                    <path d="M75 35 H 89 M 82 28 V 42" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                  </svg>
+                </div>
+              )}
+              {card.id === 'duplicates' && (
+                <div className="decor-svg" style={{ color: '#f59e0b' }}>
+                  <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: '100%', height: '100%' }}>
+                    <path d="M50 20 L 85 80 H 15 Z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
+                    <path d="M50 40 V 55 M 50 67 H 50.01" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
+                  </svg>
+                </div>
+              )}
+              {card.id === 'errors' && (
+                <div className="decor-svg" style={{ color: '#ef4444' }}>
+                  <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: '100%', height: '100%' }}>
+                    <path d="M55 15 L 25 55 H 50 L 45 85 L 75 45 H 50 Z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
+                  </svg>
+                </div>
+              )}
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
-                <span className="stat-label" style={{ textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 800 }}>{card.label}</span>
-                <div className="stat-icon" style={{ color: card.color, opacity: 0.8 }}><Icon size={20} /></div>
+                <span className="stat-label" style={{ textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 700, color: 'var(--color-text-muted)' }}>{card.label}</span>
+                <div className="stat-icon" style={{ 
+                  width: '32px', 
+                  height: '32px', 
+                  borderRadius: '8px', 
+                  background: getIconBgColor(card.color), 
+                  color: card.color, 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'center',
+                  flexShrink: 0
+                }}><Icon size={16} /></div>
               </div>
 
               <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>

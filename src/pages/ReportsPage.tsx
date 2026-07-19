@@ -287,11 +287,74 @@ export const ReportsPage: React.FC = () => {
               { label: 'Tỷ lệ chốt deal', value: `${salesData?.summary?.win_rate || 0}%`, change: salesData?.summary?.win_rate_change, up: (salesData?.summary?.win_rate_change || '').startsWith('+'), icon: BarChart3, color: '#f59e0b' },
             ].map((card, i) => {
               const Icon = card.icon;
+              
+              const getIconBgColor = (color: string) => {
+                if (color === '#a31422') return 'rgba(163, 20, 34, 0.08)';
+                if (color === '#10b981') return 'rgba(16, 185, 129, 0.08)';
+                if (color === '#3b82f6') return 'rgba(59, 130, 246, 0.08)';
+                if (color === '#f59e0b') return 'rgba(245, 158, 11, 0.08)';
+                return 'rgba(100, 116, 139, 0.08)';
+              };
+
               return (
-                <motion.div key={card.label} className="stat-kpi" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }}>
-                  <div className="stat-kpi__header">
-                    <div className="stat-kpi__label">{card.label}</div>
-                    <div className="stat-kpi__icon" style={{ color: card.color }}><Icon size={20} /></div>
+                <motion.div 
+                  key={card.label} 
+                  className="stat-kpi hover-lift" 
+                  initial={{ opacity: 0, y: 16 }} 
+                  animate={{ opacity: 1, y: 0 }} 
+                  transition={{ delay: i * 0.06 }}
+                  style={{
+                    position: 'relative',
+                    overflow: 'hidden',
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.02)'
+                  }}
+                >
+                  {card.label === 'Tổng doanh thu' && (
+                    <div className="decor-svg" style={{ color: '#a31422' }}>
+                      <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: '100%', height: '100%' }}>
+                        <rect x="25" y="20" width="50" height="60" rx="4" stroke="currentColor" strokeWidth="2" />
+                        <path d="M35 35 H 45 M 55 35 H 65 M 35 50 H 45 M 55 50 H 65 M 35 65 H 45 M 55 65 H 65" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                      </svg>
+                    </div>
+                  )}
+                  {card.label === 'Cơ hội bán hàng' && (
+                    <div className="decor-svg" style={{ color: '#10b981' }}>
+                      <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: '100%', height: '100%' }}>
+                        <path d="M50 20 L 80 35 L 50 50 L 20 35 Z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
+                        <path d="M20 50 L 50 65 L 80 50" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                        <path d="M20 65 L 50 80 L 80 65" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                    </div>
+                  )}
+                  {card.label === 'Khách hàng' && (
+                    <div className="decor-svg" style={{ color: '#3b82f6' }}>
+                      <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: '100%', height: '100%' }}>
+                        <path d="M50 45 C 58 45, 65 38, 65 30 C 65 22, 58 15, 50 15 C 42 15, 35 22, 35 30 C 35 38, 42 45, 50 45 Z" stroke="currentColor" strokeWidth="2" />
+                        <path d="M20 80 C 20 65, 33 55, 50 55 C 67 55, 80 65, 80 80" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                      </svg>
+                    </div>
+                  )}
+                  {card.label === 'Tỷ lệ chốt deal' && (
+                    <div className="decor-svg" style={{ color: '#f59e0b' }}>
+                      <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: '100%', height: '100%' }}>
+                        <rect x="25" y="25" width="50" height="50" rx="6" stroke="currentColor" strokeWidth="2" />
+                        <path d="M40 50 L 47 57 L 62 42" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                    </div>
+                  )}
+                  <div className="stat-kpi__header" style={{ position: 'relative', zIndex: 2 }}>
+                    <div className="stat-kpi__label" style={{ fontWeight: 700, color: 'var(--color-text-muted)' }}>{card.label}</div>
+                    <div className="stat-kpi__icon" style={{ 
+                      width: '32px', 
+                      height: '32px', 
+                      borderRadius: '8px', 
+                      background: getIconBgColor(card.color), 
+                      color: card.color, 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      justifyContent: 'center',
+                      flexShrink: 0
+                    }}><Icon size={16} /></div>
                   </div>
                   {loading ? (
                     <div style={{ padding: '0.5rem 0' }}>
