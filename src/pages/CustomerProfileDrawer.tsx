@@ -742,7 +742,7 @@ const ActivityComments: React.FC<{
 
 const DrawerSkeleton = () => {
   return (
-    <div style={{ padding: '2rem', display: 'flex', flexDirection: 'column', gap: '2rem', height: '100%', background: 'var(--color-surface)', animation: 'pulse 1.5s infinite ease-in-out' }}>
+    <div className="skeleton-wrapper" style={{ padding: '2rem', display: 'flex', flexDirection: 'column', gap: '2rem', height: '100%', background: 'var(--color-surface)', animation: 'pulse 1.5s infinite ease-in-out' }}>
       {/* Header Skeleton */}
       <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'center', borderBottom: '1px solid var(--color-border-light)', paddingBottom: '1.5rem' }}>
         <div style={{ width: '60px', height: '60px', borderRadius: '50%', background: 'var(--color-border-light)' }}></div>
@@ -756,17 +756,17 @@ const DrawerSkeleton = () => {
       </div>
 
       {/* Body Skeleton */}
-      <div style={{ display: 'flex', gap: '2rem', flex: 1 }}>
+      <div className="skeleton-body" style={{ display: 'flex', gap: '2rem', flex: 1 }}>
         {/* Sidebar Skeleton */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', width: '200px', borderRight: '1px solid var(--color-border-light)', paddingRight: '1.5rem' }}>
+        <div className="skeleton-sidebar" style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', width: '200px', borderRight: '1px solid var(--color-border-light)', paddingRight: '1.5rem' }}>
           {[1, 2, 3, 4, 5, 6].map(i => (
             <div key={i} style={{ width: '100%', height: '36px', borderRadius: '8px', background: 'var(--color-border-light)' }}></div>
           ))}
         </div>
 
         {/* Content Area Skeleton */}
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
+        <div className="skeleton-content" style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+          <div className="skeleton-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
             {[1, 2, 3, 4].map(i => (
               <div key={i} style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                 <div style={{ width: '30%', height: '14px', borderRadius: '4px', background: 'var(--color-border-light)' }}></div>
@@ -786,6 +786,36 @@ const DrawerSkeleton = () => {
           0% { opacity: 0.6; }
           50% { opacity: 1; }
           100% { opacity: 0.6; }
+        }
+        @media (max-width: 1024px) {
+          .skeleton-wrapper {
+            padding: 1.25rem 1rem !important;
+            gap: 1.5rem !important;
+          }
+          .skeleton-body {
+            flex-direction: column !important;
+            gap: 1.5rem !important;
+            overflow-y: auto;
+          }
+          .skeleton-sidebar {
+            width: 100% !important;
+            border-right: none !important;
+            padding-right: 0 !important;
+            flex-direction: row !important;
+            overflow-x: auto;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid var(--color-border-light);
+            flex-shrink: 0;
+            gap: 0.75rem !important;
+          }
+          .skeleton-sidebar > div {
+            width: 100px !important;
+            flex-shrink: 0;
+          }
+          .skeleton-grid {
+            grid-template-columns: 1fr !important;
+            gap: 1rem !important;
+          }
         }
       `}</style>
     </div>
