@@ -59,14 +59,14 @@ if (!function_exists('isRestDayForUser')) {
             return true; // Sunday is always rest day
         }
         if ($dayOfWeek == 6) { // Saturday
-            // 1. Check user's individual schedule
-            $stmtSched = $conn->prepare("SELECT work_schedule FROM users WHERE id = ?");
+            // 1. Check user's individual schedule if use_custom_work_hours is enabled
+            $stmtSched = $conn->prepare("SELECT use_custom_work_hours, work_schedule FROM users WHERE id = ?");
             if ($stmtSched) {
                 $stmtSched->bind_param("i", $userId);
                 $stmtSched->execute();
                 $sRow = $stmtSched->get_result()->fetch_assoc();
                 $stmtSched->close();
-                if ($sRow && !empty($sRow['work_schedule'])) {
+                if ($sRow && (int)($sRow['use_custom_work_hours'] ?? 0) === 1 && !empty($sRow['work_schedule'])) {
                     $sched = json_decode($sRow['work_schedule'], true);
                     if (isset($sched[6]) && isset($sched[6]['active'])) {
                         return !(bool)$sched[6]['active'];

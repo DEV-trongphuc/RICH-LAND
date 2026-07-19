@@ -80,50 +80,6 @@ class ReportController
             ];
         }
 
-        // Performance by Owner: Split between Won Revenue and Pipeline Value
-        $fromTs = $from . ' 00:00:00';
-        $toTs = $to . ' 23:59:59';
-
-        $pOwnerList = [$fromTs, $toTs, $tid];
-        $ownerFilter = "";
-        if ($isSale) {
-            $ownerFilter = " AND u.id=?";
-            $pOwnerList[] = $uid;
-        } else if ($isManager) {
-            $placeholders = implode(',', array_fill(0, count($userIds), '?'));
-            $ownerFilter = " AND u.id IN ($placeholders)";
-            $pOwnerList = array_merge($pOwnerList, $userIds);
-        }
-
-        // Performance by Owner: Split between Won Revenue and Pipeline Value (Filtered by selected range)
-        $stmt2 = $this->db->prepare("
-            SELECT u.id, u.full_name as name, u.avatar_url,
-                   COUNT(d.id) as deals, 
-                   COALESCE(SUM(CASE WHEN ps.is_won = 1 THEN d.value ELSE 0 END), 0) as revenue,
-                   COALESCE(SUM(CASE WHEN ps.is_won = 0 AND ps.is_lost = 0 THEN d.value ELSE 0 END), 0) as pipeline_value
-            FROM users u
-            LEFT JOIN deals d ON u.id = d.owner_id AND d.tenant_id = u.tenant_id AND d.deleted_at IS NULL AND d.created_at BETWEEN ? AND ?
-            LEFT JOIN pipeline_stages ps ON d.stage_id = ps.id
-            WHERE u.tenant_id = ? $ownerFilter
-            GROUP BY u.id
-            ORDER BY revenue DESC, name ASC, u.id ASC
-        ");
-        $stmt2->execute($pOwnerList);
-
-        $dealFilterSimple = "";
-        $dealFilterAlias = "";
-        $dealParams = [];
-        if ($isSale) {
-            $dealFilterSimple = " AND owner_id=?";
-            $dealFilterAlias = " AND d.owner_id=?";
-            $dealParams[] = $uid;
-        } else if ($isManager) {
-            $placeholders = implode(',', array_fill(0, count($userIds), '?'));
-            $dealFilterSimple = " AND owner_id IN ($placeholders)";
-            $dealFilterAlias = " AND d.owner_id IN ($placeholders)";
-            $dealParams = $userIds;
-        }
-
         // Retrieve dynamic settings
         $resOpp = $this->db->prepare("SELECT setting_value FROM system_settings WHERE setting_key = 'deal_opportunity_status' LIMIT 1");
         $resOpp->execute();
@@ -150,6 +106,58 @@ class ReportController
             }
         }
         $oppStages = array_slice($hierarchy, $oppIdx);
+
+        // Performance by Owner: Split between Won Revenue and Pipeline Value
+        $fromTs = $from . ' 00:00:00';
+        $toTs = $to . ' 23:59:59';
+
+        $oppPlaceholders = !empty($oppStages) ? implode(',', array_fill(0, count($oppStages), '?')) : "'none'";
+        
+        $pOwnerList = array_merge(
+            [$wonStatus, $wonStatus],
+            $oppStages,
+            [$fromTs, $toTs],
+            $oppStages,
+            [$tid]
+        );
+
+        $ownerFilter = "";
+        if ($isSale) {
+            $ownerFilter = " AND u.id=?";
+            $pOwnerList[] = $uid;
+        } else if ($isManager) {
+            $placeholders = implode(',', array_fill(0, count($userIds), '?'));
+            $ownerFilter = " AND u.id IN ($placeholders)";
+            $pOwnerList = array_merge($pOwnerList, $userIds);
+        }
+
+        // Performance by Owner: Split between Won Revenue and Pipeline Value (Filtered by selected range)
+        $stmt2 = $this->db->prepare("
+            SELECT u.id, u.full_name as name, u.avatar_url,
+                   COUNT(c.id) as deals, 
+                   COALESCE(SUM(CASE WHEN c.pipeline_status = ? THEN c.expected_revenue ELSE 0 END), 0) as revenue,
+                   COALESCE(SUM(CASE WHEN c.pipeline_status != ? AND c.pipeline_status IN ($oppPlaceholders) THEN c.expected_revenue ELSE 0 END), 0) as pipeline_value
+            FROM users u
+            LEFT JOIN contacts c ON u.id = c.owner_id AND c.tenant_id = u.tenant_id AND c.deleted_at IS NULL AND c.created_at BETWEEN ? AND ? AND c.pipeline_status IN ($oppPlaceholders)
+            WHERE u.tenant_id = ? $ownerFilter
+            GROUP BY u.id
+            ORDER BY revenue DESC, name ASC, u.id ASC
+        ");
+        $stmt2->execute($pOwnerList);
+
+        $dealFilterSimple = "";
+        $dealFilterAlias = "";
+        $dealParams = [];
+        if ($isSale) {
+            $dealFilterSimple = " AND owner_id=?";
+            $dealFilterAlias = " AND d.owner_id=?";
+            $dealParams[] = $uid;
+        } else if ($isManager) {
+            $placeholders = implode(',', array_fill(0, count($userIds), '?'));
+            $dealFilterSimple = " AND owner_id IN ($placeholders)";
+            $dealFilterAlias = " AND d.owner_id IN ($placeholders)";
+            $dealParams = $userIds;
+        }
 
         $dealStats = ['total_deals' => 0, 'total_revenue' => 0.0];
 
@@ -190,11 +198,6 @@ class ReportController
         ");
         $stmtLoss->execute([$tid, $from . ' 00:00:00', $to . ' 23:59:59']);
         $lossValue = (float)$stmtLoss->fetchColumn();
-
-        // 2. Calculate Gross Profit (Revenue - Cost of Goods Sold)
-        // Note: Minth CRM needs to track cost_per_unit in order_items for this to be accurate.
-        // For now, we'll estimate based on current batch prices if available, or 0.
-        // (Assuming we've added cost_per_unit to invoices or use a different table for POS/Orders)
         
         // Let's refine the summary
         $totalRev = array_reduce($byMonth, fn($acc, $m) => $acc + $m['revenue'], 0);
