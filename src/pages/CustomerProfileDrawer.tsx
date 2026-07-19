@@ -1671,7 +1671,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
       due_date: today,
       description: '',
       link: '',
-      user_id: String(contact?.owner_id || currentUser?.id || ''),
+      user_id: String(currentUser?.id || contact?.owner_id || ''),
       progress: 0,
       require_approval: 0,
       approver_id: '',
@@ -2912,7 +2912,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
         due_date: new Date().toISOString().slice(0, 10), 
         description: '', 
         link: '', 
-        user_id: String(contact?.owner_id || currentUser?.id || ''),
+        user_id: String(currentUser?.id || contact?.owner_id || ''),
         progress: 0,
         require_approval: 0,
         approver_id: '',
@@ -8467,6 +8467,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
               status: 'done',
               related_type: 'contact',
               related_id: contact?.id,
+              user_id: currentUser?.id,
               due_date: new Date().toISOString().slice(0, 19).replace('T', ' '),
               done_at: new Date().toISOString().slice(0, 19).replace('T', ' '),
             });
@@ -8490,7 +8491,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
           fetchData();
           window.dispatchEvent(new CustomEvent('contact-updated'));
         }}
-        userId={contact?.owner_id || currentUser?.id}
+        userId={currentUser?.id || contact?.owner_id}
         activity={editingActivity}
       />
 
@@ -9083,6 +9084,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                         related_type: 'contact',
                         related_id: contact.id,
                         contact_id: contact.id,
+                        user_id: currentUser?.id,
                         due_date: new Date().toISOString().slice(0, 19).replace('T', ' '),
                         done_at: new Date().toISOString().slice(0, 19).replace('T', ' ')
                       });
