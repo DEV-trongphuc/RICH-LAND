@@ -126,6 +126,7 @@ const ALLOWED_PORTAL_ROLES = ['sale', 'sales', 'superadmin', 'admin', 'super_adm
 
 const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePortalProps) => {
   const navigate = useNavigate();
+  const isOvertime = new Date().getHours() >= 18;
   const routerLocation = useLocation();
   const loc = location || routerLocation;
   const { user, token, login, logout } = useAuth();
@@ -6013,7 +6014,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
         action: () => setActiveTab('workspace')
       });
     }
-    if (!isAdmin && (!todayCheckIn || todayCheckIn.status === 'rejected')) {
+    if (!isAdmin && !isOvertime && (!todayCheckIn || todayCheckIn.status === 'rejected')) {
       issues.push({
         type: 'checkin',
         text: t('Bạn chưa hoàn thành chấm công ngày hôm nay.'),
@@ -6327,23 +6328,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                   <div style={{ marginTop: '2px', display: 'flex' }}>
                     {(() => {
                       if (!todayCheckIn) {
-                        return (
-                          <span style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '4px',
-                            background: 'rgba(239, 68, 68, 0.22)',
-                            color: '#ffa3a3',
-                            border: '1px solid rgba(239, 68, 68, 0.35)',
-                            padding: '3px 10px',
-                            borderRadius: '12px',
-                            fontWeight: 800,
-                            fontSize: '0.725rem'
-                          }}>
-                            <AlertCircle size={12} />
-                            {t('Chưa chấm công hôm nay')}
-                          </span>
-                        );
+                        return null;
                       }
                       const timeStr = todayCheckIn.check_in_time ? todayCheckIn.check_in_time.substring(0, 5) : '';
                       if (todayCheckIn.status === 'approved') {
@@ -6440,22 +6425,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                       <span style={{ color: 'rgba(255, 255, 255, 0.25)' }}>•</span>
                       {(() => {
                         if (!todayCheckIn) {
-                          return (
-                            <span style={{
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: '4px',
-                              background: 'rgba(239, 68, 68, 0.22)',
-                              color: '#ffa3a3',
-                              border: '1px solid rgba(239, 68, 68, 0.35)',
-                              padding: '3px 10px',
-                              borderRadius: '12px',
-                              fontWeight: 800
-                            }}>
-                              <AlertCircle size={13} />
-                              {t('Chưa chấm công hôm nay')}
-                            </span>
-                          );
+                          return null;
                         }
                         const timeStr = todayCheckIn.check_in_time ? todayCheckIn.check_in_time.substring(0, 5) : '';
                         if (todayCheckIn.status === 'approved') {
@@ -6563,7 +6533,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
 
           {/* Right section: Quick Actions */}
           <div style={{ display: 'flex', gap: '8px', flexShrink: 0, flexWrap: 'nowrap', width: isMobile ? '100%' : 'auto', justifyContent: isMobile ? 'stretch' : 'flex-end' }}>
-            {!isAdmin && (!todayCheckIn || todayCheckIn.status === 'rejected') && (
+            {!isAdmin && !isOvertime && (!todayCheckIn || todayCheckIn.status === 'rejected') && (
               <button 
                 onClick={() => setCheckInModalOpen(true)}
                 className="welcome-action-btn primary-btn"
@@ -6621,7 +6591,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                 className="btn outline"
                 onClick={() => { }}
                 title={t("Kiểm tra kết nối hệ thống")}
-                style={{ width: isMobile ? 34 : 38, height: isMobile ? 34 : 38, padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, border: '1px solid var(--color-border)', borderRadius: '8px', background: 'var(--color-surface)', color: 'var(--color-text-light)', cursor: 'default' }}
+                style={{ flex: isMobile ? '0 0 38px' : '0 0 38px', width: isMobile ? '38px' : '38px', height: isMobile ? '38px' : '38px', minWidth: isMobile ? '38px' : '38px', maxWidth: isMobile ? '38px' : '38px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid var(--color-border)', borderRadius: '8px', background: 'var(--color-surface)', color: 'var(--color-text-light)', cursor: 'default' }}
               >
                 <Server size={isMobile ? 14 : 16} />
               </button>
