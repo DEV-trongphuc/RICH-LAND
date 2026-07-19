@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useUIStore } from '../store/uiStore';
 import { withRouterFreezer } from '../components/RouterFreezer';
-import { Mail, Settings2, Save, Send, Server, Database, Activity, ChevronDown, ChevronUp, Zap, Shield, MessageCircle, RefreshCw, Settings as SettingsIcon, BarChart2, Clock, Calendar, Users, CheckCircle, Plus, Trash2, Edit2, FileSpreadsheet, Upload, Download, X, Search, UserCheck, FileText, Tag, Scale, Layers, HelpCircle, Filter, Briefcase, GripVertical } from 'lucide-react';
+import { Mail, Settings2, Save, Send, Server, Database, Activity, ChevronDown, ChevronUp, Zap, Shield, MessageCircle, RefreshCw, Settings as SettingsIcon, BarChart2, Clock, Calendar, Users, CheckCircle, Plus, Trash2, Edit2, FileSpreadsheet, Upload, Download, X, Search, UserCheck, FileText, Tag, Scale, Layers, HelpCircle, Filter, Briefcase, GripVertical, Info } from 'lucide-react';
 import { CustomSelect } from '../components/ui/CustomSelect';
 import { ToggleSwitch } from '../components/ui/ToggleSwitch';
 import { CustomModal } from '../components/ui/CustomModal';
@@ -3786,6 +3786,15 @@ function doPost(e) {
                       onChange={val => setFallbackRoundId(val.toString())}
                       width="100%"
                     />
+                    <div style={{ marginTop: '1rem', padding: '0.85rem 1.15rem', background: 'rgba(59, 130, 246, 0.05)', border: '1px dashed rgba(59, 130, 246, 0.25)', borderRadius: '12px' }}>
+                      <span style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 700, fontSize: '0.8125rem', color: 'var(--color-primary)' }}>
+                        <Info size={14} />
+                        {t('Cơ chế Tạm giữ & Tự động chia bù')}
+                      </span>
+                      <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', margin: '6px 0 0 22px', lineHeight: 1.45 }}>
+                        {t('Khi hệ thống bị ngợp (Sales đạt giới hạn quá tải) hoặc không có ai trực ca đêm/cuối tuần, dữ liệu sẽ được tạm giữ lại (Hold) ở trạng thái "Chờ xử lý". Ngay khi bắt đầu giờ hành chính và Sales thực hiện chấm công đi làm, hệ thống sẽ tự động kích hoạt chia các lead đang chờ này theo vòng quay bình thường.')}
+                      </p>
+                    </div>
                   </div>
                 ) : (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', animation: 'fadeIn 0.3s' }}>
