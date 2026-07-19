@@ -1436,7 +1436,14 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
     }
 
     setCollabSearchQuery('');
-    setSelectedCollaborators([]);
+    
+    // Auto-fill existing collaborators (chăm sóc chung) if they exist
+    const existingCollabs = (formData.collaborator_ids || contact?.collaborator_ids || '')
+      .split(',')
+      .map((id: string) => id.trim())
+      .filter((id: string) => Boolean(id) && id !== String(contact?.owner_id || formData?.owner_id));
+      
+    setSelectedCollaborators(existingCollabs);
     setSuggestedSales([]);
     setIsCreateCoopModalOpen(true);
     setLoadingSuggestions(true);
