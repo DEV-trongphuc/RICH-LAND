@@ -59,6 +59,8 @@ class CloudFileController {
         if ($contactId !== '') {
             $where[] = "cf.contact_id = ?";
             $params[] = (int)$contactId;
+        } else {
+            $where[] = "cf.contact_id IS NULL";
         }
 
         if ($projectId !== '') {
