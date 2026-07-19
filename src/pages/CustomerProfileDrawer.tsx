@@ -1287,6 +1287,23 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
   const [coopLoading, setCoopLoading] = useState(false);
   const [coopEligibleStatuses, setCoopEligibleStatuses] = useState<string[]>([]);
   const [coopDefaultFiles, setCoopDefaultFiles] = useState<string[]>([]);
+  const [requiredDocsUploadModal, setRequiredDocsUploadModal] = useState<{
+    isOpen: boolean;
+    missingFiles: string[];
+    targetId: string;
+    targetLabel: string;
+    note: string;
+    uploadedFiles: { [key: string]: boolean };
+    isUploading: { [key: string]: boolean };
+  }>({
+    isOpen: false,
+    missingFiles: [],
+    targetId: '',
+    targetLabel: '',
+    note: '',
+    uploadedFiles: {},
+    isUploading: {}
+  });
   const [salesUsers, setSalesUsers] = useState<any[]>([]);
   const [coopShares, setCoopShares] = useState<{ user_id: string; percentage: string }[]>([]);
   const [coopError, setCoopError] = useState('');
@@ -1651,6 +1668,126 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
         inputTarget.value = '';
       }
     });
+  };
+  const handleUploadRequiredDoc = async (docName: string, file: File) => {
+    let finalName = file.name;
+    const ext = file.name.split('.').pop() || '';
+    const cleanDocName = docName.split('.')[0];
+    if (!finalName.toLowerCase().includes(cleanDocName.toLowerCase())) {
+      finalName = `${cleanDocName}_${contact.name || 'document'}.${ext}`;
+    }
+    
+    let fileToUpload = file;
+    if (file.type.startsWith('image/')) {
+      try {
+        fileToUpload = await compressToWebP(file);
+      } catch (e) {
+        console.error('Compression failed, uploading original', e);
+      }
+    }
+    const renamedFile = new File([fileToUpload], finalName, { type: fileToUpload.type });
+    
+    const fData = new FormData();
+    fData.append('file', renamedFile);
+    fData.append('contact_id', String(contact.id));
+    fData.append('category', 'general');
+    fData.append('visibility', 'shared');
+    
+    setRequiredDocsUploadModal(prev => ({
+      ...prev,
+      isUploading: { ...prev.isUploading, [docName]: true }
+    }));
+    
+    try {
+      await api.post('/cloud-files', fData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      addToast(`Tải lên tài liệu ${cleanDocName} thành công.`, 'success');
+      setRequiredDocsUploadModal(prev => ({
+        ...prev,
+        uploadedFiles: { ...prev.uploadedFiles, [docName]: true },
+        isUploading: { ...prev.isUploading, [docName]: false }
+      }));
+      fetchData();
+    } catch (err) {
+      addToast(`Lỗi khi tải lên tài liệu ${cleanDocName}`, 'error');
+      setRequiredDocsUploadModal(prev => ({
+        ...prev,
+        isUploading: { ...prev.isUploading, [docName]: false }
+      }));
+    }
+  };
+
+  const handleCompleteTransitionWithDocs = async () => {
+    const allUploaded = requiredDocsUploadModal.missingFiles.every(
+      f => requiredDocsUploadModal.uploadedFiles[f]
+    );
+    if (!allUploaded) {
+      addToast('Vui lòng tải lên đầy đủ các tài liệu yêu cầu!', 'error');
+      return;
+    }
+    
+    const targetId = requiredDocsUploadModal.targetId;
+    const targetLabel = requiredDocsUploadModal.targetLabel;
+    const note = requiredDocsUploadModal.note;
+    
+    setRequiredDocsUploadModal({
+      isOpen: false,
+      missingFiles: [],
+      targetId: '',
+      targetLabel: '',
+      note: '',
+      uploadedFiles: {},
+      isUploading: {}
+    });
+    
+    let calculatedStatus = 'lead';
+    if (targetId === 'dat_coc' || targetId === 'dong_deal') {
+      calculatedStatus = 'customer';
+    } else if (targetId === 'not_lead') {
+      calculatedStatus = 'churned';
+    } else if (targetId === 'chua_xac_dinh') {
+      calculatedStatus = 'lead';
+    } else {
+      calculatedStatus = 'qualified';
+    }
+    
+    setFormData((prev: any) => ({ 
+      ...prev, 
+      pipeline_status: targetId, 
+      status: calculatedStatus 
+    }));
+    
+    try {
+      await api.put(`/contacts/${contact.id}`, { 
+        pipeline_status: targetId, 
+        status: calculatedStatus,
+        ttl1_completed: formData.ttl1_completed,
+        ttl1_data: formData.ttl1_data
+      });
+      await api.post('/activities', {
+        type: 'note',
+        subject: `Chuyển trạng thái Pipeline → ${targetLabel}`,
+        body: note || null,
+        status: 'done',
+        related_type: 'contact',
+        related_id: contact.id,
+        contact_id: contact.id,
+        user_id: currentUser?.id,
+        due_date: new Date().toISOString().slice(0, 19).replace('T', ' '),
+        done_at: new Date().toISOString().slice(0, 19).replace('T', ' ')
+      });
+      fetchData();
+      addToast(`Đã cập nhật Pipeline thành ${targetLabel}`, 'success');
+      window.dispatchEvent(new CustomEvent('contact-updated'));
+    } catch (e: any) {
+      setFormData((prev: any) => ({ 
+        ...prev, 
+        pipeline_status: contact.pipeline_status, 
+        status: contact.status 
+      }));
+      addToast(e?.response?.data?.message || 'Lỗi khi cập nhật Pipeline', 'error');
+    }
   };
   const handleRemoveCoopAttachment = async (fileUrl: string) => {
     if (!coopSlip) return;
@@ -9566,6 +9703,66 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                     const targetId = pipelineModal.targetId;   // string, e.g. 'chua_xac_dinh' or 'dong_y_gap'
                     const targetLabel = pipelineModal.targetLabel;
                     const note = pipelineModal.note;
+                    
+                    if (coopEligibleStatuses.includes(targetId)) {
+                      setIsSubmitting(true);
+                      try {
+                        const docsRes = await api.get(`/cloud-files?contact_id=${contact.id}&limit=1000`);
+                        const currentCloudFiles = docsRes.data.data?.items || [];
+                        const coopFiles = coopSlip?.attachment_url ? coopSlip.attachment_url.split(',') : [];
+                        
+                        const missingFiles: string[] = [];
+                        if (coopDefaultFiles && coopDefaultFiles.length > 0) {
+                          for (const mandatoryFile of coopDefaultFiles) {
+                            const cleanKeyword = mandatoryFile.split('.')[0].toLowerCase().trim();
+                            if (!cleanKeyword) continue;
+                            
+                            let hasFile = currentCloudFiles.some((f: any) => {
+                              const lower = f.name.toLowerCase();
+                              if (cleanKeyword === 'unc' || cleanKeyword === 'uy nhiem chi' || cleanKeyword === 'ủy nhiệm chi') {
+                                return lower.includes('unc') || lower.includes('uy nhiem chi') || lower.includes('ủy nhiệm chi');
+                              }
+                              return lower.includes(cleanKeyword);
+                            });
+                            
+                            if (!hasFile) {
+                              hasFile = coopFiles.some((f: string) => {
+                                const filename = f.split('/').pop() || '';
+                                const lower = filename.toLowerCase();
+                                if (cleanKeyword === 'unc' || cleanKeyword === 'uy nhiem chi' || cleanKeyword === 'ủy nhiệm chi') {
+                                  return lower.includes('unc') || lower.includes('uy nhiem chi') || lower.includes('ủy nhiệm chi');
+                                }
+                                return lower.includes(cleanKeyword);
+                              });
+                            }
+                            
+                            if (!hasFile) {
+                              missingFiles.push(mandatoryFile);
+                            }
+                          }
+                        }
+                        
+                        if (missingFiles.length > 0) {
+                          setPipelineModal({ isOpen: false, targetId: '', targetLabel: '', note: '' });
+                          setRequiredDocsUploadModal({
+                            isOpen: true,
+                            missingFiles,
+                            targetId,
+                            targetLabel,
+                            note,
+                            uploadedFiles: {},
+                            isUploading: {}
+                          });
+                          return;
+                        }
+                      } catch (err) {
+                        addToast('Lỗi khi kiểm tra tài liệu bắt buộc hợp tác.', 'error');
+                        return;
+                      } finally {
+                        setIsSubmitting(false);
+                      }
+                    }
+                    
                     setPipelineModal({ isOpen: false, targetId: '', targetLabel: '', note: '' });
 
                     // Map selected pipeline stage slug to the macro status enum
@@ -9624,6 +9821,93 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
 
                 >
                   Lưu cập nhật
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {requiredDocsUploadModal.isOpen && (
+          <div style={{ position: 'fixed', inset: 0, zIndex: 20005, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <motion.div
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              style={{ position: 'absolute', inset: 0, background: 'rgba(0, 0, 0, 0.82)', backdropFilter: 'blur(4px)' }}
+              onClick={() => setRequiredDocsUploadModal(prev => ({ ...prev, isOpen: false }))}
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 10 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              style={{ position: 'relative', background: 'var(--color-surface)', width: '95%', maxWidth: '500px', borderRadius: 'var(--radius-md)', padding: '1.5rem', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)' }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '0.75rem', color: 'var(--color-warning)' }}>
+                <ShieldAlert size={20} />
+                <h3 style={{ fontWeight: 700, fontSize: '1.125rem', margin: 0 }}>Tải lên tài liệu bắt buộc</h3>
+              </div>
+              <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', marginBottom: '1.25rem', lineHeight: 1.5 }}>
+                Trạng thái <strong>{requiredDocsUploadModal.targetLabel}</strong> yêu cầu các tài liệu hợp tác sau đây. Vui lòng tải lên đầy đủ để hoàn tất việc chuyển trạng thái.
+              </p>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '1.5rem' }}>
+                {requiredDocsUploadModal.missingFiles.map((file, idx) => {
+                  const isUploaded = requiredDocsUploadModal.uploadedFiles[file];
+                  const isUploading = requiredDocsUploadModal.isUploading[file];
+                  return (
+                    <div key={file} style={{ 
+                      padding: '12px', 
+                      background: 'var(--color-bg)', 
+                      border: `1px dashed ${isUploaded ? 'var(--color-success)' : 'var(--color-border)'}`, 
+                      borderRadius: '8px', 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      justifyContent: 'space-between',
+                      gap: '12px'
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
+                        <FileText size={18} style={{ color: isUploaded ? 'var(--color-success)' : 'var(--color-text-muted)', flexShrink: 0 }} />
+                        <span style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {file}
+                        </span>
+                      </div>
+                      
+                      <div>
+                        {isUploaded ? (
+                          <span style={{ fontSize: '0.75rem', color: 'var(--color-success)', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                            <Check size={14} /> Đã tải
+                          </span>
+                        ) : isUploading ? (
+                          <span style={{ fontSize: '0.75rem', color: 'var(--color-primary)', fontWeight: 600 }}>
+                            Đang tải...
+                          </span>
+                        ) : (
+                          <label className="btn outline sm" style={{ cursor: 'pointer', margin: 0, padding: '4px 10px', fontSize: '0.75rem' }}>
+                            Tải lên
+                            <input
+                              type="file"
+                              style={{ display: 'none' }}
+                              onChange={async (e) => {
+                                const f = e.target.files?.[0];
+                                if (f) {
+                                  await handleUploadRequiredDoc(file, f);
+                                }
+                              }}
+                            />
+                          </label>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
+                <button className="btn outline" onClick={() => setRequiredDocsUploadModal(prev => ({ ...prev, isOpen: false }))}>Hủy bỏ</button>
+                <button 
+                  className="btn primary" 
+                  disabled={!requiredDocsUploadModal.missingFiles.every(f => requiredDocsUploadModal.uploadedFiles[f])}
+                  onClick={handleCompleteTransitionWithDocs}
+                >
+                  Hoàn tất & Chuyển
                 </button>
               </div>
             </motion.div>
