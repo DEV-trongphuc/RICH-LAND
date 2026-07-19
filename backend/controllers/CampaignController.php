@@ -76,6 +76,12 @@ class CampaignController {
                 FIND_IN_SET(?, user_ids) 
                 OR FIND_IN_SET(?, manager_ids) 
                 OR created_by = ?
+                -- Case 0: User is the project manager or creator of the parent project (Always see)
+                OR EXISTS (
+                    SELECT 1 FROM projects p 
+                    WHERE p.id = marketing_campaigns.project_id 
+                      AND (FIND_IN_SET(?, p.manager_ids) OR p.created_by = ?)
+                )
                 -- Case 1: Public project campaign
                 OR EXISTS (
                     SELECT 1 FROM projects p 
@@ -89,9 +95,10 @@ class CampaignController {
                         WHERE p.id = marketing_campaigns.project_id 
                           AND (p.campaign_sharing_mode = 'project_members' OR p.campaign_sharing_mode IS NULL OR p.campaign_sharing_mode = '')
                     )
-                    AND (
-                        EXISTS (SELECT 1 FROM project_roster pr WHERE pr.project_id = marketing_campaigns.project_id AND pr.user_id = ?)
-                        OR EXISTS (SELECT 1 FROM projects p WHERE p.id = marketing_campaigns.project_id AND (FIND_IN_SET(?, p.manager_ids) OR p.created_by = ?))
+                    AND EXISTS (
+                        SELECT 1 FROM project_roster pr 
+                        WHERE pr.project_id = marketing_campaigns.project_id 
+                          AND pr.user_id = ?
                     )
                 )
             )";
@@ -136,8 +143,6 @@ class CampaignController {
         }
     }
 
-    public function store(array $auth): void {
-        requireRole($auth, ['admin', 'superadmin', 'super_admin', 'manager', 'director']);
         $b = getBody();
         $name = trim($b['name'] ?? '');
         $description = trim($b['description'] ?? '');
@@ -152,12 +157,25 @@ class CampaignController {
         $folder_path = trim($b['folder_path'] ?? '');
         $reference_url = trim($b['reference_url'] ?? '');
 
-        if (empty($name)) {
-            respond(422, null, 'Tên chiến dịch không được để trống', false);
-        }
-
         $tenantId = $auth['tenant_id'] ?? 1;
         $userId = $auth['user_id'] ?? $auth['id'] ?? 1;
+
+        // Check if the user is a manager/creator of the target project to allow campaign creation
+        $isProjectManager = false;
+        if ($project_id) {
+            $stmtProj = $this->db->prepare("SELECT created_by, manager_ids FROM projects WHERE id = ?");
+            $stmtProj->execute([$project_id]);
+            $proj = $stmtProj->fetch(PDO::FETCH_ASSOC);
+            if ($proj) {
+                $pCreatorId = $proj['created_by'];
+                $pMgrs = array_filter(array_map('intval', explode(',', $proj['manager_ids'] ?? '')));
+                $isProjectManager = ($pCreatorId !== null && (int)$pCreatorId === (int)$userId) || in_array((int)$userId, $pMgrs, true);
+            }
+        }
+
+        if (!$isProjectManager) {
+            requireRole($auth, ['admin', 'superadmin', 'super_admin', 'manager', 'director']);
+        }
 
         if ($project_id === null && !empty($project_ids)) {
             $pNames = array_filter(array_map('trim', explode(',', $project_ids)));
@@ -218,6 +236,23 @@ class CampaignController {
             $users = array_filter(array_map('intval', explode(',', $camp['user_ids'] ?? '')));
             $isCreator = ($creatorId !== null && (int)$creatorId === (int)$userId);
             $isRoster = in_array((int)$userId, $mgrs, true) || in_array((int)$userId, $users, true);
+
+            // Check project manager/creator bypass
+            if (!$isCreator && !$isRoster) {
+                if ($camp['project_id']) {
+                    $stmtProj = $this->db->prepare("SELECT created_by, manager_ids FROM projects WHERE id = ?");
+                    $stmtProj->execute([$camp['project_id']]);
+                    $proj = $stmtProj->fetch(PDO::FETCH_ASSOC);
+                    if ($proj) {
+                        $pCreatorId = $proj['created_by'];
+                        $pMgrs = array_filter(array_map('intval', explode(',', $proj['manager_ids'] ?? '')));
+                        $isProjectMgr = ($pCreatorId !== null && (int)$pCreatorId === (int)$userId) || in_array((int)$userId, $pMgrs, true);
+                        if ($isProjectMgr) {
+                            $isRoster = true; // Bypass restriction
+                        }
+                    }
+                }
+            }
 
             if (!$isCreator && !$isRoster) {
                 if ($camp['project_id']) {
@@ -337,13 +372,34 @@ class CampaignController {
             respond(404, null, 'Chiến dịch không tồn tại', false);
         }
         $name = $camp['name'];
-        $isAdmin = in_array($auth['role'], ['admin', 'superadmin', 'super_admin'], true);
-        if (!$isAdmin) {
+        $isAdminOrDirector = in_array($auth['role'], ['admin', 'superadmin', 'super_admin', 'director'], true);
+        if (!$isAdminOrDirector) {
             $creatorId = $camp['created_by'];
             $mgrs = array_filter(array_map('intval', explode(',', $camp['manager_ids'] ?? '')));
             $users = array_filter(array_map('intval', explode(',', $camp['user_ids'] ?? '')));
             $isCreator = ($creatorId !== null && (int)$creatorId === (int)$userId);
             $isRoster = in_array((int)$userId, $mgrs, true) || in_array((int)$userId, $users, true);
+            // Check project manager/creator bypass
+            if (!$isCreator && !$isRoster) {
+                // Fetch the campaign to get the project_id
+                $stmtProjCheck = $this->db->prepare("SELECT project_id FROM marketing_campaigns WHERE id = ?");
+                $stmtProjCheck->execute([$id]);
+                $projId = $stmtProjCheck->fetchColumn();
+                if ($projId) {
+                    $stmtProj = $this->db->prepare("SELECT created_by, manager_ids FROM projects WHERE id = ?");
+                    $stmtProj->execute([$projId]);
+                    $proj = $stmtProj->fetch(PDO::FETCH_ASSOC);
+                    if ($proj) {
+                        $pCreatorId = $proj['created_by'];
+                        $pMgrs = array_filter(array_map('intval', explode(',', $proj['manager_ids'] ?? '')));
+                        $isProjectMgr = ($pCreatorId !== null && (int)$pCreatorId === (int)$userId) || in_array((int)$userId, $pMgrs, true);
+                        if ($isProjectMgr) {
+                            $isRoster = true; // Bypass restriction!
+                        }
+                    }
+                }
+            }
+
             if (!$isCreator && !$isRoster) {
                 respond(403, null, 'Bạn không có quyền xóa chiến dịch này', false);
             }
