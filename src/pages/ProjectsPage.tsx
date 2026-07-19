@@ -3534,13 +3534,13 @@ export default function ProjectsPage() {
                           e.stopPropagation();
                           handleOpenRoster(proj.id);
                         }}
-                        style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: 'rgba(99, 102, 241, 0.06)', border: '1px solid rgba(99, 102, 241, 0.1)', padding: '6px 10px', borderRadius: '100px', fontWeight: 700, color: '#4f46e5', cursor: 'pointer', transition: 'all 0.2s ease' }}
+                        style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: 'rgba(100, 116, 139, 0.06)', border: '1px solid rgba(100, 116, 139, 0.12)', padding: '6px 10px', borderRadius: '100px', fontWeight: 700, color: '#64748b', cursor: 'pointer', transition: 'all 0.2s ease' }}
                         onMouseEnter={e => {
-                          e.currentTarget.style.background = 'rgba(99, 102, 241, 0.12)';
+                          e.currentTarget.style.background = 'rgba(100, 116, 139, 0.12)';
                           e.currentTarget.style.transform = 'scale(1.03)';
                         }}
                         onMouseLeave={e => {
-                          e.currentTarget.style.background = 'rgba(99, 102, 241, 0.06)';
+                          e.currentTarget.style.background = 'rgba(100, 116, 139, 0.06)';
                           e.currentTarget.style.transform = 'none';
                         }}
                       >
@@ -3551,13 +3551,13 @@ export default function ProjectsPage() {
                           e.stopPropagation();
                           handleOpenDocs(proj.id);
                         }}
-                        style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: 'rgba(16, 185, 129, 0.06)', border: '1px solid rgba(16, 185, 129, 0.1)', padding: '6px 10px', borderRadius: '100px', fontWeight: 700, color: '#059669', cursor: 'pointer', transition: 'all 0.2s ease' }}
+                        style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: 'rgba(100, 116, 139, 0.06)', border: '1px solid rgba(100, 116, 139, 0.12)', padding: '6px 10px', borderRadius: '100px', fontWeight: 700, color: '#64748b', cursor: 'pointer', transition: 'all 0.2s ease' }}
                         onMouseEnter={e => {
-                          e.currentTarget.style.background = 'rgba(16, 185, 129, 0.12)';
+                          e.currentTarget.style.background = 'rgba(100, 116, 139, 0.12)';
                           e.currentTarget.style.transform = 'scale(1.03)';
                         }}
                         onMouseLeave={e => {
-                          e.currentTarget.style.background = 'rgba(16, 185, 129, 0.06)';
+                          e.currentTarget.style.background = 'rgba(100, 116, 139, 0.06)';
                           e.currentTarget.style.transform = 'none';
                         }}
                       >
@@ -3571,13 +3571,13 @@ export default function ProjectsPage() {
                               e.stopPropagation();
                               handleOpenQuickCampaigns(proj, linkedCamps);
                             }}
-                            style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: 'rgba(245, 158, 11, 0.06)', border: '1px solid rgba(245, 158, 11, 0.1)', padding: '6px 10px', borderRadius: '100px', fontWeight: 700, color: '#d97706', cursor: 'pointer', transition: 'all 0.2s ease' }}
+                            style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: 'rgba(100, 116, 139, 0.06)', border: '1px solid rgba(100, 116, 139, 0.12)', padding: '6px 10px', borderRadius: '100px', fontWeight: 700, color: '#64748b', cursor: 'pointer', transition: 'all 0.2s ease' }}
                             onMouseEnter={e => {
-                              e.currentTarget.style.background = 'rgba(245, 158, 11, 0.12)';
+                              e.currentTarget.style.background = 'rgba(100, 116, 139, 0.12)';
                               e.currentTarget.style.transform = 'scale(1.03)';
                             }}
                             onMouseLeave={e => {
-                              e.currentTarget.style.background = 'rgba(245, 158, 11, 0.06)';
+                              e.currentTarget.style.background = 'rgba(100, 116, 139, 0.06)';
                               e.currentTarget.style.transform = 'none';
                             }}
                           >
