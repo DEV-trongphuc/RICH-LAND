@@ -266,6 +266,9 @@ class CooperationController {
         $stmtIns->execute([$contactId, $depositId, $sharesJson, $creatorId]);
         $slipId = (int)$this->db->lastInsertId();
 
+        // Sync collaborators to contacts table
+        $this->syncCollaboratorsToContact((int)$contactId, $sharesJson);
+
         // Email all shareholders that a slip requires their signature
         $emailSubject = "[RICH LAND] Yêu cầu ký xác nhận Phiếu hợp tác #" . $slipId;
         $emailTitle = "KÝ XÁC NHẬN PHIẾU HỢP TÁC";
@@ -343,6 +346,9 @@ class CooperationController {
             WHERE id = ?
         ");
         $stmt->execute([$sharesJson, $sum, $signaturesVal, $newStatus, $reason ?: null, $id]);
+
+        // Sync collaborators to contacts table
+        $this->syncCollaboratorsToContact((int)$slip['contact_id'], $sharesJson);
 
         if ($newStatus === 'pending_manager_approval') {
             $stmtUser = $this->db->prepare("SELECT full_name FROM users WHERE id = ?");
@@ -760,6 +766,9 @@ class CooperationController {
         $stmtIns->execute([$contactId, $sharesJson, $auth['user_id']]);
         $slipId = $this->db->lastInsertId();
 
+        // Sync collaborators to contacts table
+        $this->syncCollaboratorsToContact((int)$contactId, $sharesJson);
+
         // Withdraw from databank and terminate other parallel contacts
         require_once __DIR__ . '/../config/ParallelHelper.php';
         ParallelHelper::lockPersonForWinningContact($this->db, (int)$contactId);
@@ -1107,5 +1116,32 @@ class CooperationController {
         }
 
         respond(200, $suggestions, 'Lấy danh sách gợi ý hợp tác thành công');
+    }
+
+    private function syncCollaboratorsToContact(int $contactId, string $sharesJson): void {
+        $shares = json_decode($sharesJson, true) ?: [];
+        $stmt = $this->db->prepare("SELECT owner_id, collaborator_ids FROM contacts WHERE id = ?");
+        $stmt->execute([$contactId]);
+        $contact = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!$contact) return;
+
+        $ownerId = (int)$contact['owner_id'];
+        $collaboratorIds = [];
+
+        // All keys in shares except the owner are collaborators
+        foreach (array_keys($shares) as $uid) {
+            $uidInt = (int)$uid;
+            if ($uidInt > 0 && $uidInt !== $ownerId) {
+                $collaboratorIds[] = $uidInt;
+            }
+        }
+
+        // Merge with existing non-owner collaborators to prevent losing manual co-care assignments
+        $existingIds = array_filter(array_map('intval', explode(',', $contact['collaborator_ids'] ?? '')));
+        $mergedIds = array_unique(array_merge($existingIds, $collaboratorIds));
+        
+        $collaboratorsStr = !empty($mergedIds) ? implode(',', $mergedIds) : null;
+        $stmtUpd = $this->db->prepare("UPDATE contacts SET collaborator_ids = ? WHERE id = ?");
+        $stmtUpd->execute([$collaboratorsStr, $contactId]);
     }
 }
