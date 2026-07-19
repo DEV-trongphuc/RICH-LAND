@@ -720,7 +720,36 @@ class CooperationController {
             $ownerId = $auth['user_id'];
         }
 
-        $shares = [$ownerId => 100];
+        $collaborators = $b['collaborators'] ?? [];
+        if (empty($collaborators)) {
+            respond(422, null, 'Cần chọn ít nhất một nhân sự hợp tác', false);
+        }
+
+        // Validate that collaborators does not include the owner
+        $collaboratorIds = array_map('intval', $collaborators);
+        $collaboratorIds = array_values(array_filter($collaboratorIds, function($id) use ($ownerId) {
+            return $id > 0 && $id !== $ownerId;
+        }));
+
+        if (empty($collaboratorIds)) {
+            respond(422, null, 'Nhân sự hợp tác không hợp lệ hoặc trùng với chủ sở hữu', false);
+        }
+
+        if (count($collaboratorIds) > 2) {
+            respond(422, null, 'Hệ thống chỉ hỗ trợ hợp tác tối đa 3 nhân sự (Chủ sở hữu + 2 người hợp tác)', false);
+        }
+
+        $shares = [];
+        // Auto-split: Owner + N collaborators
+        $totalCount = 1 + count($collaboratorIds);
+        $basePercent = floor(100 / $totalCount);
+        $remainder = 100 - ($basePercent * $totalCount);
+
+        $shares[$ownerId] = (int)($basePercent + $remainder);
+        foreach ($collaboratorIds as $cid) {
+            $shares[$cid] = (int)$basePercent;
+        }
+
         $sharesJson = json_encode($shares);
 
         $stmtIns = $this->db->prepare("
@@ -1013,5 +1042,69 @@ class CooperationController {
         }
 
         return 'none';
+    }
+
+    public function getSuggestions(array $auth): void {
+        $tid = $auth['tenant_id'];
+        $contactId = (int)($_GET['contact_id'] ?? 0);
+        if ($contactId <= 0) {
+            respond(400, null, 'ID khách hàng không hợp lệ', false);
+        }
+
+        // Get current contact person_id, phone, and owner_id
+        $stmtC = $this->db->prepare("SELECT person_id, phone, owner_id FROM contacts WHERE id = ? AND tenant_id = ?");
+        $stmtC->execute([$contactId, $tid]);
+        $cRow = $stmtC->fetch(PDO::FETCH_ASSOC);
+
+        if (!$cRow) {
+            respond(404, null, 'Không tìm thấy khách hàng', false);
+        }
+
+        $personId = $cRow['person_id'] ? (int)$cRow['person_id'] : null;
+        $phone = $cRow['phone'] ? trim($cRow['phone']) : null;
+        $ownerId = (int)$cRow['owner_id'];
+
+        if (!$personId && !$phone) {
+            respond(200, [], 'Không có thông tin để gợi ý');
+        }
+
+        // Query distinct sales owners of other contacts that have same person_id or phone
+        $stmt = $this->db->prepare("
+            SELECT DISTINCT u.id, u.full_name, u.email, u.avatar_url
+            FROM contacts c
+            JOIN users u ON c.owner_id = u.id
+            WHERE c.tenant_id = :tenant_id 
+              AND c.id != :contact_id
+              AND c.owner_id != :owner_id
+              AND u.is_active = 1
+              AND (
+                (c.person_id = :person_id AND :person_id_val1 IS NOT NULL AND :person_id_val2 > 0)
+                OR (c.phone = :phone AND :phone_val1 IS NOT NULL AND :phone_val2 != '')
+              )
+        ");
+
+        $params = [
+            'tenant_id' => $tid,
+            'contact_id' => $contactId,
+            'owner_id' => $ownerId,
+            'person_id' => $personId,
+            'person_id_val1' => $personId,
+            'person_id_val2' => $personId,
+            'phone' => $phone,
+            'phone_val1' => $phone,
+            'phone_val2' => $phone
+        ];
+
+        $stmt->execute($params);
+        $suggestions = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        // Normalize full_name and avatar_url
+        foreach ($suggestions as &$s) {
+            $s['id'] = (int)$s['id'];
+            $s['full_name'] = $s['full_name'] ?: '';
+            $s['avatar'] = $s['avatar_url'] ?: null;
+        }
+
+        respond(200, $suggestions, 'Lấy danh sách gợi ý hợp tác thành công');
     }
 }

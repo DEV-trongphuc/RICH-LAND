@@ -922,7 +922,8 @@ switch ($resource) {
     case 'cooperation-slips':
         $auth = requireAuth();
         $ctrl = new CooperationController($db);
-        if ($resourceId && $subResource === 'shares' && $method === 'PUT') $ctrl->updateShares($auth, (int)$resourceId);
+        if ($resourceId === 'suggestions' && $method === 'GET') $ctrl->getSuggestions($auth);
+        elseif ($resourceId && $subResource === 'shares' && $method === 'PUT') $ctrl->updateShares($auth, (int)$resourceId);
         elseif ($resourceId && $subResource === 'sign' && $method === 'POST') $ctrl->signSlip($auth, (int)$resourceId);
         elseif ($resourceId && $subResource === 'approve' && $method === 'POST') $ctrl->approveSlip($auth, (int)$resourceId);
         elseif ($resourceId && $subResource === 'reject' && $method === 'POST') $ctrl->rejectSlip($auth, (int)$resourceId);

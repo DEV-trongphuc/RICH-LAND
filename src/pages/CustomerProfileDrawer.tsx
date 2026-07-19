@@ -1186,6 +1186,25 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
   const [coopError, setCoopError] = useState('');
   const [isRequestingChange, setIsRequestingChange] = useState(false);
   const [changeReason, setChangeReason] = useState('');
+  
+  const [isCreateCoopModalOpen, setIsCreateCoopModalOpen] = useState(false);
+  const [selectedCollaborators, setSelectedCollaborators] = useState<string[]>([]);
+  const [suggestedSales, setSuggestedSales] = useState<any[]>([]);
+  const [loadingSuggestions, setLoadingSuggestions] = useState(false);
+  const [collabSearchQuery, setCollabSearchQuery] = useState('');
+
+  const handleToggleCollaborator = (userId: string) => {
+    setSelectedCollaborators(prev => {
+      if (prev.includes(userId)) {
+        return prev.filter(id => id !== userId);
+      }
+      if (prev.length >= 2) {
+        addToast('Chỉ được chọn tối đa 2 nhân sự hợp tác', 'warning');
+        return prev;
+      }
+      return [...prev, userId];
+    });
+  };
 
   const isOwnerOrAdmin = useMemo(() => {
     const scope = getModulePermissionScope(currentUser, 'leads', 'write');
@@ -1416,22 +1435,21 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
       return;
     }
 
-    setCoopLoading(true);
+    setCollabSearchQuery('');
+    setSelectedCollaborators([]);
+    setSuggestedSales([]);
+    setIsCreateCoopModalOpen(true);
+    setLoadingSuggestions(true);
     try {
-      const res = await fetchAPI('cooperation-slips', {
-        method: 'POST',
-        body: JSON.stringify({ contact_id: contact.id })
-      });
+      const res = await fetchAPI(`cooperation-slips/suggestions?contact_id=${contact.id}`);
       if (res.success) {
-        addToast('Đã khởi tạo phiếu hợp tác hoa hồng thành công!', 'success');
-        await fetchCoopSlip();
-      } else {
-        addToast(res.message || 'Không thể tạo phiếu hợp tác', 'error');
+        setSuggestedSales(res.data || []);
       }
-    } catch (e: any) {
-      addToast(e.message, 'error');
+    } catch (e) {
+      console.error("Error fetching suggestions:", e);
+    } finally {
+      setLoadingSuggestions(false);
     }
-    setCoopLoading(false);
   };
 
   const handleSaveCoopShares = async () => {
@@ -3933,17 +3951,70 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                             </button>
                           )}
                         </div>
-                        <div
-                          style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '2px 8px', background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: '8px', cursor: 'pointer' }}
-                          onClick={(e) => showUserCard(e, formData.owner_name)}
-                        >
-                          <Avatar 
-                            src={ownerAvatarUrl}
-                            name={formData.owner_name} 
-                            size={20} 
-                          />
-                          <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#8a0f1b' }}>{formData.owner_name || 'Sale phụ trách'}</span>
-                        </div>
+                        {coopSlip ? (
+                          <div
+                            style={{ 
+                              display: 'flex', 
+                              alignItems: 'center', 
+                              gap: '6px', 
+                              padding: '2px 8px 2px 4px', 
+                              background: 'linear-gradient(135deg, rgba(163, 20, 34, 0.08) 0%, rgba(16, 185, 129, 0.08) 100%)', 
+                              border: '1px solid rgba(163, 20, 34, 0.15)', 
+                              borderRadius: '20px',
+                              boxShadow: 'var(--shadow-sm)'
+                            }}
+                          >
+                            <span style={{ 
+                              fontSize: '0.65rem', 
+                              fontWeight: 800, 
+                              color: 'var(--color-primary)', 
+                              textTransform: 'uppercase', 
+                              letterSpacing: '0.05em',
+                              padding: '2px 6px',
+                              background: 'var(--color-surface)',
+                              borderRadius: '9999px',
+                              border: '1px solid rgba(163, 20, 34, 0.1)'
+                            }}>
+                              Hợp tác
+                            </span>
+                            <div style={{ display: 'flex', alignItems: 'center', marginLeft: '4px' }}>
+                              {(coopSlip.shareholders || []).map((sh: any, shIdx: number) => (
+                                <div 
+                                  key={shIdx} 
+                                  style={{ 
+                                    marginLeft: shIdx > 0 ? '-8px' : '0', 
+                                    position: 'relative',
+                                    cursor: 'pointer'
+                                  }}
+                                  onClick={(e) => showUserCard(e, sh.name)}
+                                  title={`${sh.name} (${sh.percentage}%) - ${sh.signed ? 'Đã ký' : 'Chờ ký'}`}
+                                >
+                                  <Avatar 
+                                    src={resolveAttachmentUrl(sh.avatar)}
+                                    name={sh.name} 
+                                    size={22}
+                                    style={{
+                                      border: sh.signed ? '2px solid var(--color-success)' : '2px solid var(--color-warning)',
+                                      boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+                                    }}
+                                  />
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        ) : (
+                          <div
+                            style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '2px 8px', background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: '8px', cursor: 'pointer' }}
+                            onClick={(e) => showUserCard(e, formData.owner_name)}
+                          >
+                            <Avatar 
+                              src={ownerAvatarUrl}
+                              name={formData.owner_name} 
+                              size={20} 
+                            />
+                            <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#8a0f1b' }}>{formData.owner_name || 'Sale phụ trách'}</span>
+                          </div>
+                        )}
                       </div>
                     </div>
 
@@ -9462,6 +9533,171 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
           </div>
         </CustomModal>
       )}
+
+      <CustomModal
+        isOpen={isCreateCoopModalOpen}
+        onClose={() => setIsCreateCoopModalOpen(false)}
+        title="Thiết lập hợp tác hoa hồng"
+      >
+        <div style={{ padding: '0.5rem 0' }}>
+          <p style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', marginBottom: '1.25rem' }}>
+            Hợp tác là bắt buộc đối với phiếu hợp tác. Bạn có thể chọn tối đa <strong>2 nhân sự</strong> để cùng chăm sóc khách hàng này.
+          </p>
+
+          {/* Search bar */}
+          <div style={{ position: 'relative', marginBottom: '1rem' }}>
+            <Search size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-muted)' }} />
+            <input
+              type="text"
+              className="form-control"
+              placeholder="Tìm kiếm nhân sự theo tên hoặc email..."
+              value={collabSearchQuery}
+              onChange={e => setCollabSearchQuery(e.target.value)}
+              style={{ paddingLeft: '36px', fontSize: '0.875rem' }}
+            />
+          </div>
+
+          {loadingSuggestions ? (
+            <div style={{ display: 'flex', justifyContent: 'center', padding: '2rem' }}>
+              <Loader2 className="spin" size={24} style={{ color: 'var(--color-primary)' }} />
+            </div>
+          ) : (
+            <div style={{ maxHeight: '350px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '8px', paddingRight: '4px' }}>
+              
+              {/* Highlight Suggestions if search is empty or matches suggestions */}
+              {(() => {
+                const filteredSuggestions = suggestedSales.filter(u => 
+                  (u.full_name || '').toLowerCase().includes(collabSearchQuery.toLowerCase()) || 
+                  (u.email || '').toLowerCase().includes(collabSearchQuery.toLowerCase())
+                );
+                
+                if (filteredSuggestions.length === 0) return null;
+                
+                return (
+                  <div style={{ marginBottom: '0.5rem' }}>
+                    <h5 style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-primary)', textTransform: 'uppercase', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <Lightbulb size={12} /> Gợi ý nhân sự (Trùng khách hàng)
+                    </h5>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                      {filteredSuggestions.map((u) => {
+                        const isSelected = selectedCollaborators.includes(String(u.id));
+                        return (
+                          <div 
+                            key={u.id}
+                            onClick={() => handleToggleCollaborator(String(u.id))}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'space-between',
+                              padding: '10px 12px',
+                              borderRadius: '12px',
+                              border: isSelected ? '2px solid var(--color-primary)' : '1px solid var(--color-border)',
+                              background: isSelected ? 'var(--color-primary-light)' : 'var(--color-surface)',
+                              cursor: 'pointer',
+                              transition: 'all 0.2s ease',
+                              boxShadow: isSelected ? 'var(--shadow-sm)' : 'none'
+                            }}
+                          >
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                              <Avatar src={resolveAttachmentUrl(u.avatar)} name={u.full_name} size="sm" />
+                              <div>
+                                <strong style={{ fontSize: '0.85rem', color: 'var(--color-text)' }}>{u.full_name}</strong>
+                                <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', display: 'block' }}>{u.email}</span>
+                              </div>
+                            </div>
+                            <span className="badge warning" style={{ fontSize: '0.65rem' }}>💡 Trùng khách</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {/* All other sales list */}
+              <div>
+                <h5 style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', marginBottom: '8px', marginTop: '4px' }}>
+                  Danh sách nhân sự
+                </h5>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  {salesUsers
+                    .filter(u => String(u.id) !== String(contact?.owner_id || formData?.owner_id)) // exclude owner
+                    .filter(u => !suggestedSales.some(s => String(s.id) === String(u.id))) // exclude suggested ones to avoid duplication
+                    .filter(u => 
+                      (u.full_name || '').toLowerCase().includes(collabSearchQuery.toLowerCase()) || 
+                      (u.email || '').toLowerCase().includes(collabSearchQuery.toLowerCase())
+                    )
+                    .map((u) => {
+                      const isSelected = selectedCollaborators.includes(String(u.id));
+                      return (
+                        <div 
+                          key={u.id}
+                          onClick={() => handleToggleCollaborator(String(u.id))}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            padding: '10px 12px',
+                            borderRadius: '12px',
+                            border: isSelected ? '2px solid var(--color-primary)' : '1px solid var(--color-border)',
+                            background: isSelected ? 'var(--color-primary-light)' : 'var(--color-surface)',
+                            cursor: 'pointer',
+                            transition: 'all 0.2s ease'
+                          }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                            <Avatar src={resolveAttachmentUrl(u.avatar)} name={u.full_name} size="sm" />
+                            <div>
+                              <strong style={{ fontSize: '0.85rem', color: 'var(--color-text)' }}>{u.full_name}</strong>
+                              <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', display: 'block' }}>{u.email}</span>
+                            </div>
+                          </div>
+                          {isSelected && <Check size={16} style={{ color: 'var(--color-primary)' }} />}
+                        </div>
+                      );
+                    })}
+                </div>
+              </div>
+
+            </div>
+          )}
+
+          <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem' }}>
+            <button className="btn outline" style={{ flex: 1 }} onClick={() => setIsCreateCoopModalOpen(false)}>Hủy</button>
+            <button
+              className="btn primary"
+              style={{ flex: 1 }}
+              disabled={selectedCollaborators.length === 0 || coopLoading}
+              onClick={async () => {
+                setCoopLoading(true);
+                try {
+                  const res = await fetchAPI('cooperation-slips', {
+                    method: 'POST',
+                    body: JSON.stringify({ 
+                      contact_id: contact.id, 
+                      collaborators: selectedCollaborators 
+                    })
+                  });
+                  if (res.success) {
+                    addToast('Đã khởi tạo phiếu hợp tác hoa hồng thành công!', 'success');
+                    setIsCreateCoopModalOpen(false);
+                    await fetchCoopSlip();
+                  } else {
+                    addToast(res.message || 'Không thể tạo phiếu hợp tác', 'error');
+                  }
+                } catch (e: any) {
+                  addToast(e.message, 'error');
+                } finally {
+                  setCoopLoading(false);
+                }
+              }}
+            >
+              Tạo phiếu hợp tác
+            </button>
+          </div>
+
+        </div>
+      </CustomModal>
 
       {/* Quick View Expense Modal */}
       {viewExpense && createPortal(
