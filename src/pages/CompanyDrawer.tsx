@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Building2, FileText, FileBadge, Tag as TagIcon, Phone, Mail, MapPin, Search, Calendar, Users, Briefcase, Plus, HelpCircle, Globe, Settings, Download, Trash2, Edit, Pencil, Loader2, History, ChevronLeft, ChevronRight } from 'lucide-react';
+import { X, Building2, FileText, FileBadge, Tag as TagIcon, Phone, Mail, MapPin, Search, Calendar, Users, Briefcase, Plus, HelpCircle, Globe, Settings, Download, Trash2, Edit, Pencil, Loader2, History, ChevronLeft, ChevronRight, Camera } from 'lucide-react';
 import { CustomSelect } from '../components/ui/CustomSelect';
 import { CustomCheckbox } from '../components/ui/CustomCheckbox';
 import { AddressSelect } from '../components/ui/AddressSelect';
@@ -397,9 +397,79 @@ export const CompanyDrawer: React.FC<CompanyDrawerProps> = ({ isOpen, onClose, e
             {/* Header */}
             <div className={styles.header}>
               <div className={styles.headerProfile}>
-                <div className="avatar-placeholder lg" style={{ background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)', fontSize: '1.25rem', width: 56, height: 56, borderRadius: '12px', boxShadow: '0 4px 12px rgba(37, 99, 235, 0.3)' }}>
-                  {formData?.name?.[0] || 'C'}
+                <div 
+                  className={styles.avatarContainer}
+                  style={{ 
+                    background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)', 
+                    fontSize: '1.25rem', 
+                    width: 56, 
+                    height: 56, 
+                    boxShadow: '0 4px 12px rgba(37, 99, 235, 0.3)',
+                    cursor: disableEdit ? 'default' : 'pointer',
+                    color: 'white',
+                    fontWeight: 700
+                  }}
+                  onClick={() => {
+                    if (!disableEdit) {
+                      document.getElementById('company-logo-upload')?.click();
+                    }
+                  }}
+                >
+                  {formData?.logo_url ? (
+                    <img 
+                      src={formData.logo_url.startsWith('http') ? formData.logo_url : `${import.meta.env.VITE_API_URL || '/backend'}/${formData.logo_url}`} 
+                      alt="Company Logo" 
+                      style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+                    />
+                  ) : (
+                    formData?.name?.[0] || 'C'
+                  )}
+                  {!disableEdit && (
+                    <div className={styles.avatarOverlay}>
+                      <Camera size={16} />
+                    </div>
+                  )}
                 </div>
+                <input 
+                  type="file" 
+                  id="company-logo-upload" 
+                  accept="image/*" 
+                  style={{ display: 'none' }} 
+                  onChange={async (e) => {
+                    if (e.target.files?.[0]) {
+                      const file = e.target.files[0];
+                      try {
+                        const compressed = await compressToWebP(file);
+                        const formDataUpload = new FormData();
+                        formDataUpload.append('file', compressed);
+                        if (formData.logo_url) {
+                          formDataUpload.append('previous_url', formData.logo_url);
+                        }
+                        const res = await api.post('api.php?action=upload', formDataUpload, {
+                          headers: { 'Content-Type': 'multipart/form-data' }
+                        });
+                        if (res.data?.success) {
+                          const newLogoUrl = res.data.data.url;
+                          setFormData(prev => ({ ...prev, logo_url: newLogoUrl }));
+                          
+                          if (entity?.id) {
+                            const updateRes = await api.put(`api.php?action=companies/${entity.id}`, { logo_url: newLogoUrl });
+                            if (updateRes.data?.success) {
+                              addToast('Cập nhật logo công ty thành công.', 'success');
+                              if (onSave) {
+                                onSave(updateRes.data.data);
+                              }
+                            }
+                          } else {
+                            addToast('Đã tải lên logo công ty.', 'success');
+                          }
+                        }
+                      } catch (err: any) {
+                        addToast('Lỗi tải lên logo: ' + err.message, 'error');
+                      }
+                    }
+                  }}
+                />
                 <div>
                   <h2 className={styles.title}>{formData?.name || 'Tên Công Ty'}</h2>
                   <p className={styles.subtitle} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -1297,22 +1367,24 @@ export const CompanyDrawer: React.FC<CompanyDrawerProps> = ({ isOpen, onClose, e
             </div>
 
             {/* Footer */}
-            <div className={styles.footer}>
-              {disableEdit ? (
-                <button className="btn secondary" onClick={onClose}>Đóng</button>
-              ) : (
-                <>
-                  <button className="btn ghost" onClick={handleClose}>Hủy bỏ</button>
-                  <button 
-                    className={`btn ${hasChanges ? 'primary' : 'outline'}`} 
-                    disabled={!hasChanges || isSaving}
-                    onClick={handleSave}
-                  >
-                    {isSaving ? 'Đang lưu...' : (hasChanges ? 'Lưu thông tin Công ty' : 'Đã đồng bộ')}
-                  </button>
-                </>
-              )}
-            </div>
+            {!isMobileOrTablet && (
+              <div className={styles.footer}>
+                {disableEdit ? (
+                  <button className="btn secondary" onClick={onClose}>Đóng</button>
+                ) : (
+                  <>
+                    <button className="btn ghost" onClick={handleClose}>Hủy bỏ</button>
+                    <button 
+                      className={`btn ${hasChanges ? 'primary' : 'outline'}`} 
+                      disabled={!hasChanges || isSaving}
+                      onClick={handleSave}
+                    >
+                      {isSaving ? 'Đang lưu...' : (hasChanges ? 'Lưu thông tin Công ty' : 'Đã đồng bộ')}
+                    </button>
+                  </>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Help Modal */}

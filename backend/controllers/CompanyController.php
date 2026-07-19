@@ -94,8 +94,8 @@ class CompanyController {
         }
 
         $stmt = $this->db->prepare("
-            INSERT INTO companies (tenant_id,owner_id,created_by,name,tax_id,industry,website,social_link,phone,email,address,ward,city,country,size,status,tags,notes,stage_id,expected_revenue,legal_representative,erp_code,sla_level,wholesale_price,vat_exempt,dedicated_rep_id)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+            INSERT INTO companies (tenant_id,owner_id,created_by,name,tax_id,industry,website,social_link,phone,email,address,ward,city,country,size,status,tags,notes,stage_id,expected_revenue,legal_representative,erp_code,sla_level,wholesale_price,vat_exempt,dedicated_rep_id,logo_url)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
         ");
         $stmt->execute([
             $auth['tenant_id'], $b['owner_id'] ?? $auth['user_id'], $auth['user_id'],
@@ -107,7 +107,8 @@ class CompanyController {
             $b['sla_level']??'standard',
             (isset($b['wholesale_price']) && $b['wholesale_price']) ? 1 : 0,
             (isset($b['vat_exempt']) && $b['vat_exempt']) ? 1 : 0,
-            (isset($b['dedicated_rep_id']) && $b['dedicated_rep_id'] !== '' && $b['dedicated_rep_id'] !== null) ? (int)$b['dedicated_rep_id'] : null
+            (isset($b['dedicated_rep_id']) && $b['dedicated_rep_id'] !== '' && $b['dedicated_rep_id'] !== null) ? (int)$b['dedicated_rep_id'] : null,
+            $b['logo_url']??null
         ]);
         $id = (int)$this->db->lastInsertId();
         if (isset($b['custom_fields']) && is_array($b['custom_fields'])) {
@@ -160,7 +161,7 @@ class CompanyController {
             $b['dedicated_rep_id'] = ($b['dedicated_rep_id'] !== '' && $b['dedicated_rep_id'] !== null) ? (int)$b['dedicated_rep_id'] : null;
         }
 
-        $fields = ['owner_id','name','tax_id','industry','website','social_link','phone','email','address','ward','city','country','size','status','notes','stage_id','expected_revenue','legal_representative','erp_code','sla_level','wholesale_price','vat_exempt','dedicated_rep_id'];
+        $fields = ['owner_id','name','tax_id','industry','website','social_link','phone','email','address','ward','city','country','size','status','notes','stage_id','expected_revenue','legal_representative','erp_code','sla_level','wholesale_price','vat_exempt','dedicated_rep_id','logo_url'];
         $sets=[]; $params=[];
         foreach ($fields as $f) { if (array_key_exists($f,$b)) { $sets[]="$f=?"; $params[]=$b[$f]; } }
         if (isset($b['tags'])) { $sets[]='tags=?'; $params[]=json_encode($b['tags']); }

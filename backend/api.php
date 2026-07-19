@@ -61,6 +61,7 @@ try { $conn->query("ALTER TABLE contacts ADD COLUMN customer_type VARCHAR(50) NU
 try { $conn->query("ALTER TABLE contacts ADD COLUMN industry VARCHAR(100) NULL"); } catch (Exception $e) {}
 try { $conn->query("ALTER TABLE contacts ADD COLUMN budget_range VARCHAR(100) NULL"); } catch (Exception $e) {}
 try { $conn->query("ALTER TABLE contacts ADD COLUMN campaign_id INT(11) NULL"); } catch (Exception $e) {}
+try { $conn->query("ALTER TABLE companies ADD COLUMN logo_url VARCHAR(255) NULL"); } catch (Exception $e) {}
 
 
 
