@@ -855,250 +855,318 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
             }
           `}</style>
 
-          <div style={{ 
-            display: 'flex', 
-            alignItems: 'center', 
-            gap: '14px', 
-            marginBottom: '1.5rem', 
-            background: 'linear-gradient(135deg, rgba(189, 29, 45, 0.05) 0%, rgba(244, 63, 94, 0.05) 100%)', 
-            padding: '16px', 
-            borderRadius: '16px', 
-            border: '1px solid rgba(189, 29, 45, 0.08)' 
-          }}>
-            <div style={{ 
-              width: 48, 
-              height: 48, 
-              borderRadius: '12px', 
-              background: 'linear-gradient(135deg, #BD1D2D 0%, #ef4444 100%)', 
-              display: 'flex', 
-              justifyContent: 'center', 
-              alignItems: 'center', 
-              color: '#fff',
-              boxShadow: '0 8px 20px -6px rgba(189, 29, 45, 0.5)'
-            }}>
-              <ShieldAlert size={24} className="animate-pulse" />
-            </div>
-            <div>
-              <h3 style={{ fontSize: '1.125rem', fontWeight: 800, color: 'var(--color-text)', margin: 0, letterSpacing: '-0.02em' }}>
-                {t("Vấn đề cần xử lý!")}
-              </h3>
-              <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', margin: '4px 0 0', fontWeight: 500 }}>
-                {t("Bạn đang có các vấn đề tồn đọng cần xử lý:")}
-              </p>
-            </div>
-          </div>
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '1.5rem' }}>
-            {/* 1. Ticket báo lỗi */}
-            {pendingTicketsCount > 0 && (
-              <div 
-                onClick={() => { setIsUnifiedInboxOpen(false); navigate('/tickets'); }}
-                className="unified-inbox-card"
-                style={{ 
-                  '--hover-color': '#ef4444',
-                  '--hover-bg': 'rgba(239, 68, 68, 0.03)',
-                  '--hover-shadow': 'rgba(239, 68, 68, 0.15)'
-                } as any}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <div className="unified-inbox-icon" style={{ background: 'rgba(239, 68, 68, 0.08)', color: '#ef4444' }}>
-                    <TicketIcon size={18} />
-                  </div>
-                  <span style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)' }}>{t("Ticket báo lỗi data")}</span>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <span className="badge danger" style={{ borderRadius: '20px', padding: '4px 10px', fontWeight: 700, fontSize: '0.72rem', boxShadow: '0 2px 6px rgba(239, 68, 68, 0.12)' }}>{pendingTicketsCount} {t('chờ duyệt')}</span>
-                  
-                  <div style={{
-                    borderRadius: '20px',
-                    padding: '5px 12px',
-                    fontWeight: 700,
-                    fontSize: '0.72rem',
-                    color: '#fff',
-                    background: 'linear-gradient(135deg, #ef4444 0%, #b91c1c 100%)',
-                    boxShadow: '0 4px 12px rgba(239, 68, 68, 0.25)',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '4px',
-                    transition: 'all 0.2s',
-                    whiteSpace: 'nowrap',
-                    flexShrink: 0
+          {/* Header & List Container */}
+          {(() => {
+            const hasPendingTasks = (pendingTicketsCount + heldLeadsCount + pendingCheckInsCount + pendingCoopsCount + supportTicketsCount) > 0;
+            if (hasPendingTasks) {
+              return (
+                <>
+                  <div style={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    gap: '14px', 
+                    marginBottom: '1.5rem', 
+                    background: 'linear-gradient(135deg, rgba(189, 29, 45, 0.05) 0%, rgba(244, 63, 94, 0.05) 100%)', 
+                    padding: '16px', 
+                    borderRadius: '16px', 
+                    border: '1px solid rgba(189, 29, 45, 0.08)' 
                   }}>
-                    <span>{t('Duyệt ngay')}</span>
-                    <ChevronRight className="chevron-arrow" size={12} style={{ transition: 'all 0.25s' }} />
+                    <div style={{ 
+                      width: 48, 
+                      height: 48, 
+                      borderRadius: '12px', 
+                      background: 'linear-gradient(135deg, #BD1D2D 0%, #ef4444 100%)', 
+                      display: 'flex', 
+                      justifyContent: 'center', 
+                      alignItems: 'center', 
+                      color: '#fff',
+                      boxShadow: '0 8px 20px -6px rgba(189, 29, 45, 0.5)'
+                    }}>
+                      <ShieldAlert size={24} className="animate-pulse" />
+                    </div>
+                    <div>
+                      <h3 style={{ fontSize: '1.125rem', fontWeight: 800, color: 'var(--color-text)', margin: 0, letterSpacing: '-0.02em' }}>
+                        {t("Vấn đề cần xử lý!")}
+                      </h3>
+                      <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', margin: '4px 0 0', fontWeight: 500 }}>
+                        {t("Bạn đang có các vấn đề tồn đọng cần xử lý:")}
+                      </p>
+                    </div>
                   </div>
-                </div>
-              </div>
-            )}
 
-            {/* 2. AI Pre-screener */}
-            {heldLeadsCount > 0 && (
-              <div 
-                onClick={() => { setIsUnifiedInboxOpen(false); navigate('/gatekeeper'); }}
-                className="unified-inbox-card"
-                style={{ 
-                  '--hover-color': '#f59e0b',
-                  '--hover-bg': 'rgba(245, 158, 11, 0.03)',
-                  '--hover-shadow': 'rgba(245, 158, 11, 0.15)'
-                } as any}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <div className="unified-inbox-icon" style={{ background: 'rgba(245, 158, 11, 0.08)', color: '#f59e0b' }}>
-                    <AlertTriangle size={18} />
-                  </div>
-                  <span style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)' }}>{t("Data tạm giữ (AI Lọc)")}</span>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <span className="badge warning" style={{ borderRadius: '20px', padding: '4px 10px', fontWeight: 700, fontSize: '0.72rem', background: 'rgba(245, 158, 11, 0.1)', color: '#d97706', boxShadow: '0 2px 6px rgba(245, 158, 11, 0.12)' }}>{heldLeadsCount} {t('chờ duyệt')}</span>
-                  
-                  <div style={{
-                    borderRadius: '20px',
-                    padding: '5px 12px',
-                    fontWeight: 700,
-                    fontSize: '0.72rem',
-                    color: '#fff',
-                    background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
-                    boxShadow: '0 4px 12px rgba(245, 158, 11, 0.25)',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '4px',
-                    transition: 'all 0.2s',
-                    whiteSpace: 'nowrap',
-                    flexShrink: 0
-                  }}>
-                    <span>{t('Duyệt ngay')}</span>
-                    <ChevronRight className="chevron-arrow" size={12} style={{ transition: 'all 0.25s' }} />
-                  </div>
-                </div>
-              </div>
-            )}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '1.5rem' }}>
+                    {/* 1. Ticket báo lỗi */}
+                    {pendingTicketsCount > 0 && (
+                      <div 
+                        onClick={() => { setIsUnifiedInboxOpen(false); navigate('/tickets'); }}
+                        className="unified-inbox-card"
+                        style={{ 
+                          '--hover-color': '#ef4444',
+                          '--hover-bg': 'rgba(239, 68, 68, 0.03)',
+                          '--hover-shadow': 'rgba(239, 68, 68, 0.15)'
+                        } as any}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                          <div className="unified-inbox-icon" style={{ background: 'rgba(239, 68, 68, 0.08)', color: '#ef4444' }}>
+                            <TicketIcon size={18} />
+                          </div>
+                          <span style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)' }}>{t("Ticket báo lỗi data")}</span>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                          <span className="badge danger" style={{ borderRadius: '20px', padding: '4px 10px', fontWeight: 700, fontSize: '0.72rem', boxShadow: '0 2px 6px rgba(239, 68, 68, 0.12)' }}>{pendingTicketsCount} {t('chờ duyệt')}</span>
+                          
+                          <div style={{
+                            borderRadius: '20px',
+                            padding: '5px 12px',
+                            fontWeight: 700,
+                            fontSize: '0.72rem',
+                            color: '#fff',
+                            background: 'linear-gradient(135deg, #ef4444 0%, #b91c1c 100%)',
+                            boxShadow: '0 4px 12px rgba(239, 68, 68, 0.25)',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            transition: 'all 0.2s',
+                            whiteSpace: 'nowrap',
+                            flexShrink: 0
+                          }}>
+                            <span>{t('Duyệt ngay')}</span>
+                            <ChevronRight className="chevron-arrow" size={12} style={{ transition: 'all 0.25s' }} />
+                          </div>
+                        </div>
+                      </div>
+                    )}
 
-            {/* 3. Chấm công */}
-            {pendingCheckInsCount > 0 && (
-              <div 
-                onClick={() => { setIsUnifiedInboxOpen(false); navigate('/attendance'); }}
-                className="unified-inbox-card"
-                style={{ 
-                  '--hover-color': '#BD1D2D',
-                  '--hover-bg': 'rgba(189, 29, 45, 0.03)',
-                  '--hover-shadow': 'rgba(189, 29, 45, 0.15)'
-                } as any}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <div className="unified-inbox-icon" style={{ background: 'rgba(189, 29, 45, 0.08)', color: '#BD1D2D' }}>
-                    <Clock size={18} />
-                  </div>
-                  <span style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)' }}>{t("Yêu cầu chấm công bổ sung")}</span>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <span className="badge" style={{ borderRadius: '20px', padding: '4px 10px', fontWeight: 700, fontSize: '0.72rem', background: 'rgba(189, 29, 45, 0.1)', color: 'var(--color-primary)', boxShadow: '0 2px 6px rgba(189, 29, 45, 0.12)' }}>{pendingCheckInsCount} {t('chờ duyệt')}</span>
-                  
-                  <div style={{
-                    borderRadius: '20px',
-                    padding: '5px 12px',
-                    fontWeight: 700,
-                    fontSize: '0.72rem',
-                    color: '#fff',
-                    background: 'linear-gradient(135deg, #BD1D2D 0%, #a31422 100%)',
-                    boxShadow: '0 4px 12px rgba(189, 29, 45, 0.25)',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '4px',
-                    transition: 'all 0.2s',
-                    whiteSpace: 'nowrap',
-                    flexShrink: 0
-                  }}>
-                    <span>{t('Duyệt ngay')}</span>
-                    <ChevronRight className="chevron-arrow" size={12} style={{ transition: 'all 0.25s' }} />
-                  </div>
-                </div>
-              </div>
-            )}
+                    {/* 2. AI Pre-screener */}
+                    {heldLeadsCount > 0 && (
+                      <div 
+                        onClick={() => { setIsUnifiedInboxOpen(false); navigate('/gatekeeper'); }}
+                        className="unified-inbox-card"
+                        style={{ 
+                          '--hover-color': '#f59e0b',
+                          '--hover-bg': 'rgba(245, 158, 11, 0.03)',
+                          '--hover-shadow': 'rgba(245, 158, 11, 0.15)'
+                        } as any}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                          <div className="unified-inbox-icon" style={{ background: 'rgba(245, 158, 11, 0.08)', color: '#f59e0b' }}>
+                            <AlertTriangle size={18} />
+                          </div>
+                          <span style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)' }}>{t("Data tạm giữ (AI Lọc)")}</span>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                          <span className="badge warning" style={{ borderRadius: '20px', padding: '4px 10px', fontWeight: 700, fontSize: '0.72rem', background: 'rgba(245, 158, 11, 0.1)', color: '#d97706', boxShadow: '0 2px 6px rgba(245, 158, 11, 0.12)' }}>{heldLeadsCount} {t('chờ duyệt')}</span>
+                          
+                          <div style={{
+                            borderRadius: '20px',
+                            padding: '5px 12px',
+                            fontWeight: 700,
+                            fontSize: '0.72rem',
+                            color: '#fff',
+                            background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+                            boxShadow: '0 4px 12px rgba(245, 158, 11, 0.25)',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            transition: 'all 0.2s',
+                            whiteSpace: 'nowrap',
+                            flexShrink: 0
+                          }}>
+                            <span>{t('Duyệt ngay')}</span>
+                            <ChevronRight className="chevron-arrow" size={12} style={{ transition: 'all 0.25s' }} />
+                          </div>
+                        </div>
+                      </div>
+                    )}
 
-            {/* 4. Ký hợp tác */}
-            {pendingCoopsCount > 0 && (
-              <div 
-                onClick={() => { setIsUnifiedInboxOpen(false); navigate('/cooperation-slips'); }}
-                className="unified-inbox-card"
-                style={{ 
-                  '--hover-color': '#BD1D2D',
-                  '--hover-bg': 'rgba(189, 29, 45, 0.03)',
-                  '--hover-shadow': 'rgba(189, 29, 45, 0.15)'
-                } as any}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <div className="unified-inbox-icon" style={{ background: 'rgba(189, 29, 45, 0.08)', color: '#BD1D2D' }}>
-                    <Scale size={18} />
-                  </div>
-                  <span style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)' }}>{t("Phê duyệt ký hợp tác chia hoa hồng")}</span>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <span className="badge" style={{ borderRadius: '20px', padding: '4px 10px', fontWeight: 700, fontSize: '0.72rem', background: 'rgba(189, 29, 45, 0.1)', color: 'var(--color-primary)', boxShadow: '0 2px 6px rgba(189, 29, 45, 0.12)' }}>{pendingCoopsCount} {t('chờ duyệt')}</span>
-                  
-                  <div style={{
-                    borderRadius: '20px',
-                    padding: '5px 12px',
-                    fontWeight: 700,
-                    fontSize: '0.72rem',
-                    color: '#fff',
-                    background: 'linear-gradient(135deg, #BD1D2D 0%, #a31422 100%)',
-                    boxShadow: '0 4px 12px rgba(189, 29, 45, 0.25)',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '4px',
-                    transition: 'all 0.2s',
-                    whiteSpace: 'nowrap',
-                    flexShrink: 0
-                  }}>
-                    <span>{t('Duyệt ngay')}</span>
-                    <ChevronRight className="chevron-arrow" size={12} style={{ transition: 'all 0.25s' }} />
-                  </div>
-                </div>
-              </div>
-            )}
+                    {/* 3. Chấm công */}
+                    {pendingCheckInsCount > 0 && (
+                      <div 
+                        onClick={() => { setIsUnifiedInboxOpen(false); navigate('/attendance'); }}
+                        className="unified-inbox-card"
+                        style={{ 
+                          '--hover-color': '#BD1D2D',
+                          '--hover-bg': 'rgba(189, 29, 45, 0.03)',
+                          '--hover-shadow': 'rgba(189, 29, 45, 0.15)'
+                        } as any}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                          <div className="unified-inbox-icon" style={{ background: 'rgba(189, 29, 45, 0.08)', color: '#BD1D2D' }}>
+                            <Clock size={18} />
+                          </div>
+                          <span style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)' }}>{t("Yêu cầu chấm công bổ sung")}</span>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                          <span className="badge" style={{ borderRadius: '20px', padding: '4px 10px', fontWeight: 700, fontSize: '0.72rem', background: 'rgba(189, 29, 45, 0.1)', color: 'var(--color-primary)', boxShadow: '0 2px 6px rgba(189, 29, 45, 0.12)' }}>{pendingCheckInsCount} {t('chờ duyệt')}</span>
+                          
+                          <div style={{
+                            borderRadius: '20px',
+                            padding: '5px 12px',
+                            fontWeight: 700,
+                            fontSize: '0.72rem',
+                            color: '#fff',
+                            background: 'linear-gradient(135deg, #BD1D2D 0%, #a31422 100%)',
+                            boxShadow: '0 4px 12px rgba(189, 29, 45, 0.25)',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            transition: 'all 0.2s',
+                            whiteSpace: 'nowrap',
+                            flexShrink: 0
+                          }}>
+                            <span>{t('Duyệt ngay')}</span>
+                            <ChevronRight className="chevron-arrow" size={12} style={{ transition: 'all 0.25s' }} />
+                          </div>
+                        </div>
+                      </div>
+                    )}
 
-            {/* 5. Ticket hỗ trợ */}
-            {supportTicketsCount > 0 && (
-              <div 
-                onClick={() => { setIsUnifiedInboxOpen(false); navigate('/support-tickets'); }}
-                className="unified-inbox-card"
-                style={{ 
-                  '--hover-color': '#2563eb',
-                  '--hover-bg': 'rgba(37, 99, 235, 0.03)',
-                  '--hover-shadow': 'rgba(37, 99, 235, 0.15)'
-                } as any}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <div className="unified-inbox-icon" style={{ background: 'rgba(37, 99, 235, 0.08)', color: '#2563eb' }}>
-                    <HelpCircle size={18} />
+                    {/* 4. Ký hợp tác */}
+                    {pendingCoopsCount > 0 && (
+                      <div 
+                        onClick={() => { setIsUnifiedInboxOpen(false); navigate('/cooperation-slips'); }}
+                        className="unified-inbox-card"
+                        style={{ 
+                          '--hover-color': '#BD1D2D',
+                          '--hover-bg': 'rgba(189, 29, 45, 0.03)',
+                          '--hover-shadow': 'rgba(189, 29, 45, 0.15)'
+                        } as any}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                          <div className="unified-inbox-icon" style={{ background: 'rgba(189, 29, 45, 0.08)', color: '#BD1D2D' }}>
+                            <Scale size={18} />
+                          </div>
+                          <span style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)' }}>{t("Phê duyệt ký hợp tác chia hoa hồng")}</span>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                          <span className="badge" style={{ borderRadius: '20px', padding: '4px 10px', fontWeight: 700, fontSize: '0.72rem', background: 'rgba(189, 29, 45, 0.1)', color: 'var(--color-primary)', boxShadow: '0 2px 6px rgba(189, 29, 45, 0.12)' }}>{pendingCoopsCount} {t('chờ duyệt')}</span>
+                          
+                          <div style={{
+                            borderRadius: '20px',
+                            padding: '5px 12px',
+                            fontWeight: 700,
+                            fontSize: '0.72rem',
+                            color: '#fff',
+                            background: 'linear-gradient(135deg, #BD1D2D 0%, #a31422 100%)',
+                            boxShadow: '0 4px 12px rgba(189, 29, 45, 0.25)',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            transition: 'all 0.2s',
+                            whiteSpace: 'nowrap',
+                            flexShrink: 0
+                          }}>
+                            <span>{t('Duyệt ngay')}</span>
+                            <ChevronRight className="chevron-arrow" size={12} style={{ transition: 'all 0.25s' }} />
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* 5. Ticket hỗ trợ */}
+                    {supportTicketsCount > 0 && (
+                      <div 
+                        onClick={() => { setIsUnifiedInboxOpen(false); navigate('/support-tickets'); }}
+                        className="unified-inbox-card"
+                        style={{ 
+                          '--hover-color': '#2563eb',
+                          '--hover-bg': 'rgba(37, 99, 235, 0.03)',
+                          '--hover-shadow': 'rgba(37, 99, 235, 0.15)'
+                        } as any}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                          <div className="unified-inbox-icon" style={{ background: 'rgba(37, 99, 235, 0.08)', color: '#2563eb' }}>
+                            <HelpCircle size={18} />
+                          </div>
+                          <span style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)' }}>{t("Ticket yêu cầu hỗ trợ (IT/CS)")}</span>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                          <span className="badge" style={{ borderRadius: '20px', padding: '4px 10px', fontWeight: 700, fontSize: '0.72rem', background: 'rgba(37, 99, 235, 0.1)', color: '#2563eb', boxShadow: '0 2px 6px rgba(37, 99, 235, 0.12)' }}>{supportTicketsCount} {t('chờ xử lý')}</span>
+                          
+                          <div style={{
+                            borderRadius: '20px',
+                            padding: '5px 12px',
+                            fontWeight: 700,
+                            fontSize: '0.72rem',
+                            color: '#fff',
+                            background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
+                            boxShadow: '0 4px 12px rgba(37, 99, 235, 0.25)',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            transition: 'all 0.2s',
+                            whiteSpace: 'nowrap',
+                            flexShrink: 0
+                          }}>
+                            <span>{t('Xử lý ngay')}</span>
+                            <ChevronRight className="chevron-arrow" size={12} style={{ transition: 'all 0.25s' }} />
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
-                  <span style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)' }}>{t("Ticket yêu cầu hỗ trợ (IT/CS)")}</span>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <span className="badge" style={{ borderRadius: '20px', padding: '4px 10px', fontWeight: 700, fontSize: '0.72rem', background: 'rgba(37, 99, 235, 0.1)', color: '#2563eb', boxShadow: '0 2px 6px rgba(37, 99, 235, 0.12)' }}>{supportTicketsCount} {t('chờ xử lý')}</span>
-                  
-                  <div style={{
-                    borderRadius: '20px',
-                    padding: '5px 12px',
-                    fontWeight: 700,
-                    fontSize: '0.72rem',
-                    color: '#fff',
-                    background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
-                    boxShadow: '0 4px 12px rgba(37, 99, 235, 0.25)',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '4px',
-                    transition: 'all 0.2s',
-                    whiteSpace: 'nowrap',
-                    flexShrink: 0
+                </>
+              );
+            } else {
+              return (
+                <>
+                  <div style={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    gap: '14px', 
+                    marginBottom: '1.5rem', 
+                    background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.05) 0%, rgba(52, 211, 153, 0.05) 100%)', 
+                    padding: '16px', 
+                    borderRadius: '16px', 
+                    border: '1px solid rgba(16, 185, 129, 0.08)' 
                   }}>
-                    <span>{t('Xử lý ngay')}</span>
-                    <ChevronRight className="chevron-arrow" size={12} style={{ transition: 'all 0.25s' }} />
+                    <div style={{ 
+                      width: 48, 
+                      height: 48, 
+                      borderRadius: '12px', 
+                      background: 'linear-gradient(135deg, #10b981 0%, #34d399 100%)', 
+                      display: 'flex', 
+                      justifyContent: 'center', 
+                      alignItems: 'center', 
+                      color: '#fff',
+                      boxShadow: '0 8px 20px -6px rgba(16, 185, 129, 0.5)'
+                    }}>
+                      <CheckCircle2 size={24} />
+                    </div>
+                    <div>
+                      <h3 style={{ fontSize: '1.125rem', fontWeight: 800, color: 'var(--color-text)', margin: 0, letterSpacing: '-0.02em' }}>
+                        {t("Tuyệt vời! Không có tồn đọng")}
+                      </h3>
+                      <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', margin: '4px 0 0', fontWeight: 500 }}>
+                        {t("Hiện tại hệ thống không ghi nhận công việc nào cần phê duyệt.")}
+                      </p>
+                    </div>
                   </div>
-                </div>
-              </div>
-            )}
-          </div>
+
+                  <div style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    padding: '3rem 1.5rem',
+                    background: 'var(--color-bg-secondary)',
+                    border: '1px dashed var(--color-border)',
+                    borderRadius: '16px',
+                    textAlign: 'center',
+                    marginBottom: '1.5rem'
+                  }}>
+                    <CheckCircle2 size={48} style={{ color: '#10b981', marginBottom: '1rem' }} />
+                    <span style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-text)' }}>
+                      {t("Mọi thứ đã được xử lý hoàn tất")}
+                    </span>
+                    <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', marginTop: '6px', maxWidth: '380px', lineHeight: 1.5 }}>
+                      {t("Không còn yêu cầu chờ duyệt nào. Chúc bạn một ngày làm việc hiệu quả và tràn đầy năng lượng!")}
+                    </p>
+                  </div>
+                </>
+              );
+            }
+          })()}
 
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
             <button 
