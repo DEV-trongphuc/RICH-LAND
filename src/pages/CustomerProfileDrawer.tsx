@@ -871,7 +871,10 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
       return part;
     });
   };
-  const [activeTab, setActiveTab] = useState<string>('info');
+  const [activeTab, setActiveTab] = useState<string>(() => {
+    const isMobile = window.innerWidth <= 1024;
+    return isMobile ? '' : 'info';
+  });
   const [taskViewMode, setTaskViewMode] = useState<'kanban' | 'list'>('kanban');
   const [prevContactId, setPrevContactId] = useState<number | null>(null);
   const [showMobilePipelineSelector, setShowMobilePipelineSelector] = useState(false);
@@ -2291,14 +2294,14 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
         } else if (params.has('highlight_note_id')) {
           setActiveTab('tags');
         } else {
-          setActiveTab(initialTab || 'info');
+          setActiveTab(isMobileOrTablet ? '' : (initialTab || 'info'));
         }
         setPrevContactId(contact.id);
       }
     } else {
       setPrevContactId(null);
     }
-  }, [contact, prevContactId, initialTab]);
+  }, [contact, prevContactId, initialTab, isMobileOrTablet]);
 
   useEffect(() => {
     if (formData.campaign_id && !formData.project_id && allowedCampaigns.length > 0) {
@@ -3817,13 +3820,15 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                     onClick={handleSave}
                     className="btn success sm"
                     style={{
-                      padding: isMobileOrTablet ? '6px 8px' : '6px 14px',
-                      borderRadius: '8px',
+                      padding: isMobileOrTablet ? '6px 12px' : '6px 14px',
+                      borderRadius: '10px',
                       fontSize: '0.8rem',
                       fontWeight: 700,
-                      height: '32px',
+                      height: isMobileOrTablet ? '36px' : '32px',
+                      width: isMobileOrTablet ? '44px' : undefined,
                       display: 'flex',
                       alignItems: 'center',
+                      justifyContent: 'center',
                       gap: isMobileOrTablet ? '0' : '6px',
                       background: 'var(--color-primary)',
                       borderColor: 'var(--color-primary)',
@@ -3831,7 +3836,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                       cursor: 'pointer'
                     }}
                   >
-                    <Save size={14} />
+                    <Save size={isMobileOrTablet ? 16 : 14} />
                     {!isMobileOrTablet && <span>Lưu</span>}
                   </button>
                 </div>
@@ -4252,104 +4257,83 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                               borderRadius: '12px',
                               marginBottom: '1rem'
                             }}>
-                              <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
-                                {/* Left: Avatar */}
-                                <div style={{ flexShrink: 0 }}>
-                                  <Avatar name={fullName} src={formData.avatar_url} size={48} />
-                                </div>
-                                {/* Right: Basic Info */}
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', flex: 1, minWidth: 0 }}>
-                                  {/* Badges row */}
-                                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', width: '100%' }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
-                                      <span className={`badge ${formData.status === 'customer' ? 'success' : formData.status === 'qualified' ? 'warning' : 'info'}`} style={{ padding: '2px 6px', fontSize: '0.625rem', borderRadius: '4px' }}>
-                                        {formData.status === 'customer' ? 'VIP' : formData.status === 'qualified' ? 'Đã thẩm định' : 'Tiềm năng'}
-                                      </span>
-                                      {formData.temperature && tempLabels[formData.temperature] && (
-                                        <span 
-                                          style={{ 
-                                            padding: '2px 6px', 
-                                            fontSize: '0.625rem', 
-                                            borderRadius: '4px',
-                                            fontWeight: 700,
-                                            color: tempLabels[formData.temperature].color,
-                                            background: tempLabels[formData.temperature].bg,
-                                            border: `1px solid ${tempLabels[formData.temperature].color}33`
-                                          }}
-                                          title={`Nhiệt độ sale chốt: ${tempLabels[formData.temperature].label}`}
-                                        >
-                                          {tempLabels[formData.temperature].label}
-                                        </span>
-                                      )}
-                                      {(() => {
-                                        const currentStageObj = pipelineStages.find(s => String(s.id) === String(formData.pipeline_status || 'chua_xac_dinh'));
-                                        const stColor = currentStageObj ? overridePurpleColor(currentStageObj.color) : 'var(--color-text-muted)';
-                                        return (
-                                          <button 
-                                            onClick={() => setShowMobilePipelineSelector(true)}
-                                            style={{
-                                              padding: '2px 8px',
-                                              fontSize: '0.625rem',
-                                              borderRadius: '4px',
-                                              fontWeight: 800,
-                                              background: currentStageObj ? `${stColor}1a` : 'var(--color-bg)',
-                                              color: stColor,
-                                              border: `1px solid ${stColor}33`,
-                                              display: 'inline-flex',
-                                              alignItems: 'center',
-                                              gap: '4px',
-                                              cursor: 'pointer'
-                                            }}
-                                          >
-                                            <span>{currentStageObj?.name || 'Chưa xác định'}</span>
-                                            <ChevronRight size={10} />
-                                          </button>
-                                        );
-                                      })()}
-                                      {formData.suggested_temperature && tempLabels[formData.suggested_temperature] && (
-                                        <span 
-                                          style={{ 
-                                            padding: '2px 6px', 
-                                            fontSize: '0.625rem', 
-                                            borderRadius: '4px',
-                                            fontWeight: 600,
-                                            color: '#64748b',
-                                            background: 'var(--color-bg)',
-                                            border: '1px solid var(--color-border-light)'
-                                          }}
-                                          title={`Máy đề xuất: ${tempLabels[formData.suggested_temperature].label}`}
-                                        >
-                                          AI: {tempLabels[formData.suggested_temperature].label}
-                                        </span>
-                                      )}
-                                      {formData.not_lead_proposed === 1 && (
-                                        <span className="badge danger" style={{ padding: '2px 6px', fontSize: '0.625rem', borderRadius: '4px' }}>Chờ duyệt loại</span>
-                                      )}
-                                    </div>
-                                    
-                                    <div 
-                                      onClick={() => setActiveTab('scoring')}
-                                      style={{ cursor: 'pointer', flexShrink: 0 }}
-                                    >
-                                      <LeadScoreRing score={score} size={28} showLabel={true} />
-                                    </div>
+                               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', width: '100%' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1, minWidth: 0 }}>
+                                  {/* Avatar on the left */}
+                                  <div style={{ flexShrink: 0 }}>
+                                    <Avatar name={fullName} src={formData.avatar_url} size={48} />
                                   </div>
 
-                                  {/* Phone and Email details */}
-                                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '0.75rem', color: 'var(--color-text)' }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                      <Phone size={11} className="text-primary" style={{ flexShrink: 0 }} />
-                                      <PhoneLink phone={formData.phone} style={{ fontSize: '0.75rem', fontWeight: 700 }} />
+                                  {/* Center/Right: Phone & Email */}
+                                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: 1, minWidth: 0 }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                      <Phone size={12} className="text-primary" style={{ flexShrink: 0 }} />
+                                      <PhoneLink phone={formData.phone} style={{ fontSize: '0.8125rem', fontWeight: 700 }} />
                                     </div>
                                     {formData.email && (
-                                      <div style={{ display: 'flex', alignItems: 'center', gap: '4px', minWidth: 0 }}>
-                                        <Mail size={11} className="text-muted" style={{ flexShrink: 0 }} />
-                                        <span style={{ fontSize: '0.725rem', color: 'var(--color-text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={formData.email}>
+                                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', minWidth: 0 }}>
+                                        <Mail size={12} className="text-muted" style={{ flexShrink: 0 }} />
+                                        <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={formData.email}>
                                           {formData.email}
                                         </span>
                                       </div>
                                     )}
                                   </div>
+                                </div>
+
+                                {/* Far Right: Score Ring */}
+                                <div 
+                                  onClick={() => setActiveTab('scoring')}
+                                  style={{ cursor: 'pointer', flexShrink: 0 }}
+                                >
+                                  <LeadScoreRing score={score} size={32} showLabel={true} />
+                                </div>
+                              </div>
+
+                              {/* Row 2: Pipeline status wrapped in a beautiful card */}
+                              <div style={{
+                                width: '100%',
+                                marginTop: '4px',
+                                padding: '10px 12px',
+                                background: 'var(--color-surface-hover, #f8fafc)',
+                                borderRadius: '10px',
+                                border: '1px solid var(--color-border-light)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                gap: '8px'
+                              }}>
+                                <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 700 }}>Trạng thái:</span>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                  {(() => {
+                                    const currentStageObj = pipelineStages.find(s => String(s.id) === String(formData.pipeline_status || 'chua_xac_dinh'));
+                                    const stColor = currentStageObj ? overridePurpleColor(currentStageObj.color) : 'var(--color-text-muted)';
+                                    return (
+                                      <button 
+                                        onClick={() => setShowMobilePipelineSelector(true)}
+                                        style={{
+                                          padding: '4px 10px',
+                                          fontSize: '0.75rem',
+                                          borderRadius: '6px',
+                                          fontWeight: 800,
+                                          background: currentStageObj ? `${stColor}1a` : 'var(--color-bg)',
+                                          color: stColor,
+                                          border: `1px solid ${stColor}33`,
+                                          display: 'inline-flex',
+                                          alignItems: 'center',
+                                          gap: '4px',
+                                          cursor: 'pointer',
+                                          boxShadow: '0 1px 2px rgba(0,0,0,0.03)'
+                                        }}
+                                      >
+                                        <span>{currentStageObj?.name || 'Chưa xác định'}</span>
+                                        <ChevronRight size={12} />
+                                      </button>
+                                    );
+                                  })()}
+                                  {formData.not_lead_proposed === 1 && (
+                                    <span className="badge danger" style={{ padding: '2px 6px', fontSize: '0.625rem', borderRadius: '4px' }}>Chờ duyệt loại</span>
+                                  )}
                                 </div>
                               </div>
 

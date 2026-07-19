@@ -889,7 +889,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
     payment: true,
     emergency: false
   });
-  const [profileActiveTab, setProfileActiveTab] = useState('personal');
+  const [profileActiveTab, setProfileActiveTab] = useState(() => window.innerWidth < 768 ? '' : 'personal');
   const [emergencyContacts, setEmergencyContacts] = useState<{ name: string, relationship: string, phone: string }[]>([{ name: '', relationship: '', phone: '' }]);
   const [profileCertificates, setProfileCertificates] = useState<{ id: string, name: string, code: string, issuer: string, link: string, image: string, issuedDate: string, expiryDate: string }[]>([]);
   const [profileHRRecords, setProfileHRRecords] = useState<{ id: string, type: 'award' | 'warning' | 'discipline', title: string, date: string, amount: string, reason: string, decisionNumber: string, documentLink: string }[]>([]);
@@ -8140,6 +8140,21 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
       );
     }
 
+    const renderColoredIcon = (IconComponent: any, bgColor: string) => (
+      <div style={{
+        width: '28px',
+        height: '28px',
+        borderRadius: '7px',
+        backgroundColor: bgColor,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        flexShrink: 0
+      }}>
+        <IconComponent size={15} color="white" />
+      </div>
+    );
+
     const onLeave = isCurrentlyOnLeave(profile);
 
     const handleDayActiveToggle = (dayKey: string, active: boolean) => {
@@ -8178,52 +8193,68 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
           margin: isMobile ? '-1.25rem 0 1rem 0' : '-1.5rem 0 1.5rem 0',
           gap: '12px'
         }}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', minWidth: 0 }}>
-            <h2 style={{ 
-              fontSize: isMobile ? '1.1rem' : '1.5rem', 
-              fontWeight: 800, 
-              color: 'var(--color-text)', 
-              margin: 0,
-              whiteSpace: 'nowrap',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis'
-            }}>
-              {t('QUẢN LÝ TÀI KHOẢN')}
-            </h2>
-            {!isMobile && (
-              <p style={{ fontSize: '0.875rem', color: 'var(--color-text-light)', margin: 0 }}>
-                {t('Cấu hình thông tin cá nhân, ảnh đại diện và thời gian trực nhận lead tự động.')}
-              </p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
+            {isMobile && profileActiveTab && (
+              <button 
+                onClick={() => setProfileActiveTab('')} 
+                style={{ border: 'none', background: 'transparent', padding: '4px', cursor: 'pointer', color: 'var(--color-text)', display: 'flex', alignItems: 'center' }}
+              >
+                <ChevronLeft size={20} />
+              </button>
             )}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', minWidth: 0 }}>
+              <h2 style={{ 
+                fontSize: isMobile ? '1.1rem' : '1.5rem', 
+                fontWeight: 800, 
+                color: 'var(--color-text)', 
+                margin: 0,
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis'
+              }}>
+                {t('QUẢN LÝ TÀI KHOẢN')}
+              </h2>
+              {!isMobile && (
+                <p style={{ fontSize: '0.875rem', color: 'var(--color-text-light)', margin: 0 }}>
+                  {t('Cấu hình thông tin cá nhân, ảnh đại diện và thời gian trực nhận lead tự động.')}
+                </p>
+              )}
+            </div>
           </div>
 
-          <button
-            className="btn primary"
-            style={{ 
-              height: isMobile ? '32px' : '38px', 
-              padding: isMobile ? '0 0.75rem' : '0 1.5rem', 
-              borderRadius: '8px', 
-              display: 'flex', 
-              alignItems: 'center', 
-              gap: '6px', 
-              flexShrink: 0,
-              fontSize: isMobile ? '0.78rem' : '0.875rem'
-            }}
-            onClick={handleSaveProfile}
-            disabled={savingProfile || isUploadingAvatar}
-          >
-            {savingProfile ? (
-              <>
-                <RefreshCw size={14} className="spin" />
-                {t('Đang lưu...')}
-              </>
-            ) : (
-              <>
-                <Save size={14} />
-                {t(isMobile ? 'Lưu' : 'Lưu thiết lập')}
-              </>
-            )}
-          </button>
+          {(!isMobile || profileActiveTab) && (
+            <button
+              className="btn primary"
+              style={isMobile ? { 
+                height: '36px', 
+                width: '44px', 
+                borderRadius: '10px', 
+                padding: '0', 
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'center', 
+                flexShrink: 0
+              } : { 
+                height: '38px', 
+                padding: '0 1.5rem', 
+                borderRadius: '8px', 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: '6px', 
+                flexShrink: 0,
+                fontSize: '0.875rem'
+              }}
+              onClick={handleSaveProfile}
+              disabled={savingProfile || isUploadingAvatar}
+            >
+              {savingProfile ? (
+                <RefreshCw size={isMobile ? 16 : 14} className="spin" />
+              ) : (
+                <Save size={isMobile ? 16 : 14} />
+              )}
+              {!isMobile && (savingProfile ? t('Đang lưu...') : t('Lưu thiết lập'))}
+            </button>
+          )}
         </div>
 
         {/* Responsive flex container with sidebar tabs */}
@@ -8235,168 +8266,525 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
           display: 'flex',
           flexDirection: isMobile ? 'column' : 'row',
           overflow: 'visible',
-          minHeight: '650px',
+          minHeight: isMobile ? 'auto' : '650px',
           margin: '0'
         }}>
           {/* LEFT SIDEBAR: Avatar & Tabs */}
-          <div className={styles.sidebarTabs} style={{
-            width: isMobile ? '100%' : '250px',
-            borderRight: isMobile ? 'none' : '1px solid var(--color-border-light)',
-            borderBottom: isMobile ? '1px solid var(--color-border-light)' : 'none',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '1.25rem',
-            padding: '1.5rem 1rem',
-            flexShrink: 0,
-            background: 'var(--color-bg-alt)',
-            position: isMobile ? 'static' : 'sticky',
-            top: isMobile ? 'auto' : '5rem',
-            alignSelf: isMobile ? 'stretch' : 'flex-start',
-            zIndex: 10,
-            borderTopLeftRadius: isMobile ? '16px' : '16px',
-            borderTopRightRadius: isMobile ? '16px' : '0px',
-            borderBottomLeftRadius: isMobile ? '0px' : '16px'
-          }}>
-            {/* Compact Profile Avatar Section */}
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '0.5rem 0' }}>
-              <div style={{ position: 'relative', display: 'inline-flex', marginBottom: '0.75rem' }}>
-                <div style={{
-                  border: '3px solid var(--color-primary-light)',
-                  borderRadius: '50%',
-                  padding: '4px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  background: 'var(--color-surface)',
-                  boxShadow: '0 4px 12px rgba(0,0,0,0.05)'
-                }}>
-                  <Avatar src={editAvatar} name={editName} size={80} />
-                </div>
-                <label style={{
-                  position: 'absolute', bottom: 0, right: 0,
-                  background: 'var(--color-primary)', color: 'white',
-                  width: 28, height: 28, borderRadius: '50%',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  cursor: 'pointer', boxShadow: '0 2px 6px rgba(163, 20, 34, 0.3)',
-                  transition: 'all 0.2s', border: '2px solid var(--color-surface)'
-                }} className="hover-lift active-press" title={t('Tải lên ảnh đại diện mới')}>
-                  <Camera size={12} />
-                  <input type="file" accept="image/*" onChange={handleAvatarUpload} style={{ display: 'none' }} />
-                </label>
-                {isUploadingAvatar && (
-                  <div style={{
-                    position: 'absolute', inset: 4, borderRadius: '50%',
-                    background: 'rgba(0,0,0,0.6)', display: 'flex',
-                    alignItems: 'center', justifyContent: 'center',
-                    backdropFilter: 'blur(2px)'
-                  }}>
-                    <RefreshCw className="spin" size={18} color="white" />
+          {(!isMobile || !profileActiveTab) && (
+            <div style={isMobile ? {
+              width: '100%',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '1.25rem',
+              padding: '1.25rem 1rem',
+              background: 'var(--color-bg-alt)',
+              boxSizing: 'border-box'
+            } : {
+              width: '250px',
+              borderRight: '1px solid var(--color-border-light)',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '1.25rem',
+              padding: '1.5rem 1rem',
+              flexShrink: 0,
+              background: 'var(--color-bg-alt)',
+              position: 'sticky',
+              top: '5rem',
+              alignSelf: 'flex-start',
+              zIndex: 10,
+              borderTopLeftRadius: '16px',
+              borderTopRightRadius: '0px',
+              borderBottomLeftRadius: '16px'
+            }}>
+              {isMobile ? (
+                /* ── Mobile OS Settings Card-Style Standalone Avatar Card ── */
+                <div 
+                  onClick={(e) => {
+                    if ((e.target as HTMLElement).closest('label')) return;
+                    setProfileActiveTab('personal');
+                  }}
+                  style={{
+                    background: 'var(--color-surface)',
+                    border: '1px solid var(--color-border-light)',
+                    borderRadius: '12px',
+                    padding: '14px 16px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    cursor: 'pointer',
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.02)',
+                    width: '100%'
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                    <div style={{ position: 'relative', display: 'inline-flex', flexShrink: 0 }}>
+                      <div style={{
+                        border: '2px solid var(--color-primary-light)',
+                        borderRadius: '50%',
+                        padding: '2px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        background: 'var(--color-surface)',
+                        boxShadow: '0 2px 6px rgba(0,0,0,0.05)'
+                      }}>
+                        <Avatar src={editAvatar} name={editName} size={60} />
+                      </div>
+                      <label style={{
+                        position: 'absolute', bottom: -2, right: -2,
+                        background: 'var(--color-primary)', color: 'white',
+                        width: 22, height: 22, borderRadius: '50%',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        cursor: 'pointer', boxShadow: '0 2px 4px rgba(163, 20, 34, 0.3)',
+                        transition: 'all 0.2s', border: '1.5px solid var(--color-surface)'
+                      }} className="hover-lift active-press" title={t('Tải lên ảnh đại diện mới')}>
+                        <Camera size={10} />
+                        <input type="file" accept="image/*" onChange={handleAvatarUpload} style={{ display: 'none' }} />
+                      </label>
+                      {isUploadingAvatar && (
+                        <div style={{
+                          position: 'absolute', inset: 2, borderRadius: '50%',
+                          background: 'rgba(0,0,0,0.6)', display: 'flex',
+                          alignItems: 'center', justifyContent: 'center',
+                          backdropFilter: 'blur(2px)'
+                        }}>
+                          <RefreshCw className="spin" size={14} color="white" />
+                        </div>
+                      )}
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', textAlign: 'left' }}>
+                      <h4 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-text)', margin: 0 }}>
+                        {editName}
+                      </h4>
+                      <span style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', fontWeight: 500 }}>
+                        {editPersonalPhone ? `${t('Điện thoại:')} ${editPersonalPhone}` : profile.email}
+                      </span>
+                    </div>
                   </div>
+                  <ChevronRight size={16} style={{ color: 'var(--color-text-muted)' }} />
+                </div>
+              ) : (
+                /* ── Desktop Profile Avatar Section ── */
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '0.5rem 0' }}>
+                  <div style={{ position: 'relative', display: 'inline-flex', marginBottom: '0.75rem' }}>
+                    <div style={{
+                      border: '3px solid var(--color-primary-light)',
+                      borderRadius: '50%',
+                      padding: '4px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      background: 'var(--color-surface)',
+                      boxShadow: '0 4px 12px rgba(0,0,0,0.05)'
+                    }}>
+                      <Avatar src={editAvatar} name={editName} size={80} />
+                    </div>
+                    <label style={{
+                      position: 'absolute', bottom: 0, right: 0,
+                      background: 'var(--color-primary)', color: 'white',
+                      width: 28, height: 28, borderRadius: '50%',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      cursor: 'pointer', boxShadow: '0 2px 6px rgba(163, 20, 34, 0.3)',
+                      transition: 'all 0.2s', border: '2px solid var(--color-surface)'
+                    }} className="hover-lift active-press" title={t('Tải lên ảnh đại diện mới')}>
+                      <Camera size={12} />
+                      <input type="file" accept="image/*" onChange={handleAvatarUpload} style={{ display: 'none' }} />
+                    </label>
+                    {isUploadingAvatar && (
+                      <div style={{
+                        position: 'absolute', inset: 4, borderRadius: '50%',
+                        background: 'rgba(0,0,0,0.6)', display: 'flex',
+                        alignItems: 'center', justifyContent: 'center',
+                        backdropFilter: 'blur(2px)'
+                      }}>
+                        <RefreshCw className="spin" size={18} color="white" />
+                      </div>
+                    )}
+                  </div>
+                  <h4 style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--color-text)', margin: '0 0 4px 0', textAlign: 'center' }}>
+                    {editName}
+                  </h4>
+                  <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', textAlign: 'center', wordBreak: 'break-all' }}>
+                    {profile.email}
+                  </span>
+                </div>
+              )}
+
+              {/* Sidebar Tab Menu */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', overflowY: isMobile ? 'visible' : 'auto', flex: 1 }} className={styles.tabGroup}>
+                {isMobile ? (
+                  /* ── Mobile OS Settings Card-Style Vertical Menu List ── */
+                  <div style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '0.875rem',
+                    width: '100%',
+                    paddingTop: '0.5rem'
+                  }}>
+                    {/* Group 1: Cá nhân & Lịch trực */}
+                    <div style={{ fontSize: '0.65rem', fontWeight: 750, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', paddingLeft: '4px' }}>
+                      {t('Cá nhân & Lịch trực')}
+                    </div>
+                    <div style={{
+                      background: 'var(--color-surface)',
+                      border: '1px solid var(--color-border-light)',
+                      borderRadius: '12px',
+                      overflow: 'hidden',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      boxShadow: '0 2px 8px rgba(0,0,0,0.02)'
+                    }}>
+                      {['sale', 'manager'].includes(String(effectiveRole).toLowerCase()) && (
+                        <button
+                          type="button"
+                          onClick={() => setProfileActiveTab('schedule')}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            padding: '14px 16px',
+                            background: 'transparent',
+                            border: 'none',
+                            borderBottom: '1px solid var(--color-border-light)',
+                            width: '100%',
+                            cursor: 'pointer',
+                            textAlign: 'left'
+                          }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', color: 'var(--color-text)' }}>
+                            {renderColoredIcon(Clock, '#f09a37')}
+                            <span style={{ fontSize: '0.875rem', fontWeight: 600 }}>{t('Lịch trực nhận data')}</span>
+                          </div>
+                          <ChevronRight size={14} style={{ color: 'var(--color-text-muted)' }} />
+                        </button>
+                      )}
+                      
+                      <button
+                        type="button"
+                        onClick={() => setProfileActiveTab('personal')}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          padding: '14px 16px',
+                          background: 'transparent',
+                          border: 'none',
+                          borderBottom: ['sale', 'manager'].includes(String(effectiveRole).toLowerCase()) ? 'none' : '1px solid var(--color-border-light)',
+                          width: '100%',
+                          cursor: 'pointer',
+                          textAlign: 'left'
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', color: 'var(--color-text)' }}>
+                          {renderColoredIcon(User, '#eb4e3d')}
+                          <span style={{ fontSize: '0.875rem', fontWeight: 600 }}>{t('Thông tin cá nhân')}</span>
+                        </div>
+                        <ChevronRight size={14} style={{ color: 'var(--color-text-muted)' }} />
+                      </button>
+
+                      {!['sale', 'manager'].includes(String(effectiveRole).toLowerCase()) && (
+                        <button
+                          type="button"
+                          onClick={() => setProfileActiveTab('erp')}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            padding: '14px 16px',
+                            background: 'transparent',
+                            border: 'none',
+                            width: '100%',
+                            cursor: 'pointer',
+                            textAlign: 'left'
+                          }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', color: 'var(--color-text)' }}>
+                            {renderColoredIcon(Layers, '#5856d6')}
+                            <span style={{ fontSize: '0.875rem', fontWeight: 600 }}>{t('Hồ sơ & ERP')}</span>
+                          </div>
+                          <ChevronRight size={14} style={{ color: 'var(--color-text-muted)' }} />
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Group 2: Quản lý hồ sơ */}
+                    {['sale', 'manager'].includes(String(effectiveRole).toLowerCase()) && (
+                      <>
+                        <div style={{ fontSize: '0.65rem', fontWeight: 750, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', paddingLeft: '4px', marginTop: '0.5rem' }}>
+                          {t('Quản lý hồ sơ')}
+                        </div>
+                        <div style={{
+                          background: 'var(--color-surface)',
+                          border: '1px solid var(--color-border-light)',
+                          borderRadius: '12px',
+                          overflow: 'hidden',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          boxShadow: '0 2px 8px rgba(0,0,0,0.02)'
+                        }}>
+                          <button
+                            type="button"
+                            onClick={() => setProfileActiveTab('erp')}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'space-between',
+                              padding: '14px 16px',
+                              background: 'transparent',
+                              border: 'none',
+                              borderBottom: '1px solid var(--color-border-light)',
+                              width: '100%',
+                              cursor: 'pointer',
+                              textAlign: 'left'
+                            }}
+                          >
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', color: 'var(--color-text)' }}>
+                              {renderColoredIcon(Layers, '#5856d6')}
+                              <span style={{ fontSize: '0.875rem', fontWeight: 600 }}>{t('Hồ sơ & ERP')}</span>
+                            </div>
+                            <ChevronRight size={14} style={{ color: 'var(--color-text-muted)' }} />
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => setProfileActiveTab('certificates')}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'space-between',
+                              padding: '14px 16px',
+                              background: 'transparent',
+                              border: 'none',
+                              borderBottom: '1px solid var(--color-border-light)',
+                              width: '100%',
+                              cursor: 'pointer',
+                              textAlign: 'left'
+                            }}
+                          >
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', color: 'var(--color-text)' }}>
+                              {renderColoredIcon(Award, '#f2a20b')}
+                              <span style={{ fontSize: '0.875rem', fontWeight: 600 }}>{t('Bằng cấp & Chứng chỉ')}</span>
+                            </div>
+                            <ChevronRight size={14} style={{ color: 'var(--color-text-muted)' }} />
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => setProfileActiveTab('hr_records')}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'space-between',
+                              padding: '14px 16px',
+                              background: 'transparent',
+                              border: 'none',
+                              borderBottom: '1px solid var(--color-border-light)',
+                              width: '100%',
+                              cursor: 'pointer',
+                              textAlign: 'left'
+                            }}
+                          >
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', color: 'var(--color-text)' }}>
+                              {renderColoredIcon(AlertCircle, '#ff9500')}
+                              <span style={{ fontSize: '0.875rem', fontWeight: 600 }}>{t('Khen thưởng & Kỷ luật')}</span>
+                            </div>
+                            <ChevronRight size={14} style={{ color: 'var(--color-text-muted)' }} />
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => setProfileActiveTab('contact')}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'space-between',
+                              padding: '14px 16px',
+                              background: 'transparent',
+                              border: 'none',
+                              borderBottom: '1px solid var(--color-border-light)',
+                              width: '100%',
+                              cursor: 'pointer',
+                              textAlign: 'left'
+                            }}
+                          >
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', color: 'var(--color-text)' }}>
+                              {renderColoredIcon(Server, '#007af5')}
+                              <span style={{ fontSize: '0.875rem', fontWeight: 600 }}>{t('Liên hệ & Tài khoản')}</span>
+                            </div>
+                            <ChevronRight size={14} style={{ color: 'var(--color-text-muted)' }} />
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => setProfileActiveTab('payment')}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'space-between',
+                              padding: '14px 16px',
+                              background: 'transparent',
+                              border: 'none',
+                              borderBottom: '1px solid var(--color-border-light)',
+                              width: '100%',
+                              cursor: 'pointer',
+                              textAlign: 'left'
+                            }}
+                          >
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', color: 'var(--color-text)' }}>
+                              {renderColoredIcon(Receipt, '#34c759')}
+                              <span style={{ fontSize: '0.875rem', fontWeight: 600 }}>{t('Thanh toán & Thuế')}</span>
+                            </div>
+                            <ChevronRight size={14} style={{ color: 'var(--color-text-muted)' }} />
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => setProfileActiveTab('emergency')}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'space-between',
+                              padding: '14px 16px',
+                              background: 'transparent',
+                              border: 'none',
+                              borderBottom: '1px solid var(--color-border-light)',
+                              width: '100%',
+                              cursor: 'pointer',
+                              textAlign: 'left'
+                            }}
+                          >
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', color: 'var(--color-text)' }}>
+                              {renderColoredIcon(Scale, '#ff2d55')}
+                              <span style={{ fontSize: '0.875rem', fontWeight: 600 }}>{t('Liên hệ khẩn cấp')}</span>
+                            </div>
+                            <ChevronRight size={14} style={{ color: 'var(--color-text-muted)' }} />
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => setProfileActiveTab('documents')}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'space-between',
+                              padding: '14px 16px',
+                              background: 'transparent',
+                              border: 'none',
+                              width: '100%',
+                              cursor: 'pointer',
+                              textAlign: 'left'
+                            }}
+                          >
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', color: 'var(--color-text)' }}>
+                              {renderColoredIcon(FileText, '#8e8e93')}
+                              <span style={{ fontSize: '0.875rem', fontWeight: 600 }}>{t('Lưu trữ tài liệu')}</span>
+                            </div>
+                            <ChevronRight size={14} style={{ color: 'var(--color-text-muted)' }} />
+                          </button>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                ) : (
+                  /* ── Desktop Tab Menu ── */
+                  <>
+                    {['sale', 'manager'].includes(String(effectiveRole).toLowerCase()) && (
+                      <button
+                        type="button"
+                        className={`${styles.sidebarTabBtn} ${profileActiveTab === 'schedule' ? styles.sidebarTabActive : ''}`}
+                        onClick={() => setProfileActiveTab('schedule')}
+                        style={{ width: '100%', border: 'none', background: 'transparent', textAlign: 'left', cursor: 'pointer' }}
+                      >
+                        <Clock size={15} />
+                        <span style={{ whiteSpace: 'nowrap' }}>{t('Lịch trực nhận data')}</span>
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      className={`${styles.sidebarTabBtn} ${profileActiveTab === 'personal' ? styles.sidebarTabActive : ''}`}
+                      onClick={() => setProfileActiveTab('personal')}
+                      style={{ width: '100%', border: 'none', background: 'transparent', textAlign: 'left', cursor: 'pointer' }}
+                    >
+                      <User size={15} />
+                      <span style={{ whiteSpace: 'nowrap' }}>{t('Thông tin cá nhân')}</span>
+                    </button>
+                    <button
+                      type="button"
+                      className={`${styles.sidebarTabBtn} ${profileActiveTab === 'erp' ? styles.sidebarTabActive : ''}`}
+                      onClick={() => setProfileActiveTab('erp')}
+                      style={{ width: '100%', border: 'none', background: 'transparent', textAlign: 'left', cursor: 'pointer' }}
+                    >
+                      <Layers size={15} />
+                      <span style={{ whiteSpace: 'nowrap' }}>{t('Hồ sơ & ERP')}</span>
+                    </button>
+                    <button
+                      type="button"
+                      className={`${styles.sidebarTabBtn} ${profileActiveTab === 'certificates' ? styles.sidebarTabActive : ''}`}
+                      onClick={() => setProfileActiveTab('certificates')}
+                      style={{ width: '100%', border: 'none', background: 'transparent', textAlign: 'left', cursor: 'pointer' }}
+                    >
+                      <Award size={15} />
+                      <span style={{ whiteSpace: 'nowrap' }}>{t('Bằng cấp & Chứng chỉ')}</span>
+                    </button>
+                    <button
+                      type="button"
+                      className={`${styles.sidebarTabBtn} ${profileActiveTab === 'hr_records' ? styles.sidebarTabActive : ''}`}
+                      onClick={() => setProfileActiveTab('hr_records')}
+                      style={{ width: '100%', border: 'none', background: 'transparent', textAlign: 'left', cursor: 'pointer' }}
+                    >
+                      <AlertCircle size={15} />
+                      <span style={{ whiteSpace: 'nowrap' }}>{t('Khen thưởng & Kỷ luật')}</span>
+                    </button>
+                    <button
+                      type="button"
+                      className={`${styles.sidebarTabBtn} ${profileActiveTab === 'contact' ? styles.sidebarTabActive : ''}`}
+                      onClick={() => setProfileActiveTab('contact')}
+                      style={{ width: '100%', border: 'none', background: 'transparent', textAlign: 'left', cursor: 'pointer' }}
+                    >
+                      <Server size={15} />
+                      <span style={{ whiteSpace: 'nowrap' }}>{t('Liên hệ & Tài khoản')}</span>
+                    </button>
+                    <button
+                      type="button"
+                      className={`${styles.sidebarTabBtn} ${profileActiveTab === 'payment' ? styles.sidebarTabActive : ''}`}
+                      onClick={() => setProfileActiveTab('payment')}
+                      style={{ width: '100%', border: 'none', background: 'transparent', textAlign: 'left', cursor: 'pointer' }}
+                    >
+                      <Receipt size={15} />
+                      <span style={{ whiteSpace: 'nowrap' }}>{t('Thanh toán & Thuế')}</span>
+                    </button>
+                    <button
+                      type="button"
+                      className={`${styles.sidebarTabBtn} ${profileActiveTab === 'emergency' ? styles.sidebarTabActive : ''}`}
+                      onClick={() => setProfileActiveTab('emergency')}
+                      style={{ width: '100%', border: 'none', background: 'transparent', textAlign: 'left', cursor: 'pointer' }}
+                    >
+                      <Scale size={15} />
+                      <span style={{ whiteSpace: 'nowrap' }}>{t('Liên hệ khẩn cấp')}</span>
+                    </button>
+                    <button
+                      type="button"
+                      className={`${styles.sidebarTabBtn} ${profileActiveTab === 'documents' ? styles.sidebarTabActive : ''}`}
+                      onClick={() => setProfileActiveTab('documents')}
+                      style={{ width: '100%', border: 'none', background: 'transparent', textAlign: 'left', cursor: 'pointer' }}
+                    >
+                      <FileText size={15} />
+                      <span style={{ whiteSpace: 'nowrap' }}>{t('Lưu trữ tài liệu')}</span>
+                    </button>
+                  </>
                 )}
               </div>
-              <h4 style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--color-text)', margin: '0 0 4px 0', textAlign: 'center' }}>
-                {editName}
-              </h4>
-              <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', textAlign: 'center', wordBreak: 'break-all' }}>
-                {profile.email}
-              </span>
             </div>
-
-            {/* Sidebar Tab Menu */}
-            <div style={{ display: 'flex', flexDirection: isMobile ? 'row' : 'column', gap: '0.25rem', overflowX: isMobile ? 'auto' : 'visible', overflowY: isMobile ? 'visible' : 'auto', flex: 1 }} className={styles.tabGroup}>
-              {['sale', 'manager'].includes(String(effectiveRole).toLowerCase()) && (
-                <button
-                  type="button"
-                  className={`${styles.sidebarTabBtn} ${profileActiveTab === 'schedule' ? styles.sidebarTabActive : ''}`}
-                  onClick={() => setProfileActiveTab('schedule')}
-                  style={{ width: isMobile ? 'auto' : '100%', border: 'none', background: 'transparent', textAlign: 'left', cursor: 'pointer' }}
-                >
-                  <Clock size={15} />
-                  <span style={{ whiteSpace: 'nowrap' }}>{t('Lịch trực nhận data')}</span>
-                </button>
-              )}
-              <button
-                type="button"
-                className={`${styles.sidebarTabBtn} ${profileActiveTab === 'personal' ? styles.sidebarTabActive : ''}`}
-                onClick={() => setProfileActiveTab('personal')}
-                style={{ width: isMobile ? 'auto' : '100%', border: 'none', background: 'transparent', textAlign: 'left', cursor: 'pointer' }}
-              >
-                <User size={15} />
-                <span style={{ whiteSpace: 'nowrap' }}>{t('Thông tin cá nhân')}</span>
-              </button>
-              <button
-                type="button"
-                className={`${styles.sidebarTabBtn} ${profileActiveTab === 'erp' ? styles.sidebarTabActive : ''}`}
-                onClick={() => setProfileActiveTab('erp')}
-                style={{ width: isMobile ? 'auto' : '100%', border: 'none', background: 'transparent', textAlign: 'left', cursor: 'pointer' }}
-              >
-                <Layers size={15} />
-                <span style={{ whiteSpace: 'nowrap' }}>{t('Hồ sơ & ERP')}</span>
-              </button>
-              <button
-                type="button"
-                className={`${styles.sidebarTabBtn} ${profileActiveTab === 'certificates' ? styles.sidebarTabActive : ''}`}
-                onClick={() => setProfileActiveTab('certificates')}
-                style={{ width: isMobile ? 'auto' : '100%', border: 'none', background: 'transparent', textAlign: 'left', cursor: 'pointer' }}
-              >
-                <Award size={15} />
-                <span style={{ whiteSpace: 'nowrap' }}>{t('Bằng cấp & Chứng chỉ')}</span>
-              </button>
-              <button
-                type="button"
-                className={`${styles.sidebarTabBtn} ${profileActiveTab === 'hr_records' ? styles.sidebarTabActive : ''}`}
-                onClick={() => setProfileActiveTab('hr_records')}
-                style={{ width: isMobile ? 'auto' : '100%', border: 'none', background: 'transparent', textAlign: 'left', cursor: 'pointer' }}
-              >
-                <AlertCircle size={15} />
-                <span style={{ whiteSpace: 'nowrap' }}>{t('Khen thưởng & Kỷ luật')}</span>
-              </button>
-              <button
-                type="button"
-                className={`${styles.sidebarTabBtn} ${profileActiveTab === 'contact' ? styles.sidebarTabActive : ''}`}
-                onClick={() => setProfileActiveTab('contact')}
-                style={{ width: isMobile ? 'auto' : '100%', border: 'none', background: 'transparent', textAlign: 'left', cursor: 'pointer' }}
-              >
-                <Server size={15} />
-                <span style={{ whiteSpace: 'nowrap' }}>{t('Liên hệ & Tài khoản')}</span>
-              </button>
-              <button
-                type="button"
-                className={`${styles.sidebarTabBtn} ${profileActiveTab === 'payment' ? styles.sidebarTabActive : ''}`}
-                onClick={() => setProfileActiveTab('payment')}
-                style={{ width: isMobile ? 'auto' : '100%', border: 'none', background: 'transparent', textAlign: 'left', cursor: 'pointer' }}
-              >
-                <Receipt size={15} />
-                <span style={{ whiteSpace: 'nowrap' }}>{t('Thanh toán & Thuế')}</span>
-              </button>
-              <button
-                type="button"
-                className={`${styles.sidebarTabBtn} ${profileActiveTab === 'emergency' ? styles.sidebarTabActive : ''}`}
-                onClick={() => setProfileActiveTab('emergency')}
-                style={{ width: isMobile ? 'auto' : '100%', border: 'none', background: 'transparent', textAlign: 'left', cursor: 'pointer' }}
-              >
-                <Scale size={15} />
-                <span style={{ whiteSpace: 'nowrap' }}>{t('Liên hệ khẩn cấp')}</span>
-              </button>
-              <button
-                type="button"
-                className={`${styles.sidebarTabBtn} ${profileActiveTab === 'documents' ? styles.sidebarTabActive : ''}`}
-                onClick={() => setProfileActiveTab('documents')}
-                style={{ width: isMobile ? 'auto' : '100%', border: 'none', background: 'transparent', textAlign: 'left', cursor: 'pointer' }}
-              >
-                <FileText size={15} />
-                <span style={{ whiteSpace: 'nowrap' }}>{t('Lưu trữ tài liệu')}</span>
-              </button>
-            </div>
-          </div>
+          )}
 
           {/* RIGHT CONTENT AREA */}
-          <div className={styles.contentArea} style={{
-            flex: 1,
-            padding: '2rem',
-            background: 'var(--color-surface)',
-            overflowY: 'auto'
-          }}>
+          {(!isMobile || profileActiveTab) && (
+            <div className={styles.contentArea} style={{
+              flex: 1,
+              padding: isMobile ? '1.5rem 1rem' : '2rem',
+              background: 'var(--color-surface)',
+              overflowY: 'auto'
+            }}>
             {/* 1. PERSONAL INFO */}
             {profileActiveTab === 'personal' && (
               <div className="card animate-fade-in" style={{ padding: '2rem', display: 'flex', flexDirection: 'column', gap: '1.5rem', background: 'var(--color-surface)', borderRadius: '12px', border: '1px solid var(--color-border-light)', boxShadow: '0 4px 20px rgba(0,0,0,0.02)' }}>
@@ -10553,8 +10941,9 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
               </div>
             )}
           </div>
-        </div>
+        )}
       </div>
+    </div>
     );
   };
 

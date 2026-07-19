@@ -161,8 +161,8 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
       return <span className={styles.triggerContent}>{t('Đã chọn')} ({selectedOpts.length})</span>;
     }
     return selectedOption ? (
-      <span className={styles.triggerContent} style={{ display: 'flex', alignItems: 'center', gap: 6, width: '100%', justifyContent: 'space-between' }}>
-        <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+      <span className={styles.triggerContent} style={{ display: 'flex', alignItems: 'center', gap: 6, width: '100%', justifyContent: 'space-between', minWidth: 0, overflow: 'hidden' }}>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0, overflow: 'hidden', flex: 1 }}>
           {showAvatars && (
             selectedOption.value === '' ? (
               <div style={{ width: 24, height: 24, borderRadius: '50%', background: 'var(--color-border-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)', flexShrink: 0 }}>?</div>
@@ -171,9 +171,9 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
             )
           )}
           {!showAvatars && selectedOption.icon && <span style={{ display: 'flex' }}>{selectedOption.icon}</span>}
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t(selectedOption.label)}</span>
-            {selectedOption.sublabel && <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 400, flexShrink: 0 }}>({t(selectedOption.sublabel)})</span>}
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
+            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flexShrink: 1 }}>{t(selectedOption.label)}</span>
+            {selectedOption.sublabel && <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 400, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flexShrink: 1 }}>({t(selectedOption.sublabel)})</span>}
           </span>
         </span>
         {selectedOption.badge && selectedOption.badge.count > 0 && (
@@ -197,7 +197,7 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
   };
 
   return (
-    <div className={styles.wrapper} ref={containerRef} style={{ width }}>
+    <div className={styles.wrapper} ref={containerRef} style={{ width, maxWidth: '100%' }}>
       {label && <label className={styles.label}>{t(label)}</label>}
       <div
         className={`${styles.trigger} ${isOpen ? styles.open : ''}`}
@@ -206,6 +206,8 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
           cursor: disabled ? 'not-allowed' : 'pointer',
           opacity: disabled ? 0.625 : 1,
           backgroundColor: disabled ? 'var(--color-bg-light)' : undefined,
+          maxWidth: '100%',
+          overflow: 'hidden',
           ...(size === 'sm' ? {
             minHeight: '38px',
             height: '38px',

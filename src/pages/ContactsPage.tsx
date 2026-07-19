@@ -843,7 +843,7 @@ export const ContactsPage: React.FC = () => {
       <div className={isMobile ? "" : "card"} style={{ padding: isMobile ? '0' : '0.75rem 1rem', marginBottom:'0.75rem', display:'flex', gap:'0.75rem', flexDirection: isMobile ? 'column' : 'row', alignItems: isMobile ? 'stretch' : 'center', background: isMobile ? 'transparent' : undefined, border: isMobile ? 'none' : undefined, boxShadow: isMobile ? 'none' : undefined }}>
         {isMobile ? (
           <div style={{ display: 'flex', gap: '4px', alignItems: 'center', width: '100%', position: 'relative' }}>
-            <div className="filter-search" style={{ flex: 1, position: 'relative', height: '32px', borderRadius: '8px', border: '1px solid var(--color-border)', boxSizing: 'border-box', padding: 0, display: 'flex', alignItems: 'center', marginBottom: 0 }}>
+            <div className="filter-search" style={{ flex: 1, position: 'relative', height: '36px', borderRadius: '8px', border: '1px solid var(--color-border)', boxSizing: 'border-box', padding: 0, display: 'flex', alignItems: 'center', marginBottom: 0 }}>
               <Search size={12} style={{ color:'var(--color-text-muted)', marginLeft: '8px', marginRight: '4px', flexShrink: 0 }}/>
               <input 
                 placeholder="Tìm tên, email, điện thoại..." 
@@ -873,12 +873,12 @@ export const ContactsPage: React.FC = () => {
             {/* More Actions Trigger (...) */}
             <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
               <button 
-                className="btn"
+                className="mobile-more-btn"
                 onClick={() => setShowMobileActions(!showMobileActions)}
                 style={{
-                  height: '32px',
-                  width: '32px',
-                  minWidth: '32px',
+                  height: '36px',
+                  width: '36px',
+                  minWidth: '36px',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -890,7 +890,8 @@ export const ContactsPage: React.FC = () => {
                   outline: 'none',
                   boxShadow: 'var(--shadow-sm)',
                   padding: 0,
-                  boxSizing: 'border-box'
+                  boxSizing: 'border-box',
+                  transition: 'all 0.2s'
                 }}
               >
                 <MoreHorizontal size={16} />
@@ -1592,9 +1593,44 @@ export const ContactsPage: React.FC = () => {
 
       {/* Table */}
       {loading ? (
-        <div className={isMobile ? "" : "card"} style={{ background: isMobile ? 'transparent' : undefined, border: isMobile ? 'none' : undefined, padding: isMobile ? 0 : undefined, boxShadow: isMobile ? 'none' : undefined }}>
-          <TableSkeleton rows={6} cols={6} />
-        </div>
+        isMobile ? (
+          <div style={{ padding: '0.5rem 0' }}>
+            <div className="grid-cards-responsive">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <div
+                  key={i}
+                  style={{
+                    background: 'var(--color-surface)',
+                    border: '1px solid var(--color-border-light)',
+                    borderRadius: '16px',
+                    padding: '12px 16px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: '12px',
+                    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.03)',
+                    position: 'relative'
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1, minWidth: 0 }}>
+                    <Skeleton width={42} height={42} borderRadius="50%" />
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', flex: 1 }}>
+                      <Skeleton width="60%" height={14} />
+                      <Skeleton width="45%" height={11} style={{ marginTop: '4px' }} />
+                    </div>
+                  </div>
+                  <div style={{ color: 'var(--color-text-light)', display: 'flex', alignItems: 'center', flexShrink: 0, opacity: 0.3 }}>
+                    <ChevronRight size={18} />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <div className="card">
+            <TableSkeleton rows={6} cols={6} />
+          </div>
+        )
       ) : (
         <div className={isMobile ? "" : "card"} style={{ overflow: 'visible', background: isMobile ? 'transparent' : undefined, border: isMobile ? 'none' : undefined, padding: isMobile ? 0 : undefined, boxShadow: isMobile ? 'none' : undefined }}>
           {viewMode === 'list' ? (

@@ -8,6 +8,13 @@ export const GlobalConfirmModal: React.FC = () => {
   const { isOpen, title, message, confirmText = 'Xác nhận', cancelText = 'Hủy', extraText, isDanger, impactInfo, requireWordMatch, requirePromptInput, promptPlaceholder, onConfirm, onCancel, onExtra } = confirmModal;
   const [matchInput, setMatchInput] = React.useState('');
   const [promptInput, setPromptInput] = React.useState('');
+  const [isMobile, setIsMobile] = React.useState(window.innerWidth <= 768);
+
+  React.useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth <= 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   React.useEffect(() => {
     if (isOpen) {
@@ -103,24 +110,59 @@ export const GlobalConfirmModal: React.FC = () => {
           </button>
 
           {/* Header & Content */}
-          <div style={{ padding: '2rem', display: 'flex', alignItems: 'flex-start', gap: '1.25rem' }}>
+          <div style={isMobile ? {
+            padding: '2rem 1.5rem 1.25rem 1.5rem',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            textAlign: 'center',
+            width: '100%'
+          } : {
+            padding: '2rem',
+            display: 'flex',
+            alignItems: 'flex-start',
+            gap: '1.25rem'
+          }}>
             <div style={{
               width: 48, height: 48, borderRadius: '12px', flexShrink: 0,
               background: isDanger ? 'rgba(239, 68, 68, 0.08)' : 'rgba(163, 20, 34, 0.08)',
               border: isDanger ? '1px solid rgba(239, 68, 68, 0.15)' : '1px solid rgba(163, 20, 34, 0.15)',
               color: isDanger ? '#ef4444' : 'var(--color-primary)',
               boxShadow: isDanger ? '0 0 16px rgba(239, 68, 68, 0.06)' : '0 0 16px rgba(163, 20, 34, 0.06)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center'
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              marginBottom: isMobile ? '1rem' : 0
             }}>
               {isDanger ? <AlertTriangle size={22} /> : <Info size={22} />}
             </div>
             
-            <div style={{ flex: 1, paddingRight: '12px' }}>
-              <h3 style={{ fontSize: '1.125rem', fontWeight: 800, color: 'var(--color-text)', marginBottom: '0.5rem', lineHeight: 1.3 }}>
+            <div style={{
+              flex: 1,
+              paddingRight: isMobile ? 0 : '12px',
+              width: isMobile ? '100%' : undefined,
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: isMobile ? 'center' : 'flex-start',
+              textAlign: isMobile ? 'center' : 'left'
+            }}>
+              <h3 style={{
+                fontSize: isMobile ? '1.05rem' : '1.125rem',
+                fontWeight: 800,
+                color: 'var(--color-text)',
+                marginBottom: '0.5rem',
+                lineHeight: 1.3,
+                textAlign: isMobile ? 'center' : 'left'
+              }}>
                 {title}
               </h3>
               
-              <div style={{ marginTop: '0.25rem' }}>
+              <div style={{
+                marginTop: '0.25rem',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: isMobile ? 'center' : 'flex-start',
+                textAlign: isMobile ? 'center' : 'left',
+                width: '100%'
+              }}>
                 {renderMessage(message)}
               </div>
 
@@ -197,38 +239,40 @@ export const GlobalConfirmModal: React.FC = () => {
 
           {/* Footer actions */}
           <div style={{ 
-            padding: '1.25rem 2rem', 
+            padding: isMobile ? '1rem 1.5rem' : '1.25rem 2rem', 
             background: 'var(--color-surface-hover, #f8fafc)',
             borderTop: '1px solid var(--color-border-light)', 
             display: 'flex', 
-            justifyContent: 'flex-end', 
+            justifyContent: isMobile ? 'center' : 'flex-end', 
             gap: '0.75rem'
           }}>
-            <button 
-              className="btn sm"
-              onClick={handleCancel}
-              style={{ 
-                fontWeight: 700, 
-                padding: '8px 16px', 
-                borderRadius: '10px', 
-                fontSize: '0.8125rem',
-                background: 'var(--color-bg)',
-                border: '1px solid var(--color-border)',
-                color: 'var(--color-text-light)',
-                cursor: 'pointer',
-                transition: 'all 0.15s ease'
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = 'var(--color-bg-hover)';
-                e.currentTarget.style.color = 'var(--color-text)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = 'var(--color-bg)';
-                e.currentTarget.style.color = 'var(--color-text-light)';
-              }}
-            >
-              {cancelText}
-            </button>
+            {!isMobile && (
+              <button 
+                className="btn sm"
+                onClick={handleCancel}
+                style={{ 
+                  fontWeight: 700, 
+                  padding: '8px 16px', 
+                  borderRadius: '10px', 
+                  fontSize: '0.8125rem',
+                  background: 'var(--color-bg)',
+                  border: '1px solid var(--color-border)',
+                  color: 'var(--color-text-light)',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = 'var(--color-bg-hover)';
+                  e.currentTarget.style.color = 'var(--color-text)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'var(--color-bg)';
+                  e.currentTarget.style.color = 'var(--color-text-light)';
+                }}
+              >
+                {cancelText}
+              </button>
+            )}
             {extraText && (
               <button 
                 className="btn outline sm"
@@ -236,7 +280,15 @@ export const GlobalConfirmModal: React.FC = () => {
                   if (onExtra) onExtra();
                   closeConfirm();
                 }}
-                style={{ fontWeight: 700, padding: '8px 16px', borderRadius: '10px', fontSize: '0.8125rem', borderColor: 'var(--color-border)' }}
+                style={{ 
+                  fontWeight: 700, 
+                  padding: '8px 16px', 
+                  borderRadius: '10px', 
+                  fontSize: '0.8125rem', 
+                  borderColor: 'var(--color-border)',
+                  flex: isMobile ? 1 : 'none',
+                  textAlign: 'center'
+                }}
               >
                 {extraText}
               </button>
@@ -246,7 +298,8 @@ export const GlobalConfirmModal: React.FC = () => {
               onClick={handleConfirm}
               disabled={isLocked}
               style={{ 
-                minWidth: '100px', 
+                minWidth: isMobile ? 'unset' : '100px', 
+                flex: isMobile ? 1 : 'none',
                 opacity: isLocked ? 0.4 : 1,
                 cursor: isLocked ? 'not-allowed' : 'pointer',
                 fontWeight: 700,
@@ -260,13 +313,13 @@ export const GlobalConfirmModal: React.FC = () => {
                 transition: 'all 0.15s ease'
               }}
               onMouseEnter={(e) => {
-                if (!isLocked) {
+                if (!isLocked && !isMobile) {
                   e.currentTarget.style.transform = 'translateY(-1px)';
                   e.currentTarget.style.boxShadow = isDanger ? '0 6px 16px rgba(239, 68, 68, 0.25)' : '0 6px 16px rgba(163, 20, 34, 0.25)';
                 }
               }}
               onMouseLeave={(e) => {
-                if (!isLocked) {
+                if (!isLocked && !isMobile) {
                   e.currentTarget.style.transform = 'translateY(0)';
                   e.currentTarget.style.boxShadow = isDanger ? '0 4px 12px rgba(239, 68, 68, 0.18)' : '0 4px 12px rgba(163, 20, 34, 0.18)';
                 }

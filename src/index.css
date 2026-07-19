@@ -1491,6 +1491,7 @@ select:focus {
   min-width: 280px;
   transition: all 0.2s;
   box-shadow: var(--shadow-sm);
+  box-sizing: border-box;
 }
 
 .filter-search:focus-within {
@@ -1510,6 +1511,17 @@ select:focus {
   margin: 0 !important;
   box-shadow: none !important;
 }
+
+.filter-search input:not([type="checkbox"]):not([type="radio"]) {
+  height: 100% !important;
+}
+
+.mobile-more-btn {
+  height: 36px !important;
+  width: 36px !important;
+  min-width: 36px !important;
+}
+
 
 /* Empty state */
 .empty-state {
@@ -1744,7 +1756,7 @@ select:focus {
   .grid-2,
   .grid-3,
   .grid-4 {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 
@@ -1755,7 +1767,7 @@ select:focus {
   [class*="Drawer"] .grid-2,
   [class*="Drawer"] .grid-3,
   [class*="Drawer"] .grid-4 {
-    grid-template-columns: 1fr !important;
+    grid-template-columns: minmax(0, 1fr) !important;
   }
 
   .page-header {
@@ -4312,11 +4324,15 @@ div[role="status"] {
   }
   
   /* Buttons & Controls scaling (making them compact) */
-  .btn, select, input:not([type="checkbox"]):not([type="radio"]), .form-input, .filter-search, .custom-select-trigger {
+  .btn, select, input:not([type="checkbox"]):not([type="radio"]), .form-input, .custom-select-trigger {
     height: 32px !important;
     font-size: 0.75rem !important;
     padding-top: 0 !important;
     padding-bottom: 0 !important;
+  }
+
+  .filter-search {
+    height: 36px !important;
   }
   
   .btn {
@@ -4325,8 +4341,8 @@ div[role="status"] {
   }
   
   /* Compact Tab controls (e.g. chart type selection tabs) */
-  div[style*="background: var(--color-bg)"] button,
-  div[style*="background:var(--color-bg)"] button {
+  div[style*="background: var(--color-bg)"] > button,
+  div[style*="background:var(--color-bg)"] > button {
     padding: 3px 6px !important;
     font-size: 0.6875rem !important;
     height: 24px !important; /* Subtabs height */

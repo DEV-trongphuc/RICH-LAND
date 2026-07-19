@@ -892,7 +892,7 @@ export const DealsPage: React.FC = () => {
                 <button 
                   onClick={() => setShowFilterPanel(!showFilterPanel)}
                   style={{
-                    height: '38px',
+                    height: isMobile ? '36px' : '38px',
                     padding: '0 0.875rem',
                     display: 'flex',
                     alignItems: 'center',
@@ -919,7 +919,7 @@ export const DealsPage: React.FC = () => {
                   <button 
                     onClick={handleClearFilters}
                     style={{
-                      height: '38px',
+                      height: isMobile ? '36px' : '38px',
                       padding: '0 0.875rem',
                       display: 'flex',
                       alignItems: 'center',
