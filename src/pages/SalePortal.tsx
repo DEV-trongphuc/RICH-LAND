@@ -2502,8 +2502,11 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
       setProfileActiveTab(isSaleOrManager ? 'schedule' : 'personal');
       setEditName(data.consultant_profile.name || '');
       setEditAvatar(data.consultant_profile.avatar || '');
-      setEditWorkStartTime(data.consultant_profile.work_start_time || '08:00');
-      setEditWorkEndTime(data.consultant_profile.work_end_time || '17:30');
+      const fallbackStart = sysSettings?.global_work_start_time || '08:00';
+      const fallbackEnd = sysSettings?.global_work_end_time || '17:30';
+
+      setEditWorkStartTime(data.consultant_profile.work_start_time || fallbackStart);
+      setEditWorkEndTime(data.consultant_profile.work_end_time || fallbackEnd);
       setEditDob(data.consultant_profile.dob || '');
       setEditGender(data.consultant_profile.gender || '');
       setEditCitizenId(data.consultant_profile.citizen_id || '');
@@ -2602,12 +2605,34 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
       if (schedule && Object.keys(schedule).length > 0) {
         setEditWorkSchedule(schedule);
         setScheduleMode('custom');
+      } else if (sysSettings?.global_work_schedule) {
+        try {
+          const globalSchedule = typeof sysSettings.global_work_schedule === 'string'
+            ? JSON.parse(sysSettings.global_work_schedule)
+            : sysSettings.global_work_schedule;
+          setEditWorkSchedule(globalSchedule);
+          let isSimpleDaily = true;
+          const firstDay = globalSchedule["1"] || globalSchedule[1];
+          if (firstDay) {
+            for (let i = 1; i <= 7; i++) {
+              const day = globalSchedule[String(i)] || globalSchedule[i];
+              if (!day || !day.active || day.start !== firstDay.start || day.end !== firstDay.end) {
+                isSimpleDaily = false;
+                break;
+              }
+            }
+          }
+          setScheduleMode(isSimpleDaily ? 'daily' : 'custom');
+        } catch (e) {
+          setEditWorkSchedule(DEFAULT_SCHEDULE);
+          setScheduleMode('daily');
+        }
       } else {
         setEditWorkSchedule(DEFAULT_SCHEDULE);
         setScheduleMode('daily');
       }
     }
-  }, [data.consultant_profile]);
+  }, [data.consultant_profile, sysSettings]);
 
   const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -9677,29 +9702,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                     </p>
                   </div>
 
-                  {/* Segmented Control for Schedule Mode - Read-only */}
-                  <div style={{ display: 'flex', gap: '0.5rem', background: 'var(--color-bg)', padding: '4px', borderRadius: '12px', pointerEvents: 'none', opacity: 0.85 }}>
-                    <button
-                      type="button"
-                      style={{
-                        flex: 1, padding: '8px', borderRadius: '8px', fontWeight: 600, fontSize: '0.75rem',
-                        background: scheduleMode === 'daily' ? (theme === 'dark' ? 'var(--color-surface)' : 'white') : 'transparent',
-                        color: scheduleMode === 'daily' ? 'var(--color-primary)' : 'var(--color-text-muted)',
-                        boxShadow: scheduleMode === 'daily' ? 'var(--shadow-sm)' : 'none',
-                        transition: 'all 0.2s', border: 'none', cursor: 'default'
-                      }}
-                    >{t('Cố định hàng ngày')}</button>
-                    <button
-                      type="button"
-                      style={{
-                        flex: 1, padding: '8px', borderRadius: '8px', fontWeight: 600, fontSize: '0.75rem',
-                        background: scheduleMode === 'custom' ? (theme === 'dark' ? 'var(--color-surface)' : 'white') : 'transparent',
-                        color: scheduleMode === 'custom' ? 'var(--color-primary)' : 'var(--color-text-muted)',
-                        boxShadow: scheduleMode === 'custom' ? 'var(--shadow-sm)' : 'none',
-                        transition: 'all 0.2s', border: 'none', cursor: 'default'
-                      }}
-                    >{t('Tùy chỉnh (Thứ 2 - CN)')}</button>
-                  </div>
+
 
                   {scheduleMode === 'daily' ? (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>

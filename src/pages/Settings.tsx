@@ -110,6 +110,7 @@ const SettingsInner = () => {
   const [collapsedHelps, setCollapsedHelps] = useState<Record<string, boolean>>({
     fallback: false,
     business_limits: false,
+    time_schedule: false,
     starvation_prevention: false,
     duplicate_filter: false,
     pipeline_stages: false,
@@ -167,6 +168,7 @@ const SettingsInner = () => {
       title: t('Phân phối & Nghiệp vụ'),
       items: [
         { value: 'business_limits', label: t('Nghiệp vụ & Hạn mức'), icon: <Clock size={15} /> },
+        { value: 'time_schedule', label: t('Thời gian & Lịch trình'), icon: <Calendar size={15} /> },
         { value: 'fallback', label: t('Xử lý Fallback'), icon: <RefreshCw size={15} /> },
         { value: 'starvation_prevention', label: t('Bù lượt thiếu'), icon: <Scale size={15} /> }
       ]
@@ -4031,53 +4033,7 @@ function doPost(e) {
                             </div>
                           </div>
                           
-                          <label style={{ gap: '8px', cursor: 'pointer', marginTop: '0.75rem', display: 'flex', alignItems: 'center' }}>
-                            <input
-                              type="checkbox"
-                              checked={lateCheckinCompensationEnabled === 1}
-                              onChange={e => setLateCheckinCompensationEnabled(e.target.checked ? 1 : 0)}
-                              style={{ width: '16px', height: '16px', accentColor: 'var(--color-primary)' }}
-                            />
-                            <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--color-text)' }}>
-                              {t('Tự động đền bù lead khi bị thu hồi do trễ check-in')}
-                            </span>
-                          </label>
-                          <span style={{ fontSize: '0.725rem', color: 'var(--color-text-muted)', marginLeft: '24px', display: 'block', marginTop: '2px', lineHeight: 1.4 }}>
-                            {t('Nếu tắt, Sales đi muộn bị thu hồi lead sẽ không được cộng bù lượt (mặc định tắt).')}
-                          </span>
 
-                          <label style={{ gap: '8px', cursor: 'pointer', marginTop: '0.75rem', display: 'flex', alignItems: 'center' }}>
-                            <input
-                              type="checkbox"
-                              checked={leaveCompensationEnabled === 1}
-                              onChange={e => setLeaveCompensationEnabled(e.target.checked ? 1 : 0)}
-                              style={{ width: '16px', height: '16px', accentColor: 'var(--color-primary)' }}
-                            />
-                            <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--color-text)' }}>
-                              {t('Tự động đền bù lead khi bị thu hồi do nghỉ phép/ngưng hoạt động')}
-                            </span>
-                          </label>
-                          <span style={{ fontSize: '0.725rem', color: 'var(--color-text-muted)', marginLeft: '24px', display: 'block', marginTop: '2px', lineHeight: 1.4 }}>
-                            {t('Nếu tắt, Sales xin nghỉ phép hoặc không hoạt động bị thu hồi lead sẽ không được cộng bù lượt (mặc định tắt).')}
-                          </span>
-                        </div>
-
-                        <div>
-                          <label className="form-label" style={{ fontWeight: 600 }}>{t('SLA Duyệt đi trễ (Chấm công)')}</label>
-                          <div style={{ display: 'flex', alignItems: 'center', position: 'relative' }}>
-                            <input
-                              type="number"
-                              className="form-input"
-                              style={{ paddingRight: '3.5rem' }}
-                              value={checkinApprovalSlaMinutes}
-                              onChange={e => setCheckinApprovalSlaMinutes(Number(e.target.value))}
-                              min={1}
-                            />
-                            <span style={{ position: 'absolute', right: '12px', fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>{t('phút')}</span>
-                          </div>
-                          <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px', display: 'block', lineHeight: 1.4 }}>
-                            {t('Thời gian chờ duyệt xin nhận lead trễ trước khi gửi cảnh báo leo thang.')}
-                          </span>
                         </div>
                       </div>
                     </div>
@@ -4087,7 +4043,346 @@ function doPost(e) {
 
                   </div>
 
-                  {/* Nhóm 2: Ca trực & Khung giờ vàng */}
+                  {/* Nhóm 3: Hạn mức nhận Databank */}
+                  <div style={{ background: 'var(--color-bg-secondary)', padding: '1.25rem', borderRadius: 'var(--radius-xl)', border: '1px solid var(--color-border)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '1rem' }}>
+                      <Shield size={15} style={{ color: 'var(--color-primary)' }} />
+                      <h4 style={{ fontSize: '0.9375rem', fontWeight: 700, color: 'var(--color-text)' }}>{t('Hạn mức nhận khách hàng từ Databank')}</h4>
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.25rem' }}>
+                      <div>
+                        <label className="form-label">{t('Hạn mức nhận / Ngày')}</label>
+                        <div style={{ display: 'flex', alignItems: 'center', position: 'relative' }}>
+                          <input
+                            type="number"
+                            className="form-input"
+                            style={{ paddingRight: '4.5rem' }}
+                            value={databankLimitPerDay}
+                            onChange={e => setDatabankLimitPerDay(Number(e.target.value))}
+                            min={0}
+                          />
+                          <span style={{ position: 'absolute', right: '12px', fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>{t('lead / ngày')}</span>
+                        </div>
+                        <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px', display: 'block' }}>
+                          {t('Số lead databank tối đa Sale được nhận/ngày.')}
+                        </span>
+                      </div>
+
+                      <div>
+                        <label className="form-label">{t('Hạn mức nhận / Giờ')}</label>
+                        <div style={{ display: 'flex', alignItems: 'center', position: 'relative' }}>
+                          <input
+                            type="number"
+                            className="form-input"
+                            style={{ paddingRight: '4.5rem' }}
+                            value={databankLimitPerHour}
+                            onChange={e => setDatabankLimitPerHour(Number(e.target.value))}
+                            min={0}
+                          />
+                          <span style={{ position: 'absolute', right: '12px', fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>{t('lead / giờ')}</span>
+                        </div>
+                        <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px', display: 'block' }}>
+                          {t('Số lead databank tối đa Sale được nhận/giờ.')}
+                        </span>
+                      </div>
+
+                      <div>
+                        <label className="form-label">{t('Hạn mức nhận / Tháng')}</label>
+                        <div style={{ display: 'flex', alignItems: 'center', position: 'relative' }}>
+                          <input
+                            type="number"
+                            className="form-input"
+                            style={{ paddingRight: '5.5rem' }}
+                            value={databankLimitPerMonth}
+                            onChange={e => setDatabankLimitPerMonth(Number(e.target.value))}
+                            min={0}
+                          />
+                          <span style={{ position: 'absolute', right: '12px', fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>{t('lead / tháng')}</span>
+                        </div>
+                        <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px', display: 'block' }}>
+                          {t('Số lead databank tối đa Sale được nhận/tháng.')}
+                        </span>
+                      </div>
+
+                      <div>
+                        <label className="form-label">{t('Số Sale tối đa nhận trùng 1 khách')}</label>
+                        <div style={{ display: 'flex', alignItems: 'center', position: 'relative' }}>
+                          <input
+                            type="number"
+                            className="form-input"
+                            style={{ paddingRight: '4.5rem' }}
+                            value={maxParallelSalesPerClient}
+                            onChange={e => setMaxParallelSalesPerClient(Number(e.target.value))}
+                            min={1}
+                          />
+                          <span style={{ position: 'absolute', right: '12px', fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>{t('Sale / khách')}</span>
+                        </div>
+                        <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px', display: 'block' }}>
+                          {t('Số lượng Sale tối đa được claim trùng chăm sóc song song.')}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Nhóm 4: Nguồn ra kho & Khóa trùng Databank */}
+                  <div style={{ background: 'var(--color-bg-secondary)', padding: '1.25rem', borderRadius: 'var(--radius-xl)', border: '1px solid var(--color-border)', marginTop: '1.25rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '1rem' }}>
+                      <Clock size={15} style={{ color: 'var(--color-primary)' }} />
+                      <h4 style={{ fontSize: '0.9375rem', fontWeight: 700, color: 'var(--color-text)' }}>{t('Cấu hình Nguồn ra kho & Khóa trùng Databank')}</h4>
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.25rem', marginBottom: '1.25rem' }}>
+                      <div>
+                        <label className="form-label">{t('Nguồn lead áp dụng ra kho')}</label>
+                        <input
+                          type="text"
+                          className="form-input"
+                          value={databankApplicableSources}
+                          onChange={e => setDatabankApplicableSources(e.target.value)}
+                        />
+                        <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px', display: 'block' }}>
+                          {t('Các nguồn lead cách nhau bằng dấu phẩy (ví dụ: R3_Fb,R3,R2,broadcast).')}
+                        </span>
+                        {availableSources.length > 0 && (
+                          <div style={{ marginTop: '10px', display: 'flex', flexWrap: 'wrap', gap: '6px', alignItems: 'center' }}>
+                            <span style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--color-text-light)', width: '100%', marginBottom: '2px' }}>{t('Nguồn hiện có trong hệ thống (Click để bật/tắt):')}</span>
+                            {availableSources.map(src => {
+                              const activeSources = databankApplicableSources.split(',').map(s => s.trim()).filter(Boolean);
+                              const isActive = activeSources.includes(src);
+                              return (
+                                <button
+                                  key={src}
+                                  type="button"
+                                  onClick={() => {
+                                    if (isActive) {
+                                      const filtered = activeSources.filter(s => s !== src);
+                                      setDatabankApplicableSources(filtered.join(','));
+                                    } else {
+                                      const updated = [...activeSources, src];
+                                      setDatabankApplicableSources(updated.join(','));
+                                    }
+                                  }}
+                                  style={{
+                                    background: isActive ? 'var(--color-primary-light)' : 'var(--color-bg)',
+                                    color: isActive ? 'var(--color-primary)' : 'var(--color-text-light)',
+                                    border: `1px solid ${isActive ? 'var(--color-primary)' : 'var(--color-border)'}`,
+                                    borderRadius: '6px',
+                                    padding: '3px 8px',
+                                    fontSize: '0.725rem',
+                                    fontWeight: 600,
+                                    cursor: 'pointer',
+                                    transition: 'all 0.15s',
+                                    outline: 'none'
+                                  }}
+                                  onMouseEnter={e => {
+                                    if (!isActive) e.currentTarget.style.borderColor = 'var(--color-text-muted)';
+                                  }}
+                                  onMouseLeave={e => {
+                                    if (!isActive) e.currentTarget.style.borderColor = 'var(--color-border)';
+                                  }}
+                                >
+                                  {src} {isActive ? '✓' : '+'}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+
+                      <div>
+                        <label className="form-label">{t('Khóa trùng lý do lỗi (Databank)')}</label>
+                        <div style={{ display: 'flex', alignItems: 'center', position: 'relative' }}>
+                          <input
+                            type="number"
+                            className="form-input"
+                            style={{ paddingRight: '3.5rem' }}
+                            value={lockoutReasonCountThreshold}
+                            onChange={e => setLockoutReasonCountThreshold(Number(e.target.value))}
+                            min={1}
+                          />
+                          <span style={{ position: 'absolute', right: '12px', fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>{t('lần')}</span>
+                        </div>
+                        <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px', display: 'block', lineHeight: 1.4 }}>
+                          {t('Số lần báo lỗi trùng lý do trong chiến dịch trước khi khóa vĩnh viễn lead ra kho.')}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Nhóm 5: Quy tắc cọc & Bể cọc */}
+                  <div style={{ background: 'var(--color-bg-secondary)', padding: '1.25rem', borderRadius: 'var(--radius-xl)', border: '1px solid var(--color-border)', marginTop: '1.25rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '1rem' }}>
+                      <RefreshCw size={15} style={{ color: 'var(--color-primary)' }} />
+                      <h4 style={{ fontSize: '0.9375rem', fontWeight: 700, color: 'var(--color-text)' }}>{t('Quy tắc cọc & Bể cọc')}</h4>
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.25rem' }}>
+                      <div>
+                        <label className="form-label">{t('Trạng thái hạ cấp khi bể cọc (Chưa doanh thu)')}</label>
+                        <CustomSelect
+                          options={pipelineStatusHierarchy.map(status => ({
+                            value: status,
+                            label: pipelineStatusLabels[status] || status
+                          }))}
+                          value={depositCancelDemotedStatus}
+                          onChange={val => setDepositCancelDemotedStatus(val as string)}
+                          width="100%"
+                        />
+                        <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px', display: 'block', lineHeight: 1.4 }}>
+                          {t('Trạng thái đích mặc định của khách hàng khi hủy phiếu cọc trước khi phát sinh doanh thu (ví dụ: Đã Gặp).')}
+                        </span>
+                      </div>
+
+                      <div>
+                        <label className="form-label">{t('Trạng thái hạ cấp nếu từng có Đặt chỗ (Booking)')}</label>
+                        <CustomSelect
+                          options={pipelineStatusHierarchy.map(status => ({
+                            value: status,
+                            label: pipelineStatusLabels[status] || status
+                          }))}
+                          value={depositCancelDemotedBookingStatus}
+                          onChange={val => setDepositCancelDemotedBookingStatus(val as string)}
+                          width="100%"
+                        />
+                        <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px', display: 'block', lineHeight: 1.4 }}>
+                          {t('Trạng thái đích nếu khách hàng từng có lịch sử đặt chỗ/booking (ví dụ: Booking).')}
+                        </span>
+                      </div>
+
+                      <div>
+                        <label className="form-label">{t('Phí môi giới tiêu chuẩn (%)')}</label>
+                        <div style={{ display: 'flex', alignItems: 'center', position: 'relative' }}>
+                          <input
+                            type="number"
+                            step="0.1"
+                            className="form-input"
+                            style={{ paddingRight: '3.5rem' }}
+                            value={standardCommissionRate * 100}
+                            onChange={e => setStandardCommissionRate(Number(e.target.value) / 100)}
+                            min={0}
+                          />
+                          <span style={{ position: 'absolute', right: '12px', fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>%</span>
+                        </div>
+                        <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px', display: 'block', lineHeight: 1.4 }}>
+                          {t('Tỷ lệ phí môi giới tiêu chuẩn khi tính hoa hồng đổi căn mặc định.')}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Nhóm 6: Bộ lọc & Loại trừ Broadcast */}
+                  <div style={{ background: 'var(--color-surface)', padding: '1.5rem', borderRadius: '12px', border: '1px solid var(--color-border)', marginTop: '1.25rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', borderBottom: '1px solid var(--color-border-light)', paddingBottom: '8px' }}>
+                      <Filter size={16} style={{ color: 'var(--color-primary)' }} />
+                      <h4 style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)', margin: 0 }}>{t('Bộ lọc & Loại trừ Broadcast')}</h4>
+                    </div>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                      <div>
+                        <label className="form-label" style={{ fontWeight: 600 }}>{t('Luật loại trừ Broadcast')}</label>
+                        <CustomSelect
+                          options={broadcastExclusionOptions}
+                          value={currentExclusionArr}
+                          onChange={(arr: any[]) => setBroadcastExclusionRules(arr.join(','))}
+                          multiple={true}
+                          searchable={true}
+                          placeholder={t('Chọn Trạng thái hoặc Thẻ loại trừ...')}
+                        />
+                        <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px', display: 'block', lineHeight: 1.4 }}>
+                          {t('Chọn các trạng thái phễu hoặc thẻ phân loại khách hàng để loại trừ khỏi các chiến dịch gửi tin hàng loạt (Zalo Broadcast, ZNS, SMS).')}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                </div>
+              </div>
+            </div>
+            {/* ===== TAB: TIME & SCHEDULE CONFIGURATION ===== */}
+            <div style={{ display: activeTab === 'time_schedule' ? 'block' : 'none' }} className="subtab-enter-active">
+              <div className="card" style={{ padding: '2rem', marginTop: 0 }}>
+                <h3 style={{ fontSize: '1.25rem', fontWeight: 800, marginBottom: '0.5rem', color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ display: 'inline-flex', background: 'var(--color-primary-light)', color: 'var(--color-primary)', padding: 6, borderRadius: 8 }}>
+                    <Calendar size={18} />
+                  </span>
+                  {t('Cấu hình Thời gian & Lịch trình')}
+                </h3>
+                <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', marginBottom: '1.75rem', lineHeight: 1.5 }}>
+                  {t('Thiết lập giờ làm việc, lịch trình chung của hệ thống, ca trực đêm, ngày nghỉ lễ và các tham số chấm công/đền bù.')}
+                </p>
+
+                {renderHelpBanner('time_schedule', t('Giải thích cơ chế Thời gian & Lịch trình'), (
+                  <ul style={{ paddingLeft: '1.25rem', margin: 0, display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <li><strong>{t('Giờ làm việc chung:')}</strong> {t('Thời gian làm việc và trực nhận data mặc định cho toàn bộ nhân sự (Sale) nếu không có lịch làm việc riêng.')}</li>
+                    <li><strong>{t('Ca trực đêm & Khung giờ vàng:')}</strong> {t('Đăng ký nhận lead ca đêm (tự động reset hàng ngày) và khung giờ cao điểm có tần suất phân phối đặc biệt.')}</li>
+                    <li><strong>{t('Trực cuối tuần & Ngày lễ:')}</strong> {t('Cho phép đăng ký và cơ chế tự động duyệt trực vào thứ bảy, chủ nhật hoặc các ngày lễ lớn.')}</li>
+                    <li><strong>{t('Chấm công & Đền bù SLA:')}</strong> {t('Quy định SLA duyệt đi muộn và đền bù số lượt nhận lead bị mất khi nhân sự check-in trễ hoặc nghỉ phép.')}</li>
+                  </ul>
+                ))}
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+
+                  {/* Nhóm 1: Quy tắc Chấm công & Đền bù */}
+                  <div style={{ background: 'var(--color-bg-secondary)', padding: '1.25rem', borderRadius: 'var(--radius-xl)', border: '1px solid var(--color-border)', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <Clock size={15} style={{ color: 'var(--color-primary)' }} />
+                      <h4 style={{ fontSize: '0.9375rem', fontWeight: 700, color: 'var(--color-text)' }}>{t('Quy tắc Chấm công & Đền bù')}</h4>
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.25rem' }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                        <label style={{ gap: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', margin: 0 }}>
+                          <input
+                            type="checkbox"
+                            checked={lateCheckinCompensationEnabled === 1}
+                            onChange={e => setLateCheckinCompensationEnabled(e.target.checked ? 1 : 0)}
+                            style={{ width: '16px', height: '16px', accentColor: 'var(--color-primary)' }}
+                          />
+                          <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--color-text)' }}>
+                            {t('Tự động đền bù lead khi bị thu hồi do trễ check-in')}
+                          </span>
+                        </label>
+                        <span style={{ fontSize: '0.725rem', color: 'var(--color-text-muted)', marginLeft: '24px', display: 'block', lineHeight: 1.4 }}>
+                          {t('Nếu tắt, Sales đi muộn bị thu hồi lead sẽ không được cộng bù lượt (mặc định tắt).')}
+                        </span>
+
+                        <label style={{ gap: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', margin: 0, marginTop: '0.5rem' }}>
+                          <input
+                            type="checkbox"
+                            checked={leaveCompensationEnabled === 1}
+                            onChange={e => setLeaveCompensationEnabled(e.target.checked ? 1 : 0)}
+                            style={{ width: '16px', height: '16px', accentColor: 'var(--color-primary)' }}
+                          />
+                          <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--color-text)' }}>
+                            {t('Tự động đền bù lead khi bị thu hồi do nghỉ phép/ngưng hoạt động')}
+                          </span>
+                        </label>
+                        <span style={{ fontSize: '0.725rem', color: 'var(--color-text-muted)', marginLeft: '24px', display: 'block', lineHeight: 1.4 }}>
+                          {t('Nếu tắt, Sales xin nghỉ phép hoặc không hoạt động bị thu hồi lead sẽ không được cộng bù lượt (mặc định tắt).')}
+                        </span>
+                      </div>
+
+                      <div>
+                        <label className="form-label" style={{ fontWeight: 600 }}>{t('SLA Duyệt đi trễ (Chấm công)')}</label>
+                        <div style={{ display: 'flex', alignItems: 'center', position: 'relative' }}>
+                          <input
+                            type="number"
+                            className="form-input"
+                            style={{ paddingRight: '3.5rem' }}
+                            value={checkinApprovalSlaMinutes}
+                            onChange={e => setCheckinApprovalSlaMinutes(Number(e.target.value))}
+                            min={1}
+                          />
+                          <span style={{ position: 'absolute', right: '12px', fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>{t('phút')}</span>
+                        </div>
+                        <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px', display: 'block', lineHeight: 1.4 }}>
+                          {t('Thời gian chờ duyệt xin nhận lead trễ trước khi gửi cảnh báo leo thang.')}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+{/* Nhóm 2: Ca trực & Khung giờ vàng */}
                   <div style={{ background: 'var(--color-bg-secondary)', padding: '1.25rem', borderRadius: 'var(--radius-xl)', border: '1px solid var(--color-border)', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                       <Clock size={15} style={{ color: 'var(--color-primary)' }} />
@@ -4566,261 +4861,10 @@ function doPost(e) {
                     </div>
                   </div>
 
-                  {/* Nhóm 3: Hạn mức nhận Databank */}
-                  <div style={{ background: 'var(--color-bg-secondary)', padding: '1.25rem', borderRadius: 'var(--radius-xl)', border: '1px solid var(--color-border)' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '1rem' }}>
-                      <Shield size={15} style={{ color: 'var(--color-primary)' }} />
-                      <h4 style={{ fontSize: '0.9375rem', fontWeight: 700, color: 'var(--color-text)' }}>{t('Hạn mức nhận khách hàng từ Databank')}</h4>
-                    </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.25rem' }}>
-                      <div>
-                        <label className="form-label">{t('Hạn mức nhận / Ngày')}</label>
-                        <div style={{ display: 'flex', alignItems: 'center', position: 'relative' }}>
-                          <input
-                            type="number"
-                            className="form-input"
-                            style={{ paddingRight: '4.5rem' }}
-                            value={databankLimitPerDay}
-                            onChange={e => setDatabankLimitPerDay(Number(e.target.value))}
-                            min={0}
-                          />
-                          <span style={{ position: 'absolute', right: '12px', fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>{t('lead / ngày')}</span>
-                        </div>
-                        <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px', display: 'block' }}>
-                          {t('Số lead databank tối đa Sale được nhận/ngày.')}
-                        </span>
-                      </div>
-
-                      <div>
-                        <label className="form-label">{t('Hạn mức nhận / Giờ')}</label>
-                        <div style={{ display: 'flex', alignItems: 'center', position: 'relative' }}>
-                          <input
-                            type="number"
-                            className="form-input"
-                            style={{ paddingRight: '4.5rem' }}
-                            value={databankLimitPerHour}
-                            onChange={e => setDatabankLimitPerHour(Number(e.target.value))}
-                            min={0}
-                          />
-                          <span style={{ position: 'absolute', right: '12px', fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>{t('lead / giờ')}</span>
-                        </div>
-                        <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px', display: 'block' }}>
-                          {t('Số lead databank tối đa Sale được nhận/giờ.')}
-                        </span>
-                      </div>
-
-                      <div>
-                        <label className="form-label">{t('Hạn mức nhận / Tháng')}</label>
-                        <div style={{ display: 'flex', alignItems: 'center', position: 'relative' }}>
-                          <input
-                            type="number"
-                            className="form-input"
-                            style={{ paddingRight: '5.5rem' }}
-                            value={databankLimitPerMonth}
-                            onChange={e => setDatabankLimitPerMonth(Number(e.target.value))}
-                            min={0}
-                          />
-                          <span style={{ position: 'absolute', right: '12px', fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>{t('lead / tháng')}</span>
-                        </div>
-                        <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px', display: 'block' }}>
-                          {t('Số lead databank tối đa Sale được nhận/tháng.')}
-                        </span>
-                      </div>
-
-                      <div>
-                        <label className="form-label">{t('Số Sale tối đa nhận trùng 1 khách')}</label>
-                        <div style={{ display: 'flex', alignItems: 'center', position: 'relative' }}>
-                          <input
-                            type="number"
-                            className="form-input"
-                            style={{ paddingRight: '4.5rem' }}
-                            value={maxParallelSalesPerClient}
-                            onChange={e => setMaxParallelSalesPerClient(Number(e.target.value))}
-                            min={1}
-                          />
-                          <span style={{ position: 'absolute', right: '12px', fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>{t('Sale / khách')}</span>
-                        </div>
-                        <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px', display: 'block' }}>
-                          {t('Số lượng Sale tối đa được claim trùng chăm sóc song song.')}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Nhóm 4: Nguồn ra kho & Khóa trùng Databank */}
-                  <div style={{ background: 'var(--color-bg-secondary)', padding: '1.25rem', borderRadius: 'var(--radius-xl)', border: '1px solid var(--color-border)', marginTop: '1.25rem' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '1rem' }}>
-                      <Clock size={15} style={{ color: 'var(--color-primary)' }} />
-                      <h4 style={{ fontSize: '0.9375rem', fontWeight: 700, color: 'var(--color-text)' }}>{t('Cấu hình Nguồn ra kho & Khóa trùng Databank')}</h4>
-                    </div>
-
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.25rem', marginBottom: '1.25rem' }}>
-                      <div>
-                        <label className="form-label">{t('Nguồn lead áp dụng ra kho')}</label>
-                        <input
-                          type="text"
-                          className="form-input"
-                          value={databankApplicableSources}
-                          onChange={e => setDatabankApplicableSources(e.target.value)}
-                        />
-                        <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px', display: 'block' }}>
-                          {t('Các nguồn lead cách nhau bằng dấu phẩy (ví dụ: R3_Fb,R3,R2,broadcast).')}
-                        </span>
-                        {availableSources.length > 0 && (
-                          <div style={{ marginTop: '10px', display: 'flex', flexWrap: 'wrap', gap: '6px', alignItems: 'center' }}>
-                            <span style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--color-text-light)', width: '100%', marginBottom: '2px' }}>{t('Nguồn hiện có trong hệ thống (Click để bật/tắt):')}</span>
-                            {availableSources.map(src => {
-                              const activeSources = databankApplicableSources.split(',').map(s => s.trim()).filter(Boolean);
-                              const isActive = activeSources.includes(src);
-                              return (
-                                <button
-                                  key={src}
-                                  type="button"
-                                  onClick={() => {
-                                    if (isActive) {
-                                      const filtered = activeSources.filter(s => s !== src);
-                                      setDatabankApplicableSources(filtered.join(','));
-                                    } else {
-                                      const updated = [...activeSources, src];
-                                      setDatabankApplicableSources(updated.join(','));
-                                    }
-                                  }}
-                                  style={{
-                                    background: isActive ? 'var(--color-primary-light)' : 'var(--color-bg)',
-                                    color: isActive ? 'var(--color-primary)' : 'var(--color-text-light)',
-                                    border: `1px solid ${isActive ? 'var(--color-primary)' : 'var(--color-border)'}`,
-                                    borderRadius: '6px',
-                                    padding: '3px 8px',
-                                    fontSize: '0.725rem',
-                                    fontWeight: 600,
-                                    cursor: 'pointer',
-                                    transition: 'all 0.15s',
-                                    outline: 'none'
-                                  }}
-                                  onMouseEnter={e => {
-                                    if (!isActive) e.currentTarget.style.borderColor = 'var(--color-text-muted)';
-                                  }}
-                                  onMouseLeave={e => {
-                                    if (!isActive) e.currentTarget.style.borderColor = 'var(--color-border)';
-                                  }}
-                                >
-                                  {src} {isActive ? '✓' : '+'}
-                                </button>
-                              );
-                            })}
-                          </div>
-                        )}
-                      </div>
-
-                      <div>
-                        <label className="form-label">{t('Khóa trùng lý do lỗi (Databank)')}</label>
-                        <div style={{ display: 'flex', alignItems: 'center', position: 'relative' }}>
-                          <input
-                            type="number"
-                            className="form-input"
-                            style={{ paddingRight: '3.5rem' }}
-                            value={lockoutReasonCountThreshold}
-                            onChange={e => setLockoutReasonCountThreshold(Number(e.target.value))}
-                            min={1}
-                          />
-                          <span style={{ position: 'absolute', right: '12px', fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>{t('lần')}</span>
-                        </div>
-                        <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px', display: 'block', lineHeight: 1.4 }}>
-                          {t('Số lần báo lỗi trùng lý do trong chiến dịch trước khi khóa vĩnh viễn lead ra kho.')}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Nhóm 5: Quy tắc cọc & Bể cọc */}
-                  <div style={{ background: 'var(--color-bg-secondary)', padding: '1.25rem', borderRadius: 'var(--radius-xl)', border: '1px solid var(--color-border)', marginTop: '1.25rem' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '1rem' }}>
-                      <RefreshCw size={15} style={{ color: 'var(--color-primary)' }} />
-                      <h4 style={{ fontSize: '0.9375rem', fontWeight: 700, color: 'var(--color-text)' }}>{t('Quy tắc cọc & Bể cọc')}</h4>
-                    </div>
-
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.25rem' }}>
-                      <div>
-                        <label className="form-label">{t('Trạng thái hạ cấp khi bể cọc (Chưa doanh thu)')}</label>
-                        <CustomSelect
-                          options={pipelineStatusHierarchy.map(status => ({
-                            value: status,
-                            label: pipelineStatusLabels[status] || status
-                          }))}
-                          value={depositCancelDemotedStatus}
-                          onChange={val => setDepositCancelDemotedStatus(val as string)}
-                          width="100%"
-                        />
-                        <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px', display: 'block', lineHeight: 1.4 }}>
-                          {t('Trạng thái đích mặc định của khách hàng khi hủy phiếu cọc trước khi phát sinh doanh thu (ví dụ: Đã Gặp).')}
-                        </span>
-                      </div>
-
-                      <div>
-                        <label className="form-label">{t('Trạng thái hạ cấp nếu từng có Đặt chỗ (Booking)')}</label>
-                        <CustomSelect
-                          options={pipelineStatusHierarchy.map(status => ({
-                            value: status,
-                            label: pipelineStatusLabels[status] || status
-                          }))}
-                          value={depositCancelDemotedBookingStatus}
-                          onChange={val => setDepositCancelDemotedBookingStatus(val as string)}
-                          width="100%"
-                        />
-                        <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px', display: 'block', lineHeight: 1.4 }}>
-                          {t('Trạng thái đích nếu khách hàng từng có lịch sử đặt chỗ/booking (ví dụ: Booking).')}
-                        </span>
-                      </div>
-
-                      <div>
-                        <label className="form-label">{t('Phí môi giới tiêu chuẩn (%)')}</label>
-                        <div style={{ display: 'flex', alignItems: 'center', position: 'relative' }}>
-                          <input
-                            type="number"
-                            step="0.1"
-                            className="form-input"
-                            style={{ paddingRight: '3.5rem' }}
-                            value={standardCommissionRate * 100}
-                            onChange={e => setStandardCommissionRate(Number(e.target.value) / 100)}
-                            min={0}
-                          />
-                          <span style={{ position: 'absolute', right: '12px', fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>%</span>
-                        </div>
-                        <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px', display: 'block', lineHeight: 1.4 }}>
-                          {t('Tỷ lệ phí môi giới tiêu chuẩn khi tính hoa hồng đổi căn mặc định.')}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Nhóm 6: Bộ lọc & Loại trừ Broadcast */}
-                  <div style={{ background: 'var(--color-surface)', padding: '1.5rem', borderRadius: '12px', border: '1px solid var(--color-border)', marginTop: '1.25rem' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', borderBottom: '1px solid var(--color-border-light)', paddingBottom: '8px' }}>
-                      <Filter size={16} style={{ color: 'var(--color-primary)' }} />
-                      <h4 style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)', margin: 0 }}>{t('Bộ lọc & Loại trừ Broadcast')}</h4>
-                    </div>
-
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                      <div>
-                        <label className="form-label" style={{ fontWeight: 600 }}>{t('Luật loại trừ Broadcast')}</label>
-                        <CustomSelect
-                          options={broadcastExclusionOptions}
-                          value={currentExclusionArr}
-                          onChange={(arr: any[]) => setBroadcastExclusionRules(arr.join(','))}
-                          multiple={true}
-                          searchable={true}
-                          placeholder={t('Chọn Trạng thái hoặc Thẻ loại trừ...')}
-                        />
-                        <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px', display: 'block', lineHeight: 1.4 }}>
-                          {t('Chọn các trạng thái phễu hoặc thẻ phân loại khách hàng để loại trừ khỏi các chiến dịch gửi tin hàng loạt (Zalo Broadcast, ZNS, SMS).')}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
                 </div>
               </div>
             </div>
+
 
             {/* Cấu hình Tự Động Duyệt Ticket */}
             <div style={{ display: activeTab === 'auto_approve_ticket' ? 'block' : 'none' }} className="subtab-enter-active">
