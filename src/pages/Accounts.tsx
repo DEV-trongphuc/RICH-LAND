@@ -22,6 +22,13 @@ const AccountsInner = () => {
   const { user } = useAuth();
   const { showConfirm } = useUIStore();
   const isSale = user?.role === 'sale';
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth <= 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
     return (document.documentElement.getAttribute('data-theme') as 'light' | 'dark') || 'light';
@@ -866,155 +873,200 @@ const AccountsInner = () => {
                 {t('Tổng số')}: <strong style={{ color: 'var(--color-text)' }}>{filteredAccounts.length}</strong> / {accounts.length} {t('tài khoản')}
               </div>
             </div>
-            <div className="table-wrap responsive-table-wrap mobile-card-table" style={{ border: 'none', borderRadius: 0 }}>
-              <table className="mobile-table-compact" style={{ width: '100%', minWidth: 850, borderCollapse: 'collapse' }}>
-                <thead>
-                  <tr style={{ background: 'var(--color-bg)', borderBottom: '1px solid var(--color-border)' }}>
-                    <th style={{ padding: '1rem 1.5rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>{t('Tên người dùng')}</th>
-                    <th style={{ padding: '1rem 1.5rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>{t('Email đăng nhập')}</th>
-                    <th style={{ padding: '1rem 1.5rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>{t('Zalo Chat ID')}</th>
-                    <th style={{ padding: '1rem 1.5rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>{t('Phân quyền')}</th>
-                    <th style={{ padding: '1rem 1.5rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>{t('Hoạt động')}</th>
-                    <th style={{ padding: '1rem 1.5rem', textAlign: 'right', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>{t('Thao tác')}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {paginatedAccounts.map(acc => (
-                    <tr key={acc.id} onClick={() => openEditModal(acc)} style={{ borderBottom: '1px solid var(--color-border)', transition: 'background 0.2s', cursor: 'pointer' }} className="table-row-hover">
-                      <td data-label={t('Tên người dùng')} style={{ padding: '1rem 1.5rem' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                          <Avatar src={acc.avatar} name={acc.name} size={36} />
-                          <div style={{ fontWeight: 600, color: 'var(--color-text)' }}>
-                            {acc.name}
-                            <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 400, marginTop: 2 }}>ID: {acc.id}</div>
+            {isMobile ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', padding: '1rem' }}>
+                {paginatedAccounts.map(acc => (
+                  <div
+                    key={acc.id}
+                    onClick={() => openEditModal(acc)}
+                    style={{
+                      padding: '12px 16px',
+                      background: 'var(--color-surface)',
+                      border: '1px solid var(--color-border-light)',
+                      borderRadius: '12px',
+                      boxShadow: '0 4px 12px rgba(0, 0, 0, 0.03)',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: '12px',
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1, minWidth: 0 }}>
+                      <div style={{ flexShrink: 0 }}>
+                        <Avatar src={acc.avatar} name={acc.name} size={42} />
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+                        <span style={{ fontWeight: 700, fontSize: '0.95rem', color: 'var(--color-text)', lineHeight: 1.2 }}>
+                          {acc.name}
+                        </span>
+                        <span style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', marginTop: '4px' }}>
+                          {t('Điện thoại:')} {acc.phone || '—'}
+                        </span>
+                      </div>
+                    </div>
+                    <div style={{ color: 'var(--color-text-light)', display: 'flex', alignItems: 'center', flexShrink: 0 }}>
+                      <ChevronRight size={18} />
+                    </div>
+                  </div>
+                ))}
+                {paginatedAccounts.length === 0 && (
+                  <div style={{ padding: '3rem 2rem', textAlign: 'center', background: 'var(--color-surface)', borderRadius: 12 }}>
+                    <p style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem' }}>{t('Chưa có tài khoản')}</p>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="table-wrap responsive-table-wrap mobile-card-table" style={{ border: 'none', borderRadius: 0 }}>
+                <table className="mobile-table-compact" style={{ width: '100%', minWidth: 850, borderCollapse: 'collapse' }}>
+                  <thead>
+                    <tr style={{ background: 'var(--color-bg)', borderBottom: '1px solid var(--color-border)' }}>
+                      <th style={{ padding: '1rem 1.5rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>{t('Tên người dùng')}</th>
+                      <th style={{ padding: '1rem 1.5rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>{t('Email đăng nhập')}</th>
+                      <th style={{ padding: '1rem 1.5rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>{t('Zalo Chat ID')}</th>
+                      <th style={{ padding: '1rem 1.5rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>{t('Phân quyền')}</th>
+                      <th style={{ padding: '1rem 1.5rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>{t('Hoạt động')}</th>
+                      <th style={{ padding: '1rem 1.5rem', textAlign: 'right', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>{t('Thao tác')}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {paginatedAccounts.map(acc => (
+                      <tr key={acc.id} onClick={() => openEditModal(acc)} style={{ borderBottom: '1px solid var(--color-border)', transition: 'background 0.2s', cursor: 'pointer' }} className="table-row-hover">
+                        <td data-label={t('Tên người dùng')} style={{ padding: '1rem 1.5rem' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                            <Avatar src={acc.avatar} name={acc.name} size={36} />
+                            <div style={{ fontWeight: 600, color: 'var(--color-text)' }}>
+                              {acc.name}
+                              <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 400, marginTop: 2 }}>ID: {acc.id}</div>
+                            </div>
                           </div>
-                        </div>
-                      </td>
-                      <td data-label={t('Email đăng nhập')} style={{ padding: '1rem 1.5rem', color: 'var(--color-text-light)', fontWeight: 500 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                          {acc.email ? (
-                            <img src="https://www.gstatic.com/images/branding/product/1x/gmail_2020q4_32dp.png" alt="Gmail" style={{ width: 16, height: 16, objectFit: 'contain', flexShrink: 0 }} />
-                          ) : (
-                            <Shield size={14} />
-                          )}
-                          <span>{acc.email || <span style={{ color: 'var(--color-text-muted)', fontStyle: 'italic' }}>{t('Chưa có email')}</span>}</span>
-                          {acc.email && <CopyButton text={acc.email} />}
-                          {acc.email && (
-                            Number(acc.is_confirmed) === 1 ? (
-                              <span style={{ fontSize: '0.7rem', color: 'var(--color-success)', background: 'var(--color-success-light)', padding: '2px 6px', borderRadius: 12, fontWeight: 700 }}>{t('Đã xác thực')}</span>
+                        </td>
+                        <td data-label={t('Email đăng nhập')} style={{ padding: '1rem 1.5rem', color: 'var(--color-text-light)', fontWeight: 500 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            {acc.email ? (
+                              <img src="https://www.gstatic.com/images/branding/product/1x/gmail_2020q4_32dp.png" alt="Gmail" style={{ width: 16, height: 16, objectFit: 'contain', flexShrink: 0 }} />
                             ) : (
-                              <span style={{ fontSize: '0.7rem', color: 'var(--color-warning)', background: 'rgba(245, 158, 11, 0.1)', padding: '2px 6px', borderRadius: 12, fontWeight: 700 }}>{t('Chưa xác thực')}</span>
-                            )
-                          )}
-                        </div>
-                        {acc.email && Number(acc.is_confirmed) === 0 && (
-                          <div style={{ marginTop: 6, paddingLeft: 20 }}>
-                            <button 
-                              onClick={(e) => { e.stopPropagation(); handleResendConfirm(acc.id); }} 
-                              disabled={resendingEmailId === acc.id}
-                              className="btn ghost" 
-                              style={{ 
-                                fontSize: '0.75rem', 
-                                padding: '2px 8px', 
-                                color: 'var(--color-primary)',
-                                opacity: resendingEmailId === acc.id ? 0.6 : 1,
-                                cursor: resendingEmailId === acc.id ? 'not-allowed' : 'pointer'
-                              }}
-                            >
-                              {resendingEmailId === acc.id ? (
-                                <Loader2 size={12} className="animate-spin" style={{ marginRight: 4 }} />
-                              ) : (
-                                <Send size={12} style={{ marginRight: 4 }} />
-                              )}
-                              {resendingEmailId === acc.id ? t('Đang gửi...') : t('Gửi lại link')}
-                            </button>
-                          </div>
-                        )}
-                      </td>
-                      <td data-label={t("Zalo Chat ID")} style={{ padding: '1rem 1.5rem', color: 'var(--color-text-light)', fontWeight: 500 }}>
-                        {acc.zalo_chat_id ? (
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }} title={acc.zalo_chat_id}>
-                            <span style={{ 
-                              display: 'inline-flex', alignItems: 'center', gap: 6, 
-                              padding: '4px 10px', borderRadius: 20, 
-                              background: '#e5f0ff', color: '#0068ff', fontSize: '0.75rem', fontWeight: 600
-                            }}>
-                              <img src="https://stc-zpl.zdn.vn/favicon.ico" alt="Zalo" style={{ width: 14, height: 14, borderRadius: '2px' }} /> {t('Đã liên kết')}
-                            </span>
-                            <CopyButton text={acc.zalo_chat_id} />
-                          </div>
-                        ) : (
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                            <span style={{ 
-                              display: 'inline-flex', alignItems: 'center', gap: 6, 
-                              padding: '4px 10px', borderRadius: 20, 
-                              background: 'var(--color-bg)', color: 'var(--color-text-muted)', fontSize: '0.75rem', fontWeight: 500
-                            }}>
-                              {t('Chưa liên kết')}
-                            </span>
+                              <Shield size={14} />
+                            )}
+                            <span>{acc.email || <span style={{ color: 'var(--color-text-muted)', fontStyle: 'italic' }}>{t('Chưa có email')}</span>}</span>
+                            {acc.email && <CopyButton text={acc.email} />}
                             {acc.email && (
-                              zaloRemindedId === acc.id ? (
-                                <span style={{ fontSize: '0.7rem', padding: '2px 6px', color: '#10b981', display: 'flex', alignItems: 'center', gap: 4, fontWeight: 600 }}>
-                                  <Check size={12} /> {t('Đã nhắc')}
-                                </span>
+                              Number(acc.is_confirmed) === 1 ? (
+                                <span style={{ fontSize: '0.7rem', color: 'var(--color-success)', background: 'var(--color-success-light)', padding: '2px 6px', borderRadius: 12, fontWeight: 700 }}>{t('Đã xác thực')}</span>
                               ) : (
-                                <button onClick={(e) => { e.stopPropagation(); handleResendZaloVerify(acc.id); }} className="btn ghost" style={{ fontSize: '0.7rem', padding: '2px 6px', color: '#10b981', display: 'flex', alignItems: 'center', gap: 4 }} title={t("Gửi email nhắc xác thực Zalo")} disabled={zaloRemindingId === acc.id}>
-                                  {zaloRemindingId === acc.id ? <RefreshCw size={12} className="spin" /> : <Send size={12} />} {zaloRemindingId === acc.id ? t('Đang gửi...') : t('Nhắc')}
-                                </button>
+                                <span style={{ fontSize: '0.7rem', color: 'var(--color-warning)', background: 'rgba(245, 158, 11, 0.1)', padding: '2px 6px', borderRadius: 12, fontWeight: 700 }}>{t('Chưa xác thực')}</span>
                               )
                             )}
                           </div>
-                        )}
-                      </td>
-                      <td data-label={t('Phân quyền')} style={{ padding: '1rem 1.5rem' }}>
-                        {getRoleBadge(acc.role)}
-                      </td>
-                      <td data-label={t('Hoạt động')} style={{ padding: '1rem 1.5rem' }}>
-                        {acc.last_login ? (
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                            <span style={{ fontSize: '0.8125rem', color: 'var(--color-text)', fontWeight: 600 }}>{new Date(acc.last_login).toLocaleDateString('vi-VN')}</span>
-                            <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{new Date(acc.last_login).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}</span>
-                          </div>
-                        ) : (
-                          <span style={{ color: 'var(--color-text-muted)', fontSize: '0.8125rem', fontStyle: 'italic' }}>{t('Chưa đăng nhập')}</span>
-                        )}
-                      </td>
-                      <td data-label={t('Thao tác')} style={{ padding: '1rem 1.5rem', textAlign: 'right' }}>
-                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, alignItems: 'center' }}>
-                          <button onClick={(e) => { e.stopPropagation(); openEditModal(acc); }} className="btn ghost" style={{ padding: 8, color: 'var(--color-primary)' }} title={t("Sửa")}>
-                            <Edit3 size={16} />
-                          </button>
-                          {Number(acc.id) !== 1 && acc.id !== user?.id && (
-                            <button 
-                              onClick={(e) => { e.stopPropagation(); triggerDeleteFlow(acc.id); }} 
-                              className="btn ghost" 
-                              style={{ padding: 8, color: 'var(--color-danger)' }} 
-                              title={t("Xóa")}
-                            >
-                              <Trash2 size={16} />
-                            </button>
+                          {acc.email && Number(acc.is_confirmed) === 0 && (
+                            <div style={{ marginTop: 6, paddingLeft: 20 }}>
+                              <button 
+                                onClick={(e) => { e.stopPropagation(); handleResendConfirm(acc.id); }} 
+                                disabled={resendingEmailId === acc.id}
+                                className="btn ghost" 
+                                style={{ 
+                                  fontSize: '0.75rem', 
+                                  padding: '2px 8px', 
+                                  color: 'var(--color-primary)',
+                                  opacity: resendingEmailId === acc.id ? 0.6 : 1,
+                                  cursor: resendingEmailId === acc.id ? 'not-allowed' : 'pointer'
+                                }}
+                              >
+                                {resendingEmailId === acc.id ? (
+                                  <Loader2 size={12} className="animate-spin" style={{ marginRight: 4 }} />
+                                ) : (
+                                  <Send size={12} style={{ marginRight: 4 }} />
+                                )}
+                                {resendingEmailId === acc.id ? t('Đang gửi...') : t('Gửi lại link')}
+                              </button>
+                            </div>
                           )}
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                  {accounts.length === 0 && (
-                    <tr className="empty-state-row">
-                      <td colSpan={6}>
-                        <div style={{ padding: '3rem 2rem', textAlign: 'center' }}>
-                          <div style={{ width: 64, height: 64, borderRadius: '50%', background: 'var(--color-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.5rem', boxShadow: 'var(--shadow-sm)' }}>
-                            <UserCog size={32} color="var(--color-text-muted)" />
+                        </td>
+                        <td data-label={t("Zalo Chat ID")} style={{ padding: '1rem 1.5rem', color: 'var(--color-text-light)', fontWeight: 500 }}>
+                          {acc.zalo_chat_id ? (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }} title={acc.zalo_chat_id}>
+                              <span style={{ 
+                                display: 'inline-flex', alignItems: 'center', gap: 6, 
+                                padding: '4px 10px', borderRadius: 20, 
+                                background: '#e5f0ff', color: '#0068ff', fontSize: '0.75rem', fontWeight: 600
+                              }}>
+                                <img src="https://stc-zpl.zdn.vn/favicon.ico" alt="Zalo" style={{ width: 14, height: 14, borderRadius: '2px' }} /> {t('Đã liên kết')}
+                              </span>
+                              <CopyButton text={acc.zalo_chat_id} />
+                            </div>
+                          ) : (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                              <span style={{ 
+                                display: 'inline-flex', alignItems: 'center', gap: 6, 
+                                padding: '4px 10px', borderRadius: 20, 
+                                background: 'var(--color-bg)', color: 'var(--color-text-muted)', fontSize: '0.75rem', fontWeight: 500
+                              }}>
+                                {t('Chưa liên kết')}
+                              </span>
+                              {acc.email && (
+                                zaloRemindedId === acc.id ? (
+                                  <span style={{ fontSize: '0.7rem', padding: '2px 6px', color: '#10b981', display: 'flex', alignItems: 'center', gap: 4, fontWeight: 600 }}>
+                                    <Check size={12} /> {t('Đã nhắc')}
+                                  </span>
+                                ) : (
+                                  <button onClick={(e) => { e.stopPropagation(); handleResendZaloVerify(acc.id); }} className="btn ghost" style={{ fontSize: '0.7rem', padding: '2px 6px', color: '#10b981', display: 'flex', alignItems: 'center', gap: 4 }} title={t("Gửi email nhắc xác thực Zalo")} disabled={zaloRemindingId === acc.id}>
+                                    {zaloRemindingId === acc.id ? <RefreshCw size={12} className="spin" /> : <Send size={12} />} {zaloRemindingId === acc.id ? t('Đang gửi...') : t('Nhắc')}
+                                  </button>
+                                )
+                              )}
+                            </div>
+                          )}
+                        </td>
+                        <td data-label={t('Phân quyền')} style={{ padding: '1rem 1.5rem' }}>
+                          {getRoleBadge(acc.role)}
+                        </td>
+                        <td data-label={t('Hoạt động')} style={{ padding: '1rem 1.5rem' }}>
+                          {acc.last_login ? (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                              <span style={{ fontSize: '0.8125rem', color: 'var(--color-text)', fontWeight: 600 }}>{new Date(acc.last_login).toLocaleDateString('vi-VN')}</span>
+                              <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{new Date(acc.last_login).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}</span>
+                            </div>
+                          ) : (
+                            <span style={{ color: 'var(--color-text-muted)', fontSize: '0.8125rem', fontStyle: 'italic' }}>{t('Chưa đăng nhập')}</span>
+                          )}
+                        </td>
+                        <td data-label={t('Thao tác')} style={{ padding: '1rem 1.5rem', textAlign: 'right' }}>
+                          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, alignItems: 'center' }}>
+                            <button onClick={(e) => { e.stopPropagation(); openEditModal(acc); }} className="btn ghost" style={{ padding: 8, color: 'var(--color-primary)' }} title={t("Sửa")}>
+                              <Edit3 size={16} />
+                            </button>
+                            {Number(acc.id) !== 1 && acc.id !== user?.id && (
+                              <button 
+                                onClick={(e) => { e.stopPropagation(); triggerDeleteFlow(acc.id); }} 
+                                className="btn ghost" 
+                                style={{ padding: 8, color: 'var(--color-danger)' }} 
+                                title={t("Xóa")}
+                              >
+                                <Trash2 size={16} />
+                              </button>
+                            )}
                           </div>
-                          <h3 style={{ fontSize: '1.125rem', fontWeight: 700, color: 'var(--color-text)', marginBottom: '0.5rem' }}>{t('Chưa có tài khoản')}</h3>
-                          <p style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem', maxWidth: 400, margin: '0 auto 1.5rem' }}>{t('Hãy thêm tài khoản đầu tiên để cấp quyền truy cập hệ thống.')}</p>
-                          <button className="btn primary" onClick={openAddModal}><Plus size={18}/> {t('Thêm Tài khoản')}</button>
-                        </div>
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
+                        </td>
+                      </tr>
+                    ))}
+                    {accounts.length === 0 && (
+                      <tr className="empty-state-row">
+                        <td colSpan={6}>
+                          <div style={{ padding: '3rem 2rem', textAlign: 'center' }}>
+                            <div style={{ width: 64, height: 64, borderRadius: '50%', background: 'var(--color-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.5rem', boxShadow: 'var(--shadow-sm)' }}>
+                              <UserCog size={32} color="var(--color-text-muted)" />
+                            </div>
+                            <h3 style={{ fontSize: '1.125rem', fontWeight: 700, color: 'var(--color-text)', marginBottom: '0.5rem' }}>{t('Chưa có tài khoản')}</h3>
+                            <p style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem', maxWidth: 400, margin: '0 auto 1.5rem' }}>{t('Hãy thêm tài khoản đầu tiên để cấp quyền truy cập hệ thống.')}</p>
+                            <button className="btn primary" onClick={openAddModal}><Plus size={18}/> {t('Thêm Tài khoản')}</button>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            )}
 
             {/* Accounts Pagination */}
             {!loading && totalAccountsPages > 1 && (

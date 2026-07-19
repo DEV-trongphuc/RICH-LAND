@@ -8178,8 +8178,19 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
     const profile = data.consultant_profile;
     if (!profile) {
       return (
-        <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--color-text-muted)' }}>
-          {t('Đang tải thông tin lịch làm việc...')}
+        <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: '2rem', padding: '1rem', width: '100%' }}>
+          {!isMobile && (
+            <div style={{ width: '250px', display: 'flex', flexDirection: 'column', gap: '1rem', flexShrink: 0 }}>
+              <CardSkeleton height={150} />
+              <CardSkeleton height={40} />
+              <CardSkeleton height={40} />
+              <CardSkeleton height={40} />
+            </div>
+          )}
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+            <CardSkeleton height={120} />
+            <CardSkeleton height={200} />
+          </div>
         </div>
       );
     }

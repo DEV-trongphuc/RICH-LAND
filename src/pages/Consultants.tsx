@@ -1057,217 +1057,272 @@ const ConsultantsInner = () => {
               {t('Tổng số')}: <strong style={{ color: 'var(--color-text)' }}>{filteredUsers.length}</strong> / {users.length} {t('tư vấn viên')}
             </div>
           </div>
-          <div className="table-wrap mobile-card-table custom-scrollbar" style={{ border: 'none', borderRadius: 0, maxHeight: '480px', overflowY: 'auto' }}>
-            <table className="mobile-table-compact">
-              <thead>
-                <tr>
-                  <th style={{ position: 'sticky', top: 0, background: 'var(--color-bg)', zIndex: 10, borderBottom: '1px solid var(--color-border)' }}>{t('Tên TVV')}</th>
-                  <th style={{ position: 'sticky', top: 0, background: 'var(--color-bg)', zIndex: 10, borderBottom: '1px solid var(--color-border)' }}>{t('Thông tin liên hệ')}</th>
-                  <th style={{ position: 'sticky', top: 0, background: 'var(--color-bg)', zIndex: 10, borderBottom: '1px solid var(--color-border)' }}>{t('Nhóm (Team)')}</th>
-                  <th style={{ position: 'sticky', top: 0, background: 'var(--color-bg)', zIndex: 10, borderBottom: '1px solid var(--color-border)' }}>{t('Zalo Bot')}</th>
-                  <th style={{ position: 'sticky', top: 0, background: 'var(--color-bg)', zIndex: 10, borderBottom: '1px solid var(--color-border)' }}>{t('Trạng thái')}</th>
-                  {isWriteAuthorized && <th style={{ position: 'sticky', top: 0, background: 'var(--color-bg)', zIndex: 10, borderBottom: '1px solid var(--color-border)', textAlign: 'right' }}>{t('Thao tác')}</th>}
-                </tr>
-              </thead>
-              <tbody>
-                {loading ? (
-                  [...Array(5)].map((_, i) => <TableRowSkeleton key={i} cols={isWriteAuthorized ? 6 : 5} />)
-                ) : users.length === 0 ? (
-                  <tr className="empty-state-row">
-                    <td colSpan={isWriteAuthorized ? 6 : 5}>
-                    <div style={{ padding: '3rem 2rem', textAlign: 'center' }}>
-                      <div style={{ width: 64, height: 64, borderRadius: '50%', background: 'var(--color-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.5rem', boxShadow: 'var(--shadow-sm)' }}>
-                        <Users size={32} color="var(--color-text-muted)" />
-                      </div>
-                      <h3 style={{ fontSize: '1.125rem', fontWeight: 700, color: 'var(--color-text)', marginBottom: '0.5rem' }}>{t('Chưa có Tư vấn viên')}</h3>
-                      <p style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem', maxWidth: 400, margin: '0 auto 1.5rem' }}>{t('Thêm tư vấn viên đầu tiên để bắt đầu chia số tự động.')}</p>
-                      {isWriteAuthorized && <button className="btn primary" onClick={openAddModal}><Plus size={18} /> {t('Thêm Tư vấn viên')}</button>}
+          {isMobile ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', padding: '1rem' }}>
+              {paginatedUsers.map(u => (
+                <div
+                  key={u.id}
+                  onClick={() => isWriteAuthorized && openEditModal(u)}
+                  style={{
+                    padding: '12px 16px',
+                    background: 'var(--color-surface)',
+                    border: '1px solid var(--color-border-light)',
+                    borderRadius: '12px',
+                    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.03)',
+                    cursor: isWriteAuthorized ? 'pointer' : 'default',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: '12px',
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1, minWidth: 0 }}>
+                    <div style={{ flexShrink: 0 }}>
+                      <Avatar
+                        src={u.avatar}
+                        name={u.name}
+                        size={42}
+                        style={{
+                          filter: (u.status === 'inactive' || u.status === 'leave' || Number(u.vacation_mode) === 1) ? 'grayscale(1)' : 'none',
+                          opacity: (u.status === 'inactive' || u.status === 'leave' || Number(u.vacation_mode) === 1) ? 0.5 : 1
+                        }}
+                      />
                     </div>
-                  </td>
-                </tr>
-              ) : paginatedUsers.map((u) => {
-                return (
-                  <tr
-                    key={u.id}
-                    className={`group ${isWriteAuthorized ? 'table-row-hover' : ''}`}
-                    style={{ cursor: isWriteAuthorized ? 'pointer' : 'default' }}
-                    onClick={() => isWriteAuthorized && openEditModal(u)}
-                    title={isWriteAuthorized ? t("Nhấp để chỉnh sửa thông tin") : undefined}
-                  >
-                    <td data-label={t('Tên TVV')}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                        <Avatar
-                          src={u.avatar}
-                          name={u.name}
-                          size={32}
-                          style={{
-                            filter: (u.status === 'inactive' || u.status === 'leave' || Number(u.vacation_mode) === 1) ? 'grayscale(1)' : 'none',
-                            opacity: (u.status === 'inactive' || u.status === 'leave' || Number(u.vacation_mode) === 1) ? 0.5 : 1
-                          }}
-                        />
-                        <div>
-                          <div
-                            style={{ fontWeight: 600, fontSize: '0.875rem', color: 'var(--color-text)', transition: 'color 0.15s' }}
-                            onMouseEnter={e => e.currentTarget.style.color = 'var(--color-primary)'}
-                            onMouseLeave={e => e.currentTarget.style.color = 'var(--color-text)'}
-                          >
-                            {u.name}
-                          </div>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: 2 }}>
-                            <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 400 }}>ID: {u.id}</span>
-                            <span style={{ width: 3, height: 3, borderRadius: '50%', background: 'var(--color-text-muted)' }} />
-                            {u.work_schedule ? (
-                              <span
-                                style={{
-                                  fontSize: '0.75rem',
-                                  color: '#0ea5e9',
-                                  fontWeight: 600,
-                                  display: 'inline-flex',
-                                  alignItems: 'center',
-                                  gap: 4,
-                                  cursor: 'help',
-                                  borderBottom: '1px dotted #0ea5e9'
-                                }}
-                                title={formatScheduleTooltip(u.work_schedule, t)}
-                              >
-                                <Clock size={12} /> {t('Lịch tuần')}
-                              </span>
-                            ) : (
-                              (u.work_start_time === '00:00' && u.work_end_time === '23:59') || (!u.work_start_time && !u.work_end_time) ? (
-                                <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: 4 }} title={t("Nhận data 24/24")}>
-                                  <Clock size={12} /> 24/24
+                    <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+                      <span style={{ fontWeight: 700, fontSize: '0.95rem', color: 'var(--color-text)', lineHeight: 1.2 }}>
+                        {u.name}
+                      </span>
+                      <span style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', marginTop: '4px' }}>
+                        {t('Điện thoại:')} {u.phone || '—'}
+                      </span>
+                    </div>
+                  </div>
+                  {isWriteAuthorized && (
+                    <div style={{ color: 'var(--color-text-light)', display: 'flex', alignItems: 'center', flexShrink: 0 }}>
+                      <ChevronRight size={18} />
+                    </div>
+                  )}
+                </div>
+              ))}
+              {paginatedUsers.length === 0 && (
+                <div style={{ padding: '3rem 2rem', textAlign: 'center', background: 'var(--color-surface)', borderRadius: 12 }}>
+                  <p style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem' }}>{t('Chưa có Tư vấn viên')}</p>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="table-wrap mobile-card-table custom-scrollbar" style={{ border: 'none', borderRadius: 0, maxHeight: '480px', overflowY: 'auto' }}>
+              <table className="mobile-table-compact">
+                <thead>
+                  <tr>
+                    <th style={{ position: 'sticky', top: 0, background: 'var(--color-bg)', zIndex: 10, borderBottom: '1px solid var(--color-border)' }}>{t('Tên TVV')}</th>
+                    <th style={{ position: 'sticky', top: 0, background: 'var(--color-bg)', zIndex: 10, borderBottom: '1px solid var(--color-border)' }}>{t('Thông tin liên hệ')}</th>
+                    <th style={{ position: 'sticky', top: 0, background: 'var(--color-bg)', zIndex: 10, borderBottom: '1px solid var(--color-border)' }}>{t('Nhóm (Team)')}</th>
+                    <th style={{ position: 'sticky', top: 0, background: 'var(--color-bg)', zIndex: 10, borderBottom: '1px solid var(--color-border)' }}>{t('Zalo Bot')}</th>
+                    <th style={{ position: 'sticky', top: 0, background: 'var(--color-bg)', zIndex: 10, borderBottom: '1px solid var(--color-border)' }}>{t('Trạng thái')}</th>
+                    {isWriteAuthorized && <th style={{ position: 'sticky', top: 0, background: 'var(--color-bg)', zIndex: 10, borderBottom: '1px solid var(--color-border)', textAlign: 'right' }}>{t('Thao tác')}</th>}
+                  </tr>
+                </thead>
+                <tbody>
+                  {loading ? (
+                    [...Array(5)].map((_, i) => <TableRowSkeleton key={i} cols={isWriteAuthorized ? 6 : 5} />)
+                  ) : users.length === 0 ? (
+                    <tr className="empty-state-row">
+                      <td colSpan={isWriteAuthorized ? 6 : 5}>
+                      <div style={{ padding: '3rem 2rem', textAlign: 'center' }}>
+                        <div style={{ width: 64, height: 64, borderRadius: '50%', background: 'var(--color-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.5rem', boxShadow: 'var(--shadow-sm)' }}>
+                          <Users size={32} color="var(--color-text-muted)" />
+                        </div>
+                        <h3 style={{ fontSize: '1.125rem', fontWeight: 700, color: 'var(--color-text)', marginBottom: '0.5rem' }}>{t('Chưa có Tư vấn viên')}</h3>
+                        <p style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem', maxWidth: 400, margin: '0 auto 1.5rem' }}>{t('Thêm tư vấn viên đầu tiên để bắt đầu chia số tự động.')}</p>
+                        {isWriteAuthorized && <button className="btn primary" onClick={openAddModal}><Plus size={18} /> {t('Thêm Tư vấn viên')}</button>}
+                      </div>
+                    </td>
+                  </tr>
+                ) : paginatedUsers.map((u) => {
+                  return (
+                    <tr
+                      key={u.id}
+                      className={`group ${isWriteAuthorized ? 'table-row-hover' : ''}`}
+                      style={{ cursor: isWriteAuthorized ? 'pointer' : 'default' }}
+                      onClick={() => isWriteAuthorized && openEditModal(u)}
+                      title={isWriteAuthorized ? t("Nhấp để chỉnh sửa thông tin") : undefined}
+                    >
+                      <td data-label={t('Tên TVV')}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                          <Avatar
+                            src={u.avatar}
+                            name={u.name}
+                            size={32}
+                            style={{
+                              filter: (u.status === 'inactive' || u.status === 'leave' || Number(u.vacation_mode) === 1) ? 'grayscale(1)' : 'none',
+                              opacity: (u.status === 'inactive' || u.status === 'leave' || Number(u.vacation_mode) === 1) ? 0.5 : 1
+                            }}
+                          />
+                          <div>
+                            <div
+                              style={{ fontWeight: 600, fontSize: '0.875rem', color: 'var(--color-text)', transition: 'color 0.15s' }}
+                              onMouseEnter={e => e.currentTarget.style.color = 'var(--color-primary)'}
+                              onMouseLeave={e => e.currentTarget.style.color = 'var(--color-text)'}
+                            >
+                              {u.name}
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: 2 }}>
+                              <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 400 }}>ID: {u.id}</span>
+                              <span style={{ width: 3, height: 3, borderRadius: '50%', background: 'var(--color-text-muted)' }} />
+                              {u.work_schedule ? (
+                                <span
+                                  style={{
+                                    fontSize: '0.75rem',
+                                    color: '#0ea5e9',
+                                    fontWeight: 600,
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: 4,
+                                    cursor: 'help',
+                                    borderBottom: '1px dotted #0ea5e9'
+                                  }}
+                                  title={formatScheduleTooltip(u.work_schedule, t)}
+                                >
+                                  <Clock size={12} /> {t('Lịch tuần')}
                                 </span>
                               ) : (
-                                <span style={{ fontSize: '0.75rem', color: '#10b981', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }} title={`${t('Nhận data từ')} ${u.work_start_time} ${t('đến')} ${u.work_end_time}`}>
-                                  <Clock size={12} /> {u.work_start_time} - {u.work_end_time}
-                                </span>
-                              )
-                            )}
+                                (u.work_start_time === '00:00' && u.work_end_time === '23:59') || (!u.work_start_time && !u.work_end_time) ? (
+                                  <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: 4 }} title={t("Nhận data 24/24")}>
+                                    <Clock size={12} /> 24/24
+                                  </span>
+                                ) : (
+                                  <span style={{ fontSize: '0.75rem', color: '#10b981', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }} title={`${t('Nhận data từ')} ${u.work_start_time} ${t('đến')} ${u.work_end_time}`}>
+                                    <Clock size={12} /> {u.work_start_time} - {u.work_end_time}
+                                  </span>
+                                )
+                              )}
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    </td>
-                    <td data-label={t('Thông tin liên hệ')} style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem' }}>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                          <img src="https://www.gstatic.com/images/branding/product/1x/gmail_2020q4_32dp.png" alt="Gmail" style={{ width: 14, height: 14, objectFit: 'contain', flexShrink: 0 }} />
-                          <span>{u.email}</span>
-                        </div>
-                        {u.phone && (
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.75rem', color: 'var(--color-text)' }}>
-                            <Phone size={12} style={{ color: 'var(--color-primary)' }} />
-                            <span>{u.phone}</span>
+                      </td>
+                      <td data-label={t('Thông tin liên hệ')} style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <img src="https://www.gstatic.com/images/branding/product/1x/gmail_2020q4_32dp.png" alt="Gmail" style={{ width: 14, height: 14, objectFit: 'contain', flexShrink: 0 }} />
+                            <span>{u.email}</span>
                           </div>
-                        )}
-                      </div>
-                    </td>
-                    <td data-label={t('Nhóm (Team)')} style={{ fontWeight: 500, fontSize: '0.8125rem', color: 'var(--color-text)' }}>
-                      {u.team_name ? (
-                        <div>
-                          <div style={{ fontWeight: 600 }}>{u.team_name}</div>
-                          {u.team_branch && (
-                            <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', marginTop: 2 }}>{u.team_branch}</div>
+                          {u.phone && (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.75rem', color: 'var(--color-text)' }}>
+                              <Phone size={12} style={{ color: 'var(--color-primary)' }} />
+                              <span>{u.phone}</span>
+                            </div>
                           )}
                         </div>
-                      ) : (
-                        <span style={{ color: 'var(--color-text-muted)' }}>—</span>
-                      )}
-                    </td>
-                    <td data-label={t('Zalo Bot')}>
-                      {u.zalo_chat_id ? (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                          <span style={{
-                            display: 'inline-flex', alignItems: 'center', gap: 6,
-                            padding: '4px 10px', borderRadius: 20,
-                            background: '#e5f0ff', color: '#0068ff', fontSize: '0.75rem', fontWeight: 600
-                          }}>
-                            <img src="https://stc-zpl.zdn.vn/favicon.ico" alt="Zalo" style={{ width: 14, height: 14, borderRadius: '2px' }} /> {t('Đã liên kết')}
-                          </span>
-                        </div>
-                      ) : (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                          <span style={{
-                            display: 'inline-flex', alignItems: 'center', gap: 6,
-                            padding: '4px 10px', borderRadius: 20,
-                            background: 'var(--color-bg)', color: 'var(--color-text-muted)', fontSize: '0.75rem', fontWeight: 500
-                          }}>
-                            {t('Chưa liên kết')}
-                          </span>
-                          {u.email && u.email.toLowerCase() !== user?.email?.toLowerCase() && (
-                            zaloRemindedId === u.id ? (
-                              <span style={{ fontSize: '0.7rem', padding: '2px 6px', color: '#10b981', display: 'flex', alignItems: 'center', gap: 4, fontWeight: 600 }}>
-                                <Check size={12} /> {t('Đã nhắc')}
-                              </span>
-                            ) : (
-                              <button onClick={(e) => { e.stopPropagation(); handleResendZaloVerify(u.id); }} className="btn ghost" style={{ fontSize: '0.7rem', padding: '2px 6px', color: '#10b981', display: 'flex', alignItems: 'center', gap: 4 }} title={t("Gửi email nhắc xác thực Zalo")} disabled={zaloRemindingId === u.id}>
-                                {zaloRemindingId === u.id ? <RefreshCw size={12} className="spin" /> : <Send size={12} />} {zaloRemindingId === u.id ? t('Đang gửi...') : t('Nhắc')}
-                              </button>
-                            )
-                          )}
-                        </div>
-                      )}
-                    </td>
-                    <td data-label={t('Trạng thái')} onClick={e => e.stopPropagation()}>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                        {u.status === 'active' ? (
-                          Number(u.vacation_mode) ? (
-                            <span className="badge warning" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, alignSelf: 'flex-start', background: 'var(--color-warning-light)', color: 'var(--color-warning)' }}>
-                              <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'currentColor' }} />
-                              {t('Tạm ngưng')}
-                            </span>
-                          ) : (
-                            <span className="badge success" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, alignSelf: 'flex-start' }}>
-                              <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'currentColor' }} />
-                              {t('Đang nhận Data')}
-                            </span>
-                          )
-                        ) : u.status === 'leave' ? (
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                            <span className="badge warning" style={{ background: 'var(--color-warning-light)', color: 'var(--color-warning)', display: 'inline-flex', alignItems: 'center', gap: 6, alignSelf: 'flex-start' }}>
-                              <Clock size={12} /> {t('Nghỉ phép')}
-                            </span>
-                            {(u.leave_start || u.leave_end) && (
-                              <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>
-                                {u.leave_start ? new Date(u.leave_start).toLocaleDateString('vi-VN') : '...'} - {u.leave_end ? new Date(u.leave_end).toLocaleDateString('vi-VN') : '...'}
-                              </span>
+                      </td>
+                      <td data-label={t('Nhóm (Team)')} style={{ fontWeight: 500, fontSize: '0.8125rem', color: 'var(--color-text)' }}>
+                        {u.team_name ? (
+                          <div>
+                            <div style={{ fontWeight: 600 }}>{u.team_name}</div>
+                            {u.team_branch && (
+                              <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', marginTop: 2 }}>{u.team_branch}</div>
                             )}
                           </div>
                         ) : (
-                          <span className="badge danger" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, alignSelf: 'flex-start' }}>
-                            <UserX size={12} /> {t('Ngừng HĐ')}
-                          </span>
+                          <span style={{ color: 'var(--color-text-muted)' }}>—</span>
                         )}
-                      </div>
-                    </td>
-                    {!isSale && (
-                      <td className="col-actions" data-label={t('Thao tác')} style={{ textAlign: 'right' }} onClick={e => e.stopPropagation()}>
-                        <div className="row-actions" style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.25rem', opacity: 0, transition: 'opacity 0.15s' }}>
-                          <button
-                            onClick={() => {
-                              setStatsConsultant(u);
-                              setStatsDateMode('this_month');
-                              setStatsStartDate('');
-                              setStatsEndDate('');
-                              setStatsModalOpen(true);
-                            }}
-                            className="btn ghost sm"
-                            style={{ width: 32, height: 32, padding: 0, borderRadius: 8, color: 'var(--color-primary)' }}
-                            title={t("Thống kê hiệu suất")}
-                          >
-                            <BarChart2 size={14} />
-                          </button>
-                          <button onClick={() => { setDeleteId(u.id); setConfirmDeleteOpen(true); }} className="btn ghost sm" style={{ width: 32, height: 32, padding: 0, borderRadius: 8, color: 'var(--color-danger)' }} title={t("Xóa nhân sự")}>
-                            <Trash2 size={14} />
-                          </button>
+                      </td>
+                      <td data-label={t('Zalo Bot')}>
+                        {u.zalo_chat_id ? (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            <span style={{
+                              display: 'inline-flex', alignItems: 'center', gap: 6,
+                              padding: '4px 10px', borderRadius: 20,
+                              background: '#e5f0ff', color: '#0068ff', fontSize: '0.75rem', fontWeight: 600
+                            }}>
+                              <img src="https://stc-zpl.zdn.vn/favicon.ico" alt="Zalo" style={{ width: 14, height: 14, borderRadius: '2px' }} /> {t('Đã liên kết')}
+                            </span>
+                          </div>
+                        ) : (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            <span style={{
+                              display: 'inline-flex', alignItems: 'center', gap: 6,
+                              padding: '4px 10px', borderRadius: 20,
+                              background: 'var(--color-bg)', color: 'var(--color-text-muted)', fontSize: '0.75rem', fontWeight: 500
+                            }}>
+                              {t('Chưa liên kết')}
+                            </span>
+                            {u.email && u.email.toLowerCase() !== user?.email?.toLowerCase() && (
+                              zaloRemindedId === u.id ? (
+                                <span style={{ fontSize: '0.7rem', padding: '2px 6px', color: '#10b981', display: 'flex', alignItems: 'center', gap: 4, fontWeight: 600 }}>
+                                  <Check size={12} /> {t('Đã nhắc')}
+                                </span>
+                              ) : (
+                                <button onClick={(e) => { e.stopPropagation(); handleResendZaloVerify(u.id); }} className="btn ghost" style={{ fontSize: '0.7rem', padding: '2px 6px', color: '#10b981', display: 'flex', alignItems: 'center', gap: 4 }} title={t("Gửi email nhắc xác thực Zalo")} disabled={zaloRemindingId === u.id}>
+                                  {zaloRemindingId === u.id ? <RefreshCw size={12} className="spin" /> : <Send size={12} />} {zaloRemindingId === u.id ? t('Đang gửi...') : t('Nhắc')}
+                                </button>
+                              )
+                            )}
+                          </div>
+                        )}
+                      </td>
+                      <td data-label={t('Trạng thái')} onClick={e => e.stopPropagation()}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                          {u.status === 'active' ? (
+                            Number(u.vacation_mode) ? (
+                              <span className="badge warning" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, alignSelf: 'flex-start', background: 'var(--color-warning-light)', color: 'var(--color-warning)' }}>
+                                <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'currentColor' }} />
+                                {t('Tạm ngưng')}
+                              </span>
+                            ) : (
+                              <span className="badge success" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, alignSelf: 'flex-start' }}>
+                                <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'currentColor' }} />
+                                {t('Đang nhận Data')}
+                              </span>
+                            )
+                          ) : u.status === 'leave' ? (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                              <span className="badge warning" style={{ background: 'var(--color-warning-light)', color: 'var(--color-warning)', display: 'inline-flex', alignItems: 'center', gap: 6, alignSelf: 'flex-start' }}>
+                                <Clock size={12} /> {t('Nghỉ phép')}
+                              </span>
+                              {(u.leave_start || u.leave_end) && (
+                                <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>
+                                  {u.leave_start ? new Date(u.leave_start).toLocaleDateString('vi-VN') : '...'} - {u.leave_end ? new Date(u.leave_end).toLocaleDateString('vi-VN') : '...'}
+                                </span>
+                              )}
+                            </div>
+                          ) : (
+                            <span className="badge danger" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, alignSelf: 'flex-start' }}>
+                              <UserX size={12} /> {t('Ngừng HĐ')}
+                            </span>
+                          )}
                         </div>
                       </td>
-                    )}
+                      {isWriteAuthorized && (
+                        <td className="col-actions" data-label={t('Thao tác')} style={{ textAlign: 'right' }} onClick={e => e.stopPropagation()}>
+                          <div className="row-actions" style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.25rem', opacity: 0, transition: 'opacity 0.15s' }}>
+                            <button
+                              onClick={() => {
+                                setStatsConsultant(u);
+                                setStatsDateMode('this_month');
+                                setStatsStartDate('');
+                                setStatsEndDate('');
+                                setStatsModalOpen(true);
+                              }}
+                              className="btn ghost sm"
+                              style={{ width: 32, height: 32, padding: 0, borderRadius: 8, color: 'var(--color-primary)' }}
+                              title={t("Thống kê hiệu suất")}
+                            >
+                              <BarChart2 size={14} />
+                            </button>
+                            <button onClick={() => { setDeleteId(u.id); setConfirmDeleteOpen(true); }} className="btn ghost sm" style={{ width: 32, height: 32, padding: 0, borderRadius: 8, color: 'var(--color-danger)' }} title={t("Xóa nhân sự")}>
+                              <Trash2 size={14} />
+                            </button>
+                          </div>
+                        </td>
+                      )}
                   </tr>
                 );
               })}
             </tbody>
           </table>
         </div>
+      )}
 
         {/* Consultants Pagination */}
         {consultantsTotalPages > 1 && (

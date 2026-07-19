@@ -1304,72 +1304,72 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
                         type="button"
                         className={`${styles.sidebarTabBtn} ${activeTab === 'personal' ? styles.sidebarTabActive : ''}`}
                         onClick={() => setActiveTab('personal')}
-                        style={{ padding: '10px 0.75rem', fontSize: '0.825rem', display: 'flex', alignItems: 'center', gap: '8px', width: '100%', border: 'none', background: activeTab === 'personal' ? 'var(--color-bg-light)' : 'transparent', borderRadius: '8px', cursor: 'pointer', textAlign: 'left', fontWeight: activeTab === 'personal' ? 700 : 500 }}
+                        style={{ padding: '8px 0.75rem', fontSize: '0.825rem', display: 'flex', alignItems: 'center', gap: '12px', width: '100%', border: 'none', background: activeTab === 'personal' ? 'var(--color-bg-light)' : 'transparent', borderRadius: '8px', cursor: 'pointer', textAlign: 'left', fontWeight: activeTab === 'personal' ? 700 : 500 }}
                       >
-                        <User size={15} />
+                        {renderColoredIcon(User, '#eb4e3d')}
                         <span style={{ whiteSpace: 'nowrap' }}>{t('Thông tin cá nhân')}</span>
                       </button>
                       <button
                         type="button"
                         className={`${styles.sidebarTabBtn} ${activeTab === 'erp' ? styles.sidebarTabActive : ''}`}
                         onClick={() => setActiveTab('erp')}
-                        style={{ padding: '10px 0.75rem', fontSize: '0.825rem', display: 'flex', alignItems: 'center', gap: '8px', width: '100%', border: 'none', background: activeTab === 'erp' ? 'var(--color-bg-light)' : 'transparent', borderRadius: '8px', cursor: 'pointer', textAlign: 'left', fontWeight: activeTab === 'erp' ? 700 : 500 }}
+                        style={{ padding: '8px 0.75rem', fontSize: '0.825rem', display: 'flex', alignItems: 'center', gap: '12px', width: '100%', border: 'none', background: activeTab === 'erp' ? 'var(--color-bg-light)' : 'transparent', borderRadius: '8px', cursor: 'pointer', textAlign: 'left', fontWeight: activeTab === 'erp' ? 700 : 500 }}
                       >
-                        <Building2 size={15} />
+                        {renderColoredIcon(Building2, '#5856d6')}
                         <span style={{ whiteSpace: 'nowrap' }}>{t('Hồ sơ & ERP')}</span>
                       </button>
                       <button
                         type="button"
                         className={`${styles.sidebarTabBtn} ${activeTab === 'certificates' ? styles.sidebarTabActive : ''}`}
                         onClick={() => setActiveTab('certificates')}
-                        style={{ padding: '10px 0.75rem', fontSize: '0.825rem', display: 'flex', alignItems: 'center', gap: '8px', width: '100%', border: 'none', background: activeTab === 'certificates' ? 'var(--color-bg-light)' : 'transparent', borderRadius: '8px', cursor: 'pointer', textAlign: 'left', fontWeight: activeTab === 'certificates' ? 700 : 500 }}
+                        style={{ padding: '8px 0.75rem', fontSize: '0.825rem', display: 'flex', alignItems: 'center', gap: '12px', width: '100%', border: 'none', background: activeTab === 'certificates' ? 'var(--color-bg-light)' : 'transparent', borderRadius: '8px', cursor: 'pointer', textAlign: 'left', fontWeight: activeTab === 'certificates' ? 700 : 500 }}
                       >
-                        <Award size={15} />
+                        {renderColoredIcon(Award, '#f2a20b')}
                         <span style={{ whiteSpace: 'nowrap' }}>{t('Bằng cấp & Chứng chỉ')}</span>
                       </button>
                       <button
                         type="button"
                         className={`${styles.sidebarTabBtn} ${activeTab === 'hr_records' ? styles.sidebarTabActive : ''}`}
                         onClick={() => setActiveTab('hr_records')}
-                        style={{ padding: '10px 0.75rem', fontSize: '0.825rem', display: 'flex', alignItems: 'center', gap: '8px', width: '100%', border: 'none', background: activeTab === 'hr_records' ? 'var(--color-bg-light)' : 'transparent', borderRadius: '8px', cursor: 'pointer', textAlign: 'left', fontWeight: activeTab === 'hr_records' ? 700 : 500 }}
+                        style={{ padding: '8px 0.75rem', fontSize: '0.825rem', display: 'flex', alignItems: 'center', gap: '12px', width: '100%', border: 'none', background: activeTab === 'hr_records' ? 'var(--color-bg-light)' : 'transparent', borderRadius: '8px', cursor: 'pointer', textAlign: 'left', fontWeight: activeTab === 'hr_records' ? 700 : 500 }}
                       >
-                        <AlertCircle size={15} />
+                        {renderColoredIcon(AlertCircle, '#ff9500')}
                         <span style={{ whiteSpace: 'nowrap' }}>{t('Khen thưởng & Kỷ luật')}</span>
                       </button>
                       <button
                         type="button"
                         className={`${styles.sidebarTabBtn} ${activeTab === 'bank' ? styles.sidebarTabActive : ''}`}
                         onClick={() => setActiveTab('bank')}
-                        style={{ padding: '10px 0.75rem', fontSize: '0.825rem', display: 'flex', alignItems: 'center', gap: '8px', width: '100%', border: 'none', background: activeTab === 'bank' ? 'var(--color-bg-light)' : 'transparent', borderRadius: '8px', cursor: 'pointer', textAlign: 'left', fontWeight: activeTab === 'bank' ? 700 : 500 }}
+                        style={{ padding: '8px 0.75rem', fontSize: '0.825rem', display: 'flex', alignItems: 'center', gap: '12px', width: '100%', border: 'none', background: activeTab === 'bank' ? 'var(--color-bg-light)' : 'transparent', borderRadius: '8px', cursor: 'pointer', textAlign: 'left', fontWeight: activeTab === 'bank' ? 700 : 500 }}
                       >
-                        <CreditCard size={15} />
+                        {renderColoredIcon(CreditCard, '#34c759')}
                         <span style={{ whiteSpace: 'nowrap' }}>{t('Tài khoản Ngân hàng')}</span>
                       </button>
                       <button
                         type="button"
                         className={`${styles.sidebarTabBtn} ${activeTab === 'emergency' ? styles.sidebarTabActive : ''}`}
                         onClick={() => setActiveTab('emergency')}
-                        style={{ padding: '10px 0.75rem', fontSize: '0.825rem', display: 'flex', alignItems: 'center', gap: '8px', width: '100%', border: 'none', background: activeTab === 'emergency' ? 'var(--color-bg-light)' : 'transparent', borderRadius: '8px', cursor: 'pointer', textAlign: 'left', fontWeight: activeTab === 'emergency' ? 700 : 500 }}
+                        style={{ padding: '8px 0.75rem', fontSize: '0.825rem', display: 'flex', alignItems: 'center', gap: '12px', width: '100%', border: 'none', background: activeTab === 'emergency' ? 'var(--color-bg-light)' : 'transparent', borderRadius: '8px', cursor: 'pointer', textAlign: 'left', fontWeight: activeTab === 'emergency' ? 700 : 500 }}
                       >
-                        <Shield size={15} />
+                        {renderColoredIcon(Shield, '#ff2d55')}
                         <span style={{ whiteSpace: 'nowrap' }}>{t('Liên hệ khẩn cấp')}</span>
                       </button>
                       <button
                         type="button"
                         className={`${styles.sidebarTabBtn} ${activeTab === 'schedule' ? styles.sidebarTabActive : ''}`}
                         onClick={() => setActiveTab('schedule')}
-                        style={{ padding: '10px 0.75rem', fontSize: '0.825rem', display: 'flex', alignItems: 'center', gap: '8px', width: '100%', border: 'none', background: activeTab === 'schedule' ? 'var(--color-bg-light)' : 'transparent', borderRadius: '8px', cursor: 'pointer', textAlign: 'left', fontWeight: activeTab === 'schedule' ? 700 : 500 }}
+                        style={{ padding: '8px 0.75rem', fontSize: '0.825rem', display: 'flex', alignItems: 'center', gap: '12px', width: '100%', border: 'none', background: activeTab === 'schedule' ? 'var(--color-bg-light)' : 'transparent', borderRadius: '8px', cursor: 'pointer', textAlign: 'left', fontWeight: activeTab === 'schedule' ? 700 : 500 }}
                       >
-                        <Calendar size={15} />
+                        {renderColoredIcon(Calendar, '#f09a37')}
                         <span style={{ whiteSpace: 'nowrap' }}>{t('Lịch trực nhận data')}</span>
                       </button>
                       <button
                         type="button"
                         className={`${styles.sidebarTabBtn} ${activeTab === 'documents' ? styles.sidebarTabActive : ''}`}
                         onClick={() => setActiveTab('documents')}
-                        style={{ padding: '10px 0.75rem', fontSize: '0.825rem', display: 'flex', alignItems: 'center', gap: '8px', width: '100%', border: 'none', background: activeTab === 'documents' ? 'var(--color-bg-light)' : 'transparent', borderRadius: '8px', cursor: 'pointer', textAlign: 'left', fontWeight: activeTab === 'documents' ? 700 : 500 }}
+                        style={{ padding: '8px 0.75rem', fontSize: '0.825rem', display: 'flex', alignItems: 'center', gap: '12px', width: '100%', border: 'none', background: activeTab === 'documents' ? 'var(--color-bg-light)' : 'transparent', borderRadius: '8px', cursor: 'pointer', textAlign: 'left', fontWeight: activeTab === 'documents' ? 700 : 500 }}
                       >
-                        <Paperclip size={15} />
+                        {renderColoredIcon(Paperclip, '#8e8e93')}
                         <span style={{ whiteSpace: 'nowrap' }}>{t('Lưu trữ tài liệu')}</span>
                       </button>
 
@@ -1380,11 +1380,11 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
                         className={`${styles.sidebarTabBtn} ${activeTab === 'account' ? styles.sidebarTabActive : ''}`}
                         onClick={() => setActiveTab('account')}
                         style={{ 
-                          padding: '10px 0.75rem', 
+                          padding: '8px 0.75rem', 
                           fontSize: '0.825rem', 
                           display: 'flex', 
                           alignItems: 'center', 
-                          gap: '8px', 
+                          gap: '12px', 
                           width: '100%', 
                           border: 'none', 
                           background: activeTab === 'account' ? 'rgba(239, 68, 68, 0.08)' : 'transparent', 
@@ -1395,8 +1395,8 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
                           color: 'var(--color-danger)'
                         }}
                       >
-                        <Lock size={15} color="var(--color-danger)" />
-                        <span style={{ whiteSpace: 'nowrap' }}>{t('Tài khoản & Quyền')}</span>
+                        {renderColoredIcon(Lock, '#ef4444')}
+                        <span style={{ whiteSpace: 'nowrap' }}>{t('Đăng nhập & Bảo mật')}</span>
                       </button>
                     </div>
                   )}

@@ -456,7 +456,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 $action = $_GET['action'] ?? '';
 
 // Require authentication for all endpoints except login
-$publicActions = ['login', 'login_google', 'login_google_sale', 'submit_report', 'get_report_context', 'debug_companies_db', 'debug_thanhtd'];
+$publicActions = ['login', 'login_google', 'login_google_sale', 'submit_report', 'get_report_context', 'debug_companies_db'];
 
 if (!in_array($action, $publicActions)) {
     $token = getBearerToken();
@@ -1633,11 +1633,6 @@ switch ($action) {
     case 'debug_companies_db':
         $res = $conn->query("DESCRIBE companies")->fetch_all(MYSQLI_ASSOC);
         echo json_encode(['success' => true, 'columns' => $res]);
-        exit;
-
-    case 'debug_thanhtd':
-        $res = $conn->query("SELECT address FROM users WHERE email = 'thanhtd.tdt@gmail.com'")->fetch_assoc();
-        echo json_encode(['success' => true, 'address' => $res ? $res['address'] : null]);
         exit;
 
     case 'get_zalo_send_logs':
@@ -12405,18 +12400,49 @@ switch ($action) {
         $targetId = $saleFilterId !== null ? $saleFilterId : $currentSaleConsultantId;
 
         $targetUserId = null;
+        $realConsultantId = null;
         if ($targetId !== null && $targetId > 0) {
-            $stmtUId = $conn->prepare("SELECT u.id FROM users u JOIN consultants c ON u.email = c.email WHERE c.id = ? LIMIT 1");
-            $stmtUId->bind_param("i", $targetId);
-            $stmtUId->execute();
-            $uRow = $stmtUId->get_result()->fetch_assoc();
-            $stmtUId->close();
-            if ($uRow) {
-                $targetUserId = (int)$uRow['id'];
+            // First check if targetId corresponds to a user's id directly
+            $stmtUserCheck = $conn->prepare("SELECT id, email FROM users WHERE id = ? LIMIT 1");
+            $stmtUserCheck->bind_param("i", $targetId);
+            $stmtUserCheck->execute();
+            $userCheckRow = $stmtUserCheck->get_result()->fetch_assoc();
+            $stmtUserCheck->close();
+            if ($userCheckRow) {
+                $targetUserId = (int)$userCheckRow['id'];
+                // Since targetId was user_id, find the corresponding consultant ID
+                $stmtCId = $conn->prepare("SELECT id FROM consultants WHERE email = ? LIMIT 1");
+                $stmtCId->bind_param("s", $userCheckRow['email']);
+                $stmtCId->execute();
+                $cRow = $stmtCId->get_result()->fetch_assoc();
+                $stmtCId->close();
+                if ($cRow) {
+                    $realConsultantId = (int)$cRow['id'];
+                } else {
+                    $realConsultantId = $targetId;
+                }
+            } else {
+                // targetId is treated as c.id (consultant_id)
+                $stmtUId = $conn->prepare("SELECT u.id FROM users u JOIN consultants c ON u.email = c.email WHERE c.id = ? LIMIT 1");
+                $stmtUId->bind_param("i", $targetId);
+                $stmtUId->execute();
+                $uRow = $stmtUId->get_result()->fetch_assoc();
+                $stmtUId->close();
+                if ($uRow) {
+                    $targetUserId = (int)$uRow['id'];
+                }
+                $realConsultantId = $targetId;
             }
         }
         if (!$targetUserId) {
             $targetUserId = (int)$decodedUser['id'];
+            // Find its consultant ID
+            $stmtCId = $conn->prepare("SELECT c.id FROM consultants c JOIN users u ON c.email = u.email WHERE u.id = ? LIMIT 1");
+            $stmtCId->bind_param("i", $targetUserId);
+            $stmtCId->execute();
+            $cRow = $stmtCId->get_result()->fetch_assoc();
+            $stmtCId->close();
+            $realConsultantId = $cRow ? (int)$cRow['id'] : null;
         }
 
         // Check permission
@@ -12483,8 +12509,7 @@ switch ($action) {
         $successC = true;
         try {
             $stmtC = $conn->prepare("UPDATE consultants SET name=?, work_start_time=?, work_end_time=?, work_schedule=?, avatar=?, dob=?, gender=?, citizen_id=?, address=?, bank_name=?, bank_account=?, leave_start=?, leave_end=?, zalo_chat_id=?, overtime_mode=?, extra_fields_json=? WHERE id=?");
-            if ($stmtC) {
-                $stmtC->bind_param("ssssssssssssssisi", $name, $work_start_time, $work_end_time, $work_schedule, $avatar, $dob, $gender, $citizen_id, $address, $bank_name, $bank_account, $leave_start, $leave_end, $zalo_chat_id, $overtime_mode, $extra_fields_json, $targetId);
+                $stmtC->bind_param("ssssssssssssssisi", $name, $work_start_time, $work_end_time, $work_schedule, $avatar, $dob, $gender, $citizen_id, $address, $bank_name, $bank_account, $leave_start, $leave_end, $zalo_chat_id, $overtime_mode, $extra_fields_json, $realConsultantId);
                 $successC = $stmtC->execute();
                 $stmtC->close();
             }
