@@ -8,7 +8,7 @@ import { CustomModal } from '../components/ui/CustomModal';
 import { ConfirmModal } from '../components/ui/ConfirmModal';
 import { TableRowSkeleton } from '../components/ui/Skeleton';
 import { CustomSelect } from '../components/ui/CustomSelect';
-import { Clock, Calendar, Check, X, Trash2, Eye, ShieldAlert, AlertCircle, CheckCircle, Info, Download, Lightbulb, Upload, ChevronLeft, ChevronRight, Camera, Image, FileText } from 'lucide-react';
+import { Clock, Calendar, Check, X, Trash2, Eye, ShieldAlert, AlertCircle, CheckCircle, Info, Download, Lightbulb, Upload, ChevronLeft, ChevronRight, Camera, Image, FileText, Zap, RefreshCw } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { PeriodFilter, getDateRange } from '../components/ui/PeriodFilter';
 import { useUIStore } from '../store/uiStore';
@@ -50,6 +50,7 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
   const [currentMonth, setCurrentMonth] = useState<number>(7); // July 2026 default
   const [currentYear, setCurrentYear] = useState<number>(2026);
   const [calendarCheckIns, setCalendarCheckIns] = useState<any[]>([]);
+  const [calendarShifts, setCalendarShifts] = useState<any[]>([]);
   const [calendarLoading, setCalendarLoading] = useState(false);
 
   // Theme support
@@ -83,6 +84,13 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
   const [selectedDateForDetail, setSelectedDateForDetail] = useState<string | null>(null);
   const hasCheckIn = selectedDateForDetail ? calendarCheckIns.some(c => c.check_in_date === selectedDateForDetail) : false;
   const [modalTab, setModalTab] = useState<'checkin' | 'fingerprint'>('checkin');
+
+  // Shift registration approval states
+  const [registrations, setRegistrations] = useState<any[]>([]);
+  const [registrationsLoading, setRegistrationsLoading] = useState(false);
+  const [filterRegType, setFilterRegType] = useState<string>('all');
+  const [filterRegStatus, setFilterRegStatus] = useState<string>('all');
+  const [actioningRegId, setActioningRegId] = useState<number | null>(null);
 
   // Supplementary check-in states
   const [suppTime, setSuppTime] = useState('08:00');
@@ -158,10 +166,16 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
   const fetchCalendarCheckIns = async () => {
     setCalendarLoading(true);
     try {
-      const query = `check-ins&year=${currentYear}&month=${currentMonth}&status=${filterStatus}&user_id=${filterUser}`;
+      const query = `check-ins&year=${currentYear}&month=${currentMonth}&status=${filterStatus}&user_id=${filterUser}&include_shifts=1`;
       const res = await fetchAPI(query);
       if (res.success) {
-        setCalendarCheckIns(res.data || []);
+        if (res.data && res.data.check_ins) {
+          setCalendarCheckIns(res.data.check_ins || []);
+          setCalendarShifts(res.data.shifts || []);
+        } else {
+          setCalendarCheckIns(res.data || []);
+          setCalendarShifts([]);
+        }
       }
     } catch (err: any) {
       console.error('Error fetching calendar check-ins:', err);
@@ -182,8 +196,68 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
   useEffect(() => {
     if (viewMode === 'calendar') {
       fetchCalendarCheckIns();
+    } else if ((viewMode as string) === 'registrations') {
+      fetchRegistrations();
     }
   }, [viewMode, currentMonth, currentYear, filterUser, filterStatus]);
+
+  const fetchRegistrations = async () => {
+    if (!canApprove) return;
+    setRegistrationsLoading(true);
+    try {
+      const res = await fetchAPI('get_shift_registrations_admin');
+      if (res.success) {
+        setRegistrations(res.registrations || []);
+      } else {
+        toast.error(res.message || t('Lỗi tải danh sách đăng ký trực ca'));
+      }
+    } catch (err: any) {
+      console.error(err);
+      toast.error(t('Lỗi kết nối máy chủ'));
+    } finally {
+      setRegistrationsLoading(false);
+    }
+  };
+
+  const handleApproveRegistration = async (id: number, shiftType: string) => {
+    setActioningRegId(id);
+    try {
+      const res = await fetchAPI('approve_shift_registration', {
+        method: 'POST',
+        body: JSON.stringify({ id, shift_type: shiftType })
+      });
+      if (res.success) {
+        toast.success(t('Phê duyệt đăng ký ca thành công!'));
+        fetchRegistrations();
+      } else {
+        toast.error(res.message || t('Phê duyệt thất bại'));
+      }
+    } catch (err: any) {
+      toast.error(t('Lỗi: ') + err.message);
+    } finally {
+      setActioningRegId(null);
+    }
+  };
+
+  const handleRejectRegistration = async (id: number, shiftType: string) => {
+    setActioningRegId(id);
+    try {
+      const res = await fetchAPI('reject_shift_registration', {
+        method: 'POST',
+        body: JSON.stringify({ id, shift_type: shiftType })
+      });
+      if (res.success) {
+        toast.success(t('Từ chối đăng ký ca thành công!'));
+        fetchRegistrations();
+      } else {
+        toast.error(res.message || t('Từ chối thất bại'));
+      }
+    } catch (err: any) {
+      toast.error(t('Lỗi: ') + err.message);
+    } finally {
+      setActioningRegId(null);
+    }
+  };
 
   const handleUpdateStatus = async (id: number, status: 'approved' | 'rejected', reason?: string) => {
     setActionSubmittingId(id);
@@ -314,6 +388,11 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
     const getCellData = (dateStr: string) => {
       if (!dateStr) return null;
       return calendarCheckIns.filter(c => c.check_in_date === dateStr);
+    };
+
+    const getCellShifts = (dateStr: string) => {
+      if (!dateStr) return [];
+      return calendarShifts.filter(s => s.shift_date === dateStr);
     };
 
     return (
@@ -463,6 +542,7 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
 
           {cells.map((cell, idx) => {
             const dayCheckIns = getCellData(cell.dateStr);
+            const dayShifts = getCellShifts(cell.dateStr) || [];
             const isWeekend = (idx % 7 === 5 || idx % 7 === 6);
 
             const approved = dayCheckIns ? dayCheckIns.filter(c => c.status === 'approved') : [];
@@ -523,119 +603,209 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '4px' }}>
                   {calendarLoading && cell.isCurrentMonth ? (
                     <div style={{ height: '4px', backgroundColor: 'var(--color-border-light)', borderRadius: '2px', animation: 'pulse 1.5s infinite' }} />
-                  ) : cell.dateStr && dayCheckIns && dayCheckIns.length > 0 ? (
-                    filterUser === 'all' ? (
-                      <div style={{ display: 'flex', alignItems: 'center', paddingLeft: '4px', marginTop: '4px' }}>
-                        {dayCheckIns.slice(0, 4).map((c: any, index: number) => {
-                          const statusColor = 
-                            c.status === 'approved' ? 'var(--color-success)' :
-                            c.status === 'pending_approval' ? 'var(--color-warning)' :
-                            'var(--color-danger)';
-                          return (
-                            <div 
-                              key={c.id} 
-                              style={{ 
-                                position: 'relative', 
-                                display: 'inline-block',
-                                marginLeft: index === 0 ? 0 : '-8px',
-                                zIndex: 5 - index
-                              }} 
-                              className="calendar-avatar-item"
-                              title={`${c.user_name} (${c.check_in_time})`}
-                            >
-                              <Avatar 
-                                src={c.user_avatar} 
-                                name={c.user_name} 
-                                size={24} 
-                                style={{ border: '2px solid var(--color-surface)', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}
-                              />
-                              <span style={{
-                                position: 'absolute',
-                                bottom: '0px',
-                                right: '0px',
-                                width: '8px',
-                                height: '8px',
+                  ) : cell.dateStr ? (
+                    <>
+                      {/* 1. Render Check-ins */}
+                      {dayCheckIns && dayCheckIns.length > 0 && (
+                        filterUser === 'all' ? (
+                          <div style={{ display: 'flex', alignItems: 'center', paddingLeft: '4px', marginTop: '2px' }}>
+                            {dayCheckIns.slice(0, 4).map((c: any, index: number) => {
+                              const statusColor = 
+                                c.status === 'approved' ? 'var(--color-success)' :
+                                c.status === 'pending_approval' ? 'var(--color-warning)' :
+                                'var(--color-danger)';
+                              return (
+                                <div 
+                                  key={c.id} 
+                                  style={{ 
+                                    position: 'relative', 
+                                    display: 'inline-block',
+                                    marginLeft: index === 0 ? 0 : '-8px',
+                                    zIndex: 5 - index
+                                  }} 
+                                  className="calendar-avatar-item"
+                                  title={`${c.user_name} (${c.check_in_time})`}
+                                >
+                                  <Avatar 
+                                    src={c.user_avatar} 
+                                    name={c.user_name} 
+                                    size={24} 
+                                    style={{ border: '2px solid var(--color-surface)', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}
+                                  />
+                                  <span style={{
+                                    position: 'absolute',
+                                    bottom: '0px',
+                                    right: '0px',
+                                    width: '8px',
+                                    height: '8px',
+                                    borderRadius: '50%',
+                                    backgroundColor: statusColor,
+                                    border: '1px solid var(--color-surface)',
+                                  }} />
+                                </div>
+                              );
+                            })}
+                            {dayCheckIns.length > 4 && (
+                              <div style={{
+                                width: '24px',
+                                height: '24px',
                                 borderRadius: '50%',
-                                backgroundColor: statusColor,
-                                border: '1px solid var(--color-surface)',
-                              }} />
-                            </div>
-                          );
-                        })}
-                        {dayCheckIns.length > 4 && (
-                          <div style={{
-                            width: '24px',
-                            height: '24px',
-                            borderRadius: '50%',
-                            backgroundColor: 'var(--color-bg-light)',
-                            border: '2px solid var(--color-surface)',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            fontSize: '0.65rem',
-                            fontWeight: 800,
-                            color: 'var(--color-text-muted)',
-                            marginLeft: '-8px',
-                            zIndex: 1,
-                            boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
-                          }}>
-                            +{dayCheckIns.length - 4}
-                          </div>
-                        )}
-                      </div>
-                    ) : (
-                      dayCheckIns.map(c => {
-                        const checkInLate = c.check_in_time > (c.work_start_time || '08:00');
-                        const isApproved = c.status === 'approved';
-                        const isPending = c.status === 'pending_approval';
-                        return (
-                          <div
-                            key={c.id}
-                            style={{
-                              display: 'flex',
-                              flexDirection: 'column',
-                              gap: '2px',
-                              padding: '5px 8px',
-                              borderRadius: '8px',
-                              border: '1px solid',
-                              backgroundColor: 
-                                isApproved 
-                                  ? (checkInLate ? 'rgba(0, 122, 255, 0.06)' : 'rgba(16, 185, 129, 0.08)') 
-                                  : isPending ? 'rgba(245, 158, 11, 0.06)' : 'rgba(239, 68, 68, 0.06)',
-                              borderColor: 
-                                isApproved 
-                                  ? (checkInLate ? 'rgba(0, 122, 255, 0.15)' : 'rgba(16, 185, 129, 0.15)') 
-                                  : isPending ? 'rgba(245, 158, 11, 0.2)' :
-                                  'rgba(239, 68, 68, 0.2)',
-                              boxShadow: '0 1px 2px rgba(0,0,0,0.02)',
-                            }}
-                            className="single-checkin-tag"
-                          >
-                            <div style={{
-                              fontSize: '0.7rem',
-                              fontWeight: 600,
-                              color: 
-                                isApproved 
-                                  ? (checkInLate ? '#007aff' : '#10b981') 
-                                  : isPending ? '#d97706' :
-                                  '#ef4444',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'space-between',
-                              gap: '4px'
-                            }}>
-                              <span style={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap', maxWidth: '80px' }}>
-                                {isSales ? t('Check-in') : c.user_name}
-                              </span>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '3px', flexShrink: 0 }}>
-                                <span style={{ fontSize: '0.65rem', fontWeight: 700 }}>{c.check_in_time.substring(0, 5)}</span>
-                                {c.selfie_url && <Camera size={10} style={{ opacity: 0.8 }} />}
+                                backgroundColor: 'var(--color-bg-light)',
+                                border: '2px solid var(--color-surface)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                fontSize: '0.65rem',
+                                fontWeight: 800,
+                                color: 'var(--color-text-muted)',
+                                marginLeft: '-8px',
+                                zIndex: 1,
+                                boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
+                              }}>
+                                +{dayCheckIns.length - 4}
                               </div>
-                            </div>
+                            )}
                           </div>
-                        );
-                      })
-                    )
+                        ) : (
+                          dayCheckIns.map(c => {
+                            const checkInLate = c.check_in_time > (c.work_start_time || '08:00');
+                            const isApproved = c.status === 'approved';
+                            const isPending = c.status === 'pending_approval';
+                            return (
+                              <div
+                                key={c.id}
+                                style={{
+                                  display: 'flex',
+                                  flexDirection: 'column',
+                                  gap: '2px',
+                                  padding: '5px 8px',
+                                  borderRadius: '8px',
+                                  border: '1px solid',
+                                  backgroundColor: 
+                                    isApproved 
+                                      ? (checkInLate ? 'rgba(0, 122, 255, 0.06)' : 'rgba(16, 185, 129, 0.08)') 
+                                      : isPending ? 'rgba(245, 158, 11, 0.06)' : 'rgba(239, 68, 68, 0.06)',
+                                  borderColor: 
+                                    isApproved 
+                                      ? (checkInLate ? 'rgba(0, 122, 255, 0.15)' : 'rgba(16, 185, 129, 0.15)') 
+                                      : isPending ? 'rgba(245, 158, 11, 0.2)' :
+                                      'rgba(239, 68, 68, 0.2)',
+                                  boxShadow: '0 1px 2px rgba(0,0,0,0.02)',
+                                }}
+                                className="single-checkin-tag"
+                              >
+                                <div style={{
+                                  fontSize: '0.7rem',
+                                  fontWeight: 600,
+                                  color: 
+                                    isApproved 
+                                      ? (checkInLate ? '#007aff' : '#10b981') 
+                                      : isPending ? '#d97706' :
+                                      '#ef4444',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'space-between',
+                                  gap: '4px'
+                                }}>
+                                  <span style={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap', maxWidth: '80px' }}>
+                                    {isSales ? t('Check-in') : c.user_name}
+                                  </span>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '3px', flexShrink: 0 }}>
+                                    <span style={{ fontSize: '0.65rem', fontWeight: 700 }}>{c.check_in_time.substring(0, 5)}</span>
+                                    {c.selfie_url && <Camera size={10} style={{ opacity: 0.8 }} />}
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })
+                        )
+                      )}
+
+                      {/* 2. Render Shift Registrations */}
+                      {dayShifts.length > 0 && (
+                        filterUser === 'all' ? (
+                          <div style={{ display: 'flex', gap: '3px', flexWrap: 'wrap', marginTop: '4px', paddingLeft: '4px' }}>
+                            {(() => {
+                              const nights = dayShifts.filter(s => s.shift_type === 'night');
+                              const weekends = dayShifts.filter(s => s.shift_type === 'weekend');
+                              const holidays = dayShifts.filter(s => s.shift_type === 'holiday');
+                              return (
+                                <>
+                                  {nights.length > 0 && (
+                                    <span 
+                                      style={{ fontSize: '0.65rem', padding: '2px 5px', borderRadius: '4px', background: 'rgba(245, 158, 11, 0.1)', color: '#d97706', fontWeight: 700 }}
+                                      title={t('Trực đêm: ') + nights.map(n => n.user_name).join(', ')}
+                                    >
+                                      🌙 {nights.length}
+                                    </span>
+                                  )}
+                                  {weekends.length > 0 && (
+                                    <span 
+                                      style={{ fontSize: '0.65rem', padding: '2px 5px', borderRadius: '4px', background: 'rgba(99, 102, 241, 0.1)', color: 'var(--color-primary)', fontWeight: 700 }}
+                                      title={t('Cuối tuần: ') + weekends.map(w => w.user_name).join(', ')}
+                                    >
+                                      📅 {weekends.length}
+                                    </span>
+                                  )}
+                                  {holidays.length > 0 && (
+                                    <span 
+                                      style={{ fontSize: '0.65rem', padding: '2px 5px', borderRadius: '4px', background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', fontWeight: 700 }}
+                                      title={t('Ngày lễ: ') + holidays.map(h => h.user_name).join(', ')}
+                                    >
+                                      🎉 {holidays.length}
+                                    </span>
+                                  )}
+                                </>
+                              );
+                            })()}
+                          </div>
+                        ) : (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', marginTop: '2px' }}>
+                            {dayShifts.map(s => {
+                              let label = t('Trực đêm');
+                              let bg = 'rgba(245, 158, 11, 0.05)';
+                              let border = 'rgba(245, 158, 11, 0.2)';
+                              let text = '#d97706';
+                              if (s.shift_type === 'weekend') {
+                                label = t('Cuối tuần');
+                                bg = 'rgba(99, 102, 241, 0.05)';
+                                border = 'rgba(99, 102, 241, 0.2)';
+                                text = 'var(--color-primary)';
+                              } else if (s.shift_type === 'holiday') {
+                                label = s.holiday_name ? `${t('Lễ')} (${s.holiday_name})` : t('Ngày lễ');
+                                bg = 'rgba(239, 68, 68, 0.05)';
+                                border = 'rgba(239, 68, 68, 0.2)';
+                                text = '#ef4444';
+                              }
+
+                              const isAppr = Number(s.approved) === 1;
+
+                              return (
+                                <div key={`${s.shift_type}-${s.id}`} style={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'space-between',
+                                  fontSize: '0.68rem',
+                                  padding: '3px 6px',
+                                  borderRadius: '6px',
+                                  border: '1px solid ' + border,
+                                  backgroundColor: bg,
+                                  color: text,
+                                  fontWeight: 600
+                                }} title={`${label} (${isAppr ? t('Đã duyệt') : t('Chờ duyệt')})`}>
+                                  <span style={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap', maxWidth: '80px' }}>
+                                    {label}
+                                  </span>
+                                  <span style={{ fontSize: '0.625rem', opacity: 0.8, fontWeight: 800 }}>
+                                    {isAppr ? '✓' : '?'}
+                                  </span>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )
+                      )}
+                    </>
                   ) : null}
                 </div>
               </div>
@@ -676,6 +846,215 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
             box-shadow: 0 2px 4px rgba(0,0,0,0.05);
           }
         `}</style>
+      </div>
+    );
+  };
+
+  const renderRegistrationsView = () => {
+    // Filter registrations
+    const filteredRegs = registrations.filter(r => {
+      const matchType = filterRegType === 'all' || r.shift_type === filterRegType;
+      const matchStatus = filterRegStatus === 'all' || 
+        (filterRegStatus === 'pending' && Number(r.approved) === 0) ||
+        (filterRegStatus === 'approved' && Number(r.approved) === 1);
+      return matchType && matchStatus;
+    });
+
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+        {/* Filters bar */}
+        <div style={{
+          display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap',
+          background: 'var(--color-surface)', padding: '12px 16px', borderRadius: '12px',
+          border: '1px solid var(--color-border)'
+        }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', minWidth: '180px' }}>
+            <label className="form-label" style={{ fontSize: '0.725rem', marginBottom: 0 }}>{t('Loại ca trực')}</label>
+            <select
+              className="form-select"
+              value={filterRegType}
+              onChange={e => setFilterRegType(e.target.value)}
+              style={{ height: '36px', fontSize: '0.8rem' }}
+            >
+              <option value="all">{t('Tất cả các ca')}</option>
+              <option value="night">{t('Ca đêm')}</option>
+              <option value="weekend">{t('Cuối tuần')}</option>
+              <option value="holiday">{t('Ngày lễ')}</option>
+            </select>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', minWidth: '150px' }}>
+            <label className="form-label" style={{ fontSize: '0.725rem', marginBottom: 0 }}>{t('Trạng thái')}</label>
+            <select
+              className="form-select"
+              value={filterRegStatus}
+              onChange={e => setFilterRegStatus(e.target.value)}
+              style={{ height: '36px', fontSize: '0.8rem' }}
+            >
+              <option value="all">{t('Tất cả trạng thái')}</option>
+              <option value="pending">{t('Chờ duyệt')}</option>
+              <option value="approved">{t('Đã duyệt')}</option>
+            </select>
+          </div>
+
+          <button
+            type="button"
+            onClick={fetchRegistrations}
+            className="btn outline icon-only"
+            disabled={registrationsLoading}
+            style={{ height: '36px', width: '36px', marginTop: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '8px' }}
+            title={t('Tải lại danh sách')}
+          >
+            <RefreshCw size={14} className={registrationsLoading ? 'spin' : ''} />
+          </button>
+        </div>
+
+        {/* Table representation */}
+        <div className="card" style={{ padding: 0, background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: '12px', overflow: 'hidden' }}>
+          <div className="table-wrap" style={{ border: 'none', borderRadius: 0, maxHeight: '600px', overflowY: 'auto' }}>
+            <table className="mobile-table-compact" style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead style={{ position: 'sticky', top: 0, zIndex: 10, background: 'var(--color-bg)' }}>
+                <tr style={{ borderBottom: '1px solid var(--color-border)', textAlign: 'left', background: 'var(--color-bg)' }}>
+                  <th style={{ padding: '12px 16px', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)' }}>{t('NHÂN VIÊN')}</th>
+                  <th style={{ padding: '12px 16px', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)' }}>{t('LOẠI CA')}</th>
+                  <th style={{ padding: '12px 16px', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)' }}>{t('NGÀY ĐĂNG KÝ TRỰC')}</th>
+                  <th style={{ padding: '12px 16px', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)' }}>{t('THỜI GIAN ĐĂNG KÝ')}</th>
+                  <th style={{ padding: '12px 16px', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)' }}>{t('TRẠNG THÁI')}</th>
+                  <th style={{ padding: '12px 16px', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textAlign: 'right' }}>{t('HÀNH ĐỘNG')}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {registrationsLoading ? (
+                  [...Array(4)].map((_, i) => <TableRowSkeleton key={i} cols={6} />)
+                ) : filteredRegs.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} style={{ textAlign: 'center', padding: '3rem', color: 'var(--color-text-muted)', fontSize: '0.875rem' }}>
+                      <Info size={24} style={{ display: 'block', margin: '0 auto 8px', opacity: 0.5 }} />
+                      {t('Không có yêu cầu đăng ký trực ca nào.')}
+                    </td>
+                  </tr>
+                ) : (
+                  filteredRegs.map((row) => {
+                    let typeBadgeColor = 'rgba(99, 102, 241, 0.1)';
+                    let typeTextColor = 'var(--color-primary)';
+                    let typeLabel = t('Cuối tuần');
+                    if (row.shift_type === 'night') {
+                      typeBadgeColor = 'rgba(245, 158, 11, 0.1)';
+                      typeTextColor = 'var(--color-warning)';
+                      typeLabel = t('Ca đêm');
+                    } else if (row.shift_type === 'holiday') {
+                      typeBadgeColor = 'rgba(239, 68, 68, 0.1)';
+                      typeTextColor = 'var(--color-danger)';
+                      typeLabel = row.holiday_name ? `${t('Nghỉ lễ')} (${row.holiday_name})` : t('Ngày lễ');
+                    }
+
+                    const isApproved = Number(row.approved) === 1;
+
+                    return (
+                      <tr key={`${row.shift_type}-${row.id}`} style={{ borderBottom: '1px solid var(--color-border)', fontSize: '0.8125rem' }} className="group table-row-hover">
+                        <td style={{ padding: '12px 16px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <Avatar src="" name={row.user_name} size={32} />
+                            <div style={{ display: 'flex', flexDirection: 'column' }}>
+                              <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>{row.user_name}</span>
+                            </div>
+                          </div>
+                        </td>
+
+                        <td style={{ padding: '12px 16px' }}>
+                          <span style={{
+                            padding: '3px 8px', borderRadius: '6px', fontWeight: 600, fontSize: '0.725rem',
+                            background: typeBadgeColor, color: typeTextColor
+                          }}>
+                            {typeLabel}
+                          </span>
+                        </td>
+
+                        <td style={{ padding: '12px 16px', fontWeight: 600, color: 'var(--color-text)' }}>
+                          {row.shift_date}
+                        </td>
+
+                        <td style={{ padding: '12px 16px', color: 'var(--color-text-muted)' }}>
+                          {row.created_at ? new Date(row.created_at.replace(' ', 'T') + '+07:00').toLocaleString('vi-VN') : '—'}
+                        </td>
+
+                        <td style={{ padding: '12px 16px' }}>
+                          {isApproved ? (
+                            <span style={{
+                              padding: '4px 8px', borderRadius: '6px', fontSize: '0.725rem', fontWeight: 700,
+                              background: 'var(--color-success-light)', color: 'var(--color-success)'
+                            }}>
+                              {t('Đã duyệt')}
+                            </span>
+                          ) : (
+                            <span style={{
+                              padding: '4px 8px', borderRadius: '6px', fontSize: '0.725rem', fontWeight: 700,
+                              background: 'var(--color-warning-light)', color: 'var(--color-warning)'
+                            }}>
+                              {t('Chờ duyệt')}
+                            </span>
+                          )}
+                        </td>
+
+                        <td style={{ padding: '12px 16px', textAlign: 'right' }}>
+                          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+                            {!isApproved ? (
+                              <>
+                                <button
+                                  type="button"
+                                  onClick={() => handleApproveRegistration(row.id, row.shift_type)}
+                                  disabled={actioningRegId === row.id}
+                                  className="btn success sm icon-only"
+                                  title={t('Phê duyệt')}
+                                  style={{ width: 28, height: 28, padding: 0, borderRadius: '6px' }}
+                                >
+                                  <Check size={14} />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    showConfirm({
+                                      title: t('Từ chối đăng ký'),
+                                      message: t('Bạn chắc chắn muốn từ chối yêu cầu đăng ký trực ca của {name}?').replace('{name}', row.user_name),
+                                      onConfirm: () => handleRejectRegistration(row.id, row.shift_type)
+                                    });
+                                  }}
+                                  disabled={actioningRegId === row.id}
+                                  className="btn danger sm icon-only"
+                                  title={t('Từ chối')}
+                                  style={{ width: 28, height: 28, padding: 0, borderRadius: '6px' }}
+                                >
+                                  <X size={14} />
+                                </button>
+                              </>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  showConfirm({
+                                    title: t('Huỷ phê duyệt'),
+                                    message: t('Bạn chắc chắn muốn huỷ phê duyệt đăng ký trực ca này? (Hệ thống sẽ xoá bản ghi đăng ký của nhân viên)'),
+                                    onConfirm: () => handleRejectRegistration(row.id, row.shift_type)
+                                  });
+                                }}
+                                disabled={actioningRegId === row.id}
+                                className="btn outline sm danger icon-only"
+                                title={t('Huỷ phê duyệt')}
+                                style={{ width: 28, height: 28, padding: 0, borderRadius: '6px', border: '1px solid var(--color-border)' }}
+                              >
+                                <X size={14} />
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
       </div>
     );
   };
@@ -780,6 +1159,31 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
               <Calendar size={14} />
               {t('Lịch biểu')}
             </button>
+            {canApprove && (
+              <button
+                onClick={() => setViewMode('registrations' as any)}
+                style={{
+                  height: '30px',
+                  padding: '0 16px',
+                  fontSize: '0.85rem',
+                  fontWeight: 700,
+                  borderRadius: '6px',
+                  border: 'none',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  backgroundColor: (viewMode as string) === 'registrations' ? 'var(--color-surface)' : 'transparent',
+                  color: (viewMode as string) === 'registrations' ? 'var(--color-text)' : 'var(--color-text-light)',
+                  boxShadow: (viewMode as string) === 'registrations' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+                  transition: 'all 0.2s',
+                  outline: 'none'
+                }}
+              >
+                <Zap size={14} />
+                {t('Duyệt đăng ký ca')}
+              </button>
+            )}
           </div>
         </div>
       )}
@@ -1264,7 +1668,9 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
             )}
           </div>
         );
-      })() : (
+      })() : (viewMode as string) === 'registrations' ? (
+        renderRegistrationsView()
+      ) : (
         renderCalendarView()
       )}
 

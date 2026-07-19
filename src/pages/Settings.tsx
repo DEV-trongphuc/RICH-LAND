@@ -234,6 +234,27 @@ const SettingsInner = () => {
   const [uncontactedLeadShareHours, setUncontactedLeadShareHours] = useState<number>(3);
   const [nightShiftStartTime, setNightShiftStartTime] = useState<string>("18:00");
   const [nightShiftEndTime, setNightShiftEndTime] = useState<string>("06:00");
+  const [allowLateNightShiftRegistration, setAllowLateNightShiftRegistration] = useState<boolean>(false);
+  const [lateNightShiftRegistrationMinutes, setLateNightShiftRegistrationMinutes] = useState<number>(30);
+  const [advanceNightShiftRegistrationMinutes, setAdvanceNightShiftRegistrationMinutes] = useState<number>(0);
+  const [autoApproveNightShift, setAutoApproveNightShift] = useState<boolean>(true);
+  const [allowWeekendShiftRegistration, setAllowWeekendShiftRegistration] = useState<boolean>(true);
+  const [autoApproveWeekendShift, setAutoApproveWeekendShift] = useState<boolean>(true);
+  const [weekendShiftRegistrationLeadHours, setWeekendShiftRegistrationLeadHours] = useState<number>(0);
+  const [holidaySchedules, setHolidaySchedules] = useState<any[]>([]);
+  const [autoApproveHolidayShift, setAutoApproveHolidayShift] = useState<boolean>(false);
+  const [globalWorkStartTime, setGlobalWorkStartTime] = useState<string>("08:00");
+  const [globalWorkEndTime, setGlobalWorkEndTime] = useState<string>("17:30");
+  const [globalScheduleMode, setGlobalScheduleMode] = useState<string>("daily");
+  const [globalWorkSchedule, setGlobalWorkSchedule] = useState<any>({
+    "1": { active: true, start: "08:00", end: "17:30" },
+    "2": { active: true, start: "08:00", end: "17:30" },
+    "3": { active: true, start: "08:00", end: "17:30" },
+    "4": { active: true, start: "08:00", end: "17:30" },
+    "5": { active: true, start: "08:00", end: "17:30" },
+    "6": { active: true, start: "08:00", end: "17:30" },
+    "7": { active: true, start: "08:00", end: "17:30" }
+  });
   const [goldenHoursStartTime, setGoldenHoursStartTime] = useState<string>("06:00");
   const [goldenHoursEndTime, setGoldenHoursEndTime] = useState<string>("08:30");
   const [databankLimitPerDay, setDatabankLimitPerDay] = useState<number>(2);
@@ -601,6 +622,66 @@ const SettingsInner = () => {
         if (json.data.uncontacted_lead_share_hours !== undefined) setUncontactedLeadShareHours(Number(json.data.uncontacted_lead_share_hours));
         if (json.data.night_shift_start_time !== undefined) setNightShiftStartTime(json.data.night_shift_start_time);
         if (json.data.night_shift_end_time !== undefined) setNightShiftEndTime(json.data.night_shift_end_time);
+        if (json.data.allow_late_night_shift_registration !== undefined) {
+          setAllowLateNightShiftRegistration(json.data.allow_late_night_shift_registration === '1' || json.data.allow_late_night_shift_registration === 1);
+        }
+        if (json.data.late_night_shift_registration_minutes !== undefined) {
+          setLateNightShiftRegistrationMinutes(Number(json.data.late_night_shift_registration_minutes));
+        }
+        if (json.data.advance_night_shift_registration_minutes !== undefined) {
+          setAdvanceNightShiftRegistrationMinutes(Number(json.data.advance_night_shift_registration_minutes));
+        }
+        if (json.data.auto_approve_night_shift !== undefined) {
+          setAutoApproveNightShift(json.data.auto_approve_night_shift === '1' || json.data.auto_approve_night_shift === 1);
+        }
+        if (json.data.allow_weekend_shift_registration !== undefined) {
+          setAllowWeekendShiftRegistration(json.data.allow_weekend_shift_registration === '1' || json.data.allow_weekend_shift_registration === 1);
+        }
+        if (json.data.auto_approve_weekend_shift !== undefined) {
+          setAutoApproveWeekendShift(json.data.auto_approve_weekend_shift === '1' || json.data.auto_approve_weekend_shift === 1);
+        }
+        if (json.data.weekend_shift_registration_lead_hours !== undefined) {
+          setWeekendShiftRegistrationLeadHours(Number(json.data.weekend_shift_registration_lead_hours));
+        }
+        if (json.data.holiday_schedules !== undefined && json.data.holiday_schedules !== null) {
+          try {
+            const parsed = typeof json.data.holiday_schedules === 'string'
+              ? JSON.parse(json.data.holiday_schedules)
+              : json.data.holiday_schedules;
+            setHolidaySchedules(Array.isArray(parsed) ? parsed : []);
+          } catch (e) {
+            setHolidaySchedules([]);
+          }
+        }
+        if (json.data.auto_approve_holiday_shift !== undefined) {
+          setAutoApproveHolidayShift(json.data.auto_approve_holiday_shift === '1' || json.data.auto_approve_holiday_shift === 1);
+        }
+        if (json.data.global_work_start_time !== undefined) {
+          setGlobalWorkStartTime(json.data.global_work_start_time);
+        }
+        if (json.data.global_work_end_time !== undefined) {
+          setGlobalWorkEndTime(json.data.global_work_end_time);
+        }
+        if (json.data.global_work_schedule !== undefined && json.data.global_work_schedule !== null) {
+          try {
+            const parsed = typeof json.data.global_work_schedule === 'string' 
+              ? JSON.parse(json.data.global_work_schedule) 
+              : json.data.global_work_schedule;
+            setGlobalWorkSchedule(parsed);
+            
+            let isSimpleDaily = true;
+            for (let i = 1; i <= 7; i++) {
+              const day = parsed[String(i)] || parsed[i];
+              if (!day || !day.active || day.start !== parsed["1"].start || day.end !== parsed["1"].end) {
+                isSimpleDaily = false;
+                break;
+              }
+            }
+            setGlobalScheduleMode(isSimpleDaily ? 'daily' : 'custom');
+          } catch (e) {
+            console.error("Error parsing global work schedule", e);
+          }
+        }
         if (json.data.golden_hours_start_time !== undefined) setGoldenHoursStartTime(json.data.golden_hours_start_time);
         if (json.data.golden_hours_end_time !== undefined) setGoldenHoursEndTime(json.data.golden_hours_end_time);
         if (json.data.databank_limit_per_day !== undefined) setDatabankLimitPerDay(Number(json.data.databank_limit_per_day));
@@ -1016,8 +1097,30 @@ const SettingsInner = () => {
       uncontacted_lead_share_hours: uncontactedLeadShareHours,
       night_shift_start_time: nightShiftStartTime,
       night_shift_end_time: nightShiftEndTime,
+      allow_late_night_shift_registration: allowLateNightShiftRegistration ? 1 : 0,
+      late_night_shift_registration_minutes: allowLateNightShiftRegistration ? lateNightShiftRegistrationMinutes : 0,
+      advance_night_shift_registration_minutes: allowLateNightShiftRegistration ? 0 : advanceNightShiftRegistrationMinutes,
+      auto_approve_night_shift: autoApproveNightShift ? 1 : 0,
+      allow_weekend_shift_registration: allowWeekendShiftRegistration ? 1 : 0,
+      auto_approve_weekend_shift: autoApproveWeekendShift ? 1 : 0,
+      weekend_shift_registration_lead_hours: weekendShiftRegistrationLeadHours,
+      holiday_schedules: JSON.stringify(holidaySchedules),
+      auto_approve_holiday_shift: autoApproveHolidayShift ? 1 : 0,
       golden_hours_start_time: goldenHoursStartTime,
       golden_hours_end_time: goldenHoursEndTime,
+      global_work_start_time: globalWorkStartTime,
+      global_work_end_time: globalWorkEndTime,
+      global_work_schedule: JSON.stringify(globalScheduleMode === 'daily' 
+        ? {
+            "1": { active: true, start: globalWorkStartTime, end: globalWorkEndTime },
+            "2": { active: true, start: globalWorkStartTime, end: globalWorkEndTime },
+            "3": { active: true, start: globalWorkStartTime, end: globalWorkEndTime },
+            "4": { active: true, start: globalWorkStartTime, end: globalWorkEndTime },
+            "5": { active: true, start: globalWorkStartTime, end: globalWorkEndTime },
+            "6": { active: true, start: globalWorkStartTime, end: globalWorkEndTime },
+            "7": { active: true, start: globalWorkStartTime, end: globalWorkEndTime }
+          }
+        : globalWorkSchedule),
       databank_limit_per_day: databankLimitPerDay,
       databank_limit_per_hour: databankLimitPerHour,
       databank_limit_per_month: databankLimitPerMonth,
@@ -4032,6 +4135,433 @@ function doPost(e) {
                           value={goldenHoursEndTime}
                           onChange={e => setGoldenHoursEndTime(e.target.value)}
                         />
+                      </div>
+                    </div>
+
+                    <div style={{ borderTop: '1px solid var(--color-border-light)', paddingTop: '1rem', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '1.5rem' }}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)' }}>{t('Cho phép đăng ký trễ ca trực đêm')}</div>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 4, lineHeight: 1.4 }}>
+                          {t('Nếu bật, hệ thống cho phép nhân viên đăng ký trực ca đêm sau giờ bắt đầu ca tối đa N phút. Nếu tắt, chỉ cho phép đăng ký trước giờ bắt đầu ca.')}
+                        </div>
+                      </div>
+                      <div style={{ flexShrink: 0, marginTop: '2px' }}>
+                        <ToggleSwitch
+                          checked={allowLateNightShiftRegistration}
+                          onChange={setAllowLateNightShiftRegistration}
+                        />
+                      </div>
+                    </div>
+
+                    {allowLateNightShiftRegistration && (
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem' }}>
+                        <div>
+                          <label className="form-label">{t('Thời gian trễ tối đa cho phép (phút)')}</label>
+                          <input
+                            type="number"
+                            min="1"
+                            className="form-input"
+                            value={lateNightShiftRegistrationMinutes}
+                            onChange={e => setLateNightShiftRegistrationMinutes(Math.max(1, Number(e.target.value)))}
+                          />
+                        </div>
+                        <div />
+                      </div>
+                    )}
+
+                    <div style={{ 
+                      borderTop: '1px solid var(--color-border-light)', 
+                      paddingTop: '1rem', 
+                      display: 'grid', 
+                      gridTemplateColumns: '1fr 1fr', 
+                      gap: '1.25rem',
+                      opacity: allowLateNightShiftRegistration ? 0.5 : 1,
+                      pointerEvents: allowLateNightShiftRegistration ? 'none' : 'auto'
+                    }}>
+                      <div>
+                        <label className="form-label">{t('Yêu cầu đăng ký trước ca trực (phút)')}</label>
+                        <input
+                          type="number"
+                          min="0"
+                          className="form-input"
+                          disabled={allowLateNightShiftRegistration}
+                          value={allowLateNightShiftRegistration ? 0 : advanceNightShiftRegistrationMinutes}
+                          onChange={e => setAdvanceNightShiftRegistrationMinutes(Math.max(0, Number(e.target.value)))}
+                        />
+                        <div style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', marginTop: 4 }}>
+                          {allowLateNightShiftRegistration 
+                            ? t('Đã bị vô hiệu hoá do đang bật tính năng cho phép đăng ký trễ ca.')
+                            : t('Mặc định là 0 (đến đúng giờ bắt đầu ca). Nếu đặt ví dụ 30, nhân viên phải đăng ký trước ca 30 phút.')
+                          }
+                        </div>
+                      </div>
+                      <div />
+                    </div>
+
+                    <div style={{ borderTop: '1px solid var(--color-border-light)', paddingTop: '1rem', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '1.5rem' }}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)' }}>{t('Tự động duyệt đăng ký trực đêm')}</div>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 4, lineHeight: 1.4 }}>
+                          {t('Nếu bật, nhân viên đăng ký trực ca đêm sẽ được phê duyệt ngay lập tức. Nếu tắt, đăng ký cần Admin hoặc Director duyệt mới hoạt động.')}
+                        </div>
+                      </div>
+                      <div style={{ flexShrink: 0, marginTop: '2px' }}>
+                        <ToggleSwitch
+                          checked={autoApproveNightShift}
+                          onChange={setAutoApproveNightShift}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Nhóm: Giờ làm việc & Lịch trình chung */}
+                  <div style={{ background: 'var(--color-bg-secondary)', padding: '1.25rem', borderRadius: 'var(--radius-xl)', border: '1px solid var(--color-border)', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <Clock size={15} style={{ color: 'var(--color-primary)' }} />
+                      <h4 style={{ fontSize: '0.9375rem', fontWeight: 700, color: 'var(--color-text)' }}>{t('Giờ làm việc & Lịch trình chung')}</h4>
+                    </div>
+
+                    <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', lineHeight: 1.4 }}>
+                      {t('Cấu hình giờ làm việc tiêu chuẩn áp dụng chung cho toàn hệ thống. Nhân viên (Sale) sẽ không tự chỉnh sửa lịch này trong trang cá nhân.')}
+                    </div>
+
+                    {/* Segmented Control for Schedule Mode */}
+                    <div style={{ display: 'flex', gap: '0.5rem', background: 'var(--color-bg)', padding: '4px', borderRadius: '12px', width: 'fit-content' }}>
+                      <button
+                        type="button"
+                        onClick={() => setGlobalScheduleMode('daily')}
+                        style={{
+                          padding: '6px 16px', borderRadius: '8px', fontWeight: 600, fontSize: '0.75rem',
+                          background: globalScheduleMode === 'daily' ? 'var(--color-surface)' : 'transparent',
+                          color: globalScheduleMode === 'daily' ? 'var(--color-primary)' : 'var(--color-text-muted)',
+                          boxShadow: globalScheduleMode === 'daily' ? 'var(--shadow-sm)' : 'none',
+                          transition: 'all 0.2s', border: 'none', cursor: 'pointer'
+                        }}
+                      >{t('Cố định hàng ngày')}</button>
+                      <button
+                        type="button"
+                        onClick={() => setGlobalScheduleMode('custom')}
+                        style={{
+                          padding: '6px 16px', borderRadius: '8px', fontWeight: 600, fontSize: '0.75rem',
+                          background: globalScheduleMode === 'custom' ? 'var(--color-surface)' : 'transparent',
+                          color: globalScheduleMode === 'custom' ? 'var(--color-primary)' : 'var(--color-text-muted)',
+                          boxShadow: globalScheduleMode === 'custom' ? 'var(--shadow-sm)' : 'none',
+                          transition: 'all 0.2s', border: 'none', cursor: 'pointer'
+                        }}
+                      >{t('Tùy chỉnh (Thứ 2 - CN)')}</button>
+                    </div>
+
+                    {globalScheduleMode === 'daily' ? (
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem' }}>
+                        <div>
+                          <label className="form-label">{t('Bắt đầu làm việc')}</label>
+                          <input
+                            type="time"
+                            className="form-input"
+                            value={globalWorkStartTime}
+                            onChange={e => setGlobalWorkStartTime(e.target.value)}
+                          />
+                        </div>
+                        <div>
+                          <label className="form-label">{t('Kết thúc làm việc')}</label>
+                          <input
+                            type="time"
+                            className="form-input"
+                            value={globalWorkEndTime}
+                            onChange={e => setGlobalWorkEndTime(e.target.value)}
+                          />
+                        </div>
+                      </div>
+                    ) : (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                        {Object.entries({
+                          "1": "Thứ 2",
+                          "2": "Thứ 3",
+                          "3": "Thứ 4",
+                          "4": "Thứ 5",
+                          "5": "Thứ 6",
+                          "6": "Thứ 7",
+                          "7": "Chủ Nhật"
+                        }).map(([dayKey, dayLabel]) => {
+                          const config = globalWorkSchedule[dayKey] || { active: true, start: globalWorkStartTime, end: globalWorkEndTime };
+                          const isActive = config.active;
+
+                          return (
+                            <div
+                              key={dayKey}
+                              style={{
+                                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                                padding: '10px 14px', borderRadius: '12px', border: '1px solid var(--color-border-light)',
+                                background: isActive ? 'var(--color-surface)' : 'var(--color-bg)',
+                                transition: 'all 0.2s'
+                              }}
+                            >
+                              <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', margin: 0, userSelect: 'none' }}>
+                                <input
+                                  type="checkbox"
+                                  className="custom-checkbox"
+                                  checked={isActive}
+                                  onChange={(e) => {
+                                    const val = e.target.checked;
+                                    setGlobalWorkSchedule((prev: any) => ({
+                                      ...prev,
+                                      [dayKey]: { ...(prev[dayKey] || { start: globalWorkStartTime, end: globalWorkEndTime }), active: val }
+                                    }));
+                                  }}
+                                />
+                                <span style={{ fontWeight: 700, fontSize: '0.85rem', color: isActive ? 'var(--color-text)' : 'var(--color-text-muted)' }}>
+                                  {t(dayLabel)}
+                                </span>
+                              </label>
+
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                {isActive ? (
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                    <input
+                                      type="time"
+                                      className="form-input"
+                                      style={{ width: '92px', height: '34px', fontSize: '0.8rem', padding: '0 6px', textAlign: 'center', borderRadius: '6px' }}
+                                      value={config.start || globalWorkStartTime}
+                                      onChange={(e) => {
+                                        const val = e.target.value;
+                                        setGlobalWorkSchedule((prev: any) => ({
+                                          ...prev,
+                                          [dayKey]: { ...(prev[dayKey] || { active: true, end: globalWorkEndTime }), start: val }
+                                        }));
+                                      }}
+                                    />
+                                    <span style={{ color: 'var(--color-text-muted)', fontSize: '0.8rem' }}>-</span>
+                                    <input
+                                      type="time"
+                                      className="form-input"
+                                      style={{ width: '92px', height: '34px', fontSize: '0.8rem', padding: '0 6px', textAlign: 'center', borderRadius: '6px' }}
+                                      value={config.end || globalWorkEndTime}
+                                      onChange={(e) => {
+                                        const val = e.target.value;
+                                        setGlobalWorkSchedule((prev: any) => ({
+                                          ...prev,
+                                          [dayKey]: { ...(prev[dayKey] || { active: true, start: globalWorkStartTime }), end: val }
+                                        }));
+                                      }}
+                                    />
+                                  </div>
+                                ) : (
+                                  <span style={{
+                                    padding: '2px 8px', borderRadius: '6px', fontSize: '0.725rem', fontWeight: 700,
+                                    background: 'var(--color-danger-light)',
+                                    color: 'var(--color-danger)'
+                                  }}>
+                                    {t('Nghỉ')}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+
+                    <div style={{ borderTop: '1px solid var(--color-border-light)', paddingTop: '1rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '1.5rem' }}>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)' }}>{t('Cho phép đăng ký trực cuối tuần')}</div>
+                          <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 4, lineHeight: 1.4 }}>
+                            {t('Nếu bật, hệ thống hiển thị nút đăng ký trực cuối tuần cho nhân viên (Thứ Bảy, Chủ Nhật hoặc ngày nghỉ).')}
+                          </div>
+                        </div>
+                        <div style={{ flexShrink: 0, marginTop: '2px' }}>
+                          <ToggleSwitch
+                            checked={allowWeekendShiftRegistration}
+                            onChange={setAllowWeekendShiftRegistration}
+                          />
+                        </div>
+                      </div>
+
+                      {allowWeekendShiftRegistration && (
+                        <>
+                          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '1.5rem', borderTop: '1px dotted var(--color-border-light)', paddingTop: '0.75rem' }}>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)' }}>{t('Tự động duyệt trực cuối tuần')}</div>
+                              <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 4, lineHeight: 1.4 }}>
+                                {t('Nếu tắt, đăng ký trực cuối tuần của Sale sẽ ở trạng thái chờ duyệt bởi quản trị viên.')}
+                              </div>
+                            </div>
+                            <div style={{ flexShrink: 0, marginTop: '2px' }}>
+                              <ToggleSwitch
+                                checked={autoApproveWeekendShift}
+                                onChange={setAutoApproveWeekendShift}
+                              />
+                            </div>
+                          </div>
+
+                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem', borderTop: '1px dotted var(--color-border-light)', paddingTop: '0.75rem' }}>
+                            <div>
+                              <label className="form-label">{t('Yêu cầu đăng ký trước ngày trực (tiếng)')}</label>
+                              <input
+                                type="number"
+                                min="0"
+                                className="form-input"
+                                value={weekendShiftRegistrationLeadHours}
+                                onChange={e => setWeekendShiftRegistrationLeadHours(Math.max(0, Number(e.target.value)))}
+                              />
+                              <div style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', marginTop: 4 }}>
+                                {t('Mặc định 0 tiếng (có thể đăng ký bất cứ lúc nào trước ngày trực).')}
+                              </div>
+                            </div>
+                            <div />
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Nhóm: Lịch nghỉ lễ & Đăng ký trực lễ */}
+                  <div style={{ background: 'var(--color-bg-secondary)', padding: '1.25rem', borderRadius: 'var(--radius-xl)', border: '1px solid var(--color-border)', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <Calendar size={15} style={{ color: 'var(--color-primary)' }} />
+                      <h4 style={{ fontSize: '0.9375rem', fontWeight: 700, color: 'var(--color-text)' }}>{t('Lịch nghỉ lễ & Đăng ký trực lễ')}</h4>
+                    </div>
+
+                    <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', lineHeight: 1.4 }}>
+                      {t('Thiết lập các đợt nghỉ lễ. Trong thời gian nghỉ lễ, Sale chỉ nhận được lead nếu đăng ký trực lễ và được phê duyệt.')}
+                    </div>
+
+                    <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '1.5rem' }}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)' }}>{t('Tự động duyệt đăng ký trực ngày lễ')}</div>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 4, lineHeight: 1.4 }}>
+                          {t('Nếu tắt (mặc định), đăng ký trực lễ bắt buộc phải được Admin/Director phê duyệt thủ công.')}
+                        </div>
+                      </div>
+                      <div style={{ flexShrink: 0, marginTop: '2px' }}>
+                        <ToggleSwitch
+                          checked={autoApproveHolidayShift}
+                          onChange={setAutoApproveHolidayShift}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Holiday list and add form */}
+                    <div style={{ borderTop: '1px solid var(--color-border-light)', paddingTop: '1rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                      <h5 style={{ fontSize: '0.85rem', fontWeight: 700, margin: 0, color: 'var(--color-text)' }}>{t('Danh sách ngày nghỉ lễ')}</h5>
+                      
+                      {holidaySchedules.length === 0 ? (
+                        <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontStyle: 'italic' }}>
+                          {t('Chưa có lịch nghỉ lễ nào được thiết lập.')}
+                        </div>
+                      ) : (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                          {holidaySchedules.map((holiday, index) => (
+                            <div 
+                              key={holiday.id || index}
+                              style={{ 
+                                display: 'flex', justifyContent: 'space-between', alignItems: 'center', 
+                                padding: '8px 12px', borderRadius: '8px', background: 'var(--color-surface)',
+                                border: '1px solid var(--color-border-light)'
+                              }}
+                            >
+                              <div>
+                                <span style={{ fontWeight: 700, fontSize: '0.8rem', marginRight: '8px', color: 'var(--color-primary)' }}>
+                                  {holiday.name}
+                                </span>
+                                <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
+                                  ({holiday.start} → {holiday.end})
+                                </span>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setHolidaySchedules(prev => prev.filter((_, idx) => idx !== index));
+                                }}
+                                style={{ 
+                                  background: 'transparent', border: 'none', color: 'var(--color-danger)', 
+                                  cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                  padding: '4px', borderRadius: '4px'
+                                }}
+                              >
+                                <Trash2 size={14} />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* Mini Add Holiday Form */}
+                      <div style={{ 
+                        display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'flex-end',
+                        padding: '12px', borderRadius: '8px', background: 'var(--color-bg)',
+                        border: '1px dashed var(--color-border)'
+                      }}>
+                        <div style={{ flex: 2, minWidth: '150px' }}>
+                          <label className="form-label" style={{ fontSize: '0.7rem' }}>{t('Tên dịp lễ')}</label>
+                           <input
+                             type="text"
+                             id="new-holiday-name"
+                             placeholder={t('Ví dụ: Nghỉ Tết Âm Lịch')}
+                             className="form-input"
+                             style={{ height: '34px', fontSize: '0.75rem' }}
+                           />
+                        </div>
+                        <div style={{ flex: 1, minWidth: '110px' }}>
+                          <label className="form-label" style={{ fontSize: '0.7rem' }}>{t('Từ ngày')}</label>
+                           <input
+                             type="date"
+                             id="new-holiday-start"
+                             className="form-input"
+                             style={{ height: '34px', fontSize: '0.75rem' }}
+                           />
+                        </div>
+                        <div style={{ flex: 1, minWidth: '110px' }}>
+                          <label className="form-label" style={{ fontSize: '0.7rem' }}>{t('Đến ngày')}</label>
+                           <input
+                             type="date"
+                             id="new-holiday-end"
+                             className="form-input"
+                             style={{ height: '34px', fontSize: '0.75rem' }}
+                           />
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const nameEl = document.getElementById('new-holiday-name') as HTMLInputElement;
+                            const startEl = document.getElementById('new-holiday-start') as HTMLInputElement;
+                            const endEl = document.getElementById('new-holiday-end') as HTMLInputElement;
+                            if (!nameEl || !startEl || !endEl) return;
+                            
+                            const name = nameEl.value.trim();
+                            const start = startEl.value;
+                            const end = endEl.value;
+                            
+                            if (!name || !start || !end) {
+                              toast.error(t("Vui lòng điền đầy đủ tên, ngày bắt đầu và kết thúc."));
+                              return;
+                            }
+                            if (start > end) {
+                              toast.error(t("Ngày bắt đầu không được lớn hơn ngày kết thúc."));
+                              return;
+                            }
+                            
+                            const newHoliday = {
+                              id: Date.now(),
+                              name,
+                              start,
+                              end
+                            };
+                            
+                            setHolidaySchedules(prev => [...prev, newHoliday]);
+                            nameEl.value = '';
+                            startEl.value = '';
+                            endEl.value = '';
+                            toast.success(t("Đã thêm ngày nghỉ lễ mới!"));
+                          }}
+                          style={{ 
+                            background: 'var(--color-primary)', color: 'white', border: 'none', 
+                            padding: '0 16px', height: '34px', borderRadius: '6px', fontWeight: 600,
+                            fontSize: '0.75rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4
+                          }}
+                        >
+                          <Plus size={14} /> {t('Thêm')}
+                        </button>
                       </div>
                     </div>
                   </div>

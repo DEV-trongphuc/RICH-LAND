@@ -512,35 +512,70 @@ if (!function_exists('releasePendingWorkHoursLeads')) {
                 
                 if (isConsultantInWorkHours($currentTime, $whStart, $whEnd, $workSchedule)) {
                     // Check if consultant has checked in today (Gate 2 Check-in constraint)
-                    $hasCheckIn = false;
-                    $dayOfWeek = date('N'); // 1 (Mon) - 7 (Sun)
-                    $targetUserId = (int)($row['user_id'] ?: $row['assigned_to']);
-                    
-                    if ($dayOfWeek >= 1 && $dayOfWeek <= 6) { // Mon-Sat
+                    // Check if today is holiday or rest day, and check registrations
+                    $currDate = date('Y-m-d');
+                    $dayOfWeek = date('N');
+                    $holidayName = '';
+                    $holidaySchedulesJson = '[]';
+                    $resHol = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'holiday_schedules' LIMIT 1");
+                    if ($resHol && $hRow = $resHol->fetch_assoc()) {
+                        $holidaySchedulesJson = !empty($hRow['setting_value']) ? $hRow['setting_value'] : '[]';
+                    }
+                    $holidays = json_decode($holidaySchedulesJson, true);
+                    if (is_array($holidays)) {
+                        foreach ($holidays as $h) {
+                            if ($currDate >= $h['start'] && $currDate <= $h['end']) {
+                                $holidayName = $h['name'];
+                                break;
+                            }
+                        }
+                    }
+
+                    $isRestDay = false;
+                    if ($dayOfWeek == 7) {
+                        $isRestDay = true;
+                    } else if ($dayOfWeek == 6) {
+                        $stmtSched = $conn->prepare("SELECT work_schedule FROM users WHERE id = ?");
+                        if ($stmtSched) {
+                            $stmtSched->bind_param("i", $targetUserId);
+                            $stmtSched->execute();
+                            $sRow = $stmtSched->get_result()->fetch_assoc();
+                            $stmtSched->close();
+                            if ($sRow && !empty($sRow['work_schedule'])) {
+                                $sched = json_decode($sRow['work_schedule'], true);
+                                if (isset($sched[6]) && isset($sched[6]['active']) && !(bool)$sched[6]['active']) {
+                                    $isRestDay = true;
+                                }
+                            }
+                        }
+                    }
+
+                    $hasReg = true;
+                    if (!empty($holidayName)) {
+                        $stmtCheckReg = $conn->prepare("SELECT 1 FROM holiday_shift_registrations WHERE user_id = ? AND shift_date = ? AND approved = 1 LIMIT 1");
+                        $stmtCheckReg->bind_param("is", $targetUserId, $currDate);
+                        $stmtCheckReg->execute();
+                        $hasReg = (bool)$stmtCheckReg->get_result()->fetch_assoc();
+                        $stmtCheckReg->close();
+                    } else if ($isRestDay) {
+                        $stmtCheckReg = $conn->prepare("SELECT 1 FROM weekend_shift_registrations WHERE user_id = ? AND shift_date = ? AND approved = 1 LIMIT 1");
+                        $stmtCheckReg->bind_param("is", $targetUserId, $currDate);
+                        $stmtCheckReg->execute();
+                        $hasReg = (bool)$stmtCheckReg->get_result()->fetch_assoc();
+                        $stmtCheckReg->close();
+                    }
+
+                    $isWeekendOrHoliday = (!empty($holidayName) || $isRestDay);
+                    if ($isWeekendOrHoliday) {
+                        $hasCheckIn = $hasReg; // No check-in required for weekend/holiday shift if registered and approved
+                    } else {
+                        // Normal workday - must check check_ins table
                         $stmtCheck = $conn->prepare("SELECT 1 FROM check_ins WHERE user_id = ? AND check_in_date = ? AND status = 'approved' LIMIT 1");
                         if ($stmtCheck) {
-                            $stmtCheck->bind_param("is", $targetUserId, $today);
+                            $stmtCheck->bind_param("is", $targetUserId, $currDate);
                             $stmtCheck->execute();
                             $hasCheckIn = (bool)$stmtCheck->get_result()->fetch_assoc();
                             $stmtCheck->close();
-                        }
-                    } else if ($dayOfWeek == 7) { // Sun
-                        $stmtCheckReg = $conn->prepare("SELECT 1 FROM night_shift_registrations WHERE user_id = ? AND shift_date = ? LIMIT 1");
-                        if ($stmtCheckReg) {
-                            $stmtCheckReg->bind_param("is", $targetUserId, $today);
-                            $stmtCheckReg->execute();
-                            $hasReg = (bool)$stmtCheckReg->get_result()->fetch_assoc();
-                            $stmtCheckReg->close();
-                            
-                            if ($hasReg) {
-                                $stmtCheck = $conn->prepare("SELECT 1 FROM check_ins WHERE user_id = ? AND check_in_date = ? AND status = 'approved' LIMIT 1");
-                                if ($stmtCheck) {
-                                    $stmtCheck->bind_param("is", $targetUserId, $today);
-                                    $stmtCheck->execute();
-                                    $hasCheckIn = (bool)$stmtCheck->get_result()->fetch_assoc();
-                                    $stmtCheck->close();
-                                }
-                            }
                         }
                     }
                     if (!$hasCheckIn) {
@@ -776,37 +811,70 @@ if (!function_exists('releasePendingWorkHoursLeads')) {
                 
                 if (isConsultantInWorkHours($currentTime, $whStart, $whEnd, $workSchedule)) {
                     // Check if consultant has an approved check-in for today (Gate 2 Check-in constraint)
-                    $hasCheckIn = false;
-                    $todayStr = date('Y-m-d');
-                    $dayOfWeek = date('N'); // 1 (Mon) - 7 (Sun)
-                    $targetUserId = (int)($row['user_id'] ?: $row['assigned_to']);
-                    
-                    if ($dayOfWeek >= 1 && $dayOfWeek <= 6) { // Mon-Sat
+                    // Check if today is holiday or rest day, and check registrations
+                    $currDate = date('Y-m-d');
+                    $dayOfWeek = date('N');
+                    $holidayName = '';
+                    $holidaySchedulesJson = '[]';
+                    $resHol = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'holiday_schedules' LIMIT 1");
+                    if ($resHol && $hRow = $resHol->fetch_assoc()) {
+                        $holidaySchedulesJson = !empty($hRow['setting_value']) ? $hRow['setting_value'] : '[]';
+                    }
+                    $holidays = json_decode($holidaySchedulesJson, true);
+                    if (is_array($holidays)) {
+                        foreach ($holidays as $h) {
+                            if ($currDate >= $h['start'] && $currDate <= $h['end']) {
+                                $holidayName = $h['name'];
+                                break;
+                            }
+                        }
+                    }
+
+                    $isRestDay = false;
+                    if ($dayOfWeek == 7) {
+                        $isRestDay = true;
+                    } else if ($dayOfWeek == 6) {
+                        $stmtSched = $conn->prepare("SELECT work_schedule FROM users WHERE id = ?");
+                        if ($stmtSched) {
+                            $stmtSched->bind_param("i", $targetUserId);
+                            $stmtSched->execute();
+                            $sRow = $stmtSched->get_result()->fetch_assoc();
+                            $stmtSched->close();
+                            if ($sRow && !empty($sRow['work_schedule'])) {
+                                $sched = json_decode($sRow['work_schedule'], true);
+                                if (isset($sched[6]) && isset($sched[6]['active']) && !(bool)$sched[6]['active']) {
+                                    $isRestDay = true;
+                                }
+                            }
+                        }
+                    }
+
+                    $hasReg = true;
+                    if (!empty($holidayName)) {
+                        $stmtCheckReg = $conn->prepare("SELECT 1 FROM holiday_shift_registrations WHERE user_id = ? AND shift_date = ? AND approved = 1 LIMIT 1");
+                        $stmtCheckReg->bind_param("is", $targetUserId, $currDate);
+                        $stmtCheckReg->execute();
+                        $hasReg = (bool)$stmtCheckReg->get_result()->fetch_assoc();
+                        $stmtCheckReg->close();
+                    } else if ($isRestDay) {
+                        $stmtCheckReg = $conn->prepare("SELECT 1 FROM weekend_shift_registrations WHERE user_id = ? AND shift_date = ? AND approved = 1 LIMIT 1");
+                        $stmtCheckReg->bind_param("is", $targetUserId, $currDate);
+                        $stmtCheckReg->execute();
+                        $hasReg = (bool)$stmtCheckReg->get_result()->fetch_assoc();
+                        $stmtCheckReg->close();
+                    }
+
+                    $isWeekendOrHoliday = (!empty($holidayName) || $isRestDay);
+                    if ($isWeekendOrHoliday) {
+                        $hasCheckIn = $hasReg; // No check-in required for weekend/holiday shift if registered and approved
+                    } else {
+                        // Normal workday - must check check_ins table
                         $stmtCheck = $conn->prepare("SELECT 1 FROM check_ins WHERE user_id = ? AND check_in_date = ? AND status = 'approved' LIMIT 1");
                         if ($stmtCheck) {
-                            $stmtCheck->bind_param("is", $targetUserId, $todayStr);
+                            $stmtCheck->bind_param("is", $targetUserId, $currDate);
                             $stmtCheck->execute();
                             $hasCheckIn = (bool)$stmtCheck->get_result()->fetch_assoc();
                             $stmtCheck->close();
-                        }
-                    } else if ($dayOfWeek == 7) { // Sun
-                        // Weekend registration + approved check-in
-                        $stmtCheckReg = $conn->prepare("SELECT 1 FROM night_shift_registrations WHERE user_id = ? AND shift_date = ? LIMIT 1");
-                        if ($stmtCheckReg) {
-                            $stmtCheckReg->bind_param("is", $targetUserId, $todayStr);
-                            $stmtCheckReg->execute();
-                            $hasReg = (bool)$stmtCheckReg->get_result()->fetch_assoc();
-                            $stmtCheckReg->close();
-                            
-                            if ($hasReg) {
-                                $stmtCheck = $conn->prepare("SELECT 1 FROM check_ins WHERE user_id = ? AND check_in_date = ? AND status = 'approved' LIMIT 1");
-                                if ($stmtCheck) {
-                                    $stmtCheck->bind_param("is", $targetUserId, $todayStr);
-                                    $stmtCheck->execute();
-                                    $hasCheckIn = (bool)$stmtCheck->get_result()->fetch_assoc();
-                                    $stmtCheck->close();
-                                }
-                            }
                         }
                     }
                     

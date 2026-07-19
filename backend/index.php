@@ -422,11 +422,27 @@ try {
     error_log("Auto Migration Error: " . $e->getMessage());
 }
 
-// ── Auto-wipe expired night shift registrations ────────────────
+// ── Auto-wipe expired shift registrations ────────────────
 try {
-    $db->exec("DELETE FROM night_shift_registrations WHERE shift_date < CURDATE()");
+    $nightShiftEnd = '06:00';
+    $resEnd = $db->query("SELECT setting_value FROM system_settings WHERE setting_key = 'night_shift_end_time' LIMIT 1");
+    if ($resEnd) {
+        $sRow = $resEnd->fetch(PDO::FETCH_ASSOC);
+        if ($sRow && !empty($sRow['setting_value'])) {
+            $nightShiftEnd = $sRow['setting_value'];
+        }
+    }
+    $endHour = (int)explode(':', $nightShiftEnd)[0];
+    $currentHour = (int)date('H');
+    $activeNightShiftDate = ($currentHour < $endHour) ? date('Y-m-d', strtotime('-1 day')) : date('Y-m-d');
+    
+    $stmt1 = $db->prepare("DELETE FROM night_shift_registrations WHERE shift_date < ?");
+    $stmt1->execute([$activeNightShiftDate]);
+
+    $db->exec("DELETE FROM weekend_shift_registrations WHERE shift_date < CURDATE()");
+    $db->exec("DELETE FROM holiday_shift_registrations WHERE shift_date < CURDATE()");
 } catch (Exception $e) {
-    error_log("Night Shift Wipe Error: " . $e->getMessage());
+    error_log("Shift Wipe Error: " . $e->getMessage());
 }
 
 if ($resource === 'check') {

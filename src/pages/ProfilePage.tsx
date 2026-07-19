@@ -1025,7 +1025,13 @@ export const ProfilePage: React.FC = () => {
           </div>
 
           {/* Card 4: Work schedule config */}
-          <div className="card" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+          <div className="card" style={{ 
+            padding: '1.5rem', 
+            display: 'flex', 
+            flexDirection: 'column', 
+            gap: '1.25rem',
+            opacity: isSales ? 0.85 : 1
+          }}>
             <div>
               <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-text)', margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
                 <Clock size={18} color="var(--color-primary)" />
@@ -1033,13 +1039,21 @@ export const ProfilePage: React.FC = () => {
               </h3>
               <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', marginTop: 4, marginBottom: 0 }}>
                 {isSales
-                  ? t('Thiết lập thời gian nhận lead cố định hàng ngày hoặc lịch trình tùy chỉnh theo từng thứ.')
+                  ? t('Lịch làm việc cố định của bạn (chỉ Admin mới có quyền thay đổi).')
                   : t('Thiết lập khung giờ làm việc tiêu chuẩn hàng ngày hoặc lịch trình tùy chỉnh theo từng thứ để chấm công.')}
               </p>
             </div>
 
             {/* Segmented Control for Schedule Mode */}
-            <div style={{ display: 'flex', gap: '0.5rem', background: 'var(--color-bg)', padding: '4px', borderRadius: '12px' }}>
+            <div style={{ 
+              display: 'flex', 
+              gap: '0.5rem', 
+              background: 'var(--color-bg)', 
+              padding: '4px', 
+              borderRadius: '12px',
+              opacity: isSales ? 0.6 : 1,
+              pointerEvents: isSales ? 'none' : 'auto'
+            }}>
               <button
                 type="button"
                 onClick={() => setScheduleMode('daily')}
@@ -1071,12 +1085,12 @@ export const ProfilePage: React.FC = () => {
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px', background: 'var(--color-bg-alt)', padding: '12px 16px', borderRadius: '12px', border: '1px solid var(--color-border-light)' }}>
                 <div style={{ flex: 1 }}>
                   <label className="form-label" style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginBottom: 4 }}>{t('Bắt đầu')}</label>
-                  <input type="time" className="form-input" value={workStartTime} onChange={e => setWorkStartTime(e.target.value)} style={{ borderRadius: '8px', height: '36px' }} />
+                  <input type="time" className="form-input" disabled={isSales} value={workStartTime} onChange={e => setWorkStartTime(e.target.value)} style={{ borderRadius: '8px', height: '36px' }} />
                 </div>
                 <div style={{ fontSize: '1.2rem', color: 'var(--color-text-muted)', paddingTop: '16px' }}>→</div>
                 <div style={{ flex: 1 }}>
                   <label className="form-label" style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginBottom: 4 }}>{t('Kết thúc')}</label>
-                  <input type="time" className="form-input" value={workEndTime} onChange={e => setWorkEndTime(e.target.value)} style={{ borderRadius: '8px', height: '36px' }} />
+                  <input type="time" className="form-input" disabled={isSales} value={workEndTime} onChange={e => setWorkEndTime(e.target.value)} style={{ borderRadius: '8px', height: '36px' }} />
                 </div>
               </div>
             ) : (
@@ -1095,7 +1109,7 @@ export const ProfilePage: React.FC = () => {
                         <input
                           type="time"
                           className="form-input"
-                          disabled={!config.active}
+                          disabled={!config.active || isSales}
                           style={{ width: '85px', height: '28px', padding: '0 6px', fontSize: '0.75rem', borderRadius: '6px' }}
                           value={config.start}
                           onChange={e => handleDayTimeChange(dayKey, 'start', e.target.value)}
@@ -1104,13 +1118,15 @@ export const ProfilePage: React.FC = () => {
                         <input
                           type="time"
                           className="form-input"
-                          disabled={!config.active}
+                          disabled={!config.active || isSales}
                           style={{ width: '85px', height: '28px', padding: '0 6px', fontSize: '0.75rem', borderRadius: '6px' }}
                           value={config.end}
                           onChange={e => handleDayTimeChange(dayKey, 'end', e.target.value)}
                         />
                       </div>
-                      <ToggleSwitch checked={config.active} onChange={val => handleDayActiveToggle(dayKey, val)} />
+                      <div style={{ opacity: isSales ? 0.6 : 1, pointerEvents: isSales ? 'none' : 'auto' }}>
+                        <ToggleSwitch checked={config.active} onChange={val => handleDayActiveToggle(dayKey, val)} />
+                      </div>
                     </div>
                   );
                 })}

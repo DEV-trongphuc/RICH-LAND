@@ -570,7 +570,14 @@ if (!in_array($action, $publicActions)) {
 
     // Read-only configuration and own-data lookups called by Layout, Dashboard, SalePortal, and Attendance pages
     // We allow any authenticated user (all roles) to query these endpoints.
-    if (in_array($action, ['get_settings', 'get_unique_sources', 'get_calendar_stats', 'get_calendar_day_details', 'get_consultant_leaves', 'upload_avatar'], true)) {
+    if (in_array($action, [
+        'get_settings', 'get_unique_sources', 'get_calendar_stats', 
+        'get_calendar_day_details', 'get_consultant_leaves', 'upload_avatar',
+        'get_night_shift_status', 'register_night_shift',
+        'get_weekend_shift_status', 'register_weekend_shift',
+        'get_holiday_shift_status', 'register_holiday_shift',
+        'register_weekly_shifts'
+    ], true)) {
         $resolvedScope = 'all';
     }
 
@@ -3464,7 +3471,7 @@ switch ($action) {
         $currentHour = (int)date('H');
         $shiftDate = ($currentHour < 6) ? date('Y-m-d', strtotime('-1 day')) : date('Y-m-d');
 
-        $stmt = $conn->prepare("SELECT id FROM night_shift_registrations WHERE user_id = ? AND shift_date = ?");
+        $stmt = $conn->prepare("SELECT id, approved FROM night_shift_registrations WHERE user_id = ? AND shift_date = ?");
         $stmt->bind_param("is", $dbUserId, $shiftDate);
         $stmt->execute();
         $res = $stmt->get_result()->fetch_assoc();
@@ -3476,11 +3483,41 @@ switch ($action) {
             $nightShiftStart = !empty($sRow['setting_value']) ? $sRow['setting_value'] : '18:00';
         }
 
+        // Load late and advance registration settings
+        $allowLate = 0;
+        $lateMinutes = 0;
+        $advanceMinutes = 0;
+        $resLate = $conn->query("SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('allow_late_night_shift_registration', 'late_night_shift_registration_minutes', 'advance_night_shift_registration_minutes')");
+        if ($resLate) {
+            while ($lateRow = $resLate->fetch_assoc()) {
+                if ($lateRow['setting_key'] === 'allow_late_night_shift_registration') {
+                    $allowLate = (int) $lateRow['setting_value'];
+                } else if ($lateRow['setting_key'] === 'late_night_shift_registration_minutes') {
+                    $lateMinutes = (int) $lateRow['setting_value'];
+                } else if ($lateRow['setting_key'] === 'advance_night_shift_registration_minutes') {
+                    $advanceMinutes = (int) $lateRow['setting_value'];
+                }
+            }
+        }
+
+        $deadline = strtotime($shiftDate . ' ' . $nightShiftStart);
+        if ($allowLate === 1) {
+            if ($lateMinutes > 0) {
+                $deadline = strtotime($shiftDate . ' ' . $nightShiftStart . " +{$lateMinutes} minutes");
+            }
+        } else if ($advanceMinutes > 0) {
+            $deadline = strtotime($shiftDate . ' ' . $nightShiftStart . " -{$advanceMinutes} minutes");
+        }
+
+        $canToggle = (time() < $deadline);
+
         echo json_encode([
             'success' => true, 
             'registered' => ($res !== null),
+            'approved' => ($res !== null ? (int)$res['approved'] : 0),
             'shift_date' => $shiftDate,
-            'can_toggle' => (date('H:i') < $nightShiftStart)
+            'can_toggle' => $canToggle,
+            'deadline_time' => date('H:i', $deadline)
         ]);
         break;
 
@@ -3496,8 +3533,43 @@ switch ($action) {
             $nightShiftStart = !empty($sRow['setting_value']) ? $sRow['setting_value'] : '18:00';
         }
 
-        if (date('H:i') >= $nightShiftStart) {
-            echo json_encode(['success' => false, 'message' => "Chỉ được phép đăng ký trực đêm trước {$nightShiftStart} hàng ngày."]);
+        // Load late and advance registration settings
+        $allowLate = 0;
+        $lateMinutes = 0;
+        $advanceMinutes = 0;
+        $resLate = $conn->query("SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('allow_late_night_shift_registration', 'late_night_shift_registration_minutes', 'advance_night_shift_registration_minutes')");
+        if ($resLate) {
+            while ($lateRow = $resLate->fetch_assoc()) {
+                if ($lateRow['setting_key'] === 'allow_late_night_shift_registration') {
+                    $allowLate = (int) $lateRow['setting_value'];
+                } else if ($lateRow['setting_key'] === 'late_night_shift_registration_minutes') {
+                    $lateMinutes = (int) $lateRow['setting_value'];
+                } else if ($lateRow['setting_key'] === 'advance_night_shift_registration_minutes') {
+                    $advanceMinutes = (int) $lateRow['setting_value'];
+                }
+            }
+        }
+
+        $shiftDate = date('Y-m-d');
+        $deadline = strtotime($shiftDate . ' ' . $nightShiftStart);
+        if ($allowLate === 1) {
+            if ($lateMinutes > 0) {
+                $deadline = strtotime($shiftDate . ' ' . $nightShiftStart . " +{$lateMinutes} minutes");
+            }
+        } else if ($advanceMinutes > 0) {
+            $deadline = strtotime($shiftDate . ' ' . $nightShiftStart . " -{$advanceMinutes} minutes");
+        }
+
+        if (time() >= $deadline) {
+            if ($allowLate === 1 && $lateMinutes > 0) {
+                $deadlineStr = date('H:i', $deadline);
+                echo json_encode(['success' => false, 'message' => "Chỉ được phép đăng ký trực đêm trước {$deadlineStr} hàng ngày (đã quá thời hạn cho phép trễ {$lateMinutes} phút)."]);
+            } else if ($advanceMinutes > 0) {
+                $deadlineStr = date('H:i', $deadline);
+                echo json_encode(['success' => false, 'message' => "Chỉ được phép đăng ký trực đêm trước {$deadlineStr} hàng ngày (yêu cầu đăng ký trước ít nhất {$advanceMinutes} phút)."]);
+            } else {
+                echo json_encode(['success' => false, 'message' => "Chỉ được phép đăng ký trực đêm trước {$nightShiftStart} hàng ngày."]);
+            }
             break;
         }
 
@@ -3507,27 +3579,779 @@ switch ($action) {
         $register = isset($b['register']) ? (bool)$b['register'] : true;
 
         if ($register) {
-            $stmt = $conn->prepare("INSERT IGNORE INTO night_shift_registrations (user_id, shift_date) VALUES (?, ?)");
-            $stmt->bind_param("is", $dbUserId, $shiftDate);
+            // Check if auto approve is active
+            $autoApprove = 1;
+            $setApprove = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'auto_approve_night_shift' LIMIT 1");
+            if ($setApprove && $aRow = $setApprove->fetch_assoc()) {
+                $autoApprove = (int)$aRow['setting_value'];
+            }
+
+            $stmt = $conn->prepare("INSERT INTO night_shift_registrations (user_id, shift_date, approved) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE approved = ?");
+            $stmt->bind_param("isii", $dbUserId, $shiftDate, $autoApprove, $autoApprove);
             $stmt->execute();
             $stmt->close();
+            
             logAdminAction($conn, $dbUserId, 'REGISTER_NIGHT_SHIFT', json_encode([
                 'user_id' => $dbUserId,
-                'shift_date' => $shiftDate
+                'shift_date' => $shiftDate,
+                'approved' => $autoApprove
             ]));
-            notifyNightShiftChange($conn, $currentSaleConsultantId, $shiftDate, true);
-            echo json_encode(['success' => true, 'message' => 'Đăng ký trực đêm thành công.']);
+            
+            if ($autoApprove === 1) {
+                notifyNightShiftChange($conn, $currentSaleConsultantId, $shiftDate, true);
+                echo json_encode(['success' => true, 'message' => 'Đăng ký trực đêm thành công.']);
+            } else {
+                // Send notification to admins
+                $saleName = !empty($decodedUser['name']) ? $decodedUser['name'] : 'Nhân viên';
+                $title = "Đăng ký trực ca đêm chờ duyệt";
+                $body = "Sale {$saleName} đã đăng ký trực ca đêm ngày {$shiftDate}. Vui lòng phê duyệt.";
+                $link = "/attendance";
+                
+                $admins = $conn->query("SELECT id FROM accounts WHERE role IN ('admin', 'superadmin', 'director') AND status = 'active'")->fetch_all(MYSQLI_ASSOC);
+                foreach ($admins as $admin) {
+                    $stmtNotif = $conn->prepare("INSERT INTO notifications (user_id, tenant_id, title, body, type, link) VALUES (?, 1, ?, ?, 'shift_request', ?)");
+                    $stmtNotif->bind_param("isss", $admin['id'], $title, $body, $link);
+                    $stmtNotif->execute();
+                    $stmtNotif->close();
+                }
+                
+                echo json_encode(['success' => true, 'message' => 'Đăng ký trực đêm thành công. Vui lòng chờ Admin phê duyệt.', 'pending' => true]);
+            }
         } else {
             $stmt = $conn->prepare("DELETE FROM night_shift_registrations WHERE user_id = ? AND shift_date = ?");
             $stmt->bind_param("is", $dbUserId, $shiftDate);
             $stmt->execute();
             $stmt->close();
+            
             logAdminAction($conn, $dbUserId, 'CANCEL_NIGHT_SHIFT', json_encode([
                 'user_id' => $dbUserId,
                 'shift_date' => $shiftDate
             ]));
+            
             notifyNightShiftChange($conn, $currentSaleConsultantId, $shiftDate, false);
             echo json_encode(['success' => true, 'message' => 'Hủy đăng ký trực đêm thành công.']);
+        }
+        break;
+
+    case 'get_weekend_shift_status':
+        if (!$decodedUser) {
+            echo json_encode(['success' => false, 'message' => 'Unauthorized']);
+            break;
+        }
+        $dbUserId = (int)$decodedUser['id'];
+
+        // Determine next Saturday and Sunday
+        $dayOfWeek = (int)date('N');
+        if ($dayOfWeek == 6) { // today is Sat
+            $satDate = date('Y-m-d');
+            $sunDate = date('Y-m-d', strtotime('+1 day'));
+        } else if ($dayOfWeek == 7) { // today is Sun
+            $satDate = date('Y-m-d', strtotime('-1 day'));
+            $sunDate = date('Y-m-d');
+        } else {
+            $satDate = date('Y-m-d', strtotime('next Saturday'));
+            $sunDate = date('Y-m-d', strtotime('next Sunday'));
+        }
+
+        // Get weekend registration settings
+        $allowWeekend = 1;
+        $leadHours = 0;
+        $setSettings = $conn->query("SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('allow_weekend_shift_registration', 'weekend_shift_registration_lead_hours')");
+        if ($setSettings) {
+            while ($sRow = $setSettings->fetch_assoc()) {
+                if ($sRow['setting_key'] === 'allow_weekend_shift_registration') {
+                    $allowWeekend = (int)$sRow['setting_value'];
+                } else if ($sRow['setting_key'] === 'weekend_shift_registration_lead_hours') {
+                    $leadHours = (int)$sRow['setting_value'];
+                }
+            }
+        }
+
+        // Query registrations
+        $satRegistered = false;
+        $satApproved = false;
+        $sunRegistered = false;
+        $sunApproved = false;
+
+        $stmt = $conn->prepare("SELECT shift_date, approved FROM weekend_shift_registrations WHERE user_id = ? AND shift_date IN (?, ?)");
+        $stmt->bind_param("iss", $dbUserId, $satDate, $sunDate);
+        $stmt->execute();
+        $rQuery = $stmt->get_result();
+        while ($row = $rQuery->fetch_assoc()) {
+            if ($row['shift_date'] === $satDate) {
+                $satRegistered = true;
+                $satApproved = (bool)$row['approved'];
+            } else if ($row['shift_date'] === $sunDate) {
+                $sunRegistered = true;
+                $sunApproved = (bool)$row['approved'];
+            }
+        }
+        $stmt->close();
+
+        // Compute deadline and can_toggle
+        $satDeadline = strtotime($satDate . ' 00:00:00') - ($leadHours * 3600);
+        $sunDeadline = strtotime($sunDate . ' 00:00:00') - ($leadHours * 3600);
+
+        $satCanToggle = (time() < $satDeadline);
+        $sunCanToggle = (time() < $sunDeadline);
+
+        echo json_encode([
+            'success' => true,
+            'allow_weekend_registration' => ($allowWeekend === 1),
+            'saturday' => [
+                'date' => $satDate,
+                'registered' => $satRegistered,
+                'approved' => $satApproved,
+                'can_toggle' => $satCanToggle,
+                'deadline_time' => date('Y-m-d H:i', $satDeadline)
+            ],
+            'sunday' => [
+                'date' => $sunDate,
+                'registered' => $sunRegistered,
+                'approved' => $sunApproved,
+                'can_toggle' => $sunCanToggle,
+                'deadline_time' => date('Y-m-d H:i', $sunDeadline)
+            ]
+        ]);
+        break;
+
+    case 'register_weekend_shift':
+        if (!$decodedUser) {
+            echo json_encode(['success' => false, 'message' => 'Unauthorized']);
+            break;
+        }
+        $dbUserId = (int)$decodedUser['id'];
+        $b = json_decode(file_get_contents('php://input'), true);
+        $targetDate = isset($b['date']) ? trim($b['date']) : '';
+        $register = isset($b['register']) ? (bool)$b['register'] : true;
+
+        if (empty($targetDate)) {
+            echo json_encode(['success' => false, 'message' => 'Thiếu thông tin ngày đăng ký.']);
+            break;
+        }
+
+        // Validate if it is weekend day
+        $dayNum = date('N', strtotime($targetDate));
+        if ($dayNum != 6 && $dayNum != 7) {
+            echo json_encode(['success' => false, 'message' => 'Chỉ được phép đăng ký trực cuối tuần cho Thứ 7 hoặc Chủ Nhật.']);
+            break;
+        }
+
+        // Get weekend registration settings
+        $allowWeekend = 1;
+        $leadHours = 0;
+        $autoApprove = 1;
+        $setSettings = $conn->query("SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('allow_weekend_shift_registration', 'weekend_shift_registration_lead_hours', 'auto_approve_weekend_shift')");
+        if ($setSettings) {
+            while ($sRow = $setSettings->fetch_assoc()) {
+                if ($sRow['setting_key'] === 'allow_weekend_shift_registration') {
+                    $allowWeekend = (int)$sRow['setting_value'];
+                } else if ($sRow['setting_key'] === 'weekend_shift_registration_lead_hours') {
+                    $leadHours = (int)$sRow['setting_value'];
+                } else if ($sRow['setting_key'] === 'auto_approve_weekend_shift') {
+                    $autoApprove = (int)$sRow['setting_value'];
+                }
+            }
+        }
+
+        if ($allowWeekend !== 1) {
+            echo json_encode(['success' => false, 'message' => 'Hệ thống hiện không cho phép đăng ký trực cuối tuần.']);
+            break;
+        }
+
+        // Compute deadline and check if expired
+        $deadline = strtotime($targetDate . ' 00:00:00') - ($leadHours * 3600);
+        if (time() >= $deadline) {
+            $deadlineStr = date('Y-m-d H:i', $deadline);
+            echo json_encode(['success' => false, 'message' => "Đã quá hạn đăng ký trực cuối tuần cho ngày {$targetDate} (Hạn chót: {$deadlineStr})."]);
+            break;
+        }
+
+        if ($register) {
+            $stmt = $conn->prepare("INSERT INTO weekend_shift_registrations (user_id, shift_date, approved) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE approved = ?");
+            $stmt->bind_param("isii", $dbUserId, $targetDate, $autoApprove, $autoApprove);
+            $stmt->execute();
+            $stmt->close();
+
+            logAdminAction($conn, $dbUserId, 'REGISTER_WEEKEND_SHIFT', json_encode([
+                'user_id' => $dbUserId,
+                'shift_date' => $targetDate,
+                'approved' => $autoApprove
+            ]));
+
+            if ($autoApprove === 1) {
+                echo json_encode(['success' => true, 'message' => 'Đăng ký trực cuối tuần thành công.']);
+            } else {
+                // Send notification to admins
+                $saleName = !empty($decodedUser['name']) ? $decodedUser['name'] : 'Nhân viên';
+                $title = "Đăng ký trực cuối tuần chờ duyệt";
+                $body = "Sale {$saleName} đã đăng ký trực cuối tuần ngày {$targetDate}. Vui lòng phê duyệt.";
+                $link = "/attendance";
+
+                $admins = $conn->query("SELECT id FROM accounts WHERE role IN ('admin', 'superadmin', 'director') AND status = 'active'")->fetch_all(MYSQLI_ASSOC);
+                foreach ($admins as $admin) {
+                    $stmtNotif = $conn->prepare("INSERT INTO notifications (user_id, tenant_id, title, body, type, link) VALUES (?, 1, ?, ?, 'shift_request', ?)");
+                    $stmtNotif->bind_param("isss", $admin['id'], $title, $body, $link);
+                    $stmtNotif->execute();
+                    $stmtNotif->close();
+                }
+
+                echo json_encode(['success' => true, 'message' => 'Đăng ký trực cuối tuần thành công. Vui lòng chờ Admin phê duyệt.', 'pending' => true]);
+            }
+        } else {
+            $stmt = $conn->prepare("DELETE FROM weekend_shift_registrations WHERE user_id = ? AND shift_date = ?");
+            $stmt->bind_param("is", $dbUserId, $targetDate);
+            $stmt->execute();
+            $stmt->close();
+
+            logAdminAction($conn, $dbUserId, 'CANCEL_WEEKEND_SHIFT', json_encode([
+                'user_id' => $dbUserId,
+                'shift_date' => $targetDate
+            ]));
+
+            echo json_encode(['success' => true, 'message' => 'Hủy đăng ký trực cuối tuần thành công.']);
+        }
+        break;
+
+    case 'get_holiday_shift_status':
+        if (!$decodedUser) {
+            echo json_encode(['success' => false, 'message' => 'Unauthorized']);
+            break;
+        }
+        $dbUserId = (int)$decodedUser['id'];
+
+        // Get holiday schedules
+        $holidaySchedulesJson = '[]';
+        $resHol = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'holiday_schedules' LIMIT 1");
+        if ($resHol && $hRow = $resHol->fetch_assoc()) {
+            $holidaySchedulesJson = !empty($hRow['setting_value']) ? $hRow['setting_value'] : '[]';
+        }
+        $holidays = json_decode($holidaySchedulesJson, true);
+        if (!is_array($holidays)) {
+            $holidays = [];
+        }
+
+        // Filter for upcoming or active holidays (end date >= today)
+        $todayStr = date('Y-m-d');
+        $activeHolidays = [];
+        foreach ($holidays as $h) {
+            if (!empty($h['end']) && $h['end'] >= $todayStr) {
+                // Generate all dates within start and end
+                $dates = [];
+                $curr = $h['start'];
+                while ($curr <= $h['end']) {
+                    $dates[] = $curr;
+                    $curr = date('Y-m-d', strtotime($curr . ' +1 day'));
+                }
+                $h['dates'] = $dates;
+                $activeHolidays[] = $h;
+            }
+        }
+
+        // Get registrations
+        $registrations = [];
+        $stmt = $conn->prepare("SELECT shift_date, approved, holiday_name FROM holiday_shift_registrations WHERE user_id = ?");
+        $stmt->bind_param("i", $dbUserId);
+        $stmt->execute();
+        $resQuery = $stmt->get_result();
+        while ($row = $resQuery->fetch_assoc()) {
+            $registrations[$row['shift_date']] = [
+                'approved' => (bool)$row['approved'],
+                'holiday_name' => $row['holiday_name']
+            ];
+        }
+        $stmt->close();
+
+        // Build list with status per date
+        $resultHolidays = [];
+        foreach ($activeHolidays as $h) {
+            $datesStatus = [];
+            foreach ($h['dates'] as $d) {
+                $registered = isset($registrations[$d]);
+                $approved = $registered ? $registrations[$d]['approved'] : false;
+                $datesStatus[] = [
+                    'date' => $d,
+                    'registered' => $registered,
+                    'approved' => $approved,
+                    'can_toggle' => true // Holiday registration can be done anytime
+                ];
+            }
+            $resultHolidays[] = [
+                'id' => $h['id'] ?? null,
+                'name' => $h['name'],
+                'start' => $h['start'],
+                'end' => $h['end'],
+                'dates' => $datesStatus
+            ];
+        }
+
+        echo json_encode([
+            'success' => true,
+            'holidays' => $resultHolidays
+        ]);
+        break;
+
+    case 'register_holiday_shift':
+        if (!$decodedUser) {
+            echo json_encode(['success' => false, 'message' => 'Unauthorized']);
+            break;
+        }
+        $dbUserId = (int)$decodedUser['id'];
+        $b = json_decode(file_get_contents('php://input'), true);
+        $targetDate = isset($b['date']) ? trim($b['date']) : '';
+        $holidayName = isset($b['holiday_name']) ? trim($b['holiday_name']) : '';
+        $register = isset($b['register']) ? (bool)$b['register'] : true;
+
+        if (empty($targetDate) || empty($holidayName)) {
+            echo json_encode(['success' => false, 'message' => 'Thiếu thông tin ngày hoặc tên ngày lễ.']);
+            break;
+        }
+
+        // Get auto approve setting for holidays
+        $autoApprove = 0; // default 0 (manual approval required)
+        $setHolApprove = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'auto_approve_holiday_shift' LIMIT 1");
+        if ($setHolApprove && $aRow = $setHolApprove->fetch_assoc()) {
+            $autoApprove = (int)$aRow['setting_value'];
+        }
+
+        if ($register) {
+            $stmt = $conn->prepare("INSERT INTO holiday_shift_registrations (user_id, shift_date, holiday_name, approved) VALUES (?, ?, ?, ?) ON DUPLICATE KEY UPDATE approved = ?");
+            $stmt->bind_param("issii", $dbUserId, $targetDate, $holidayName, $autoApprove, $autoApprove);
+            $stmt->execute();
+            $stmt->close();
+
+            logAdminAction($conn, $dbUserId, 'REGISTER_HOLIDAY_SHIFT', json_encode([
+                'user_id' => $dbUserId,
+                'shift_date' => $targetDate,
+                'holiday_name' => $holidayName,
+                'approved' => $autoApprove
+            ]));
+
+            if ($autoApprove === 1) {
+                echo json_encode(['success' => true, 'message' => "Đăng ký trực lễ {$holidayName} ngày {$targetDate} thành công."]);
+            } else {
+                // Send notification to admins
+                $saleName = !empty($decodedUser['name']) ? $decodedUser['name'] : 'Nhân viên';
+                $title = "Đăng ký trực ngày lễ chờ duyệt";
+                $body = "Sale {$saleName} đã đăng ký trực ngày lễ {$holidayName} ngày {$targetDate}. Vui lòng phê duyệt.";
+                $link = "/attendance";
+
+                $admins = $conn->query("SELECT id FROM accounts WHERE role IN ('admin', 'superadmin', 'director') AND status = 'active'")->fetch_all(MYSQLI_ASSOC);
+                foreach ($admins as $admin) {
+                    $stmtNotif = $conn->prepare("INSERT INTO notifications (user_id, tenant_id, title, body, type, link) VALUES (?, 1, ?, ?, 'shift_request', ?)");
+                    $stmtNotif->bind_param("isss", $admin['id'], $title, $body, $link);
+                    $stmtNotif->execute();
+                    $stmtNotif->close();
+                }
+
+                echo json_encode(['success' => true, 'message' => "Đăng ký trực lễ thành công. Vui lòng chờ Admin phê duyệt.", 'pending' => true]);
+            }
+        } else {
+            $stmt = $conn->prepare("DELETE FROM holiday_shift_registrations WHERE user_id = ? AND shift_date = ?");
+            $stmt->bind_param("is", $dbUserId, $targetDate);
+            $stmt->execute();
+            $stmt->close();
+
+            logAdminAction($conn, $dbUserId, 'CANCEL_HOLIDAY_SHIFT', json_encode([
+                'user_id' => $dbUserId,
+                'shift_date' => $targetDate
+            ]));
+
+            echo json_encode(['success' => true, 'message' => "Hủy đăng ký trực lễ ngày {$targetDate} thành công."]);
+        }
+        break;
+
+    case 'register_weekly_shifts':
+        if (!$decodedUser) {
+            echo json_encode(['success' => false, 'message' => 'Unauthorized']);
+            break;
+        }
+        $dbUserId = (int)$decodedUser['id'];
+        $b = json_decode(file_get_contents('php://input'), true);
+        $dates = isset($b['dates']) && is_array($b['dates']) ? $b['dates'] : [];
+
+        // Get timeframe constraints: Current week Monday to Sunday
+        $todayStr = date('Y-m-d');
+        $dayOfWeek = (int)date('N');
+        $mondayStr = date('Y-m-d', strtotime('-' . ($dayOfWeek - 1) . ' days'));
+        $sundayStr = date('Y-m-d', strtotime('+' . (7 - $dayOfWeek) . ' days'));
+
+        // Load holiday schedules
+        $holidaySchedulesJson = '[]';
+        $resHol = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'holiday_schedules' LIMIT 1");
+        if ($resHol && $hRow = $resHol->fetch_assoc()) {
+            $holidaySchedulesJson = !empty($hRow['setting_value']) ? $hRow['setting_value'] : '[]';
+        }
+        $holidays = json_decode($holidaySchedulesJson, true);
+        if (!is_array($holidays)) {
+            $holidays = [];
+        }
+
+        // Load weekend config (if Saturday is rest day)
+        $isSatOff = true;
+        $resSched = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'global_work_schedule' LIMIT 1");
+        if ($resSched && $sRow = $resSched->fetch_assoc()) {
+            $schedule = json_decode($sRow['setting_value'], true);
+            if (isset($schedule["6"]) && isset($schedule["6"]["active"])) {
+                $isSatOff = !(bool)$schedule["6"]["active"];
+            }
+        }
+
+        // Load night shift start time & deadline settings
+        $nightShiftStart = '18:00';
+        $setRes = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'night_shift_start_time' LIMIT 1");
+        if ($setRes && $sRow = $setRes->fetch_assoc()) {
+            $nightShiftStart = !empty($sRow['setting_value']) ? $sRow['setting_value'] : '18:00';
+        }
+        $allowLate = 0;
+        $lateMinutes = 0;
+        $advanceMinutes = 0;
+        $resLate = $conn->query("SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('allow_late_night_shift_registration', 'late_night_shift_registration_minutes', 'advance_night_shift_registration_minutes')");
+        if ($resLate) {
+            while ($lateRow = $resLate->fetch_assoc()) {
+                if ($lateRow['setting_key'] === 'allow_late_night_shift_registration') {
+                    $allowLate = (int) $lateRow['setting_value'];
+                } else if ($lateRow['setting_key'] === 'late_night_shift_registration_minutes') {
+                    $lateMinutes = (int) $lateRow['setting_value'];
+                } else if ($lateRow['setting_key'] === 'advance_night_shift_registration_minutes') {
+                    $advanceMinutes = (int) $lateRow['setting_value'];
+                }
+            }
+        }
+
+        // Validate each date
+        $validDates = [];
+        foreach ($dates as $date) {
+            $date = trim($date);
+            if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
+                echo json_encode(['success' => false, 'message' => "Định dạng ngày {$date} không hợp lệ."]);
+                break 2;
+            }
+
+            // Must be in this week
+            if ($date < $mondayStr || $date > $sundayStr) {
+                echo json_encode(['success' => false, 'message' => "Ngày {$date} không nằm trong tuần này."]);
+                break 2;
+            }
+
+            // Must be after yesterday (>= today)
+            if ($date < $todayStr) {
+                echo json_encode(['success' => false, 'message' => "Không được phép đăng ký các ngày trong quá khứ ({$date})."]);
+                break 2;
+            }
+
+            // If it is today, check night shift deadline constraint
+            if ($date === $todayStr) {
+                $deadline = strtotime($todayStr . ' ' . $nightShiftStart);
+                if ($allowLate === 1) {
+                    if ($lateMinutes > 0) {
+                        $deadline = strtotime($todayStr . ' ' . $nightShiftStart . " +{$lateMinutes} minutes");
+                    }
+                } else if ($advanceMinutes > 0) {
+                    $deadline = strtotime($todayStr . ' ' . $nightShiftStart . " -{$advanceMinutes} minutes");
+                }
+                if (time() >= $deadline) {
+                    $deadlineStr = date('H:i', $deadline);
+                    echo json_encode(['success' => false, 'message' => "Đã quá thời hạn đăng ký cho ngày hôm nay ({$deadlineStr})."]);
+                    break 2;
+                }
+            }
+
+            $validDates[] = $date;
+        }
+
+        // Find all dates in the current week that are >= today
+        $allWeekDates = [];
+        $curr = $mondayStr;
+        while ($curr <= $sundayStr) {
+            if ($curr >= $todayStr) {
+                $allWeekDates[] = $curr;
+            }
+            $curr = date('Y-m-d', strtotime($curr . ' +1 day'));
+        }
+
+        // Determine omitted dates (unchecked dates)
+        $omittedDates = array_diff($allWeekDates, $validDates);
+
+        // Perform cancellations for omitted dates
+        foreach ($omittedDates as $date) {
+            if ($date === $todayStr) {
+                // If today is omitted, check night shift deadline constraint
+                $deadline = strtotime($todayStr . ' ' . $nightShiftStart);
+                if ($allowLate === 1) {
+                    if ($lateMinutes > 0) {
+                        $deadline = strtotime($todayStr . ' ' . $nightShiftStart . " +{$lateMinutes} minutes");
+                    }
+                } else if ($advanceMinutes > 0) {
+                    $deadline = strtotime($todayStr . ' ' . $nightShiftStart . " -{$advanceMinutes} minutes");
+                }
+                if (time() >= $deadline) {
+                    // Past deadline - cannot cancel/delete today's registration
+                    continue;
+                }
+            }
+
+            // Safe to delete from all 3 tables
+            $conn->query("DELETE FROM night_shift_registrations WHERE user_id = $dbUserId AND shift_date = '$date'");
+            $conn->query("DELETE FROM weekend_shift_registrations WHERE user_id = $dbUserId AND shift_date = '$date'");
+            $conn->query("DELETE FROM holiday_shift_registrations WHERE user_id = $dbUserId AND shift_date = '$date'");
+        }
+
+        // Perform batch registration
+        $insertedCount = 0;
+        foreach ($validDates as $date) {
+            // Determine shift category: holiday, weekend, night
+            $holidayName = '';
+            foreach ($holidays as $h) {
+                if ($date >= $h['start'] && $date <= $h['end']) {
+                    $holidayName = $h['name'];
+                    break;
+                }
+            }
+
+            $dateOfWeek = (int)date('N', strtotime($date));
+            $isWeekend = ($dateOfWeek == 7 || ($dateOfWeek == 6 && $isSatOff));
+
+            $tableName = 'night_shift_registrations';
+            if (!empty($holidayName)) {
+                $tableName = 'holiday_shift_registrations';
+            } else if ($isWeekend) {
+                $tableName = 'weekend_shift_registrations';
+            }
+
+            // Keep approved = 1 if it is already approved
+            $isAlreadyApproved = false;
+            $checkStmt = $conn->prepare("SELECT approved FROM {$tableName} WHERE user_id = ? AND shift_date = ? LIMIT 1");
+            if ($checkStmt) {
+                $checkStmt->bind_param("is", $dbUserId, $date);
+                $checkStmt->execute();
+                $checkRes = $checkStmt->get_result()->fetch_assoc();
+                $checkStmt->close();
+                if ($checkRes && (int)$checkRes['approved'] === 1) {
+                    $isAlreadyApproved = true;
+                }
+            }
+
+            $approvedValue = $isAlreadyApproved ? 1 : 0;
+
+            if ($tableName === 'holiday_shift_registrations') {
+                $stmt = $conn->prepare("INSERT INTO holiday_shift_registrations (user_id, shift_date, holiday_name, approved) VALUES (?, ?, ?, ?) ON DUPLICATE KEY UPDATE approved = ?, holiday_name = VALUES(holiday_name)");
+                $stmt->bind_param("issii", $dbUserId, $date, $holidayName, $approvedValue, $approvedValue);
+                $stmt->execute();
+                $stmt->close();
+            } else {
+                $stmt = $conn->prepare("INSERT INTO {$tableName} (user_id, shift_date, approved) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE approved = ?");
+                $stmt->bind_param("isii", $dbUserId, $date, $approvedValue, $approvedValue);
+                $stmt->execute();
+                $stmt->close();
+            }
+            $insertedCount++;
+        }
+
+        // Send notification to admins about pending weekly registrations
+        $saleName = !empty($decodedUser['name']) ? $decodedUser['name'] : 'Nhân viên';
+        $title = "Đăng ký trực ca tuần mới";
+        $body = "Sale {$saleName} đã lên lịch đăng ký trực cho {$insertedCount} ngày trong tuần này. Vui lòng kiểm duyệt.";
+        $link = "/attendance";
+
+        $admins = $conn->query("SELECT id FROM accounts WHERE role IN ('admin', 'superadmin', 'director') AND status = 'active'")->fetch_all(MYSQLI_ASSOC);
+        foreach ($admins as $admin) {
+            $stmtNotif = $conn->prepare("INSERT INTO notifications (user_id, tenant_id, title, body, type, link) VALUES (?, 1, ?, ?, 'shift_request', ?)");
+            if ($stmtNotif) {
+                $stmtNotif->bind_param("isss", $admin['id'], $title, $body, $link);
+                $stmtNotif->execute();
+                $stmtNotif->close();
+            }
+        }
+
+        logAdminAction($conn, $dbUserId, 'REGISTER_WEEKLY_SHIFTS', json_encode([
+            'user_id' => $dbUserId,
+            'dates' => $validDates
+        ]));
+
+        echo json_encode(['success' => true, 'message' => "Đã gửi đăng ký trực tuần cho {$insertedCount} ngày. Vui lòng chờ phê duyệt."]);
+        break;
+
+    case 'get_shift_registrations_admin':
+        if (!$decodedUser) {
+            echo json_encode(['success' => false, 'message' => 'Unauthorized']);
+            break;
+        }
+        if (!in_array(strtolower($decodedUser['role']), ['admin', 'superadmin', 'director', 'manager', 'assistant'])) {
+            echo json_encode(['success' => false, 'message' => 'Forbidden']);
+            break;
+        }
+
+        $registrations = [];
+        
+        $resNight = $conn->query("SELECT 'night' as shift_type, r.id, r.user_id, r.shift_date, r.approved, r.created_at, a.name as user_name, '' as holiday_name FROM night_shift_registrations r JOIN accounts a ON r.user_id = a.id ORDER BY r.shift_date DESC LIMIT 200");
+        if ($resNight) { while($row = $resNight->fetch_assoc()) { $registrations[] = $row; } }
+        
+        $resWeekend = $conn->query("SELECT 'weekend' as shift_type, r.id, r.user_id, r.shift_date, r.approved, r.created_at, a.name as user_name, '' as holiday_name FROM weekend_shift_registrations r JOIN accounts a ON r.user_id = a.id ORDER BY r.shift_date DESC LIMIT 200");
+        if ($resWeekend) { while($row = $resWeekend->fetch_assoc()) { $registrations[] = $row; } }
+        
+        $resHoliday = $conn->query("SELECT 'holiday' as shift_type, r.id, r.user_id, r.shift_date, r.approved, r.created_at, a.name as user_name, r.holiday_name FROM holiday_shift_registrations r JOIN accounts a ON r.user_id = a.id ORDER BY r.shift_date DESC LIMIT 200");
+        if ($resHoliday) { while($row = $resHoliday->fetch_assoc()) { $registrations[] = $row; } }
+
+        usort($registrations, function($a, $b) {
+            return strcmp($b['created_at'], $a['created_at']);
+        });
+
+        echo json_encode([
+            'success' => true,
+            'registrations' => $registrations
+        ]);
+        break;
+
+    case 'approve_shift_registration':
+        if (!$decodedUser) {
+            echo json_encode(['success' => false, 'message' => 'Unauthorized']);
+            break;
+        }
+        if (!in_array(strtolower($decodedUser['role']), ['admin', 'superadmin', 'director', 'manager', 'assistant'])) {
+            echo json_encode(['success' => false, 'message' => 'Forbidden']);
+            break;
+        }
+
+        $b = json_decode(file_get_contents('php://input'), true);
+        $shiftType = isset($b['shift_type']) ? trim($b['shift_type']) : '';
+        $id = isset($b['id']) ? (int)$b['id'] : 0;
+
+        if (empty($shiftType) || $id === 0) {
+            echo json_encode(['success' => false, 'message' => 'Thiếu thông tin phê duyệt.']);
+            break;
+        }
+
+        $table = '';
+        $typeLabel = '';
+        if ($shiftType === 'night') { $table = 'night_shift_registrations'; $typeLabel = 'Đêm'; }
+        else if ($shiftType === 'weekend') { $table = 'weekend_shift_registrations'; $typeLabel = 'Cuối tuần'; }
+        else if ($shiftType === 'holiday') { $table = 'holiday_shift_registrations'; $typeLabel = 'Ngày lễ'; }
+
+        if (empty($table)) {
+            echo json_encode(['success' => false, 'message' => 'Loại ca trực không hợp lệ.']);
+            break;
+        }
+
+        $stmtReg = $conn->prepare("SELECT user_id, shift_date FROM $table WHERE id = ?");
+        $stmtReg->bind_param("i", $id);
+        $stmtReg->execute();
+        $reg = $stmtReg->get_result()->fetch_assoc();
+        $stmtReg->close();
+
+        if ($reg) {
+            $stmtUp = $conn->prepare("UPDATE $table SET approved = 1 WHERE id = ?");
+            $stmtUp->bind_param("i", $id);
+            $stmtUp->execute();
+            $stmtUp->close();
+
+            logAdminAction($conn, $decodedUser['id'], 'APPROVE_SHIFT_REGISTRATION', json_encode([
+                'shift_type' => $shiftType,
+                'id' => $id,
+                'target_user_id' => $reg['user_id'],
+                'shift_date' => $reg['shift_date']
+            ]));
+
+            // Notify user
+            $title = "Đăng ký trực ca {$typeLabel} được phê duyệt";
+            $body = "Yêu cầu trực ca {$typeLabel} ngày {$reg['shift_date']} của bạn đã được phê duyệt.";
+            $link = "/workspace";
+            $stmtNotif = $conn->prepare("INSERT INTO notifications (user_id, tenant_id, title, body, type, link) VALUES (?, 1, ?, ?, 'shift_approval', ?)");
+            $stmtNotif->bind_param("isss", $reg['user_id'], $title, $body, $link);
+            $stmtNotif->execute();
+            $stmtNotif->close();
+
+            // Call webhook/internal state notification for night shift
+            if ($shiftType === 'night') {
+                $stmtC = $conn->prepare("SELECT id FROM consultants WHERE email = (SELECT email FROM accounts WHERE id = ?)");
+                $stmtC->bind_param("i", $reg['user_id']);
+                $stmtC->execute();
+                $cRow = $stmtC->get_result()->fetch_assoc();
+                $stmtC->close();
+                if ($cRow) {
+                    notifyNightShiftChange($conn, $cRow['id'], $reg['shift_date'], true);
+                }
+            }
+
+            echo json_encode(['success' => true, 'message' => 'Phê duyệt đăng ký thành công.']);
+        } else {
+            echo json_encode(['success' => false, 'message' => 'Không tìm thấy bản ghi đăng ký trực ca.']);
+        }
+        break;
+
+    case 'reject_shift_registration':
+        if (!$decodedUser) {
+            echo json_encode(['success' => false, 'message' => 'Unauthorized']);
+            break;
+        }
+        if (!in_array(strtolower($decodedUser['role']), ['admin', 'superadmin', 'director', 'manager', 'assistant'])) {
+            echo json_encode(['success' => false, 'message' => 'Forbidden']);
+            break;
+        }
+
+        $b = json_decode(file_get_contents('php://input'), true);
+        $shiftType = isset($b['shift_type']) ? trim($b['shift_type']) : '';
+        $id = isset($b['id']) ? (int)$b['id'] : 0;
+
+        if (empty($shiftType) || $id === 0) {
+            echo json_encode(['success' => false, 'message' => 'Thiếu thông tin từ chối.']);
+            break;
+        }
+
+        $table = '';
+        $typeLabel = '';
+        if ($shiftType === 'night') { $table = 'night_shift_registrations'; $typeLabel = 'Đêm'; }
+        else if ($shiftType === 'weekend') { $table = 'weekend_shift_registrations'; $typeLabel = 'Cuối tuần'; }
+        else if ($shiftType === 'holiday') { $table = 'holiday_shift_registrations'; $typeLabel = 'Ngày lễ'; }
+
+        if (empty($table)) {
+            echo json_encode(['success' => false, 'message' => 'Loại ca trực không hợp lệ.']);
+            break;
+        }
+
+        $stmtReg = $conn->prepare("SELECT user_id, shift_date FROM $table WHERE id = ?");
+        $stmtReg->bind_param("i", $id);
+        $stmtReg->execute();
+        $reg = $stmtReg->get_result()->fetch_assoc();
+        $stmtReg->close();
+
+        if ($reg) {
+            $stmtDel = $conn->prepare("DELETE FROM $table WHERE id = ?");
+            $stmtDel->bind_param("i", $id);
+            $stmtDel->execute();
+            $stmtDel->close();
+
+            logAdminAction($conn, $decodedUser['id'], 'REJECT_SHIFT_REGISTRATION', json_encode([
+                'shift_type' => $shiftType,
+                'id' => $id,
+                'target_user_id' => $reg['user_id'],
+                'shift_date' => $reg['shift_date']
+            ]));
+
+            // Notify user
+            $title = "Đăng ký trực ca {$typeLabel} bị từ chối";
+            $body = "Yêu cầu trực ca {$typeLabel} ngày {$reg['shift_date']} của bạn đã bị từ chối.";
+            $link = "/workspace";
+            $stmtNotif = $conn->prepare("INSERT INTO notifications (user_id, tenant_id, title, body, type, link) VALUES (?, 1, ?, ?, 'shift_approval', ?)");
+            $stmtNotif->bind_param("isss", $reg['user_id'], $title, $body, $link);
+            $stmtNotif->execute();
+            $stmtNotif->close();
+
+            // Call webhook/internal state notification for night shift
+            if ($shiftType === 'night') {
+                $stmtC = $conn->prepare("SELECT id FROM consultants WHERE email = (SELECT email FROM accounts WHERE id = ?)");
+                $stmtC->bind_param("i", $reg['user_id']);
+                $stmtC->execute();
+                $cRow = $stmtC->get_result()->fetch_assoc();
+                $stmtC->close();
+                if ($cRow) {
+                    notifyNightShiftChange($conn, $cRow['id'], $reg['shift_date'], false);
+                }
+            }
+
+            echo json_encode(['success' => true, 'message' => 'Từ chối đăng ký thành công.']);
+        } else {
+            echo json_encode(['success' => false, 'message' => 'Không tìm thấy bản ghi đăng ký trực ca.']);
         }
         break;
 

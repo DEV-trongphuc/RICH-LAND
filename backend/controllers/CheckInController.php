@@ -76,6 +76,112 @@ class CheckInController {
         $stmt->execute($params);
         $rows = $stmt->fetchAll() ?: [];
 
+        if (isset($_GET['include_shifts']) && $_GET['include_shifts'] == '1') {
+            $shifts = [];
+            $userIdFilter = null;
+            if (isset($_GET['user_id']) && !empty($_GET['user_id']) && $_GET['user_id'] !== 'all') {
+                $userIdFilter = (int)$_GET['user_id'];
+            }
+
+            if (isset($_GET['month']) && !empty($_GET['month'])) {
+                $year = (int)($_GET['year'] ?? date('Y'));
+                $month = (int)$_GET['month'];
+
+                // 1. Night shifts
+                $nightSql = "SELECT 'night' as shift_type, r.id, r.user_id, r.shift_date, r.approved, r.created_at, u.full_name as user_name, '' as holiday_name 
+                             FROM night_shift_registrations r 
+                             JOIN users u ON r.user_id = u.id 
+                             WHERE YEAR(r.shift_date) = ? AND MONTH(r.shift_date) = ?";
+                $nightParams = [$year, $month];
+                if ($userIdFilter !== null) {
+                    $nightSql .= " AND r.user_id = ?";
+                    $nightParams[] = $userIdFilter;
+                }
+                $stmtNight = $this->db->prepare($nightSql);
+                $stmtNight->execute($nightParams);
+                $shifts = array_merge($shifts, $stmtNight->fetchAll(PDO::FETCH_ASSOC) ?: []);
+
+                // 2. Weekend shifts
+                $weekendSql = "SELECT 'weekend' as shift_type, r.id, r.user_id, r.shift_date, r.approved, r.created_at, u.full_name as user_name, '' as holiday_name 
+                               FROM weekend_shift_registrations r 
+                               JOIN users u ON r.user_id = u.id 
+                               WHERE YEAR(r.shift_date) = ? AND MONTH(r.shift_date) = ?";
+                $weekendParams = [$year, $month];
+                if ($userIdFilter !== null) {
+                    $weekendSql .= " AND r.user_id = ?";
+                    $weekendParams[] = $userIdFilter;
+                }
+                $stmtWeekend = $this->db->prepare($weekendSql);
+                $stmtWeekend->execute($weekendParams);
+                $shifts = array_merge($shifts, $stmtWeekend->fetchAll(PDO::FETCH_ASSOC) ?: []);
+
+                // 3. Holiday shifts
+                $holidaySql = "SELECT 'holiday' as shift_type, r.id, r.user_id, r.shift_date, r.approved, r.created_at, u.full_name as user_name, r.holiday_name 
+                               FROM holiday_shift_registrations r 
+                               JOIN users u ON r.user_id = u.id 
+                               WHERE YEAR(r.shift_date) = ? AND MONTH(r.shift_date) = ?";
+                $holidayParams = [$year, $month];
+                if ($userIdFilter !== null) {
+                    $holidaySql .= " AND r.user_id = ?";
+                    $holidayParams[] = $userIdFilter;
+                }
+                $stmtHoliday = $this->db->prepare($holidaySql);
+                $stmtHoliday->execute($holidayParams);
+                $shifts = array_merge($shifts, $stmtHoliday->fetchAll(PDO::FETCH_ASSOC) ?: []);
+
+            } else if (isset($_GET['from']) && !empty($_GET['from']) && isset($_GET['to']) && !empty($_GET['to'])) {
+                $from = $_GET['from'];
+                $to = $_GET['to'];
+
+                // 1. Night shifts
+                $nightSql = "SELECT 'night' as shift_type, r.id, r.user_id, r.shift_date, r.approved, r.created_at, u.full_name as user_name, '' as holiday_name 
+                             FROM night_shift_registrations r 
+                             JOIN users u ON r.user_id = u.id 
+                             WHERE r.shift_date BETWEEN ? AND ?";
+                $nightParams = [$from, $to];
+                if ($userIdFilter !== null) {
+                    $nightSql .= " AND r.user_id = ?";
+                    $nightParams[] = $userIdFilter;
+                }
+                $stmtNight = $this->db->prepare($nightSql);
+                $stmtNight->execute($nightParams);
+                $shifts = array_merge($shifts, $stmtNight->fetchAll(PDO::FETCH_ASSOC) ?: []);
+
+                // 2. Weekend shifts
+                $weekendSql = "SELECT 'weekend' as shift_type, r.id, r.user_id, r.shift_date, r.approved, r.created_at, u.full_name as user_name, '' as holiday_name 
+                               FROM weekend_shift_registrations r 
+                               JOIN users u ON r.user_id = u.id 
+                               WHERE r.shift_date BETWEEN ? AND ?";
+                $weekendParams = [$from, $to];
+                if ($userIdFilter !== null) {
+                    $weekendSql .= " AND r.user_id = ?";
+                    $weekendParams[] = $userIdFilter;
+                }
+                $stmtWeekend = $this->db->prepare($weekendSql);
+                $stmtWeekend->execute($weekendParams);
+                $shifts = array_merge($shifts, $stmtWeekend->fetchAll(PDO::FETCH_ASSOC) ?: []);
+
+                // 3. Holiday shifts
+                $holidaySql = "SELECT 'holiday' as shift_type, r.id, r.user_id, r.shift_date, r.approved, r.created_at, u.full_name as user_name, r.holiday_name 
+                               FROM holiday_shift_registrations r 
+                               JOIN users u ON r.user_id = u.id 
+                               WHERE r.shift_date BETWEEN ? AND ?";
+                $holidayParams = [$from, $to];
+                if ($userIdFilter !== null) {
+                    $holidaySql .= " AND r.user_id = ?";
+                    $holidayParams[] = $userIdFilter;
+                }
+                $stmtHoliday = $this->db->prepare($holidaySql);
+                $stmtHoliday->execute($holidayParams);
+                $shifts = array_merge($shifts, $stmtHoliday->fetchAll(PDO::FETCH_ASSOC) ?: []);
+            }
+
+            respond(200, [
+                'check_ins' => $rows,
+                'shifts' => $shifts
+            ], 'Lấy danh sách check-in và trực ca thành công');
+        }
+
         respond(200, $rows, 'Lấy danh sách check-in thành công');
     }
 

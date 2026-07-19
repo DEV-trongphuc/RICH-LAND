@@ -764,10 +764,34 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
 
   // Night shift state variables
   const [nightShiftRegistered, setNightShiftRegistered] = useState(false);
+  const [nightShiftApproved, setNightShiftApproved] = useState(false);
   const [nightShiftLoading, setNightShiftLoading] = useState(true);
   const [nightShiftCanToggle, setNightShiftCanToggle] = useState(true);
   const [nightShiftDate, setNightShiftDate] = useState('');
+  const [nightShiftDeadline, setNightShiftDeadline] = useState('');
   const [togglingNightShift, setTogglingNightShift] = useState(false);
+
+  // Weekend shift state variables
+  const [weekendShiftAllow, setWeekendShiftAllow] = useState(false);
+  const [weekendShiftSat, setWeekendShiftSat] = useState<any>(null);
+  const [weekendShiftSun, setWeekendShiftSun] = useState<any>(null);
+  const [weekendShiftLoading, setWeekendShiftLoading] = useState(false);
+  const [togglingWeekendShift, setTogglingWeekendShift] = useState<Record<string, boolean>>({});
+
+  // Holiday shift state variables
+  const [holidayShifts, setHolidayShifts] = useState<any[]>([]);
+  const [holidayShiftLoading, setHolidayShiftLoading] = useState(false);
+  const [togglingHolidayShift, setTogglingHolidayShift] = useState<Record<string, boolean>>({});
+
+  // Weekly shift state variables
+  const [weeklyShiftDates, setWeeklyShiftDates] = useState<string[]>([]);
+  const [weeklySubmitting, setWeeklySubmitting] = useState(false);
+  const [weeklyRegistrations, setWeeklyRegistrations] = useState<any[]>([]);
+  const [loadingWeeklyRegs, setLoadingWeeklyRegs] = useState(false);
+  const [showWeeklyShiftScheduler, setShowWeeklyShiftScheduler] = useState(false);
+
+  // Leave scheduler state
+  const [showLeaveScheduler, setShowLeaveScheduler] = useState(false);
 
   const getHourLabel = (timeStr: string) => {
     if (!timeStr) return '';
@@ -1882,6 +1906,9 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
 
     loadCheckInStatus();
     loadNightShiftStatus();
+    loadWeekendShiftStatus();
+    loadHolidayShiftStatus();
+    loadWeeklyRegistrations();
     try {
       let query = `get_sale_portal_data&search=${encodeURIComponent(search)}&round_id=${roundId}&date_mode=${dateMode}&sale_id=${saleIdFilter}`;
       if (dateMode === 'custom') {
@@ -1947,8 +1974,10 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
       const res = await fetchAPI('get_night_shift_status');
       if (res.success) {
         setNightShiftRegistered(res.registered);
+        setNightShiftApproved(res.approved === 1 || res.approved === true);
         setNightShiftCanToggle(res.can_toggle);
         setNightShiftDate(res.shift_date);
+        setNightShiftDeadline(res.deadline_time || '');
       }
     } catch (e) {
       console.error("Error loading night shift status:", e);
@@ -1968,6 +1997,11 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
       if (res.success) {
         toast.success(res.message);
         setNightShiftRegistered(!nightShiftRegistered);
+        if (res.pending) {
+          setNightShiftApproved(false);
+        } else {
+          setNightShiftApproved(!nightShiftRegistered);
+        }
       } else {
         toast.error(res.message);
       }
@@ -1975,6 +2009,160 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
       toast.error(t('Lỗi đăng ký: ') + e.message);
     } finally {
       setTogglingNightShift(false);
+    }
+  };
+
+  const loadWeekendShiftStatus = async () => {
+    if (!token) return;
+    setWeekendShiftLoading(true);
+    try {
+      const res = await fetchAPI('get_weekend_shift_status');
+      if (res.success) {
+        setWeekendShiftAllow(res.allow_weekend_registration);
+        setWeekendShiftSat(res.saturday);
+        setWeekendShiftSun(res.sunday);
+      }
+    } catch (e) {
+      console.error("Error loading weekend shift status:", e);
+    } finally {
+      setWeekendShiftLoading(false);
+    }
+  };
+
+  const handleToggleWeekendShift = async (dateStr: string, currentRegistered: boolean) => {
+    if (togglingWeekendShift[dateStr]) return;
+    setTogglingWeekendShift(prev => ({ ...prev, [dateStr]: true }));
+    try {
+      const res = await fetchAPI('register_weekend_shift', {
+        method: 'POST',
+        body: JSON.stringify({ date: dateStr, register: !currentRegistered })
+      });
+      if (res.success) {
+        toast.success(res.message);
+        loadWeekendShiftStatus();
+      } else {
+        toast.error(res.message);
+      }
+    } catch (e: any) {
+      toast.error(t('Lỗi đăng ký: ') + e.message);
+    } finally {
+      setTogglingWeekendShift(prev => ({ ...prev, [dateStr]: false }));
+    }
+  };
+
+  const loadHolidayShiftStatus = async () => {
+    if (!token) return;
+    setHolidayShiftLoading(true);
+    try {
+      const res = await fetchAPI('get_holiday_shift_status');
+      if (res.success) {
+        setHolidayShifts(res.holidays || []);
+      }
+    } catch (e) {
+      console.error("Error loading holiday shift status:", e);
+    } finally {
+      setHolidayShiftLoading(false);
+    }
+  };
+
+  const handleToggleHolidayShift = async (holidayName: string, dateStr: string, currentRegistered: boolean) => {
+    if (togglingHolidayShift[dateStr]) return;
+    setTogglingHolidayShift(prev => ({ ...prev, [dateStr]: true }));
+    try {
+      const res = await fetchAPI('register_holiday_shift', {
+        method: 'POST',
+        body: JSON.stringify({ holiday_name: holidayName, date: dateStr, register: !currentRegistered })
+      });
+      if (res.success) {
+        toast.success(res.message);
+        loadHolidayShiftStatus();
+      } else {
+        toast.error(res.message);
+      }
+    } catch (e: any) {
+      toast.error(t('Lỗi đăng ký: ') + e.message);
+    } finally {
+      setTogglingHolidayShift(prev => ({ ...prev, [dateStr]: false }));
+    }
+  };
+
+  // Weekly shift helpers
+  const getWeekDates = () => {
+    const today = new Date();
+    const dayOfWeek = today.getDay(); // 0 is Sunday, 1 is Monday...
+    const mondayDiff = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+    const monday = new Date(today);
+    monday.setDate(today.getDate() + mondayDiff);
+
+    const weekdays = [
+      t('Thứ Hai'),
+      t('Thứ Ba'),
+      t('Thứ Tư'),
+      t('Thứ Năm'),
+      t('Thứ Sáu'),
+      t('Thứ Bảy'),
+      t('Chủ Nhật')
+    ];
+
+    return weekdays.map((name, i) => {
+      const date = new Date(monday);
+      date.setDate(monday.getDate() + i);
+      const dateStr = date.toISOString().split('T')[0];
+      return {
+        name,
+        date: dateStr,
+        dayIndex: i
+      };
+    });
+  };
+
+  const loadWeeklyRegistrations = async () => {
+    if (!token) return;
+    setLoadingWeeklyRegs(true);
+    try {
+      const today = new Date();
+      const dayOfWeek = today.getDay();
+      const mondayDiff = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+      const monday = new Date(today);
+      monday.setDate(today.getDate() + mondayDiff);
+      const startStr = monday.toISOString().split('T')[0];
+
+      const sunday = new Date(monday);
+      sunday.setDate(monday.getDate() + 6);
+      const endStr = sunday.toISOString().split('T')[0];
+
+      const res = await fetchAPI(`check-ins&start_date=${startStr}&end_date=${endStr}&include_shifts=1`);
+      if (res.success && res.data && res.data.shifts) {
+        const myShifts = res.data.shifts.filter((s: any) => String(s.user_id) === String(user?.id));
+        setWeeklyRegistrations(myShifts);
+        const registeredDates = myShifts.map((s: any) => s.shift_date);
+        setWeeklyShiftDates(registeredDates);
+      }
+    } catch (e) {
+      console.error("Error loading weekly registrations:", e);
+    } finally {
+      setLoadingWeeklyRegs(false);
+    }
+  };
+
+  const handleSubmitWeeklyShifts = async () => {
+    if (weeklySubmitting) return;
+    setWeeklySubmitting(true);
+    try {
+      const res = await fetchAPI('register_weekly_shifts', {
+        method: 'POST',
+        body: JSON.stringify({ dates: weeklyShiftDates })
+      });
+      if (res.success) {
+        toast.success(t('Đăng ký lịch tuần thành công và đang chờ Admin duyệt!'));
+        loadWeeklyRegistrations();
+      } else {
+        toast.error(res.message);
+      }
+    } catch (e: any) {
+      toast.error(t('Lỗi gửi đăng ký: ') + e.message);
+    } finally {
+      setWeeklySubmitting(false);
     }
   };
 
@@ -9280,174 +9468,199 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
 
                     {/* Leave (Nghỉ phép) registration card */}
                     <div className="card" style={{
-                      padding: '1.5rem',
+                      padding: '1.25rem',
                       background: 'var(--color-surface)',
                       border: '1px solid var(--color-border-light)',
                       borderRadius: '16px',
                       boxShadow: '0 4px 20px rgba(0, 0, 0, 0.02), inset 0 1px 0 rgba(255, 255, 255, 0.6)',
                       display: 'flex',
                       flexDirection: 'column',
-                      gap: '1rem',
+                      gap: '0.75rem',
                       transition: 'all 0.3s ease'
                     }}>
-                      <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+                      <div 
+                        onClick={() => setShowLeaveScheduler(!showLeaveScheduler)} 
+                        style={{ 
+                          display: 'flex', 
+                          justifyContent: 'space-between', 
+                          alignItems: 'center', 
+                          cursor: 'pointer',
+                          userSelect: 'none'
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                          <div style={{
+                            width: '36px',
+                            height: '36px',
+                            borderRadius: '8px',
+                            background: 'rgba(239, 68, 68, 0.08)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            flexShrink: 0
+                          }}>
+                            <Calendar size={18} color="var(--color-primary)" />
+                          </div>
+                          <div>
+                            <h3 style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--color-text)', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              <span>{t('ĐĂNG KÝ NGHỈ PHÉP (LEAVE)')}</span>
+                              {onLeave && (
+                                <span style={{
+                                  fontSize: '0.65rem',
+                                  fontWeight: 700,
+                                  background: 'rgba(245, 158, 11, 0.1)',
+                                  color: 'var(--color-warning)',
+                                  padding: '2px 6px',
+                                  borderRadius: '4px'
+                                }}>{t('Đang nghỉ')}</span>
+                              )}
+                            </h3>
+                            <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2, marginBottom: 0 }}>
+                              {t('Tạm dừng nhận data phân bổ tự động.')}
+                            </p>
+                          </div>
+                        </div>
                         <div style={{
-                          width: '40px',
-                          height: '40px',
-                          borderRadius: '10px',
-                          background: 'rgba(239, 68, 68, 0.08)',
+                          color: 'var(--color-text-muted)',
+                          width: '28px',
+                          height: '28px',
+                          borderRadius: '50%',
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
-                          flexShrink: 0
+                          background: 'var(--color-bg-alt)',
+                          border: '1px solid var(--color-border-light)'
                         }}>
-                          <Calendar size={20} color="var(--color-primary)" />
-                        </div>
-                        <div style={{ flex: 1 }}>
-                          <h3 style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--color-text)', margin: 0, letterSpacing: '-0.01em' }}>
-                            {t('ĐĂNG KÝ NGHỈ PHÉP (LEAVE)')}
-                          </h3>
-                          <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', marginTop: 4, marginBottom: 0, lineHeight: '1.45' }}>
-                            {t('Đăng ký nghỉ phép tạm thời để tạm dừng nhận data phân bổ tự động.')}
-                          </p>
+                          {showLeaveScheduler ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
                         </div>
                       </div>
 
-                      {onLeave && (
-                        <div style={{
-                          padding: '8px 12px', borderRadius: 8, textAlign: 'center', fontWeight: 700, fontSize: '0.8rem',
-                          background: 'var(--color-warning-light)', color: 'var(--color-warning)', marginBottom: '0.5rem'
-                        }}>
-                          {t('ĐANG TRONG KỲ NGHỈ PHÉP')}
+                      {showLeaveScheduler && (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '4px' }}>
+                          {onLeave && (
+                            <div style={{
+                              padding: '8px 12px', borderRadius: 8, textAlign: 'center', fontWeight: 700, fontSize: '0.8rem',
+                              background: 'var(--color-warning-light)', color: 'var(--color-warning)'
+                            }}>
+                              {t('ĐANG TRONG KỲ NGHỈ PHÉP')}
+                            </div>
+                          )}
+
+                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                            <div className="form-group" style={{ margin: 0 }}>
+                              <label className="form-label" style={{ fontWeight: 600, fontSize: '0.78rem', color: 'var(--color-text-light)', marginBottom: '4px' }}>{t('Từ ngày')}</label>
+                              <input
+                                type="date"
+                                className="form-input"
+                                value={editLeaveStart}
+                                onChange={(e) => setEditLeaveStart(e.target.value)}
+                                style={{ borderRadius: '10px', height: '38px', fontSize: '0.85rem' }}
+                              />
+                            </div>
+                            <div className="form-group" style={{ margin: 0 }}>
+                              <label className="form-label" style={{ fontWeight: 600, fontSize: '0.78rem', color: 'var(--color-text-light)', marginBottom: '4px' }}>{t('Đến ngày')}</label>
+                              <input
+                                type="date"
+                                className="form-input"
+                                value={editLeaveEnd}
+                                onChange={(e) => setEditLeaveEnd(e.target.value)}
+                                style={{ borderRadius: '10px', height: '38px', fontSize: '0.85rem' }}
+                              />
+                            </div>
+                          </div>
+
+                          <button
+                            type="button"
+                            className="btn primary"
+                            style={{
+                              width: '100%',
+                              height: '36px',
+                              borderRadius: '10px',
+                              fontWeight: 600,
+                              fontSize: '0.85rem',
+                              boxShadow: '0 4px 12px rgba(189, 29, 45, 0.15)',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              gap: '6px'
+                            }}
+                            onClick={handleAddLeave}
+                            disabled={savingLeave}
+                          >
+                            {savingLeave ? (
+                              <>
+                                <RefreshCw size={14} className="spin" />
+                                {t('Đang đăng ký...')}
+                              </>
+                            ) : (
+                              t('Đăng ký nghỉ')
+                            )}
+                          </button>
+
+                          {/* Lịch sử đăng ký nghỉ phép */}
+                          <div style={{ borderTop: '1px solid var(--color-border-light)', paddingTop: '10px', marginTop: '4px' }}>
+                            <h4 style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--color-text)', marginBottom: '0.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <span>{t('LỊCH SỬ NGHỈ PHÉP')}</span>
+                              <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 400 }}>
+                                ({leaveHistory.length})
+                              </span>
+                            </h4>
+
+                            {loadingLeaves ? (
+                              <div style={{ textAlign: 'center', padding: '1rem', color: 'var(--color-text-muted)', fontSize: '0.8rem' }}>
+                                <RefreshCw className="spin" size={16} style={{ marginRight: 6 }} />
+                                {t('Đang tải lịch sử...')}
+                              </div>
+                            ) : leaveHistory.length === 0 ? (
+                              <div style={{ textAlign: 'center', padding: '1rem', color: 'var(--color-text-muted)', fontSize: '0.8rem', fontStyle: 'italic' }}>
+                                {t('Chưa có đăng ký nghỉ phép nào.')}
+                              </div>
+                            ) : (
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '180px', overflowY: 'auto', paddingRight: '4px' }} className="custom-scrollbar">
+                                {leaveHistory.map((leave) => {
+                                  const todayStr = new Date().toISOString().split('T')[0];
+                                  const isPast = leave.end_date < todayStr;
+                                  const isCurrent = todayStr >= leave.start_date && todayStr <= leave.end_date;
+
+                                  return (
+                                    <div
+                                      key={leave.id}
+                                      style={{
+                                        display: 'flex',
+                                        justifyContent: 'space-between',
+                                        alignItems: 'center',
+                                        padding: '8px 12px',
+                                        background: isCurrent ? 'var(--color-warning-light)' : (isPast ? 'var(--color-bg)' : 'var(--color-surface)'),
+                                        border: '1px solid var(--color-border-light)',
+                                        borderRadius: '10px'
+                                      }}
+                                    >
+                                      <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                                        <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--color-text)' }}>
+                                          {t('Từ')} {new Date(leave.start_date).toLocaleDateString('vi-VN')} {t('đến')} {new Date(leave.end_date).toLocaleDateString('vi-VN')}
+                                        </span>
+                                        <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>
+                                          {isCurrent ? t('Đang nghỉ') : (isPast ? t('Đã qua') : t('Sắp diễn ra'))}
+                                        </span>
+                                      </div>
+                                      {!isPast && ['sale', 'manager'].includes(String(effectiveRole).toLowerCase()) && (
+                                        <button
+                                          type="button"
+                                          className="btn text-danger"
+                                          style={{ padding: '4px', fontSize: '0.75rem', height: 'auto' }}
+                                          onClick={() => handleDeleteLeave(leave.id)}
+                                        >
+                                          {t('Hủy')}
+                                        </button>
+                                      )}
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            )}
+                          </div>
                         </div>
                       )}
-
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginTop: '0.25rem' }}>
-                        <div className="form-group" style={{ margin: 0 }}>
-                          <label className="form-label" style={{ fontWeight: 600, fontSize: '0.78rem', color: 'var(--color-text-light)', marginBottom: '4px' }}>{t('Từ ngày')}</label>
-                          <input
-                            type="date"
-                            className="form-input"
-                            value={editLeaveStart}
-                            onChange={(e) => setEditLeaveStart(e.target.value)}
-                            style={{ borderRadius: '10px', height: '38px', fontSize: '0.85rem' }}
-                          />
-                        </div>
-                        <div className="form-group" style={{ margin: 0 }}>
-                          <label className="form-label" style={{ fontWeight: 600, fontSize: '0.78rem', color: 'var(--color-text-light)', marginBottom: '4px' }}>{t('Đến ngày')}</label>
-                          <input
-                            type="date"
-                            className="form-input"
-                            value={editLeaveEnd}
-                            onChange={(e) => setEditLeaveEnd(e.target.value)}
-                            style={{ borderRadius: '10px', height: '38px', fontSize: '0.85rem' }}
-                          />
-                        </div>
-                      </div>
-
-                      <button
-                        type="button"
-                        className="btn primary"
-                        style={{
-                          width: '100%',
-                          marginTop: '0.5rem',
-                          height: '38px',
-                          borderRadius: '10px',
-                          fontWeight: 600,
-                          fontSize: '0.85rem',
-                          boxShadow: '0 4px 12px rgba(189, 29, 45, 0.15)',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          gap: '6px'
-                        }}
-                        onClick={handleAddLeave}
-                        disabled={savingLeave}
-                      >
-                        {savingLeave ? (
-                          <>
-                            <RefreshCw size={14} className="spin" />
-                            {t('Đang đăng ký...')}
-                          </>
-                        ) : (
-                          t('Đăng ký nghỉ')
-                        )}
-                      </button>
-
-                      {/* Lịch sử đăng ký nghỉ phép */}
-                      <div style={{ marginTop: '0.75rem', borderTop: '1px solid var(--color-border-light)', paddingTop: '1rem' }}>
-                        <h4 style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--color-text)', marginBottom: '0.75rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <span>{t('LỊCH SỬ NGHỈ PHÉP')}</span>
-                          <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 400 }}>
-                            ({leaveHistory.length})
-                          </span>
-                        </h4>
-
-                        {loadingLeaves ? (
-                          <div style={{ textAlign: 'center', padding: '1rem', color: 'var(--color-text-muted)', fontSize: '0.8rem' }}>
-                            <RefreshCw className="spin" size={16} style={{ marginRight: 6 }} />
-                            {t('Đang tải lịch sử...')}
-                          </div>
-                        ) : leaveHistory.length === 0 ? (
-                          <div style={{ textAlign: 'center', padding: '1rem', color: 'var(--color-text-muted)', fontSize: '0.8rem', fontStyle: 'italic' }}>
-                            {t('Chưa có đăng ký nghỉ phép nào.')}
-                          </div>
-                        ) : (
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '180px', overflowY: 'auto', paddingRight: '4px' }} className="custom-scrollbar">
-                            {leaveHistory.map((leave) => {
-                              const todayStr = new Date().toISOString().split('T')[0];
-                              const isPast = leave.end_date < todayStr;
-                              const isCurrent = todayStr >= leave.start_date && todayStr <= leave.end_date;
-
-                              return (
-                                <div
-                                  key={leave.id}
-                                  style={{
-                                    display: 'flex',
-                                    justifyContent: 'space-between',
-                                    alignItems: 'center',
-                                    padding: '8px 12px',
-                                    background: isCurrent ? 'var(--color-warning-light)' : (isPast ? 'var(--color-bg)' : 'var(--color-surface)'),
-                                    border: '1px solid var(--color-border-light)',
-                                    borderRadius: '8px',
-                                    opacity: isPast ? 0.6 : 1
-                                  }}
-                                >
-                                  <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                                    <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--color-text)' }}>
-                                      {new Date(leave.start_date).toLocaleDateString('vi-VN')} → {new Date(leave.end_date).toLocaleDateString('vi-VN')}
-                                    </span>
-                                    <span style={{ fontSize: '0.7rem', color: isCurrent ? 'var(--color-warning)' : 'var(--color-text-muted)', fontWeight: 600 }}>
-                                      {isCurrent ? t('Đang diễn ra') : (isPast ? t('Đã qua') : t('Sắp tới'))}
-                                    </span>
-                                  </div>
-
-                                  <button
-                                    type="button"
-                                    onClick={() => handleDeleteLeave(leave.id)}
-                                    style={{
-                                      background: 'transparent',
-                                      border: 'none',
-                                      color: 'var(--color-danger)',
-                                      cursor: 'pointer',
-                                      padding: '4px',
-                                      borderRadius: '4px',
-                                      display: 'flex',
-                                      alignItems: 'center',
-                                      justifyContent: 'center',
-                                      transition: 'background 0.2s'
-                                    }}
-                                    className="hover-bg-danger-light"
-                                    title={t('Xóa lịch nghỉ')}
-                                  >
-                                    <Trash2 size={15} />
-                                  </button>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        )}
-                      </div>
                     </div>
                   </>
                 )}
@@ -9460,43 +9673,36 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                       {t('GIỜ LÀM VIỆC & LỊCH TRÌNH')}
                     </h3>
                     <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', marginTop: 4, marginBottom: 0 }}>
-                      {t('Thiết lập thời gian nhận lead cố định hàng ngày hoặc lịch trình tùy chỉnh theo từng thứ.')}
+                      {t('Thời gian nhận lead cố định hàng ngày hoặc lịch trình tùy chỉnh theo từng thứ do Ban Quản Trị thiết lập.')}
                     </p>
                   </div>
 
-                  {/* Segmented Control for Schedule Mode */}
-                  <div style={{ display: 'flex', gap: '0.5rem', background: 'var(--color-bg)', padding: '4px', borderRadius: '12px' }}>
+                  {/* Segmented Control for Schedule Mode - Read-only */}
+                  <div style={{ display: 'flex', gap: '0.5rem', background: 'var(--color-bg)', padding: '4px', borderRadius: '12px', pointerEvents: 'none', opacity: 0.85 }}>
                     <button
                       type="button"
-                      onClick={() => setScheduleMode('daily')}
                       style={{
                         flex: 1, padding: '8px', borderRadius: '8px', fontWeight: 600, fontSize: '0.75rem',
                         background: scheduleMode === 'daily' ? (theme === 'dark' ? 'var(--color-surface)' : 'white') : 'transparent',
                         color: scheduleMode === 'daily' ? 'var(--color-primary)' : 'var(--color-text-muted)',
                         boxShadow: scheduleMode === 'daily' ? 'var(--shadow-sm)' : 'none',
-                        transition: 'all 0.2s', border: 'none', cursor: 'pointer'
+                        transition: 'all 0.2s', border: 'none', cursor: 'default'
                       }}
                     >{t('Cố định hàng ngày')}</button>
                     <button
                       type="button"
-                      onClick={() => {
-                        setScheduleMode('custom');
-                        if (!editWorkSchedule) {
-                          setEditWorkSchedule(DEFAULT_SCHEDULE);
-                        }
-                      }}
                       style={{
                         flex: 1, padding: '8px', borderRadius: '8px', fontWeight: 600, fontSize: '0.75rem',
                         background: scheduleMode === 'custom' ? (theme === 'dark' ? 'var(--color-surface)' : 'white') : 'transparent',
                         color: scheduleMode === 'custom' ? 'var(--color-primary)' : 'var(--color-text-muted)',
                         boxShadow: scheduleMode === 'custom' ? 'var(--shadow-sm)' : 'none',
-                        transition: 'all 0.2s', border: 'none', cursor: 'pointer'
+                        transition: 'all 0.2s', border: 'none', cursor: 'default'
                       }}
                     >{t('Tùy chỉnh (Thứ 2 - CN)')}</button>
                   </div>
 
                   {scheduleMode === 'daily' ? (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', animation: 'slideUp 0.15s ease-out' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
                         <div style={{ flex: 1 }}>
                           <label className="form-label" style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', display: 'block', marginBottom: '6px', fontWeight: 600 }}>
@@ -9506,8 +9712,8 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                             type="time"
                             className="form-input"
                             value={editWorkStartTime}
-                            onChange={(e) => setEditWorkStartTime(e.target.value)}
-                            style={{ fontSize: '1.1rem', fontWeight: 700, textAlign: 'center', letterSpacing: '0.05em' }}
+                            disabled={true}
+                            style={{ fontSize: '1.1rem', fontWeight: 700, textAlign: 'center', letterSpacing: '0.05em', background: 'var(--color-bg-alt)', cursor: 'default' }}
                           />
                         </div>
                         <div style={{ fontSize: '1.5rem', color: 'var(--color-text-muted)', paddingTop: '20px' }}>→</div>
@@ -9519,17 +9725,17 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                             type="time"
                             className="form-input"
                             value={editWorkEndTime}
-                            onChange={(e) => setEditWorkEndTime(e.target.value)}
-                            style={{ fontSize: '1.1rem', fontWeight: 700, textAlign: 'center', letterSpacing: '0.05em' }}
+                            disabled={true}
+                            style={{ fontSize: '1.1rem', fontWeight: 700, textAlign: 'center', letterSpacing: '0.05em', background: 'var(--color-bg-alt)', cursor: 'default' }}
                           />
                         </div>
                       </div>
                       <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', margin: 0, lineHeight: 1.4 }}>
-                        💡 {t('Lưu ý: Lead mới sẽ chỉ được phân bổ tự động cho bạn trong khoảng thời gian làm việc đã thiết lập.')}
+                        💡 {t('Lưu ý: Thời gian làm việc của bạn do Ban Quản Trị thiết lập quy định.')}
                       </p>
                     </div>
                   ) : (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', animation: 'slideUp 0.15s ease-out' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                       {Object.entries(DAY_LABELS).map(([dayKey, dayLabel]) => {
                         const config = editWorkSchedule[dayKey] || { active: true, start: editWorkStartTime, end: editWorkEndTime };
                         const isActive = config.active;
@@ -9542,16 +9748,18 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                               padding: '10px 14px', borderRadius: '12px', border: '1px solid var(--color-border-light)',
                               background: isActive ? 'var(--color-surface)' : 'var(--color-bg)',
                               transition: 'all 0.2s',
-                              boxShadow: isActive ? 'var(--shadow-xs)' : 'none'
+                              boxShadow: isActive ? 'var(--shadow-xs)' : 'none',
+                              opacity: isActive ? 1 : 0.8
                             }}
                           >
-                            {/* Day Label with custom checkbox */}
-                            <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', margin: 0, userSelect: 'none' }}>
+                            {/* Day Label with disabled checkbox */}
+                            <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'default', margin: 0, userSelect: 'none' }}>
                               <input
                                 type="checkbox"
                                 className="custom-checkbox"
                                 checked={isActive}
-                                onChange={(e) => handleDayActiveToggle(dayKey, e.target.checked)}
+                                disabled={true}
+                                style={{ cursor: 'default' }}
                               />
                               <span style={{ fontWeight: 700, fontSize: '0.9rem', color: isActive ? 'var(--color-text)' : 'var(--color-text-muted)' }}>
                                 {t(dayLabel)}
@@ -9565,17 +9773,17 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                                   <input
                                     type="time"
                                     className="form-input"
-                                    style={{ width: '92px', height: '34px', fontSize: '0.8rem', padding: '0 6px', textAlign: 'center', borderRadius: '6px' }}
+                                    style={{ width: '92px', height: '34px', fontSize: '0.8rem', padding: '0 6px', textAlign: 'center', borderRadius: '6px', background: 'var(--color-bg-alt)', cursor: 'default' }}
                                     value={config.start || editWorkStartTime}
-                                    onChange={(e) => handleDayTimeChange(dayKey, 'start', e.target.value)}
+                                    disabled={true}
                                   />
                                   <span style={{ color: 'var(--color-text-muted)', fontSize: '0.8rem' }}>-</span>
                                   <input
                                     type="time"
                                     className="form-input"
-                                    style={{ width: '92px', height: '34px', fontSize: '0.8rem', padding: '0 6px', textAlign: 'center', borderRadius: '6px' }}
+                                    style={{ width: '92px', height: '34px', fontSize: '0.8rem', padding: '0 6px', textAlign: 'center', borderRadius: '6px', background: 'var(--color-bg-alt)', cursor: 'default' }}
                                     value={config.end || editWorkEndTime}
-                                    onChange={(e) => handleDayTimeChange(dayKey, 'end', e.target.value)}
+                                    disabled={true}
                                   />
                                 </div>
                               ) : (

@@ -2481,6 +2481,84 @@ SQL;
             $currentVersion = 164;
         }
 
+        // Version 165 (Add late night shift registration settings)
+        if ($currentVersion < 165) {
+            $logMsg("Đang chạy cập nhật phiên bản 165 (Thêm cấu hình đăng ký trễ ca trực đêm)...", "info");
+            $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('allow_late_night_shift_registration', '0')");
+            $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('late_night_shift_registration_minutes', '30')");
+            
+            $conn->query("INSERT INTO system_settings (setting_key, setting_value) VALUES ('db_version', '165') ON DUPLICATE KEY UPDATE setting_value = '165'");
+            $currentVersion = 165;
+        }
+
+        // Version 166 (Add advance night shift registration setting)
+        if ($currentVersion < 166) {
+            $logMsg("Đang chạy cập nhật phiên bản 166 (Thêm cấu hình đăng ký trước ca trực đêm)...", "info");
+            $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('advance_night_shift_registration_minutes', '0')");
+            
+            $conn->query("INSERT INTO system_settings (setting_key, setting_value) VALUES ('db_version', '166') ON DUPLICATE KEY UPDATE setting_value = '166'");
+            $currentVersion = 166;
+        }
+
+        // Version 167 (Add global work start, end and schedule settings)
+        if ($currentVersion < 167) {
+            $logMsg("Đang chạy cập nhật phiên bản 167 (Thêm cấu hình giờ làm việc và lịch trình chung)...", "info");
+            $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('global_work_start_time', '08:00')");
+            $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('global_work_end_time', '17:30');");
+            $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('global_work_schedule', '{\"1\":{\"active\":true,\"start\":\"08:00\",\"end\":\"17:30\"},\"2\":{\"active\":true,\"start\":\"08:00\",\"end\":\"17:30\"},\"3\":{\"active\":true,\"start\":\"08:00\",\"end\":\"17:30\"},\"4\":{\"active\":true,\"start\":\"08:00\",\"end\":\"17:30\"},\"5\":{\"active\":true,\"start\":\"08:00\",\"end\":\"17:30\"},\"6\":{\"active\":true,\"start\":\"08:00\",\"end\":\"17:30\"},\"7\":{\"active\":true,\"start\":\"08:00\",\"end\":\"17:30\"}}')");
+            
+            $conn->query("INSERT INTO system_settings (setting_key, setting_value) VALUES ('db_version', '167') ON DUPLICATE KEY UPDATE setting_value = '167'");
+            $currentVersion = 167;
+        }
+
+        // Version 168 (Add approved column and weekend/holiday registration tables and settings)
+        if ($currentVersion < 168) {
+            $logMsg("Đang chạy cập nhật phiên bản 168 (Thêm hệ thống trực ca mở rộng)...", "info");
+            
+            // Add approved column to night_shift_registrations
+            try {
+                $conn->query("ALTER TABLE night_shift_registrations ADD COLUMN approved TINYINT(1) NOT NULL DEFAULT 1");
+            } catch (Throwable $t) {
+                // Column might already exist
+            }
+            
+            // Create weekend_shift_registrations table
+            $conn->query("CREATE TABLE IF NOT EXISTS `weekend_shift_registrations` (
+              `id` int(11) NOT NULL AUTO_INCREMENT,
+              `user_id` int(11) NOT NULL,
+              `shift_date` date NOT NULL,
+              `approved` tinyint(1) NOT NULL DEFAULT 1,
+              `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+              PRIMARY KEY (`id`),
+              UNIQUE KEY `user_shift_date` (`user_id`, `shift_date`),
+              FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+            
+            // Create holiday_shift_registrations table
+            $conn->query("CREATE TABLE IF NOT EXISTS `holiday_shift_registrations` (
+              `id` int(11) NOT NULL AUTO_INCREMENT,
+              `user_id` int(11) NOT NULL,
+              `shift_date` date NOT NULL,
+              `holiday_name` varchar(255) NOT NULL,
+              `approved` tinyint(1) NOT NULL DEFAULT 0,
+              `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+              PRIMARY KEY (`id`),
+              UNIQUE KEY `user_shift_date` (`user_id`, `shift_date`),
+              FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+            
+            // Insert settings keys
+            $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('auto_approve_night_shift', '1')");
+            $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('allow_weekend_shift_registration', '1')");
+            $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('auto_approve_weekend_shift', '1')");
+            $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('weekend_shift_registration_lead_hours', '0')");
+            $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('holiday_schedules', '[]')");
+            $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('auto_approve_holiday_shift', '0')");
+            
+            $conn->query("INSERT INTO system_settings (setting_key, setting_value) VALUES ('db_version', '168') ON DUPLICATE KEY UPDATE setting_value = '168'");
+            $currentVersion = 168;
+        }
+
     $logMsg("Tự sửa đổi cấu trúc hoàn thành thành công.", "success");
 
     $logMsg("Hệ thống đã cập nhật thành công lên phiên bản mới nhất: " . $currentVersion, "success");

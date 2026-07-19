@@ -883,7 +883,7 @@ function checkNightShiftAvailability($conn, $consultantId, $currentTime)
             $targetUserId = $consultantId;
         }
 
-        $stmt = $conn->prepare("SELECT 1 FROM night_shift_registrations WHERE user_id = ? AND shift_date = ?");
+        $stmt = $conn->prepare("SELECT 1 FROM night_shift_registrations WHERE user_id = ? AND shift_date = ? AND approved = 1");
         if ($stmt) {
             $stmt->bind_param("is", $targetUserId, $shiftDate);
             $stmt->execute();
@@ -1738,10 +1738,103 @@ function checkConsultantGates($conn, $consultantId, $lead = null)
         }
     }
 
-    // GATE 2: Check-in ngày hợp lệ (Selfie Check-in)
+    // GATE 2: Check-in ngày hợp lệ (Selfie Check-in & Trực ca ngày nghỉ/lễ)
+    $todayStr = date('Y-m-d');
     $dayOfWeek = date('N'); // 1 (Mon) - 7 (Sun)
-    if ($dayOfWeek >= 1 && $dayOfWeek <= 6) { // Mon-Sat
-        $todayStr = date('Y-m-d');
+
+    // Check if today is a holiday
+    $holidayName = '';
+    $holidaySchedulesJson = '[]';
+    $resHol = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'holiday_schedules' LIMIT 1");
+    if ($resHol && $hRow = $resHol->fetch_assoc()) {
+        $holidaySchedulesJson = !empty($hRow['setting_value']) ? $hRow['setting_value'] : '[]';
+    }
+    $holidays = json_decode($holidaySchedulesJson, true);
+    if (is_array($holidays)) {
+        foreach ($holidays as $h) {
+            if ($todayStr >= $h['start'] && $todayStr <= $h['end']) {
+                $holidayName = $h['name'];
+                break;
+            }
+        }
+    }
+
+    // Determine if today is a rest day (weekend/off day) for this user
+    $isRestDay = false;
+    if ($dayOfWeek == 7) {
+        $isRestDay = true;
+    } else if ($dayOfWeek == 6) {
+        // Check user's schedule if Saturday is inactive
+        $stmtSched = $conn->prepare("SELECT work_schedule FROM users WHERE id = ?");
+        if ($stmtSched) {
+            $stmtSched->bind_param("i", $targetUserId);
+            $stmtSched->execute();
+            $sRow = $stmtSched->get_result()->fetch_assoc();
+            $stmtSched->close();
+            if ($sRow && !empty($sRow['work_schedule'])) {
+                $sched = json_decode($sRow['work_schedule'], true);
+                if (isset($sched[6]) && isset($sched[6]['active']) && !(bool)$sched[6]['active']) {
+                    $isRestDay = true;
+                }
+            }
+        }
+    }
+
+    if (!empty($holidayName)) {
+        // Holiday constraint
+        $stmtCheckReg = $conn->prepare("SELECT 1 FROM holiday_shift_registrations WHERE user_id = ? AND shift_date = ? AND approved = 1");
+        $stmtCheckReg->bind_param("is", $targetUserId, $todayStr);
+        $stmtCheckReg->execute();
+        $hasReg = $stmtCheckReg->get_result()->fetch_assoc();
+        $stmtCheckReg->close();
+        if (!$hasReg) {
+            return "Failed Gate 2: No approved holiday registration for today ({$holidayName})";
+        }
+    } else if ($isRestDay) {
+        // Rest day constraint
+        $stmtCheckReg = $conn->prepare("SELECT 1 FROM weekend_shift_registrations WHERE user_id = ? AND shift_date = ? AND approved = 1");
+        $stmtCheckReg->bind_param("is", $targetUserId, $todayStr);
+        $stmtCheckReg->execute();
+        $hasReg = $stmtCheckReg->get_result()->fetch_assoc();
+        $stmtCheckReg->close();
+        if (!$hasReg) {
+            return "Failed Gate 2: No approved weekend registration for today";
+        }
+    }
+
+    // Every active agent today must have an approved check-in
+    // Bypass check-in requirement if they are registered for weekend/holiday shift or night shift
+    $isWeekendOrHoliday = (!empty($holidayName) || $isRestDay);
+    $isApprovedNightShift = false;
+    $nightShiftStart = get_system_setting($conn, 'night_shift_start_time') ?: '18:00';
+    $nightShiftEnd = get_system_setting($conn, 'night_shift_end_time') ?: '06:00';
+    $currentTime = date('H:i');
+    $isNightShiftTime = false;
+    if ($nightShiftStart < $nightShiftEnd) {
+        $isNightShiftTime = ($currentTime >= $nightShiftStart && $currentTime <= $nightShiftEnd);
+    } else {
+        $isNightShiftTime = ($currentTime >= $nightShiftStart || $currentTime <= $nightShiftEnd);
+    }
+    if ($isNightShiftTime) {
+        $currentHour = (int)date('H');
+        $endHour = (int)explode(':', $nightShiftEnd)[0];
+        $shiftDate = ($currentHour < $endHour) ? date('Y-m-d', strtotime('-1 day')) : date('Y-m-d');
+        
+        $stmtCheckNight = $conn->prepare("SELECT 1 FROM night_shift_registrations WHERE user_id = ? AND shift_date = ? AND approved = 1 LIMIT 1");
+        if ($stmtCheckNight) {
+            $stmtCheckNight->bind_param("is", $targetUserId, $shiftDate);
+            $stmtCheckNight->execute();
+            $hasNightReg = $stmtCheckNight->get_result()->fetch_assoc();
+            $stmtCheckNight->close();
+            if ($hasNightReg) {
+                $isApprovedNightShift = true;
+            }
+        }
+    }
+
+    $bypassCheckIn = $isWeekendOrHoliday || $isApprovedNightShift;
+
+    if (!$bypassCheckIn) {
         $stmtCheck = $conn->prepare("SELECT 1 FROM check_ins WHERE user_id = ? AND check_in_date = ? AND status = 'approved'");
         $stmtCheck->bind_param("is", $targetUserId, $todayStr);
         $stmtCheck->execute();
@@ -1749,27 +1842,6 @@ function checkConsultantGates($conn, $consultantId, $lead = null)
         $stmtCheck->close();
         if (!$hasCheckIn) {
             return "Failed Gate 2: No approved check-in for today";
-        }
-    } else if ($dayOfWeek == 7) { // Sun
-        // Chủ nhật = cơ chế đăng ký tự nguyện như ca đêm (đăng ký cuối tuần) + selfie check-in
-        $todayStr = date('Y-m-d');
-        $stmtCheckReg = $conn->prepare("SELECT 1 FROM night_shift_registrations WHERE user_id = ? AND shift_date = ?");
-        $stmtCheckReg->bind_param("is", $targetUserId, $todayStr);
-        $stmtCheckReg->execute();
-        $hasReg = $stmtCheckReg->get_result()->fetch_assoc();
-        $stmtCheckReg->close();
-        if (!$hasReg) {
-            return "Failed Gate 2: No weekend registration for Sunday";
-        }
-
-        // Đảm bảo phải có selfie check-in được duyệt trong ngày Chủ Nhật
-        $stmtCheck = $conn->prepare("SELECT 1 FROM check_ins WHERE user_id = ? AND check_in_date = ? AND status = 'approved'");
-        $stmtCheck->bind_param("is", $targetUserId, $todayStr);
-        $stmtCheck->execute();
-        $hasCheckIn = $stmtCheck->get_result()->fetch_assoc();
-        $stmtCheck->close();
-        if (!$hasCheckIn) {
-            return "Failed Gate 2: No approved selfie check-in today (Sunday)";
         }
     }
 
