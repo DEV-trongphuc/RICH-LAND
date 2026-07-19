@@ -9465,28 +9465,36 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                                 borderRadius: '12px',
                                 border: '1px solid var(--color-border-light)'
                               }}>
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                                   <span style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text)' }}>
                                     {t('Thứ Bảy')} ({new Date(weekendShiftSat.date).toLocaleDateString('vi-VN')})
                                   </span>
-                                  {isSatWorkday ? (
-                                    <span style={{
-                                      fontSize: '0.7rem',
-                                      fontWeight: 600,
-                                      color: 'var(--color-text-muted)',
-                                      background: 'rgba(100, 116, 139, 0.08)',
-                                      padding: '2px 8px',
-                                      borderRadius: '4px',
-                                      width: 'fit-content',
-                                      marginTop: '2px'
-                                    }}>
-                                      {t('Lịch hành chính:')} {satHours}
-                                    </span>
-                                  ) : (
-                                    <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)' }}>
-                                      {weekendShiftSat.deadline_time ? `${t('Hạn đăng ký:')} ${new Date(weekendShiftSat.deadline_time).toLocaleString('vi-VN')}` : ''}
-                                    </span>
-                                  )}
+                                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', alignItems: 'center' }}>
+                                    {isSatWorkday && (
+                                      <span style={{
+                                        fontSize: '0.7rem',
+                                        fontWeight: 600,
+                                        color: 'var(--color-text-muted)',
+                                        background: 'rgba(100, 116, 139, 0.08)',
+                                        padding: '2px 8px',
+                                        borderRadius: '4px'
+                                      }}>
+                                        {t('Lịch hành chính:')} {satHours}
+                                      </span>
+                                    )}
+                                    {weekendShiftSat.deadline_time && (
+                                      <span style={{
+                                        fontSize: '0.7rem',
+                                        color: 'var(--color-text-muted)',
+                                        background: 'rgba(100, 116, 139, 0.04)',
+                                        padding: '2px 8px',
+                                        borderRadius: '4px',
+                                        border: '1px solid var(--color-border-light)'
+                                      }}>
+                                        {t('Hạn đăng ký:')} {new Date(weekendShiftSat.deadline_time).toLocaleString('vi-VN')}
+                                      </span>
+                                    )}
+                                  </div>
                                 </div>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                                   <span style={{
@@ -9534,28 +9542,36 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                                 borderRadius: '12px',
                                 border: '1px solid var(--color-border-light)'
                               }}>
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                                   <span style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text)' }}>
                                     {t('Chủ Nhật')} ({new Date(weekendShiftSun.date).toLocaleDateString('vi-VN')})
                                   </span>
-                                  {isSunWorkday ? (
-                                    <span style={{
-                                      fontSize: '0.7rem',
-                                      fontWeight: 600,
-                                      color: 'var(--color-text-muted)',
-                                      background: 'rgba(100, 116, 139, 0.08)',
-                                      padding: '2px 8px',
-                                      borderRadius: '4px',
-                                      width: 'fit-content',
-                                      marginTop: '2px'
-                                    }}>
-                                      {t('Lịch hành chính:')} {sunHours}
-                                    </span>
-                                  ) : (
-                                    <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)' }}>
-                                      {weekendShiftSun.deadline_time ? `${t('Hạn đăng ký:')} ${new Date(weekendShiftSun.deadline_time).toLocaleString('vi-VN')}` : ''}
-                                    </span>
-                                  )}
+                                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', alignItems: 'center' }}>
+                                    {isSunWorkday && (
+                                      <span style={{
+                                        fontSize: '0.7rem',
+                                        fontWeight: 600,
+                                        color: 'var(--color-text-muted)',
+                                        background: 'rgba(100, 116, 139, 0.08)',
+                                        padding: '2px 8px',
+                                        borderRadius: '4px'
+                                      }}>
+                                        {t('Lịch hành chính:')} {sunHours}
+                                      </span>
+                                    )}
+                                    {weekendShiftSun.deadline_time && (
+                                      <span style={{
+                                        fontSize: '0.7rem',
+                                        color: 'var(--color-text-muted)',
+                                        background: 'rgba(100, 116, 139, 0.04)',
+                                        padding: '2px 8px',
+                                        borderRadius: '4px',
+                                        border: '1px solid var(--color-border-light)'
+                                      }}>
+                                        {t('Hạn đăng ký:')} {new Date(weekendShiftSun.deadline_time).toLocaleString('vi-VN')}
+                                      </span>
+                                    )}
+                                  </div>
                                 </div>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                                   <span style={{
@@ -9774,39 +9790,60 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                                 {h.name}
                               </h4>
                               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                                {(h.dates_status || []).map((ds) => (
-                                  <div key={ds.date} style={{
-                                    display: 'flex',
-                                    justifyContent: 'space-between',
-                                    alignItems: 'center',
-                                    background: 'var(--color-bg-alt)',
-                                    padding: '8px 12px',
-                                    borderRadius: '10px',
-                                    border: '1px solid var(--color-border-light)'
-                                  }}>
-                                    <span style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--color-text)' }}>
-                                      {new Date(ds.date).toLocaleDateString('vi-VN', { weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric' })}
-                                    </span>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                      <span style={{
-                                        fontSize: '0.75rem',
-                                        fontWeight: 700,
-                                        color: ds.registered ? (ds.approved ? 'var(--color-success)' : 'var(--color-warning)') : 'var(--color-text-muted)',
-                                        background: ds.registered ? (ds.approved ? 'rgba(16, 185, 129, 0.1)' : 'rgba(245, 158, 11, 0.1)') : 'rgba(100, 116, 139, 0.08)',
-                                        padding: '2px 6px',
-                                        borderRadius: '4px'
+                                {(h.dates_status || []).map((ds) => {
+                                    const today = new Date();
+                                    const todayStr = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0');
+                                    const isHolidayPast = ds.date < todayStr;
+
+                                    return (
+                                      <div key={ds.date} style={{
+                                        display: 'flex',
+                                        justifyContent: 'space-between',
+                                        alignItems: 'center',
+                                        background: 'var(--color-bg-alt)',
+                                        padding: '8px 12px',
+                                        borderRadius: '10px',
+                                        border: '1px solid var(--color-border-light)',
+                                        opacity: isHolidayPast ? 0.6 : 1
                                       }}>
-                                        {ds.registered ? (ds.approved ? t('Đã duyệt') : t('Chờ duyệt')) : t('Chưa đăng ký')}
-                                      </span>
-                                      {['sale', 'manager'].includes(String(effectiveRole).toLowerCase()) && (
-                                        <ToggleSwitch
-                                          checked={ds.registered}
-                                          onChange={() => handleToggleHolidayShift(h.name, ds.date, ds.registered)}
-                                        />
-                                      )}
-                                    </div>
-                                  </div>
-                                ))}
+                                        <span style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--color-text)' }}>
+                                          {new Date(ds.date).toLocaleDateString('vi-VN', { weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric' })}
+                                        </span>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                          <span style={{
+                                            fontSize: '0.75rem',
+                                            fontWeight: 700,
+                                            color: ds.registered 
+                                              ? (ds.approved ? 'var(--color-success)' : 'var(--color-warning)') 
+                                              : 'var(--color-text-muted)',
+                                            background: ds.registered 
+                                              ? (ds.approved ? 'rgba(16, 185, 129, 0.1)' : 'rgba(245, 158, 11, 0.1)') 
+                                              : 'rgba(100, 116, 139, 0.08)',
+                                            padding: '2px 6px',
+                                            borderRadius: '4px'
+                                          }}>
+                                            {ds.registered 
+                                              ? (ds.approved ? t('Đã duyệt') : t('Chờ duyệt')) 
+                                              : (isHolidayPast ? t('Đã qua') : t('Chưa đăng ký'))}
+                                          </span>
+                                          {['sale', 'manager'].includes(String(effectiveRole).toLowerCase()) && (
+                                            <div style={{ opacity: isHolidayPast ? 0.6 : 1 }}>
+                                              <ToggleSwitch
+                                                checked={ds.registered}
+                                                onChange={() => {
+                                                  if (isHolidayPast) {
+                                                    toast.error(t('Đã qua ngày nghỉ lễ này, không thể thay đổi đăng ký!'));
+                                                    return;
+                                                  }
+                                                  handleToggleHolidayShift(h.name, ds.date, ds.registered);
+                                                }}
+                                              />
+                                            </div>
+                                          )}
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
                               </div>
                             </div>
                           ))}
