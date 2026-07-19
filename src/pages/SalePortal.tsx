@@ -7342,12 +7342,13 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
               const hasClaimed = lead.takers && lead.takers.some((t: any) => Number(t.id) === Number(displayUser?.id) || Number(t.id) === Number(displayUser?.consultant_id));
               const isFull = lead.takers && lead.takers.length >= 2;
               const takerCount = lead.takers ? lead.takers.length : 0;
+              const availableCount = Math.max(0, 2 - takerCount);
               const canClaim = !hasClaimed && !isFull && isClaimingLeadId === null && !isAdmin;
 
               // Determine badge colors based on takerCount
-              const badgeBg = isFull ? 'rgba(100, 116, 139, 0.1)' : (takerCount === 1 ? 'rgba(37, 99, 235, 0.1)' : 'rgba(16, 185, 129, 0.1)');
-              const badgeColor = isFull ? '#64748b' : (takerCount === 1 ? '#2563eb' : '#10b981');
-              const badgeText = `Public (${takerCount}/2)`;
+              const badgeBg = isFull ? 'rgba(107, 114, 128, 0.1)' : (availableCount === 1 ? 'rgba(59, 130, 246, 0.1)' : 'rgba(16, 185, 129, 0.1)');
+              const badgeColor = isFull ? '#4b5563' : (availableCount === 1 ? '#1d4ed8' : '#047857');
+              const badgeText = isFull ? t('Giới hạn (0/2)') : (availableCount === 1 ? t('Public (1/2)') : t('Public (2/2)'));
 
               return (
                 <div 
@@ -7381,9 +7382,6 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                       <span style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)' }}>
                         {t('Điện thoại')}: {lead.phone || '—'}
                       </span>
-                      <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>
-                        {lead.email || '—'}
-                      </span>
                     </div>
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '6px', flexShrink: 0 }}>
@@ -7398,11 +7396,6 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                     }}>
                       {badgeText}
                     </div>
-                    {canClaim && (
-                      <span style={{ fontSize: '0.72rem', color: 'var(--color-primary)', fontWeight: 600, textDecoration: 'underline' }}>
-                        {t('Nhận ngay')}
-                      </span>
-                    )}
                   </div>
                 </div>
               );

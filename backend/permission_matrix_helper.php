@@ -78,6 +78,12 @@ if (!function_exists('getActionModuleAndType')) {
             $module = 'leads';
         } else if (strpos($action, 'lead') !== false || strpos($action, 'consultant') !== false || strpos($action, 'round') !== false || strpos($action, 'rule') !== false || strpos($action, 'night_shift') !== false) {
             $module = 'leads';
+        } else if (strpos($action, 'ticket') !== false) {
+            if (strpos($action, 'setting') !== false) {
+                $module = 'settings';
+            } else {
+                $module = 'tickets';
+            }
         } else if (strpos($action, 'account') !== false || strpos($action, 'zalo') !== false) {
             $module = 'settings';
         } else if (in_array($action, ['get_connections', 'add_connection', 'edit_connection', 'delete_connection', 'toggle_connection', 'toggle_require_both', 'toggle_notify_admin', 'add_mapping', 'edit_mapping', 'delete_mapping', 'force_sync', 'test_master_sync'])) {

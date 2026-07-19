@@ -443,18 +443,14 @@ export default function CooperationSlipsPage() {
         setError(resSlips.message || 'Lỗi tải danh sách phiếu hợp tác');
       }
 
-      const role = user?.role as string;
-      const isAdminOrManager = role === 'admin' || role === 'superadmin' || role === 'super_admin' || role === 'manager' || role === 'director';
-      if (isAdminOrManager) {
-        try {
-          const resUsers = await fetchAPI('users');
-          if (resUsers.success) {
-            const sales = (resUsers.data || []).filter((u: any) => u.role === 'sales' || u.role === 'sale');
-            setSalesAccounts(sales);
-          }
-        } catch (err) {
-          console.warn('Failed to load users for configurations:', err);
+      try {
+        const resUsers = await fetchAPI('users?all=1');
+        if (resUsers.success) {
+          const sales = (resUsers.data || []).filter((u: any) => u.role === 'sales' || u.role === 'sale');
+          setSalesAccounts(sales);
         }
+      } catch (err) {
+        console.warn('Failed to load users for configurations:', err);
       }
     } catch (e: any) {
       setError(e.message || 'Lỗi kết nối');

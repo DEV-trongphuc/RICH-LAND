@@ -928,32 +928,7 @@ export const ContactsPage: React.FC = () => {
                         <span>Bộ lọc nâng cao</span>
                       </button>
  
-                      {/* Multi-select Toggle */}
-                      <button
-                        onClick={() => {
-                          if (isMultiSelectMode) setSelected(new Set());
-                          setIsMultiSelectMode(!isMultiSelectMode);
-                          setShowMobileActions(false);
-                        }}
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '8px',
-                          width: '100%',
-                          padding: '8px 12px',
-                          border: 'none',
-                          background: isMultiSelectMode ? 'var(--color-bg-light)' : 'transparent',
-                          color: isMultiSelectMode ? 'var(--color-primary)' : 'var(--color-text)',
-                          borderRadius: '8px',
-                          fontSize: '0.75rem',
-                          fontWeight: 600,
-                          textAlign: 'left',
-                          cursor: 'pointer'
-                        }}
-                      >
-                        <CheckSquare size={12} />
-                        <span>Chọn nhiều liên hệ</span>
-                      </button>
+
  
                       <div style={{ height: '1px', background: 'var(--color-border-light)', margin: '4px 0' }} />
  
@@ -1151,36 +1126,7 @@ export const ContactsPage: React.FC = () => {
  
             {/* Row 2: Chọn nhanh, Sort Select & View Mode switchers */}
             <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', justifyContent: isMobile ? 'space-between' : 'flex-end', width: isMobile ? '100%' : 'auto', flexShrink: 0 }}>
-              <button 
-                onClick={() => {
-                  if (isMultiSelectMode) {
-                    setSelected(new Set());
-                  }
-                  setIsMultiSelectMode(!isMultiSelectMode);
-                }}
-                style={{
-                  height: '38px',
-                  padding: '0 0.875rem',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '6px',
-                  cursor: 'pointer',
-                  border: isMultiSelectMode ? '1px solid var(--color-primary)' : '1px solid var(--color-border)',
-                  borderRadius: '8px',
-                  background: isMultiSelectMode ? 'rgba(189, 29, 45, 0.08)' : 'var(--color-surface)',
-                  color: isMultiSelectMode ? 'var(--color-primary)' : 'var(--color-text)',
-                  fontWeight: 600,
-                  fontSize: '0.85rem',
-                  transition: 'all 0.2s',
-                  boxShadow: 'var(--shadow-sm)',
-                  outline: 'none'
-                }}
-                title="Chọn nhiều liên hệ"
-              >
-                <CheckSquare size={14} />
-                <span>Chọn nhanh</span>
-              </button>
+
               {!isMobile && <div style={{ flex: 1 }} />}
               
               <div style={{ width: isMobile ? '130px' : 170 }}>
