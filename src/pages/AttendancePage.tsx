@@ -1254,14 +1254,12 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
             {totalCount}
           </div>
           <div style={{
-            marginTop: '8px',
+            marginTop: '4px',
             display: 'flex',
             flexDirection: 'column',
             gap: '2px',
             fontSize: '0.7rem',
-            color: 'var(--color-text-muted)',
-            borderTop: '1px solid var(--color-border-light)',
-            paddingTop: '6px'
+            color: 'var(--color-text-muted)'
           }}>
             <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
               <span style={{ width: '5px', height: '5px', borderRadius: '50%', backgroundColor: 'var(--color-text-muted)' }} />
@@ -1298,14 +1296,12 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
             {approvedCount}
           </div>
           <div style={{
-            marginTop: '8px',
+            marginTop: '4px',
             display: 'flex',
             flexDirection: 'column',
             gap: '2px',
             fontSize: '0.7rem',
-            color: 'var(--color-text-muted)',
-            borderTop: '1px solid var(--color-border-light)',
-            paddingTop: '6px'
+            color: 'var(--color-text-muted)'
           }}>
             <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
               <span style={{ width: '5px', height: '5px', borderRadius: '50%', backgroundColor: '#10b981' }} />
@@ -1343,14 +1339,12 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
             {pendingCount}
           </div>
           <div style={{
-            marginTop: '8px',
+            marginTop: '4px',
             display: 'flex',
             flexDirection: 'column',
             gap: '2px',
             fontSize: '0.7rem',
-            color: 'var(--color-text-muted)',
-            borderTop: '1px solid var(--color-border-light)',
-            paddingTop: '6px'
+            color: 'var(--color-text-muted)'
           }}>
             <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
               <span style={{ width: '5px', height: '5px', borderRadius: '50%', backgroundColor: '#f59e0b' }} />
@@ -1388,14 +1382,12 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
             {rejectedCount}
           </div>
           <div style={{
-            marginTop: '8px',
+            marginTop: '4px',
             display: 'flex',
             flexDirection: 'column',
             gap: '2px',
             fontSize: '0.7rem',
-            color: 'var(--color-text-muted)',
-            borderTop: '1px solid var(--color-border-light)',
-            paddingTop: '6px'
+            color: 'var(--color-text-muted)'
           }}>
             <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
               <span style={{ width: '5px', height: '5px', borderRadius: '50%', backgroundColor: '#ef4444' }} />
