@@ -111,11 +111,11 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileC
         setPendingLeadsCount(0);
 
         // Fetch undone tasks for all roles
-        const resTasks = await fetchAPI('activities&type=task&limit=100');
+        const resTasks = await fetchAPI('activities&status=planned&limit=200');
         if (resTasks && resTasks.success) {
           const rawTasks = resTasks.data?.items || resTasks.data || [];
           if (Array.isArray(rawTasks)) {
-            const count = rawTasks.filter((task: any) => task.status !== 'done').length;
+            const count = rawTasks.filter((task: any) => task.type === 'task' || task.type === 'meeting').length;
             setUndoneTasksCount(count);
           }
         }

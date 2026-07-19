@@ -6158,84 +6158,222 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
             </div>
           )}
 
-        {/* Personalized Welcome Card */}
-        <div 
-          className="card" 
-          style={{ 
-            background: 'linear-gradient(135deg, rgba(189, 29, 45, 0.08) 0%, rgba(189, 29, 45, 0.02) 100%)',
-            borderLeft: '4px solid var(--color-primary)',
-            borderRadius: '16px',
-            padding: isMobile ? '16px' : '1.25rem 1.5rem',
-            display: 'flex',
-            flexDirection: 'row',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            flexWrap: 'wrap',
-            gap: '1.25rem',
-            boxShadow: 'var(--shadow-sm)',
-            marginBottom: '0.25rem'
-          }}
-        >
+        {/* Personalized Welcome Card with Premium Aesthetics */}
+        <style>{`
+          .welcome-banner {
+            position: relative;
+            overflow: hidden;
+            background: linear-gradient(135deg, #161212 0%, #291012 50%, #120e0e 100%) !important;
+            border: 1px solid rgba(189, 29, 45, 0.35) !important;
+            border-radius: 20px !important;
+            box-shadow: 0 12px 36px rgba(0, 0, 0, 0.3), 0 1px 0 rgba(255, 255, 255, 0.06) inset !important;
+            transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1) !important;
+            padding: 2rem 2.25rem !important;
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 1.75rem;
+            margin-bottom: 0.25rem;
+          }
+          .welcome-banner::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -20%;
+            width: 350px;
+            height: 350px;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(189, 29, 45, 0.1) 0%, transparent 70%);
+            pointer-events: none;
+          }
+          .welcome-banner:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 18px 45px rgba(189, 29, 45, 0.18), 0 1px 0 rgba(255, 255, 255, 0.08) inset !important;
+            border-color: rgba(189, 29, 45, 0.5) !important;
+          }
+          .welcome-action-btn {
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
+            cursor: pointer;
+            border-radius: 12px !important;
+            padding: 10px 20px !important;
+            font-size: 0.8rem !important;
+            fontWeight: 750 !important;
+            display: inline-flex !important;
+            align-items: center !important;
+            gap: 8px !important;
+            height: 38px !important;
+          }
+          .welcome-action-btn.primary-btn {
+            background: linear-gradient(135deg, #BD1D2D 0%, #a31422 100%) !important;
+            border: none !important;
+            color: white !important;
+            box-shadow: 0 4px 14px rgba(189, 29, 45, 0.45) !important;
+          }
+          .welcome-action-btn.primary-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(189, 29, 45, 0.6) !important;
+            filter: brightness(1.15);
+          }
+          .welcome-action-btn.outline-btn {
+            background: rgba(255, 255, 255, 0.04) !important;
+            border: 1px solid rgba(255, 255, 255, 0.15) !important;
+            color: #ffffff !important;
+          }
+          .welcome-action-btn.outline-btn:hover {
+            background: rgba(189, 29, 45, 0.15) !important;
+            border-color: rgba(189, 29, 45, 0.5) !important;
+            color: #ffffff !important;
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(189, 29, 45, 0.25) !important;
+          }
+          .welcome-task-row {
+            background: rgba(255, 255, 255, 0.04) !important;
+            border: 1px solid rgba(255, 255, 255, 0.12) !important;
+            border-radius: 12px !important;
+            padding: 10px 16px !important;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 0.825rem;
+            color: #ffffff !important;
+            font-weight: 700 !important;
+            transition: all 0.2s ease;
+            cursor: pointer;
+            text-decoration: none;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.15) !important;
+          }
+          .welcome-task-row:hover {
+            background: rgba(189, 29, 45, 0.12) !important;
+            border-color: rgba(189, 29, 45, 0.35) !important;
+            color: #ffffff !important;
+            transform: translateX(4px);
+            box-shadow: 0 4px 12px rgba(189, 29, 45, 0.25) !important;
+          }
+        `}</style>
+
+        <div className="welcome-banner">
           {/* Left section: Welcome Info */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flex: '1 1 300px', minWidth: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem', flex: '1 1 340px', minWidth: 0 }}>
             <div style={{ position: 'relative', flexShrink: 0 }}>
               <Avatar 
                 name={displayUser?.name || 'User'} 
                 src={displayUser?.avatar} 
-                size={48} 
-                style={{ border: '2px solid var(--color-surface)', boxShadow: 'var(--shadow-sm)' }}
+                size={60} 
+                style={{ border: '2.5px solid rgba(189, 29, 45, 0.45)', boxShadow: '0 0 16px rgba(189, 29, 45, 0.3)' }}
               />
-              <span style={{
+              <span className="animate-pulse" style={{
                 position: 'absolute',
-                bottom: 0,
-                right: 0,
-                width: 12,
-                height: 12,
+                bottom: 2,
+                right: 2,
+                width: 14,
+                height: 14,
                 borderRadius: '50%',
                 backgroundColor: '#10b981',
-                border: '2px solid var(--color-surface)',
-                boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
+                border: '2.5px solid #161212',
+                boxShadow: '0 0 10px #10b981'
               }} />
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', minWidth: 0 }}>
-              <h2 style={{ fontSize: '1.05rem', fontWeight: 800, color: 'var(--color-text)', margin: 0, display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                {t('Xin chào')}, {displayUser?.name || 'Thành viên'}
-                <span style={{ fontSize: '0.65rem', fontWeight: 700, color: 'var(--color-primary)', background: 'rgba(189, 29, 45, 0.08)', padding: '2px 8px', borderRadius: '12px', textTransform: 'uppercase' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', minWidth: 0 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+                <h2 style={{ fontSize: '1.35rem', fontWeight: 800, color: '#ffffff', margin: 0, letterSpacing: '-0.3px', textShadow: '0 2px 4px rgba(0,0,0,0.3)' }}>
+                  {t('Xin chào')}, {displayUser?.name || 'Thành viên'}
+                </h2>
+                <span style={{ 
+                  fontSize: '0.68rem', 
+                  fontWeight: 900, 
+                  color: '#ffffff', 
+                  background: 'linear-gradient(135deg, #BD1D2D 0%, #a31422 100%)', 
+                  padding: '4px 12px', 
+                  borderRadius: '20px', 
+                  textTransform: 'uppercase',
+                  boxShadow: '0 2px 8px rgba(189, 29, 45, 0.5)',
+                  letterSpacing: '0.6px'
+                }}>
                   {displayUser?.role === 'sale' ? t('Tư vấn viên') : displayUser?.role === 'sales' ? t('Tư vấn viên') : displayUser?.role}
                 </span>
-              </h2>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap', fontSize: '0.78rem', color: 'var(--color-text-muted)' }}>
-                <span style={{ fontWeight: 600 }}>{getCurrentDateVi()}</span>
+              </div>
+              
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', fontSize: '0.825rem', color: '#e4e4e7' }}>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontWeight: 600 }}>
+                  <Clock size={13} style={{ color: '#ff4d5a' }} />
+                  {getCurrentDateVi()}
+                </span>
                 {!isAdmin && (
                   <>
-                    <span style={{ color: 'var(--color-border)' }}>•</span>
+                    <span style={{ color: 'rgba(255, 255, 255, 0.25)' }}>•</span>
                     {(() => {
                       if (!todayCheckIn) {
                         return (
-                          <span style={{ color: 'var(--color-danger)', fontWeight: 700 }}>
-                            ⚠️ {t('Chưa chấm công hôm nay')}
+                          <span style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            background: 'rgba(239, 68, 68, 0.25)',
+                            color: '#ff8a8a',
+                            border: '1px solid rgba(239, 68, 68, 0.4)',
+                            padding: '3px 10px',
+                            borderRadius: '12px',
+                            fontWeight: 800
+                          }}>
+                            <AlertCircle size={13} />
+                            {t('Chưa chấm công hôm nay')}
                           </span>
                         );
                       }
                       const timeStr = todayCheckIn.check_in_time ? todayCheckIn.check_in_time.substring(0, 5) : '';
                       if (todayCheckIn.status === 'approved') {
                         return (
-                          <span style={{ color: 'var(--color-success)', fontWeight: 700 }}>
-                            ✅ {t(`Đã chấm công lúc ${timeStr}`)}
+                          <span style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            background: 'rgba(16, 185, 129, 0.25)',
+                            color: '#5ef08f',
+                            border: '1px solid rgba(16, 185, 129, 0.4)',
+                            padding: '3px 10px',
+                            borderRadius: '12px',
+                            fontWeight: 800
+                          }}>
+                            <CheckCircle2 size={13} />
+                            {t(`Đã chấm công lúc ${timeStr}`)}
                           </span>
                         );
                       }
                       if (todayCheckIn.status === 'pending_approval') {
                         return (
-                          <span style={{ color: 'var(--color-warning)', fontWeight: 700 }}>
-                            ⏳ {t(`Chờ duyệt đi trễ lúc ${timeStr}`)}
+                          <span style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            background: 'rgba(245, 158, 11, 0.25)',
+                            color: '#ffe066',
+                            border: '1px solid rgba(245, 158, 11, 0.4)',
+                            padding: '3px 10px',
+                            borderRadius: '12px',
+                            fontWeight: 800
+                          }}>
+                            <Clock size={13} />
+                            {t(`Chờ duyệt đi trễ lúc ${timeStr}`)}
                           </span>
                         );
                       }
                       if (todayCheckIn.status === 'rejected') {
                         return (
-                          <span style={{ color: 'var(--color-danger)', fontWeight: 700 }}>
-                            ❌ {t('Chấm công bị từ chối')}
+                          <span style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            background: 'rgba(239, 68, 68, 0.25)',
+                            color: '#ff8a8a',
+                            border: '1px solid rgba(239, 68, 68, 0.4)',
+                            padding: '3px 10px',
+                            borderRadius: '12px',
+                            fontWeight: 800
+                          }}>
+                            <AlertCircle size={13} />
+                            {t('Chấm công bị từ chối')}
                           </span>
                         );
                       }
@@ -6248,105 +6386,61 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
           </div>
 
           {/* Middle section: Issues/Tasks */}
-          <div style={{ flex: '2 1 350px', display: 'flex', flexDirection: 'column', gap: '4px', background: 'var(--color-bg-light)', border: '1px dashed var(--color-border)', borderRadius: '12px', padding: '10px 14px', minWidth: '280px' }}>
-            <h4 style={{ margin: 0, fontSize: '0.72rem', fontWeight: 800, color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-              {t('Nhiệm vụ & vấn đề cần giải quyết')}
+          <div style={{ flex: '2 1 380px', display: 'flex', flexDirection: 'column', gap: '10px', minWidth: '280px' }}>
+            <h4 style={{ margin: 0, fontSize: '0.72rem', fontWeight: 800, color: '#f4f4f5', textTransform: 'uppercase', letterSpacing: '1px', opacity: 0.9 }}>
+              {t('Nhiệm vụ & Vấn đề cần giải quyết')}
             </h4>
             {issues.length > 0 ? (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '2px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 {issues.map((issue, index) => (
                   <div 
                     key={index} 
                     onClick={issue.action}
-                    style={{ 
-                      display: 'flex', 
-                      alignItems: 'center', 
-                      gap: '6px', 
-                      fontSize: '0.78rem', 
-                      color: 'var(--color-text)', 
-                      cursor: 'pointer',
-                      transition: 'color 0.2s'
-                    }}
-                    onMouseEnter={e => e.currentTarget.style.color = 'var(--color-primary)'}
-                    onMouseLeave={e => e.currentTarget.style.color = 'var(--color-text)'}
+                    className="welcome-task-row"
                   >
-                    <span style={{ width: '4px', height: '4px', borderRadius: '50%', backgroundColor: 'var(--color-primary)', flexShrink: 0 }} />
-                    <span style={{ textDecoration: 'underline', textUnderlineOffset: '2px' }}>{issue.text}</span>
+                    {issue.type === 'coop' && <FileText size={14} style={{ color: '#fbbf24' }} />}
+                    {issue.type === 'task' && <CheckSquare size={14} style={{ color: '#60a5fa' }} />}
+                    {issue.type === 'checkin' && <AlertCircle size={14} style={{ color: '#ff8a8a' }} />}
+                    <span style={{ flex: 1 }}>{issue.text}</span>
                   </div>
                 ))}
               </div>
             ) : (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '2px', color: '#10b981', fontSize: '0.78rem', fontWeight: 700 }}>
-                <span>✨ {t('Tuyệt vời! Bạn không có công việc tồn đọng. Chúc một ngày làm việc hiệu quả và chốt thật nhiều deal! 🚀')}</span>
+              <div style={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: '12px', 
+                padding: '12px 18px', 
+                background: 'rgba(16, 185, 129, 0.08)', 
+                border: '1px solid rgba(16, 185, 129, 0.25)', 
+                borderRadius: '12px', 
+                color: '#5ef08f',
+                boxShadow: '0 2px 8px rgba(16, 185, 129, 0.1)'
+              }}>
+                <CheckCircle2 size={16} style={{ flexShrink: 0 }} />
+                <span style={{ fontSize: '0.825rem', fontWeight: 700 }}>
+                  {t('Tuyệt vời! Bạn không còn công việc nào tồn đọng hôm nay. Chúc bạn một ngày chốt thật nhiều deal! 🚀')}
+                </span>
               </div>
             )}
           </div>
 
           {/* Right section: Quick Actions */}
-          <div style={{ display: 'flex', gap: '6px', flexShrink: 0, flexWrap: 'wrap', width: isMobile ? '100%' : 'auto', justifyContent: isMobile ? 'flex-start' : 'flex-end' }}>
+          <div style={{ display: 'flex', gap: '8px', flexShrink: 0, flexWrap: 'wrap', width: isMobile ? '100%' : 'auto', justifyContent: isMobile ? 'flex-start' : 'flex-end' }}>
             {!isAdmin && (!todayCheckIn || todayCheckIn.status === 'rejected') && (
               <button 
                 onClick={() => setCheckInModalOpen(true)}
-                className="btn primary sm"
-                style={{ 
-                  borderRadius: '8px', 
-                  padding: '6px 12px', 
-                  fontSize: '0.75rem', 
-                  fontWeight: 700, 
-                  background: 'var(--color-primary)', 
-                  border: 'none', 
-                  color: 'white',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '4px',
-                  height: '32px',
-                  cursor: 'pointer'
-                }}
+                className="welcome-action-btn primary-btn"
               >
-                <Camera size={13} />
+                <Camera size={14} />
                 {t('Chấm công')}
               </button>
             )}
             <button 
-              onClick={() => window.dispatchEvent(new CustomEvent('open-quick-add-lead'))}
-              className="btn outline sm"
-              style={{ 
-                borderRadius: '8px', 
-                padding: '6px 12px', 
-                fontSize: '0.75rem', 
-                fontWeight: 700, 
-                borderColor: 'var(--color-border)', 
-                background: 'var(--color-surface)',
-                color: 'var(--color-text)',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '4px',
-                height: '32px',
-                cursor: 'pointer'
-              }}
-            >
-              <UserPlus size={13} />
-              {t('Thêm khách')}
-            </button>
-            <button 
               onClick={() => setActiveTab('databank')}
-              className="btn outline sm"
-              style={{ 
-                borderRadius: '8px', 
-                padding: '6px 12px', 
-                fontSize: '0.75rem', 
-                fontWeight: 700, 
-                borderColor: 'var(--color-border)', 
-                background: 'var(--color-surface)',
-                color: 'var(--color-text)',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '4px',
-                height: '32px',
-                cursor: 'pointer'
-              }}
+              className="welcome-action-btn outline-btn"
             >
-              <Database size={13} />
+              <Database size={14} />
               {t('Nhận data')}
             </button>
           </div>
