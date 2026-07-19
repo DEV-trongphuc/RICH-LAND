@@ -1240,6 +1240,15 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
     if (['admin', 'superadmin', 'super_admin', 'director', 'manager', 'assistant'].includes(currentUser?.role || '')) return true;
     return Number(currentUser?.id) === Number(formData.owner_id || contact?.owner_id);
   }, [currentUser, formData.owner_id, contact?.owner_id]);
+
+  const collabsList = useMemo(() => {
+    const ids = (formData.collaborator_ids || contact?.collaborator_ids || '')
+      .split(',')
+      .map((id: string) => id.trim())
+      .filter(Boolean);
+    return ids.map(id => users.find(u => String(u.id) === String(id))).filter(Boolean);
+  }, [formData.collaborator_ids, contact?.collaborator_ids, users]);
+
   const [decayDays, setDecayDays] = useState<number>(5);
   const handleSaveTTL1 = async (updatedData: typeof ttl1Data) => {
     setIsSavingTTL1(true);
@@ -4002,6 +4011,75 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                     size={22}
                                     style={{
                                       border: sh.signed ? '2px solid var(--color-success)' : '2px solid var(--color-warning)',
+                                      boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+                                    }}
+                                  />
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        ) : collabsList.length > 0 ? (
+                          <div
+                            style={{ 
+                              display: 'flex', 
+                              alignItems: 'center', 
+                              gap: '6px', 
+                              padding: '2px 8px 2px 4px', 
+                              background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.08) 0%, rgba(147, 51, 234, 0.08) 100%)', 
+                              border: '1px solid rgba(59, 130, 246, 0.15)', 
+                              borderRadius: '20px',
+                              boxShadow: 'var(--shadow-sm)'
+                            }}
+                          >
+                            <span style={{ 
+                              fontSize: '0.65rem', 
+                              fontWeight: 800, 
+                              color: 'var(--color-primary)', 
+                              textTransform: 'uppercase', 
+                              letterSpacing: '0.05em',
+                              padding: '2px 6px',
+                              background: 'var(--color-surface)',
+                              borderRadius: '9999px',
+                              border: '1px solid rgba(59, 130, 246, 0.1)'
+                            }}>
+                              Chăm sóc chung
+                            </span>
+                            <div style={{ display: 'flex', alignItems: 'center', marginLeft: '4px' }}>
+                              <div 
+                                style={{ 
+                                  position: 'relative',
+                                  cursor: 'pointer'
+                                }}
+                                onClick={(e) => showUserCard(e, formData.owner_name)}
+                                title={`${formData.owner_name || 'Sale phụ trách'} (Chính)`}
+                              >
+                                <Avatar 
+                                  src={ownerAvatarUrl}
+                                  name={formData.owner_name} 
+                                  size={22}
+                                  style={{
+                                    border: '2px solid var(--color-primary)',
+                                    boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+                                  }}
+                                />
+                              </div>
+                              {collabsList.map((collab: any, cIdx: number) => (
+                                <div 
+                                  key={cIdx} 
+                                  style={{ 
+                                    marginLeft: '-8px', 
+                                    position: 'relative',
+                                    cursor: 'pointer'
+                                  }}
+                                  onClick={(e) => showUserCard(e, collab.full_name)}
+                                  title={`${collab.full_name} (Phụ)`}
+                                >
+                                  <Avatar 
+                                    src={collab.avatar_url}
+                                    name={collab.full_name} 
+                                    size={22}
+                                    style={{
+                                      border: '2px solid #9333ea',
                                       boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
                                     }}
                                   />

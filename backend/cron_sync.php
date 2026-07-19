@@ -2154,14 +2154,10 @@ function releaseExpiredLeadsToKho($conn) {
     }, $applicableSources);
     $sourcesFilter = "AND (c.source IN (" . implode(',', $applicableSourcesEscaped) . ") OR c.source = 'databank')";
     
-
-
-    $sql = "SELECT DISTINCT c.person_id 
-            FROM contacts c 
-            JOIN persons p ON c.person_id = p.id 
-            WHERE c.security_expires_at <= NOW() 
-              AND c.security_expires_at IS NOT NULL 
-              AND p.is_public = 0 
+    $sql = "SELECT c.id AS contact_id, c.person_id, c.owner_id, c.tenant_id
+            FROM contacts c
+            WHERE c.security_expires_at <= NOW()
+              AND c.security_expires_at IS NOT NULL
               AND c.deleted_at IS NULL
               AND c.pipeline_status NOT IN ('dat_coc', 'da_coc', 'dong_deal', 'thanh_cong')
               $sourcesFilter
@@ -2169,133 +2165,145 @@ function releaseExpiredLeadsToKho($conn) {
                   SELECT 1 FROM cooperation_slips cs
                   WHERE cs.contact_id = c.id
                     AND cs.status IN ('pending_signatures', 'approved_pending_signatures', 'pending_manager_approval', 'approved')
-              )
-              AND NOT EXISTS (
-                  SELECT 1 FROM contacts active_c 
-                  WHERE active_c.person_id = c.person_id 
-                    AND active_c.deleted_at IS NULL
-                    AND (active_c.security_expires_at > NOW() OR active_c.security_expires_at IS NULL)
               )";
+              
     $res = $conn->query($sql);
-    if ($res) {
-        while ($row = $res->fetch_assoc()) {
-            $personId = (int)$row['person_id'];
-            
-            $conn->begin_transaction();
-            try {
-                $stmt = $conn->prepare("SELECT id, public_count FROM persons WHERE id = ? FOR UPDATE");
-                $stmt->bind_param("i", $personId);
-                $stmt->execute();
-                $person = $stmt->get_result()->fetch_assoc();
-                $stmt->close();
-                if ($person) {
-                    // Rule 5.13: Cùng 1 Person bị Đóng/Lỗi N lần cùng 1 lý do trong 1 chiến dịch -> không ra kho nữa
-                    $lockoutCount = (int) get_system_setting($conn, 'lockout_reason_count_threshold') ?: 3;
-                    $checkReasonStmt = $conn->prepare("
-                        SELECT dr.reason, COUNT(*) as cnt 
-                        FROM data_reports dr
-                        JOIN leads l ON dr.lead_id = l.id
-                        WHERE l.person_id = ?
-                          AND dr.status IN ('approved', 'approved_no_comp')
-                        GROUP BY dr.reason
-                        HAVING cnt >= ?
-                        LIMIT 1
-                    ");
-                    $checkReasonStmt->bind_param("ii", $personId, $lockoutCount);
-                    $checkReasonStmt->execute();
-                    $hasThreeSameReason = $checkReasonStmt->get_result()->fetch_assoc();
-                    $checkReasonStmt->close();
+    if (!$res) return;
 
-                    if ($hasThreeSameReason) {
-                        logSync("Person ID $personId bi bao loi trung " . $lockoutCount . " lan cung 1 ly do (" . $hasThreeSameReason['reason'] . "). Tu choi ra Kho.");
-                        $conn->commit();
-                        continue;
-                    }
+    while ($row = $res->fetch_assoc()) {
+        $contactId = (int)$row['contact_id'];
+        $personId = (int)$row['person_id'];
+        $ownerId = (int)$row['owner_id'];
+        $tenantId = (int)$row['tenant_id'];
 
-                    // Check for active cooperation slips
-                    $checkCoopStmt = $conn->prepare("
-                        SELECT id FROM cooperation_slips 
-                        WHERE contact_id IN (SELECT id FROM contacts WHERE person_id = ? AND deleted_at IS NULL) 
-                          AND status != 'rejected' LIMIT 1
-                    ");
-                    $checkCoopStmt->bind_param("i", $personId);
-                    $checkCoopStmt->execute();
-                    $coopRow = $checkCoopStmt->get_result()->fetch_assoc();
-                    $checkCoopStmt->close();
+        $conn->begin_transaction();
+        try {
+            // 1. Soft-delete the individual expired contact row
+            $stmtDel = $conn->prepare("UPDATE contacts SET deleted_at = NOW(), notes = NULL WHERE id = ?");
+            $stmtDel->bind_param("i", $contactId);
+            $stmtDel->execute();
+            $stmtDel->close();
 
-                    if ($coopRow) {
-                        logSync("Person ID $personId co phieu hop tac hoa hong active. Tu choi tu dong ra Kho.");
-                        $conn->commit();
-                        continue;
-                    }
+            logSync("Soft-deleted expired contact ID $contactId (Person ID $personId) for Owner ID $ownerId");
 
-                    $publicCount = (int)($person['public_count'] ?? 0);
-                    if ($publicCount === 0) {
-                        $newPublicCount = 1;
-                        $upd = $conn->prepare("UPDATE persons SET is_public = 1, released_to_kho_at = NOW(), public_count = ? WHERE id = ?");
-                        $upd->bind_param("ii", $newPublicCount, $personId);
-                        $upd->execute();
-                        $upd->close();
-                    } else {
-                        $upd = $conn->prepare("UPDATE persons SET is_public = 1, released_to_kho_at = NOW() WHERE id = ?");
-                        $upd->bind_param("i", $personId);
-                        $upd->execute();
-                        $upd->close();
-                    }
+            // 2. Check if there are any other active contacts left for this Person
+            $stmtActive = $conn->prepare("SELECT COUNT(*) as active_cnt FROM contacts WHERE person_id = ? AND deleted_at IS NULL");
+            $stmtActive->bind_param("i", $personId);
+            $stmtActive->execute();
+            $activeCnt = (int)($stmtActive->get_result()->fetch_assoc()['active_cnt'] ?? 0);
+            $stmtActive->close();
 
-                    // Delete notes records for these contacts
-                    $stmtDelNotes = $conn->prepare("
-                        DELETE FROM notes 
-                        WHERE entity_type = 'contact' 
-                          AND entity_id IN (SELECT id FROM contacts WHERE person_id = ?)
-                    ");
-                    $stmtDelNotes->bind_param("i", $personId);
-                    $stmtDelNotes->execute();
-                    $stmtDelNotes->close();
+            if ($activeCnt === 0) {
+                // No active contacts left for this person. Release to Databank!
+                
+                // Rule 5.13: Same-reason reject lockout check
+                $lockoutCount = (int) get_system_setting($conn, 'lockout_reason_count_threshold') ?: 3;
+                $checkReasonStmt = $conn->prepare("
+                    SELECT dr.reason, COUNT(*) as cnt 
+                    FROM data_reports dr
+                    JOIN leads l ON dr.lead_id = l.id
+                    WHERE l.person_id = ?
+                      AND dr.status IN ('approved', 'approved_no_comp')
+                    GROUP BY dr.reason
+                    HAVING cnt >= ?
+                    LIMIT 1
+                ");
+                $checkReasonStmt->bind_param("ii", $personId, $lockoutCount);
+                $checkReasonStmt->execute();
+                $hasThreeSameReason = $checkReasonStmt->get_result()->fetch_assoc();
+                $checkReasonStmt->close();
 
-                    // Delete activities records for these contacts
-                    $stmtDelActs = $conn->prepare("
-                        DELETE FROM activities 
-                        WHERE related_type = 'contact' 
-                          AND related_id IN (SELECT id FROM contacts WHERE person_id = ?)
-                    ");
-                    $stmtDelActs->bind_param("i", $personId);
-                    $stmtDelActs->execute();
-                    $stmtDelActs->close();
-
-                    // Soft-delete the expired contacts and clear notes
-                    $updContacts = $conn->prepare("UPDATE contacts SET deleted_at = NOW(), notes = NULL WHERE person_id = ? AND security_expires_at <= NOW() AND deleted_at IS NULL");
-                    $updContacts->bind_param("i", $personId);
-                    $updContacts->execute();
-                    $updContacts->close();
-
-                    // Clear notes for all contacts of this person (just in case)
-                    $updAllNotes = $conn->prepare("UPDATE contacts SET notes = NULL WHERE person_id = ?");
-                    $updAllNotes->bind_param("i", $personId);
-                    $updAllNotes->execute();
-                    $updAllNotes->close();
-
-                    // Clear assignment on leads table
-                    $updLeads = $conn->prepare("UPDATE leads SET assigned_to = NULL, last_assigned_at = NULL WHERE person_id = ?");
-                    $updLeads->bind_param("i", $personId);
-                    $updLeads->execute();
-                    $updLeads->close();
-                    
-                    $stmtL = $conn->prepare("SELECT id FROM leads WHERE person_id = ? ORDER BY id DESC LIMIT 1");
-                    $stmtL->bind_param("i", $personId);
-                    $stmtL->execute();
-                    $lRow = $stmtL->get_result()->fetch_assoc();
-                    $stmtL->close();
-                    $leadId = $lRow ? $lRow['id'] : 0;
-                    
-                    logDistribution($conn, $leadId, null, null, 'released_to_kho', 'Hết hạn bảo mật, tự động đưa ra Kho chung', false);
-                    logSync("Released Person ID $personId to Kho chung.");
+                if ($hasThreeSameReason) {
+                    logSync("Person ID $personId bi bao loi trung " . $lockoutCount . " lan cung 1 ly do (" . $hasThreeSameReason['reason'] . "). Tu choi ra Kho.");
+                    $conn->commit();
+                    continue;
                 }
-                $conn->commit();
-            } catch (Exception $e) {
-                $conn->rollback();
-                logSync("Error releasing Person ID $personId: " . $e->getMessage());
+
+                // Check for active cooperation slips across all contacts of this person
+                $checkCoopStmt = $conn->prepare("
+                    SELECT id FROM cooperation_slips 
+                    WHERE contact_id IN (SELECT id FROM contacts WHERE person_id = ?) 
+                      AND status != 'rejected' LIMIT 1
+                ");
+                $checkCoopStmt->bind_param("i", $personId);
+                $checkCoopStmt->execute();
+                $coopRow = $checkCoopStmt->get_result()->fetch_assoc();
+                $checkCoopStmt->close();
+
+                if ($coopRow) {
+                    logSync("Person ID $personId co phieu hop tac hoa hong active. Tu choi tu dong ra Kho.");
+                    $conn->commit();
+                    continue;
+                }
+
+                // Update person is_public = 1
+                $stmtPerson = $conn->prepare("SELECT public_count FROM persons WHERE id = ? FOR UPDATE");
+                $stmtPerson->bind_param("i", $personId);
+                $stmtPerson->execute();
+                $personData = $stmtPerson->get_result()->fetch_assoc();
+                $stmtPerson->close();
+
+                $publicCount = (int)($personData['public_count'] ?? 0);
+                if ($publicCount === 0) {
+                    $newPublicCount = 1;
+                    $upd = $conn->prepare("UPDATE persons SET is_public = 1, released_to_kho_at = NOW(), public_count = ? WHERE id = ?");
+                    $upd->bind_param("ii", $newPublicCount, $personId);
+                    $upd->execute();
+                    $upd->close();
+                } else {
+                    $upd = $conn->prepare("UPDATE persons SET is_public = 1, released_to_kho_at = NOW() WHERE id = ?");
+                    $upd->bind_param("i", $personId);
+                    $upd->execute();
+                    $upd->close();
+                }
+
+                // Delete notes records for all contacts of this person
+                $stmtDelNotes = $conn->prepare("
+                    DELETE FROM notes 
+                    WHERE entity_type = 'contact' 
+                      AND entity_id IN (SELECT id FROM contacts WHERE person_id = ?)
+                ");
+                $stmtDelNotes->bind_param("i", $personId);
+                $stmtDelNotes->execute();
+                $stmtDelNotes->close();
+
+                // Delete activities records for all contacts of this person
+                $stmtDelActs = $conn->prepare("
+                    DELETE FROM activities 
+                    WHERE related_type = 'contact' 
+                      AND related_id IN (SELECT id FROM contacts WHERE person_id = ?)
+                ");
+                $stmtDelActs->bind_param("i", $personId);
+                $stmtDelActs->execute();
+                $stmtDelActs->close();
+
+                // Clear notes for all contacts of this person (just in case)
+                $updAllNotes = $conn->prepare("UPDATE contacts SET notes = NULL WHERE person_id = ?");
+                $updAllNotes->bind_param("i", $personId);
+                $updAllNotes->execute();
+                $updAllNotes->close();
+
+                // Clear assignment on leads table
+                $updLeads = $conn->prepare("UPDATE leads SET assigned_to = NULL, last_assigned_at = NULL WHERE person_id = ?");
+                $updLeads->bind_param("i", $personId);
+                $updLeads->execute();
+                $updLeads->close();
+                
+                $stmtL = $conn->prepare("SELECT id FROM leads WHERE person_id = ? ORDER BY id DESC LIMIT 1");
+                $stmtL->bind_param("i", $personId);
+                $stmtL->execute();
+                $lRow = $stmtL->get_result()->fetch_assoc();
+                $stmtL->close();
+                $leadId = $lRow ? $lRow['id'] : 0;
+                
+                logDistribution($conn, $leadId, null, null, 'released_to_kho', 'Hết hạn bảo mật, tự động đưa ra Kho chung', false);
+                logSync("Released Person ID $personId to Kho chung.");
             }
+
+            $conn->commit();
+        } catch (Exception $e) {
+            $conn->rollback();
+            logSync("Error releasing/deleting contact ID $contactId: " . $e->getMessage());
         }
     }
 }
