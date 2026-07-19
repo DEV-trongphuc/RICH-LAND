@@ -5988,7 +5988,15 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
         up: true,
         bullets: [
           { text: t('Tổng data đang chăm sóc') + ': ' + (data.stats.total_received || 0), color: '#a31422' }
-        ]
+        ],
+        decor: (
+          <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: '100%', height: '100%' }}>
+            <circle cx="50" cy="50" r="40" stroke="currentColor" strokeWidth="2" strokeDasharray="4 4" />
+            <circle cx="35" cy="45" r="15" fill="currentColor" fillOpacity="0.2" />
+            <circle cx="65" cy="45" r="15" fill="currentColor" fillOpacity="0.4" />
+            <circle cx="50" cy="70" r="18" fill="currentColor" fillOpacity="0.6" />
+          </svg>
+        )
       },
       { 
         id: 'distributed',
@@ -6004,7 +6012,16 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
         bullets: [
           { text: t('Nhận từ lượt chia tự động') + ': ' + (data.stats.distributed_count || 0), color: '#007af5' },
           { text: t('Hợp tác (co.op)') + ': ' + (data.stats.coop_count || 0), color: '#fbbf24' }
-        ]
+        ],
+        decor: (
+          <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: '100%', height: '100%' }}>
+            <path d="M10 50 Q 50 10 90 50 T 90 90" stroke="currentColor" strokeWidth="2" strokeDasharray="3 3" />
+            <circle cx="10" cy="50" r="6" fill="currentColor" />
+            <circle cx="50" cy="10" r="6" fill="currentColor" />
+            <circle cx="90" cy="50" r="6" fill="currentColor" />
+            <path d="M50 10 L 90 50" stroke="currentColor" strokeWidth="1.5" />
+          </svg>
+        )
       },
       { 
         id: 'databank',
@@ -6019,7 +6036,14 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
         up: true,
         bullets: [
           { text: t('Claim từ Kho Databank') + ': ' + (data.stats.databank_count || 0), color: '#34c759' }
-        ]
+        ],
+        decor: (
+          <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: '100%', height: '100%' }}>
+            <rect x="20" y="20" width="60" height="15" rx="7.5" fill="currentColor" fillOpacity="0.6" />
+            <rect x="20" y="42" width="60" height="15" rx="7.5" fill="currentColor" fillOpacity="0.4" />
+            <rect x="20" y="64" width="60" height="15" rx="7.5" fill="currentColor" fillOpacity="0.2" />
+          </svg>
+        )
       },
       { 
         id: 'self',
@@ -6034,7 +6058,13 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
         up: true,
         bullets: [
           { text: t('Tự tạo hoặc giới thiệu') + ': ' + (data.stats.self_count || 0), color: '#f59e0b' }
-        ]
+        ],
+        decor: (
+          <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: '100%', height: '100%' }}>
+            <circle cx="50" cy="50" r="30" stroke="currentColor" strokeWidth="2" />
+            <path d="M50 35 V 65 M35 50 H 65" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
+          </svg>
+        )
       }
     ];
 
@@ -6044,23 +6074,36 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
       <>
         <style>{`
           .stat-card {
-            transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.25s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
+            position: relative;
+            overflow: hidden;
+            background: var(--color-surface) !important;
+            border: 1px solid var(--color-border-light) !important;
+            box-shadow: 0 4px 18px rgba(0, 0, 0, 0.03) !important;
+            transition: box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
           }
-          .stat-card.total-card:hover {
-            box-shadow: 0 6px 16px rgba(163, 20, 34, 0.15) !important;
-            border-color: #a31422 !important;
+          .stat-card:hover {
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.06) !important;
+            border-color: var(--color-border) !important;
           }
-          .stat-card.distributed-card:hover {
-            box-shadow: 0 6px 16px rgba(0, 122, 245, 0.15) !important;
-            border-color: #007af5 !important;
+          .decor-svg {
+            position: absolute;
+            bottom: -15px;
+            right: -15px;
+            width: 100px;
+            height: 100px;
+            opacity: 0.07;
+            pointer-events: none;
+            transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.4s cubic-bezier(0.4, 0, 0.2, 1);
           }
-          .stat-card.databank-card:hover {
-            box-shadow: 0 6px 16px rgba(52, 199, 89, 0.15) !important;
-            border-color: #34c759 !important;
+          .stat-card:hover .decor-svg {
+            transform: scale(1.2) rotate(6deg);
+            opacity: 0.14;
           }
-          .stat-card.self-card:hover {
-            box-shadow: 0 6px 16px rgba(245, 158, 11, 0.15) !important;
-            border-color: #f59e0b !important;
+          .stat-icon {
+            transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1) !important;
+          }
+          .stat-card:hover .stat-icon {
+            transform: scale(1.1) rotate(-8deg);
           }
         `}</style>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
@@ -6456,7 +6499,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
             return (
               <div
                 key={idx}
-                className={`stat-card hover-lift ${kpi.id}-card`}
+                className={`stat-card ${kpi.id}-card`}
                 style={{
                   minHeight: isMobile ? '105px' : '140px',
                   padding: isMobile ? '12px' : '1.25rem',
@@ -6472,7 +6515,12 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                   }
                 }}
               >
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: isMobile ? '6px' : '12px' }}>
+                {/* Decorative Background SVG */}
+                <div className="decor-svg" style={{ color: kpi.color }}>
+                  {kpi.decor}
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: isMobile ? '6px' : '12px', position: 'relative', zIndex: 2 }}>
                   <span className="stat-label" style={{ textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 800, fontSize: isMobile ? '0.625rem' : '0.7rem' }}>{kpi.label}</span>
                   <div className="stat-icon" style={{
                     color: kpi.color,
@@ -6489,7 +6537,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                   </div>
                 </div>
 
-                <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', position: 'relative', zIndex: 2 }}>
                   <div className="stat-value" style={{ fontWeight: 800, color: 'var(--color-text)', fontSize: isMobile ? '1.5rem' : '2.25rem', lineHeight: 1.1 }}>{kpi.value}</div>
                   
                   <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px', marginBottom: '8px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
