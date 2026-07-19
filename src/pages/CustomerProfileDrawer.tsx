@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, User, Users, Phone, Mail, MapPin, Briefcase, Plus, Search, Send, History, CheckSquare, DollarSign, HelpCircle, FileText, ShoppingCart, Tag as TagIcon, Target, Pencil, Trash2, LifeBuoy, AlertCircle, Clock, UserCheck, Activity, Calendar, CheckCircle2, ChevronLeft, ChevronRight, ChevronDown, Check, Camera, Loader2, MessageSquare, PenTool, Lightbulb, Upload, Paperclip, CreditCard, Ban, ShieldAlert, Copy, Folder, FolderPlus, ArrowRightLeft, List, LayoutGrid, RotateCcw, RefreshCw, Layers, Save } from 'lucide-react';
+import { X, User, Users, Phone, Mail, MapPin, Briefcase, Plus, Search, Send, History, CheckSquare, DollarSign, HelpCircle, FileText, ShoppingCart, Tag as TagIcon, Target, Pencil, Trash2, LifeBuoy, AlertCircle, Clock, UserCheck, Activity, Calendar, CheckCircle2, ChevronLeft, ChevronRight, ChevronDown, Check, Camera, Loader2, MessageSquare, PenTool, Lightbulb, Upload, Paperclip, CreditCard, Ban, ShieldAlert, Copy, Folder, FolderPlus, ArrowRightLeft, List, LayoutGrid, RotateCcw, RefreshCw, Layers, Save, LogOut } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { LeadScoreRing } from '../components/ui/LeadScoreRing';
 import { TagInput } from '../components/ui/TagInput';
@@ -910,6 +910,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
   const [taskViewMode, setTaskViewMode] = useState<'kanban' | 'list'>('kanban');
   const [prevContactId, setPrevContactId] = useState<number | null>(null);
   const [showMobilePipelineSelector, setShowMobilePipelineSelector] = useState(false);
+  const [showFilterDropdown, setShowFilterDropdown] = useState(false);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -3826,7 +3827,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                     onClick={handleClose} 
                     style={{ background: 'transparent', border: 'none', color: 'var(--color-text-muted)', cursor: 'pointer', padding: '4px', display: 'flex', alignItems: 'center' }}
                   >
-                    <ChevronLeft size={22} />
+                    <LogOut size={20} style={{ transform: 'rotate(180deg)' }} />
                   </button>
                   <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', margin: '0 0.5rem', overflow: 'hidden' }}>
                     <Avatar 
@@ -3877,7 +3878,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                 <div className={styles.profileHeader}>
                   {/* Absolute Close Button */}
                   <button className={styles.closeBtnAbsolute} onClick={handleClose} aria-label="Close drawer">
-                    <X size={20} />
+                    <LogOut size={20} style={{ transform: 'rotate(180deg)' }} />
                   </button>
 
                   {/* Not Lead Proposal Banner */}
@@ -6376,93 +6377,135 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                   {/* TIMELINE TAB */}
                   {activeTab === 'timeline' && (
                     <div className="animate-fade">
-                      <div className="flex-col-mobile" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', paddingBottom: '1rem', borderBottom: '1px solid var(--color-border-light)', gap: '12px' }}>
-                        <div style={{ flexShrink: 0 }}>
-                          <h3 style={{ fontWeight: 700, fontSize: '1.125rem', marginBottom: '0.25rem' }}>Nhật ký tương tác</h3>
-                          <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)' }}>Lưu vết toàn bộ quá trình chăm sóc khách hàng</p>
+                      <div style={{ 
+                        display: 'flex', 
+                        justifyContent: 'space-between', 
+                        alignItems: 'center', 
+                        marginBottom: '1rem', 
+                        paddingBottom: '0.75rem', 
+                        borderBottom: '1px solid var(--color-border-light)', 
+                        gap: '12px',
+                        flexWrap: 'wrap'
+                      }}>
+                        <div style={{ flex: 1, minWidth: '130px' }}>
+                          <h3 style={{ fontWeight: 800, fontSize: '0.95rem', color: 'var(--color-text)', margin: 0 }}>Nhật ký tương tác</h3>
+                          <p style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)', marginTop: 2, marginBottom: 0 }}>Lưu vết toàn bộ quá trình chăm sóc khách hàng</p>
                         </div>
-                        <div className="no-scrollbar" style={{ display: 'flex', gap: '8px', overflowX: 'auto', maxWidth: '100%', width: 'auto', paddingBottom: '2px', flexShrink: 0 }}>
-                          <button className="btn primary sm" onClick={() => setShowActivityModal(true)} style={{ fontWeight: 600 }}><Plus size={14} /> Tương tác</button>
-                        </div>
-                      </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0, position: 'relative' }}>
+                          {/* Add Interaction Button */}
+                          <button 
+                            className="btn primary sm" 
+                            onClick={() => setShowActivityModal(true)} 
+                            style={{ 
+                              fontWeight: 700, 
+                              borderRadius: '8px', 
+                              padding: '6px 12px', 
+                              fontSize: '0.8rem',
+                              height: '34px',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '6px'
+                            }}
+                          >
+                            <Plus size={14} /> 
+                            <span>Tương tác</span>
+                          </button>
 
-                      {/* Timeline Type Filters */}
-                      <div className="segmented-control-wrapper" style={{ marginBottom: '1.25rem' }}>
-                        <div style={{
-                          display: 'flex',
-                          gap: '2px',
-                          background: 'var(--color-border-light)',
-                          border: '1px solid var(--color-border)',
-                          padding: '2px',
-                          borderRadius: '8px',
-                          width: 'fit-content',
-                          position: 'relative'
-                        }}>
-                          {/* Sliding Pill Background Indicator */}
-                          {(() => {
-                            const tabs = [
-                              { value: 'all', label: 'Tất cả', icon: null },
-                              { value: 'call', label: 'Cuộc gọi', icon: null },
-                              { value: 'email', label: 'Email', icon: null },
-                              { value: 'meeting', label: 'Gặp gỡ', icon: null },
-                              { value: 'task', label: 'Công việc', icon: null }
-                            ];
-                            const activeIndex = tabs.findIndex(t => t.value === timelineFilter);
-                            const safeIndex = activeIndex === -1 ? 0 : activeIndex;
-                            return (
+                          {/* Filter Button (...) */}
+                          <button
+                            onClick={() => setShowFilterDropdown(prev => !prev)}
+                            style={{
+                              width: '34px',
+                              height: '34px',
+                              borderRadius: '8px',
+                              border: '1px solid var(--color-border)',
+                              background: showFilterDropdown ? 'var(--color-bg-alt)' : 'var(--color-surface)',
+                              color: 'var(--color-text)',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              cursor: 'pointer',
+                              fontWeight: 700,
+                              fontSize: '1rem'
+                            }}
+                            title="Lọc tương tác"
+                          >
+                            ...
+                          </button>
+
+                          {/* Dropdown Menu */}
+                          {showFilterDropdown && (
+                            <>
+                              {/* Overlay to close when clicking outside */}
+                              <div 
+                                onClick={() => setShowFilterDropdown(false)}
+                                style={{
+                                  position: 'fixed',
+                                  top: 0,
+                                  left: 0,
+                                  right: 0,
+                                  bottom: 0,
+                                  zIndex: 998,
+                                  background: 'transparent'
+                                }}
+                              />
                               <div style={{
                                 position: 'absolute',
-                                top: '2px',
-                                bottom: '2px',
-                                width: '90px',
-                                borderRadius: '6px',
+                                top: '40px',
+                                right: 0,
+                                width: '160px',
                                 background: 'var(--color-surface)',
-                                boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
-                                transition: 'transform 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
-                                transform: `translateX(${safeIndex * 92}px)`,
-                                zIndex: 1
-                              }} />
-                            );
-                          })()}
-
-                          {[
-                            { value: 'all', label: 'Tất cả', icon: null },
-                            { value: 'call', label: 'Cuộc gọi', icon: <Phone size={13} /> },
-                            { value: 'email', label: 'Email', icon: <Mail size={13} /> },
-                            { value: 'meeting', label: 'Gặp gỡ', icon: <Users size={13} /> },
-                            { value: 'task', label: 'Công việc', icon: <CheckSquare size={13} /> }
-                          ].map(tab => {
-                            const isSelected = timelineFilter === tab.value;
-                            return (
-                              <button
-                                key={tab.value}
-                                onClick={() => setTimelineFilter(tab.value as any)}
-                                style={{
-                                  width: '90px',
-                                  height: '26px',
-                                  borderRadius: '6px',
-                                  border: 'none',
-                                  fontSize: '0.75rem',
-                                  fontWeight: 700,
-                                  cursor: 'pointer',
-                                  background: 'transparent',
-                                  color: isSelected ? 'var(--color-text)' : 'var(--color-text-muted)',
-                                  display: 'inline-flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'center',
-                                  gap: '6px',
-                                  position: 'relative',
-                                  outline: 'none',
-                                  boxShadow: 'none',
-                                  zIndex: 2,
-                                  transition: 'color 0.2s ease'
-                                }}
-                              >
-                                {tab.icon}
-                                <span>{tab.label}</span>
-                              </button>
-                            );
-                          })}
+                                border: '1px solid var(--color-border)',
+                                borderRadius: '10px',
+                                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
+                                padding: '6px',
+                                zIndex: 999,
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: '2px'
+                              }}>
+                                {[
+                                  { value: 'all', label: 'Tất cả', icon: null },
+                                  { value: 'call', label: 'Cuộc gọi', icon: <Phone size={13} /> },
+                                  { value: 'email', label: 'Email', icon: <Mail size={13} /> },
+                                  { value: 'meeting', label: 'Gặp gỡ', icon: <Users size={13} /> },
+                                  { value: 'task', label: 'Công việc', icon: <CheckSquare size={13} /> }
+                                ].map(tab => {
+                                  const isSelected = timelineFilter === tab.value;
+                                  return (
+                                    <button
+                                      key={tab.value}
+                                      onClick={() => {
+                                        setTimelineFilter(tab.value as any);
+                                        setShowFilterDropdown(false);
+                                      }}
+                                      style={{
+                                        width: '100%',
+                                        padding: '8px 10px',
+                                        borderRadius: '6px',
+                                        border: 'none',
+                                        fontSize: '0.78rem',
+                                        fontWeight: isSelected ? 700 : 500,
+                                        cursor: 'pointer',
+                                        background: isSelected ? 'var(--color-bg-alt)' : 'transparent',
+                                        color: isSelected ? 'var(--color-primary)' : 'var(--color-text)',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '8px',
+                                        textAlign: 'left'
+                                      }}
+                                    >
+                                      <span style={{ display: 'flex', alignItems: 'center', color: isSelected ? 'var(--color-primary)' : 'var(--color-text-muted)' }}>
+                                        {tab.icon || <List size={13} />}
+                                      </span>
+                                      <span>{tab.label}</span>
+                                      {isSelected && <span style={{ marginLeft: 'auto', fontSize: '0.75rem', fontWeight: 'bold' }}>✓</span>}
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            </>
+                          )}
                         </div>
                       </div>
 
@@ -6503,71 +6546,82 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                               onClick={() => handleTimelineItemClick(ev)}
                               style={{ 
                                 flex: 1, 
-                                padding: '0.75rem 1rem', 
+                                padding: '8px 10px', 
                                 background: 'var(--color-surface)', 
-                                borderRadius: 'var(--radius-lg)', 
+                                borderRadius: '12px', 
                                 border: '1px solid var(--color-border-light)', 
                                 boxShadow: 'var(--shadow-sm)', 
                                 transition: 'all 0.2s', 
-                                cursor: ['call', 'email', 'meeting', 'task'].includes(ev.type) ? 'pointer' : 'default' 
+                                cursor: ['call', 'email', 'meeting', 'task'].includes(ev.type) ? 'pointer' : 'default',
+                                position: 'relative'
                               }}
                               onMouseEnter={e => { if (['call', 'email', 'meeting', 'task'].includes(ev.type)) e.currentTarget.style.borderColor = ev.color; }}
                               onMouseLeave={e => { if (['call', 'email', 'meeting', 'task'].includes(ev.type)) e.currentTarget.style.borderColor = 'var(--color-border-light)'; }}
                             >
-                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.375rem', flexWrap: 'wrap', gap: '0.5rem' }}>
-                                <div>
-                                  <h4 style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--color-text)', marginBottom: '0.25rem' }}>{ev.title}</h4>
-                                  <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                                    <span style={{ fontSize: '0.75rem', fontWeight: 600, color: ev.color, background: `${ev.color}15`, padding: '2px 8px', borderRadius: 'var(--radius-full)' }}>
-                                      {ev.type === 'meeting' && ev.status === 'cancelled' ? 'Hủy gặp' : ev.type === 'zalo_connect' ? 'Zalo' : ev.type.toUpperCase()}
-                                    </span>
-                                    {ev.type === 'meeting' && ev.due_date && (
-                                      <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', background: 'var(--color-bg-light)', padding: '2px 8px', borderRadius: '4px', border: '1px solid var(--color-border-light)' }}>
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', paddingRight: currentUser && ['admin', 'superadmin', 'super_admin', 'director'].includes(currentUser.role) ? '54px' : '0px' }}>
+                                {ev.title && (
+                                  <h4 style={{ fontWeight: 800, fontSize: '0.9rem', color: 'var(--color-text)', margin: 0, paddingRight: '8px' }}>
+                                    {ev.title}
+                                  </h4>
+                                )}
+                                
+                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', alignItems: 'center', fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
+                                  <span style={{ fontSize: '0.68rem', fontWeight: 700, color: ev.color, background: `${ev.color}12`, padding: '1px 6px', borderRadius: '4px', textTransform: 'uppercase' }}>
+                                    {ev.type === 'meeting' && ev.status === 'cancelled' ? 'Hủy gặp' : ev.type === 'zalo_connect' ? 'Zalo' : ev.type.toUpperCase()}
+                                  </span>
+                                  <span>•</span>
+                                  <div style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                                    <Avatar name={ev.user} src={ev.avatar} size="sm" style={{ width: '15px', height: '15px' }} />
+                                    <strong>{ev.user}</strong>
+                                  </div>
+                                  <span>•</span>
+                                  <span>{new Date(ev.time).toLocaleDateString('vi-VN')} {new Date(ev.time).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}</span>
+                                  {ev.type === 'meeting' && ev.due_date && (
+                                    <>
+                                      <span>•</span>
+                                      <span style={{ color: 'var(--color-warning)', fontWeight: 600 }}>
                                         Lịch gặp: {formatMeetingTime(ev.due_date)}
                                       </span>
-                                    )}
-
-                                    <span style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                      Thực hiện bởi <Avatar name={ev.user} src={ev.avatar} size="sm" /> <strong>{ev.user}</strong>
-                                    </span>
-                                  </div>
-                                </div>
-                                <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
-                                  <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
-                                    <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--color-text)', marginRight: '4px' }}>{new Date(ev.time).toLocaleDateString('vi-VN')}</span>
-                                    {currentUser && ['admin', 'superadmin', 'super_admin', 'director'].includes(currentUser.role) && (
-                                      <>
-                                        <button
-                                          className="btn ghost sm"
-                                          style={{ padding: '2px', height: '24px', width: '24px', color: 'var(--color-text-muted)', opacity: 0.5 }}
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            const rawAct = drawerActivities.find((x: any) => x.id === ev.id);
-                                            if (rawAct) {
-                                              setEditingActivity(rawAct);
-                                              setShowActivityModal(true);
-                                            }
-                                          }}
-                                          onMouseEnter={e => e.currentTarget.style.opacity = '1'}
-                                          onMouseLeave={e => e.currentTarget.style.opacity = '0.5'}
-                                        >
-                                          <Pencil size={12} />
-                                        </button>
-                                        <button
-                                          className="btn ghost sm"
-                                          style={{ padding: '2px', height: '24px', width: '24px', color: 'var(--color-danger)', opacity: 0.5 }}
-                                          onClick={(e) => { e.stopPropagation(); deleteActivity(ev.id); }}
-                                          onMouseEnter={e => e.currentTarget.style.opacity = '1'}
-                                          onMouseLeave={e => e.currentTarget.style.opacity = '0.5'}
-                                        >
-                                          <Trash2 size={12} />
-                                        </button>
-                                      </>
-                                    )}
-                                  </div>
-                                  <p style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>{new Date(ev.time).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}</p>
+                                    </>
+                                  )}
                                 </div>
                               </div>
+
+                              {currentUser && ['admin', 'superadmin', 'super_admin', 'director'].includes(currentUser.role) && (
+                                <div 
+                                  onClick={(e) => e.stopPropagation()}
+                                  style={{ 
+                                    position: 'absolute', 
+                                    top: '6px', 
+                                    right: '6px', 
+                                    display: 'flex', 
+                                    gap: '2px',
+                                    zIndex: 10
+                                  }}
+                                >
+                                  <button
+                                    className="btn ghost sm"
+                                    style={{ padding: '2px', height: '24px', width: '24px', color: 'var(--color-text-muted)', opacity: 0.6 }}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      const rawAct = drawerActivities.find((x: any) => x.id === ev.id);
+                                      if (rawAct) {
+                                        setEditingActivity(rawAct);
+                                        setShowActivityModal(true);
+                                      }
+                                    }}
+                                  >
+                                    <Pencil size={12} />
+                                  </button>
+                                  <button
+                                    className="btn ghost sm"
+                                    style={{ padding: '2px', height: '24px', width: '24px', color: 'var(--color-danger)', opacity: 0.6 }}
+                                    onClick={(e) => { e.stopPropagation(); deleteActivity(ev.id); }}
+                                  >
+                                    <Trash2 size={12} />
+                                  </button>
+                                </div>
+                              )}
                               {(ev.note || ev.expense_image_url) && (() => {
                                 const linkMatch = ev.note ? ev.note.match(/Tài liệu\/Link đính kèm:\s*(.*)$/m) : null;
                                 const hasLink = !!linkMatch || !!ev.expense_image_url;
@@ -7544,6 +7598,136 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                         };
 
                         const renderTasksListView = () => {
+                          if (isMobileOrTablet) {
+                            return (
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '0.5rem', width: '100%' }}>
+                                {filteredTasks.map(t => {
+                                  const isOverdue = t.due_date && new Date(t.due_date) < new Date(new Date().setHours(0,0,0,0)) && !t.done;
+                                  const statusLabel = t.done || t.progress === 100 ? 'Đã xong' : (t.progress > 0 ? 'Đang làm' : 'Cần làm');
+                                  const statusColor = t.done || t.progress === 100 ? 'var(--color-success)' : (t.progress > 0 ? 'var(--color-warning)' : 'var(--color-text-muted)');
+                                  const statusBg = t.done || t.progress === 100 ? 'rgba(16, 185, 129, 0.08)' : (t.progress > 0 ? 'rgba(245, 158, 11, 0.08)' : '#f1f5f9');
+                                  return (
+                                    <div 
+                                      key={t.id}
+                                      onClick={() => { if (!t.done) setSelectedTaskForDetails(t); }}
+                                      style={{ 
+                                        background: 'var(--color-surface)',
+                                        borderRadius: '12px',
+                                        border: isOverdue ? '1.5px solid var(--color-danger)' : '1px solid var(--color-border-light)',
+                                        padding: '10px 12px',
+                                        boxShadow: 'var(--shadow-sm)',
+                                        display: 'flex',
+                                        flexDirection: 'column',
+                                        gap: '6px',
+                                        position: 'relative'
+                                      }}
+                                    >
+                                      {/* Badges & Actions row */}
+                                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
+                                        <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
+                                          <span style={{ fontSize: '0.65rem', fontWeight: 700, padding: '2px 6px', borderRadius: '4px', color: statusColor, background: statusBg }}>
+                                            {statusLabel}
+                                          </span>
+                                          <span className={`badge ${t.priority === 'high' ? 'danger' : 'warning'}`} style={{ fontSize: '0.65rem', padding: '2px 6px' }}>
+                                            {t.priority === 'high' ? 'Cao' : 'Trung bình'}
+                                          </span>
+                                        </div>
+                                        
+                                        <div onClick={e => e.stopPropagation()}>
+                                          <button
+                                            className="btn-icon sm text-danger"
+                                            style={{ padding: '2px' }}
+                                            onClick={() => {
+                                              showConfirm(
+                                                'Xóa công việc?',
+                                                `Bạn có chắc chắn muốn xóa công việc "${t.title}"?`,
+                                                async () => {
+                                                  try {
+                                                    await api.delete(`/activities/${t.id}`);
+                                                    setTasks(prev => prev.filter(x => x.id !== t.id));
+                                                    addToast('Đã xóa công việc thành công', 'success');
+                                                  } catch (err: any) {
+                                                    addToast(err.response?.data?.message || 'Lỗi khi xóa công việc', 'error');
+                                                  }
+                                                }
+                                              );
+                                            }}
+                                          >
+                                            <Trash2 size={13} />
+                                          </button>
+                                        </div>
+                                      </div>
+
+                                      {/* Title & Description */}
+                                      <div>
+                                        <span style={{ fontWeight: 700, fontSize: '0.85rem', color: 'var(--color-text)', textDecoration: t.done ? 'line-through' : 'none' }}>
+                                          {t.title}
+                                        </span>
+                                        {t.type === 'meeting' && !t.done && t.due_date && (
+                                          <div style={{ marginTop: '2px' }}>
+                                            <MeetingCountdown dueDate={t.due_date} />
+                                          </div>
+                                        )}
+                                        {t.description && (
+                                          <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', display: 'block', marginTop: '2px' }}>
+                                            {t.description}
+                                          </span>
+                                        )}
+                                        {t.tags && (
+                                          <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', marginTop: '4px' }}>
+                                            {t.tags.split(',').filter(Boolean).map((tag: string) => (
+                                              <span key={tag} style={{ fontSize: '0.6rem', padding: '0px 4px', borderRadius: '4px', background: 'rgba(16,185,129,0.06)', color: '#059669', fontWeight: 600 }}>#{tag}</span>
+                                            ))}
+                                          </div>
+                                        )}
+                                      </div>
+
+                                      {/* Date & Progress */}
+                                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', fontSize: '0.72rem', color: 'var(--color-text-muted)', borderTop: '1px solid var(--color-border-light)', paddingTop: '6px', marginTop: '2px' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                          <Clock size={11} />
+                                          <span>{t.type === 'meeting' ? `Lịch gặp: ${formatMeetingTime(t.due_date)}` : getDueDateLabel(t.due_date, t.done)}</span>
+                                        </div>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                          <div style={{ width: '40px', height: '4px', background: '#f3f4f6', borderRadius: '2px', overflow: 'hidden' }}>
+                                            <div style={{ width: `${t.done ? 100 : (t.progress || 0)}%`, height: '100%', background: t.done ? 'var(--color-success)' : 'var(--color-primary)' }} />
+                                          </div>
+                                          <span style={{ fontWeight: 700 }}>{t.done ? 100 : (t.progress || 0)}%</span>
+                                        </div>
+                                      </div>
+
+                                      {/* Meeting Inline actions */}
+                                      {t.type === 'meeting' && !t.done && (
+                                        <div style={{ display: 'flex', gap: '4px', marginTop: '4px', flexWrap: 'wrap' }} onClick={e => e.stopPropagation()}>
+                                          <button 
+                                            className="btn success sm" 
+                                            style={{ height: '22px', fontSize: '0.68rem', padding: '0 6px', borderRadius: '4px', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '2px', border: 'none', cursor: 'pointer' }}
+                                            onClick={() => handleCompleteMeeting(t.rawActivity || t)}
+                                          >
+                                            <Check size={10} /> Đã gặp
+                                          </button>
+                                          <button 
+                                            className="btn danger sm" 
+                                            style={{ height: '22px', fontSize: '0.68rem', padding: '0 6px', borderRadius: '4px', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '2px', border: 'none', cursor: 'pointer' }}
+                                            onClick={() => handleCancelMeeting(t.rawActivity || t)}
+                                          >
+                                            <X size={10} /> Hủy lịch
+                                          </button>
+                                          <button 
+                                            className="btn warning sm" 
+                                            style={{ height: '22px', fontSize: '0.68rem', padding: '0 6px', borderRadius: '4px', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '2px', border: 'none', cursor: 'pointer', color: '#7c2d12' }}
+                                            onClick={() => setReschedulingMeeting(t.rawActivity || t)}
+                                          >
+                                            <Calendar size={10} /> Dời lịch
+                                          </button>
+                                        </div>
+                                      )}
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            );
+                          }
                           return (
                             <div style={{ background: 'var(--color-surface)', borderRadius: '16px', border: '1px solid var(--color-border-light)', overflow: 'hidden', marginTop: '0.5rem', width: '100%' }}>
                               <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.8125rem' }}>
@@ -7680,7 +7864,14 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                         }
 
                         return (
-                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem', alignItems: 'start', marginTop: '0.5rem', width: '100%' }}>
+                          <div style={{ 
+                            display: 'grid', 
+                            gridTemplateColumns: isMobileOrTablet ? '1fr' : 'repeat(3, 1fr)', 
+                            gap: '1rem', 
+                            alignItems: 'start', 
+                            marginTop: '0.5rem', 
+                            width: '100%' 
+                          }}>
                             {renderKanbanColumn('todo', 'Cần làm', todoTasks, 'var(--color-text-muted)', '#e2e8f0')}
                             {renderKanbanColumn('in_progress', 'Đang làm', inProgressTasks, 'var(--color-warning)', 'rgba(245, 158, 11, 0.12)')}
                             {renderKanbanColumn('done', 'Đã xong', doneTasks, 'var(--color-success)', 'rgba(16, 185, 129, 0.12)')}

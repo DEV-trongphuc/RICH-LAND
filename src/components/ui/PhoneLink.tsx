@@ -20,7 +20,11 @@ export const PhoneLink: React.FC<PhoneLinkProps> = ({
     <button
       onClick={(e) => {
         e.stopPropagation();
-        showCall(phone);
+        if (window.innerWidth < 768) {
+          window.location.href = `tel:${phone}`;
+        } else {
+          showCall(phone);
+        }
       }}
       className={`phone-link ${className}`}
       style={{

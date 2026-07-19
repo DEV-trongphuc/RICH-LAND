@@ -1131,8 +1131,10 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
               style={{
                 display: 'flex',
                 alignItems: 'center',
-                gap: '6px',
-                padding: isMobileOrTablet ? '6px 12px' : '8px 18px',
+                justifyContent: 'center',
+                gap: isMobileOrTablet ? '0' : '6px',
+                padding: isMobileOrTablet ? '6px' : '8px 18px',
+                width: isMobileOrTablet ? '36px' : undefined,
                 borderRadius: '8px',
                 fontSize: '0.85rem',
                 fontWeight: 700,
@@ -1146,7 +1148,7 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
               }}
             >
               {isSaving ? <RefreshCw className="spin" size={14} /> : <CheckSquare2 size={14} />}
-              <span>{isMobileOrTablet ? t('Lưu') : t('Lưu thay đổi')}</span>
+              {!isMobileOrTablet && <span>{t('Lưu thay đổi')}</span>}
             </button>
 
             <button 
