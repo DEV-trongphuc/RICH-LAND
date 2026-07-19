@@ -2222,64 +2222,94 @@ function releaseExpiredLeadsToKho($conn) {
             $activeCnt = (int)($stmtActive->get_result()->fetch_assoc()['active_cnt'] ?? 0);
             $stmtActive->close();
 
-            if ($activeCnt === 0) {
-                // No active contacts left for this person. Release to Databank!
-                
-                // Rule 5.13: Same-reason reject lockout check
-                $lockoutCount = (int) get_system_setting($conn, 'lockout_reason_count_threshold') ?: 3;
-                $checkReasonStmt = $conn->prepare("
-                    SELECT dr.reason, COUNT(*) as cnt 
-                    FROM data_reports dr
-                    JOIN leads l ON dr.lead_id = l.id
-                    WHERE l.person_id = ?
-                      AND dr.status IN ('approved', 'approved_no_comp')
-                    GROUP BY dr.reason
-                    HAVING cnt >= ?
-                    LIMIT 1
-                ");
-                $checkReasonStmt->bind_param("ii", $personId, $lockoutCount);
-                $checkReasonStmt->execute();
-                $hasThreeSameReason = $checkReasonStmt->get_result()->fetch_assoc();
-                $checkReasonStmt->close();
+            // Check if any remaining active claims are in 'dat_coc'
+            $hasProtectedStatus = false;
+            if ($activeCnt > 0) {
+                $stmtProtected = $conn->prepare("SELECT COUNT(*) FROM contacts WHERE person_id = ? AND deleted_at IS NULL AND pipeline_status = 'dat_coc'");
+                $stmtProtected->bind_param("i", $personId);
+                $stmtProtected->execute();
+                $pRow = $stmtProtected->get_result()->fetch_row();
+                $hasProtectedStatus = $pRow && ((int)$pRow[0] > 0);
+                $stmtProtected->close();
+            }
 
-                if ($hasThreeSameReason) {
-                    logSync("Person ID $personId bi bao loi trung " . $lockoutCount . " lan cung 1 ly do (" . $hasThreeSameReason['reason'] . "). Tu choi ra Kho.");
-                    $conn->commit();
-                    continue;
+            $maxParallelClaims = 2;
+            $stmtSetting = $conn->prepare("SELECT setting_value FROM system_settings WHERE setting_key = 'max_parallel_sales_per_client' LIMIT 1");
+            if ($stmtSetting) {
+                $stmtSetting->execute();
+                $sRes = $stmtSetting->get_result()->fetch_row();
+                if ($sRes) {
+                    $maxParallelClaims = (int)$sRes[0];
                 }
+                $stmtSetting->close();
+            }
 
-                // Check for active cooperation slips across all contacts of this person
-                $checkCoopStmt = $conn->prepare("
-                    SELECT id FROM cooperation_slips 
-                    WHERE contact_id IN (SELECT id FROM contacts WHERE person_id = ?) 
-                      AND status != 'rejected' LIMIT 1
-                ");
-                $checkCoopStmt->bind_param("i", $personId);
-                $checkCoopStmt->execute();
-                $coopRow = $checkCoopStmt->get_result()->fetch_assoc();
-                $checkCoopStmt->close();
+            if ($activeCnt < $maxParallelClaims && !$hasProtectedStatus) {
+                if ($activeCnt === 0) {
+                    // No active contacts left for this person. Release to Databank!
+                    
+                    // Rule 5.13: Same-reason reject lockout check
+                    $lockoutCount = (int) get_system_setting($conn, 'lockout_reason_count_threshold') ?: 3;
+                    $checkReasonStmt = $conn->prepare("
+                        SELECT dr.reason, COUNT(*) as cnt 
+                        FROM data_reports dr
+                        JOIN leads l ON dr.lead_id = l.id
+                        WHERE l.person_id = ?
+                          AND dr.status IN ('approved', 'approved_no_comp')
+                        GROUP BY dr.reason
+                        HAVING cnt >= ?
+                        LIMIT 1
+                    ");
+                    $checkReasonStmt->bind_param("ii", $personId, $lockoutCount);
+                    $checkReasonStmt->execute();
+                    $hasThreeSameReason = $checkReasonStmt->get_result()->fetch_assoc();
+                    $checkReasonStmt->close();
 
-                if ($coopRow) {
-                    logSync("Person ID $personId co phieu hop tac hoa hong active. Tu choi tu dong ra Kho.");
-                    $conn->commit();
-                    continue;
-                }
+                    if ($hasThreeSameReason) {
+                        logSync("Person ID $personId bi bao loi trung " . $lockoutCount . " lan cung 1 ly do (" . $hasThreeSameReason['reason'] . "). Tu choi ra Kho.");
+                        $conn->commit();
+                        continue;
+                    }
 
-                // Update person is_public = 1
-                $stmtPerson = $conn->prepare("SELECT public_count FROM persons WHERE id = ? FOR UPDATE");
-                $stmtPerson->bind_param("i", $personId);
-                $stmtPerson->execute();
-                $personData = $stmtPerson->get_result()->fetch_assoc();
-                $stmtPerson->close();
+                    // Check for active cooperation slips across all contacts of this person
+                    $checkCoopStmt = $conn->prepare("
+                        SELECT id FROM cooperation_slips 
+                        WHERE contact_id IN (SELECT id FROM contacts WHERE person_id = ?) 
+                          AND status != 'rejected' LIMIT 1
+                    ");
+                    $checkCoopStmt->bind_param("i", $personId);
+                    $checkCoopStmt->execute();
+                    $coopRow = $checkCoopStmt->get_result()->fetch_assoc();
+                    $checkCoopStmt->close();
 
-                $publicCount = (int)($personData['public_count'] ?? 0);
-                if ($publicCount === 0) {
-                    $newPublicCount = 1;
-                    $upd = $conn->prepare("UPDATE persons SET is_public = 1, released_to_kho_at = NOW(), public_count = ? WHERE id = ?");
-                    $upd->bind_param("ii", $newPublicCount, $personId);
-                    $upd->execute();
-                    $upd->close();
+                    if ($coopRow) {
+                        logSync("Person ID $personId co phieu hop tac hoa hong active. Tu choi tu dong ra Kho.");
+                        $conn->commit();
+                        continue;
+                    }
+
+                    // Update person is_public = 1
+                    $stmtPerson = $conn->prepare("SELECT public_count FROM persons WHERE id = ? FOR UPDATE");
+                    $stmtPerson->bind_param("i", $personId);
+                    $stmtPerson->execute();
+                    $personData = $stmtPerson->get_result()->fetch_assoc();
+                    $stmtPerson->close();
+
+                    $publicCount = (int)($personData['public_count'] ?? 0);
+                    if ($publicCount === 0) {
+                        $newPublicCount = 1;
+                        $upd = $conn->prepare("UPDATE persons SET is_public = 1, released_to_kho_at = NOW(), public_count = ? WHERE id = ?");
+                        $upd->bind_param("ii", $newPublicCount, $personId);
+                        $upd->execute();
+                        $upd->close();
+                    } else {
+                        $upd = $conn->prepare("UPDATE persons SET is_public = 1, released_to_kho_at = NOW() WHERE id = ?");
+                        $upd->bind_param("i", $personId);
+                        $upd->execute();
+                        $upd->close();
+                    }
                 } else {
+                    // Slots available but some sales are still working, just set is_public = 1
                     $upd = $conn->prepare("UPDATE persons SET is_public = 1, released_to_kho_at = NOW() WHERE id = ?");
                     $upd->bind_param("i", $personId);
                     $upd->execute();
