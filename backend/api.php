@@ -456,7 +456,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 $action = $_GET['action'] ?? '';
 
 // Require authentication for all endpoints except login
-$publicActions = ['login', 'login_google', 'login_google_sale', 'submit_report', 'get_report_context', 'debug_companies_db'];
+$publicActions = ['login', 'login_google', 'login_google_sale', 'submit_report', 'get_report_context', 'debug_companies_db', 'test_put'];
 
 if (!in_array($action, $publicActions)) {
     $token = getBearerToken();
@@ -1633,6 +1633,15 @@ switch ($action) {
     case 'debug_companies_db':
         $res = $conn->query("DESCRIBE companies")->fetch_all(MYSQLI_ASSOC);
         echo json_encode(['success' => true, 'columns' => $res]);
+        exit;
+
+    case 'test_put':
+        require_once __DIR__ . '/controllers/CompanyController.php';
+        $db = new PDO("mysql:host=" . DB_HOST . ";dbname=" . DB_NAME . ";charset=utf8mb4", DB_USER, DB_PASS);
+        $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+        $ctrl = new CompanyController($db);
+        $auth = ['tenant_id' => 1, 'user_id' => 1, 'role' => 'admin'];
+        $ctrl->update($auth, 1);
         exit;
 
     case 'get_zalo_send_logs':
