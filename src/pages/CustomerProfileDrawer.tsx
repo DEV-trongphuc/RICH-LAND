@@ -527,7 +527,7 @@ const ActivityComments: React.FC<{
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <button 
           className="btn ghost sm" 
-          style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-primary)', padding: '4px 8px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+          style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)', padding: '4px 8px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
           onClick={toggleExpand}
         >
           {expanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
