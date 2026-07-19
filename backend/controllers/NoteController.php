@@ -76,12 +76,8 @@ class NoteController {
             respond(403, null, 'Bạn không có quyền xem ghi chú này', false);
         }
 
-        $salesFilter = "";
+        // Cooperating partners/co-care sales must see all notes and interactions (100% visibility)
         $mainParams = [$auth['tenant_id'], $type, $entityId];
-        if ($auth['role'] === 'sales') {
-            $salesFilter = " AND (n.user_id = ? OR u.role != 'sales' OR u.role IS NULL)";
-            $mainParams[] = $auth['user_id'];
-        }
 
         $stmt = $this->db->prepare("
             SELECT n.*, u.full_name as author_name, u.full_name as user_name, u.avatar_url as author_avatar,
@@ -90,7 +86,7 @@ class NoteController {
             LEFT JOIN users u ON n.user_id = u.id
             LEFT JOIN notes np ON n.parent_id = np.id
             LEFT JOIN users p ON np.user_id = p.id
-            WHERE n.tenant_id=? AND n.entity_type=? AND n.entity_id=? AND n.parent_id IS NULL $salesFilter
+            WHERE n.tenant_id=? AND n.entity_type=? AND n.entity_id=? AND n.parent_id IS NULL
             ORDER BY n.is_pinned DESC, n.created_at DESC
         ");
         $stmt->execute($mainParams);
@@ -101,17 +97,12 @@ class NoteController {
             $noteIds = array_column($notes, 'id');
             $in = str_repeat('?,', count($noteIds) - 1) . '?';
             
-            $replySalesFilter = "";
             $replyParams = array_merge([$auth['tenant_id']], $noteIds);
-            if ($auth['role'] === 'sales') {
-                $replySalesFilter = " AND (n.user_id = ? OR u.role != 'sales' OR u.role IS NULL)";
-                $replyParams[] = $auth['user_id'];
-            }
 
             $repliesStmt = $this->db->prepare("
                 SELECT n.*, u.full_name as author_name, u.full_name as user_name, u.avatar_url as author_avatar
                 FROM notes n LEFT JOIN users u ON n.user_id=u.id
-                WHERE n.tenant_id=? AND n.parent_id IN ($in) $replySalesFilter ORDER BY n.created_at ASC
+                WHERE n.tenant_id=? AND n.parent_id IN ($in) ORDER BY n.created_at ASC
             ");
             $repliesStmt->execute($replyParams);
             $allReplies = $repliesStmt->fetchAll();

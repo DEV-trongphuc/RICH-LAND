@@ -319,14 +319,14 @@ class ActivityController {
                 OR a.approver_id = ?
                 OR FIND_IN_SET(?, a.participant_ids)
                 OR (a.related_type = \'contact\' AND EXISTS (
-                    SELECT 1 FROM contacts ct WHERE ct.id = a.related_id AND (ct.owner_id = ? OR ct.id IN (
+                    SELECT 1 FROM contacts ct WHERE ct.id = a.related_id AND (ct.owner_id = ? OR FIND_IN_SET(?, ct.collaborator_ids) OR ct.id IN (
                         SELECT contact_id FROM cooperation_slips 
                         WHERE JSON_CONTAINS(JSON_KEYS(CASE WHEN (shares_json IS NOT NULL AND JSON_VALID(shares_json)) THEN shares_json ELSE "{}" END), JSON_QUOTE(CAST(? AS CHAR)))
                     ))
                 )) 
                 OR (a.related_type = \'deal\' AND EXISTS (
                     SELECT 1 FROM deals d LEFT JOIN contacts ct ON d.contact_id = ct.id WHERE d.id = a.related_id AND (
-                        d.owner_id = ? OR ct.owner_id = ? OR ct.id IN (
+                        d.owner_id = ? OR ct.owner_id = ? OR FIND_IN_SET(?, ct.collaborator_ids) OR ct.id IN (
                             SELECT contact_id FROM cooperation_slips 
                             WHERE JSON_CONTAINS(JSON_KEYS(CASE WHEN (shares_json IS NOT NULL AND JSON_VALID(shares_json)) THEN shares_json ELSE "{}" END), JSON_QUOTE(CAST(? AS CHAR)))
                         )
@@ -351,11 +351,13 @@ class ActivityController {
             $params[] = $auth['user_id'];
             $params[] = $auth['user_id'];
             $params[] = $auth['user_id'];
-            $params[] = $auth['user_id'];
-            $params[] = $auth['user_id'];
-            $params[] = $auth['user_id'];
-            $params[] = $auth['user_id'];
-            $params[] = $auth['user_id'];
+            $params[] = $auth['user_id']; // ct.owner_id
+            $params[] = $auth['user_id']; // ct.collaborator_ids (NEW)
+            $params[] = $auth['user_id']; // coop slips
+            $params[] = $auth['user_id']; // d.owner_id
+            $params[] = $auth['user_id']; // ct.owner_id
+            $params[] = $auth['user_id']; // ct.collaborator_ids (NEW)
+            $params[] = $auth['user_id']; // coop slips
             $params[] = $auth['user_id'];
             $params[] = $auth['user_id'];
             $params[] = $auth['user_id'];
