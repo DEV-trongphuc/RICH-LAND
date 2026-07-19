@@ -846,7 +846,7 @@ export const Header = ({
         </button>
 
         {/* Unified Approvals/Issues Inbox Button */}
-        {pendingInboxCount !== undefined && pendingInboxCount > 0 && (
+        {pendingInboxCount !== undefined && (
           <button
             onClick={onUnifiedInboxClick}
             style={{
@@ -855,7 +855,7 @@ export const Header = ({
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              color: '#ef4444',
+              color: pendingInboxCount > 0 ? '#ef4444' : 'var(--color-text-light)',
               borderRadius: 8,
               border: 'none',
               background: 'none',
@@ -867,32 +867,38 @@ export const Header = ({
             title={t("Các vấn đề cần xử lý")}
             onMouseEnter={e => {
               e.currentTarget.style.background = 'var(--color-bg)';
+              if (pendingInboxCount === 0) {
+                e.currentTarget.style.color = 'var(--color-primary)';
+              }
             }}
             onMouseLeave={e => {
               e.currentTarget.style.background = 'none';
+              e.currentTarget.style.color = pendingInboxCount > 0 ? '#ef4444' : 'var(--color-text-light)';
             }}
           >
-            <ShieldAlert size={20} className="animate-pulse" style={{ color: '#ef4444' }} />
-            <span style={{
-              position: 'absolute',
-              top: 2,
-              right: 2,
-              minWidth: 16,
-              height: 16,
-              borderRadius: 8,
-              background: '#ef4444',
-              color: 'white',
-              fontSize: '10px',
-              fontWeight: 700,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              padding: '0 4px',
-              boxShadow: '0 0 0 2px var(--color-surface)',
-              lineHeight: 1
-            }}>
-              {pendingInboxCount}
-            </span>
+            <ShieldAlert size={20} className={pendingInboxCount > 0 ? "animate-pulse" : ""} style={{ color: pendingInboxCount > 0 ? '#ef4444' : 'inherit' }} />
+            {pendingInboxCount > 0 && (
+              <span style={{
+                position: 'absolute',
+                top: 2,
+                right: 2,
+                minWidth: 16,
+                height: 16,
+                borderRadius: 8,
+                background: '#ef4444',
+                color: 'white',
+                fontSize: '10px',
+                fontWeight: 700,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: '0 4px',
+                boxShadow: '0 0 0 2px var(--color-surface)',
+                lineHeight: 1
+              }}>
+                {pendingInboxCount}
+              </span>
+            )}
           </button>
         )}
 
