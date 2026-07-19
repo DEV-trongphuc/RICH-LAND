@@ -1201,6 +1201,10 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
                       <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#10b981', display: 'inline-block', flexShrink: 0 }} />
                       <span>{t('Claim')}: {stats?.distributed_compensation || 0}</span>
                     </span>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+                      <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#f59e0b', display: 'inline-block', flexShrink: 0 }} />
+                      <span>{t('Data Self')}: {stats?.distributed_self || 0}</span>
+                    </span>
                   </div>
                 )}
                 {card.id === 'duplicates' && (
@@ -1585,6 +1589,9 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
                       <div style={{ textAlign: 'right' }}>
                         {(() => {
                           const getBadgeConfig = (status: string, roundName?: string, reportStatus?: string, aiScreenerStatus?: string, createdAt?: string) => {
+                            if (log.source === 'ca_nhan' || log.source === 'gioi_thieu') {
+                              return { bg: 'rgba(245, 158, 11, 0.12)', color: '#f59e0b', text: t('Data Self') };
+                            }
                             if (status === 'error' && reportStatus === 'approved') {
                               return { bg: 'var(--color-warning-light)', color: 'var(--color-warning)', text: 'Ticket' };
                             }

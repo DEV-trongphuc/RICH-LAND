@@ -13287,7 +13287,21 @@ switch ($action) {
         $rem = max(0, $ticketErrors - $assigned_count);
         $compensation_adjusted = max(0, $compensation_count - $rem);
         
-        $assigned_total = $assigned_adjusted;
+        // Count self-entered leads (source is ca_nhan or gioi_thieu)
+        $self_count = 0;
+        $selfRes = $conn->query("
+            SELECT COUNT(*) as cnt 
+            FROM distribution_logs dl
+            JOIN leads l ON dl.lead_id = l.id
+            WHERE dl.status IN ('assigned', 'rule_6_month', 'pending_work_hours', 'fallback', 'success')
+              AND l.source IN ('ca_nhan', 'gioi_thieu')
+              AND $dateConditionDl $managerFilterDl
+        ");
+        if ($selfRes && $row = $selfRes->fetch_assoc()) {
+            $self_count = (int)$row['cnt'];
+        }
+        
+        $assigned_total = max(0, $assigned_adjusted - $self_count);
         $compensation_total = $compensation_adjusted;
 
         // 2. Duplicates Calculations
@@ -13992,6 +14006,7 @@ switch ($action) {
                 'distributed_today' => (int) $statsRes['distributed'],
                 'distributed_assigned' => (int) $assigned_total,
                 'distributed_compensation' => (int) $compensation_total,
+                'distributed_self' => (int) $self_count,
                 'duplicates' => (int) $statsRes['duplicates'],
                 'errors' => (int) $statsRes['errors'],
                 'ticket_errors' => (int) $ticketErrors,
