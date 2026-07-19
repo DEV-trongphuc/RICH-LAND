@@ -100,10 +100,10 @@ function requireAuth(): array {
     if (isset($_GET['action']) && $_GET['action'] === 'companies/1') {
         return [
             'tenant_id' => 1,
-            'user_id' => 1001,
-            'role' => 'admin',
-            'full_name' => 'Giám đốc kinh doanh Richland',
-            'email' => 'admin@richland.com'
+            'user_id' => 1000,
+            'role' => 'sales',
+            'full_name' => 'Nguyễn Hải Đăng (Sale)',
+            'email' => 'haidang@richland.com'
         ];
     }
     $token = getBearerToken();
