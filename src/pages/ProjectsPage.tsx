@@ -3562,7 +3562,7 @@ export default function ProjectsPage() {
                           flexShrink: 0
                         }}
                       >
-                        {proj.status === 'active' ? 'Đang bán' : 'Tạm dừng'}
+                        {proj.status === 'active' ? 'Hoạt động' : 'Tạm dừng'}
                       </span>
                     </div>
 

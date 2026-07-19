@@ -456,7 +456,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 $action = $_GET['action'] ?? '';
 
 // Require authentication for all endpoints except login
-$publicActions = ['login', 'login_google', 'login_google_sale', 'submit_report', 'get_report_context', 'debug_companies_db'];
+$publicActions = ['login', 'login_google', 'login_google_sale', 'submit_report', 'get_report_context', 'debug_companies_db', 'debug_thanhtd'];
 
 if (!in_array($action, $publicActions)) {
     $token = getBearerToken();
@@ -1633,6 +1633,11 @@ switch ($action) {
     case 'debug_companies_db':
         $res = $conn->query("DESCRIBE companies")->fetch_all(MYSQLI_ASSOC);
         echo json_encode(['success' => true, 'columns' => $res]);
+        exit;
+
+    case 'debug_thanhtd':
+        $res = $conn->query("SELECT address FROM users WHERE email = 'thanhtd.tdt@gmail.com'")->fetch_assoc();
+        echo json_encode(['success' => true, 'address' => $res ? $res['address'] : null]);
         exit;
 
     case 'get_zalo_send_logs':

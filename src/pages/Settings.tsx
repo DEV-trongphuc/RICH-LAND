@@ -2033,8 +2033,23 @@ const SettingsInner = () => {
                   onClick={() => setActiveTab(item.value)}
                   style={getTabStyle(item.value)}
                 >
-                  <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', position: 'relative', zIndex: 2 }}>
-                    {item.icon} {item.label}
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', position: 'relative', zIndex: 2, width: '100%', minWidth: 0 }}>
+                    <div style={{
+                      width: '24px',
+                      height: '24px',
+                      borderRadius: '6px',
+                      backgroundColor: getTabIconBg(item.value),
+                      color: 'white',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      flexShrink: 0
+                    }}>
+                      {React.cloneElement(item.icon as any, { size: 12, color: 'white' })}
+                    </div>
+                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {item.label}
+                    </span>
                   </span>
                 </button>
               ))}
