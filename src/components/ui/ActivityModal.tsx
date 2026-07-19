@@ -26,6 +26,22 @@ const TYPES = [
   { id: 'note', label: 'Ghi chú', icon: <AlignLeft size={16} />, color: '#f59e0b' }
 ];
 
+const DEFAULT_SUBJECTS: Record<string, string> = {
+  call: 'Cuộc gọi',
+  zalo_connect: 'Nhắn tin Zalo',
+  email: 'Gửi email',
+  meeting: 'Gặp gỡ khách hàng',
+  note: 'Ghi chú'
+};
+
+const PLACEHOLDERS: Record<string, string> = {
+  call: 'Nhập ghi chú cuộc gọi...',
+  zalo_connect: 'Ví dụ: Nhắn tin Zalo tư vấn dự án...',
+  email: 'Ví dụ: Gửi email báo giá căn hộ...',
+  meeting: 'Ví dụ: Gặp trực tiếp tại sa bàn...',
+  note: 'Ví dụ: Ghi chú yêu cầu tài chính của khách...'
+};
+
 export const ActivityModal: React.FC<ActivityModalProps> = ({ isOpen, onClose, entityType, entityId, onSuccess, userId, activity, onSwitchToTask }) => {
   const { addToast } = useUIStore();
   const [formData, setFormData] = useState({
@@ -55,7 +71,7 @@ export const ActivityModal: React.FC<ActivityModalProps> = ({ isOpen, onClose, e
 
       setFormData({
         type: activity?.type || 'call',
-        subject: activity?.subject || '',
+        subject: activity?.subject || DEFAULT_SUBJECTS[activity?.type || 'call'] || '',
         body: activity?.body || '',
         due_date: localISOTime,
         priority: activity?.priority || 'medium',
@@ -189,7 +205,15 @@ export const ActivityModal: React.FC<ActivityModalProps> = ({ isOpen, onClose, e
                 <button 
                   key={t.id} type="button"
                   onClick={() => {
-                    setFormData({ ...formData, type: t.id, status: (t.id === 'call' || t.id === 'zalo_connect') ? 'done' : 'planned' });
+                    const currentDefault = DEFAULT_SUBJECTS[formData.type];
+                    const nextDefault = DEFAULT_SUBJECTS[t.id] || '';
+                    const newSubject = (!formData.subject || formData.subject === currentDefault) ? nextDefault : formData.subject;
+                    setFormData({ 
+                      ...formData, 
+                      type: t.id, 
+                      subject: newSubject,
+                      status: (t.id === 'call' || t.id === 'zalo_connect') ? 'done' : 'planned' 
+                    });
                   }}
                   style={{
                     display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.625rem',
@@ -321,7 +345,7 @@ export const ActivityModal: React.FC<ActivityModalProps> = ({ isOpen, onClose, e
                   <label className="form-label">Tiêu đề hoạt động <span style={{ color: 'var(--color-danger)' }}>*</span></label>
                   <input 
                     className="form-input" 
-                    placeholder="VD: Gọi điện chốt sale, Họp demo..." 
+                    placeholder={PLACEHOLDERS[formData.type] || 'Nhập tiêu đề hoạt động...'} 
                     value={formData.subject}
                     onChange={e => setFormData({ ...formData, subject: e.target.value })}
                     autoFocus
@@ -329,7 +353,7 @@ export const ActivityModal: React.FC<ActivityModalProps> = ({ isOpen, onClose, e
                   />
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1.5rem' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: formData.type === 'zalo_connect' ? '1fr' : '1fr 1fr 1fr', gap: '1.5rem' }}>
                   <div className="form-group">
                     <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                       <Calendar size={14} /> Thời gian thực hiện
@@ -341,75 +365,79 @@ export const ActivityModal: React.FC<ActivityModalProps> = ({ isOpen, onClose, e
                       onChange={e => setFormData({ ...formData, due_date: e.target.value })}
                     />
                   </div>
-                  <div className="form-group">
-                    <label className="form-label">Mức độ ưu tiên</label>
-                    <CustomSelect 
-                      options={[
-                        { value: 'low', label: 'Thấp' },
-                        { value: 'medium', label: 'Bình thường' },
-                        { value: 'high', label: 'Quan trọng' }
-                      ]}
-                      value={formData.priority}
-                      onChange={val => setFormData({ ...formData, priority: val as string })}
-                    />
-                  </div>
-                  <div className="form-group">
-                    <label className="form-label">Trạng thái</label>
-                    <div style={{ 
-                      display: 'flex', 
-                      background: 'rgba(100, 116, 139, 0.08)', 
-                      borderRadius: '30px', 
-                      padding: '3px', 
-                      border: '1px solid var(--color-border-light)',
-                      height: 42,
-                      alignItems: 'center'
-                    }}>
-                      <button 
-                        type="button" 
-                        style={{ 
-                          flex: 1, 
-                          height: '100%',
-                          border: 'none', 
+                  {formData.type !== 'zalo_connect' && (
+                    <>
+                      <div className="form-group">
+                        <label className="form-label">Mức độ ưu tiên</label>
+                        <CustomSelect 
+                          options={[
+                            { value: 'low', label: 'Thấp' },
+                            { value: 'medium', label: 'Bình thường' },
+                            { value: 'high', label: 'Quan trọng' }
+                          ]}
+                          value={formData.priority}
+                          onChange={val => setFormData({ ...formData, priority: val as string })}
+                        />
+                      </div>
+                      <div className="form-group">
+                        <label className="form-label">Trạng thái</label>
+                        <div style={{ 
+                          display: 'flex', 
+                          background: 'rgba(100, 116, 139, 0.08)', 
                           borderRadius: '30px', 
-                          padding: '4px 6px', 
-                          fontSize: '0.8125rem', 
-                          fontWeight: formData.status === 'planned' ? 700 : 500, 
-                          cursor: 'pointer', 
-                          transition: 'all 0.2s',
-                          background: formData.status === 'planned' ? 'var(--color-surface)' : 'transparent',
-                          color: formData.status === 'planned' ? 'var(--color-primary)' : 'var(--color-text-muted)',
-                          boxShadow: formData.status === 'planned' ? '0 2px 6px rgba(0,0,0,0.06)' : 'none',
-                          outline: 'none',
-                          whiteSpace: 'nowrap'
-                        }} 
-                        onClick={() => setFormData({...formData, status: 'planned'})}
-                      >
-                        Kế hoạch
-                      </button>
-                      <button 
-                        type="button" 
-                        style={{ 
-                          flex: 1, 
-                          height: '100%',
-                          border: 'none', 
-                          borderRadius: '30px', 
-                          padding: '4px 6px', 
-                          fontSize: '0.8125rem', 
-                          fontWeight: formData.status === 'done' ? 700 : 500, 
-                          cursor: 'pointer', 
-                          transition: 'all 0.2s',
-                          background: formData.status === 'done' ? 'var(--color-success)' : 'transparent',
-                          color: formData.status === 'done' ? 'white' : 'var(--color-text-muted)',
-                          boxShadow: formData.status === 'done' ? '0 2px 6px rgba(16, 185, 129, 0.2)' : 'none',
-                          outline: 'none',
-                          whiteSpace: 'nowrap'
-                        }} 
-                        onClick={() => setFormData({...formData, status: 'done'})}
-                      >
-                        Đã xong
-                      </button>
-                    </div>
-                  </div>
+                          padding: '3px', 
+                          border: '1px solid var(--color-border-light)',
+                          height: 42,
+                          alignItems: 'center'
+                        }}>
+                          <button 
+                            type="button" 
+                            style={{ 
+                              flex: 1, 
+                              height: '100%',
+                              border: 'none', 
+                              borderRadius: '30px', 
+                              padding: '4px 6px', 
+                              fontSize: '0.8125rem', 
+                              fontWeight: formData.status === 'planned' ? 700 : 500, 
+                              cursor: 'pointer', 
+                              transition: 'all 0.2s',
+                              background: formData.status === 'planned' ? 'var(--color-surface)' : 'transparent',
+                              color: formData.status === 'planned' ? 'var(--color-primary)' : 'var(--color-text-muted)',
+                              boxShadow: formData.status === 'planned' ? '0 2px 6px rgba(0,0,0,0.06)' : 'none',
+                              outline: 'none',
+                              whiteSpace: 'nowrap'
+                            }} 
+                            onClick={() => setFormData({...formData, status: 'planned'})}
+                          >
+                            Kế hoạch
+                          </button>
+                          <button 
+                            type="button" 
+                            style={{ 
+                              flex: 1, 
+                              height: '100%',
+                              border: 'none', 
+                              borderRadius: '30px', 
+                              padding: '4px 6px', 
+                              fontSize: '0.8125rem', 
+                              fontWeight: formData.status === 'done' ? 700 : 500, 
+                              cursor: 'pointer', 
+                              transition: 'all 0.2s',
+                              background: formData.status === 'done' ? 'var(--color-success)' : 'transparent',
+                              color: formData.status === 'done' ? 'white' : 'var(--color-text-muted)',
+                              boxShadow: formData.status === 'done' ? '0 2px 6px rgba(16, 185, 129, 0.2)' : 'none',
+                              outline: 'none',
+                              whiteSpace: 'nowrap'
+                            }} 
+                            onClick={() => setFormData({...formData, status: 'done'})}
+                          >
+                            Đã xong
+                          </button>
+                        </div>
+                      </div>
+                    </>
+                  )}
                 </div>
               </>
             )}

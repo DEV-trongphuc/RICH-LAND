@@ -2446,8 +2446,8 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
       avatar: a.avatar_url || undefined,
       time: a.created_at,
       due_date: a.due_date,
-      color: a.status === 'cancelled' ? '#6b7280' : (a.type === 'call' ? '#3b82f6' : a.type === 'meeting' ? '#BD1D2D' : a.type === 'task' ? '#f59e0b' : a.type === 'system' ? '#64748b' : a.type === 'note' ? '#6366f1' : '#10b981'),
-      icon: a.type === 'call' ? <Phone size={16} /> : a.type === 'meeting' ? <User size={16} /> : a.type === 'task' ? <CheckSquare size={16} /> : a.type === 'system' ? <History size={16} /> : a.type === 'note' ? <FileText size={16} /> : <Mail size={16} />,
+      color: a.status === 'cancelled' ? '#6b7280' : (a.type === 'zalo_connect' ? '#0084FF' : a.type === 'call' ? '#3b82f6' : a.type === 'meeting' ? '#BD1D2D' : a.type === 'task' ? '#f59e0b' : a.type === 'system' ? '#64748b' : a.type === 'note' ? '#6366f1' : '#10b981'),
+      icon: a.type === 'call' ? <Phone size={16} /> : a.type === 'zalo_connect' ? <img src="https://stc-zpl.zdn.vn/favicon.ico" style={{ width: 16, height: 16, objectFit: 'contain', borderRadius: '4px' }} alt="Zalo" /> : a.type === 'meeting' ? <User size={16} /> : a.type === 'task' ? <CheckSquare size={16} /> : a.type === 'system' ? <History size={16} /> : a.type === 'note' ? <FileText size={16} /> : <Mail size={16} />,
       note: a.body || a.note || '',
       comment_count: a.comment_count,
       expense_image_url: a.expense_image_url,
@@ -6333,7 +6333,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                   <h4 style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--color-text)', marginBottom: '0.25rem' }}>{ev.title}</h4>
                                   <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
                                     <span style={{ fontSize: '0.75rem', fontWeight: 600, color: ev.color, background: `${ev.color}15`, padding: '2px 8px', borderRadius: 'var(--radius-full)' }}>
-                                      {ev.type === 'meeting' && ev.status === 'cancelled' ? 'Hủy gặp' : ev.type.toUpperCase()}
+                                      {ev.type === 'meeting' && ev.status === 'cancelled' ? 'Hủy gặp' : ev.type === 'zalo_connect' ? 'Zalo' : ev.type.toUpperCase()}
                                     </span>
                                     {ev.type === 'meeting' && ev.due_date && (
                                       <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', background: 'var(--color-bg-light)', padding: '2px 8px', borderRadius: '4px', border: '1px solid var(--color-border-light)' }}>
@@ -6475,7 +6475,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                   </div>
                                 );
                               })()}
-                              {['call', 'email', 'meeting', 'task', 'note'].includes(ev.type) && (
+                              {['call', 'email', 'meeting', 'task', 'note', 'zalo_connect'].includes(ev.type) && (
                                 <ActivityComments 
                                   activityId={ev.id} 
                                   initialCount={Number(ev.comment_count) || 0} 

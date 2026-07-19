@@ -19,13 +19,17 @@ import { MentionInput } from '../components/ui/MentionInput';
 
 const PAGE_SIZE = 10;
 
-const TYPES = ['call', 'email', 'meeting', 'task', 'note'];
-const T_LABEL: Record<string, string> = { call: 'Cuộc gọi', email: 'Email', meeting: 'Gặp gỡ', task: 'Task', note: 'Ghi chú' };
+const TYPES = ['call', 'zalo_connect', 'email', 'meeting', 'task', 'note'];
+const T_LABEL: Record<string, string> = { call: 'Cuộc gọi', zalo_connect: 'Zalo', email: 'Email', meeting: 'Gặp gỡ', task: 'Task', note: 'Ghi chú' };
 const T_ICON: Record<string, React.ReactNode> = {
-  call: <Phone size={14} />, email: <Mail size={14} />, meeting: <Users size={14} />,
-  task: <CheckCircle2 size={14} />, note: <AlignLeft size={14} />
+  call: <Phone size={14} />,
+  zalo_connect: <img src="https://stc-zpl.zdn.vn/favicon.ico" style={{ width: 14, height: 14, objectFit: 'contain', borderRadius: '3px' }} alt="Zalo" />,
+  email: <Mail size={14} />,
+  meeting: <Users size={14} />,
+  task: <CheckCircle2 size={14} />,
+  note: <AlignLeft size={14} />
 };
-const T_COLOR: Record<string, string> = { call: '#3b82f6', email: '#BD1D2D', meeting: '#10b981', task: '#f59e0b', note: '#6b7280' };
+const T_COLOR: Record<string, string> = { call: '#3b82f6', zalo_connect: '#0084FF', email: '#BD1D2D', meeting: '#10b981', task: '#f59e0b', note: '#6b7280' };
 
 const EMPTY = { type: 'task', subject: '', status: 'planned', priority: 'medium', due_date: '', related_type: '', related_id: '', body: '', auto_trigger: false };
 
