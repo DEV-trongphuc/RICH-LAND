@@ -1144,6 +1144,7 @@ export default function ProjectsPage() {
             {/* KPI Summary Cards */}
             {projectStats && (
               <div className="responsive-grid-4" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.75rem', marginBottom: '0.5rem' }}>
+                {/* 1. Tổng Khách Hàng */}
                 <div 
                   className="stat-card" 
                   onClick={user && ['admin', 'superadmin', 'super_admin', 'director'].includes(user.role) ? () => {
@@ -1174,55 +1175,58 @@ export default function ProjectsPage() {
                   } : undefined}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-                    <span className="stat-label" style={{ fontSize: '0.6875rem', fontWeight: 600, color: 'var(--color-text-muted)', opacity: 0.85, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Tổng Giao dịch</span>
+                    <span className="stat-label" style={{ fontSize: '0.6875rem', fontWeight: 600, color: 'var(--color-text-muted)', opacity: 0.85, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Tổng Khách Hàng</span>
+                    <div style={{ width: '28px', height: '28px', borderRadius: '8px', background: 'rgba(100, 116, 139, 0.08)', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Users size={14} /></div>
+                  </div>
+                  <div>
+                    <div className="stat-value" style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--color-text)', lineHeight: 1 }}>
+                      {projectStats.total_leads}
+                    </div>
+                    <div style={{ fontSize: '0.6875rem', color: 'var(--color-text-light)', marginTop: '4px', fontWeight: 550 }}>Khách hàng tiềm năng</div>
+                  </div>
+                </div>
+
+                {/* 2. Cơ Hội Bán Hàng */}
+                <div className="stat-card" style={{ display: 'flex', flexDirection: 'column', padding: '0.75rem 1rem', background: '#ffffff', border: '1px solid var(--color-border-light)', borderRadius: '12px', boxShadow: '0 4px 20px rgba(0,0,0,0.02)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                    <span className="stat-label" style={{ fontSize: '0.6875rem', fontWeight: 600, color: 'var(--color-text-muted)', opacity: 0.85, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Cơ Hội Bán Hàng</span>
                     <div style={{ width: '28px', height: '28px', borderRadius: '8px', background: 'rgba(100, 116, 139, 0.08)', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Layers size={14} /></div>
                   </div>
                   <div>
                     <div className="stat-value" style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--color-text)', lineHeight: 1 }}>
                       {projectStats.total_deals}
                     </div>
-                    <div style={{ fontSize: '0.6875rem', color: 'var(--color-text-light)', marginTop: '4px', fontWeight: 550 }}>Cơ hội bán hàng</div>
+                    <div style={{ fontSize: '0.6875rem', color: 'var(--color-text-light)', marginTop: '4px', fontWeight: 550 }}>Cơ cơ hội giao dịch</div>
                   </div>
                 </div>
 
+                {/* 3. Doanh Thu */}
                 <div className="stat-card" style={{ display: 'flex', flexDirection: 'column', padding: '0.75rem 1rem', background: '#ffffff', border: '1px solid var(--color-border-light)', borderRadius: '12px', boxShadow: '0 4px 20px rgba(0,0,0,0.02)' }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-                    <span className="stat-label" style={{ fontSize: '0.6875rem', fontWeight: 600, color: 'var(--color-text-muted)', opacity: 0.85, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Doanh thu thực tế</span>
-                    <div style={{ width: '28px', height: '28px', borderRadius: '8px', background: 'rgba(163, 20, 34, 0.08)', color: 'var(--color-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><CheckSquare size={14} /></div>
+                    <span className="stat-label" style={{ fontSize: '0.6875rem', fontWeight: 600, color: 'var(--color-text-muted)', opacity: 0.85, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Doanh Thu</span>
+                    <div style={{ width: '28px', height: '28px', borderRadius: '8px', background: 'rgba(100, 116, 139, 0.08)', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Building2 size={14} /></div>
                   </div>
                   <div>
-                    <div className="stat-value" style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--color-primary)', lineHeight: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={projectStats.actual_revenue.toLocaleString('vi-VN') + ' VND'}>
+                    <div className="stat-value" style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--color-text)', lineHeight: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={projectStats.actual_revenue.toLocaleString('vi-VN') + ' VND'}>
                       {projectStats.actual_revenue >= 1000000000 
                         ? `${(projectStats.actual_revenue / 1000000000).toFixed(2)} tỷ` 
                         : `${(projectStats.actual_revenue / 1000000).toFixed(0)} triệu`}
                     </div>
-                    <div style={{ fontSize: '0.6875rem', color: 'var(--color-text-light)', marginTop: '4px', fontWeight: 550 }}>Từ hóa đơn đã thu</div>
+                    <div style={{ fontSize: '0.6875rem', color: 'var(--color-text-light)', marginTop: '4px', fontWeight: 550 }}>Từ hóa đơn thực tế</div>
                   </div>
                 </div>
 
+                {/* 4. Tỷ Lệ Chốt */}
                 <div className="stat-card" style={{ display: 'flex', flexDirection: 'column', padding: '0.75rem 1rem', background: '#ffffff', border: '1px solid var(--color-border-light)', borderRadius: '12px', boxShadow: '0 4px 20px rgba(0,0,0,0.02)' }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-                    <span className="stat-label" style={{ fontSize: '0.6875rem', fontWeight: 600, color: 'var(--color-text-muted)', opacity: 0.85, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Tỷ lệ chốt</span>
-                    <div style={{ width: '28px', height: '28px', borderRadius: '8px', background: 'rgba(163, 20, 34, 0.08)', color: 'var(--color-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Users size={14} /></div>
+                    <span className="stat-label" style={{ fontSize: '0.6875rem', fontWeight: 600, color: 'var(--color-text-muted)', opacity: 0.85, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Tỷ Lệ Chốt</span>
+                    <div style={{ width: '28px', height: '28px', borderRadius: '8px', background: 'rgba(100, 116, 139, 0.08)', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><CheckSquare size={14} /></div>
                   </div>
                   <div>
-                    <div className="stat-value" style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--color-primary)', lineHeight: 1 }}>
+                    <div className="stat-value" style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--color-text)', lineHeight: 1 }}>
                       {projectStats.win_rate}%
                     </div>
                     <div style={{ fontSize: '0.6875rem', color: 'var(--color-text-light)', marginTop: '4px', fontWeight: 550 }}>Tỷ lệ giao dịch thành công</div>
-                  </div>
-                </div>
-
-                <div className="stat-card" style={{ display: 'flex', flexDirection: 'column', padding: '0.75rem 1rem', background: '#ffffff', border: '1px solid var(--color-border-light)', borderRadius: '12px', boxShadow: '0 4px 20px rgba(0,0,0,0.02)' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-                    <span className="stat-label" style={{ fontSize: '0.6875rem', fontWeight: 600, color: 'var(--color-text-muted)', opacity: 0.85, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Đang chăm sóc</span>
-                    <div style={{ width: '28px', height: '28px', borderRadius: '8px', background: 'rgba(163, 20, 34, 0.08)', color: 'var(--color-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Building2 size={14} /></div>
-                  </div>
-                  <div>
-                    <div className="stat-value" style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--color-primary)', lineHeight: 1 }}>
-                      {projectStats.total_leads}
-                    </div>
-                    <div style={{ fontSize: '0.6875rem', color: 'var(--color-text-light)', marginTop: '4px', fontWeight: 550 }}>Khách hàng tiềm năng</div>
                   </div>
                 </div>
               </div>
@@ -1362,7 +1366,7 @@ export default function ProjectsPage() {
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1.25rem' }}>
                     <div style={{ gridColumn: 'span 2' }}>
                       <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', fontWeight: 600, opacity: 0.85, textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: '4px' }}>Vị trí / Địa chỉ</span>
-                      <span style={{ color: 'var(--color-text)', fontSize: '0.95rem', fontWeight: 700, display: 'block', lineHeight: 1.4 }}>{editingProject?.location || 'Chưa cập nhật'}</span>
+                      <span style={{ color: 'var(--color-text)', fontSize: '0.85rem', fontWeight: 700, display: 'block', lineHeight: 1.4 }}>{editingProject?.location || 'Chưa cập nhật'}</span>
                     </div>
                     
                     <div style={{ gridColumn: 'span 2' }}>
@@ -1672,7 +1676,10 @@ export default function ProjectsPage() {
 
                       if (linkedCamps.length === 0) {
                         return (
-                          <span style={{ color: 'var(--color-text-muted)', fontStyle: 'italic', fontSize: '0.85rem' }}>Chưa liên kết chiến dịch</span>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 14px', background: 'var(--color-bg-light)', border: '1px dashed var(--color-border-light)', borderRadius: '12px', color: 'var(--color-text-light)', fontSize: '0.8rem', fontWeight: 550 }}>
+                            <Info size={12} style={{ opacity: 0.6 }} />
+                            <span>Chưa liên kết chiến dịch</span>
+                          </div>
                         );
                       }
 
@@ -1743,7 +1750,10 @@ export default function ProjectsPage() {
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                     {parseFolderPaths(editingProject?.folder_path).length === 0 ? (
-                      <span style={{ color: 'var(--color-text-muted)', fontStyle: 'italic', fontSize: '0.85rem' }}>Chưa cấu hình folder liên kết</span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 14px', background: 'var(--color-bg-light)', border: '1px dashed var(--color-border-light)', borderRadius: '12px', color: 'var(--color-text-light)', fontSize: '0.8rem', fontWeight: 550 }}>
+                        <Info size={12} style={{ opacity: 0.6 }} />
+                        <span>Chưa cấu hình folder liên kết</span>
+                      </div>
                     ) : (
                       parseFolderPaths(editingProject?.folder_path).map((f, idx) => (
                         <div key={idx}>
@@ -1781,7 +1791,10 @@ export default function ProjectsPage() {
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                     {parseIds(editingProject?.document_ids).length === 0 ? (
-                      <span style={{ color: 'var(--color-text-muted)', fontStyle: 'italic', fontSize: '0.85rem' }}>Chưa liên kết tài liệu</span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 14px', background: 'var(--color-bg-light)', border: '1px dashed var(--color-border-light)', borderRadius: '12px', color: 'var(--color-text-light)', fontSize: '0.8rem', fontWeight: 550 }}>
+                        <Info size={12} style={{ opacity: 0.6 }} />
+                        <span>Chưa liên kết tài liệu</span>
+                      </div>
                     ) : (
                       parseIds(editingProject?.document_ids).map(docId => {
                         const fileObj = allFiles.find(f => String(f.id) === String(docId));
@@ -1857,8 +1870,9 @@ export default function ProjectsPage() {
                       <RefreshCw className="spin" size={16} color="var(--color-text-muted)" />
                     </div>
                   ) : linkedTasks.length === 0 ? (
-                    <div style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', fontStyle: 'italic', padding: '10px 14px', background: 'var(--color-bg-light)', border: '1px dashed var(--color-border-light)', borderRadius: '10px' }}>
-                      Chưa có công việc nào liên kết với dự án này.
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 14px', background: 'var(--color-bg-light)', border: '1px dashed var(--color-border-light)', borderRadius: '12px', color: 'var(--color-text-light)', fontSize: '0.8rem', fontWeight: 550 }}>
+                      <Info size={12} style={{ opacity: 0.6 }} />
+                      <span>Chưa có công việc nào liên kết với dự án này.</span>
                     </div>
                   ) : (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -2079,98 +2093,94 @@ export default function ProjectsPage() {
   const renderCampaignViewDrawer = () => {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', width: '100%' }}>
-        {/* Tabs */}
-        <div style={{ display: 'flex', borderBottom: '1px solid var(--color-border-light)', gap: '1.5rem', marginBottom: '0.25rem' }}>
-          <button
-            onClick={() => setCampaignDrawerTab('details')}
-            style={{
-              padding: '8px 4px 12px',
-              background: 'none',
-              border: 'none',
-              borderBottom: campaignDrawerTab === 'details' ? '2px solid var(--color-primary)' : '2px solid transparent',
-              color: campaignDrawerTab === 'details' ? 'var(--color-primary)' : 'var(--color-text-muted)',
-              fontWeight: 700,
-              fontSize: '0.9rem',
-              cursor: 'pointer',
-              transition: 'all 0.2s ease'
-            }}
-          >
-            Thông tin & Chỉ số
-          </button>
-          <button
-            onClick={() => setCampaignDrawerTab('changelog')}
-            style={{
-              padding: '8px 4px 12px',
-              background: 'none',
-              border: 'none',
-              borderBottom: campaignDrawerTab === 'changelog' ? '2px solid var(--color-primary)' : '2px solid transparent',
-              color: campaignDrawerTab === 'changelog' ? 'var(--color-primary)' : 'var(--color-text-muted)',
-              fontWeight: 700,
-              fontSize: '0.9rem',
-              cursor: 'pointer',
-              transition: 'all 0.2s ease'
-            }}
-          >
-            Lịch sử thay đổi
-          </button>
-        </div>
-
         {campaignDrawerTab === 'details' ? (
           <>
             {/* KPI Summary Cards */}
             {campaignStats && (
               <div className="responsive-grid-4" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.75rem', marginBottom: '1.25rem' }}>
-                <div className="stat-card" style={{ display: 'flex', flexDirection: 'column', padding: '0.75rem 1rem', background: '#ffffff', border: '1px solid var(--color-border-light)', borderRadius: '12px', boxShadow: '0 4px 20px rgba(0,0,0,0.02)' }}>
+                {/* 1. Tổng Khách Hàng */}
+                <div 
+                  className="stat-card" 
+                  onClick={user && ['admin', 'superadmin', 'super_admin', 'director'].includes(user.role) ? () => {
+                    if (editingCampaign?.id) {
+                      navigate(`/contacts?campaign_id=${editingCampaign.id}`);
+                    }
+                  } : undefined}
+                  style={{ 
+                    display: 'flex', 
+                    flexDirection: 'column', 
+                    padding: '0.75rem 1rem', 
+                    background: '#ffffff', 
+                    border: '1px solid var(--color-border-light)', 
+                    borderRadius: '12px', 
+                    boxShadow: '0 4px 20px rgba(0,0,0,0.02)',
+                    cursor: user && ['admin', 'superadmin', 'super_admin', 'director'].includes(user.role) ? 'pointer' : 'default',
+                    transition: 'all 0.2s ease'
+                  }}
+                  onMouseEnter={user && ['admin', 'superadmin', 'super_admin', 'director'].includes(user.role) ? e => {
+                    e.currentTarget.style.transform = 'translateY(-2px)';
+                    e.currentTarget.style.boxShadow = '0 6px 24px rgba(0,0,0,0.04)';
+                    e.currentTarget.style.borderColor = 'var(--color-primary-light)';
+                  } : undefined}
+                  onMouseLeave={user && ['admin', 'superadmin', 'super_admin', 'director'].includes(user.role) ? e => {
+                    e.currentTarget.style.transform = 'none';
+                    e.currentTarget.style.boxShadow = '0 4px 20px rgba(0,0,0,0.02)';
+                    e.currentTarget.style.borderColor = 'var(--color-border-light)';
+                  } : undefined}
+                >
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-                    <span className="stat-label" style={{ fontSize: '0.6875rem', fontWeight: 600, color: 'var(--color-text-muted)', opacity: 0.85, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Tổng Số Leads</span>
-                    <div style={{ width: '28px', height: '28px', borderRadius: '8px', background: 'rgba(163, 20, 34, 0.08)', color: 'var(--color-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Layers size={14} /></div>
+                    <span className="stat-label" style={{ fontSize: '0.6875rem', fontWeight: 600, color: 'var(--color-text-muted)', opacity: 0.85, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Tổng Khách Hàng</span>
+                    <div style={{ width: '28px', height: '28px', borderRadius: '8px', background: 'rgba(100, 116, 139, 0.08)', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Users size={14} /></div>
                   </div>
                   <div>
                     <div className="stat-value" style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--color-text)', lineHeight: 1 }}>
                       {campaignStats.total_leads}
                     </div>
-                    <div style={{ fontSize: '0.6875rem', color: 'var(--color-text-light)', marginTop: '4px', fontWeight: 550 }}>Nhận từ kênh Ads/Sheet</div>
+                    <div style={{ fontSize: '0.6875rem', color: 'var(--color-text-light)', marginTop: '4px', fontWeight: 550 }}>Khách hàng tiềm năng</div>
                   </div>
                 </div>
 
+                {/* 2. Cơ Hội Bán Hàng */}
                 <div className="stat-card" style={{ display: 'flex', flexDirection: 'column', padding: '0.75rem 1rem', background: '#ffffff', border: '1px solid var(--color-border-light)', borderRadius: '12px', boxShadow: '0 4px 20px rgba(0,0,0,0.02)' }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-                    <span className="stat-label" style={{ fontSize: '0.6875rem', fontWeight: 600, color: 'var(--color-text-muted)', opacity: 0.85, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Đã Chuyển Đổi</span>
-                    <div style={{ width: '28px', height: '28px', borderRadius: '8px', background: 'rgba(163, 20, 34, 0.08)', color: 'var(--color-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Users size={14} /></div>
+                    <span className="stat-label" style={{ fontSize: '0.6875rem', fontWeight: 600, color: 'var(--color-text-muted)', opacity: 0.85, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Cơ Hội Bán Hàng</span>
+                    <div style={{ width: '28px', height: '28px', borderRadius: '8px', background: 'rgba(100, 116, 139, 0.08)', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Layers size={14} /></div>
                   </div>
                   <div>
                     <div className="stat-value" style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--color-text)', lineHeight: 1 }}>
                       {campaignStats.converted_leads}
                     </div>
-                    <div style={{ fontSize: '0.6875rem', color: 'var(--color-text-light)', marginTop: '4px', fontWeight: 550 }}>Tỷ lệ: {campaignStats.conversion_rate}%</div>
+                    <div style={{ fontSize: '0.6875rem', color: 'var(--color-text-light)', marginTop: '4px', fontWeight: 550 }}>Cơ hội giao dịch</div>
                   </div>
                 </div>
 
+                {/* 3. Doanh Thu */}
                 <div className="stat-card" style={{ display: 'flex', flexDirection: 'column', padding: '0.75rem 1rem', background: '#ffffff', border: '1px solid var(--color-border-light)', borderRadius: '12px', boxShadow: '0 4px 20px rgba(0,0,0,0.02)' }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-                    <span className="stat-label" style={{ fontSize: '0.6875rem', fontWeight: 600, color: 'var(--color-text-muted)', opacity: 0.85, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Giao Dịch Thành Công</span>
-                    <div style={{ width: '28px', height: '28px', borderRadius: '8px', background: 'rgba(163, 20, 34, 0.08)', color: 'var(--color-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><CheckSquare size={14} /></div>
+                    <span className="stat-label" style={{ fontSize: '0.6875rem', fontWeight: 600, color: 'var(--color-text-muted)', opacity: 0.85, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Doanh Thu</span>
+                    <div style={{ width: '28px', height: '28px', borderRadius: '8px', background: 'rgba(100, 116, 139, 0.08)', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Building2 size={14} /></div>
                   </div>
                   <div>
-                    <div className="stat-value" style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--color-text)', lineHeight: 1 }}>
-                      {campaignStats.won_deals}
-                    </div>
-                    <div style={{ fontSize: '0.6875rem', color: 'var(--color-text-light)', marginTop: '4px', fontWeight: 550 }}>Đã chốt (Đóng Deal)</div>
-                  </div>
-                </div>
-
-                <div className="stat-card" style={{ display: 'flex', flexDirection: 'column', padding: '0.75rem 1rem', background: '#ffffff', border: '1px solid var(--color-border-light)', borderRadius: '12px', boxShadow: '0 4px 20px rgba(0,0,0,0.02)' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-                    <span className="stat-label" style={{ fontSize: '0.6875rem', fontWeight: 600, color: 'var(--color-text-muted)', opacity: 0.85, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Doanh Thu Thực Thu</span>
-                    <div style={{ width: '28px', height: '28px', borderRadius: '8px', background: 'rgba(163, 20, 34, 0.08)', color: 'var(--color-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Building2 size={14} /></div>
-                  </div>
-                  <div>
-                    <div className="stat-value" style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--color-primary)', lineHeight: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={campaignStats.actual_revenue.toLocaleString('vi-VN') + ' VND'}>
+                    <div className="stat-value" style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--color-text)', lineHeight: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={campaignStats.actual_revenue.toLocaleString('vi-VN') + ' VND'}>
                       {campaignStats.actual_revenue >= 1000000000 
                         ? `${(campaignStats.actual_revenue / 1000000000).toFixed(2)} tỷ` 
                         : `${(campaignStats.actual_revenue / 1000000).toFixed(0)} triệu`}
                     </div>
-                    <div style={{ fontSize: '0.6875rem', color: 'var(--color-text-light)', marginTop: '4px', fontWeight: 550 }}>Từ hóa đơn đã thu</div>
+                    <div style={{ fontSize: '0.6875rem', color: 'var(--color-text-light)', marginTop: '4px', fontWeight: 550 }}>Từ hóa đơn thực tế</div>
+                  </div>
+                </div>
+
+                {/* 4. Tỷ Lệ Chốt */}
+                <div className="stat-card" style={{ display: 'flex', flexDirection: 'column', padding: '0.75rem 1rem', background: '#ffffff', border: '1px solid var(--color-border-light)', borderRadius: '12px', boxShadow: '0 4px 20px rgba(0,0,0,0.02)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                    <span className="stat-label" style={{ fontSize: '0.6875rem', fontWeight: 600, color: 'var(--color-text-muted)', opacity: 0.85, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Tỷ Lệ Chốt</span>
+                    <div style={{ width: '28px', height: '28px', borderRadius: '8px', background: 'rgba(100, 116, 139, 0.08)', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><CheckSquare size={14} /></div>
+                  </div>
+                  <div>
+                    <div className="stat-value" style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--color-text)', lineHeight: 1 }}>
+                      {campaignStats.conversion_rate}%
+                    </div>
+                    <div style={{ fontSize: '0.6875rem', color: 'var(--color-text-light)', marginTop: '4px', fontWeight: 550 }}>Tỷ lệ giao dịch thành công</div>
                   </div>
                 </div>
               </div>
@@ -2192,7 +2202,7 @@ export default function ProjectsPage() {
                   boxShadow: 'var(--shadow-sm)'
                 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <div style={{ width: '3px', height: '14px', background: 'var(--color-primary)', borderRadius: '1.5px', flexShrink: 0 }} />
+                    <div style={{ width: '3px', height: '14px', background: 'var(--color-text-muted)', borderRadius: '1.5px', flexShrink: 0 }} />
                     <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 800, color: 'var(--color-text)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Thông tin cơ bản</h4>
                   </div>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1.25rem' }}>
@@ -2381,7 +2391,7 @@ export default function ProjectsPage() {
                   boxShadow: 'var(--shadow-sm)'
                 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <div style={{ width: '3px', height: '14px', background: 'var(--color-primary)', borderRadius: '1.5px', flexShrink: 0 }} />
+                    <div style={{ width: '3px', height: '14px', background: 'var(--color-text-muted)', borderRadius: '1.5px', flexShrink: 0 }} />
                     <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 800, color: 'var(--color-text)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Dự án &amp; Nhân sự phụ trách</h4>
                   </div>
                   
@@ -6165,7 +6175,28 @@ export default function ProjectsPage() {
         )}
       </>,
       '850px',
-      campaignModalMode === 'view' ? undefined : (
+      campaignModalMode === 'view' ? (
+        <button
+          onClick={() => setCampaignDrawerTab(campaignDrawerTab === 'details' ? 'changelog' : 'details')}
+          style={{
+            border: 'none',
+            background: campaignDrawerTab === 'changelog' ? 'rgba(100, 116, 139, 0.08)' : 'transparent',
+            cursor: 'pointer',
+            color: campaignDrawerTab === 'changelog' ? 'var(--color-primary)' : 'var(--color-text-muted)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '6px',
+            borderRadius: '8px',
+            transition: 'all 0.2s ease',
+            outline: 'none'
+          }}
+          title={campaignDrawerTab === 'details' ? 'Xem lịch sử thay đổi' : 'Xem thông tin chi tiết'}
+          className="hover-lift"
+        >
+          <History size={20} />
+        </button>
+      ) : (
         <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
           <button
             type="submit"
