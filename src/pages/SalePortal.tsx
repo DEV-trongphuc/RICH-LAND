@@ -8310,7 +8310,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
             position: 'sticky',
             top: isMobile ? '-1.25rem' : '-1.5rem',
             zIndex: 100,
-            background: isMobile ? 'var(--color-surface)' : 'var(--color-bg)',
+            background: 'var(--color-bg)',
             padding: isMobile ? '1rem 0 0.75rem 0' : '1.5rem 0 1rem 0',
             display: 'flex',
             justifyContent: 'space-between',
@@ -8908,7 +8908,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
           {(!isMobile || profileActiveTab) && (
             <div className={styles.contentArea} style={{
               flex: 1,
-              padding: isMobile ? '0 1rem' : '2rem',
+              padding: isMobile ? '1rem' : '2rem',
               background: isMobile ? 'transparent' : 'var(--color-surface)',
               overflowY: 'auto',
               borderTopRightRadius: isMobile ? '0px' : '16px',
@@ -9862,12 +9862,11 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                           height: '40px',
                           borderRadius: '10px',
                           background: 'rgba(189, 29, 45, 0.08)',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
+                          display: 'grid',
+                          placeItems: 'center',
                           flexShrink: 0
                         }}>
-                          <Clock3 size={20} color="#BD1D2D" />
+                          <Clock3 size={20} color="#BD1D2D" style={{ display: 'block', width: '20px', height: '20px', margin: 'auto' }} />
                         </div>
                         <div style={{ flex: 1 }}>
                           <h3 style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--color-text)', margin: 0, letterSpacing: '-0.01em' }}>
@@ -9950,12 +9949,11 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                             height: '40px',
                             borderRadius: '10px',
                             background: 'rgba(16, 185, 129, 0.08)',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
+                            display: 'grid',
+                            placeItems: 'center',
                             flexShrink: 0
                           }}>
-                            <Calendar size={20} color="var(--color-success)" />
+                            <Calendar size={20} color="var(--color-success)" style={{ display: 'block', width: '20px', height: '20px', margin: 'auto' }} />
                           </div>
                           <div style={{ flex: 1 }}>
                             <h3 style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--color-text)', margin: 0, letterSpacing: '-0.01em' }}>
@@ -10163,12 +10161,11 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                           height: '40px',
                           borderRadius: '10px',
                           background: 'rgba(245, 158, 11, 0.08)',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
+                          display: 'grid',
+                          placeItems: 'center',
                           flexShrink: 0
                         }}>
-                          <ShieldAlert size={20} color="var(--color-warning)" />
+                          <ShieldAlert size={20} color="var(--color-warning)" style={{ display: 'block', width: '20px', height: '20px', margin: 'auto' }} />
                         </div>
                         <div style={{ flex: 1 }}>
                           <h3 style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--color-text)', margin: 0, letterSpacing: '-0.01em' }}>
@@ -10285,12 +10282,11 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                             height: '40px',
                             borderRadius: '10px',
                             background: 'rgba(239, 68, 68, 0.08)',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
+                            display: 'grid',
+                            placeItems: 'center',
                             flexShrink: 0
                           }}>
-                            <Calendar size={20} color="var(--color-primary)" />
+                            <Calendar size={20} color="var(--color-primary)" style={{ display: 'block', width: '20px', height: '20px', margin: 'auto' }} />
                           </div>
                           <div style={{ flex: 1 }}>
                             <h3 style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--color-text)', margin: 0, letterSpacing: '-0.01em' }}>
@@ -10398,12 +10394,11 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                             height: '36px',
                             borderRadius: '8px',
                             background: 'var(--color-primary-light)',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
+                            display: 'grid',
+                            placeItems: 'center',
                             flexShrink: 0
                           }}>
-                            <Calendar size={18} style={{ color: 'var(--color-primary)' }} />
+                            <Calendar size={18} style={{ display: 'block', width: '18px', height: '18px', margin: 'auto', color: 'var(--color-primary)' }} />
                           </div>
                           <div>
                             <h3 style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--color-text)', margin: 0 }}>
