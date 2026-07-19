@@ -947,6 +947,21 @@ export const DealsPage: React.FC = () => {
               {/* The Filter Panel */}
               {showFilterPanel && (
                 <div style={{ borderTop: '1px solid var(--color-border-light)', paddingTop: '1rem', marginTop: '0.25rem', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.25rem' }}>
+                   {/* Loại đối tượng */}
+                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.375rem' }}>
+                      <label style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.025em' }}>Loại đối tượng</label>
+                      <CustomSelect 
+                        options={[
+                          { value: 'contacts', label: 'Khách hàng' },
+                          { value: 'companies', label: 'Doanh nghiệp' }
+                        ]} 
+                        value={pipelineView} 
+                        onChange={v => {
+                          setPipelineView(v as any);
+                          setPage(1);
+                        }} 
+                      />
+                   </div>
                    {/* Phụ trách */}
                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.375rem' }}>
                       <label style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.025em' }}>Sale phụ trách</label>

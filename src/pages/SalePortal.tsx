@@ -4229,7 +4229,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
           display: 'grid',
           gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)',
           gap: isMobile ? '0.5rem' : '0.75rem',
-          marginBottom: '1rem'
+          marginBottom: '1.25rem'
         }}>
           {/* Card 1: Overdue */}
           <div 
@@ -4239,21 +4239,23 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
               setWsTaskFilter('all');
             }}
             style={{
-              padding: isMobile ? '0.5rem 0.75rem' : '0.75rem 1rem',
+              padding: isMobile ? '0.5rem 0.625rem' : '0.625rem 0.875rem',
               borderRadius: '8px',
               border: wsDatePreset === 'overdue' ? '1px solid var(--color-danger)' : '1px solid var(--color-border-light)',
-              background: wsDatePreset === 'overdue' ? 'rgba(239, 68, 68, 0.04)' : 'var(--color-surface)',
+              borderLeft: `4px solid var(--color-danger)`,
+              background: wsDatePreset === 'overdue' ? 'rgba(239, 68, 68, 0.05)' : 'var(--color-surface)',
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
-              gap: isMobile ? '0.5rem' : '0.75rem',
-              transition: 'all 0.15s ease'
+              gap: isMobile ? '0.375rem' : '0.625rem',
+              transition: 'all 0.15s ease',
+              boxShadow: 'var(--shadow-sm)'
             }}
           >
             <div style={{
-              width: '32px',
-              height: '32px',
-              borderRadius: '6px',
+              width: '28px',
+              height: '28px',
+              borderRadius: '50%',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -4261,13 +4263,13 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
               color: 'var(--color-danger)',
               flexShrink: 0
             }}>
-              <Clock size={16} style={{ display: 'block', margin: 0 }} />
+              <Clock size={15} />
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
-              <span style={{ fontSize: isMobile ? '0.6875rem' : '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.3px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              <span style={{ fontSize: '0.65rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.3px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                 {t('Quá hạn')}
               </span>
-              <span style={{ fontSize: isMobile ? '1.1rem' : '1.25rem', fontWeight: 700, color: 'var(--color-danger)', marginTop: '1px', lineHeight: 1.1 }}>
+              <span style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--color-danger)', marginTop: '2px', lineHeight: 1.1 }}>
                 {workspaceStats.overdue}
               </span>
             </div>
@@ -4281,21 +4283,23 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
               setWsTaskFilter('all');
             }}
             style={{
-              padding: isMobile ? '0.5rem 0.75rem' : '0.75rem 1rem',
+              padding: isMobile ? '0.5rem 0.625rem' : '0.625rem 0.875rem',
               borderRadius: '8px',
               border: wsDatePreset === 'today' ? '1px solid var(--color-warning)' : '1px solid var(--color-border-light)',
-              background: wsDatePreset === 'today' ? 'rgba(245, 158, 11, 0.04)' : 'var(--color-surface)',
+              borderLeft: `4px solid var(--color-warning)`,
+              background: wsDatePreset === 'today' ? 'rgba(245, 158, 11, 0.05)' : 'var(--color-surface)',
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
-              gap: isMobile ? '0.5rem' : '0.75rem',
-              transition: 'all 0.15s ease'
+              gap: isMobile ? '0.375rem' : '0.625rem',
+              transition: 'all 0.15s ease',
+              boxShadow: 'var(--shadow-sm)'
             }}
           >
             <div style={{
-              width: '32px',
-              height: '32px',
-              borderRadius: '6px',
+              width: '28px',
+              height: '28px',
+              borderRadius: '50%',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -4303,13 +4307,13 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
               color: 'var(--color-warning)',
               flexShrink: 0
             }}>
-              <Calendar size={16} style={{ display: 'block', margin: 0 }} />
+              <Calendar size={15} />
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
-              <span style={{ fontSize: isMobile ? '0.6875rem' : '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.3px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              <span style={{ fontSize: '0.65rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.3px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                 {t('Đến hạn')}
               </span>
-              <span style={{ fontSize: isMobile ? '1.1rem' : '1.25rem', fontWeight: 700, color: 'var(--color-warning)', marginTop: '1px', lineHeight: 1.1 }}>
+              <span style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--color-warning)', marginTop: '2px', lineHeight: 1.1 }}>
                 {workspaceStats.dueToday}
               </span>
             </div>
@@ -4323,21 +4327,23 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
               setWsTaskFilter('all');
             }}
             style={{
-              padding: isMobile ? '0.5rem 0.75rem' : '0.75rem 1rem',
+              padding: isMobile ? '0.5rem 0.625rem' : '0.625rem 0.875rem',
               borderRadius: '8px',
               border: wsDatePreset === 'tomorrow' ? '1px solid var(--color-info)' : '1px solid var(--color-border-light)',
-              background: wsDatePreset === 'tomorrow' ? 'rgba(59, 130, 246, 0.04)' : 'var(--color-surface)',
+              borderLeft: `4px solid var(--color-info)`,
+              background: wsDatePreset === 'tomorrow' ? 'rgba(59, 130, 246, 0.05)' : 'var(--color-surface)',
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
-              gap: isMobile ? '0.5rem' : '0.75rem',
-              transition: 'all 0.15s ease'
+              gap: isMobile ? '0.375rem' : '0.625rem',
+              transition: 'all 0.15s ease',
+              boxShadow: 'var(--shadow-sm)'
             }}
           >
             <div style={{
-              width: '32px',
-              height: '32px',
-              borderRadius: '6px',
+              width: '28px',
+              height: '28px',
+              borderRadius: '50%',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -4345,13 +4351,13 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
               color: 'var(--color-info)',
               flexShrink: 0
             }}>
-              <ArrowUpRight size={16} style={{ display: 'block', margin: 0 }} />
+              <ArrowUpRight size={15} />
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
-              <span style={{ fontSize: isMobile ? '0.6875rem' : '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.3px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              <span style={{ fontSize: '0.65rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.3px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                 {t('Sắp đến hạn')}
               </span>
-              <span style={{ fontSize: isMobile ? '1.1rem' : '1.25rem', fontWeight: 700, color: 'var(--color-info)', marginTop: '1px', lineHeight: 1.1 }}>
+              <span style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--color-info)', marginTop: '2px', lineHeight: 1.1 }}>
                 {workspaceStats.upcoming}
               </span>
             </div>
@@ -4365,21 +4371,23 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
               setWsDatePreset('all');
             }}
             style={{
-              padding: isMobile ? '0.5rem 0.75rem' : '0.75rem 1rem',
+              padding: isMobile ? '0.5rem 0.625rem' : '0.625rem 0.875rem',
               borderRadius: '8px',
               border: wsTaskFilter === 'approve_by_me' ? '1px solid #8b5cf6' : '1px solid var(--color-border-light)',
-              background: wsTaskFilter === 'approve_by_me' ? 'rgba(139, 92, 246, 0.04)' : 'var(--color-surface)',
+              borderLeft: `4px solid #8b5cf6`,
+              background: wsTaskFilter === 'approve_by_me' ? 'rgba(139, 92, 246, 0.05)' : 'var(--color-surface)',
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
-              gap: isMobile ? '0.5rem' : '0.75rem',
-              transition: 'all 0.15s ease'
+              gap: isMobile ? '0.375rem' : '0.625rem',
+              transition: 'all 0.15s ease',
+              boxShadow: 'var(--shadow-sm)'
             }}
           >
             <div style={{
-              width: '32px',
-              height: '32px',
-              borderRadius: '6px',
+              width: '28px',
+              height: '28px',
+              borderRadius: '50%',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -4387,13 +4395,13 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
               color: '#8b5cf6',
               flexShrink: 0
             }}>
-              <UserCheck size={16} style={{ display: 'block', margin: 0 }} />
+              <UserCheck size={15} />
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
-              <span style={{ fontSize: isMobile ? '0.6875rem' : '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.3px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              <span style={{ fontSize: '0.65rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.3px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                 {t('Chờ tôi duyệt')}
               </span>
-              <span style={{ fontSize: isMobile ? '1.1rem' : '1.25rem', fontWeight: 700, color: '#8b5cf6', marginTop: '1px', lineHeight: 1.1 }}>
+              <span style={{ fontSize: '1.15rem', fontWeight: 800, color: '#8b5cf6', marginTop: '2px', lineHeight: 1.1 }}>
                 {workspaceStats.pendingApproval}
               </span>
             </div>
@@ -5099,13 +5107,13 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                 <div 
                   key={task.id} 
                   style={{
-                    padding: '1.25rem',
+                    padding: isMobile ? '0.75rem 1rem' : '1rem 1.25rem',
                     background: 'var(--color-surface)',
                     border: isOverdue && task.status !== 'done' ? '1.5px solid var(--color-danger)' : '1px solid var(--color-border-light)',
                     borderRadius: 'var(--radius-lg)',
                     display: 'flex',
                     flexDirection: 'column',
-                    gap: '0.875rem',
+                    gap: isMobile ? '0.5rem' : '0.75rem',
                     boxShadow: isOverdue && task.status !== 'done' ? 'var(--shadow-md), 0 0 12px rgba(239, 68, 68, 0.08)' : 'var(--shadow-sm)',
                     transition: 'all var(--transition-fluid)',
                     cursor: 'pointer',
@@ -5152,8 +5160,8 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                           <span 
                             key={tag} 
                             style={{ 
-                              fontSize: '0.68rem', 
-                              padding: '2px 8px', 
+                              fontSize: '0.65rem', 
+                              padding: '1px 6px', 
                               borderRadius: '20px', 
                               background: 'var(--color-bg)', 
                               color: 'var(--color-text-light)', 
@@ -5166,23 +5174,23 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                       })}
                     </div>
                     {task.priority === 'high' && (
-                      <span style={{ fontSize: '0.65rem', fontWeight: 800, padding: '2px 8px', borderRadius: '20px', background: 'var(--color-danger-light)', color: 'var(--color-danger)', flexShrink: 0 }}>
+                      <span style={{ fontSize: '0.625rem', fontWeight: 800, padding: '1px 6px', borderRadius: '20px', background: 'var(--color-danger-light)', color: 'var(--color-danger)', flexShrink: 0 }}>
                         {t('Khẩn cấp')}
                       </span>
                     )}
                   </div>
 
                   {/* Title & Description */}
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                    <h3 style={{ fontWeight: 700, fontSize: '0.95rem', color: 'var(--color-text)', margin: 0, lineHeight: 1.35 }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                    <h3 style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--color-text)', margin: 0, lineHeight: 1.3 }}>
                       {task.subject}
                     </h3>
                     {description && (
                       <p style={{
-                        fontSize: '0.8rem',
+                        fontSize: '0.75rem',
                         color: 'var(--color-text-muted)',
                         margin: 0,
-                        lineHeight: 1.45,
+                        lineHeight: 1.4,
                         display: '-webkit-box',
                         WebkitLineClamp: 2,
                         WebkitBoxOrient: 'vertical',
@@ -5195,12 +5203,12 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                   </div>
 
                   {/* Progress Bar indicator */}
-                  <div style={{ marginTop: 'auto', paddingTop: '4px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                      <span style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>Tiến độ:</span>
-                      <span style={{ fontSize: '0.72rem', fontWeight: 800, color: progressVal === 100 ? 'var(--color-success)' : 'var(--color-primary)' }}>{progressVal}%</span>
+                  <div style={{ marginTop: 'auto', paddingTop: '2px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                      <span style={{ fontSize: '0.68rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>Tiến độ:</span>
+                      <span style={{ fontSize: '0.68rem', fontWeight: 800, color: progressVal === 100 ? 'var(--color-success)' : 'var(--color-primary)' }}>{progressVal}%</span>
                     </div>
-                    <div style={{ width: '100%', height: '12px', background: 'var(--color-border-light)', borderRadius: '99px', overflow: 'hidden' }}>
+                    <div style={{ width: '100%', height: '6px', background: 'var(--color-border-light)', borderRadius: '99px', overflow: 'hidden' }}>
                       <div 
                         style={{ 
                           width: `${progressVal}%`, 
@@ -5215,7 +5223,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                     </div>
                   </div>
 
-                  <div style={{ borderTop: '1px solid var(--color-border-light)', margin: '4px 0' }} />
+                  <div style={{ borderTop: '1px solid var(--color-border-light)', margin: '2px 0' }} />
 
                   {/* Footer metadata */}
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
