@@ -6717,7 +6717,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                 
                                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', alignItems: 'center', fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
                                   <span style={{ fontSize: '0.68rem', fontWeight: 700, color: ev.color, background: `${ev.color}12`, padding: '1px 6px', borderRadius: '4px', textTransform: 'uppercase' }}>
-                                    {ev.type === 'meeting' && ev.status === 'cancelled' ? 'Hủy gặp' : ev.type === 'zalo_connect' ? 'Zalo' : ev.type.toUpperCase()}
+                                    {ev.type === 'meeting' ? (ev.status === 'cancelled' ? 'Hủy gặp' : (ev.status === 'planned' ? 'Lịch gặp' : 'Đã gặp')) : ev.type === 'zalo_connect' ? 'Zalo' : ev.type.toUpperCase()}
                                   </span>
                                   <span>•</span>
                                   <div style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
