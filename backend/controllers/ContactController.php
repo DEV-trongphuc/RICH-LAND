@@ -53,59 +53,33 @@ class ContactController {
         if (!in_array($sortBy, $allowedSort)) $sortBy = 'created_at';
         if (!in_array(strtoupper($order), ['ASC', 'DESC'])) $order = 'DESC';
 
-        // GĐKD Dự án scoping vs general manager/sale scoping
-        $isProjManager = false;
-        $projIds = [];
-        if ($auth['role'] === 'manager') {
-            $stmtP = $this->db->prepare("SELECT id, manager_ids FROM projects");
-            $stmtP->execute();
-            $projs = $stmtP->fetchAll(PDO::FETCH_ASSOC);
-            foreach ($projs as $pRow) {
-                if (!empty($pRow['manager_ids'])) {
-                    $mIds = array_filter(array_map('intval', explode(',', $pRow['manager_ids'])));
-                    if (in_array((int)$auth['user_id'], $mIds, true)) {
-                        $projIds[] = (int)$pRow['id'];
-                        $isProjManager = true;
-                    }
-                }
-            }
-        }
-
-        if ($isProjManager) {
-            if (!empty($projIds)) {
-                $where[] = 'c.project_id IN (' . implode(',', $projIds) . ')';
-            } else {
-                $where[] = '1=0';
-            }
+        $scope = $this->getScope($auth, 'leads', 'read');
+        if ($scope === 'all') {
+            // No filters
+        } else if ($scope === 'team') {
+            $where[] = '(c.owner_id = ? OR c.owner_id IN (
+                SELECT id FROM users WHERE team_id IN (
+                    SELECT id FROM teams WHERE FIND_IN_SET(?, CONCAT(leader_id, CHAR(44), COALESCE(co_leader_ids, leader_id)))
+                ) OR team_id = (SELECT team_id FROM users WHERE id = ?)
+            ) OR FIND_IN_SET(?, c.collaborator_ids) OR c.id IN (
+                SELECT contact_id FROM cooperation_slips 
+                WHERE JSON_CONTAINS(JSON_KEYS(CASE WHEN (shares_json IS NOT NULL AND JSON_VALID(shares_json)) THEN shares_json ELSE "{}" END), JSON_QUOTE(CAST(? AS CHAR)))
+            ))';
+            $params[] = $auth['user_id'];
+            $params[] = $auth['user_id'];
+            $params[] = $auth['user_id'];
+            $params[] = $auth['user_id'];
+            $params[] = $auth['user_id'];
+        } else if ($scope === 'own') {
+            $where[] = '(c.owner_id = ? OR FIND_IN_SET(?, c.collaborator_ids) OR c.id IN (
+                SELECT contact_id FROM cooperation_slips 
+                WHERE JSON_CONTAINS(JSON_KEYS(CASE WHEN (shares_json IS NOT NULL AND JSON_VALID(shares_json)) THEN shares_json ELSE "{}" END), JSON_QUOTE(CAST(? AS CHAR)))
+            ))';
+            $params[] = $auth['user_id'];
+            $params[] = $auth['user_id'];
+            $params[] = $auth['user_id'];
         } else {
-            $scope = $this->getScope($auth, 'leads', 'read');
-            if ($scope === 'all') {
-                // No filters
-            } else if ($scope === 'team') {
-                $where[] = '(c.owner_id = ? OR c.owner_id IN (
-                    SELECT id FROM users WHERE team_id IN (
-                        SELECT id FROM teams WHERE FIND_IN_SET(?, CONCAT(leader_id, CHAR(44), COALESCE(co_leader_ids, leader_id)))
-                    ) OR team_id = (SELECT team_id FROM users WHERE id = ?)
-                ) OR FIND_IN_SET(?, c.collaborator_ids) OR c.id IN (
-                    SELECT contact_id FROM cooperation_slips 
-                    WHERE JSON_CONTAINS(JSON_KEYS(CASE WHEN (shares_json IS NOT NULL AND JSON_VALID(shares_json)) THEN shares_json ELSE "{}" END), JSON_QUOTE(CAST(? AS CHAR)))
-                ))';
-                $params[] = $auth['user_id'];
-                $params[] = $auth['user_id'];
-                $params[] = $auth['user_id'];
-                $params[] = $auth['user_id'];
-                $params[] = $auth['user_id'];
-            } else if ($scope === 'own') {
-                $where[] = '(c.owner_id = ? OR FIND_IN_SET(?, c.collaborator_ids) OR c.id IN (
-                    SELECT contact_id FROM cooperation_slips 
-                    WHERE JSON_CONTAINS(JSON_KEYS(CASE WHEN (shares_json IS NOT NULL AND JSON_VALID(shares_json)) THEN shares_json ELSE "{}" END), JSON_QUOTE(CAST(? AS CHAR)))
-                ))';
-                $params[] = $auth['user_id'];
-                $params[] = $auth['user_id'];
-                $params[] = $auth['user_id'];
-            } else {
-                $where[] = '1=0';
-            }
+            $where[] = '1=0';
         }
 
         if ($search) {
@@ -997,6 +971,9 @@ class ContactController {
         $stmt = $this->db->prepare($sql);
         $stmt->execute($p);
         if (!$stmt->rowCount()) respond(404, null, 'Không tìm thấy liên hệ hoặc không có quyền xóa', false);
+        
+        $this->restorePersonPublicStatus($id, $auth['tenant_id']);
+        
         logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'DELETE', 'contact', $id, json_encode(['id' => $id]));
         logInteraction($this->db, $auth['tenant_id'], $auth['user_id'], 'note', 'Xóa Liên hệ', "Một liên hệ đã bị đưa vào thùng rác.", 'contact', $id);
         respond(200, null, 'Đã xóa liên hệ (vào thùng rác)');
@@ -1031,6 +1008,10 @@ class ContactController {
         $sql = "UPDATE contacts SET deleted_at=NOW() WHERE $where";
         $stmt = $this->db->prepare($sql);
         $stmt->execute($params);
+        
+        foreach ($ids as $cid) {
+            $this->restorePersonPublicStatus((int)$cid, $auth['tenant_id']);
+        }
         
         logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'BULK_DELETE', 'contact', null, json_encode(['ids' => $ids]));
         respond(200, null, "Đã xóa " . $stmt->rowCount() . " liên hệ");
@@ -1175,9 +1156,10 @@ class ContactController {
             respond(200, ['action' => 'released'], 'Đã trả khách hàng về Databank chung thành công!');
         } else {
             // 2 or more sales own this Person in parallel.
-            // Just soft-delete this sale's contact row and clear notes!
             $stmtDelete = $this->db->prepare("UPDATE contacts SET deleted_at = NOW(), notes = NULL WHERE id = ? AND tenant_id = ?");
             $stmtDelete->execute([$id, $tid]);
+            
+            $this->restorePersonPublicStatus($id, $tid);
 
             // Xóa thông tin công việc (activities) và ghi chú (notes) liên quan đến contact bị xóa này
             $stmtDelNotes = $this->db->prepare("DELETE FROM notes WHERE entity_type = 'contact' AND entity_id = ?");
@@ -1251,6 +1233,37 @@ class ContactController {
         }
 
         return 'none';
+    }
+
+    private function restorePersonPublicStatus(int $contactId, int $tenantId): void {
+        $stmt = $this->db->prepare("SELECT person_id FROM contacts WHERE id = ? AND tenant_id = ?");
+        $stmt->execute([$contactId, $tenantId]);
+        $personId = $stmt->fetchColumn();
+        if ($personId) {
+            $stmtCount = $this->db->prepare("SELECT COUNT(*) FROM contacts WHERE person_id = ? AND tenant_id = ? AND owner_id IS NOT NULL AND deleted_at IS NULL");
+            $stmtCount->execute([$personId, $tenantId]);
+            $activeClaims = (int)$stmtCount->fetchColumn();
+
+            $hasProtectedStatus = false;
+            if ($activeClaims > 0) {
+                $stmtProtected = $this->db->prepare("SELECT COUNT(*) FROM contacts WHERE person_id = ? AND tenant_id = ? AND deleted_at IS NULL AND pipeline_status = 'dat_coc'");
+                $stmtProtected->execute([$personId, $tenantId]);
+                $hasProtectedStatus = ((int)$stmtProtected->fetchColumn() > 0);
+            }
+
+            $maxParallelClaims = 2;
+            $stmtSetting = $this->db->prepare("SELECT setting_value FROM system_settings WHERE setting_key = 'max_parallel_sales_per_client' LIMIT 1");
+            $stmtSetting->execute();
+            $sVal = $stmtSetting->fetchColumn();
+            if ($sVal !== false) {
+                $maxParallelClaims = (int)$sVal;
+            }
+
+            if ($activeClaims < $maxParallelClaims && !$hasProtectedStatus) {
+                $stmtUp = $this->db->prepare("UPDATE persons SET is_public = 1 WHERE id = ?");
+                $stmtUp->execute([$personId]);
+            }
+        }
     }
 }
 
