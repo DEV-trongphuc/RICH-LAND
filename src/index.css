@@ -4221,4 +4221,24 @@ div[role="status"] {
 
 .form-input.form-input-with-avatar {
   padding-left: 42px !important;
+}
+
+/* Increase general font sizes on mobile screens */
+@media (max-width: 768px) {
+  html {
+    font-size: 17px !important; /* Scale up rem-based font sizes */
+  }
+  
+  body {
+    font-size: 15px !important;
+  }
+  
+  /* Selectively target normal text, table cells, form labels, inputs to make them larger and highly readable on mobile */
+  p, .form-label, .form-input, input, select, textarea, button, .table td, .table th, .badge, .card-body, .modal-body, .drawer-body {
+    font-size: 14.5px !important;
+  }
+  
+  .stat-label {
+    font-size: 0.7rem !important; /* Make stat label larger */
+  }
 }
