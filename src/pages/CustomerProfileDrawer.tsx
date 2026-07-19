@@ -708,6 +708,58 @@ const ActivityComments: React.FC<{
   );
 };
 
+const DrawerSkeleton = () => {
+  return (
+    <div style={{ padding: '2rem', display: 'flex', flexDirection: 'column', gap: '2rem', height: '100%', background: 'var(--color-surface)', animation: 'pulse 1.5s infinite ease-in-out' }}>
+      {/* Header Skeleton */}
+      <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'center', borderBottom: '1px solid var(--color-border-light)', paddingBottom: '1.5rem' }}>
+        <div style={{ width: '60px', height: '60px', borderRadius: '50%', background: 'var(--color-border-light)' }}></div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', flex: 1 }}>
+          <div style={{ width: '40%', height: '24px', borderRadius: '4px', background: 'var(--color-border-light)' }}></div>
+          <div style={{ display: 'flex', gap: '1rem' }}>
+            <div style={{ width: '20%', height: '16px', borderRadius: '4px', background: 'var(--color-border-light)' }}></div>
+            <div style={{ width: '25%', height: '16px', borderRadius: '4px', background: 'var(--color-border-light)' }}></div>
+          </div>
+        </div>
+      </div>
+
+      {/* Body Skeleton */}
+      <div style={{ display: 'flex', gap: '2rem', flex: 1 }}>
+        {/* Sidebar Skeleton */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', width: '200px', borderRight: '1px solid var(--color-border-light)', paddingRight: '1.5rem' }}>
+          {[1, 2, 3, 4, 5, 6].map(i => (
+            <div key={i} style={{ width: '100%', height: '36px', borderRadius: '8px', background: 'var(--color-border-light)' }}></div>
+          ))}
+        </div>
+
+        {/* Content Area Skeleton */}
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
+            {[1, 2, 3, 4].map(i => (
+              <div key={i} style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                <div style={{ width: '30%', height: '14px', borderRadius: '4px', background: 'var(--color-border-light)' }}></div>
+                <div style={{ width: '100%', height: '38px', borderRadius: '8px', background: 'var(--color-border-light)' }}></div>
+              </div>
+            ))}
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '1rem' }}>
+            <div style={{ width: '15%', height: '14px', borderRadius: '4px', background: 'var(--color-border-light)' }}></div>
+            <div style={{ width: '100%', height: '100px', borderRadius: '8px', background: 'var(--color-border-light)' }}></div>
+          </div>
+        </div>
+      </div>
+
+      <style>{`
+        @keyframes pulse {
+          0% { opacity: 0.6; }
+          50% { opacity: 1; }
+          100% { opacity: 0.6; }
+        }
+      `}</style>
+    </div>
+  );
+};
+
 export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contact, onUpdate, initialTab }) => {
   const { addToast, showConfirm, showCall } = useUIStore();
   const navigate = useNavigate();
@@ -1158,6 +1210,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
   const [draggedTaskId, setDraggedTaskId] = useState<number | null>(null);
   const [activeOverCol, setActiveOverCol] = useState<'todo' | 'in_progress' | 'done' | null>(null);
   const [zaloSource, setZaloSource] = useState<'primary' | 'secondary' | 'none'>('none');
+  const [loadingContactDetails, setLoadingContactDetails] = useState(false);
   const [pipelineStages, setPipelineStages] = useState<any[]>(DEFAULT_PIPELINE_STAGES);
   const [contacts, setContacts] = useState<any[]>([]);
   const [ttl1Data, setTtl1Data] = useState<{
@@ -1893,7 +1946,9 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
           setFormData(prev => ({ ...prev, ...freshContact }));
           setBaseData(freshContact);
         }
-      } catch (err) {}
+      } catch (err) {} finally {
+        setLoadingContactDetails(false);
+      }
 
       // 2. Fetch static metadata (Stages, Projects, Companies) only if not already loaded (caching)
       try {
@@ -2162,6 +2217,12 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
       fetchData(activeTab);
     }
   }, [activeTab, isOpen, contact?.id, fetchData]);
+
+  useEffect(() => {
+    if (isOpen && contact?.id) {
+      setLoadingContactDetails(true);
+    }
+  }, [isOpen, contact?.id]);
 
   useEffect(() => {
     const handleQuoteUpdate = () => {
@@ -4163,7 +4224,11 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
 
               {/* ── Layout Split: Left Sidebar Tabs & Content ── */}
               <div className={styles.drawerBody}>
-                {isMobileOrTablet && (
+                {loadingContactDetails ? (
+                  <DrawerSkeleton />
+                ) : (
+                  <>
+                    {isMobileOrTablet && (
                   <>
                     {/* Compact Mobile Profile Info Card */}
                     <div style={{
@@ -8377,7 +8442,9 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                   )}
 
                 </div>
-              </div>
+              </>
+            )}
+          </div>
       </div>
 
       <CallLoggerModal
