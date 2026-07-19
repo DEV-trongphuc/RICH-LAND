@@ -532,19 +532,11 @@ export const ContactsPage: React.FC = () => {
           setTeams(loadedTeams);
         }
         
-        if (user && user.role !== 'sale') {
-          usersRes = await api.get('/users').catch(() => null);
+        if (user) {
+          usersRes = await api.get('/users?all=1').catch(() => null);
           if (usersRes) {
             const d = usersRes.data.data;
-            let list = Array.isArray(d) ? d : (d?.items || []);
-            
-            if (user.role === 'manager') {
-              const managedTeam = loadedTeams.find(t => Number(t.leader_id) === Number(user.id));
-              const activeTeamId = managedTeam?.id || null;
-              if (activeTeamId) {
-                list = list.filter((u: any) => String(u.team_id) === String(activeTeamId));
-              }
-            }
+            const list = Array.isArray(d) ? d : (d?.items || []);
             setUsers(list);
           }
         }
@@ -1138,7 +1130,17 @@ export const ContactsPage: React.FC = () => {
                         onChange={v => setFilterOwnerId(v)}
                         options={[
                           { value: '', label: 'Tất cả sales' },
-                          ...users.map(u => ({ 
+                          ...(() => {
+                            let list = users;
+                            if (user?.role === 'manager') {
+                              const managedTeam = teams.find(t => Number(t.leader_id) === Number(user?.id));
+                              const activeTeamId = managedTeam?.id || null;
+                              if (activeTeamId) {
+                                list = list.filter((u: any) => String(u.team_id) === String(activeTeamId));
+                              }
+                            }
+                            return list;
+                          })().map(u => ({ 
                             value: String(u.id), 
                             label: u.full_name,
                             avatar: u.avatar_url || u.avatar,
