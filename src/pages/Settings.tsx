@@ -4694,39 +4694,43 @@ function doPost(e) {
                         <span style={{ fontSize: '0.725rem', color: 'var(--color-text-muted)', marginLeft: '24px', display: 'block', lineHeight: 1.4 }}>
                           {t('Nếu tắt, Sales xin nghỉ phép hoặc không hoạt động bị thu hồi lead sẽ không được cộng bù lượt (mặc định tắt).')}
                         </span>
-
-                        <label style={{ gap: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', margin: 0, marginTop: '0.75rem' }}>
-                          <input
-                            type="checkbox"
-                            checked={allowLeadDistributionOnPendingCheckin}
-                            onChange={e => setAllowLeadDistributionOnPendingCheckin(e.target.checked)}
-                            style={{ width: '16px', height: '16px', accentColor: 'var(--color-primary)' }}
-                          />
-                          <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--color-text)' }}>
-                            {t('Cho phép nhận data ngay khi chấm công (kể cả khi chưa duyệt - pending approval)')}
-                          </span>
-                        </label>
-                        <span style={{ fontSize: '0.725rem', color: 'var(--color-text-muted)', marginLeft: '24px', display: 'block', lineHeight: 1.4 }}>
-                          {t('Nếu bật, nhân viên đi muộn (chấm công ở trạng thái chờ duyệt) vẫn sẽ được nhận lead ngay lập tức. Nếu tắt, chỉ khi được duyệt mới nhận lead.')}
-                        </span>
                       </div>
 
-                      <div>
-                        <label className="form-label" style={{ fontWeight: 600 }}>{t('SLA Duyệt đi trễ (Chấm công)')}</label>
-                        <div style={{ display: 'flex', alignItems: 'center', position: 'relative' }}>
-                          <input
-                            type="number"
-                            className="form-input"
-                            style={{ paddingRight: '3.5rem' }}
-                            value={checkinApprovalSlaMinutes}
-                            onChange={e => setCheckinApprovalSlaMinutes(Number(e.target.value))}
-                            min={1}
-                          />
-                          <span style={{ position: 'absolute', right: '12px', fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>{t('phút')}</span>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                        <div>
+                          <label className="form-label" style={{ fontWeight: 600 }}>{t('SLA Duyệt đi trễ (Chấm công)')}</label>
+                          <div style={{ display: 'flex', alignItems: 'center', position: 'relative' }}>
+                            <input
+                              type="number"
+                              className="form-input"
+                              style={{ paddingRight: '3.5rem' }}
+                              value={checkinApprovalSlaMinutes}
+                              onChange={e => setCheckinApprovalSlaMinutes(Number(e.target.value))}
+                              min={1}
+                            />
+                            <span style={{ position: 'absolute', right: '12px', fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>{t('phút')}</span>
+                          </div>
+                          <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px', display: 'block', lineHeight: 1.4 }}>
+                            {t('Thời gian chờ duyệt xin nhận lead trễ trước khi gửi cảnh báo leo thang.')}
+                          </span>
                         </div>
-                        <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px', display: 'block', lineHeight: 1.4 }}>
-                          {t('Thời gian chờ duyệt xin nhận lead trễ trước khi gửi cảnh báo leo thang.')}
-                        </span>
+
+                        <div style={{ borderTop: '1px solid var(--color-border-light)', paddingTop: '1rem', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '1.5rem' }}>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text)' }}>
+                              {t('Cho phép nhận data ngay khi chấm công')}
+                            </div>
+                            <div style={{ fontSize: '0.725rem', color: 'var(--color-text-muted)', marginTop: 4, lineHeight: 1.4 }}>
+                              {t('Nếu bật, nhân viên đi muộn (chấm công ở trạng thái chờ duyệt) vẫn sẽ được nhận lead ngay lập tức. Nếu tắt, chỉ khi được duyệt mới nhận lead.')}
+                            </div>
+                          </div>
+                          <div style={{ flexShrink: 0, marginTop: '2px' }}>
+                            <ToggleSwitch
+                              checked={allowLeadDistributionOnPendingCheckin}
+                              onChange={setAllowLeadDistributionOnPendingCheckin}
+                            />
+                          </div>
+                        </div>
                       </div>
                     </div>
                   </div>
