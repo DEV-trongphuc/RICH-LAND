@@ -252,6 +252,10 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
   const [workEndTime, setWorkEndTime] = useState('17:30');
   const [scheduleMode, setScheduleMode] = useState<'daily' | 'custom'>('daily');
   const [workSchedule, setWorkSchedule] = useState<any>(DEFAULT_SCHEDULE);
+  const [useCustomWorkHours, setUseCustomWorkHours] = useState(false);
+  const [holidayShifts, setHolidayShifts] = useState<any[]>([]);
+  const [weekendShifts, setWeekendShifts] = useState<any[]>([]);
+  const [nightShifts, setNightShifts] = useState<any[]>([]);
 
   // 6. Documents / Attachments
   const [documents, setDocuments] = useState<any[]>([]);
@@ -314,6 +318,10 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
             setZaloChatId(d.zalo_chat_id || '');
             setVacationMode(d.vacation_mode === 1);
             setOvertimeMode(d.overtime_mode === 1);
+            setUseCustomWorkHours(d.use_custom_work_hours === 1);
+            setHolidayShifts(d.holiday_shifts || []);
+            setWeekendShifts(d.weekend_shifts || []);
+            setNightShifts(d.night_shifts || []);
             setWorkStartTime(d.work_start_time || '08:00');
             setWorkEndTime(d.work_end_time || '17:30');
             setLeaveStart(d.leave_start || '');
@@ -462,6 +470,10 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
       setOvertimeMode(false);
       setLeaveStart('');
       setLeaveEnd('');
+      setUseCustomWorkHours(false);
+      setHolidayShifts([]);
+      setWeekendShifts([]);
+      setNightShifts([]);
       setWorkStartTime('08:00');
       setWorkEndTime('17:30');
       setScheduleMode('daily');
@@ -823,6 +835,7 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
           bank_account: bankAccount || null,
           zalo_chat_id: zaloChatId,
           overtime_mode: overtimeMode ? 1 : 0,
+          use_custom_work_hours: useCustomWorkHours ? 1 : 0,
           leave_start: leaveStart || null,
           leave_end: leaveEnd || null
         })
@@ -2338,118 +2351,229 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
 
                     {/* Working Hours */}
                     <div style={{ borderTop: '1px solid var(--color-border-light)', paddingTop: '1rem' }}>
-                      <h4 style={{ fontWeight: 700, fontSize: '0.875rem', marginBottom: '0.75rem', color: 'var(--color-text)' }}>{t('Giờ làm việc & Lịch trình')}</h4>
-                      
-                      <div style={{ display: 'flex', gap: '8px', marginBottom: '1rem', background: 'var(--color-bg-light)', padding: '4px', borderRadius: '8px', width: 'max-content' }}>
-                        <button
-                          type="button"
-                          onClick={() => setScheduleMode('daily')}
-                          style={{
-                            padding: '6px 12px',
-                            fontSize: '0.75rem',
-                            fontWeight: 700,
-                            borderRadius: '6px',
-                            border: 'none',
-                            cursor: 'pointer',
-                            backgroundColor: scheduleMode === 'daily' ? 'var(--color-surface)' : 'transparent',
-                            color: scheduleMode === 'daily' ? 'var(--color-primary)' : 'var(--color-text-muted)',
-                            boxShadow: scheduleMode === 'daily' ? 'var(--shadow-sm)' : 'none'
-                          }}
-                        >
-                          {t('Hằng ngày (Cố định)')}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setScheduleMode('custom')}
-                          style={{
-                            padding: '6px 12px',
-                            fontSize: '0.75rem',
-                            fontWeight: 700,
-                            borderRadius: '6px',
-                            border: 'none',
-                            cursor: 'pointer',
-                            backgroundColor: scheduleMode === 'custom' ? 'var(--color-surface)' : 'transparent',
-                            color: scheduleMode === 'custom' ? 'var(--color-primary)' : 'var(--color-text-muted)',
-                            boxShadow: scheduleMode === 'custom' ? 'var(--shadow-sm)' : 'none'
-                          }}
-                        >
-                          {t('Tự chọn (Lịch tuần)')}
-                        </button>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
+                        <div>
+                          <h4 style={{ fontWeight: 700, fontSize: '0.875rem', margin: 0, color: 'var(--color-text)' }}>{t('Giờ làm việc & Lịch trình')}</h4>
+                          <p style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', margin: '2px 0 0' }}>
+                            {t('Cấu hình giờ làm việc riêng biệt cho chuyên viên này thay vì áp dụng lịch công ty chung.')}
+                          </p>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <span style={{ fontSize: '0.75rem', fontWeight: 600, color: useCustomWorkHours ? 'var(--color-primary)' : 'var(--color-text-muted)' }}>
+                            {useCustomWorkHours ? t('Bật giờ cá nhân') : t('Mặc định công ty')}
+                          </span>
+                          <div 
+                            onClick={() => setUseCustomWorkHours(!useCustomWorkHours)}
+                            style={{
+                              width: '40px',
+                              height: '20px',
+                              borderRadius: '10px',
+                              backgroundColor: useCustomWorkHours ? '#10B981' : '#E2E8F0',
+                              padding: '2px',
+                              cursor: 'pointer',
+                              transition: 'background-color 0.2s ease',
+                              display: 'flex',
+                              alignItems: 'center',
+                              flexShrink: 0
+                            }}
+                          >
+                            <div 
+                              style={{
+                                width: '16px',
+                                height: '16px',
+                                borderRadius: '50%',
+                                backgroundColor: 'white',
+                                boxShadow: '0 1px 3px rgba(0,0,0,0.15)',
+                                transform: useCustomWorkHours ? 'translateX(20px)' : 'translateX(0px)',
+                                transition: 'transform 0.2s cubic-bezier(0.4, 0, 0.2, 1)'
+                              }}
+                            />
+                          </div>
+                        </div>
                       </div>
 
-                      {scheduleMode === 'daily' ? (
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', background: 'var(--color-bg-light)', padding: '1rem', borderRadius: '12px' }}>
-                          <div className="form-group">
-                            <label className="form-label">{t('Giờ bắt đầu hành chính')}</label>
-                            <input type="time" className="form-input" value={workStartTime} onChange={e => setWorkStartTime(e.target.value)} />
-                          </div>
-                          <div className="form-group">
-                            <label className="form-label">{t('Giờ kết thúc hành chính')}</label>
-                            <input type="time" className="form-input" value={workEndTime} onChange={e => setWorkEndTime(e.target.value)} />
-                          </div>
+                      {!useCustomWorkHours ? (
+                        <div style={{ padding: '12px 16px', background: 'rgba(59, 130, 246, 0.04)', borderRadius: '10px', border: '1px solid rgba(59, 130, 246, 0.12)', marginBottom: '1rem' }}>
+                          <p style={{ fontSize: '0.75rem', color: 'var(--color-primary)', margin: 0, fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            ℹ️ Đang áp dụng giờ làm việc chung của công ty. Kích hoạt nút gạt ở trên nếu muốn cấu hình lịch làm việc riêng biệt cho nhân sự này.
+                          </p>
                         </div>
-                      ) : (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                          {Object.keys(DAY_LABELS).map((dayKey) => {
-                            const dayConfig = workSchedule[dayKey] || { active: false, start: "08:00", end: "17:30" };
-                            return (
-                              <div key={dayKey} style={{
-                                display: 'grid',
-                                gridTemplateColumns: '120px 80px 1fr',
-                                alignItems: 'center',
-                                gap: '1rem',
-                                padding: '8px 12px',
-                                background: 'var(--color-bg-light)',
-                                borderRadius: '8px'
-                              }}>
-                                <span style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text)' }}>{DAY_LABELS[dayKey]}</span>
-                                <input 
-                                  type="checkbox" 
-                                  checked={dayConfig.active} 
-                                  onChange={e => {
-                                    setWorkSchedule({
-                                      ...workSchedule,
-                                      [dayKey]: { ...dayConfig, active: e.target.checked }
-                                    });
-                                  }} 
-                                  style={{ cursor: 'pointer' }}
-                                />
-                                {dayConfig.active ? (
-                                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                    <input 
-                                      type="time" 
-                                      className="form-input" 
-                                      style={{ padding: '4px 8px', fontSize: '0.75rem', height: 'auto', width: '90px' }}
-                                      value={dayConfig.start} 
-                                      onChange={e => {
-                                        setWorkSchedule({
-                                          ...workSchedule,
-                                          [dayKey]: { ...dayConfig, start: e.target.value }
-                                        });
-                                      }} 
-                                    />
-                                    <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{t('đến')}</span>
-                                    <input 
-                                      type="time" 
-                                      className="form-input" 
-                                      style={{ padding: '4px 8px', fontSize: '0.75rem', height: 'auto', width: '90px' }}
-                                      value={dayConfig.end} 
-                                      onChange={e => {
-                                        setWorkSchedule({
-                                          ...workSchedule,
-                                          [dayKey]: { ...dayConfig, end: e.target.value }
-                                        });
-                                      }} 
-                                    />
+                      ) : null}
+
+                      <div style={{ opacity: useCustomWorkHours ? 1 : 0.45, pointerEvents: useCustomWorkHours ? 'auto' : 'none', transition: 'all 0.2s ease' }}>
+                        <div style={{ display: 'flex', gap: '8px', marginBottom: '1rem', background: 'var(--color-bg-light)', padding: '4px', borderRadius: '8px', width: 'max-content' }}>
+                          <button
+                            type="button"
+                            onClick={() => setScheduleMode('daily')}
+                            style={{
+                              padding: '6px 12px',
+                              fontSize: '0.75rem',
+                              fontWeight: 700,
+                              borderRadius: '6px',
+                              border: 'none',
+                              cursor: 'pointer',
+                              backgroundColor: scheduleMode === 'daily' ? 'var(--color-surface)' : 'transparent',
+                              color: scheduleMode === 'daily' ? 'var(--color-primary)' : 'var(--color-text-muted)',
+                              boxShadow: scheduleMode === 'daily' ? 'var(--shadow-sm)' : 'none'
+                            }}
+                          >
+                            {t('Hằng ngày (Cố định)')}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setScheduleMode('custom')}
+                            style={{
+                              padding: '6px 12px',
+                              fontSize: '0.75rem',
+                              fontWeight: 700,
+                              borderRadius: '6px',
+                              border: 'none',
+                              cursor: 'pointer',
+                              backgroundColor: scheduleMode === 'custom' ? 'var(--color-surface)' : 'transparent',
+                              color: scheduleMode === 'custom' ? 'var(--color-primary)' : 'var(--color-text-muted)',
+                              boxShadow: scheduleMode === 'custom' ? 'var(--shadow-sm)' : 'none'
+                            }}
+                          >
+                            {t('Tự chọn (Lịch tuần)')}
+                          </button>
+                        </div>
+
+                        {scheduleMode === 'daily' ? (
+                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', background: 'var(--color-bg-light)', padding: '1rem', borderRadius: '12px' }}>
+                            <div className="form-group">
+                              <label className="form-label">{t('Giờ bắt đầu hành chính')}</label>
+                              <input type="time" className="form-input" value={workStartTime} onChange={e => setWorkStartTime(e.target.value)} />
+                            </div>
+                            <div className="form-group">
+                              <label className="form-label">{t('Giờ kết thúc hành chính')}</label>
+                              <input type="time" className="form-input" value={workEndTime} onChange={e => setWorkEndTime(e.target.value)} />
+                            </div>
+                          </div>
+                        ) : (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                            {Object.keys(DAY_LABELS).map((dayKey) => {
+                              const dayConfig = workSchedule[dayKey] || { active: false, start: "08:00", end: "17:30" };
+                              return (
+                                <div key={dayKey} style={{
+                                  display: 'grid',
+                                  gridTemplateColumns: '120px 80px 1fr',
+                                  alignItems: 'center',
+                                  gap: '1rem',
+                                  padding: '8px 12px',
+                                  background: 'var(--color-bg-light)',
+                                  borderRadius: '8px'
+                                }}>
+                                  <span style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text)' }}>{DAY_LABELS[dayKey]}</span>
+                                  <input 
+                                    type="checkbox" 
+                                    checked={dayConfig.active} 
+                                    onChange={e => {
+                                      setWorkSchedule({
+                                        ...workSchedule,
+                                        [dayKey]: { ...dayConfig, active: e.target.checked }
+                                      });
+                                    }} 
+                                    style={{ cursor: 'pointer' }}
+                                  />
+                                  {dayConfig.active ? (
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                      <input 
+                                        type="time" 
+                                        className="form-input" 
+                                        style={{ padding: '4px 8px', fontSize: '0.75rem', height: 'auto', width: '90px' }}
+                                        value={dayConfig.start} 
+                                        onChange={e => {
+                                          setWorkSchedule({
+                                            ...workSchedule,
+                                            [dayKey]: { ...dayConfig, start: e.target.value }
+                                          });
+                                        }} 
+                                      />
+                                      <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{t('đến')}</span>
+                                      <input 
+                                        type="time" 
+                                        className="form-input" 
+                                        style={{ padding: '4px 8px', fontSize: '0.75rem', height: 'auto', width: '90px' }}
+                                        value={dayConfig.end} 
+                                        onChange={e => {
+                                          setWorkSchedule({
+                                            ...workSchedule,
+                                            [dayKey]: { ...dayConfig, end: e.target.value }
+                                          });
+                                        }} 
+                                      />
+                                    </div>
+                                  ) : (
+                                    <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontStyle: 'italic' }}>{t('Nghỉ tuần')}</span>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Section: Roster and Shift Registrations */}
+                      <div style={{ borderTop: '1px solid var(--color-border-light)', marginTop: '1.5rem', paddingTop: '1rem' }}>
+                        <h4 style={{ fontWeight: 700, fontSize: '0.875rem', marginBottom: '0.75rem', color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          📅 Lịch trực đã đăng ký (Data Roster)
+                        </h4>
+                        
+                        <div style={{ display: 'grid', gridTemplateColumns: isMobileOrTablet ? '1fr' : '1fr 1fr', gap: '1.25rem' }}>
+                          {/* Column 1: Lịch trực ngày lễ */}
+                          <div style={{ background: 'var(--color-bg-light)', padding: '1rem', borderRadius: '12px', border: '1px solid var(--color-border-light)' }}>
+                            <h5 style={{ fontWeight: 700, fontSize: '0.8rem', color: 'var(--color-text)', marginBottom: '0.75rem', borderBottom: '1px solid var(--color-border-light)', paddingBottom: '6px' }}>
+                              🎉 Trực lễ ({holidayShifts.length})
+                            </h5>
+                            {holidayShifts.length === 0 ? (
+                              <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontStyle: 'italic', margin: 0 }}>Chưa có đăng ký trực lễ.</p>
+                            ) : (
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '180px', overflowY: 'auto' }}>
+                                {holidayShifts.map((s, idx) => (
+                                  <div key={s.id || idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.75rem', padding: '4px 8px', background: 'var(--color-surface)', borderRadius: '6px', border: '1px solid var(--color-border-light)' }}>
+                                    <div>
+                                      <strong style={{ color: 'var(--color-text)' }}>{s.holiday_name}</strong>
+                                      <span style={{ color: 'var(--color-text-muted)', marginLeft: '6px' }}>({new Date(s.shift_date).toLocaleDateString('vi-VN')})</span>
+                                    </div>
+                                    <span className={`badge ${s.approved ? 'success' : 'warning'}`} style={{ fontSize: '0.65rem', padding: '1px 6px' }}>
+                                      {s.approved ? 'Đã duyệt' : 'Chờ duyệt'}
+                                    </span>
                                   </div>
-                                ) : (
-                                  <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontStyle: 'italic' }}>{t('Nghỉ tuần')}</span>
-                                )}
+                                ))}
                               </div>
-                            );
-                          })}
+                            )}
+                          </div>
+                          
+                          {/* Column 2: Lịch trực tuần (Đêm & Cuối tuần) */}
+                          <div style={{ background: 'var(--color-bg-light)', padding: '1rem', borderRadius: '12px', border: '1px solid var(--color-border-light)' }}>
+                            <h5 style={{ fontWeight: 700, fontSize: '0.8rem', color: 'var(--color-text)', marginBottom: '0.75rem', borderBottom: '1px solid var(--color-border-light)', paddingBottom: '6px' }}>
+                              🌙 Trực đêm & Cuối tuần ({nightShifts.length + weekendShifts.length})
+                            </h5>
+                            {nightShifts.length === 0 && weekendShifts.length === 0 ? (
+                              <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontStyle: 'italic', margin: 0 }}>Chưa có đăng ký trực tuần.</p>
+                            ) : (
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '180px', overflowY: 'auto' }}>
+                                {[
+                                  ...nightShifts.map(x => ({ ...x, type: 'Ca đêm', badge: 'warning' })),
+                                  ...weekendShifts.map(x => ({ ...x, type: 'Cuối tuần', badge: 'primary' }))
+                                ]
+                                  .sort((a, b) => new Date(b.shift_date).getTime() - new Date(a.shift_date).getTime())
+                                  .map((s, idx) => (
+                                    <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.75rem', padding: '4px 8px', background: 'var(--color-surface)', borderRadius: '6px', border: '1px solid var(--color-border-light)' }}>
+                                      <div>
+                                        <span className={`badge ${s.badge}`} style={{ fontSize: '0.6rem', padding: '1px 4px', marginRight: '6px' }}>{s.type}</span>
+                                        <strong style={{ color: 'var(--color-text)' }}>{new Date(s.shift_date).toLocaleDateString('vi-VN')}</strong>
+                                      </div>
+                                      <span className={`badge ${s.approved ? 'success' : 'secondary'}`} style={{ fontSize: '0.65rem', padding: '1px 6px' }}>
+                                        {s.approved ? 'Đã duyệt' : 'Chờ duyệt'}
+                                      </span>
+                                    </div>
+                                  ))}
+                              </div>
+                            )}
+                          </div>
                         </div>
-                      )}
+                      </div>
                     </div>
                   </div>
                 </div>

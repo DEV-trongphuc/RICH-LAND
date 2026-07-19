@@ -12388,7 +12388,7 @@ switch ($action) {
             exit;
         }
 
-        $stmtP = $conn->prepare("SELECT u.id, u.full_name AS name, u.email, a.role, u.status, u.leave_start, u.leave_end, u.work_start_time, u.work_end_time, u.work_schedule, u.avatar_url AS avatar, u.vacation_mode, u.dob, u.gender, u.citizen_id, u.address, u.bank_name, u.bank_account, u.zalo_chat_id, u.overtime_mode, u.permissions_json, u.extra_fields_json, u.manager_behavior_mode FROM users u LEFT JOIN accounts a ON u.id = a.id WHERE u.id = ?");
+        $stmtP = $conn->prepare("SELECT u.id, u.full_name AS name, u.email, a.role, u.status, u.leave_start, u.leave_end, u.work_start_time, u.work_end_time, u.work_schedule, u.avatar_url AS avatar, u.vacation_mode, u.dob, u.gender, u.citizen_id, u.address, u.bank_name, u.bank_account, u.zalo_chat_id, u.overtime_mode, u.permissions_json, u.extra_fields_json, u.manager_behavior_mode, u.use_custom_work_hours FROM users u LEFT JOIN accounts a ON u.id = a.id WHERE u.id = ?");
         $stmtP->bind_param("i", $targetUserId);
         $stmtP->execute();
         $consultantProfile = $stmtP->get_result()->fetch_assoc();
@@ -12407,6 +12407,64 @@ switch ($action) {
             }
             $stmtT->close();
             $consultantProfile['manager_teams'] = $managedTeams;
+
+            // Fetch holiday shift registrations for this user
+            $holidayShifts = [];
+            $stmtHS = $conn->prepare("SELECT id, shift_date, holiday_name, approved, created_at FROM holiday_shift_registrations WHERE user_id = ? ORDER BY shift_date DESC LIMIT 100");
+            if ($stmtHS) {
+                $stmtHS->bind_param("i", $targetUserId);
+                $stmtHS->execute();
+                $resHS = $stmtHS->get_result();
+                while ($row = $resHS->fetch_assoc()) {
+                    $holidayShifts[] = [
+                        'id' => (int)$row['id'],
+                        'shift_date' => $row['shift_date'],
+                        'holiday_name' => $row['holiday_name'],
+                        'approved' => (int)$row['approved'],
+                        'created_at' => $row['created_at']
+                    ];
+                }
+                $stmtHS->close();
+            }
+            $consultantProfile['holiday_shifts'] = $holidayShifts;
+
+            // Fetch weekend shift registrations for this user
+            $weekendShifts = [];
+            $stmtWS = $conn->prepare("SELECT id, shift_date, approved, created_at FROM weekend_shift_registrations WHERE user_id = ? ORDER BY shift_date DESC LIMIT 100");
+            if ($stmtWS) {
+                $stmtWS->bind_param("i", $targetUserId);
+                $stmtWS->execute();
+                $resWS = $stmtWS->get_result();
+                while ($row = $resWS->fetch_assoc()) {
+                    $weekendShifts[] = [
+                        'id' => (int)$row['id'],
+                        'shift_date' => $row['shift_date'],
+                        'approved' => (int)$row['approved'],
+                        'created_at' => $row['created_at']
+                    ];
+                }
+                $stmtWS->close();
+            }
+            $consultantProfile['weekend_shifts'] = $weekendShifts;
+
+            // Fetch night shift registrations for this user
+            $nightShifts = [];
+            $stmtNS = $conn->prepare("SELECT id, shift_date, approved, created_at FROM night_shift_registrations WHERE user_id = ? ORDER BY shift_date DESC LIMIT 100");
+            if ($stmtNS) {
+                $stmtNS->bind_param("i", $targetUserId);
+                $stmtNS->execute();
+                $resNS = $stmtNS->get_result();
+                while ($row = $resNS->fetch_assoc()) {
+                    $nightShifts[] = [
+                        'id' => (int)$row['id'],
+                        'shift_date' => $row['shift_date'],
+                        'approved' => (int)$row['approved'],
+                        'created_at' => $row['created_at']
+                    ];
+                }
+                $stmtNS->close();
+            }
+            $consultantProfile['night_shifts'] = $nightShifts;
         }
         $stmtP->close();
         echo json_encode(['success' => true, 'data' => $consultantProfile]);
@@ -12520,20 +12578,21 @@ switch ($action) {
         $leave_end = !empty($input['leave_end']) ? $input['leave_end'] : null;
         $zalo_chat_id = !empty($input['zalo_chat_id']) ? trim($input['zalo_chat_id']) : null;
         $overtime_mode = isset($input['overtime_mode']) ? (int)$input['overtime_mode'] : 0;
+        $use_custom_work_hours = isset($input['use_custom_work_hours']) ? (int)$input['use_custom_work_hours'] : 0;
         $extra_fields_json = isset($input['extra_fields_json']) ? (is_array($input['extra_fields_json']) ? json_encode($input['extra_fields_json']) : trim($input['extra_fields_json'])) : null;
         if ($extra_fields_json === '') $extra_fields_json = null;
 
         // 1. Update users table
-        $stmt = $conn->prepare("UPDATE users SET full_name=?, work_start_time=?, work_end_time=?, work_schedule=?, avatar_url=?, dob=?, gender=?, citizen_id=?, address=?, bank_name=?, bank_account=?, leave_start=?, leave_end=?, zalo_chat_id=?, overtime_mode=?, extra_fields_json=? WHERE id=?");
-        $stmt->bind_param("ssssssssssssssisi", $name, $work_start_time, $work_end_time, $work_schedule, $avatar, $dob, $gender, $citizen_id, $address, $bank_name, $bank_account, $leave_start, $leave_end, $zalo_chat_id, $overtime_mode, $extra_fields_json, $targetUserId);
+        $stmt = $conn->prepare("UPDATE users SET full_name=?, work_start_time=?, work_end_time=?, work_schedule=?, avatar_url=?, dob=?, gender=?, citizen_id=?, address=?, bank_name=?, bank_account=?, leave_start=?, leave_end=?, zalo_chat_id=?, overtime_mode=?, use_custom_work_hours=?, extra_fields_json=? WHERE id=?");
+        $stmt->bind_param("ssssssssssssssiisi", $name, $work_start_time, $work_end_time, $work_schedule, $avatar, $dob, $gender, $citizen_id, $address, $bank_name, $bank_account, $leave_start, $leave_end, $zalo_chat_id, $overtime_mode, $use_custom_work_hours, $extra_fields_json, $targetUserId);
         $success = $stmt->execute();
         $stmt->close();
 
         // 2. Update consultants table (if it exists as a separate table, otherwise it's a VIEW of users)
         try {
-            $stmtC = $conn->prepare("UPDATE consultants SET name=?, work_start_time=?, work_end_time=?, work_schedule=?, avatar=?, dob=?, gender=?, citizen_id=?, address=?, bank_name=?, bank_account=?, leave_start=?, leave_end=?, zalo_chat_id=?, overtime_mode=?, extra_fields_json=? WHERE id=?");
+            $stmtC = $conn->prepare("UPDATE consultants SET name=?, work_start_time=?, work_end_time=?, work_schedule=?, avatar=?, dob=?, gender=?, citizen_id=?, address=?, bank_name=?, bank_account=?, leave_start=?, leave_end=?, zalo_chat_id=?, overtime_mode=?, use_custom_work_hours=?, extra_fields_json=? WHERE id=?");
             if ($stmtC) {
-                $stmtC->bind_param("ssssssssssssssisi", $name, $work_start_time, $work_end_time, $work_schedule, $avatar, $dob, $gender, $citizen_id, $address, $bank_name, $bank_account, $leave_start, $leave_end, $zalo_chat_id, $overtime_mode, $extra_fields_json, $realConsultantId);
+                $stmtC->bind_param("ssssssssssssssiisi", $name, $work_start_time, $work_end_time, $work_schedule, $avatar, $dob, $gender, $citizen_id, $address, $bank_name, $bank_account, $leave_start, $leave_end, $zalo_chat_id, $overtime_mode, $use_custom_work_hours, $extra_fields_json, $realConsultantId);
                 $successC = $stmtC->execute();
                 $stmtC->close();
             }

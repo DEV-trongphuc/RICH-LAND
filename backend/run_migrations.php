@@ -2589,6 +2589,54 @@ SQL;
             $currentVersion = 170;
         }
 
+        if ($currentVersion < 171) {
+            $logMsg("Đang chạy cập nhật phiên bản 171 (Thêm trường use_custom_work_hours vào bảng users và cập nhật view consultants)...", "info");
+            try {
+                $conn->query("ALTER TABLE `users` ADD COLUMN `use_custom_work_hours` TINYINT(1) DEFAULT 0");
+                $logMsg("Đã thêm cột use_custom_work_hours vào bảng users.", "success");
+            } catch (Throwable $t) {
+                $logMsg("Cột use_custom_work_hours đã tồn tại hoặc lỗi: " . $t->getMessage(), "info");
+            }
+            try {
+                $conn->query("DROP VIEW IF EXISTS `consultants`");
+                $conn->query("
+                    CREATE VIEW `consultants` AS 
+                    SELECT 
+                      `id`, 
+                      `full_name` AS `name`, 
+                      `email`, 
+                      `phone`,
+                      `status`, 
+                      `leave_start`, 
+                      `leave_end`, 
+                      `created_at`, 
+                      `zalo_chat_id`, 
+                      IF(`use_custom_work_hours` = 1, `work_start_time`, (SELECT setting_value FROM system_settings WHERE setting_key = 'global_work_start_time' LIMIT 1)) AS `work_start_time`,
+                      IF(`use_custom_work_hours` = 1, `work_end_time`, (SELECT setting_value FROM system_settings WHERE setting_key = 'global_work_end_time' LIMIT 1)) AS `work_end_time`,
+                      IF(`use_custom_work_hours` = 1, `work_schedule`, (SELECT setting_value FROM system_settings WHERE setting_key = 'global_work_schedule' LIMIT 1)) AS `work_schedule`,
+                      `avatar_url` AS `avatar`, 
+                      `vacation_mode`, 
+                      `overtime_mode`,
+                      `team_id`,
+                      `dob`,
+                      `gender`,
+                      `citizen_id`,
+                      `address`,
+                      `bank_name`,
+                      `bank_account`,
+                      `extra_fields_json`,
+                      `use_custom_work_hours`
+                    FROM `users`
+                    WHERE `role` = 'sales'
+                ");
+                $logMsg("Đã cập nhật VIEW consultants bao gồm use_custom_work_hours và fallback logic.", "success");
+            } catch (Throwable $t) {
+                $logMsg("Lỗi khi cập nhật view consultants: " . $t->getMessage(), "error");
+            }
+            $conn->query("INSERT INTO system_settings (setting_key, setting_value) VALUES ('db_version', '171') ON DUPLICATE KEY UPDATE setting_value = '171'");
+            $currentVersion = 171;
+        }
+
     $logMsg("Tự sửa đổi cấu trúc hoàn thành thành công.", "success");
 
     $logMsg("Hệ thống đã cập nhật thành công lên phiên bản mới nhất: " . $currentVersion, "success");
