@@ -1674,7 +1674,7 @@ export default function ProjectsPage() {
 
                       if (linkedCamps.length === 0) {
                         return (
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 14px', background: 'var(--color-bg-light)', border: '1px dashed var(--color-border-light)', borderRadius: '12px', color: 'var(--color-text-light)', fontSize: '0.8rem', fontWeight: 550 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 14px', background: '#f3f4f6', border: '1px solid var(--color-border-light)', borderRadius: '12px', color: '#6b7280', fontSize: '0.8rem', fontWeight: 550, cursor: 'not-allowed' }}>
                             <Info size={12} style={{ opacity: 0.6 }} />
                             <span>Chưa liên kết chiến dịch</span>
                           </div>
@@ -1747,7 +1747,7 @@ export default function ProjectsPage() {
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                     {parseFolderPaths(editingProject?.folder_path).length === 0 ? (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 14px', background: 'var(--color-bg-light)', border: '1px dashed var(--color-border-light)', borderRadius: '12px', color: 'var(--color-text-light)', fontSize: '0.8rem', fontWeight: 550 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 14px', background: '#f3f4f6', border: '1px solid var(--color-border-light)', borderRadius: '12px', color: '#6b7280', fontSize: '0.8rem', fontWeight: 550, cursor: 'not-allowed' }}>
                         <Info size={12} style={{ opacity: 0.6 }} />
                         <span>Chưa cấu hình folder liên kết</span>
                       </div>
@@ -1788,7 +1788,7 @@ export default function ProjectsPage() {
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                     {parseIds(editingProject?.document_ids).length === 0 ? (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 14px', background: 'var(--color-bg-light)', border: '1px dashed var(--color-border-light)', borderRadius: '12px', color: 'var(--color-text-light)', fontSize: '0.8rem', fontWeight: 550 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 14px', background: '#f3f4f6', border: '1px solid var(--color-border-light)', borderRadius: '12px', color: '#6b7280', fontSize: '0.8rem', fontWeight: 550, cursor: 'not-allowed' }}>
                         <Info size={12} style={{ opacity: 0.6 }} />
                         <span>Chưa liên kết tài liệu</span>
                       </div>
@@ -1867,7 +1867,7 @@ export default function ProjectsPage() {
                       <RefreshCw className="spin" size={16} color="var(--color-text-muted)" />
                     </div>
                   ) : linkedTasks.length === 0 ? (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 14px', background: 'var(--color-bg-light)', border: '1px dashed var(--color-border-light)', borderRadius: '12px', color: 'var(--color-text-light)', fontSize: '0.8rem', fontWeight: 550 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 14px', background: '#f3f4f6', border: '1px solid var(--color-border-light)', borderRadius: '12px', color: '#6b7280', fontSize: '0.8rem', fontWeight: 550, cursor: 'not-allowed' }}>
                       <Info size={12} style={{ opacity: 0.6 }} />
                       <span>Chưa có công việc nào liên kết với dự án này.</span>
                     </div>
@@ -5694,8 +5694,9 @@ export default function ProjectsPage() {
 
                   if (associatedProjs.length === 0) {
                     return (
-                      <div style={{ padding: '1rem', background: 'var(--color-bg-light)', border: '1px dashed var(--color-border)', borderRadius: '12px', textAlign: 'center', color: 'var(--color-text-muted)', fontSize: '0.8rem' }}>
-                        Chưa liên kết dự án nào
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 14px', background: '#f3f4f6', border: '1px solid var(--color-border-light)', borderRadius: '12px', color: '#6b7280', fontSize: '0.8rem', fontWeight: 550, cursor: 'not-allowed' }}>
+                        <Info size={12} style={{ opacity: 0.6 }} />
+                        <span>Chưa liên kết dự án nào</span>
                       </div>
                     );
                   }
