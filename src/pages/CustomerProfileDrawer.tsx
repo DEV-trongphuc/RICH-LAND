@@ -3831,7 +3831,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                       cursor: 'pointer'
                     }}
                   >
-                    <CheckSquare size={14} />
+                    <Save size={14} />
                     {!isMobileOrTablet && <span>Lưu</span>}
                   </button>
                 </div>
@@ -4221,7 +4221,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                           transition: 'all 0.2s ease'
                         }}
                       >
-                        <CheckSquare size={14} /> Lưu thay đổi
+                        <Save size={14} /> Lưu thay đổi
                       </button>
                     </div>
                   </div>

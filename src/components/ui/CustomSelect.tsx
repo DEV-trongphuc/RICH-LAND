@@ -171,9 +171,9 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
             )
           )}
           {!showAvatars && selectedOption.icon && <span style={{ display: 'flex' }}>{selectedOption.icon}</span>}
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-            <span>{t(selectedOption.label)}</span>
-            {selectedOption.sublabel && <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 400 }}>({t(selectedOption.sublabel)})</span>}
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t(selectedOption.label)}</span>
+            {selectedOption.sublabel && <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 400, flexShrink: 0 }}>({t(selectedOption.sublabel)})</span>}
           </span>
         </span>
         {selectedOption.badge && selectedOption.badge.count > 0 && (
