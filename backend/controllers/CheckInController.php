@@ -202,6 +202,13 @@ class CheckInController {
             respond(422, null, 'Vui lòng cung cấp lý do/ghi chú cập nhật bổ sung chấm công', false);
         }
 
+        // Check if user is on leave for that check_in_date
+        $stmtLeave = $this->db->prepare("SELECT 1 FROM consultant_leaves WHERE consultant_id = ? AND ? BETWEEN start_date AND end_date LIMIT 1");
+        $stmtLeave->execute([$auth['user_id'], $today]);
+        if ($stmtLeave->fetch()) {
+            respond(400, null, 'Bạn đang trong thời gian nghỉ phép, không cần và không thể check-in vào ngày này.', false);
+        }
+
         // Check if already checked in on that date
         $stmt = $this->db->prepare("SELECT id FROM check_ins WHERE user_id = ? AND check_in_date = ?");
         $stmt->execute([$auth['user_id'], $today]);

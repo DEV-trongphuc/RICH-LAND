@@ -2559,6 +2559,14 @@ SQL;
             $currentVersion = 168;
         }
 
+        // Version 169 (Add allow_lead_distribution_on_pending_checkin setting)
+        if ($currentVersion < 169) {
+            $logMsg("Đang chạy cập nhật phiên bản 169 (Cấu hình phân phối lead khi chấm công chờ duyệt)...", "info");
+            $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('allow_lead_distribution_on_pending_checkin', '0')");
+            $conn->query("INSERT INTO system_settings (setting_key, setting_value) VALUES ('db_version', '169') ON DUPLICATE KEY UPDATE setting_value = '169'");
+            $currentVersion = 169;
+        }
+
     $logMsg("Tự sửa đổi cấu trúc hoàn thành thành công.", "success");
 
     $logMsg("Hệ thống đã cập nhật thành công lên phiên bản mới nhất: " . $currentVersion, "success");

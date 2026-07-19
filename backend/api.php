@@ -3579,6 +3579,17 @@ switch ($action) {
         $register = isset($b['register']) ? (bool)$b['register'] : true;
 
         if ($register) {
+            // Check if today is a leave day
+            $stmtCheckLeave = $conn->prepare("SELECT 1 FROM consultant_leaves WHERE consultant_id = ? AND ? BETWEEN start_date AND end_date LIMIT 1");
+            $stmtCheckLeave->bind_param("is", $dbUserId, $shiftDate);
+            $stmtCheckLeave->execute();
+            $hasLeave = $stmtCheckLeave->get_result()->fetch_assoc();
+            $stmtCheckLeave->close();
+            if ($hasLeave) {
+                echo json_encode(['success' => false, 'message' => 'Bạn không thể đăng ký trực ca vào những ngày đang nghỉ phép.']);
+                break;
+            }
+
             // Check if auto approve is active
             $autoApprove = 1;
             $setApprove = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'auto_approve_night_shift' LIMIT 1");
@@ -3768,6 +3779,17 @@ switch ($action) {
         }
 
         if ($register) {
+            // Check if targetDate is a leave day
+            $stmtCheckLeave = $conn->prepare("SELECT 1 FROM consultant_leaves WHERE consultant_id = ? AND ? BETWEEN start_date AND end_date LIMIT 1");
+            $stmtCheckLeave->bind_param("is", $dbUserId, $targetDate);
+            $stmtCheckLeave->execute();
+            $hasLeave = $stmtCheckLeave->get_result()->fetch_assoc();
+            $stmtCheckLeave->close();
+            if ($hasLeave) {
+                echo json_encode(['success' => false, 'message' => 'Bạn không thể đăng ký trực ca vào những ngày đang nghỉ phép.']);
+                break;
+            }
+
             $stmt = $conn->prepare("INSERT INTO weekend_shift_registrations (user_id, shift_date, approved) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE approved = ?");
             $stmt->bind_param("isii", $dbUserId, $targetDate, $autoApprove, $autoApprove);
             $stmt->execute();
@@ -3915,6 +3937,17 @@ switch ($action) {
         }
 
         if ($register) {
+            // Check if targetDate is a leave day
+            $stmtCheckLeave = $conn->prepare("SELECT 1 FROM consultant_leaves WHERE consultant_id = ? AND ? BETWEEN start_date AND end_date LIMIT 1");
+            $stmtCheckLeave->bind_param("is", $dbUserId, $targetDate);
+            $stmtCheckLeave->execute();
+            $hasLeave = $stmtCheckLeave->get_result()->fetch_assoc();
+            $stmtCheckLeave->close();
+            if ($hasLeave) {
+                echo json_encode(['success' => false, 'message' => 'Bạn không thể đăng ký trực ca vào những ngày đang nghỉ phép.']);
+                break;
+            }
+
             $stmt = $conn->prepare("INSERT INTO holiday_shift_registrations (user_id, shift_date, holiday_name, approved) VALUES (?, ?, ?, ?) ON DUPLICATE KEY UPDATE approved = ?");
             $stmt->bind_param("issii", $dbUserId, $targetDate, $holidayName, $autoApprove, $autoApprove);
             $stmt->execute();
@@ -4055,6 +4088,17 @@ switch ($action) {
                     echo json_encode(['success' => false, 'message' => "Đã quá thời hạn đăng ký cho ngày hôm nay ({$deadlineStr})."]);
                     break 2;
                 }
+            }
+
+            // Check if date is a leave day
+            $stmtCheckLeave = $conn->prepare("SELECT 1 FROM consultant_leaves WHERE consultant_id = ? AND ? BETWEEN start_date AND end_date LIMIT 1");
+            $stmtCheckLeave->bind_param("is", $dbUserId, $date);
+            $stmtCheckLeave->execute();
+            $hasLeave = $stmtCheckLeave->get_result()->fetch_assoc();
+            $stmtCheckLeave->close();
+            if ($hasLeave) {
+                echo json_encode(['success' => false, 'message' => "Bạn không thể đăng ký trực ca cho ngày {$date} vì trùng lịch nghỉ phép."]);
+                break 2;
             }
 
             $validDates[] = $date;
@@ -4446,6 +4490,22 @@ switch ($action) {
         $stmt = $conn->prepare("INSERT IGNORE INTO consultant_leaves (consultant_id, start_date, end_date) VALUES (?, ?, ?)");
         $stmt->bind_param("iss", $targetConsultantId, $startDate, $endDate);
         if ($stmt->execute()) {
+            // Delete conflicting shifts (night, weekend, holiday) that overlap with this leave period
+            $stmtDelNight = $conn->prepare("DELETE FROM night_shift_registrations WHERE user_id = ? AND shift_date BETWEEN ? AND ?");
+            $stmtDelNight->bind_param("iss", $targetConsultantId, $startDate, $endDate);
+            $stmtDelNight->execute();
+            $stmtDelNight->close();
+
+            $stmtDelWeekend = $conn->prepare("DELETE FROM weekend_shift_registrations WHERE user_id = ? AND shift_date BETWEEN ? AND ?");
+            $stmtDelWeekend->bind_param("iss", $targetConsultantId, $startDate, $endDate);
+            $stmtDelWeekend->execute();
+            $stmtDelWeekend->close();
+
+            $stmtDelHoliday = $conn->prepare("DELETE FROM holiday_shift_registrations WHERE user_id = ? AND shift_date BETWEEN ? AND ?");
+            $stmtDelHoliday->bind_param("iss", $targetConsultantId, $startDate, $endDate);
+            $stmtDelHoliday->execute();
+            $stmtDelHoliday->close();
+
             // Recalculate current/upcoming leave in consultants table (underlying users table)
             $recalcStmt = $conn->prepare("SELECT start_date, end_date FROM consultant_leaves WHERE consultant_id = ? AND end_date >= CURDATE() ORDER BY start_date ASC LIMIT 1");
             $recalcStmt->bind_param("i", $targetConsultantId);

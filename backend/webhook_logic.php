@@ -847,6 +847,86 @@ function evaluateRules($conn, $data, $source, $type, $connId = null, $connection
 }
 
 /**
+ * Helper to check if a user has an approved shift (holiday, weekend, or night) on a given date.
+ */
+function hasApprovedShiftForDate($conn, $userId, $date)
+{
+    // 1. Check if date is a holiday
+    $holidayName = '';
+    $holidaySchedulesJson = '[]';
+    $resHol = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'holiday_schedules' LIMIT 1");
+    if ($resHol && $hRow = $resHol->fetch_assoc()) {
+        $holidaySchedulesJson = !empty($hRow['setting_value']) ? $hRow['setting_value'] : '[]';
+    }
+    $holidays = json_decode($holidaySchedulesJson, true);
+    if (is_array($holidays)) {
+        foreach ($holidays as $h) {
+            if ($date >= $h['start'] && $date <= $h['end']) {
+                $holidayName = $h['name'];
+                break;
+            }
+        }
+    }
+
+    if (!empty($holidayName)) {
+        $stmt = $conn->prepare("SELECT 1 FROM holiday_shift_registrations WHERE user_id = ? AND shift_date = ? AND approved = 1 LIMIT 1");
+        if ($stmt) {
+            $stmt->bind_param("is", $userId, $date);
+            $stmt->execute();
+            $res = $stmt->get_result()->fetch_assoc();
+            $stmt->close();
+            return ($res !== null);
+        }
+        return false;
+    }
+
+    // 2. Check if date is a rest day (weekend)
+    $dayOfWeek = (int)date('N', strtotime($date));
+    $isRestDay = false;
+    if ($dayOfWeek == 7) {
+        $isRestDay = true;
+    } else if ($dayOfWeek == 6) {
+        $stmtSched = $conn->prepare("SELECT work_schedule FROM users WHERE id = ?");
+        if ($stmtSched) {
+            $stmtSched->bind_param("i", $userId);
+            $stmtSched->execute();
+            $sRow = $stmtSched->get_result()->fetch_assoc();
+            $stmtSched->close();
+            if ($sRow && !empty($sRow['work_schedule'])) {
+                $sched = json_decode($sRow['work_schedule'], true);
+                if (isset($sched[6]) && isset($sched[6]['active']) && !(bool)$sched[6]['active']) {
+                    $isRestDay = true;
+                }
+            }
+        }
+    }
+
+    if ($isRestDay) {
+        $stmt = $conn->prepare("SELECT 1 FROM weekend_shift_registrations WHERE user_id = ? AND shift_date = ? AND approved = 1 LIMIT 1");
+        if ($stmt) {
+            $stmt->bind_param("is", $userId, $date);
+            $stmt->execute();
+            $res = $stmt->get_result()->fetch_assoc();
+            $stmt->close();
+            return ($res !== null);
+        }
+        return false;
+    }
+
+    // 3. Otherwise, check night shift registration
+    $stmt = $conn->prepare("SELECT 1 FROM night_shift_registrations WHERE user_id = ? AND shift_date = ? AND approved = 1 LIMIT 1");
+    if ($stmt) {
+        $stmt->bind_param("is", $userId, $date);
+        $stmt->execute();
+        $res = $stmt->get_result()->fetch_assoc();
+        $stmt->close();
+        return ($res !== null);
+    }
+
+    return false;
+}
+
+/**
  * Kiểm tra xem Tư vấn viên có đăng ký trực ca đêm và ca đêm đang hoạt động hay không.
  * Nếu đang trong khung giờ ca đêm, Sale bắt buộc phải đăng ký trực đêm mới nhận được data.
  */
@@ -883,14 +963,7 @@ function checkNightShiftAvailability($conn, $consultantId, $currentTime)
             $targetUserId = $consultantId;
         }
 
-        $stmt = $conn->prepare("SELECT 1 FROM night_shift_registrations WHERE user_id = ? AND shift_date = ? AND approved = 1");
-        if ($stmt) {
-            $stmt->bind_param("is", $targetUserId, $shiftDate);
-            $stmt->execute();
-            $res = $stmt->get_result()->fetch_assoc();
-            $stmt->close();
-            return ($res !== null);
-        }
+        return hasApprovedShiftForDate($conn, $targetUserId, $shiftDate);
     }
 
     return true;
@@ -1820,28 +1893,26 @@ function checkConsultantGates($conn, $consultantId, $lead = null)
         $endHour = (int)explode(':', $nightShiftEnd)[0];
         $shiftDate = ($currentHour < $endHour) ? date('Y-m-d', strtotime('-1 day')) : date('Y-m-d');
         
-        $stmtCheckNight = $conn->prepare("SELECT 1 FROM night_shift_registrations WHERE user_id = ? AND shift_date = ? AND approved = 1 LIMIT 1");
-        if ($stmtCheckNight) {
-            $stmtCheckNight->bind_param("is", $targetUserId, $shiftDate);
-            $stmtCheckNight->execute();
-            $hasNightReg = $stmtCheckNight->get_result()->fetch_assoc();
-            $stmtCheckNight->close();
-            if ($hasNightReg) {
-                $isApprovedNightShift = true;
-            }
+        if (hasApprovedShiftForDate($conn, $targetUserId, $shiftDate)) {
+            $isApprovedNightShift = true;
         }
     }
 
     $bypassCheckIn = $isWeekendOrHoliday || $isApprovedNightShift;
 
     if (!$bypassCheckIn) {
-        $stmtCheck = $conn->prepare("SELECT 1 FROM check_ins WHERE user_id = ? AND check_in_date = ? AND status = 'approved'");
+        $allowPendingCheckin = (int) get_system_setting($conn, 'allow_lead_distribution_on_pending_checkin');
+        if ($allowPendingCheckin === 1) {
+            $stmtCheck = $conn->prepare("SELECT 1 FROM check_ins WHERE user_id = ? AND check_in_date = ? AND status IN ('approved', 'pending_approval')");
+        } else {
+            $stmtCheck = $conn->prepare("SELECT 1 FROM check_ins WHERE user_id = ? AND check_in_date = ? AND status = 'approved'");
+        }
         $stmtCheck->bind_param("is", $targetUserId, $todayStr);
         $stmtCheck->execute();
         $hasCheckIn = $stmtCheck->get_result()->fetch_assoc();
         $stmtCheck->close();
         if (!$hasCheckIn) {
-            return "Failed Gate 2: No approved check-in for today";
+            return "Failed Gate 2: No approved or active check-in for today";
         }
     }
 

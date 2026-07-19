@@ -245,6 +245,7 @@ const SettingsInner = () => {
   const [weekendShiftRegistrationLeadHours, setWeekendShiftRegistrationLeadHours] = useState<number>(0);
   const [holidaySchedules, setHolidaySchedules] = useState<any[]>([]);
   const [autoApproveHolidayShift, setAutoApproveHolidayShift] = useState<boolean>(false);
+  const [allowLeadDistributionOnPendingCheckin, setAllowLeadDistributionOnPendingCheckin] = useState<boolean>(false);
   const [globalWorkStartTime, setGlobalWorkStartTime] = useState<string>("08:00");
   const [globalWorkEndTime, setGlobalWorkEndTime] = useState<string>("17:30");
   const [globalScheduleMode, setGlobalScheduleMode] = useState<string>("daily");
@@ -635,6 +636,9 @@ const SettingsInner = () => {
         }
         if (json.data.auto_approve_night_shift !== undefined) {
           setAutoApproveNightShift(json.data.auto_approve_night_shift === '1' || json.data.auto_approve_night_shift === 1);
+        }
+        if (json.data.allow_lead_distribution_on_pending_checkin !== undefined) {
+          setAllowLeadDistributionOnPendingCheckin(json.data.allow_lead_distribution_on_pending_checkin === '1' || json.data.allow_lead_distribution_on_pending_checkin === 1);
         }
         if (json.data.allow_weekend_shift_registration !== undefined) {
           setAllowWeekendShiftRegistration(json.data.allow_weekend_shift_registration === '1' || json.data.allow_weekend_shift_registration === 1);
@@ -1103,6 +1107,7 @@ const SettingsInner = () => {
       late_night_shift_registration_minutes: allowLateNightShiftRegistration ? lateNightShiftRegistrationMinutes : 0,
       advance_night_shift_registration_minutes: allowLateNightShiftRegistration ? 0 : advanceNightShiftRegistrationMinutes,
       auto_approve_night_shift: autoApproveNightShift ? 1 : 0,
+      allow_lead_distribution_on_pending_checkin: allowLeadDistributionOnPendingCheckin ? 1 : 0,
       allow_weekend_shift_registration: allowWeekendShiftRegistration ? 1 : 0,
       auto_approve_weekend_shift: autoApproveWeekendShift ? 1 : 0,
       weekend_shift_registration_lead_hours: weekendShiftRegistrationLeadHours,
@@ -4688,6 +4693,21 @@ function doPost(e) {
                         </label>
                         <span style={{ fontSize: '0.725rem', color: 'var(--color-text-muted)', marginLeft: '24px', display: 'block', lineHeight: 1.4 }}>
                           {t('Nếu tắt, Sales xin nghỉ phép hoặc không hoạt động bị thu hồi lead sẽ không được cộng bù lượt (mặc định tắt).')}
+                        </span>
+
+                        <label style={{ gap: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', margin: 0, marginTop: '0.75rem' }}>
+                          <input
+                            type="checkbox"
+                            checked={allowLeadDistributionOnPendingCheckin}
+                            onChange={e => setAllowLeadDistributionOnPendingCheckin(e.target.checked)}
+                            style={{ width: '16px', height: '16px', accentColor: 'var(--color-primary)' }}
+                          />
+                          <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--color-text)' }}>
+                            {t('Cho phép nhận data ngay khi chấm công (kể cả khi chưa duyệt - pending approval)')}
+                          </span>
+                        </label>
+                        <span style={{ fontSize: '0.725rem', color: 'var(--color-text-muted)', marginLeft: '24px', display: 'block', lineHeight: 1.4 }}>
+                          {t('Nếu bật, nhân viên đi muộn (chấm công ở trạng thái chờ duyệt) vẫn sẽ được nhận lead ngay lập tức. Nếu tắt, chỉ khi được duyệt mới nhận lead.')}
                         </span>
                       </div>
 
