@@ -62,7 +62,7 @@ export const SIDEBAR_GROUPS: SidebarGroup[] = [
       { name: 'Phiếu hợp tác', href: '/cooperation-slips', icon: Scale, hideForRoles: ['admin', 'superadmin', 'super_admin', 'manager', 'director'], badgeKey: 'coopSlips' },
       { name: 'Duyệt hợp tác', href: '/cooperation-slips', icon: Scale, hideForRoles: ['sale', 'viewer', 'sales'], badgeKey: 'coopSlips' },
       { name: 'Hóa đơn', href: '/invoices', icon: Receipt, hideForRoles: ['viewer'] },
-      { name: 'Chi phí vận hành', href: '/expenses', icon: CreditCard, hideForRoles: ['sale', 'viewer', 'sales'] }
+      { name: 'Chi phí', href: '/expenses', icon: CreditCard, hideForRoles: ['viewer'] }
     ]
   },
   {

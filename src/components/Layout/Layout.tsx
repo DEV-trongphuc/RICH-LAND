@@ -45,7 +45,8 @@ import {
   BarChart2,
   Fingerprint,
   Camera,
-  CheckSquare
+  CheckSquare,
+  DollarSign
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -101,6 +102,7 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
   const [heldLeadsCount, setHeldLeadsCount] = useState<number>(0);
   const [pendingCheckInsCount, setPendingCheckInsCount] = useState<number>(0);
   const [pendingCoopsCount, setPendingCoopsCount] = useState<number>(0);
+  const [pendingExpensesCount, setPendingExpensesCount] = useState<number>(0);
   const [isUnifiedInboxOpen, setIsUnifiedInboxOpen] = useState<boolean>(false);
   
   // Sales pending signatures state
@@ -537,6 +539,7 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
       let checkinsCount = 0;
       let coopsCount = 0;
       let supportCount = 0;
+      let expensesCount = 0;
 
       const p1 = fetchAPI('get_reports&status=pending&date=all&pageSize=1')
         .then(res => { if (res.success) ticketsCount = res.total_count ?? 0; });
@@ -556,16 +559,19 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
             supportCount = res.count || 0;
           }
         }).catch(() => {});
+      const p6 = fetchAPI('expenses?status=pending&limit=1')
+        .then(res => { if (res.success) expensesCount = res.data?.total ?? 0; }).catch(() => {});
 
-      Promise.all([p1, p2, p3, p4, p5]).then(() => {
+      Promise.all([p1, p2, p3, p4, p5, p6]).then(() => {
         setPendingTicketsCount(ticketsCount);
         setHeldLeadsCount(heldCount);
         setPendingCheckInsCount(checkinsCount);
         setPendingCoopsCount(coopsCount);
         setSupportTicketsCount(supportCount);
+        setPendingExpensesCount(expensesCount);
         
-        if (location.pathname !== '/support-tickets') {
-          if (ticketsCount > 0 || heldCount > 0 || checkinsCount > 0 || coopsCount > 0 || supportCount > 0) {
+        if (location.pathname !== '/support-tickets' && location.pathname !== '/expenses') {
+          if (ticketsCount > 0 || heldCount > 0 || checkinsCount > 0 || coopsCount > 0 || supportCount > 0 || expensesCount > 0) {
             setIsUnifiedInboxOpen(true);
           }
         }
@@ -790,7 +796,7 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
           onActivityFeedClick={() => setIsActivityFeedOpen(true)}
           onMenuClick={() => setIsMobileSidebarOpen(true)}
           version={backendVersion}
-          pendingInboxCount={pendingTicketsCount + heldLeadsCount + pendingCheckInsCount + pendingCoopsCount + supportTicketsCount}
+          pendingInboxCount={pendingTicketsCount + heldLeadsCount + pendingCheckInsCount + pendingCoopsCount + supportTicketsCount + pendingExpensesCount}
           onUnifiedInboxClick={() => setIsUnifiedInboxOpen(true)}
         />
 
@@ -857,7 +863,7 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
 
           {/* Header & List Container */}
           {(() => {
-            const hasPendingTasks = (pendingTicketsCount + heldLeadsCount + pendingCheckInsCount + pendingCoopsCount + supportTicketsCount) > 0;
+            const hasPendingTasks = (pendingTicketsCount + heldLeadsCount + pendingCheckInsCount + pendingCoopsCount + supportTicketsCount + pendingExpensesCount) > 0;
             if (hasPendingTasks) {
               return (
                 <>

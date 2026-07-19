@@ -945,7 +945,7 @@ class FinanceController
         $this->db->beginTransaction();
         try {
             // Check permission and get current amount if not provided
-            $sqlCheck = "SELECT id, amount FROM expenses WHERE id=? AND tenant_id=?";
+            $sqlCheck = "SELECT id, amount, created_by, title FROM expenses WHERE id=? AND tenant_id=?";
             $cp = [$id, $auth['tenant_id']];
             if ($auth['role'] === 'sales' || $auth['role'] === 'sale') {
                 $sqlCheck .= " AND created_by=?";
@@ -1003,6 +1003,33 @@ class FinanceController
             }
 
             logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'UPDATE', 'expense', $id, json_encode($data));
+            
+            // If modified by someone other than the creator, insert a system notification and send email
+            if (isset($row['created_by']) && (int)$row['created_by'] !== (int)$auth['user_id']) {
+                $creatorId = (int)$row['created_by'];
+                $notifTitle = "Yêu cầu chi phí đã chỉnh sửa";
+                $notifBody = "Quản lý/Admin đã chỉnh sửa yêu cầu chi phí: \"" . $row['title'] . "\"";
+                $notifType = "expense_edited";
+                $notifLink = "/expenses";
+                
+                $stmtNotif = $this->db->prepare("INSERT INTO notifications (user_id, tenant_id, title, body, type, link) VALUES (?, ?, ?, ?, ?, ?)");
+                $stmtNotif->execute([$creatorId, $auth['tenant_id'], $notifTitle, $notifBody, $notifType, $notifLink]);
+
+                $stmtUser = $this->db->prepare("SELECT email, full_name FROM users WHERE id=?");
+                $stmtUser->execute([$creatorId]);
+                $creatorRow = $stmtUser->fetch();
+                if ($creatorRow && !empty($creatorRow['email'])) {
+                    require_once __DIR__ . '/../mailer.php';
+                    $emailSubject = "[RICH LAND] Yêu cầu chi phí của bạn đã được cập nhật";
+                    $emailTitle = "CẬP NHẬT YÊU CẦU CHI PHÍ";
+                    $emailContent = "Chào <strong>" . htmlspecialchars($creatorRow['full_name']) . "</strong>,<br/><br/>" .
+                                    "Yêu cầu thanh toán chi phí của bạn cho mục <strong>" . htmlspecialchars($row['title']) . "</strong> đã được quản trị viên chỉnh sửa.<br/>" .
+                                    "Số tiền hiện tại: <strong>" . number_format($currentTotal, 0, ',', '.') . "đ</strong>.<br/>" .
+                                    "Vui lòng đăng nhập hệ thống RICH LAND CRM để xem chi tiết.";
+                    sendEmailNotification($creatorRow['email'], $emailSubject, $emailTitle, $emailContent, '', false);
+                }
+            }
+
             $this->db->commit();
             $this->showExpense($auth, $id);
         } catch (Exception $e) {

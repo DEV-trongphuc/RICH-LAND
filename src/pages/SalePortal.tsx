@@ -8,7 +8,7 @@ import {
   Clock3, GitBranch, ArrowUpRight, ShieldAlert, Send, ArrowLeft,
   Sun, Moon, ChevronDown, ChevronUp, AlertTriangle, ChevronLeft, ChevronRight,
   LayoutDashboard, Database, Ticket, Calendar, RefreshCw, Menu, Tag, Server, Scale, Settings, Info, Cpu,
-  Camera, Video, Layers, Plus, Receipt, Building2, Users, User, UserCheck, UserPlus, Trash2, CheckSquare, X, Paperclip, LifeBuoy, Fingerprint, LayoutGrid, Monitor, Tv, Phone, Save, Award
+  Camera, Video, Layers, Plus, Receipt, CreditCard, Building2, Users, User, UserCheck, UserPlus, Trash2, CheckSquare, X, Paperclip, LifeBuoy, Fingerprint, LayoutGrid, Monitor, Tv, Phone, Save, Award
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { createPortal } from 'react-dom';
@@ -11664,7 +11664,8 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                   title: 'TÀI CHÍNH',
                   items: [
                     { name: 'Hóa đơn', key: 'invoices', icon: Receipt },
-                    { name: 'Phiếu hợp tác', key: 'cooperation-slips', icon: Scale, route: '/cooperation-slips' }
+                    { name: 'Phiếu hợp tác', key: 'cooperation-slips', icon: Scale, route: '/cooperation-slips' },
+                    { name: 'Chi phí', key: 'expenses', icon: CreditCard, route: '/expenses' }
                   ]
                 },
                 {
@@ -11932,7 +11933,8 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                   title: 'TÀI CHÍNH',
                   items: [
                     { name: 'Hóa đơn', key: 'invoices', icon: Receipt },
-                    { name: 'Phiếu hợp tác', key: 'cooperation-slips', icon: Scale, route: '/cooperation-slips' }
+                    { name: 'Phiếu hợp tác', key: 'cooperation-slips', icon: Scale, route: '/cooperation-slips' },
+                    { name: 'Chi phí', key: 'expenses', icon: CreditCard, route: '/expenses' }
                   ]
                 },
                 {

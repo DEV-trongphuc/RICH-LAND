@@ -5,7 +5,7 @@ import {
   GitBranch, UserPlus, Zap, Calendar, BarChart2, Scale,
   FileSpreadsheet, MessageCircle, Database, Server, ExternalLink, Clock, CheckCircle, Cpu,
   ShieldAlert, Filter, Ticket as TicketIcon,
-  FileText, CheckSquare, AlertCircle, CheckCircle2, Settings
+  FileText, CheckSquare, AlertCircle, CheckCircle2, Settings, DollarSign
 } from 'lucide-react';
 import {
   Bar, XAxis, YAxis, CartesianGrid,
@@ -64,6 +64,7 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
   const [heldLeadsCount, setHeldLeadsCount] = useState(0);
   const [pendingCheckInsCount, setPendingCheckInsCount] = useState(0);
   const [pendingCoopsCount, setPendingCoopsCount] = useState(0);
+  const [pendingExpensesCount, setPendingExpensesCount] = useState(0);
   const [showWarRoom, setShowWarRoom] = useState(false);
   const [aiScreenerEnabled, setAiScreenerEnabled] = useState<boolean>(() => {
     const cached = localStorage.getItem('ai_screener_enabled');
@@ -306,6 +307,10 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
             setPendingCoopsCount(pending.length);
           }
         })
+        .catch(e => console.error(e));
+
+      fetchAPI('expenses?status=pending&limit=1')
+        .then(res => { if (res.success) setPendingExpensesCount(res.data?.total ?? 0); })
         .catch(e => console.error(e));
     }
   }, [isActive]);
@@ -668,6 +673,13 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
             action: () => navigate('/cooperation-slips?status=pending_me')
           });
         }
+        if (pendingExpensesCount > 0) {
+          issues.push({
+            type: 'expense',
+            text: pendingExpensesCount + ' ' + t('yêu cầu thanh toán chi phí cần duyệt.'),
+            action: () => navigate('/expenses?status=pending')
+          });
+        }
 
         const getRoleLabel = (role: string) => {
           if (role === 'admin') return t('Quản trị viên');
@@ -865,6 +877,7 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
                         {issue.type === 'ticket' && <TicketIcon size={14} style={{ color: '#60a5fa' }} />}
                         {issue.type === 'gatekeeper' && <Filter size={14} style={{ color: '#a78bfa' }} />}
                         {issue.type === 'checkin' && <Clock size={14} style={{ color: '#ff8a8a' }} />}
+                        {issue.type === 'expense' && <DollarSign size={14} style={{ color: '#10b981' }} />}
                         <span style={{ flex: 1 }}>{issue.text}</span>
                       </div>
                     ))}
