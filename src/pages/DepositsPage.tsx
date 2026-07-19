@@ -446,9 +446,9 @@ export default function DepositsPage() {
                       <td style={{ padding: '1rem', verticalAlign: 'middle' }}>
                         <div style={{ fontWeight: 600, color: 'var(--color-text)', fontSize: '0.875rem' }}>{dep.project_name}</div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px' }}>
-                          <Avatar name={`${dep.last_name || ''} ${dep.first_name || ''}`} size="sm" style={{ width: 18, height: 18, fontSize: 8 }} />
+                          <Avatar name={`${dep.first_name || ''} ${dep.last_name || ''}`} size="sm" style={{ width: 18, height: 18, fontSize: 8 }} />
                           <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
-                            Khách: <strong style={{ color: 'var(--color-text)' }}>{dep.last_name} {dep.first_name}</strong> ({dep.phone})
+                            Khách: <strong style={{ color: 'var(--color-text)' }}>{dep.first_name} {dep.last_name}</strong> ({dep.phone})
                           </span>
                         </div>
                       </td>
@@ -756,7 +756,7 @@ export default function DepositsPage() {
                 <CustomSelect
                   options={contacts.map(c => ({
                     value: String(c.id),
-                    label: `${c.last_name} ${c.first_name} (${c.phone})`,
+                    label: `${c.first_name} ${c.last_name} (${c.phone})`,
                     avatar: (c as any).avatar_url || (c as any).avatar
                   }))}
                   value={selectedContactId}

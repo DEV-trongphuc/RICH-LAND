@@ -294,7 +294,7 @@ export default function CooperationSlipsPage() {
       // 1. Search Query (Customer name, phone, project, unit code)
       if (searchQuery.trim()) {
         const query = searchQuery.toLowerCase().trim();
-        const fullName = `${slip.last_name} ${slip.first_name}`.toLowerCase();
+        const fullName = `${slip.first_name} ${slip.last_name}`.toLowerCase();
         const matchCust = fullName.includes(query) || (slip.phone && slip.phone.includes(query));
         const matchUnit = slip.unit_code && slip.unit_code.toLowerCase().includes(query);
         const matchProj = slip.project_name && slip.project_name.toLowerCase().includes(query);
@@ -358,7 +358,7 @@ export default function CooperationSlipsPage() {
       // 1. Search Query
       if (searchQuery.trim()) {
         const query = searchQuery.toLowerCase().trim();
-        const fullName = `${slip.last_name} ${slip.first_name}`.toLowerCase();
+        const fullName = `${slip.first_name} ${slip.last_name}`.toLowerCase();
         const matchCust = fullName.includes(query) || (slip.phone && slip.phone.includes(query));
         const matchUnit = slip.unit_code && slip.unit_code.toLowerCase().includes(query);
         const matchProj = slip.project_name && slip.project_name.toLowerCase().includes(query);
@@ -908,11 +908,11 @@ export default function CooperationSlipsPage() {
                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                           <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>Khách:</span>
                           <Avatar 
-                            name={`${slip.last_name} ${slip.first_name}`} 
+                            name={`${slip.first_name} ${slip.last_name}`} 
                             size={18}
                           />
                           <span style={{ fontWeight: 700, fontSize: '0.75rem', color: 'var(--color-text)' }}>
-                            {slip.last_name} {slip.first_name}
+                            {slip.first_name} {slip.last_name}
                           </span>
                         </div>
                       </div>
@@ -1587,7 +1587,7 @@ export default function CooperationSlipsPage() {
                 </div>
                 <div>
                   <span style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)', display: 'block', fontWeight: 700, letterSpacing: '0.5px', textTransform: 'uppercase', marginBottom: '2px' }}>KHÁCH HÀNG</span>
-                  <span style={{ fontSize: '0.925rem', fontWeight: 800, color: 'var(--color-text)' }}>{approvalSlip.last_name} {approvalSlip.first_name}</span>
+                  <span style={{ fontSize: '0.925rem', fontWeight: 800, color: 'var(--color-text)' }}>{approvalSlip.first_name} {approvalSlip.last_name}</span>
                 </div>
                 <div>
                   <span style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)', display: 'block', fontWeight: 700, letterSpacing: '0.5px', textTransform: 'uppercase', marginBottom: '2px' }}>TRẠNG THÁI</span>

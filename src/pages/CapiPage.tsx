@@ -303,7 +303,7 @@ export default function CapiPage() {
                           {l.event_name}
                         </td>
                         <td style={{ padding: '0.75rem 0', textAlign: 'left' }}>
-                          {l.first_name ? `${l.last_name} ${l.first_name}` : 'Raw Lead'}
+                          {l.first_name ? `${l.first_name} ${l.last_name || ''}`.trim() : 'Raw Lead'}
                           {l.phone && <span style={{ display: 'block', fontSize: '10px', color: 'var(--color-text-muted)' }}>{l.phone}</span>}
                         </td>
                         <td style={{ padding: '0.75rem 0', textAlign: 'center' }}>

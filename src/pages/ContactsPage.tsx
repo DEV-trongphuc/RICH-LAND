@@ -1658,7 +1658,7 @@ export const ContactsPage: React.FC = () => {
                                     <span title="Khách hàng từ Databank" style={{ display: 'inline-flex', marginLeft: '6px', color: 'var(--color-text-muted)', flexShrink: 0 }}>
                                       <Layers size={13} />
                                     </span>
-                                  ) : !c.dl_status && c.source !== 'databank' ? (
+                                  ) : (!c.dl_status && c.source !== 'databank') || (c.source === 'ca_nhan' || c.source === 'gioi_thieu') ? (
                                     <span title="Khách hàng cá nhân" style={{ display: 'inline-flex', marginLeft: '6px', color: 'var(--color-text-muted)', flexShrink: 0 }}>
                                       <User size={13} />
                                     </span>
@@ -1998,7 +1998,7 @@ export const ContactsPage: React.FC = () => {
                                       <span title="Khách hàng từ Databank" style={{ display: 'inline-flex', marginLeft: '6px', color: 'var(--color-text-muted)', flexShrink: 0 }}>
                                         <Layers size={14} />
                                       </span>
-                                    ) : !c.dl_status && c.source !== 'databank' ? (
+                                    ) : (!c.dl_status && c.source !== 'databank') || (c.source === 'ca_nhan' || c.source === 'gioi_thieu') ? (
                                       <span title="Khách hàng cá nhân" style={{ display: 'inline-flex', marginLeft: '6px', color: 'var(--color-text-muted)', flexShrink: 0 }}>
                                         <User size={14} />
                                       </span>

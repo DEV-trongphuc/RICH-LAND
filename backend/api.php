@@ -2520,13 +2520,14 @@ switch ($action) {
             SELECT COUNT(DISTINCT c.id) as cnt 
             FROM contacts c 
             WHERE $contactsWhereClause 
-              AND (c.source != 'databank' AND EXISTS (
+              AND c.source NOT IN ('databank', 'ca_nhan', 'gioi_thieu')
+              AND EXISTS (
                   SELECT 1 FROM leads l2 
                   JOIN distribution_logs dl2 ON dl2.lead_id = l2.id 
                   JOIN users u2 ON u2.id = c.owner_id
                   JOIN consultants cons2 ON u2.email = cons2.email
                   WHERE l2.person_id = c.person_id AND dl2.assigned_to = cons2.id AND dl2.status IN ('assigned', 'compensation', 'rule_6_month', 'pending_work_hours', 'fallback', 'success')
-              ))
+              )
         ");
         $distributedCount = 0;
         if ($stmtDistributed) {
