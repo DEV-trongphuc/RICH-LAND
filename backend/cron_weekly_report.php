@@ -99,25 +99,33 @@ function runWeeklyReportCron($conn) {
 
                 // Send Zalo Bot message to this Sale if linked
                 if (!empty($botToken) && !empty($saleZaloId)) {
-                    sendZaloMessageToMultiple($botToken, [$saleZaloId], $report['msg'], false);
+                    try {
+                        sendZaloMessageToMultiple($botToken, [$saleZaloId], $report['msg'], false);
+                    } catch (Exception $zaloEx) {
+                        error_log("Failed to send Zalo weekly report to {$saleName}: " . $zaloEx->getMessage());
+                    }
                 }
 
                 // Send Email to this Sale if email exists
                 if (!empty($saleEmail)) {
-                    sendWeeklyReportEmailToSale(
-                        $saleEmail,
-                        $saleName,
-                        $report['totalData'],
-                        $report['roundDetailsHtml'],
-                        $report['totalTickets'],
-                        $report['approvedTickets'],
-                        $report['rejectedTickets'],
-                        $report['pendingTickets'],
-                        $report['totalCompReceived'],
-                        $report['totalCompOwed'],
-                        $report['windowStart'],
-                        $report['windowEnd']
-                    );
+                    try {
+                        sendWeeklyReportEmailToSale(
+                            $saleEmail,
+                            $saleName,
+                            $report['totalData'],
+                            $report['roundDetailsHtml'],
+                            $report['totalTickets'],
+                            $report['approvedTickets'],
+                            $report['rejectedTickets'],
+                            $report['pendingTickets'],
+                            $report['totalCompReceived'],
+                            $report['totalCompOwed'],
+                            $report['windowStart'],
+                            $report['windowEnd']
+                        );
+                    } catch (Exception $mailEx) {
+                        error_log("Failed to send weekly report email to {$saleEmail}: " . $mailEx->getMessage());
+                    }
                 }
             }
         }

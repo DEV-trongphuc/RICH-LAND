@@ -355,26 +355,34 @@ function runDailyReportCron($conn)
                 }
             }
             if (!empty($botToken) && !empty($adminChatIds)) {
-                sendZaloMessageToMultiple($botToken, $adminChatIds, $msg);
+                try {
+                    sendZaloMessageToMultiple($botToken, $adminChatIds, $msg);
+                } catch (Exception $zaloEx) {
+                    error_log("Failed to send Zalo daily report message: " . $zaloEx->getMessage());
+                }
             }
 
             foreach ($admins as $adm) {
                 // Gửi Email
                 if (!empty($adm['email'])) {
-                    sendDailyReportEmailToAdmins(
-                        $adm['email'],
-                        $adm['name'] ?: 'Quản trị viên',
-                        $totalData,
-                        $saleStatsHtml,
-                        $totalTicket,
-                        $totalReminder,
-                        $approvedTicket,
-                        $rejectedTicket,
-                        $pendingTicket,
-                        $totalBlocked,
-                        $totalHeldByAI,
-                        $totalBelowStandard
-                    );
+                    try {
+                        sendDailyReportEmailToAdmins(
+                            $adm['email'],
+                            $adm['name'] ?: 'Quản trị viên',
+                            $totalData,
+                            $saleStatsHtml,
+                            $totalTicket,
+                            $totalReminder,
+                            $approvedTicket,
+                            $rejectedTicket,
+                            $pendingTicket,
+                            $totalBlocked,
+                            $totalHeldByAI,
+                            $totalBelowStandard
+                        );
+                    } catch (Exception $mailEx) {
+                        error_log("Failed to send daily report email to {$adm['email']}: " . $mailEx->getMessage());
+                    }
                 }
             }
         }
