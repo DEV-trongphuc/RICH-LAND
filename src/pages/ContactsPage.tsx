@@ -1373,19 +1373,47 @@ export const ContactsPage: React.FC = () => {
                               <div>
                                 <p style={{ fontWeight: 700, fontSize: '0.875rem', color: 'var(--color-text)', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center' }}>
                                   {fullName}
-                                  {c.dl_status === 'databank_claim' ? (
-                                    <span title="Khách hàng từ Databank" style={{ display: 'inline-flex', alignItems: 'center' }}>
-                                      <Layers 
-                                        size={12} 
-                                        style={{ marginLeft: '6px', color: 'var(--color-warning)', flexShrink: 0 }} 
-                                      />
+                                  {c.dl_status === 'databank_claim' || c.source === 'databank' ? (
+                                    <span 
+                                      title="Khách hàng từ Databank" 
+                                      style={{ 
+                                        marginLeft: '6px', 
+                                        display: 'inline-flex', 
+                                        alignItems: 'center', 
+                                        gap: '3px', 
+                                        padding: '1px 5px', 
+                                        fontSize: '0.625rem', 
+                                        fontWeight: 700,
+                                        borderRadius: '4px', 
+                                        color: '#d97706', 
+                                        background: '#fef3c7', 
+                                        border: '1px solid #fde68a',
+                                        textTransform: 'uppercase',
+                                        flexShrink: 0
+                                      }}
+                                    >
+                                      <Layers size={9} /> Kho
                                     </span>
-                                  ) : !c.dl_status ? (
-                                    <span title="Khách hàng cá nhân" style={{ display: 'inline-flex', alignItems: 'center' }}>
-                                      <User 
-                                        size={12} 
-                                        style={{ marginLeft: '6px', color: 'var(--color-primary-light)', flexShrink: 0 }} 
-                                      />
+                                  ) : !c.dl_status && c.source !== 'databank' ? (
+                                    <span 
+                                      title="Khách hàng cá nhân" 
+                                      style={{ 
+                                        marginLeft: '6px', 
+                                        display: 'inline-flex', 
+                                        alignItems: 'center', 
+                                        gap: '3px', 
+                                        padding: '1px 5px', 
+                                        fontSize: '0.625rem', 
+                                        fontWeight: 700,
+                                        borderRadius: '4px', 
+                                        color: 'var(--color-primary)', 
+                                        background: 'rgba(59, 130, 246, 0.08)', 
+                                        border: '1px solid rgba(59, 130, 246, 0.15)',
+                                        textTransform: 'uppercase',
+                                        flexShrink: 0
+                                      }}
+                                    >
+                                      <User size={9} /> Cá nhân
                                     </span>
                                   ) : null}
                                 </p>
@@ -1650,19 +1678,47 @@ export const ContactsPage: React.FC = () => {
                             <div>
                               <h3 style={{ fontWeight: 800, fontSize: '0.95rem', color: 'var(--color-text)', marginBottom: '2px', lineHeight: 1.2, display: 'flex', alignItems: 'center' }}>
                                 {fullName}
-                                {c.dl_status === 'databank_claim' ? (
-                                  <span title="Khách hàng từ Databank" style={{ display: 'inline-flex', alignItems: 'center' }}>
-                                    <Layers 
-                                      size={13} 
-                                      style={{ marginLeft: '6px', color: 'var(--color-warning)', flexShrink: 0 }} 
-                                    />
+                                {c.dl_status === 'databank_claim' || c.source === 'databank' ? (
+                                  <span 
+                                    title="Khách hàng từ Databank" 
+                                    style={{ 
+                                      marginLeft: '6px', 
+                                      display: 'inline-flex', 
+                                      alignItems: 'center', 
+                                      gap: '3px', 
+                                      padding: '2px 6px', 
+                                      fontSize: '0.625rem', 
+                                      fontWeight: 700,
+                                      borderRadius: '6px', 
+                                      color: '#d97706', 
+                                      background: '#fef3c7', 
+                                      border: '1px solid #fde68a',
+                                      textTransform: 'uppercase',
+                                      flexShrink: 0
+                                    }}
+                                  >
+                                    <Layers size={10} /> Kho Databank
                                   </span>
-                                ) : !c.dl_status ? (
-                                  <span title="Khách hàng cá nhân" style={{ display: 'inline-flex', alignItems: 'center' }}>
-                                    <User 
-                                      size={13} 
-                                      style={{ marginLeft: '6px', color: 'var(--color-primary-light)', flexShrink: 0 }} 
-                                    />
+                                ) : !c.dl_status && c.source !== 'databank' ? (
+                                  <span 
+                                    title="Khách hàng cá nhân" 
+                                    style={{ 
+                                      marginLeft: '6px', 
+                                      display: 'inline-flex', 
+                                      alignItems: 'center', 
+                                      gap: '3px', 
+                                      padding: '2px 6px', 
+                                      fontSize: '0.625rem', 
+                                      fontWeight: 700,
+                                      borderRadius: '6px', 
+                                      color: 'var(--color-primary)', 
+                                      background: 'rgba(59, 130, 246, 0.08)', 
+                                      border: '1px solid rgba(59, 130, 246, 0.15)',
+                                      textTransform: 'uppercase',
+                                      flexShrink: 0
+                                    }}
+                                  >
+                                    <User size={10} /> Cá nhân
                                   </span>
                                 ) : null}
                               </h3>

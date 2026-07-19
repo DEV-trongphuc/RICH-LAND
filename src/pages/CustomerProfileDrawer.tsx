@@ -74,11 +74,11 @@ const EditHistoryIndicator = ({ history }: { history: any }) => {
 };
 
 const tempLabels: Record<string, { label: string; color: string; bg: string }> = {
-  hot: { label: '🌋 Sôi', color: '#b91c1c', bg: 'rgba(185, 28, 28, 0.1)' },
-  warm: { label: '🔥 Nóng', color: '#ef4444', bg: 'rgba(239, 68, 68, 0.1)' },
-  neutral: { label: '☀️ Ấm', color: '#f59e0b', bg: 'rgba(245, 158, 11, 0.1)' },
-  cool: { label: '🍃 Nguội', color: '#10b981', bg: 'rgba(16, 185, 129, 0.1)' },
-  cold: { label: '❄️ Lạnh', color: '#3b82f6', bg: 'rgba(59, 130, 246, 0.1)' }
+  hot: { label: 'Sôi', color: '#b91c1c', bg: 'rgba(185, 28, 28, 0.1)' },
+  warm: { label: 'Nóng', color: '#ef4444', bg: 'rgba(239, 68, 68, 0.1)' },
+  neutral: { label: 'Ấm', color: '#f59e0b', bg: 'rgba(245, 158, 11, 0.1)' },
+  cool: { label: 'Nguội', color: '#10b981', bg: 'rgba(16, 185, 129, 0.1)' },
+  cold: { label: 'Lạnh', color: '#3b82f6', bg: 'rgba(59, 130, 246, 0.1)' }
 };
 
 /* ─── Types ─────────────────────────────────────────────────── */
@@ -3731,19 +3731,47 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                     />
                     <h3 style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--color-text)', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'flex', alignItems: 'center' }}>
                       {fullName}
-                      {((formData.dl_status || contact?.dl_status) === 'databank_claim') ? (
-                        <span title="Khách hàng từ Databank" style={{ display: 'inline-flex', alignItems: 'center' }}>
-                          <Layers 
-                            size={12} 
-                            style={{ marginLeft: '4px', color: 'var(--color-warning)', flexShrink: 0 }} 
-                          />
+                      {((formData.dl_status || contact?.dl_status) === 'databank_claim' || (formData.source || contact?.source) === 'databank') ? (
+                        <span 
+                          title="Khách hàng từ Databank" 
+                          style={{ 
+                            marginLeft: '6px', 
+                            display: 'inline-flex', 
+                            alignItems: 'center', 
+                            gap: '3px', 
+                            padding: '1px 5px', 
+                            fontSize: '0.6rem', 
+                            fontWeight: 700,
+                            borderRadius: '4px', 
+                            color: '#d97706', 
+                            background: '#fef3c7', 
+                            border: '1px solid #fde68a',
+                            textTransform: 'uppercase',
+                            flexShrink: 0
+                          }}
+                        >
+                          <Layers size={9} /> Kho
                         </span>
-                      ) : !(formData.dl_status || contact?.dl_status) ? (
-                        <span title="Khách hàng cá nhân" style={{ display: 'inline-flex', alignItems: 'center' }}>
-                          <User 
-                            size={12} 
-                            style={{ marginLeft: '4px', color: 'var(--color-primary-light)', flexShrink: 0 }} 
-                          />
+                      ) : (!(formData.dl_status || contact?.dl_status) && (formData.source || contact?.source) !== 'databank') ? (
+                        <span 
+                          title="Khách hàng cá nhân" 
+                          style={{ 
+                            marginLeft: '6px', 
+                            display: 'inline-flex', 
+                            alignItems: 'center', 
+                            gap: '3px', 
+                            padding: '1px 5px', 
+                            fontSize: '0.6rem', 
+                            fontWeight: 700,
+                            borderRadius: '4px', 
+                            color: 'var(--color-primary)', 
+                            background: 'rgba(59, 130, 246, 0.08)', 
+                            border: '1px solid rgba(59, 130, 246, 0.15)',
+                            textTransform: 'uppercase',
+                            flexShrink: 0
+                          }}
+                        >
+                          <User size={9} /> Cá nhân
                         </span>
                       ) : null}
                     </h3>
@@ -3891,19 +3919,47 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                       <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '2px', flexWrap: 'wrap' }}>
                         <h2 style={{ fontSize: '1.35rem', fontWeight: 800, color: 'var(--color-text)', letterSpacing: '-0.02em', wordBreak: 'break-word', display: 'flex', alignItems: 'center', gap: '6px' }}>
                           {fullName}
-                          {((formData.dl_status || contact?.dl_status) === 'databank_claim') ? (
-                            <span title="Khách hàng từ Databank" style={{ display: 'inline-flex', alignItems: 'center' }}>
-                              <Layers 
-                                size={16} 
-                                style={{ color: 'var(--color-warning)', flexShrink: 0 }} 
-                              />
+                          {((formData.dl_status || contact?.dl_status) === 'databank_claim' || (formData.source || contact?.source) === 'databank') ? (
+                            <span 
+                              title="Khách hàng từ Databank" 
+                              style={{ 
+                                display: 'inline-flex', 
+                                alignItems: 'center', 
+                                gap: '4px', 
+                                padding: '2px 6px', 
+                                fontSize: '0.65rem', 
+                                fontWeight: 700,
+                                borderRadius: '6px', 
+                                color: '#d97706', 
+                                background: '#fef3c7', 
+                                border: '1px solid #fde68a',
+                                textTransform: 'uppercase',
+                                letterSpacing: '0.2px',
+                                flexShrink: 0
+                              }}
+                            >
+                              <Layers size={10} /> Kho Databank
                             </span>
-                          ) : !(formData.dl_status || contact?.dl_status) ? (
-                            <span title="Khách hàng cá nhân" style={{ display: 'inline-flex', alignItems: 'center' }}>
-                              <User 
-                                size={16} 
-                                style={{ color: 'var(--color-primary-light)', flexShrink: 0 }} 
-                              />
+                          ) : (!(formData.dl_status || contact?.dl_status) && (formData.source || contact?.source) !== 'databank') ? (
+                            <span 
+                              title="Khách hàng cá nhân" 
+                              style={{ 
+                                display: 'inline-flex', 
+                                alignItems: 'center', 
+                                gap: '4px', 
+                                padding: '2px 6px', 
+                                fontSize: '0.65rem', 
+                                fontWeight: 700,
+                                borderRadius: '6px', 
+                                color: 'var(--color-primary)', 
+                                background: 'rgba(59, 130, 246, 0.08)', 
+                                border: '1px solid rgba(59, 130, 246, 0.15)',
+                                textTransform: 'uppercase',
+                                letterSpacing: '0.2px',
+                                flexShrink: 0
+                              }}
+                            >
+                              <User size={10} /> Cá nhân
                             </span>
                           ) : null}
                           <button
@@ -3949,7 +4005,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                             }}
                             title={`Máy đề xuất: ${tempLabels[formData.suggested_temperature].label}`}
                           >
-                            🤖 {tempLabels[formData.suggested_temperature].label}
+                            AI: {tempLabels[formData.suggested_temperature].label}
                           </span>
                         )}
                       </div>
@@ -4222,7 +4278,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                               }}
                               title={`Máy đề xuất: ${tempLabels[formData.suggested_temperature].label}`}
                             >
-                              🤖 {tempLabels[formData.suggested_temperature].label}
+                              AI: {tempLabels[formData.suggested_temperature].label}
                             </span>
                           )}
                           {formData.not_lead_proposed === 1 && (
@@ -8683,11 +8739,11 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                         </label>
                         <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
                           {[
-                            { id: 'cold', label: '❄️ Lạnh', color: 'rgba(59, 130, 246, 0.1)', border: 'rgba(59, 130, 246, 0.2)', text: '#3b82f6' },
-                            { id: 'cool', label: '🍃 Nguội', color: 'rgba(16, 185, 129, 0.1)', border: 'rgba(16, 185, 129, 0.2)', text: 'var(--color-success)' },
-                            { id: 'neutral', label: '☀️ Ấm', color: 'rgba(245, 158, 11, 0.1)', border: 'rgba(245, 158, 11, 0.2)', text: 'var(--color-warning)' },
-                            { id: 'warm', label: '🔥 Nóng', color: 'rgba(239, 68, 68, 0.1)', border: 'rgba(239, 68, 68, 0.2)', text: 'var(--color-danger)' },
-                            { id: 'hot', label: '🌋 Sôi', color: 'rgba(185, 28, 28, 0.1)', border: 'rgba(185, 28, 28, 0.2)', text: '#b91c1c' }
+                            { id: 'cold', label: 'Lạnh', color: 'rgba(59, 130, 246, 0.1)', border: 'rgba(59, 130, 246, 0.2)', text: '#3b82f6' },
+                            { id: 'cool', label: 'Nguội', color: 'rgba(16, 185, 129, 0.1)', border: 'rgba(16, 185, 129, 0.2)', text: 'var(--color-success)' },
+                            { id: 'neutral', label: 'Ấm', color: 'rgba(245, 158, 11, 0.1)', border: 'rgba(245, 158, 11, 0.2)', text: 'var(--color-warning)' },
+                            { id: 'warm', label: 'Nóng', color: 'rgba(239, 68, 68, 0.1)', border: 'rgba(239, 68, 68, 0.2)', text: 'var(--color-danger)' },
+                            { id: 'hot', label: 'Sôi', color: 'rgba(185, 28, 28, 0.1)', border: 'rgba(185, 28, 28, 0.2)', text: '#b91c1c' }
                           ].map(item => {
                             const isSelected = noteSaleTemp === item.id || (noteSaleTemp === '' && calculatedSuggestedTemp === item.id);
                             return (
