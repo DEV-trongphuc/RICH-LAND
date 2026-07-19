@@ -2134,6 +2134,7 @@ switch ($action) {
         $isSale = in_array($decodedUser['role'], ['sale', 'sales', 'manager'], true);
         $saleFilterId = isset($_GET['sale_id']) && $_GET['sale_id'] !== '' ? (int) $_GET['sale_id'] : null;
         $saleId = $isSale ? $currentSaleConsultantId : ($saleFilterId !== null ? $saleFilterId : (int) $decodedUser['id']);
+        $tid = (int)($decodedUser['tenant_id'] ?? 1);
 
         $search = trim($_GET['search'] ?? '');
         $roundFilter = isset($_GET['round_id']) && $_GET['round_id'] !== '' ? (int) $_GET['round_id'] : null;
@@ -2647,10 +2648,10 @@ switch ($action) {
               AND NOT EXISTS (SELECT 1 FROM notes WHERE entity_type = 'contact' AND entity_id = c.id)
         ";
         if ($isSale) {
-            $uncontactedQuery .= " AND c.owner_id = " . (int)$saleId;
+            $uncontactedQuery .= " AND c.owner_id = " . (int)$saleUserId;
         } else {
             if ($saleFilterId !== null) {
-                $uncontactedQuery .= " AND c.owner_id = " . (int)$saleFilterId;
+                $uncontactedQuery .= " AND c.owner_id = " . (int)$saleUserId;
             }
         }
         $resUncontacted = $conn->query($uncontactedQuery);
