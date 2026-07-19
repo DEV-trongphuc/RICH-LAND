@@ -974,6 +974,17 @@ export default function ProjectsPage() {
   const canEditCampaign = (camp: any) => {
     if (!user) return false;
     if (isSystemAdmin || ['admin', 'superadmin', 'super_admin', 'director'].includes(user.role)) return true;
+    
+    // Bypass if user is the project manager or creator of the parent project
+    if (camp.project_id) {
+      const parentProj = projects.find(p => String(p.id) === String(camp.project_id));
+      if (parentProj) {
+        const isProjCreator = String(parentProj.created_by) === String(user.id);
+        const isProjMgr = parentProj.manager_ids && parentProj.manager_ids.split(',').map(s => s.trim()).includes(String(user.id));
+        if (isProjCreator || isProjMgr) return true;
+      }
+    }
+
     const isManagerOrLeaderUser = user.role === 'manager' || teams.some(t => Number(t.leader_id) === Number(user.id));
     if (isManagerOrLeaderUser) return true;
     const isCreator = String(camp.created_by) === String(user.id);
@@ -984,7 +995,18 @@ export default function ProjectsPage() {
 
   const canDeleteCampaign = (camp: any) => {
     if (!user) return false;
-    if (isSystemAdmin) return true;
+    if (isSystemAdmin || ['admin', 'superadmin', 'super_admin', 'director'].includes(user.role)) return true;
+
+    // Bypass if user is the project manager or creator of the parent project
+    if (camp.project_id) {
+      const parentProj = projects.find(p => String(p.id) === String(camp.project_id));
+      if (parentProj) {
+        const isProjCreator = String(parentProj.created_by) === String(user.id);
+        const isProjMgr = parentProj.manager_ids && parentProj.manager_ids.split(',').map(s => s.trim()).includes(String(user.id));
+        if (isProjCreator || isProjMgr) return true;
+      }
+    }
+
     return String(camp.created_by) === String(user.id);
   };
 
@@ -3276,22 +3298,24 @@ export default function ProjectsPage() {
             {activeSubTab === 'campaigns' ? t('Cấu hình chiến dịch tiếp thị và quản lý roster nhận lead') : t('Đăng ký dự án, roster đội ngũ phân phối và quản lý tài liệu')}
           </p>
         </div>
-        {isAdmin && (
+        {(isAdmin || user?.role === 'manager' || (activeSubTab === 'campaigns' && projects.some(p => String(p.created_by) === String(user?.id) || (p.manager_ids && p.manager_ids.split(',').map(s=>s.trim()).includes(String(user?.id)))))) && (
           <div>
             {activeSubTab === 'projects' ? (
-              <button
-                onClick={() => {
-                  setEditingProject({ status: 'active', campaign_sharing_mode: 'independent' });
-                  setAutoCode(true);
-                  setProjectModalMode('create');
-                  setIsEditModalOpen(true);
-                }}
-                className="btn primary"
-                style={{ height: '36px', borderRadius: '8px', padding: '0 1rem', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem', fontWeight: 700 }}
-              >
-                <Plus size={16} />
-                Thêm dự án mới
-              </button>
+              (isAdmin || user?.role === 'manager') && (
+                <button
+                  onClick={() => {
+                    setEditingProject({ status: 'active', campaign_sharing_mode: 'independent' });
+                    setAutoCode(true);
+                    setProjectModalMode('create');
+                    setIsEditModalOpen(true);
+                  }}
+                  className="btn primary"
+                  style={{ height: '36px', borderRadius: '8px', padding: '0 1rem', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem', fontWeight: 700 }}
+                >
+                  <Plus size={16} />
+                  Thêm dự án mới
+                </button>
+              )
             ) : (
               <button
                 onClick={() => {
