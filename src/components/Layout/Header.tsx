@@ -234,6 +234,9 @@ export const Header = ({
               });
             }
             
+            // Dispatch event for auto-refreshing other active components
+            window.dispatchEvent(new CustomEvent('new-notification-received'));
+            
             // Trigger tab title flash if not focused or modal is not open
             if (!isWindowFocused.current || !isNotifModalOpen) {
               startFlashingTitle(newUnreadCount);
