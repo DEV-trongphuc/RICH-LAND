@@ -6221,16 +6221,41 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
             transform: translateX(4px);
             box-shadow: 0 4px 12px rgba(189, 29, 45, 0.25) !important;
           }
+
+          @media (max-width: 768px) {
+            .welcome-banner {
+              padding: 0.875rem 1.125rem !important;
+              gap: 0.875rem !important;
+              border-radius: 16px !important;
+            }
+            .welcome-banner h2 {
+              font-size: 1.05rem !important;
+              font-weight: 750 !important;
+            }
+            .welcome-task-row {
+              padding: 8px 12px !important;
+              font-size: 0.75rem !important;
+              border-radius: 10px !important;
+            }
+            .welcome-action-btn {
+              padding: 0 12px !important;
+              font-size: 0.72rem !important;
+              height: 34px !important;
+              border-radius: 10px !important;
+              flex: 1 !important;
+              justify-content: center !important;
+            }
+          }
         `}</style>
 
         <div className="welcome-banner">
           {/* Left section: Welcome Info */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem', flex: '1 1 340px', minWidth: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? '0.75rem' : '1.5rem', flex: isMobile ? '1 1 100%' : '1 1 340px', minWidth: 0 }}>
             <div style={{ position: 'relative', flexShrink: 0 }}>
               <Avatar 
                 name={displayUser?.name || 'User'} 
                 src={displayUser?.avatar} 
-                size={60} 
+                size={isMobile ? 42 : 60} 
                 style={{ border: '2.5px solid rgba(189, 29, 45, 0.45)', boxShadow: '0 0 16px rgba(189, 29, 45, 0.3)' }}
               />
               <span className="animate-pulse" style={{
@@ -6356,7 +6381,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
           </div>
 
           {/* Middle section: Issues/Tasks */}
-          <div style={{ flex: '2 1 380px', display: 'flex', flexDirection: 'column', gap: '10px', minWidth: '280px' }}>
+          <div style={{ flex: isMobile ? '1 1 100%' : '2 1 380px', display: 'flex', flexDirection: 'column', gap: isMobile ? '6px' : '10px', minWidth: isMobile ? '100%' : '280px' }}>
             <h4 style={{ margin: 0, fontSize: '0.72rem', fontWeight: 800, color: '#f4f4f5', textTransform: 'uppercase', letterSpacing: '1px', opacity: 0.9 }}>
               {t('Nhiệm vụ & Vấn đề cần giải quyết')}
             </h4>
@@ -6396,7 +6421,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
           </div>
 
           {/* Right section: Quick Actions */}
-          <div style={{ display: 'flex', gap: '8px', flexShrink: 0, flexWrap: 'wrap', width: isMobile ? '100%' : 'auto', justifyContent: isMobile ? 'flex-start' : 'flex-end' }}>
+          <div style={{ display: 'flex', gap: '8px', flexShrink: 0, flexWrap: 'nowrap', width: isMobile ? '100%' : 'auto', justifyContent: isMobile ? 'stretch' : 'flex-end' }}>
             {!isAdmin && (!todayCheckIn || todayCheckIn.status === 'rejected') && (
               <button 
                 onClick={() => setCheckInModalOpen(true)}
