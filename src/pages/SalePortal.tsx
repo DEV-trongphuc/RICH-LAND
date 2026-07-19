@@ -9500,10 +9500,16 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                                     {weekendShiftSat.registered ? (weekendShiftSat.approved ? t('Đã duyệt trực') : t('Chờ duyệt')) : t('Chưa đăng ký')}
                                   </span>
                                   {['sale', 'manager'].includes(String(effectiveRole).toLowerCase()) && (
-                                    <div style={{ opacity: weekendShiftSat.can_toggle ? 1 : 0.5, pointerEvents: weekendShiftSat.can_toggle ? 'auto' : 'none' }}>
+                                    <div style={{ opacity: weekendShiftSat.can_toggle ? 1 : 0.6 }}>
                                       <ToggleSwitch
                                         checked={weekendShiftSat.registered}
-                                        onChange={() => handleToggleWeekendShift(weekendShiftSat.date, weekendShiftSat.registered)}
+                                        onChange={() => {
+                                          if (!weekendShiftSat.can_toggle) {
+                                            toast.error(t('Đã quá hạn đăng ký trực cuối tuần cho Thứ Bảy!'));
+                                            return;
+                                          }
+                                          handleToggleWeekendShift(weekendShiftSat.date, weekendShiftSat.registered);
+                                        }}
                                       />
                                     </div>
                                   )}
@@ -9563,10 +9569,16 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                                     {weekendShiftSun.registered ? (weekendShiftSun.approved ? t('Đã duyệt trực') : t('Chờ duyệt')) : t('Chưa đăng ký')}
                                   </span>
                                   {['sale', 'manager'].includes(String(effectiveRole).toLowerCase()) && (
-                                    <div style={{ opacity: weekendShiftSun.can_toggle ? 1 : 0.5, pointerEvents: weekendShiftSun.can_toggle ? 'auto' : 'none' }}>
+                                    <div style={{ opacity: weekendShiftSun.can_toggle ? 1 : 0.6 }}>
                                       <ToggleSwitch
                                         checked={weekendShiftSun.registered}
-                                        onChange={() => handleToggleWeekendShift(weekendShiftSun.date, weekendShiftSun.registered)}
+                                        onChange={() => {
+                                          if (!weekendShiftSun.can_toggle) {
+                                            toast.error(t('Đã quá hạn đăng ký trực cuối tuần cho Chủ Nhật!'));
+                                            return;
+                                          }
+                                          handleToggleWeekendShift(weekendShiftSun.date, weekendShiftSun.registered);
+                                        }}
                                       />
                                     </div>
                                   )}
@@ -9575,6 +9587,27 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                             );
                           })()}
                         </div>
+
+                        {((weekendShiftSat && !weekendShiftSat.can_toggle && !weekendShiftSat.registered) || 
+                          (weekendShiftSun && !weekendShiftSun.can_toggle && !weekendShiftSun.registered)) && (
+                          <div style={{
+                            background: 'var(--color-danger-light)', 
+                            color: 'var(--color-danger)', 
+                            padding: '10px 14px',
+                            borderRadius: '10px', 
+                            border: '1px solid rgba(239, 68, 68, 0.2)', 
+                            fontSize: '0.78rem', 
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            gap: 8,
+                            marginTop: '4px'
+                          }}>
+                            <Info size={14} />
+                            <span>
+                              {t('Đã quá hạn đăng ký trực cuối tuần. Bạn không thể thay đổi trạng thái đăng ký của các ngày đã quá hạn.')}
+                            </span>
+                          </div>
+                        )}
                       </div>
                     )}
                     {/* Night Shift Registration Card */}
@@ -9657,10 +9690,20 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                               : ((nightShiftCanToggle && !isTodayWeekend) ? t('Chưa đăng ký') : (isTodayWeekend ? t('Nghỉ trực ca đêm') : t('Đã hết hạn đăng ký')))}
                           </span>
                           {['sale', 'manager'].includes(String(effectiveRole).toLowerCase()) && (
-                            <div style={{ opacity: (nightShiftCanToggle && !isTodayWeekend) ? 1 : 0.5, pointerEvents: (nightShiftCanToggle && !isTodayWeekend) ? 'auto' : 'none' }}>
+                            <div style={{ opacity: (nightShiftCanToggle && !isTodayWeekend) ? 1 : 0.6 }}>
                               <ToggleSwitch
                                 checked={nightShiftRegistered}
-                                onChange={handleToggleNightShift}
+                                onChange={() => {
+                                  if (isTodayWeekend) {
+                                    toast.error(t('Hôm nay là cuối tuần, vui lòng đăng ký trực cuối tuần ở trên!'));
+                                    return;
+                                  }
+                                  if (!nightShiftCanToggle) {
+                                    toast.error(t('Đã quá hạn đăng ký trực ca đêm hôm nay!'));
+                                    return;
+                                  }
+                                  handleToggleNightShift();
+                                }}
                               />
                             </div>
                           )}
