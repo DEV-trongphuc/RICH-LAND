@@ -93,7 +93,7 @@ class CampaignController {
                     EXISTS (
                         SELECT 1 FROM projects p 
                         WHERE p.id = marketing_campaigns.project_id 
-                          AND (p.campaign_sharing_mode = 'project_members' OR p.campaign_sharing_mode IS NULL OR p.campaign_sharing_mode = '')
+                          AND p.campaign_sharing_mode = 'project_members'
                     )
                     AND EXISTS (
                         SELECT 1 FROM project_roster pr 
