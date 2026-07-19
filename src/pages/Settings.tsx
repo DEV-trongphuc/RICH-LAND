@@ -3929,6 +3929,58 @@ function doPost(e) {
                           </div>
                         </div>
 
+                                              </div>
+                    </div>
+
+                    {/* Sub-group 2: SLA & Tiếp nhận */}
+                    <div style={{ background: 'var(--color-surface)', padding: '1.5rem', borderRadius: '12px', border: '1px solid var(--color-border)', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', borderBottom: '1px solid var(--color-border-light)', paddingBottom: '8px' }}>
+                        <Clock size={16} style={{ color: 'var(--color-primary)' }} />
+                        <h4 style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)', margin: 0 }}>{t('SLA & Tiếp nhận Phản hồi')}</h4>
+                      </div>
+
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                        <div>
+                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                            <div>
+                              <label className="form-label" style={{ fontWeight: 600 }}>{t('Thời gian chờ nhận lead (HC)')}</label>
+                              <div style={{ display: 'flex', alignItems: 'center', position: 'relative' }}>
+                                <input
+                                  type="number"
+                                  className="form-input"
+                                  style={{ paddingRight: '3.5rem' }}
+                                  value={leadResponseTimeoutMinutes}
+                                  onChange={e => setLeadResponseTimeoutMinutes(Number(e.target.value))}
+                                  min={1}
+                                />
+                                <span style={{ position: 'absolute', right: '12px', fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>{t('phút')}</span>
+                              </div>
+                              <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px', display: 'block', lineHeight: 1.4 }}>
+                                {t('Giờ hành chính')}
+                              </span>
+                            </div>
+                            <div>
+                              <label className="form-label" style={{ fontWeight: 600 }}>{t('Thời gian chờ nhận lead (TC)')}</label>
+                              <div style={{ display: 'flex', alignItems: 'center', position: 'relative' }}>
+                                <input
+                                  type="number"
+                                  className="form-input"
+                                  style={{ paddingRight: '3.5rem' }}
+                                  value={leadResponseTimeoutOvertimeMinutes}
+                                  onChange={e => setLeadResponseTimeoutOvertimeMinutes(Number(e.target.value))}
+                                  min={1}
+                                />
+                                <span style={{ position: 'absolute', right: '12px', fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>{t('phút')}</span>
+                              </div>
+                              <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px', display: 'block', lineHeight: 1.4 }}>
+                                {t('Giờ tăng ca / Ca đêm')}
+                              </span>
+                            </div>
+                          </div>
+                          
+
+                        </div>
+
                         {/* Nhóm B: Điều Phối & Chống Ôm (Backpressure) */}
                         <div style={{
                           background: 'var(--color-bg-light)',
@@ -3983,57 +4035,6 @@ function doPost(e) {
                               </span>
                             </div>
                           </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Sub-group 2: SLA & Tiếp nhận */}
-                    <div style={{ background: 'var(--color-surface)', padding: '1.5rem', borderRadius: '12px', border: '1px solid var(--color-border)', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', borderBottom: '1px solid var(--color-border-light)', paddingBottom: '8px' }}>
-                        <Clock size={16} style={{ color: 'var(--color-primary)' }} />
-                        <h4 style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)', margin: 0 }}>{t('SLA & Tiếp nhận Phản hồi')}</h4>
-                      </div>
-
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                        <div>
-                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                            <div>
-                              <label className="form-label" style={{ fontWeight: 600 }}>{t('Thời gian chờ nhận lead (HC)')}</label>
-                              <div style={{ display: 'flex', alignItems: 'center', position: 'relative' }}>
-                                <input
-                                  type="number"
-                                  className="form-input"
-                                  style={{ paddingRight: '3.5rem' }}
-                                  value={leadResponseTimeoutMinutes}
-                                  onChange={e => setLeadResponseTimeoutMinutes(Number(e.target.value))}
-                                  min={1}
-                                />
-                                <span style={{ position: 'absolute', right: '12px', fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>{t('phút')}</span>
-                              </div>
-                              <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px', display: 'block', lineHeight: 1.4 }}>
-                                {t('Giờ hành chính')}
-                              </span>
-                            </div>
-                            <div>
-                              <label className="form-label" style={{ fontWeight: 600 }}>{t('Thời gian chờ nhận lead (TC)')}</label>
-                              <div style={{ display: 'flex', alignItems: 'center', position: 'relative' }}>
-                                <input
-                                  type="number"
-                                  className="form-input"
-                                  style={{ paddingRight: '3.5rem' }}
-                                  value={leadResponseTimeoutOvertimeMinutes}
-                                  onChange={e => setLeadResponseTimeoutOvertimeMinutes(Number(e.target.value))}
-                                  min={1}
-                                />
-                                <span style={{ position: 'absolute', right: '12px', fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>{t('phút')}</span>
-                              </div>
-                              <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px', display: 'block', lineHeight: 1.4 }}>
-                                {t('Giờ tăng ca / Ca đêm')}
-                              </span>
-                            </div>
-                          </div>
-                          
-
                         </div>
                       </div>
                     </div>
@@ -4321,66 +4322,6 @@ function doPost(e) {
                 ))}
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-
-                  {/* Nhóm 1: Quy tắc Chấm công & Đền bù */}
-                  <div style={{ background: 'var(--color-bg-secondary)', padding: '1.25rem', borderRadius: 'var(--radius-xl)', border: '1px solid var(--color-border)', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <Clock size={15} style={{ color: 'var(--color-primary)' }} />
-                      <h4 style={{ fontSize: '0.9375rem', fontWeight: 700, color: 'var(--color-text)' }}>{t('Quy tắc Chấm công & Đền bù')}</h4>
-                    </div>
-
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.25rem' }}>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                        <label style={{ gap: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', margin: 0 }}>
-                          <input
-                            type="checkbox"
-                            checked={lateCheckinCompensationEnabled === 1}
-                            onChange={e => setLateCheckinCompensationEnabled(e.target.checked ? 1 : 0)}
-                            style={{ width: '16px', height: '16px', accentColor: 'var(--color-primary)' }}
-                          />
-                          <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--color-text)' }}>
-                            {t('Tự động đền bù lead khi bị thu hồi do trễ check-in')}
-                          </span>
-                        </label>
-                        <span style={{ fontSize: '0.725rem', color: 'var(--color-text-muted)', marginLeft: '24px', display: 'block', lineHeight: 1.4 }}>
-                          {t('Nếu tắt, Sales đi muộn bị thu hồi lead sẽ không được cộng bù lượt (mặc định tắt).')}
-                        </span>
-
-                        <label style={{ gap: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', margin: 0, marginTop: '0.5rem' }}>
-                          <input
-                            type="checkbox"
-                            checked={leaveCompensationEnabled === 1}
-                            onChange={e => setLeaveCompensationEnabled(e.target.checked ? 1 : 0)}
-                            style={{ width: '16px', height: '16px', accentColor: 'var(--color-primary)' }}
-                          />
-                          <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--color-text)' }}>
-                            {t('Tự động đền bù lead khi bị thu hồi do nghỉ phép/ngưng hoạt động')}
-                          </span>
-                        </label>
-                        <span style={{ fontSize: '0.725rem', color: 'var(--color-text-muted)', marginLeft: '24px', display: 'block', lineHeight: 1.4 }}>
-                          {t('Nếu tắt, Sales xin nghỉ phép hoặc không hoạt động bị thu hồi lead sẽ không được cộng bù lượt (mặc định tắt).')}
-                        </span>
-                      </div>
-
-                      <div>
-                        <label className="form-label" style={{ fontWeight: 600 }}>{t('SLA Duyệt đi trễ (Chấm công)')}</label>
-                        <div style={{ display: 'flex', alignItems: 'center', position: 'relative' }}>
-                          <input
-                            type="number"
-                            className="form-input"
-                            style={{ paddingRight: '3.5rem' }}
-                            value={checkinApprovalSlaMinutes}
-                            onChange={e => setCheckinApprovalSlaMinutes(Number(e.target.value))}
-                            min={1}
-                          />
-                          <span style={{ position: 'absolute', right: '12px', fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>{t('phút')}</span>
-                        </div>
-                        <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px', display: 'block', lineHeight: 1.4 }}>
-                          {t('Thời gian chờ duyệt xin nhận lead trễ trước khi gửi cảnh báo leo thang.')}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
 
 {/* Nhóm 2: Ca trực & Khung giờ vàng */}
                   <div style={{ background: 'var(--color-bg-secondary)', padding: '1.25rem', borderRadius: 'var(--radius-xl)', border: '1px solid var(--color-border)', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
@@ -4707,6 +4648,66 @@ function doPost(e) {
                           </div>
                         </>
                       )}
+                    </div>
+                  </div>
+
+                  {/* Nhóm 1: Quy tắc Chấm công & Đền bù */}
+                  <div style={{ background: 'var(--color-bg-secondary)', padding: '1.25rem', borderRadius: 'var(--radius-xl)', border: '1px solid var(--color-border)', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <Clock size={15} style={{ color: 'var(--color-primary)' }} />
+                      <h4 style={{ fontSize: '0.9375rem', fontWeight: 700, color: 'var(--color-text)' }}>{t('Quy tắc Chấm công & Đền bù')}</h4>
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.25rem' }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                        <label style={{ gap: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', margin: 0 }}>
+                          <input
+                            type="checkbox"
+                            checked={lateCheckinCompensationEnabled === 1}
+                            onChange={e => setLateCheckinCompensationEnabled(e.target.checked ? 1 : 0)}
+                            style={{ width: '16px', height: '16px', accentColor: 'var(--color-primary)' }}
+                          />
+                          <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--color-text)' }}>
+                            {t('Tự động đền bù lead khi bị thu hồi do trễ check-in')}
+                          </span>
+                        </label>
+                        <span style={{ fontSize: '0.725rem', color: 'var(--color-text-muted)', marginLeft: '24px', display: 'block', lineHeight: 1.4 }}>
+                          {t('Nếu tắt, Sales đi muộn bị thu hồi lead sẽ không được cộng bù lượt (mặc định tắt).')}
+                        </span>
+
+                        <label style={{ gap: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', margin: 0, marginTop: '0.5rem' }}>
+                          <input
+                            type="checkbox"
+                            checked={leaveCompensationEnabled === 1}
+                            onChange={e => setLeaveCompensationEnabled(e.target.checked ? 1 : 0)}
+                            style={{ width: '16px', height: '16px', accentColor: 'var(--color-primary)' }}
+                          />
+                          <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--color-text)' }}>
+                            {t('Tự động đền bù lead khi bị thu hồi do nghỉ phép/ngưng hoạt động')}
+                          </span>
+                        </label>
+                        <span style={{ fontSize: '0.725rem', color: 'var(--color-text-muted)', marginLeft: '24px', display: 'block', lineHeight: 1.4 }}>
+                          {t('Nếu tắt, Sales xin nghỉ phép hoặc không hoạt động bị thu hồi lead sẽ không được cộng bù lượt (mặc định tắt).')}
+                        </span>
+                      </div>
+
+                      <div>
+                        <label className="form-label" style={{ fontWeight: 600 }}>{t('SLA Duyệt đi trễ (Chấm công)')}</label>
+                        <div style={{ display: 'flex', alignItems: 'center', position: 'relative' }}>
+                          <input
+                            type="number"
+                            className="form-input"
+                            style={{ paddingRight: '3.5rem' }}
+                            value={checkinApprovalSlaMinutes}
+                            onChange={e => setCheckinApprovalSlaMinutes(Number(e.target.value))}
+                            min={1}
+                          />
+                          <span style={{ position: 'absolute', right: '12px', fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>{t('phút')}</span>
+                        </div>
+                        <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px', display: 'block', lineHeight: 1.4 }}>
+                          {t('Thời gian chờ duyệt xin nhận lead trễ trước khi gửi cảnh báo leo thang.')}
+                        </span>
+                      </div>
                     </div>
                   </div>
 

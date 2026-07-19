@@ -9491,6 +9491,388 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                       )}
                     </div>
 
+                    {/* Weekend Shift Registration Card */}
+                    {weekendShiftAllow && (
+                      <div className="card" style={{
+                        padding: '1.5rem',
+                        background: 'var(--color-surface)',
+                        border: '1px solid var(--color-border-light)',
+                        borderRadius: '16px',
+                        boxShadow: '0 4px 20px rgba(0, 0, 0, 0.02), inset 0 1px 0 rgba(255, 255, 255, 0.6)',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '1rem',
+                        transition: 'all 0.3s ease'
+                      }}>
+                        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+                          <div style={{
+                            width: '40px',
+                            height: '40px',
+                            borderRadius: '10px',
+                            background: 'rgba(16, 185, 129, 0.08)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            flexShrink: 0
+                          }}>
+                            <Calendar size={20} color="var(--color-success)" />
+                          </div>
+                          <div style={{ flex: 1 }}>
+                            <h3 style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--color-text)', margin: 0, letterSpacing: '-0.01em' }}>
+                              {t('ĐĂNG KÝ TRỰC CUỐI TUẦN')}
+                            </h3>
+                            <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', marginTop: 4, marginBottom: 0, lineHeight: '1.45' }}>
+                              {t('Đăng ký nhận lead trong các ngày Thứ Bảy và Chủ Nhật.')}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                          {/* Saturday */}
+                          {weekendShiftSat && (
+                            <div style={{
+                              display: 'flex',
+                              justifyContent: 'space-between',
+                              alignItems: 'center',
+                              background: 'var(--color-bg-alt)',
+                              padding: '10px 14px',
+                              borderRadius: '12px',
+                              border: '1px solid var(--color-border-light)'
+                            }}>
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                                <span style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text)' }}>
+                                  {t('Thứ Bảy')} ({new Date(weekendShiftSat.date).toLocaleDateString('vi-VN')})
+                                </span>
+                                <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)' }}>
+                                  {weekendShiftSat.deadline_time ? `${t('Hạn đăng ký:')} ${new Date(weekendShiftSat.deadline_time).toLocaleString('vi-VN')}` : ''}
+                                </span>
+                              </div>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                <span style={{
+                                  fontSize: '0.8rem',
+                                  fontWeight: 700,
+                                  color: weekendShiftSat.registered ? (weekendShiftSat.approved ? 'var(--color-success)' : 'var(--color-warning)') : 'var(--color-text-muted)',
+                                  background: weekendShiftSat.registered ? (weekendShiftSat.approved ? 'rgba(16, 185, 129, 0.1)' : 'rgba(245, 158, 11, 0.1)') : 'rgba(100, 116, 139, 0.08)',
+                                  padding: '3px 8px',
+                                  borderRadius: '6px'
+                                }}>
+                                  {weekendShiftSat.registered ? (weekendShiftSat.approved ? t('Đã duyệt trực') : t('Chờ duyệt')) : t('Chưa đăng ký')}
+                                </span>
+                                {['sale', 'manager'].includes(String(effectiveRole).toLowerCase()) && (
+                                  <div style={{ opacity: weekendShiftSat.can_toggle ? 1 : 0.5, pointerEvents: weekendShiftSat.can_toggle ? 'auto' : 'none' }}>
+                                    <ToggleSwitch
+                                      checked={weekendShiftSat.registered}
+                                      onChange={() => handleToggleWeekendShift(weekendShiftSat.date, weekendShiftSat.registered)}
+                                    />
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Sunday */}
+                          {weekendShiftSun && (
+                            <div style={{
+                              display: 'flex',
+                              justifyContent: 'space-between',
+                              alignItems: 'center',
+                              background: 'var(--color-bg-alt)',
+                              padding: '10px 14px',
+                              borderRadius: '12px',
+                              border: '1px solid var(--color-border-light)'
+                            }}>
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                                <span style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text)' }}>
+                                  {t('Chủ Nhật')} ({new Date(weekendShiftSun.date).toLocaleDateString('vi-VN')})
+                                </span>
+                                <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)' }}>
+                                  {weekendShiftSun.deadline_time ? `${t('Hạn đăng ký:')} ${new Date(weekendShiftSun.deadline_time).toLocaleString('vi-VN')}` : ''}
+                                </span>
+                              </div>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                <span style={{
+                                  fontSize: '0.8rem',
+                                  fontWeight: 700,
+                                  color: weekendShiftSun.registered ? (weekendShiftSun.approved ? 'var(--color-success)' : 'var(--color-warning)') : 'var(--color-text-muted)',
+                                  background: weekendShiftSun.registered ? (weekendShiftSun.approved ? 'rgba(16, 185, 129, 0.1)' : 'rgba(245, 158, 11, 0.1)') : 'rgba(100, 116, 139, 0.08)',
+                                  padding: '3px 8px',
+                                  borderRadius: '6px'
+                                }}>
+                                  {weekendShiftSun.registered ? (weekendShiftSun.approved ? t('Đã duyệt trực') : t('Chờ duyệt')) : t('Chưa đăng ký')}
+                                </span>
+                                {['sale', 'manager'].includes(String(effectiveRole).toLowerCase()) && (
+                                  <div style={{ opacity: weekendShiftSun.can_toggle ? 1 : 0.5, pointerEvents: weekendShiftSun.can_toggle ? 'auto' : 'none' }}>
+                                    <ToggleSwitch
+                                      checked={weekendShiftSun.registered}
+                                      onChange={() => handleToggleWeekendShift(weekendShiftSun.date, weekendShiftSun.registered)}
+                                    />
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Holiday Shift Registration Card */}
+                    {holidayShifts.length > 0 && (
+                      <div className="card" style={{
+                        padding: '1.5rem',
+                        background: 'var(--color-surface)',
+                        border: '1px solid var(--color-border-light)',
+                        borderRadius: '16px',
+                        boxShadow: '0 4px 20px rgba(0, 0, 0, 0.02), inset 0 1px 0 rgba(255, 255, 255, 0.6)',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '1rem',
+                        transition: 'all 0.3s ease'
+                      }}>
+                        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+                          <div style={{
+                            width: '40px',
+                            height: '40px',
+                            borderRadius: '10px',
+                            background: 'rgba(239, 68, 68, 0.08)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            flexShrink: 0
+                          }}>
+                            <Calendar size={20} color="var(--color-primary)" />
+                          </div>
+                          <div style={{ flex: 1 }}>
+                            <h3 style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--color-text)', margin: 0, letterSpacing: '-0.01em' }}>
+                              {t('ĐĂNG KÝ TRỰC NGÀY LỄ')}
+                            </h3>
+                            <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', marginTop: 4, marginBottom: 0, lineHeight: '1.45' }}>
+                              {t('Đăng ký nhận lead trong các dịp nghỉ lễ lớn của công ty.')}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                          {holidayShifts.map((h) => (
+                            <div key={h.id || h.name} style={{ display: 'flex', flexDirection: 'column', gap: '8px', borderBottom: '1px dotted var(--color-border-light)', paddingBottom: '12px', marginBottom: '4px' }}>
+                              <h4 style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--color-primary)', margin: '0 0 4px 0' }}>
+                                {h.name}
+                              </h4>
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                {(h.dates_status || []).map((ds) => (
+                                  <div key={ds.date} style={{
+                                    display: 'flex',
+                                    justifyContent: 'space-between',
+                                    alignItems: 'center',
+                                    background: 'var(--color-bg-alt)',
+                                    padding: '8px 12px',
+                                    borderRadius: '10px',
+                                    border: '1px solid var(--color-border-light)'
+                                  }}>
+                                    <span style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--color-text)' }}>
+                                      {new Date(ds.date).toLocaleDateString('vi-VN', { weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric' })}
+                                    </span>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                      <span style={{
+                                        fontSize: '0.75rem',
+                                        fontWeight: 700,
+                                        color: ds.registered ? (ds.approved ? 'var(--color-success)' : 'var(--color-warning)') : 'var(--color-text-muted)',
+                                        background: ds.registered ? (ds.approved ? 'rgba(16, 185, 129, 0.1)' : 'rgba(245, 158, 11, 0.1)') : 'rgba(100, 116, 139, 0.08)',
+                                        padding: '2px 6px',
+                                        borderRadius: '4px'
+                                      }}>
+                                        {ds.registered ? (ds.approved ? t('Đã duyệt') : t('Chờ duyệt')) : t('Chưa đăng ký')}
+                                      </span>
+                                      {['sale', 'manager'].includes(String(effectiveRole).toLowerCase()) && (
+                                        <ToggleSwitch
+                                          checked={ds.registered}
+                                          onChange={() => handleToggleHolidayShift(h.name, ds.date, ds.registered)}
+                                        />
+                                      )}
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Weekly Shift Grid Scheduler Card */}
+                    <div className="card" style={{
+                      padding: '1.25rem',
+                      background: 'var(--color-surface)',
+                      border: '1px solid var(--color-border-light)',
+                      borderRadius: '16px',
+                      boxShadow: '0 4px 20px rgba(0, 0, 0, 0.02), inset 0 1px 0 rgba(255, 255, 255, 0.6)',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '0.75rem',
+                      transition: 'all 0.3s ease'
+                    }}>
+                      <div 
+                        onClick={() => setShowWeeklyShiftScheduler(!showWeeklyShiftScheduler)} 
+                        style={{ 
+                          display: 'flex', 
+                          justifyContent: 'space-between', 
+                          alignItems: 'center', 
+                          cursor: 'pointer',
+                          userSelect: 'none'
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                          <div style={{
+                            width: '36px',
+                            height: '36px',
+                            borderRadius: '8px',
+                            background: 'var(--color-primary-light)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            flexShrink: 0
+                          }}>
+                            <Calendar size={18} style={{ color: 'var(--color-primary)' }} />
+                          </div>
+                          <div>
+                            <h3 style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--color-text)', margin: 0 }}>
+                              {t('ĐĂNG KÝ LỊCH TRỰC TUẦN')}
+                            </h3>
+                            <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2, marginBottom: 0 }}>
+                              {t('Đăng ký lịch làm việc và trực nhận data cho cả tuần.')}
+                            </p>
+                          </div>
+                        </div>
+                        <div style={{
+                          color: 'var(--color-text-muted)',
+                          width: '28px',
+                          height: '28px',
+                          borderRadius: '50%',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          background: 'var(--color-bg-alt)',
+                          border: '1px solid var(--color-border-light)'
+                        }}>
+                          {showWeeklyShiftScheduler ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                        </div>
+                      </div>
+
+                      {showWeeklyShiftScheduler && (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '4px' }}>
+                          {/* Grid with 7 days */}
+                          <div style={{
+                            display: 'grid',
+                            gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))',
+                            gap: '8px',
+                            marginTop: '0.25rem'
+                          }}>
+                            {getWeekDates().map((day) => {
+                              const isSelected = weeklyShiftDates.includes(day.date);
+                              const reg = weeklyRegistrations.find(r => r.shift_date === day.date);
+                              const isApproved = reg ? (reg.approved === 1 || reg.approved === true) : false;
+
+                              // Determine background, border and text colors based on state
+                              let borderStyle = '1px solid var(--color-border-light)';
+                              let backgroundStyle = 'var(--color-bg-alt)';
+                              
+                              if (isSelected) {
+                                backgroundStyle = isApproved ? 'rgba(16, 185, 129, 0.04)' : 'rgba(245, 158, 11, 0.04)';
+                                borderStyle = isApproved 
+                                  ? '2px solid var(--color-success)' 
+                                  : '2px solid var(--color-warning)';
+                              }
+
+                              return (
+                                <div
+                                  key={day.date}
+                                  onClick={() => {
+                                    if (['sale', 'manager'].includes(String(effectiveRole).toLowerCase())) {
+                                      setWeeklyShiftDates(prev => 
+                                        prev.includes(day.date) 
+                                          ? prev.filter(d => d !== day.date) 
+                                          : [...prev, day.date]
+                                      );
+                                    }
+                                  }}
+                                  style={{
+                                    padding: '12px 10px',
+                                    borderRadius: '12px',
+                                    border: borderStyle,
+                                    background: backgroundStyle,
+                                    cursor: ['sale', 'manager'].includes(String(effectiveRole).toLowerCase()) ? 'pointer' : 'default',
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    gap: '6px',
+                                    transition: 'all 0.2s',
+                                    textAlign: 'center',
+                                    minHeight: '90px',
+                                    userSelect: 'none'
+                                  }}
+                                  className="weekly-date-card"
+                                >
+                                  <span style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--color-text)' }}>
+                                    {day.name}
+                                  </span>
+                                  <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>
+                                    {new Date(day.date).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' })}
+                                  </span>
+                                  
+                                  {/* Status badge */}
+                                  <span style={{
+                                    fontSize: '0.65rem',
+                                    fontWeight: 700,
+                                    padding: '2px 6px',
+                                    borderRadius: '4px',
+                                    marginTop: '4px',
+                                    color: isSelected 
+                                      ? (isApproved ? 'var(--color-success)' : 'var(--color-warning)') 
+                                      : 'var(--color-text-muted)',
+                                    background: isSelected 
+                                      ? (isApproved ? 'rgba(16, 185, 129, 0.1)' : 'rgba(245, 158, 11, 0.1)') 
+                                      : 'rgba(100, 116, 139, 0.08)'
+                                  }}>
+                                    {isSelected ? (isApproved ? t('Đã duyệt') : t('Chờ duyệt')) : t('Nghỉ trực')}
+                                  </span>
+                                </div>
+                              );
+                            })}
+                          </div>
+
+                          {['sale', 'manager'].includes(String(effectiveRole).toLowerCase()) && (
+                            <button
+                              type="button"
+                              className="btn primary"
+                              style={{
+                                width: '100%',
+                                height: '36px',
+                                borderRadius: '10px',
+                                fontWeight: 600,
+                                fontSize: '0.85rem',
+                                marginTop: '4px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: '6px'
+                              }}
+                              onClick={handleSubmitWeeklyShifts}
+                              disabled={weeklySubmitting}
+                            >
+                              {weeklySubmitting ? (
+                                <>
+                                  <RefreshCw size={14} className="spin" />
+                                  {t('Đang gửi đăng ký...')}
+                                </>
+                              ) : (
+                                t('Lưu lịch trực tuần')
+                              )}
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </div>
+
                     {/* Leave (Nghỉ phép) registration card */}
                     <div className="card" style={{
                       padding: '1.25rem',
