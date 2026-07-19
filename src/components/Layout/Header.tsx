@@ -2142,6 +2142,7 @@ export const Header = ({
                       {filtered.map(notif => {
                         const actorName = parseActorName(notif.body);
                         const isWarning = notif.type === 'warning' || (notif.title && (notif.title.toLowerCase().includes('trùng số') || notif.title.toLowerCase().includes('rửa nguồn')));
+                        const isRichland = Boolean((notif.title && (notif.title.toLowerCase().includes('richland') || notif.title.toLowerCase().includes('rich land'))) || (notif.body && (notif.body.toLowerCase().includes('richland') || notif.body.toLowerCase().includes('rich land'))));
                         
                         const bgBase = notif.is_read 
                           ? 'var(--color-surface)' 
@@ -2187,7 +2188,22 @@ export const Header = ({
                             }}
                           >
                             <div style={{ position: 'relative', display: 'flex', flexShrink: 0, marginTop: 2 }}>
-                              {actorName ? (
+                              {isRichland ? (
+                                <div style={{
+                                  width: 38,
+                                  height: 38,
+                                  borderRadius: '50%',
+                                  overflow: 'hidden',
+                                  border: '1px solid var(--color-border-light)',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  background: 'white',
+                                  flexShrink: 0
+                                }}>
+                                  <img src="/LOGO.jpg" alt="Richland" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                </div>
+                              ) : actorName ? (
                                 <div style={{ position: 'relative', display: 'inline-flex' }}>
                                   <Avatar src={notifAvatars[actorName] || undefined} name={actorName} size={38} />
                                   <span style={{
