@@ -550,19 +550,27 @@ if (!function_exists('releasePendingWorkHoursLeads')) {
                         }
                     }
 
-                    $hasReg = true;
-                    if (!empty($holidayName)) {
+                    $hasReg = false;
+                    $isHoliday = !empty($holidayName);
+
+                    if ($isHoliday) {
                         $stmtCheckReg = $conn->prepare("SELECT 1 FROM holiday_shift_registrations WHERE user_id = ? AND shift_date = ? AND approved = 1 LIMIT 1");
                         $stmtCheckReg->bind_param("is", $targetUserId, $currDate);
                         $stmtCheckReg->execute();
                         $hasReg = (bool)$stmtCheckReg->get_result()->fetch_assoc();
                         $stmtCheckReg->close();
-                    } else if ($isRestDay) {
+                    }
+
+                    if (!$hasReg && $isRestDay) {
                         $stmtCheckReg = $conn->prepare("SELECT 1 FROM weekend_shift_registrations WHERE user_id = ? AND shift_date = ? AND approved = 1 LIMIT 1");
                         $stmtCheckReg->bind_param("is", $targetUserId, $currDate);
                         $stmtCheckReg->execute();
                         $hasReg = (bool)$stmtCheckReg->get_result()->fetch_assoc();
                         $stmtCheckReg->close();
+                    }
+
+                    if (!$isHoliday && !$isRestDay) {
+                        $hasReg = true; // Normal weekday workday
                     }
 
                     $isWeekendOrHoliday = (!empty($holidayName) || $isRestDay);

@@ -868,21 +868,24 @@ function hasApprovedShiftForDate($conn, $userId, $date)
         }
     }
 
-    if (!empty($holidayName)) {
+    $isHoliday = !empty($holidayName);
+    $isRestDay = isRestDayForUser($conn, $userId, $date);
+
+    // If it's a holiday, we check holiday_shift_registrations
+    if ($isHoliday) {
         $stmt = $conn->prepare("SELECT 1 FROM holiday_shift_registrations WHERE user_id = ? AND shift_date = ? AND approved = 1 LIMIT 1");
         if ($stmt) {
             $stmt->bind_param("is", $userId, $date);
             $stmt->execute();
             $res = $stmt->get_result()->fetch_assoc();
             $stmt->close();
-            return ($res !== null);
+            if ($res !== null) {
+                return true;
+            }
         }
-        return false;
     }
 
-    // 2. Check if date is a rest day (weekend)
-    $isRestDay = isRestDayForUser($conn, $userId, $date);
-
+    // If it's a rest day (weekend), we check weekend_shift_registrations
     if ($isRestDay) {
         $stmt = $conn->prepare("SELECT 1 FROM weekend_shift_registrations WHERE user_id = ? AND shift_date = ? AND approved = 1 LIMIT 1");
         if ($stmt) {
@@ -890,19 +893,22 @@ function hasApprovedShiftForDate($conn, $userId, $date)
             $stmt->execute();
             $res = $stmt->get_result()->fetch_assoc();
             $stmt->close();
-            return ($res !== null);
+            if ($res !== null) {
+                return true;
+            }
         }
-        return false;
     }
 
-    // 3. Otherwise, check night shift registration
-    $stmt = $conn->prepare("SELECT 1 FROM night_shift_registrations WHERE user_id = ? AND shift_date = ? AND approved = 1 LIMIT 1");
-    if ($stmt) {
-        $stmt->bind_param("is", $userId, $date);
-        $stmt->execute();
-        $res = $stmt->get_result()->fetch_assoc();
-        $stmt->close();
-        return ($res !== null);
+    // If it's not a holiday and not a rest day, we check night_shift_registrations
+    if (!$isHoliday && !$isRestDay) {
+        $stmt = $conn->prepare("SELECT 1 FROM night_shift_registrations WHERE user_id = ? AND shift_date = ? AND approved = 1 LIMIT 1");
+        if ($stmt) {
+            $stmt->bind_param("is", $userId, $date);
+            $stmt->execute();
+            $res = $stmt->get_result()->fetch_assoc();
+            $stmt->close();
+            return ($res !== null);
+        }
     }
 
     return false;
