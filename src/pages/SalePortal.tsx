@@ -6250,12 +6250,14 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
 
         <div className="welcome-banner">
           {/* Left section: Welcome Info */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? '0.75rem' : '1.5rem', flex: isMobile ? '1 1 100%' : '1 1 340px', minWidth: 0 }}>
+          
+          {/* Left section: Welcome Info */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? '1rem' : '1.5rem', flex: isMobile ? '1 1 100%' : '1 1 340px', minWidth: 0 }}>
             <div style={{ position: 'relative', flexShrink: 0 }}>
               <Avatar 
                 name={displayUser?.name || 'User'} 
                 src={displayUser?.avatar} 
-                size={isMobile ? 42 : 60} 
+                size={isMobile ? 64 : 60} 
                 style={{ border: '2.5px solid rgba(189, 29, 45, 0.45)', boxShadow: '0 0 16px rgba(189, 29, 45, 0.3)' }}
               />
               <span className="animate-pulse" style={{
@@ -6270,34 +6272,33 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                 boxShadow: '0 0 10px #10b981'
               }} />
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', minWidth: 0 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
-                <h2 style={{ fontSize: '1.35rem', fontWeight: 800, color: '#ffffff', margin: 0, letterSpacing: '-0.3px', textShadow: '0 2px 4px rgba(0,0,0,0.3)' }}>
-                  {t('Xin chào')}, {displayUser?.name || 'Thành viên'}
-                </h2>
-                <span style={{ 
-                  fontSize: '0.68rem', 
-                  fontWeight: 900, 
-                  color: '#ffffff', 
-                  background: 'linear-gradient(135deg, #BD1D2D 0%, #a31422 100%)', 
-                  padding: '4px 12px', 
-                  borderRadius: '20px', 
-                  textTransform: 'uppercase',
-                  boxShadow: '0 2px 8px rgba(189, 29, 45, 0.5)',
-                  letterSpacing: '0.6px'
-                }}>
-                  {displayUser?.role === 'sale' ? t('Tư vấn viên') : displayUser?.role === 'sales' ? t('Tư vấn viên') : displayUser?.role}
-                </span>
-              </div>
-              
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', fontSize: '0.825rem', color: '#e4e4e7' }}>
-                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontWeight: 600 }}>
-                  <Clock size={13} style={{ color: '#ff4d5a' }} />
+            {isMobile ? (
+              /* Mobile Layout: Date on top, greeting + name below, role below, checkin below */
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', minWidth: 0, flex: 1 }}>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontWeight: 600, fontSize: '0.725rem', color: '#e4e4e7' }}>
+                  <Clock size={12} style={{ color: '#ff4d5a' }} />
                   {getCurrentDateVi()}
                 </span>
+                <h2 style={{ fontSize: '1.05rem', fontWeight: 800, color: '#ffffff', margin: 0, letterSpacing: '-0.3px', textShadow: '0 2px 4px rgba(0,0,0,0.3)', whiteSpace: 'normal', wordBreak: 'break-word' }}>
+                  {t('Xin chào')}, {displayUser?.name || 'Thành viên'}
+                </h2>
+                <div style={{ display: 'flex' }}>
+                  <span style={{ 
+                    fontSize: '0.625rem', 
+                    fontWeight: 900, 
+                    color: '#ffffff', 
+                    background: 'linear-gradient(135deg, #BD1D2D 0%, #a31422 100%)', 
+                    padding: '3px 10px', 
+                    borderRadius: '20px', 
+                    textTransform: 'uppercase',
+                    boxShadow: '0 2px 8px rgba(189, 29, 45, 0.5)',
+                    letterSpacing: '0.6px'
+                  }}>
+                    {displayUser?.role === 'sale' ? t('Tư vấn viên') : displayUser?.role === 'sales' ? t('Tư vấn viên') : displayUser?.role}
+                  </span>
+                </div>
                 {!isAdmin && (
-                  <>
-                    <span style={{ color: 'rgba(255, 255, 255, 0.25)' }}>•</span>
+                  <div style={{ marginTop: '2px', display: 'flex' }}>
                     {(() => {
                       if (!todayCheckIn) {
                         return (
@@ -6310,9 +6311,10 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                             border: '1px solid rgba(239, 68, 68, 0.35)',
                             padding: '3px 10px',
                             borderRadius: '12px',
-                            fontWeight: 800
+                            fontWeight: 800,
+                            fontSize: '0.725rem'
                           }}>
-                            <AlertCircle size={13} />
+                            <AlertCircle size={12} />
                             {t('Chưa chấm công hôm nay')}
                           </span>
                         );
@@ -6329,10 +6331,11 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                             border: '1px solid rgba(16, 185, 129, 0.35)',
                             padding: '3px 10px',
                             borderRadius: '12px',
-                            fontWeight: 800
+                            fontWeight: 800,
+                            fontSize: '0.725rem'
                           }}>
-                            <CheckCircle2 size={13} />
-                            {t(`Đã chấm công lúc ${timeStr}`)}
+                            <CheckCircle2 size={12} />
+                            {t('Đã chấm công lúc ') + timeStr}
                           </span>
                         );
                       }
@@ -6347,10 +6350,11 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                             border: '1px solid rgba(245, 158, 11, 0.35)',
                             padding: '3px 10px',
                             borderRadius: '12px',
-                            fontWeight: 800
+                            fontWeight: 800,
+                            fontSize: '0.725rem'
                           }}>
-                            <Clock size={13} />
-                            {t(`Chờ duyệt đi trễ lúc ${timeStr}`)}
+                            <Clock size={12} />
+                            {t('Chờ duyệt đi trễ lúc ') + timeStr}
                           </span>
                         );
                       }
@@ -6365,22 +6369,133 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                             border: '1px solid rgba(239, 68, 68, 0.35)',
                             padding: '3px 10px',
                             borderRadius: '12px',
-                            fontWeight: 800
+                            fontWeight: 800,
+                            fontSize: '0.725rem'
                           }}>
-                            <AlertCircle size={13} />
+                            <AlertCircle size={12} />
                             {t('Chấm công bị từ chối')}
                           </span>
                         );
                       }
                       return null;
                     })()}
-                  </>
+                  </div>
                 )}
               </div>
-            </div>
+            ) : (
+              /* Desktop Layout */
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', minWidth: 0 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+                  <h2 style={{ fontSize: '1.35rem', fontWeight: 800, color: '#ffffff', margin: 0, letterSpacing: '-0.3px', textShadow: '0 2px 4px rgba(0,0,0,0.3)' }}>
+                    {t('Xin chào')}, {displayUser?.name || 'Thành viên'}
+                  </h2>
+                  <span style={{ 
+                    fontSize: '0.68rem', 
+                    fontWeight: 900, 
+                    color: '#ffffff', 
+                    background: 'linear-gradient(135deg, #BD1D2D 0%, #a31422 100%)', 
+                    padding: '4px 12px', 
+                    borderRadius: '20px', 
+                    textTransform: 'uppercase',
+                    boxShadow: '0 2px 8px rgba(189, 29, 45, 0.5)',
+                    letterSpacing: '0.6px'
+                  }}>
+                    {displayUser?.role === 'sale' ? t('Tư vấn viên') : displayUser?.role === 'sales' ? t('Tư vấn viên') : displayUser?.role}
+                  </span>
+                </div>
+                
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', fontSize: '0.825rem', color: '#e4e4e7' }}>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontWeight: 600 }}>
+                    <Clock size={13} style={{ color: '#ff4d5a' }} />
+                    {getCurrentDateVi()}
+                  </span>
+                  {!isAdmin && (
+                    <>
+                      <span style={{ color: 'rgba(255, 255, 255, 0.25)' }}>•</span>
+                      {(() => {
+                        if (!todayCheckIn) {
+                          return (
+                            <span style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '4px',
+                              background: 'rgba(239, 68, 68, 0.22)',
+                              color: '#ffa3a3',
+                              border: '1px solid rgba(239, 68, 68, 0.35)',
+                              padding: '3px 10px',
+                              borderRadius: '12px',
+                              fontWeight: 800
+                            }}>
+                              <AlertCircle size={13} />
+                              {t('Chưa chấm công hôm nay')}
+                            </span>
+                          );
+                        }
+                        const timeStr = todayCheckIn.check_in_time ? todayCheckIn.check_in_time.substring(0, 5) : '';
+                        if (todayCheckIn.status === 'approved') {
+                          return (
+                            <span style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '4px',
+                              background: 'rgba(16, 185, 129, 0.22)',
+                              color: '#5ef08f',
+                              border: '1px solid rgba(16, 185, 129, 0.35)',
+                              padding: '3px 10px',
+                              borderRadius: '12px',
+                              fontWeight: 800
+                            }}>
+                              <CheckCircle2 size={13} />
+                              {t('Đã chấm công lúc ') + timeStr}
+                            </span>
+                          );
+                        }
+                        if (todayCheckIn.status === 'pending_approval') {
+                          return (
+                            <span style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '4px',
+                              background: 'rgba(245, 158, 11, 0.22)',
+                              color: '#ffe066',
+                              border: '1px solid rgba(245, 158, 11, 0.35)',
+                              padding: '3px 10px',
+                              borderRadius: '12px',
+                              fontWeight: 800
+                            }}>
+                              <Clock size={13} />
+                              {t('Chờ duyệt đi trễ lúc ') + timeStr}
+                            </span>
+                          );
+                        }
+                        if (todayCheckIn.status === 'rejected') {
+                          return (
+                            <span style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '4px',
+                              background: 'rgba(239, 68, 68, 0.22)',
+                              color: '#ffa3a3',
+                              border: '1px solid rgba(239, 68, 68, 0.35)',
+                              padding: '3px 10px',
+                              borderRadius: '12px',
+                              fontWeight: 800
+                            }}>
+                              <AlertCircle size={13} />
+                              {t('Chấm công bị từ chối')}
+                            </span>
+                          );
+                        }
+                        return null;
+                      })()}
+                    </>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
-
-          {/* Middle section: Issues/Tasks */}
+          
+{/* Middle section: Issues/Tasks */}
           <div style={{ flex: isMobile ? '1 1 100%' : '2 1 380px', display: 'flex', flexDirection: 'column', gap: isMobile ? '6px' : '10px', minWidth: isMobile ? '100%' : '280px' }}>
             <h4 style={{ margin: 0, fontSize: '0.72rem', fontWeight: 800, color: '#f4f4f5', textTransform: 'uppercase', letterSpacing: '1px', opacity: 0.9 }}>
               {t('Nhiệm vụ & Vấn đề cần giải quyết')}
