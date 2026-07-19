@@ -871,7 +871,7 @@ const SettingsInner = () => {
       ]);
       if (tplsRes.success) setWorkflowTemplates(tplsRes.data);
       if (stagesRes.success) setPipelineStages(stagesRes.data);
-      if (teamsRes) setTeams(teamsRes);
+      if (teamsRes && teamsRes.success) setTeams(teamsRes.data || []);
     } catch (err) {
       console.error("Error fetching workflow settings data:", err);
     }
