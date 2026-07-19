@@ -1176,6 +1176,9 @@ if (!function_exists('recallInactiveLeads')) {
                 $logMsg = "Tái phân bổ tự động do Sale {$oldConsultantName} không tiếp nhận.";
                 if ($isFallbackAdmin && $fallbackAdminData) {
                     $logMsg = "Thu hồi từ Sale {$oldConsultantName} và chuyển fallback về Admin: " . $fallbackAdminData['name'];
+                } else if (!$newConsultantId) {
+                    $newStatus = 'pending';
+                    $logMsg = "Thu hồi từ Sale {$oldConsultantName}. Không tìm thấy Sale hoạt động khác trong vòng, chuyển lead về trạng thái Chờ xử lý (Pending).";
                 }
                 logDistribution($conn, $leadId, $newConsultantId, $roundId, $newStatus, $logMsg, false);
 
