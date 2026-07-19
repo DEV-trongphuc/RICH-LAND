@@ -495,11 +495,11 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
             </button>
           </div>
           
-          <div style={{ display: 'flex', alignItems: 'flex-end', gap: '12px', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? '8px' : '12px', flexWrap: isMobile ? 'nowrap' : 'wrap', width: isMobile ? '100%' : 'auto' }}>
             {/* User Select */}
             {canSelectUser && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', minWidth: '180px' }}>
-                <label style={{ fontSize: '0.7rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>{t('Tư vấn viên')}</label>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', flex: isMobile ? '1 1 0%' : 'none', minWidth: isMobile ? '0' : '180px' }}>
+                <label style={{ fontSize: isMobile ? '0.625rem' : '0.7rem', fontWeight: 600, color: 'var(--color-text-muted)', marginBottom: isMobile ? '2px' : 0 }}>{t('Tư vấn viên')}</label>
                 <CustomSelect
                   options={[
                     { value: 'all', label: t('Tất cả nhân viên') },
@@ -513,8 +513,8 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
             )}
 
             {/* Status Select */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', minWidth: '180px' }}>
-              <label style={{ fontSize: '0.7rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>{t('Trạng thái duyệt')}</label>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', flex: isMobile ? '1 1 0%' : 'none', minWidth: isMobile ? '0' : '180px' }}>
+              <label style={{ fontSize: isMobile ? '0.625rem' : '0.7rem', fontWeight: 600, color: 'var(--color-text-muted)', marginBottom: isMobile ? '2px' : 0 }}>{t('Trạng thái duyệt')}</label>
               <CustomSelect
                 options={[
                   { value: 'all', label: t('Tất cả trạng thái') },
@@ -538,9 +538,16 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
                 setFilterStatus('all');
               }}
               className="btn outline"
-              style={{ height: '38px', borderRadius: 'var(--radius-md)' }}
+              style={{ 
+                height: isMobile ? '34px' : '38px', 
+                borderRadius: 'var(--radius-md)', 
+                fontSize: isMobile ? '0.7rem' : '0.8125rem', 
+                padding: isMobile ? '0 10px' : '0 16px',
+                alignSelf: 'flex-end',
+                flexShrink: 0
+              }}
             >
-              {t('Đặt lại bộ lọc')}
+              {isMobile ? t('Đặt lại') : t('Đặt lại bộ lọc')}
             </button>
           </div>
         </div>
@@ -1229,15 +1236,21 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
           boxShadow: '0 2px 8px rgba(0, 0, 0, 0.03)',
           transition: 'all 0.2s ease'
         }}>
+          <div className="decor-svg" style={{ color: 'var(--color-text-muted)' }}>
+            <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: '100%', height: '100%' }}>
+              <rect x="25" y="25" width="50" height="50" rx="5" stroke="currentColor" strokeWidth="2" />
+              <path d="M25 40 H 75 M 40 20 V 30 M 60 20 V 30" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+            </svg>
+          </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', fontWeight: 700, letterSpacing: '0.05em' }}>
+            <span className="stat-label" style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', fontWeight: 700, letterSpacing: '0.05em' }}>
               {t('TỔNG BẢN GHI')}
             </span>
-            <div style={{ width: '28px', height: '28px', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'var(--color-bg-light)', color: 'var(--color-text-muted)' }}>
+            <div className="stat-icon" style={{ width: '28px', height: '28px', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'var(--color-bg-light)', color: 'var(--color-text-muted)' }}>
               <Calendar size={14} />
             </div>
           </div>
-          <div style={{ fontSize: '1.625rem', fontWeight: 800, color: 'var(--color-text)', marginTop: '4px', lineHeight: 1.1 }}>
+          <div className="stat-value" style={{ fontSize: '1.625rem', fontWeight: 800, color: 'var(--color-text)', marginTop: '4px', lineHeight: 1.1 }}>
             {totalCount}
           </div>
           <div style={{
@@ -1268,15 +1281,20 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
           boxShadow: '0 2px 8px rgba(0, 0, 0, 0.03)',
           transition: 'all 0.2s ease'
         }}>
+          <div className="decor-svg" style={{ color: '#10b981' }}>
+            <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: '100%', height: '100%' }}>
+              <path d="M30 50 L 45 65 L 75 35" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ fontSize: '0.7rem', color: '#10b981', fontWeight: 700, letterSpacing: '0.05em' }}>
+            <span className="stat-label" style={{ fontSize: '0.7rem', color: '#10b981', fontWeight: 700, letterSpacing: '0.05em' }}>
               {t('ĐÃ DUYỆT / HỢP LỆ')}
             </span>
-            <div style={{ width: '28px', height: '28px', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(16, 185, 129, 0.1)', color: '#10b981' }}>
+            <div className="stat-icon" style={{ width: '28px', height: '28px', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(16, 185, 129, 0.1)', color: '#10b981' }}>
               <CheckCircle size={14} />
             </div>
           </div>
-          <div style={{ fontSize: '1.625rem', fontWeight: 800, color: '#10b981', marginTop: '4px', lineHeight: 1.1 }}>
+          <div className="stat-value" style={{ fontSize: '1.625rem', fontWeight: 800, color: '#10b981', marginTop: '4px', lineHeight: 1.1 }}>
             {approvedCount}
           </div>
           <div style={{
@@ -1307,15 +1325,21 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
           boxShadow: '0 2px 8px rgba(0, 0, 0, 0.03)',
           transition: 'all 0.2s ease'
         }}>
+          <div className="decor-svg" style={{ color: '#f59e0b' }}>
+            <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: '100%', height: '100%' }}>
+              <circle cx="50" cy="50" r="30" stroke="currentColor" strokeWidth="2" />
+              <path d="M50 30 V 50 H 65" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+            </svg>
+          </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ fontSize: '0.7rem', color: '#f59e0b', fontWeight: 700, letterSpacing: '0.05em' }}>
+            <span className="stat-label" style={{ fontSize: '0.7rem', color: '#f59e0b', fontWeight: 700, letterSpacing: '0.05em' }}>
               {t('ĐANG CHỜ DUYỆT')}
             </span>
-            <div style={{ width: '28px', height: '28px', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(245, 158, 11, 0.1)', color: '#f59e0b' }}>
+            <div className="stat-icon" style={{ width: '28px', height: '28px', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(245, 158, 11, 0.1)', color: '#f59e0b' }}>
               <Clock size={14} />
             </div>
           </div>
-          <div style={{ fontSize: '1.625rem', fontWeight: 800, color: '#f59e0b', marginTop: '4px', lineHeight: 1.1 }}>
+          <div className="stat-value" style={{ fontSize: '1.625rem', fontWeight: 800, color: '#f59e0b', marginTop: '4px', lineHeight: 1.1 }}>
             {pendingCount}
           </div>
           <div style={{
@@ -1346,15 +1370,21 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
           boxShadow: '0 2px 8px rgba(0, 0, 0, 0.03)',
           transition: 'all 0.2s ease'
         }}>
+          <div className="decor-svg" style={{ color: '#ef4444' }}>
+            <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: '100%', height: '100%' }}>
+              <circle cx="50" cy="50" r="30" stroke="currentColor" strokeWidth="2" />
+              <path d="M35 35 L 65 65 M 65 35 L 35 65" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
+            </svg>
+          </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ fontSize: '0.7rem', color: '#ef4444', fontWeight: 700, letterSpacing: '0.05em' }}>
+            <span className="stat-label" style={{ fontSize: '0.7rem', color: '#ef4444', fontWeight: 700, letterSpacing: '0.05em' }}>
               {t('BỊ TỪ CHỐI')}
             </span>
-            <div style={{ width: '28px', height: '28px', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(239, 68, 68, 0.1)', color: '#ef4444' }}>
+            <div className="stat-icon" style={{ width: '28px', height: '28px', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(239, 68, 68, 0.1)', color: '#ef4444' }}>
               <AlertCircle size={14} />
             </div>
           </div>
-          <div style={{ fontSize: '1.625rem', fontWeight: 800, color: '#ef4444', marginTop: '4px', lineHeight: 1.1 }}>
+          <div className="stat-value" style={{ fontSize: '1.625rem', fontWeight: 800, color: '#ef4444', marginTop: '4px', lineHeight: 1.1 }}>
             {rejectedCount}
           </div>
           <div style={{
@@ -1399,8 +1429,8 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
 
             {/* User Select */}
             {canSelectUser && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', minWidth: '200px' }}>
-                <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>{t('Tư vấn viên')}</label>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', flex: isMobile ? '1 1 0%' : 'none', minWidth: isMobile ? '0' : '200px' }}>
+                <label style={{ fontSize: isMobile ? '0.625rem' : '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)', marginBottom: isMobile ? '2px' : 0 }}>{t('Tư vấn viên')}</label>
                 <CustomSelect
                   options={[
                     { value: 'all', label: t('Tất cả nhân viên') },
@@ -1415,7 +1445,7 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
 
             {/* Status Select */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', minWidth: '180px' }}>
-              <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>{t('Trạng thái duyệt')}</label>
+              <label style={{ fontSize: isMobile ? '0.625rem' : '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)', marginBottom: isMobile ? '2px' : 0 }}>{t('Trạng thái duyệt')}</label>
               <CustomSelect
                 options={[
                   { value: 'all', label: t('Tất cả trạng thái') },
@@ -1439,9 +1469,16 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
                 setFilterStatus('all');
               }}
               className="btn outline"
-              style={{ marginTop: '20px', height: '38px', borderRadius: 'var(--radius-md)' }}
+              style={{ 
+                height: isMobile ? '34px' : '38px', 
+                borderRadius: 'var(--radius-md)', 
+                fontSize: isMobile ? '0.7rem' : '0.8125rem', 
+                padding: isMobile ? '0 10px' : '0 16px',
+                alignSelf: 'flex-end',
+                flexShrink: 0
+              }}
             >
-              {t('Đặt lại bộ lọc')}
+              {isMobile ? t('Đặt lại') : t('Đặt lại bộ lọc')}
             </button>
           </div>
         </div>

@@ -1976,8 +1976,8 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
           <span className="mobile-bottom-nav-item-label">{t('Kho Data')}</span>
         </button>
         <button 
-          className={`mobile-bottom-nav-item ${location.pathname === '/accounts' ? 'active' : ''}`}
-          onClick={() => navigate('/accounts')}
+          className={`mobile-bottom-nav-item ${location.pathname === '/account' ? 'active' : ''}`}
+          onClick={() => navigate('/account')}
         >
           <UserCheck size={20} />
           <span className="mobile-bottom-nav-item-label">{t('Tài khoản')}</span>

@@ -4661,3 +4661,35 @@ div[role="status"] {
   margin-left: 8px;
   flex-shrink: 0;
 }
+/* Premium SVG Card Decorations */
+.stat-card {
+  position: relative !important;
+  overflow: hidden !important;
+}
+.decor-svg {
+  position: absolute !important;
+  bottom: -15px !important;
+  right: -15px !important;
+  width: 100px !important;
+  height: 100px !important;
+  opacity: 0.07 !important;
+  pointer-events: none !important;
+  transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.4s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  z-index: 1 !important;
+}
+.stat-card:hover .decor-svg {
+  transform: scale(1.2) rotate(6deg) !important;
+  opacity: 0.14 !important;
+}
+.stat-icon {
+  transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  position: relative !important;
+  z-index: 2 !important;
+}
+.stat-card:hover .stat-icon {
+  transform: scale(1.1) rotate(-8deg) !important;
+}
+.stat-value, .stat-label, .stat-change, .stat-desc {
+  position: relative !important;
+  z-index: 2 !important;
+}

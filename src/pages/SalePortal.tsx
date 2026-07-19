@@ -4273,6 +4273,13 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
               transition: 'all 0.15s ease'
             }}
           >
+            <div className="decor-svg" style={{ color: 'var(--color-danger)' }}>
+              <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: '100%', height: '100%' }}>
+                <circle cx="50" cy="50" r="30" stroke="currentColor" strokeWidth="2" />
+                <path d="M50 30 V 50 H 65" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                <path d="M25 25 L 15 35 M 75 25 L 85 35" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
+              </svg>
+            </div>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
               <span className="stat-label" style={{ fontSize: '0.6875rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('Quá hạn')}</span>
               <div className="stat-icon" style={{ color: 'var(--color-danger)', opacity: 0.8 }}><Clock size={16} /></div>
@@ -4303,6 +4310,13 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
               transition: 'all 0.15s ease'
             }}
           >
+            <div className="decor-svg" style={{ color: 'var(--color-warning)' }}>
+              <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: '100%', height: '100%' }}>
+                <rect x="25" y="25" width="50" height="50" rx="5" stroke="currentColor" strokeWidth="2" />
+                <path d="M25 40 H 75 M 40 20 V 30 M 60 20 V 30" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                <circle cx="50" cy="55" r="4" fill="currentColor" />
+              </svg>
+            </div>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
               <span className="stat-label" style={{ fontSize: '0.6875rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('Đến hạn')}</span>
               <div className="stat-icon" style={{ color: 'var(--color-warning)', opacity: 0.8 }}><Calendar size={16} /></div>
@@ -4333,6 +4347,12 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
               transition: 'all 0.15s ease'
             }}
           >
+            <div className="decor-svg" style={{ color: 'var(--color-info)' }}>
+              <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: '100%', height: '100%' }}>
+                <path d="M30 70 L 70 30 M 50 30 H 70 V 50" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+                <circle cx="30" cy="70" r="6" fill="currentColor" />
+              </svg>
+            </div>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
               <span className="stat-label" style={{ fontSize: '0.6875rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('Sắp đến hạn')}</span>
               <div className="stat-icon" style={{ color: 'var(--color-info)', opacity: 0.8 }}><ArrowUpRight size={16} /></div>
@@ -4363,6 +4383,12 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
               transition: 'all 0.15s ease'
             }}
           >
+            <div className="decor-svg" style={{ color: '#8b5cf6' }}>
+              <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: '100%', height: '100%' }}>
+                <path d="M50 20 L 75 30 V 55 C 75 70 50 80 50 80 C 50 80 25 70 25 55 V 30 Z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
+                <path d="M40 50 L 47 57 L 62 42" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </div>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
               <span className="stat-label" style={{ fontSize: '0.6875rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('Chờ tôi duyệt')}</span>
               <div className="stat-icon" style={{ color: '#8b5cf6', opacity: 0.8 }}><UserCheck size={16} /></div>
@@ -6562,8 +6588,8 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
               <h1 className="page-title">{t("Tổng quan Phân bổ Data")}</h1>
               <p className="page-subtitle" style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', margin: '4px 0 0' }}>{t("Phân tích hiệu suất giao data theo thời gian thực — Hệ thống đang hoạt động trơn tru.")}</p>
             </div>
-            <div className="mobile-w-full" style={{ display: 'flex', gap: '8px', alignItems: 'center', width: 'auto', flexWrap: 'wrap' }}>
-              <div className="mobile-flex-1" style={{ position: 'relative', zIndex: 100, width: 200 }}>
+            <div className="mobile-w-full" style={{ display: 'flex', gap: '8px', alignItems: 'center', width: isMobile ? '100%' : 'auto', flexWrap: 'nowrap' }}>
+              <div style={{ position: 'relative', zIndex: 100, flex: 1, minWidth: isMobile ? '0' : '200px' }}>
                 <CustomSelect
                   options={[
                     { value: 'all', label: t('Tất cả thời gian'), icon: <Clock size={16} /> },
@@ -6595,19 +6621,11 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                 className="btn outline"
                 onClick={() => { }}
                 title={t("Kiểm tra kết nối hệ thống")}
-                style={{ width: 38, height: 38, padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, border: '1px solid var(--color-border)', borderRadius: '8px', background: 'var(--color-surface)', color: 'var(--color-text-light)', cursor: 'default' }}
+                style={{ width: isMobile ? 34 : 38, height: isMobile ? 34 : 38, padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, border: '1px solid var(--color-border)', borderRadius: '8px', background: 'var(--color-surface)', color: 'var(--color-text-light)', cursor: 'default' }}
               >
-                <Server size={16} />
+                <Server size={isMobile ? 14 : 16} />
               </button>
-              <button
-                className="btn outline"
-                onClick={() => loadPortalData()}
-                disabled={loading}
-                title={t("Làm mới dữ liệu")}
-                style={{ width: 38, height: 38, padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, border: '1px solid var(--color-border)', borderRadius: '8px', background: 'var(--color-surface)', color: 'var(--color-text-light)', cursor: 'pointer' }}
-              >
-                <RefreshCw size={16} className={loading ? 'spin' : ''} />
-              </button>
+
             </div>
           </div>
 
