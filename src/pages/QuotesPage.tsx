@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
   FileText, Plus, Search, Download, CheckCircle2, Clock, AlertCircle,
-  Eye, Trash2, Printer, X, Loader2, ArrowUpRight, TrendingUp, DollarSign,
+  Eye, Trash2, Printer, X, Loader2, ArrowUpRight, ArrowDownRight, TrendingUp, DollarSign,
   Pencil, Copy, Send, FileCheck, XCircle, Calendar, RefreshCw, User,
   ChevronDown, Filter
 } from 'lucide-react';
@@ -198,26 +198,120 @@ export const QuotesPage: React.FC = () => {
         </div>
       </div>
 
-      {/* KPI Section */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem', marginBottom: '1.5rem' }}>
+      {/* KPI Section — styled premium like the data distribution dashboard */}
+      <div className="responsive-grid-4" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem', marginBottom: '1.5rem' }}>
         {[
-          { label: 'Tổng giá trị đề xuất', value: FMT(totalVal), icon: TrendingUp, color: '#BD1D2D', sub: `${total} bản báo giá` },
-          { label: 'Giá trị đã chốt', value: FMT(acceptedVal), icon: FileCheck, color: '#10b981', sub: 'Đã ký hợp đồng' },
-          { label: 'Đang chờ phản hồi', value: String(sentCount), icon: Clock, color: '#f59e0b', sub: 'Báo giá chờ phản hồi' },
-          { label: 'Tỉ lệ chốt (Win Rate)', value: `${convRate.toFixed(1)}%`, icon: DollarSign, color: '#BD1D2D', sub: 'Hiệu suất bán hàng' },
-        ].map((k, i) => (
-          <motion.div key={i} className="stat-kpi" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }}>
-            <div className="stat-kpi__header">
-              <div className="stat-kpi__label">{k.label}</div>
-              <div className="stat-kpi__icon" style={{ color: k.color }}>
-                <k.icon size={20} />
+          {
+            label: 'Tổng giá trị đề xuất',
+            value: FMT(totalVal),
+            icon: TrendingUp,
+            color: '#BD1D2D',
+            bg: 'rgba(189, 29, 45, 0.08)',
+            sub: `${total} bản báo giá`,
+            decor: (
+              <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: '100%', height: '100%' }}>
+                <path d="M10 20 L40 50 L60 40 L90 80" stroke="currentColor" strokeWidth="2" strokeDasharray="3 3" />
+                <path d="M70 80 L90 80 L90 60" stroke="currentColor" strokeWidth="2" />
+                <circle cx="10" cy="20" r="4" fill="currentColor" />
+                <circle cx="40" cy="50" r="4" fill="currentColor" />
+                <circle cx="60" cy="40" r="4" fill="currentColor" />
+                <circle cx="90" cy="80" r="6" fill="currentColor" />
+              </svg>
+            )
+          },
+          {
+            label: 'Giá trị đã chốt',
+            value: FMT(acceptedVal),
+            icon: FileCheck,
+            color: '#10b981',
+            bg: 'rgba(16, 185, 129, 0.08)',
+            sub: 'Đã ký hợp đồng',
+            decor: (
+              <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: '100%', height: '100%' }}>
+                <circle cx="50" cy="50" r="40" stroke="currentColor" strokeWidth="2" strokeDasharray="4 4" />
+                <path d="M35 50 L45 60 L65 40" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            )
+          },
+          {
+            label: 'Đang chờ phản hồi',
+            value: String(sentCount),
+            icon: Clock,
+            color: '#f59e0b',
+            bg: 'rgba(245, 158, 11, 0.08)',
+            sub: 'Báo giá chờ phản hồi',
+            decor: (
+              <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: '100%', height: '100%' }}>
+                <circle cx="50" cy="50" r="40" stroke="currentColor" strokeWidth="2" strokeDasharray="4 4" />
+                <path d="M50 20 L50 50 L70 50" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            )
+          },
+          {
+            label: 'Tỉ lệ chốt (Win Rate)',
+            value: `${convRate.toFixed(1)}%`,
+            icon: DollarSign,
+            color: '#BD1D2D',
+            bg: 'rgba(189, 29, 45, 0.08)',
+            sub: 'Hiệu suất bán hàng',
+            decor: (
+              <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: '100%', height: '100%' }}>
+                <circle cx="50" cy="50" r="40" stroke="currentColor" strokeWidth="2" strokeDasharray="4 4" />
+                <text x="35" y="68" fill="currentColor" fontSize="50" fontWeight="bold">%</text>
+              </svg>
+            )
+          },
+        ].map((k, i) => {
+          const Icon = k.icon;
+          return (
+            <motion.div 
+              key={i} 
+              className="stat-card hover-lift" 
+              initial={{ opacity: 0, y: 16 }} 
+              animate={{ opacity: 1, y: 0 }} 
+              transition={{ delay: i * 0.06 }} 
+              style={{ 
+                display: 'flex', 
+                flexDirection: 'column', 
+                minHeight: '135px',
+                padding: '1.25rem',
+                position: 'relative',
+                overflow: 'hidden'
+              }}
+            >
+              {/* Decorative Background SVG */}
+              <div className="decor-svg" style={{ color: k.color }}>
+                {k.decor}
               </div>
-            </div>
-            {loading ? <div className="skeleton" style={{ height: 36, width: '85%', borderRadius: 6, marginBottom: 12 }} />
-              : <div className="stat-kpi__value">{k.value}</div>}
-            <div className="stat-kpi__sub">{k.sub}</div>
-          </motion.div>
-        ))}
+
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px', position: 'relative', zIndex: 2 }}>
+                <span className="stat-label" style={{ textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 800, fontSize: '0.7rem', color: 'var(--color-text-light)' }}>{k.label}</span>
+                <div className="stat-icon" style={{
+                  background: k.bg,
+                  width: '36px',
+                  height: '36px',
+                  borderRadius: '50%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: k.color,
+                  flexShrink: 0
+                }}>
+                  <Icon size={18} />
+                </div>
+              </div>
+
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', position: 'relative', zIndex: 2 }}>
+                {loading ? (
+                  <div className="skeleton" style={{ height: 28, width: '80%', borderRadius: 6, marginBottom: 8 }} />
+                ) : (
+                  <div className="stat-value" style={{ fontWeight: 800, color: 'var(--color-text)', fontSize: '1.5rem', lineHeight: 1.2 }}>{k.value}</div>
+                )}
+                <div className="stat-desc" style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 'auto', fontWeight: 500 }} title={k.sub}>{k.sub}</div>
+              </div>
+            </motion.div>
+          );
+        })}
       </div>
 
       {/* Filters */}

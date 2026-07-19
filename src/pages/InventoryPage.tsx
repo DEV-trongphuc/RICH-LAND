@@ -510,26 +510,117 @@ export default function InventoryPage() {
 
       {activeTab !== 'purchase_orders' && (
         <>
-          {/* Stats Cards */}
+          {/* Stats Cards — styled premium like the data distribution dashboard */}
           <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)', gap: isMobile ? '0.5rem' : '1rem', marginBottom: '1.5rem' }}>
             {[
-              { label: 'Tổng số căn / lô', value: String(batches.length), icon: Layers, color: 'var(--color-primary)', sub: 'căn hộ / lô đất đang quản lý' },
-              { label: 'Căn còn trống (Available)', value: String(batches.filter(b => b.current_qty > 5).length), icon: CheckCircle, color: '#10b981', sub: 'sẵn sàng giao dịch' },
-              { label: 'Đã đặt chỗ / cọc (Booking)', value: String(batches.filter(b => b.current_qty > 0 && b.current_qty <= 5).length), icon: Clock, color: 'var(--color-warning)', sub: 'đang giữ chỗ/cọc tạm' },
-              { label: 'Đã bán (Sold)', value: String(batches.filter(b => b.current_qty <= 0).length), icon: DollarSign, color: 'var(--color-danger)', sub: 'đã ký hợp đồng mua bán' },
-            ].map((k, i) => (
-              <motion.div key={i} className="stat-kpi" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }}>
-                <div className="stat-kpi__header">
-                  <div className="stat-kpi__label">{k.label}</div>
-                  <div className="stat-kpi__icon" style={{ color: k.color }}>
-                    <k.icon size={20} />
+              { 
+                label: 'Tổng số căn / lô', 
+                value: String(batches.length), 
+                icon: Layers, 
+                color: 'var(--color-primary)', 
+                bg: 'rgba(189, 29, 45, 0.08)',
+                sub: 'căn hộ / lô đất đang quản lý',
+                decor: (
+                  <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: '100%', height: '100%' }}>
+                    <path d="M50 20 L80 35 L50 50 L20 35 Z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
+                    <path d="M20 50 L50 65 L80 50" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                    <path d="M20 65 L50 80 L80 65" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                )
+              },
+              { 
+                label: 'Căn còn trống (Available)', 
+                value: String(batches.filter(b => b.current_qty > 5).length), 
+                icon: CheckCircle, 
+                color: '#10b981', 
+                bg: 'rgba(16, 185, 129, 0.08)',
+                sub: 'sẵn sàng giao dịch',
+                decor: (
+                  <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: '100%', height: '100%' }}>
+                    <circle cx="50" cy="50" r="40" stroke="currentColor" strokeWidth="2" strokeDasharray="4 4" />
+                    <path d="M35 50 L45 60 L65 40" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                )
+              },
+              { 
+                label: 'Đã đặt chỗ / cọc (Booking)', 
+                value: String(batches.filter(b => b.current_qty > 0 && b.current_qty <= 5).length), 
+                icon: Clock, 
+                color: '#f59e0b', 
+                bg: 'rgba(245, 158, 11, 0.08)',
+                sub: 'đang giữ chỗ/cọc tạm',
+                decor: (
+                  <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: '100%', height: '100%' }}>
+                    <circle cx="50" cy="50" r="40" stroke="currentColor" strokeWidth="2" strokeDasharray="4 4" />
+                    <path d="M50 20 L50 50 L70 50" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                )
+              },
+              { 
+                label: 'Đã bán (Sold)', 
+                value: String(batches.filter(b => b.current_qty <= 0).length), 
+                icon: DollarSign, 
+                color: '#ef4444', 
+                bg: 'rgba(239, 68, 68, 0.08)',
+                sub: 'đã ký hợp đồng mua bán',
+                decor: (
+                  <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: '100%', height: '100%' }}>
+                    <circle cx="50" cy="50" r="40" stroke="currentColor" strokeWidth="2" strokeDasharray="4 4" />
+                    <text x="35" y="68" fill="currentColor" fontSize="50" fontWeight="bold">$</text>
+                  </svg>
+                )
+              },
+            ].map((k, i) => {
+              const Icon = k.icon;
+              return (
+                <motion.div 
+                  key={i} 
+                  className="stat-card hover-lift" 
+                  initial={{ opacity: 0, y: 16 }} 
+                  animate={{ opacity: 1, y: 0 }} 
+                  transition={{ delay: i * 0.06 }}
+                  style={{ 
+                    display: 'flex', 
+                    flexDirection: 'column', 
+                    minHeight: '135px',
+                    padding: '1.25rem',
+                    position: 'relative',
+                    overflow: 'hidden'
+                  }}
+                >
+                  {/* Decorative Background SVG */}
+                  <div className="decor-svg" style={{ color: k.color }}>
+                    {k.decor}
                   </div>
-                </div>
-                {loading ? <div className="skeleton" style={{ height: 36, width: '85%', borderRadius: 6, marginBottom: 12 }} />
-                  : <div className="stat-kpi__value">{k.value}</div>}
-                <div className="stat-kpi__sub">{k.sub}</div>
-              </motion.div>
-            ))}
+
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px', position: 'relative', zIndex: 2 }}>
+                    <span className="stat-label" style={{ textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 800, fontSize: '0.7rem', color: 'var(--color-text-light)' }}>{k.label}</span>
+                    <div className="stat-icon" style={{
+                      background: k.bg,
+                      width: '36px',
+                      height: '36px',
+                      borderRadius: '50%',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: k.color,
+                      flexShrink: 0
+                    }}>
+                      <Icon size={18} />
+                    </div>
+                  </div>
+
+                  <div style={{ flex: 1, display: 'flex', flexDirection: 'column', position: 'relative', zIndex: 2 }}>
+                    {loading ? (
+                      <div className="skeleton" style={{ height: 28, width: '80%', borderRadius: 6, marginBottom: 8 }} />
+                    ) : (
+                      <div className="stat-value" style={{ fontWeight: 800, color: 'var(--color-text)', fontSize: '1.5rem', lineHeight: 1.2 }}>{k.value}</div>
+                    )}
+                    <div className="stat-desc" style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 'auto', fontWeight: 500 }} title={k.sub}>{k.sub}</div>
+                  </div>
+                </motion.div>
+              );
+            })}
           </div>
 
       {/* Filters */}

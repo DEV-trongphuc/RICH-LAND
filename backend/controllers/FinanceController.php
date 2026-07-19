@@ -667,10 +667,12 @@ class FinanceController
 
         $stmt = $this->db->prepare("
             SELECT e.*, u.full_name as creator_name, u.avatar_url as creator_avatar, 
-                   u2.full_name as approver_name, u2.avatar_url as approver_avatar
+                   u2.full_name as approver_name, u2.avatar_url as approver_avatar,
+                   u3.full_name as refunder_name, u3.avatar_url as refunder_avatar
             FROM expenses e 
             LEFT JOIN users u ON e.created_by = u.id
             LEFT JOIN users u2 ON e.approver_id = u2.id
+            LEFT JOIN users u3 ON e.refunder_id = u3.id
             WHERE $w ORDER BY e.date DESC LIMIT $limit OFFSET $offset
         ");
         $stmt->execute($params);
@@ -770,7 +772,7 @@ class FinanceController
 
     public function showExpense(array $auth, int $id): void
     {
-        $sql = "SELECT e.*, u.full_name as creator_name, u.avatar_url as creator_avatar, u2.full_name as approver_name, u2.avatar_url as approver_avatar FROM expenses e LEFT JOIN users u ON e.created_by=u.id LEFT JOIN users u2 ON e.approver_id=u2.id WHERE e.id=? AND e.tenant_id=? AND e.deleted_at IS NULL";
+        $sql = "SELECT e.*, u.full_name as creator_name, u.avatar_url as creator_avatar, u2.full_name as approver_name, u2.avatar_url as approver_avatar, u3.full_name as refunder_name, u3.avatar_url as refunder_avatar FROM expenses e LEFT JOIN users u ON e.created_by=u.id LEFT JOIN users u2 ON e.approver_id=u2.id LEFT JOIN users u3 ON e.refunder_id=u3.id WHERE e.id=? AND e.tenant_id=? AND e.deleted_at IS NULL";
         $p = [$id, $auth['tenant_id']];
         if ($auth['role'] === 'sales' || $auth['role'] === 'sale') {
             $sql .= " AND e.created_by=?";
@@ -933,12 +935,28 @@ class FinanceController
             'is_vat_inclusive',
             'image_url'
         ];
+        $isAdminOrDirector = in_array($auth['role'], ['admin', 'superadmin', 'super_admin', 'director'], true);
+        if ($isAdminOrDirector) {
+            $fields[] = 'refund_image_url';
+        }
         $sets = [];
         $params = [];
         foreach ($fields as $f) {
             if (array_key_exists($f, $data)) {
                 $sets[] = "$f=?";
                 $params[] = $data[$f];
+            }
+        }
+        if ($isAdminOrDirector && array_key_exists('is_refunded', $data)) {
+            $sets[] = "is_refunded=?";
+            $params[] = $data['is_refunded'] ? 1 : 0;
+            if ($data['is_refunded']) {
+                $sets[] = "refunded_at=NOW()";
+                $sets[] = "refunder_id=?";
+                $params[] = $auth['user_id'];
+            } else {
+                $sets[] = "refunded_at=NULL";
+                $sets[] = "refunder_id=NULL";
             }
         }
 
@@ -1077,10 +1095,15 @@ class FinanceController
             }
         }
         $stmt = $this->db->prepare("
-            SELECT e.*, ee.amount as split_amount, u.full_name as creator_name
+            SELECT e.*, ee.amount as split_amount, 
+                   u.full_name as creator_name, u.avatar_url as creator_avatar,
+                   u2.full_name as approver_name, u2.avatar_url as approver_avatar,
+                   u3.full_name as refunder_name, u3.avatar_url as refunder_avatar
             FROM expenses e
             JOIN expense_entities ee ON e.id = ee.expense_id
             LEFT JOIN users u ON e.created_by = u.id
+            LEFT JOIN users u2 ON e.approver_id = u2.id
+            LEFT JOIN users u3 ON e.refunder_id = u3.id
             WHERE $where
             ORDER BY e.date DESC
         ");
@@ -1141,11 +1164,11 @@ class FinanceController
         $data = getBody();
         $status = $data['status'] ?? 'approved';
         if ($status === 'approved') {
-            $this->db->prepare("UPDATE expenses SET status=?, approver_id=?, approved_at=NOW() WHERE id=? AND tenant_id=?")
+            $this->db->prepare("UPDATE expenses SET status=?, approver_id=?, approved_at=NOW(), reject_reason=NULL WHERE id=? AND tenant_id=?")
                 ->execute([$status, $auth['user_id'], $id, $auth['tenant_id']]);
         } else {
-            $this->db->prepare("UPDATE expenses SET status=?, approver_id=NULL, approved_at=NULL WHERE id=? AND tenant_id=?")
-                ->execute([$status, $id, $auth['tenant_id']]);
+            $this->db->prepare("UPDATE expenses SET status=?, approver_id=?, approved_at=NOW(), reject_reason=? WHERE id=? AND tenant_id=?")
+                ->execute([$status, $auth['user_id'], $data['reject_reason'] ?? null, $id, $auth['tenant_id']]);
         }
 
         // Email creator of the expense

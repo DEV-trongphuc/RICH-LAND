@@ -4,7 +4,7 @@ import {
   DollarSign, Plus, Search, Download, Truck, Coffee, Home,
   Briefcase, CreditCard, Tag, Eye, Pencil, Trash2, Loader2,
   CheckCircle2, Clock, TrendingDown, X, ArrowUpRight, ArrowDownRight, ChevronDown, Building2, Wallet, User,
-  Upload, Paperclip
+  Upload, Paperclip, XCircle
 } from 'lucide-react';
 import { compressToWebP } from '../utils/imageCompress';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -19,6 +19,7 @@ import { CustomSelect } from '../components/ui/CustomSelect';
 import { CustomCheckbox } from '../components/ui/CustomCheckbox';
 import api from '../api/axios';
 import { Tooltip } from '../components/ui/Tooltip';
+import { useAuth } from '../contexts/AuthContext';
 
 const PAGE_SIZE = 10;
 
@@ -76,6 +77,9 @@ export const ExpensesPage: React.FC = () => {
   const [uploadingImg, setUploadingImg] = useState(false);
   // Unified delete confirmation under showConfirm store state
   const [viewItem, setViewItem] = useState<any>(null);
+  const [rejectingItem, setRejectingItem] = useState<any>(null);
+  const [rejectReason, setRejectReason] = useState('');
+  const [submittingReject, setSubmittingReject] = useState(false);
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [catOpen, setCatOpen] = useState(false);
   const [users, setUsers] = useState<any[]>([]); // for approver dropdown
@@ -84,6 +88,19 @@ export const ExpensesPage: React.FC = () => {
   const [vendorSearch, setVendorSearch] = useState('');
   const [showVendorDropdown, setShowVendorDropdown] = useState(false);
   const vendorRef = React.useRef<HTMLDivElement>(null);
+
+  const { user } = useAuth();
+  const [isRefunding, setIsRefunding] = useState(false);
+  const [refundImgUrl, setRefundImgUrl] = useState('');
+  const [uploadingRefund, setUploadingRefund] = useState(false);
+  const [submittingRefund, setSubmittingRefund] = useState(false);
+
+  useEffect(() => {
+    setIsRefunding(false);
+    setRefundImgUrl('');
+    setUploadingRefund(false);
+    setSubmittingRefund(false);
+  }, [viewItem]);
 
   const [summary, setSummary] = useState<any>({ total: 0, approved: 0 });
 
@@ -272,70 +289,137 @@ export const ExpensesPage: React.FC = () => {
       </div>
 
       {/* KPI Cards — styled premium like the data distribution dashboard */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem', marginBottom: '1.5rem' }}>
+      <div className="responsive-grid-4" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem', marginBottom: '1.5rem' }}>
         {[
           {
             label: 'Tổng chi phí kỳ này',
             value: FMT(totalAmt),
             icon: TrendingDown,
             color: '#ef4444',
+            bg: 'rgba(239, 68, 68, 0.08)',
             sub: `${summary.total_count || 0} khoản`,
             change: getChangePercent(totalAmt, prevTotal),
-            badWhenUp: true
+            badWhenUp: true,
+            decor: (
+              <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: '100%', height: '100%' }}>
+                <path d="M10 20 L40 50 L60 40 L90 80" stroke="currentColor" strokeWidth="2" strokeDasharray="3 3" />
+                <path d="M70 80 L90 80 L90 60" stroke="currentColor" strokeWidth="2" />
+                <circle cx="10" cy="20" r="4" fill="currentColor" />
+                <circle cx="40" cy="50" r="4" fill="currentColor" />
+                <circle cx="60" cy="40" r="4" fill="currentColor" />
+                <circle cx="90" cy="80" r="6" fill="currentColor" />
+              </svg>
+            )
           },
           {
             label: 'Đã phê duyệt',
             value: FMT(approvedAmt),
             icon: CheckCircle2,
             color: '#10b981',
+            bg: 'rgba(16, 185, 129, 0.08)',
             sub: `${summary.approved_count || 0} khoản đã duyệt`,
             change: getChangePercent(approvedAmt, prevApproved),
-            badWhenUp: false
+            badWhenUp: false,
+            decor: (
+              <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: '100%', height: '100%' }}>
+                <circle cx="50" cy="50" r="40" stroke="currentColor" strokeWidth="2" strokeDasharray="4 4" />
+                <path d="M35 50 L45 60 L65 40" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            )
           },
           {
             label: 'Chờ phê duyệt',
             value: FMT(pendingAmt),
             icon: Clock,
             color: '#f59e0b',
+            bg: 'rgba(245, 158, 11, 0.08)',
             sub: `${summary.pending_count || 0} khoản đang chờ`,
             change: getChangePercent(pendingAmt, prevPending),
-            badWhenUp: true
+            badWhenUp: true,
+            decor: (
+              <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: '100%', height: '100%' }}>
+                <circle cx="50" cy="50" r="40" stroke="currentColor" strokeWidth="2" strokeDasharray="4 4" />
+                <path d="M50 20 L50 50 L70 50" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            )
           },
           {
             label: 'Chi phí lớn nhất',
             value: summary.max_amount ? FMT(summary.max_amount) : '—',
             icon: DollarSign,
             color: '#a31422',
-            sub: summary.max_title ? summary.max_title.slice(0, 24) + '...' : 'Chưa có dữ liệu',
+            bg: 'rgba(163, 20, 34, 0.08)',
+            sub: summary.max_title ? summary.max_title : 'Chưa có dữ liệu',
             change: 0,
-            badWhenUp: true
+            badWhenUp: true,
+            decor: (
+              <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: '100%', height: '100%' }}>
+                <circle cx="50" cy="50" r="40" stroke="currentColor" strokeWidth="2" strokeDasharray="4 4" />
+                <text x="35" y="68" fill="currentColor" fontSize="50" fontWeight="bold">$</text>
+              </svg>
+            )
           },
         ].map((k, i) => {
           const isDecrease = k.change < 0;
           const isZero = k.change === 0;
           const trendColor = isZero ? 'var(--color-text-muted)' : ((isDecrease !== k.badWhenUp) ? 'var(--color-success)' : 'var(--color-danger)');
-          const TrendIcon = isZero ? null : (isDecrease ? '▼' : '▲');
+          const TrendIcon = isZero ? null : (isDecrease ? <ArrowDownRight size={14} /> : <ArrowUpRight size={14} />);
+          const Icon = k.icon;
           
           return (
-            <motion.div key={i} className="stat-kpi" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }} style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-              <div className="stat-kpi__header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-                <div className="stat-kpi__label" style={{ fontSize: '0.72rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--color-text-light)' }}>{k.label}</div>
-                <div className="stat-kpi__icon" style={{ color: k.color, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <k.icon size={18} />
+            <motion.div 
+              key={i} 
+              className="stat-card hover-lift" 
+              initial={{ opacity: 0, y: 16 }} 
+              animate={{ opacity: 1, y: 0 }} 
+              transition={{ delay: i * 0.06 }} 
+              style={{ 
+                display: 'flex', 
+                flexDirection: 'column', 
+                minHeight: '135px',
+                padding: '1.25rem',
+                position: 'relative',
+                overflow: 'hidden'
+              }}
+            >
+              {/* Decorative Background SVG */}
+              <div className="decor-svg" style={{ color: k.color }}>
+                {k.decor}
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px', position: 'relative', zIndex: 2 }}>
+                <span className="stat-label" style={{ textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 800, fontSize: '0.7rem', color: 'var(--color-text-light)' }}>{k.label}</span>
+                <div className="stat-icon" style={{
+                  background: k.bg,
+                  width: '36px',
+                  height: '36px',
+                  borderRadius: '50%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: k.color,
+                  flexShrink: 0
+                }}>
+                  <Icon size={18} />
                 </div>
               </div>
-              {loading ? (
-                <div className="skeleton" style={{ height: 32, width: '85%', borderRadius: 6, marginBottom: 8 }} />
-              ) : (
-                <div className="stat-kpi__value" style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--color-text)', margin: '0.125rem 0', lineHeight: 1.2 }}>{k.value}</div>
-              )}
-              <div className="stat-kpi__sub" style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginBottom: '0.5rem' }}>{k.sub}</div>
-              {!isZero && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.75rem', fontWeight: 700, color: trendColor, marginTop: 'auto' }}>
-                  <span>{TrendIcon} {isDecrease ? '' : '+'}{k.change}%</span>
-                  <span style={{ color: 'var(--color-text-muted)', fontWeight: 400 }}>{getPeriodCompareText(period)}</span>
-                </div>
-              )}
+
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', position: 'relative', zIndex: 2 }}>
+                {loading ? (
+                  <div className="skeleton" style={{ height: 28, width: '80%', borderRadius: 6, marginBottom: 8 }} />
+                ) : (
+                  <div className="stat-value" style={{ fontWeight: 800, color: 'var(--color-text)', fontSize: '1.5rem', lineHeight: 1.2 }}>{k.value}</div>
+                )}
+                <div className="stat-desc" style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginBottom: '4px', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap', maxWidth: '100%', fontWeight: 500 }} title={k.sub}>{k.sub}</div>
+                
+                {!isZero && (
+                  <div className="stat-change" style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.75rem', fontWeight: 700, color: trendColor, marginTop: 'auto' }}>
+                    {TrendIcon}
+                    <span>{isDecrease ? '' : '+'}{k.change}%</span>
+                    <span style={{ color: 'var(--color-text-muted)', fontWeight: 400 }}>{getPeriodCompareText(period)}</span>
+                  </div>
+                )}
+              </div>
             </motion.div>
           );
         })}
@@ -886,13 +970,13 @@ export const ExpensesPage: React.FC = () => {
               animate={{ opacity: 1, scale: 1, y: 0 }} 
               exit={{ opacity: 0, scale: 0.96, y: 20 }}
               onClick={e => e.stopPropagation()}
-              style={{ padding: '2rem' }}
+              style={{ padding: '2rem', maxWidth: '560px', width: '100%', boxSizing: 'border-box' }}
             >
               {/* Close Button & Badge Header */}
               <div className="flex justify-between items-center mb-6">
                 <div className="flex items-center gap-2">
-                  <span className={`badge ${viewItem.status === 'approved' ? 'success' : 'warning'}`} style={{ padding: '4px 10px', fontSize: '0.75rem', borderRadius: '8px' }}>
-                    {viewItem.status === 'approved' ? 'Đã duyệt' : 'Chờ duyệt'}
+                  <span className={`badge ${viewItem.status === 'approved' ? (viewItem.is_refunded ? 'info' : 'success') : viewItem.status === 'rejected' ? 'danger' : 'warning'}`} style={{ padding: '4px 10px', fontSize: '0.75rem', borderRadius: '8px' }}>
+                    {viewItem.status === 'approved' ? (viewItem.is_refunded ? 'Đã hoàn tiền' : 'Đã duyệt') : viewItem.status === 'rejected' ? 'Từ chối' : 'Chờ duyệt'}
                   </span>
                   <span style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>
                     {viewItem.date && !isNaN(Date.parse(viewItem.date)) ? new Date(viewItem.date).toLocaleDateString('vi-VN') : '—'}
@@ -911,7 +995,7 @@ export const ExpensesPage: React.FC = () => {
 
                 <div style={{ textAlign: 'center', padding: '1.25rem', background: 'var(--color-bg)', borderRadius: '12px', marginBottom: '1.25rem', border: '1px solid var(--color-border-light)' }}>
                   <span style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', display: 'block', marginBottom: '0.25rem', letterSpacing: '0.05em' }}>SỐ TIỀN CHI</span>
-                  <h1 style={{ fontSize: '2rem', fontWeight: 900, color: 'var(--color-danger)', margin: 0, letterSpacing: '-0.02em' }}>{FMT(viewItem.amount)}</h1>
+                  <h1 style={{ fontSize: '1.5rem', fontWeight: 900, color: 'var(--color-danger)', margin: 0, letterSpacing: '-0.02em' }}>{FMT(viewItem.amount)}</h1>
                   <p style={{ fontSize: '0.775rem', fontWeight: 700, fontStyle: 'italic', color: 'var(--color-primary)', marginTop: '0.5rem', marginBottom: 0 }}>
                     Bằng chữ: {numberToVietnameseText(Number(viewItem.amount))}
                   </p>
@@ -964,6 +1048,24 @@ export const ExpensesPage: React.FC = () => {
                       </span>
                     </div>
                   )}
+                  {viewItem.status === 'rejected' && (
+                    <>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8125rem', alignItems: 'center', borderBottom: viewItem.reject_reason ? '1px dotted var(--color-border-light)' : 'none', paddingBottom: viewItem.reject_reason ? '0.5rem' : 0 }}>
+                        <span style={{ color: 'var(--color-text-muted)', fontWeight: 600 }}>Người từ chối</span>
+                        <span style={{ fontWeight: 700, color: 'var(--color-danger)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <Avatar src={viewItem.approver_avatar} name={viewItem.approver_name || 'Admin'} size={20} />
+                          <span className="text-danger">{viewItem.approver_name || 'Admin'}</span> <span style={{ fontWeight: 400, color: 'var(--color-text-muted)', fontSize: '0.75rem' }}>(lúc {viewItem.approved_at ? new Date(viewItem.approved_at).toLocaleString('vi-VN') : '—'})</span>
+                        </span>
+                      </div>
+                      {viewItem.reject_reason && (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', borderBottom: 'none', paddingTop: '0.5rem', fontSize: '0.8125rem' }}>
+                          <div style={{ background: 'rgba(239, 68, 68, 0.05)', padding: '8px 12px', borderRadius: '8px', borderLeft: '3px solid var(--color-danger)', fontSize: '0.8125rem', color: 'var(--color-danger)' }}>
+                            <strong>Lý do từ chối:</strong> {viewItem.reject_reason}
+                          </div>
+                        </div>
+                      )}
+                    </>
+                  )}
                   {viewItem.image_url && (
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8125rem', alignItems: 'center', paddingTop: viewItem.status === 'approved' ? '0.5rem' : 0 }}>
                       <span style={{ color: 'var(--color-text-muted)', fontWeight: 600 }}>Đính kèm</span>
@@ -978,6 +1080,149 @@ export const ExpensesPage: React.FC = () => {
                       </a>
                     </div>
                   )}
+
+                  {viewItem.status === 'approved' && (
+                    <>
+                      {viewItem.is_refunded ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', borderTop: '1px dashed var(--color-border)', paddingTop: '12px', marginTop: '8px' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8125rem', alignItems: 'center' }}>
+                            <span style={{ color: 'var(--color-text-muted)', fontWeight: 600 }}>Hoàn tiền</span>
+                            <span className="badge info" style={{ background: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6' }}>
+                              <CheckCircle2 size={11} /> Đã hoàn tiền cho sale
+                            </span>
+                          </div>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8125rem', alignItems: 'center' }}>
+                            <span style={{ color: 'var(--color-text-muted)', fontWeight: 600 }}>Người hoàn tiền</span>
+                            <span style={{ fontWeight: 700, color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                              <Avatar src={viewItem.refunder_avatar} name={viewItem.refunder_name || 'Admin'} size={20} />
+                              {viewItem.refunder_name || 'Admin'} <span style={{ fontWeight: 400, color: 'var(--color-text-muted)', fontSize: '0.75rem' }}>(lúc {viewItem.refunded_at ? new Date(viewItem.refunded_at).toLocaleString('vi-VN') : '—'})</span>
+                            </span>
+                          </div>
+                          {viewItem.refund_image_url && (
+                            <div style={{ marginTop: '4px' }}>
+                              <span style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)', marginBottom: '6px' }}>Chứng từ hoàn tiền:</span>
+                              <div style={{ border: '1px solid var(--color-border-light)', borderRadius: '8px', overflow: 'hidden', maxWidth: '100%', maxHeight: '180px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--color-bg)' }}>
+                                <img 
+                                  src={viewItem.refund_image_url.startsWith('http') ? viewItem.refund_image_url : `${import.meta.env.VITE_API_URL || '/backend'}${viewItem.refund_image_url}`} 
+                                  alt="Chứng từ hoàn tiền" 
+                                  style={{ maxWidth: '100%', maxHeight: '180px', objectFit: 'contain', cursor: 'pointer' }}
+                                  onClick={() => window.open(viewItem.refund_image_url.startsWith('http') ? viewItem.refund_image_url : `${import.meta.env.VITE_API_URL || '/backend'}${viewItem.refund_image_url}`, '_blank')}
+                                />
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        ((user?.role as any) === 'admin' || (user?.role as any) === 'superadmin' || (user?.role as any) === 'super_admin' || user?.role === 'director') && (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', borderTop: '1px dashed var(--color-border)', paddingTop: '12px', marginTop: '8px' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8125rem', alignItems: 'center' }}>
+                              <span style={{ color: 'var(--color-text-muted)', fontWeight: 600 }}>Xác nhận hoàn tiền</span>
+                              <CustomCheckbox checked={isRefunding} onChange={() => setIsRefunding(!isRefunding)} label="Đã hoàn tiền cho sale" />
+                            </div>
+                            
+                            {isRefunding && (
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '4px' }}>
+                                <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>Tải lên ảnh chứng từ hoàn tiền:</span>
+                                <div style={{
+                                  border: '2px dashed var(--color-border)', borderRadius: '12px',
+                                  display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                                  padding: '12px', position: 'relative', cursor: 'pointer', background: 'var(--color-bg)',
+                                  overflow: 'hidden', minHeight: '90px'
+                                }}
+                                  onClick={() => document.getElementById('refund-image-upload')?.click()}
+                                >
+                                  {uploadingRefund ? (
+                                    <div className="flex flex-col items-center gap-1">
+                                      <div className="spinner sm"></div>
+                                      <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>Đang tải lên...</span>
+                                    </div>
+                                  ) : refundImgUrl ? (
+                                    <div style={{ position: 'relative', width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                      <img 
+                                        src={refundImgUrl.startsWith('http') ? refundImgUrl : `${import.meta.env.VITE_API_URL || '/backend'}${refundImgUrl}`} 
+                                        alt="Chứng từ hoàn tiền" 
+                                        style={{ maxWidth: '100%', maxHeight: '80px', objectFit: 'contain', borderRadius: '6px' }} 
+                                      />
+                                      <button 
+                                        type="button"
+                                        style={{
+                                          position: 'absolute', top: -4, right: -4, background: 'rgba(239, 68, 68, 0.9)', 
+                                          color: 'white', border: 'none', borderRadius: '50%', width: 18, height: 18, 
+                                          display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', padding: 0
+                                        }}
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setRefundImgUrl('');
+                                        }}
+                                      >
+                                        <X size={10} />
+                                      </button>
+                                    </div>
+                                  ) : (
+                                    <div className="flex flex-col items-center gap-1 text-center">
+                                      <Upload size={18} className="text-light" />
+                                      <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>Chọn ảnh biên lai/chuyển khoản</span>
+                                    </div>
+                                  )}
+                                  <input 
+                                    type="file" 
+                                    id="refund-image-upload" 
+                                    accept="image/*" 
+                                    style={{ display: 'none' }} 
+                                    onChange={async (e) => {
+                                      const file = e.target.files?.[0];
+                                      if (!file) return;
+                                      setUploadingRefund(true);
+                                      try {
+                                        const webpBlob = await compressToWebP(file);
+                                        const compFile = new File([webpBlob], 'refund_proof.webp', { type: 'image/webp' });
+                                        const fd = new FormData();
+                                        fd.append('file', compFile);
+                                        const res = await api.post('/upload', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
+                                        if (res.data && res.data.data?.url) {
+                                          setRefundImgUrl(res.data.data.url);
+                                        } else {
+                                          addToast('Lỗi tải ảnh', 'error');
+                                        }
+                                      } catch (err: any) {
+                                        addToast('Lỗi tải ảnh: ' + err.message, 'error');
+                                      } finally {
+                                        setUploadingRefund(false);
+                                      }
+                                    }}
+                                  />
+                                </div>
+                                
+                                <button 
+                                  className="btn primary sm" 
+                                  disabled={submittingRefund}
+                                  onClick={async () => {
+                                    setSubmittingRefund(true);
+                                    try {
+                                      await api.put(`/expenses/${viewItem.id}`, { 
+                                        is_refunded: 1, 
+                                        refund_image_url: refundImgUrl 
+                                      });
+                                      addToast('Đã xác nhận hoàn tiền cho nhân viên', 'success');
+                                      setViewItem(null);
+                                      fetchExpenses();
+                                    } catch (e: any) {
+                                      addToast('Lỗi khi cập nhật hoàn tiền: ' + (e.response?.data?.message || e.message), 'error');
+                                    } finally {
+                                      setSubmittingRefund(false);
+                                    }
+                                  }}
+                                  style={{ marginTop: '4px', background: 'var(--color-success)', color: 'white', border: 'none', width: '100%', height: '36px', fontWeight: 700 }}
+                                >
+                                  {submittingRefund ? 'Đang cập nhật...' : 'Xác nhận đã hoàn tiền'}
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        )
+                      )}
+                    </>
+                  )}
                 </div>
               </div>
 
@@ -988,28 +1233,90 @@ export const ExpensesPage: React.FC = () => {
                 </div>
               )}
 
-              <div className="flex gap-3">
-                <button className="btn outline" style={{ flex: 1 }} onClick={() => setViewItem(null)}>Đóng</button>
-                {viewItem.status === 'pending' && (
-                  <button className="btn success" style={{ flex: 1, background: 'var(--color-success)', color: 'white', border: 'none' }} onClick={async () => {
-                    try {
-                      await api.patch(`/expenses/${viewItem.id}`, { status: 'approved' });
-                      setItems(prev => prev.map(e => e.id === viewItem.id ? {...e, status: 'approved'} : e));
-                      addToast('Đã phê duyệt chi phí', 'success');
-                      setViewItem(null);
-                      fetchExpenses();
-                    } catch (e: any) {
-                      addToast('Lỗi khi phê duyệt chi phí', 'error');
-                    }
-                  }}><CheckCircle2 size={14} /> Phê duyệt</button>
-                )}
-                <button className="btn primary" style={{ flex: 1 }} onClick={() => { const item = viewItem; setViewItem(null); openEdit(item); }}><Pencil size={14} /> Chỉnh sửa</button>
+              <div className="flex gap-3" style={{ width: '100%' }}>
+                {viewItem.status === 'pending' ? (
+                  <>
+                    <button className="btn success" style={{ flex: 1, background: 'var(--color-success)', color: 'white', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', fontWeight: 600 }} onClick={async () => {
+                      try {
+                        await api.patch(`/expenses/${viewItem.id}`, { status: 'approved' });
+                        setItems(prev => prev.map(e => e.id === viewItem.id ? {...e, status: 'approved'} : e));
+                        addToast('Đã phê duyệt chi phí', 'success');
+                        setViewItem(null);
+                        fetchExpenses();
+                      } catch (e: any) {
+                        addToast('Lỗi khi phê duyệt chi phí', 'error');
+                      }
+                    }}><CheckCircle2 size={14} /> Phê duyệt</button>
+                    <button className="btn danger" style={{ flex: 1, background: 'var(--color-danger)', color: 'white', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', fontWeight: 600 }} onClick={() => setRejectingItem(viewItem)}><XCircle size={14} /> Từ chối</button>
+                  </>
+                ) : null}
+                <button className="btn primary" style={{ width: '38px', minWidth: '38px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--color-primary)', color: 'white', border: 'none', borderRadius: '8px' }} title="Chỉnh sửa" onClick={() => { const item = viewItem; setViewItem(null); openEdit(item); }}><Pencil size={16} /></button>
               </div>
             </motion.div>
           </div>
         )}
       </AnimatePresence>
     , document.body)}
+
+      {rejectingItem && createPortal(
+        <div style={{ position: 'fixed', inset: 0, zIndex: 30000, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', padding: '1rem' }} onClick={() => setRejectingItem(null)}>
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.96 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.96 }}
+            style={{ background: 'var(--color-surface)', borderRadius: '16px', padding: '1.5rem', maxWidth: '400px', width: '100%', boxShadow: 'var(--shadow-xl)' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: '0.75rem', color: 'var(--color-text)' }}>Từ chối yêu cầu chi phí</h3>
+            <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', marginBottom: '0.75rem' }}>Vui lòng nhập lý do từ chối:</p>
+            <textarea
+              style={{ width: '100%', height: '80px', padding: '8px 12px', border: '1px solid var(--color-border)', borderRadius: '8px', fontSize: '0.875rem', outline: 'none', background: 'var(--color-bg)', color: 'var(--color-text)', resize: 'none', marginBottom: '1rem' }}
+              placeholder="Nhập lý do từ chối chi phí này..."
+              value={rejectReason}
+              onChange={(e) => setRejectReason(e.target.value)}
+            />
+            <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+              <button 
+                className="btn outline sm" 
+                onClick={() => {
+                  setRejectingItem(null);
+                  setRejectReason('');
+                }}
+                disabled={submittingReject}
+              >
+                Hủy
+              </button>
+              <button 
+                className="btn danger sm" 
+                style={{ background: 'var(--color-danger)', color: 'white', border: 'none', fontWeight: 600 }}
+                onClick={async () => {
+                  if (!rejectReason.trim()) {
+                    addToast('Vui lòng nhập lý do từ chối', 'error');
+                    return;
+                  }
+                  setSubmittingReject(true);
+                  try {
+                    await api.patch(`/expenses/${rejectingItem.id}`, { status: 'rejected', reject_reason: rejectReason });
+                    addToast('Đã từ chối chi phí', 'success');
+                    setRejectingItem(null);
+                    setRejectReason('');
+                    setViewItem(null);
+                    fetchExpenses();
+                  } catch (e: any) {
+                    addToast('Lỗi khi từ chối chi phí', 'error');
+                  } finally {
+                    setSubmittingReject(false);
+                  }
+                }}
+                disabled={submittingReject || !rejectReason.trim()}
+              >
+                {submittingReject ? 'Đang cập nhật...' : 'Từ chối'}
+              </button>
+            </div>
+          </motion.div>
+        </div>,
+        document.body
+      )}
     </div>
   );
 };

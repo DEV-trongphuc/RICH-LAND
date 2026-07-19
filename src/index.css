@@ -496,7 +496,7 @@
   --sidebar-active: #BD1D2D; /* Keep brand color on sidebar active item */
 
   /* Neutrals */
-  --color-bg: #F2F2F7; /* iOS system gray background */
+  --color-bg: #F6F6FA; /* iOS system gray background */
   --color-surface: #FFFFFF; /* Pure white */
   --color-border: #E5E5EA; /* iOS separator line */
   --color-border-light: #EFEFF4; /* Extremely soft divider */

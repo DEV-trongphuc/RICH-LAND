@@ -6516,18 +6516,34 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
               <div style={{ 
                 display: 'flex', 
                 alignItems: 'center', 
-                gap: '12px', 
-                padding: '12px 18px', 
-                background: 'rgba(16, 185, 129, 0.08)', 
-                border: '1px solid rgba(16, 185, 129, 0.25)', 
-                borderRadius: '12px', 
-                color: '#5ef08f',
-                boxShadow: '0 2px 8px rgba(16, 185, 129, 0.1)'
+                gap: '14px', 
+                background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.05) 0%, rgba(52, 211, 153, 0.05) 100%)', 
+                padding: '16px', 
+                borderRadius: '16px', 
+                border: '1px solid rgba(16, 185, 129, 0.08)' 
               }}>
-                <CheckCircle2 size={16} style={{ flexShrink: 0 }} />
-                <span style={{ fontSize: '0.825rem', fontWeight: 700 }}>
-                  {t('Tuyệt vời! Bạn không còn công việc nào tồn đọng hôm nay. Chúc bạn một ngày chốt thật nhiều deal! 🚀')}
-                </span>
+                <div style={{ 
+                  width: 40, 
+                  height: 40, 
+                  borderRadius: '10px', 
+                  background: 'linear-gradient(135deg, #10b981 0%, #34d399 100%)', 
+                  display: 'flex', 
+                  justifyContent: 'center', 
+                  alignItems: 'center', 
+                  color: '#fff',
+                  boxShadow: '0 4px 12px rgba(16, 185, 129, 0.3)',
+                  flexShrink: 0
+                }}>
+                  <CheckCircle2 size={20} />
+                </div>
+                <div>
+                  <h3 style={{ fontSize: '0.9rem', fontWeight: 800, color: 'var(--color-text)', margin: 0, letterSpacing: '-0.01em' }}>
+                    {t("Tuyệt vời! Không có tồn đọng")}
+                  </h3>
+                  <p style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)', margin: '4px 0 0', fontWeight: 500 }}>
+                    {t("Chúc bạn một ngày chốt thật nhiều deal! 🚀")}
+                  </p>
+                </div>
               </div>
             )}
           </div>

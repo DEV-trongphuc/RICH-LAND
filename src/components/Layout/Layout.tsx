@@ -1110,6 +1110,48 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
                         </div>
                       </div>
                     )}
+
+                    {/* 6. Phê duyệt Chi phí */}
+                    {pendingExpensesCount > 0 && (
+                      <div 
+                        onClick={() => { setIsUnifiedInboxOpen(false); navigate('/expenses?status=pending'); }}
+                        className="unified-inbox-card"
+                        style={{ 
+                          '--hover-color': '#10b981',
+                          '--hover-bg': 'rgba(16, 185, 129, 0.03)',
+                          '--hover-shadow': 'rgba(16, 185, 129, 0.15)'
+                        } as any}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                          <div className="unified-inbox-icon" style={{ background: 'rgba(16, 185, 129, 0.08)', color: '#10b981' }}>
+                            <DollarSign size={18} />
+                          </div>
+                          <span style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)' }}>{t("Phê duyệt yêu cầu chi phí")}</span>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                          <span className="badge success" style={{ borderRadius: '20px', padding: '4px 10px', fontWeight: 700, fontSize: '0.72rem', background: 'rgba(16, 185, 129, 0.1)', color: '#10b981', boxShadow: '0 2px 6px rgba(16, 185, 129, 0.12)' }}>{pendingExpensesCount} {t('chờ duyệt')}</span>
+                          
+                          <div style={{
+                            borderRadius: '20px',
+                            padding: '5px 12px',
+                            fontWeight: 700,
+                            fontSize: '0.72rem',
+                            color: '#fff',
+                            background: 'linear-gradient(135deg, #10b981 0%, #047857 100%)',
+                            boxShadow: '0 4px 12px rgba(16, 185, 129, 0.25)',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            transition: 'all 0.2s',
+                            whiteSpace: 'nowrap',
+                            flexShrink: 0
+                          }}>
+                            <span>{t('Duyệt ngay')}</span>
+                            <ChevronRight className="chevron-arrow" size={12} style={{ transition: 'all 0.25s' }} />
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </>
               );

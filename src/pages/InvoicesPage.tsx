@@ -3,7 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { createPortal } from 'react-dom';
 import {
   FileText, Plus, Search, Download, CheckCircle2, Clock, AlertCircle,
-  Eye, Trash2, Printer, X, Loader2, ArrowUpRight, TrendingUp, DollarSign,
+  Eye, Trash2, Printer, X, Loader2, ArrowUpRight, ArrowDownRight, TrendingUp, DollarSign,
   Pencil, Copy, Send, Package
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -209,69 +209,139 @@ export const InvoicesPage: React.FC = () => {
         </div>
       </div>
 
-      {/* KPI Cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem', marginBottom: '1.5rem' }}>
+      {/* KPI Cards — styled premium like the data distribution dashboard */}
+      <div className="responsive-grid-4" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem', marginBottom: '1.5rem' }}>
         {[
           {
             label: 'Tổng doanh thu',
             value: FMT(totalRev),
             icon: TrendingUp,
             color: '#a31422',
+            bg: 'rgba(163, 20, 34, 0.08)',
             sub: `${items.length} hóa đơn`,
             change: getChangePercent(totalRev, prevTotalRev),
-            badWhenUp: false
+            badWhenUp: false,
+            decor: (
+              <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: '100%', height: '100%' }}>
+                <path d="M10 20 L40 50 L60 40 L90 80" stroke="currentColor" strokeWidth="2" strokeDasharray="3 3" />
+                <path d="M70 80 L90 80 L90 60" stroke="currentColor" strokeWidth="2" />
+                <circle cx="10" cy="20" r="4" fill="currentColor" />
+                <circle cx="40" cy="50" r="4" fill="currentColor" />
+                <circle cx="60" cy="40" r="4" fill="currentColor" />
+                <circle cx="90" cy="80" r="6" fill="currentColor" />
+              </svg>
+            )
           },
           {
             label: 'Đã thu hồi',
             value: FMT(paidAmt),
             icon: CheckCircle2,
             color: '#10b981',
+            bg: 'rgba(16, 185, 129, 0.08)',
             sub: `${items.filter(i => i.status === 'paid').length} đã thanh toán`,
             change: getChangePercent(paidAmt, prevPaidAmt),
-            badWhenUp: false
+            badWhenUp: false,
+            decor: (
+              <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: '100%', height: '100%' }}>
+                <circle cx="50" cy="50" r="40" stroke="currentColor" strokeWidth="2" strokeDasharray="4 4" />
+                <path d="M35 50 L45 60 L65 40" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            )
           },
           {
             label: 'Chờ thanh toán',
             value: FMT(pendingAmt),
             icon: Clock,
             color: '#f59e0b',
+            bg: 'rgba(245, 158, 11, 0.08)',
             sub: `${items.filter(i => i.status === 'pending').length} hóa đơn đang đợi`,
             change: getChangePercent(pendingAmt, prevPendingAmt),
-            badWhenUp: true
+            badWhenUp: true,
+            decor: (
+              <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: '100%', height: '100%' }}>
+                <circle cx="50" cy="50" r="40" stroke="currentColor" strokeWidth="2" strokeDasharray="4 4" />
+                <path d="M50 20 L50 50 L70 50" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            )
           },
           {
             label: 'Nợ quá hạn',
             value: FMT(overdueAmt),
             icon: AlertCircle,
             color: '#ef4444',
+            bg: 'rgba(239, 68, 68, 0.08)',
             sub: `${items.filter(i => i.status === 'overdue').length} hóa đơn quá hạn`,
             change: getChangePercent(overdueAmt, prevOverdueAmt),
-            badWhenUp: true
+            badWhenUp: true,
+            decor: (
+              <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: '100%', height: '100%' }}>
+                <circle cx="50" cy="50" r="40" stroke="currentColor" strokeWidth="2" strokeDasharray="4 4" />
+                <line x1="50" y1="30" x2="50" y2="60" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
+                <circle cx="50" cy="73" r="3" fill="currentColor" />
+              </svg>
+            )
           },
         ].map((k, i) => {
           const isDecrease = k.change < 0;
           const isZero = k.change === 0;
           const trendColor = isZero ? 'var(--color-text-muted)' : ((isDecrease !== k.badWhenUp) ? 'var(--color-success)' : 'var(--color-danger)');
-          const TrendIcon = isZero ? null : (isDecrease ? '▼' : '▲');
-
+          const TrendIcon = isZero ? null : (isDecrease ? <ArrowDownRight size={14} /> : <ArrowUpRight size={14} />);
+          const Icon = k.icon;
+          
           return (
-            <motion.div key={i} className="stat-kpi" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }} style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-              <div className="stat-kpi__header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-                <div className="stat-kpi__label" style={{ fontSize: '0.72rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--color-text-light)' }}>{k.label}</div>
-                <div className="stat-kpi__icon" style={{ color: k.color, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><k.icon size={18} /></div>
+            <motion.div 
+              key={i} 
+              className="stat-card hover-lift" 
+              initial={{ opacity: 0, y: 16 }} 
+              animate={{ opacity: 1, y: 0 }} 
+              transition={{ delay: i * 0.06 }} 
+              style={{ 
+                display: 'flex', 
+                flexDirection: 'column', 
+                minHeight: '135px',
+                padding: '1.25rem',
+                position: 'relative',
+                overflow: 'hidden'
+              }}
+            >
+              {/* Decorative Background SVG */}
+              <div className="decor-svg" style={{ color: k.color }}>
+                {k.decor}
               </div>
-              {loading ? (
-                <div className="skeleton" style={{ height: 32, width: '85%', borderRadius: 6, marginBottom: 8 }} />
-              ) : (
-                <div className="stat-kpi__value" style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--color-text)', margin: '0.125rem 0', lineHeight: 1.2 }}>{k.value}</div>
-              )}
-              <div className="stat-kpi__sub" style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginBottom: '0.5rem' }}>{k.sub}</div>
-              {!isZero && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.75rem', fontWeight: 700, color: trendColor, marginTop: 'auto' }}>
-                  <span>{TrendIcon} {isDecrease ? '' : '+'}{k.change}%</span>
-                  <span style={{ color: 'var(--color-text-muted)', fontWeight: 400 }}>{getPeriodCompareText(period)}</span>
+
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px', position: 'relative', zIndex: 2 }}>
+                <span className="stat-label" style={{ textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 800, fontSize: '0.7rem', color: 'var(--color-text-light)' }}>{k.label}</span>
+                <div className="stat-icon" style={{
+                  background: k.bg,
+                  width: '36px',
+                  height: '36px',
+                  borderRadius: '50%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: k.color,
+                  flexShrink: 0
+                }}>
+                  <Icon size={18} />
                 </div>
-              )}
+              </div>
+
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', position: 'relative', zIndex: 2 }}>
+                {loading ? (
+                  <div className="skeleton" style={{ height: 28, width: '80%', borderRadius: 6, marginBottom: 8 }} />
+                ) : (
+                  <div className="stat-value" style={{ fontWeight: 800, color: 'var(--color-text)', fontSize: '1.5rem', lineHeight: 1.2 }}>{k.value}</div>
+                )}
+                <div className="stat-desc" style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginBottom: '4px', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap', maxWidth: '100%', fontWeight: 500 }} title={k.sub}>{k.sub}</div>
+                
+                {!isZero && (
+                  <div className="stat-change" style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.75rem', fontWeight: 700, color: trendColor, marginTop: 'auto' }}>
+                    {TrendIcon}
+                    <span>{isDecrease ? '' : '+'}{k.change}%</span>
+                    <span style={{ color: 'var(--color-text-muted)', fontWeight: 400 }}>{getPeriodCompareText(period)}</span>
+                  </div>
+                )}
+              </div>
             </motion.div>
           );
         })}

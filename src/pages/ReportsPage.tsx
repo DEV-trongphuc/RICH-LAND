@@ -524,19 +524,75 @@ export const ReportsPage: React.FC = () => {
               }
             ].map((card, i) => {
               const Icon = card.icon;
+              const bg = card.color === '#a31422' ? 'rgba(163, 20, 34, 0.08)' : (card.color === '#10b981' ? 'rgba(16, 185, 129, 0.08)' : 'rgba(59, 130, 246, 0.08)');
+              const decor = card.label === 'Tổng doanh thu' ? (
+                <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: '100%', height: '100%' }}>
+                  <path d="M10 20 L40 50 L60 40 L90 80" stroke="currentColor" strokeWidth="2" strokeDasharray="3 3" />
+                  <path d="M70 80 L90 80 L90 60" stroke="currentColor" strokeWidth="2" />
+                  <circle cx="10" cy="20" r="4" fill="currentColor" />
+                  <circle cx="40" cy="50" r="4" fill="currentColor" />
+                  <circle cx="60" cy="40" r="4" fill="currentColor" />
+                  <circle cx="90" cy="80" r="6" fill="currentColor" />
+                </svg>
+              ) : (card.label === 'Tổng cơ hội đang mở' ? (
+                <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: '100%', height: '100%' }}>
+                  <rect x="20" y="30" width="60" height="50" rx="4" stroke="currentColor" strokeWidth="2" />
+                  <path d="M35 30 V20 C35 17 38 15 41 15 H59 C62 15 65 17 65 20 V30" stroke="currentColor" strokeWidth="2" />
+                </svg>
+              ) : (
+                <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: '100%', height: '100%' }}>
+                  <line x1="20" y1="80" x2="80" y2="80" stroke="currentColor" strokeWidth="2" />
+                  <rect x="30" y="50" width="10" height="30" fill="currentColor" opacity="0.3" />
+                  <rect x="48" y="35" width="10" height="45" fill="currentColor" opacity="0.6" />
+                  <rect x="66" y="20" width="10" height="60" fill="currentColor" />
+                </svg>
+              ));
+
               return (
-                <motion.div key={card.label} className="stat-kpi" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }}>
-                  <div className="stat-kpi__header">
-                    <div className="stat-kpi__label">{card.label}</div>
-                    <div className="stat-kpi__icon" style={{ color: card.color }}><Icon size={20} /></div>
+                <motion.div 
+                  key={card.label} 
+                  className="stat-card hover-lift" 
+                  initial={{ opacity: 0, y: 16 }} 
+                  animate={{ opacity: 1, y: 0 }} 
+                  transition={{ delay: i * 0.06 }}
+                  style={{ 
+                    display: 'flex', 
+                    flexDirection: 'column', 
+                    minHeight: '120px',
+                    padding: '1.25rem',
+                    position: 'relative',
+                    overflow: 'hidden'
+                  }}
+                >
+                  {/* Decorative Background SVG */}
+                  <div className="decor-svg" style={{ color: card.color }}>
+                    {decor}
                   </div>
-                  {loading ? (
-                    <div style={{ padding: '0.5rem 0' }}>
-                      <Skeleton height="2rem" width="80%" style={{ marginBottom: '0.5rem' }} />
+
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px', position: 'relative', zIndex: 2 }}>
+                    <span className="stat-label" style={{ textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 800, fontSize: '0.7rem', color: 'var(--color-text-light)' }}>{card.label}</span>
+                    <div className="stat-icon" style={{
+                      background: bg,
+                      width: '36px',
+                      height: '36px',
+                      borderRadius: '50%',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: card.color,
+                      flexShrink: 0
+                    }}>
+                      <Icon size={18} />
                     </div>
-                  ) : (
-                    <div className="stat-kpi__value">{card.value}</div>
-                  )}
+                  </div>
+
+                  <div style={{ flex: 1, display: 'flex', flexDirection: 'column', position: 'relative', zIndex: 2 }}>
+                    {loading ? (
+                      <div className="skeleton" style={{ height: 28, width: '80%', borderRadius: 6, marginBottom: 8 }} />
+                    ) : (
+                      <div className="stat-value" style={{ fontWeight: 800, color: 'var(--color-text)', fontSize: '1.5rem', lineHeight: 1.2 }}>{card.value}</div>
+                    )}
+                  </div>
                 </motion.div>
               );
             })}

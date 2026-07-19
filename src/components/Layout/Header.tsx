@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, Command, Activity, Sun, Moon, Keyboard, ChevronDown, User, AlertTriangle, LogOut, Menu, LayoutGrid, LayoutDashboard, Users, Building2, Clock, Truck, Boxes, Receipt, Settings, CheckCircle2, Fingerprint, Bell, MessageSquare, Info, Trash2, Check, Eye, EyeOff, CheckSquare, FileText, ArrowLeft, ShieldAlert } from 'lucide-react';
+import { Search, Command, Activity, Sun, Moon, Keyboard, ChevronDown, User, AlertTriangle, LogOut, Menu, LayoutGrid, LayoutDashboard, Users, Building2, Clock, Truck, Boxes, Receipt, Settings, CheckCircle2, Fingerprint, Bell, MessageSquare, Info, Trash2, Check, Eye, EyeOff, CheckSquare, FileText, ArrowLeft, ShieldAlert, Laptop } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { ToggleSwitch } from '../ui/ToggleSwitch';
 import { useUIStore } from '../../store/uiStore';
@@ -1433,6 +1433,32 @@ export const Header = ({
                 >
                   <AlertTriangle size={14} style={{ color: 'var(--color-danger)' }} />
                   {t('Báo lỗi')}
+                </a>
+
+                <a
+                  href="/download"
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    width: '100%',
+                    padding: '8px 10px',
+                    border: 'none',
+                    background: 'transparent',
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    color: 'var(--color-text)',
+                    fontSize: '0.8125rem',
+                    textAlign: 'left',
+                    textDecoration: 'none',
+                    transition: 'background 0.2s'
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.background = 'var(--color-bg)'}
+                  onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                  onClick={() => setIsProfileMenuOpen(false)}
+                >
+                  <Laptop size={14} style={{ color: 'var(--color-primary)' }} />
+                  {t('Tải App Desktop')}
                 </a>
 
                 <div style={{ borderBottom: '1px solid var(--color-border)', margin: '4px 0' }} />

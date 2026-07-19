@@ -18,7 +18,7 @@ $apply = (isset($_GET['apply']) && $_GET['apply'] === 'true')
       || (isset($_POST['execute_migration']) && $_POST['execute_migration'] === '1')
       || ($isCli && in_array('--apply', $argv));
 
-$targetVersion = 164;
+$targetVersion = 173;
 $currentVersion = 0;
 
 // Query current DB version
@@ -2635,6 +2635,48 @@ SQL;
             }
             $conn->query("INSERT INTO system_settings (setting_key, setting_value) VALUES ('db_version', '171') ON DUPLICATE KEY UPDATE setting_value = '171'");
             $currentVersion = 171;
+        }
+
+        if ($currentVersion < 172) {
+            $logMsg("Đang chạy cập nhật phiên bản 172 (Thêm cột hoàn tiền cho bảng expenses)...", "info");
+            try {
+                $conn->query("ALTER TABLE `expenses` ADD COLUMN `is_refunded` TINYINT(1) DEFAULT 0");
+                $logMsg("Đã thêm cột is_refunded vào bảng expenses.", "success");
+            } catch (Throwable $t) {
+                $logMsg("Cột is_refunded đã tồn tại hoặc lỗi: " . $t->getMessage(), "info");
+            }
+            try {
+                $conn->query("ALTER TABLE `expenses` ADD COLUMN `refund_image_url` VARCHAR(555) NULL");
+                $logMsg("Đã thêm cột refund_image_url vào bảng expenses.", "success");
+            } catch (Throwable $t) {
+                $logMsg("Cột refund_image_url đã tồn tại hoặc lỗi: " . $t->getMessage(), "info");
+            }
+            try {
+                $conn->query("ALTER TABLE `expenses` ADD COLUMN `refunded_at` DATETIME NULL");
+                $logMsg("Đã thêm cột refunded_at vào bảng expenses.", "success");
+            } catch (Throwable $t) {
+                $logMsg("Cột refunded_at đã tồn tại hoặc lỗi: " . $t->getMessage(), "info");
+            }
+            try {
+                $conn->query("ALTER TABLE `expenses` ADD COLUMN `refunder_id` INT(11) NULL");
+                $logMsg("Đã thêm cột refunder_id vào bảng expenses.", "success");
+            } catch (Throwable $t) {
+                $logMsg("Cột refunder_id đã tồn tại hoặc lỗi: " . $t->getMessage(), "info");
+            }
+            $conn->query("INSERT INTO system_settings (setting_key, setting_value) VALUES ('db_version', '172') ON DUPLICATE KEY UPDATE setting_value = '172'");
+            $currentVersion = 172;
+        }
+
+        if ($currentVersion < 173) {
+            $logMsg("Đang chạy cập nhật phiên bản 173 (Thêm cột reject_reason cho bảng expenses)...", "info");
+            try {
+                $conn->query("ALTER TABLE `expenses` ADD COLUMN `reject_reason` VARCHAR(255) NULL COMMENT 'Lý do từ chối chi phí'");
+                $logMsg("Đã thêm cột reject_reason vào bảng expenses.", "success");
+            } catch (Throwable $t) {
+                $logMsg("Cột reject_reason đã tồn tại hoặc lỗi: " . $t->getMessage(), "info");
+            }
+            $conn->query("INSERT INTO system_settings (setting_key, setting_value) VALUES ('db_version', '173') ON DUPLICATE KEY UPDATE setting_value = '173'");
+            $currentVersion = 173;
         }
 
     $logMsg("Tự sửa đổi cấu trúc hoàn thành thành công.", "success");

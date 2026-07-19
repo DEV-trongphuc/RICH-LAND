@@ -62,7 +62,7 @@ export const SIDEBAR_GROUPS: SidebarGroup[] = [
       { name: 'Phiếu hợp tác', href: '/cooperation-slips', icon: Scale, hideForRoles: ['admin', 'superadmin', 'super_admin', 'manager', 'director'], badgeKey: 'coopSlips' },
       { name: 'Duyệt hợp tác', href: '/cooperation-slips', icon: Scale, hideForRoles: ['sale', 'viewer', 'sales'], badgeKey: 'coopSlips' },
       { name: 'Hóa đơn', href: '/invoices', icon: Receipt, hideForRoles: ['viewer'] },
-      { name: 'Chi phí', href: '/expenses', icon: CreditCard, hideForRoles: ['viewer'] }
+      { name: 'Chi phí', href: '/expenses', icon: CreditCard, hideForRoles: ['viewer'], badgeKey: 'pendingExpenses' }
     ]
   },
   {
@@ -96,6 +96,7 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileC
   const [pendingTickets, setPendingTickets] = useState(0);
   const [supportTicketsCount, setSupportTicketsCount] = useState(0);
   const [heldLeadsCount, setHeldLeadsCount] = useState(0);
+  const [pendingExpensesCount, setPendingExpensesCount] = useState(0);
   const [pendingCoopCount, setPendingCoopCount] = useState(0);
   const [undoneTasksCount, setUndoneTasksCount] = useState(0);
   const [pendingLeadsCount, setPendingLeadsCount] = useState(0);
@@ -121,17 +122,19 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileC
         }
 
         if (isAdminOrManager) {
-          const [resReports, resHeld, resCoop, resSupport] = await Promise.all([
+          const [resReports, resHeld, resCoop, resSupport, resExpenses] = await Promise.all([
             fetchAPI('get_reports&status=pending'),
             fetchAPI('get_held_leads&pageSize=1&date=all'),
             fetchAPI('cooperation-slips'),
-            fetchAPI('get_support_tickets_count').catch(() => null)
+            fetchAPI('get_support_tickets_count').catch(() => null),
+            fetchAPI('expenses?status=pending&limit=1').catch(() => null)
           ]);
 
           let countReports = 0;
           let countHeld = 0;
           let countCoop = 0;
           let countSupport = 0;
+          let countExpenses = 0;
 
           if (resReports.success) {
             countReports = resReports.stats?.pending ?? (resReports.data ? resReports.data.filter((r: any) => r.status === 'pending').length : 0);
@@ -149,10 +152,15 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileC
             countSupport = resSupport.count || 0;
           }
 
+          if (resExpenses && resExpenses.success) {
+            countExpenses = resExpenses.data?.total ?? 0;
+          }
+
           setPendingTickets(countReports);
           setHeldLeadsCount(countHeld);
           setPendingCoopCount(countCoop);
           setSupportTicketsCount(countSupport);
+          setPendingExpensesCount(countExpenses);
         } else if (role === 'sale' || role === 'sales') {
           const resCoop = await fetchAPI('cooperation-slips');
           let countUnsigned = 0;
@@ -391,7 +399,7 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileC
                   </span>
                 )}
                  {group.items.map(({ name, href, icon: Icon, end, badgeKey }) => {
-                   const badgeCount = badgeKey === 'tickets' ? pendingTickets : badgeKey === 'supportTickets' ? supportTicketsCount : badgeKey === 'gatekeeper' ? heldLeadsCount : badgeKey === 'coopSlips' ? pendingCoopCount : badgeKey === 'workspaceTasks' ? (undoneTasksCount + pendingLeadsCount) : 0;
+                   const badgeCount = badgeKey === 'tickets' ? pendingTickets : badgeKey === 'supportTickets' ? supportTicketsCount : badgeKey === 'gatekeeper' ? heldLeadsCount : badgeKey === 'coopSlips' ? pendingCoopCount : badgeKey === 'pendingExpenses' ? pendingExpensesCount : badgeKey === 'workspaceTasks' ? (undoneTasksCount + pendingLeadsCount) : 0;
                    const checkIsActive = (locationPath: string, locationSearch: string, itemHref: string) => {
                      const qIdx = itemHref.indexOf('?');
                      if (qIdx !== -1) {

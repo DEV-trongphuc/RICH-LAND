@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Mail, Lock, Eye, EyeOff, Loader2, Hand, User } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, Loader2, Hand, User, Laptop } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
 import api from '../api/axios';
 import styles from './LoginPage.module.css';
@@ -92,6 +92,24 @@ export const LoginPage: React.FC = () => {
 
         <div className={styles.demoHint}>
           <p>Demo: admin@richland.crm / password</p>
+        </div>
+
+        <div style={{ marginTop: '1.25rem', textAlign: 'center', borderTop: '1px solid rgba(148, 163, 184, 0.12)', paddingTop: '1rem' }}>
+          <a 
+            href="/download" 
+            style={{ 
+              fontSize: '0.8rem', 
+              color: 'var(--color-primary)', 
+              fontWeight: 600, 
+              display: 'inline-flex', 
+              alignItems: 'center', 
+              gap: '6px', 
+              textDecoration: 'none',
+              transition: 'opacity 0.2s'
+            }}
+          >
+            <Laptop size={14} /> Tải ứng dụng Desktop (Windows / macOS)
+          </a>
         </div>
       </div>
     </div>

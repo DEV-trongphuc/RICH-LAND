@@ -49,6 +49,7 @@ const DepositsPage = lazy(() => import('./pages/DepositsPage'));
 const CapiPage = lazy(() => import('./pages/CapiPage'));
 const AttendancePage = lazy(() => import('./pages/AttendancePage').then(module => ({ default: module.AttendancePage })));
 const TicketsPage = lazy(() => import('./pages/TicketsPage').then(module => ({ default: module.TicketsPage })));
+const DownloadPage = lazy(() => import('./pages/DownloadPage').then(module => ({ default: module.DownloadPage })));
 
 // Loading spinner fallback
 const PageLoader = () => (
@@ -106,7 +107,7 @@ const AppTabs = () => {
       return <Navigate to="/" replace />;
     }
   } else if (currentPath === '/expenses') {
-    if (!['admin', 'superadmin', 'super_admin', 'manager', 'director', 'assistant'].includes(user?.role || '')) {
+    if (!['admin', 'superadmin', 'super_admin', 'manager', 'director', 'assistant', 'sale', 'sales'].includes(user?.role || '')) {
       return <Navigate to="/" replace />;
     }
   } else if (currentPath === '/tickets') {
@@ -497,6 +498,7 @@ export default function App() {
                 <Route path="/login" element={<Login />} />
                 <Route path="/report-data" element={<ReportData />} />
                 <Route path="/demo" element={<DemoEntry />} />
+                <Route path="/download" element={<DownloadPage />} />
                 
                 {/* All authenticated users (sharing a single persistent AppTabs instance) */}
                 <Route element={<ProtectedRoute />}>
