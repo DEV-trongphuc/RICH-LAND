@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, User, Users, Phone, Mail, MapPin, Briefcase, Plus, Search, Send, History, CheckSquare, DollarSign, HelpCircle, FileText, ShoppingCart, Tag as TagIcon, Target, Pencil, Trash2, LifeBuoy, AlertCircle, Clock, UserCheck, Activity, Calendar, CheckCircle2, ChevronLeft, ChevronRight, ChevronDown, Check, Camera, Loader2, MessageSquare, PenTool, Lightbulb, Upload, Paperclip, CreditCard, Ban, ShieldAlert, Copy, Folder, FolderPlus, ArrowRightLeft, List, LayoutGrid, RotateCcw, RefreshCw } from 'lucide-react';
+import { X, User, Users, Phone, Mail, MapPin, Briefcase, Plus, Search, Send, History, CheckSquare, DollarSign, HelpCircle, FileText, ShoppingCart, Tag as TagIcon, Target, Pencil, Trash2, LifeBuoy, AlertCircle, Clock, UserCheck, Activity, Calendar, CheckCircle2, ChevronLeft, ChevronRight, ChevronDown, Check, Camera, Loader2, MessageSquare, PenTool, Lightbulb, Upload, Paperclip, CreditCard, Ban, ShieldAlert, Copy, Folder, FolderPlus, ArrowRightLeft, List, LayoutGrid, RotateCcw, RefreshCw, Layers } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { LeadScoreRing } from '../components/ui/LeadScoreRing';
 import { TagInput } from '../components/ui/TagInput';
@@ -3729,8 +3729,23 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                       name={fullName} 
                       size={24} 
                     />
-                    <h3 style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--color-text)', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    <h3 style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--color-text)', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'flex', alignItems: 'center' }}>
                       {fullName}
+                      {((formData.dl_status || contact?.dl_status) === 'databank_claim') ? (
+                        <span title="Khách hàng từ Databank" style={{ display: 'inline-flex', alignItems: 'center' }}>
+                          <Layers 
+                            size={12} 
+                            style={{ marginLeft: '4px', color: 'var(--color-warning)', flexShrink: 0 }} 
+                          />
+                        </span>
+                      ) : !(formData.dl_status || contact?.dl_status) ? (
+                        <span title="Khách hàng cá nhân" style={{ display: 'inline-flex', alignItems: 'center' }}>
+                          <User 
+                            size={12} 
+                            style={{ marginLeft: '4px', color: 'var(--color-primary-light)', flexShrink: 0 }} 
+                          />
+                        </span>
+                      ) : null}
                     </h3>
                   </div>
                   <button
@@ -3876,6 +3891,21 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                       <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '2px', flexWrap: 'wrap' }}>
                         <h2 style={{ fontSize: '1.35rem', fontWeight: 800, color: 'var(--color-text)', letterSpacing: '-0.02em', wordBreak: 'break-word', display: 'flex', alignItems: 'center', gap: '6px' }}>
                           {fullName}
+                          {((formData.dl_status || contact?.dl_status) === 'databank_claim') ? (
+                            <span title="Khách hàng từ Databank" style={{ display: 'inline-flex', alignItems: 'center' }}>
+                              <Layers 
+                                size={16} 
+                                style={{ color: 'var(--color-warning)', flexShrink: 0 }} 
+                              />
+                            </span>
+                          ) : !(formData.dl_status || contact?.dl_status) ? (
+                            <span title="Khách hàng cá nhân" style={{ display: 'inline-flex', alignItems: 'center' }}>
+                              <User 
+                                size={16} 
+                                style={{ color: 'var(--color-primary-light)', flexShrink: 0 }} 
+                              />
+                            </span>
+                          ) : null}
                           <button
                             className="btn-icon xs"
                             style={{ color: 'var(--color-text-muted)', background: 'transparent', border: 'none', cursor: 'pointer', padding: '2px' }}

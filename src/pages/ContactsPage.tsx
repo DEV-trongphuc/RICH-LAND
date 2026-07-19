@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { createPortal } from 'react-dom';
-import { Plus, Search, Phone, Mail, Eye, Trash2, X, Download, Users, Tag as TagIcon, UserCheck, RefreshCw, Filter, LayoutGrid, List, ArrowDownUp, Columns, Building2, Briefcase, Loader2, User, Calendar, AlertTriangle, AlertCircle, CheckSquare } from 'lucide-react';
+import { Plus, Search, Phone, Mail, Eye, Trash2, X, Download, Users, Tag as TagIcon, UserCheck, RefreshCw, Filter, LayoutGrid, List, ArrowDownUp, Columns, Building2, Briefcase, Loader2, User, Calendar, AlertTriangle, AlertCircle, CheckSquare, Layers } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Avatar } from '../components/ui/Avatar';
 import { useUIStore } from '../store/uiStore';
@@ -1371,7 +1371,24 @@ export const ContactsPage: React.FC = () => {
                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                               <Avatar name={fullName} size={36} />
                               <div>
-                                <p style={{ fontWeight: 700, fontSize: '0.875rem', color: 'var(--color-text)', whiteSpace: 'nowrap' }}>{fullName}</p>
+                                <p style={{ fontWeight: 700, fontSize: '0.875rem', color: 'var(--color-text)', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center' }}>
+                                  {fullName}
+                                  {c.dl_status === 'databank_claim' ? (
+                                    <span title="Khách hàng từ Databank" style={{ display: 'inline-flex', alignItems: 'center' }}>
+                                      <Layers 
+                                        size={12} 
+                                        style={{ marginLeft: '6px', color: 'var(--color-warning)', flexShrink: 0 }} 
+                                      />
+                                    </span>
+                                  ) : !c.dl_status ? (
+                                    <span title="Khách hàng cá nhân" style={{ display: 'inline-flex', alignItems: 'center' }}>
+                                      <User 
+                                        size={12} 
+                                        style={{ marginLeft: '6px', color: 'var(--color-primary-light)', flexShrink: 0 }} 
+                                      />
+                                    </span>
+                                  ) : null}
+                                </p>
                                 {columns.find(col => col.id === 'company')?.visible && c.company_name && (
                                   <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '2px', whiteSpace: 'nowrap' }}>
                                     {c.company_name} {c.job_title ? `• ${c.job_title}` : ''}
@@ -1631,7 +1648,24 @@ export const ContactsPage: React.FC = () => {
                           <div style={{ display: 'flex', alignItems: 'center', gap: '0.875rem' }}>
                             <Avatar name={fullName} size={42} />
                             <div>
-                              <h3 style={{ fontWeight: 800, fontSize: '0.95rem', color: 'var(--color-text)', marginBottom: '2px', lineHeight: 1.2 }}>{fullName}</h3>
+                              <h3 style={{ fontWeight: 800, fontSize: '0.95rem', color: 'var(--color-text)', marginBottom: '2px', lineHeight: 1.2, display: 'flex', alignItems: 'center' }}>
+                                {fullName}
+                                {c.dl_status === 'databank_claim' ? (
+                                  <span title="Khách hàng từ Databank" style={{ display: 'inline-flex', alignItems: 'center' }}>
+                                    <Layers 
+                                      size={13} 
+                                      style={{ marginLeft: '6px', color: 'var(--color-warning)', flexShrink: 0 }} 
+                                    />
+                                  </span>
+                                ) : !c.dl_status ? (
+                                  <span title="Khách hàng cá nhân" style={{ display: 'inline-flex', alignItems: 'center' }}>
+                                    <User 
+                                      size={13} 
+                                      style={{ marginLeft: '6px', color: 'var(--color-primary-light)', flexShrink: 0 }} 
+                                    />
+                                  </span>
+                                ) : null}
+                              </h3>
                               <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: '4px' }}>
                                 <Building2 size={11} /> {c.company_name || 'Khách hàng cá nhân'}
                               </p>
