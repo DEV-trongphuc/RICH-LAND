@@ -66,6 +66,7 @@ export const Header = ({
   const [headerCheckIn, setHeaderCheckIn] = useState<any>(null);
   const managerBehaviorMode = user?.manager_behavior_mode || 'combined';
   const isSales = user?.role === 'sale' || (user?.role === 'manager' && managerBehaviorMode === 'combined');
+  const isOvertime = new Date().getHours() >= 18 && new Date().getHours() < 22;
 
   const [uncontactedCount, setUncontactedCount] = useState(() => {
     return Number(sessionStorage.getItem('sale-uncontacted-count')) || 0;
@@ -1970,7 +1971,7 @@ export const Header = ({
         `}</style>
       </CustomModal>
 
-      {isSales && (!headerCheckIn || headerCheckIn.status === 'rejected') && (
+       {isSales && !isOvertime && (!headerCheckIn || headerCheckIn.status === 'rejected') && (
         <>
           <style>{`
             @media (max-width: 768px) {

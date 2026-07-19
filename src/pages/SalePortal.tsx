@@ -126,7 +126,7 @@ const ALLOWED_PORTAL_ROLES = ['sale', 'sales', 'superadmin', 'admin', 'super_adm
 
 const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePortalProps) => {
   const navigate = useNavigate();
-  const isOvertime = new Date().getHours() >= 18;
+  const isOvertime = new Date().getHours() >= 18 && new Date().getHours() < 22;
   const routerLocation = useLocation();
   const loc = location || routerLocation;
   const { user, token, login, logout } = useAuth();
@@ -6196,7 +6196,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
             border-radius: 12px !important;
             padding: 10px 20px !important;
             font-size: 0.8rem !important;
-            fontWeight: 750 !important;
+            font-weight: 600 !important;
             display: inline-flex !important;
             align-items: center !important;
             gap: 8px !important;
@@ -6235,7 +6235,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
             gap: 12px;
             font-size: 0.825rem;
             color: #ffffff !important;
-            font-weight: 700 !important;
+            font-weight: 500 !important;
             transition: all 0.2s ease;
             cursor: pointer;
             text-decoration: none;
@@ -6257,7 +6257,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
             }
             .welcome-banner h2 {
               font-size: 1.05rem !important;
-              font-weight: 750 !important;
+              font-weight: 700 !important;
             }
             .welcome-task-row {
               padding: 8px 12px !important;
