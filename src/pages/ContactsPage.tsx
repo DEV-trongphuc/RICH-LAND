@@ -321,11 +321,11 @@ export const ContactsPage: React.FC = () => {
 
   // New Enterprise Features State
   const [viewMode, setViewMode] = useState<'list' | 'card'>(() => window.innerWidth <= 768 ? 'card' : 'list');
-  const [isMobile, setIsMobile] = useState(window.innerWidth <= 600);
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
 
   useEffect(() => {
     const handleResize = () => {
-      setIsMobile(window.innerWidth <= 600);
+      setIsMobile(window.innerWidth <= 768);
       if (window.innerWidth <= 768) {
         setViewMode('card');
       }
