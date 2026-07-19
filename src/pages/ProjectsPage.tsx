@@ -46,6 +46,7 @@ interface Project {
   manager_ids?: string;
   created_by?: number;
   reference_url?: string;
+  campaign_sharing_mode?: string;
 }
 
 interface RosterMember {
@@ -3266,7 +3267,7 @@ export default function ProjectsPage() {
             {activeSubTab === 'projects' ? (
               <button
                 onClick={() => {
-                  setEditingProject({ status: 'active' });
+                  setEditingProject({ status: 'active', campaign_sharing_mode: 'independent' });
                   setAutoCode(true);
                   setProjectModalMode('create');
                   setIsEditModalOpen(true);
@@ -3429,7 +3430,7 @@ export default function ProjectsPage() {
             description="Bắt đầu đăng ký các dự án bất động sản để phân phối và quản lý tài liệu."
             actionText={isAdmin ? "Thêm ngay" : undefined}
             onAction={isAdmin ? () => {
-              setEditingProject({ status: 'active' });
+              setEditingProject({ status: 'active', campaign_sharing_mode: 'independent' });
               setAutoCode(true);
               setIsEditModalOpen(true);
             } : undefined}
@@ -5012,6 +5013,83 @@ export default function ProjectsPage() {
                       }}
                       placeholder="Chọn chiến dịch..."
                     />
+                  </div>
+
+                  <div>
+                    <label className="form-label" style={{ fontWeight: 600 }}>Cấu hình chia sẻ chiến dịch</label>
+                    <div style={{ display: 'grid', gridTemplateColumns: window.innerWidth <= 768 ? '1fr' : 'repeat(3, 1fr)', gap: '8px', marginTop: '6px' }}>
+                      {/* Option 1: Công khai */}
+                      <div
+                        onClick={() => setEditingProject(prev => prev ? ({ ...prev, campaign_sharing_mode: 'public' }) : prev)}
+                        style={{
+                          border: `1px solid ${editingProject?.campaign_sharing_mode === 'public' ? 'var(--color-primary)' : 'var(--color-border-light)'}`,
+                          background: editingProject?.campaign_sharing_mode === 'public' ? 'rgba(189, 29, 45, 0.04)' : '#ffffff',
+                          padding: '10px 12px',
+                          borderRadius: '10px',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '4px',
+                          transition: 'all 0.2s ease'
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 700, fontSize: '0.8rem', color: editingProject?.campaign_sharing_mode === 'public' ? 'var(--color-primary)' : 'var(--color-text)' }}>
+                          <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: editingProject?.campaign_sharing_mode === 'public' ? 'var(--color-primary)' : '#cbd5e1' }}></span>
+                          Công khai
+                        </div>
+                        <span style={{ fontSize: '0.6875rem', color: 'var(--color-text-muted)', lineHeight: '1.2' }}>
+                          Mọi nhân sự trong hệ thống đều thấy chiến dịch con.
+                        </span>
+                      </div>
+
+                      {/* Option 2: Nhân sự dự án */}
+                      <div
+                        onClick={() => setEditingProject(prev => prev ? ({ ...prev, campaign_sharing_mode: 'project_members' }) : prev)}
+                        style={{
+                          border: `1px solid ${editingProject?.campaign_sharing_mode === 'project_members' ? 'var(--color-primary)' : 'var(--color-border-light)'}`,
+                          background: editingProject?.campaign_sharing_mode === 'project_members' ? 'rgba(189, 29, 45, 0.04)' : '#ffffff',
+                          padding: '10px 12px',
+                          borderRadius: '10px',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '4px',
+                          transition: 'all 0.2s ease'
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 700, fontSize: '0.8rem', color: editingProject?.campaign_sharing_mode === 'project_members' ? 'var(--color-primary)' : 'var(--color-text)' }}>
+                          <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: editingProject?.campaign_sharing_mode === 'project_members' ? 'var(--color-primary)' : '#cbd5e1' }}></span>
+                          Nhân sự dự án
+                        </div>
+                        <span style={{ fontSize: '0.6875rem', color: 'var(--color-text-muted)', lineHeight: '1.2' }}>
+                          Chỉ nhân sự thuộc roster dự án thấy chiến dịch con.
+                        </span>
+                      </div>
+
+                      {/* Option 3: Chiến dịch độc lập */}
+                      <div
+                        onClick={() => setEditingProject(prev => prev ? ({ ...prev, campaign_sharing_mode: 'independent' }) : prev)}
+                        style={{
+                          border: `1px solid ${(!editingProject?.campaign_sharing_mode || editingProject?.campaign_sharing_mode === 'independent') ? 'var(--color-primary)' : 'var(--color-border-light)'}`,
+                          background: (!editingProject?.campaign_sharing_mode || editingProject?.campaign_sharing_mode === 'independent') ? 'rgba(189, 29, 45, 0.04)' : '#ffffff',
+                          padding: '10px 12px',
+                          borderRadius: '10px',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '4px',
+                          transition: 'all 0.2s ease'
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 700, fontSize: '0.8rem', color: (!editingProject?.campaign_sharing_mode || editingProject?.campaign_sharing_mode === 'independent') ? 'var(--color-primary)' : 'var(--color-text)' }}>
+                          <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: (!editingProject?.campaign_sharing_mode || editingProject?.campaign_sharing_mode === 'independent') ? 'var(--color-primary)' : '#cbd5e1' }}></span>
+                          Độc lập (Mặc định)
+                        </div>
+                        <span style={{ fontSize: '0.6875rem', color: 'var(--color-text-muted)', lineHeight: '1.2' }}>
+                          Chỉ thành viên của riêng chiến dịch đó mới thấy.
+                        </span>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>

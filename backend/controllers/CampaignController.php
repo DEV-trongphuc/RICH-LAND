@@ -76,8 +76,24 @@ class CampaignController {
                 FIND_IN_SET(?, user_ids) 
                 OR FIND_IN_SET(?, manager_ids) 
                 OR created_by = ?
-                OR EXISTS (SELECT 1 FROM project_roster pr WHERE pr.project_id = marketing_campaigns.project_id AND pr.user_id = ?)
-                OR EXISTS (SELECT 1 FROM projects p WHERE p.id = marketing_campaigns.project_id AND (FIND_IN_SET(?, p.manager_ids) OR p.created_by = ?))
+                -- Case 1: Public project campaign
+                OR EXISTS (
+                    SELECT 1 FROM projects p 
+                    WHERE p.id = marketing_campaigns.project_id 
+                      AND p.campaign_sharing_mode = 'public'
+                )
+                -- Case 2: Project members visibility mode
+                OR (
+                    EXISTS (
+                        SELECT 1 FROM projects p 
+                        WHERE p.id = marketing_campaigns.project_id 
+                          AND (p.campaign_sharing_mode = 'project_members' OR p.campaign_sharing_mode IS NULL OR p.campaign_sharing_mode = '')
+                    )
+                    AND (
+                        EXISTS (SELECT 1 FROM project_roster pr WHERE pr.project_id = marketing_campaigns.project_id AND pr.user_id = ?)
+                        OR EXISTS (SELECT 1 FROM projects p WHERE p.id = marketing_campaigns.project_id AND (FIND_IN_SET(?, p.manager_ids) OR p.created_by = ?))
+                    )
+                )
             )";
             $params[] = $auth['user_id'];
             $params[] = $auth['user_id'];
@@ -205,10 +221,20 @@ class CampaignController {
 
             if (!$isCreator && !$isRoster) {
                 if ($camp['project_id']) {
-                    $stmtRoster = $this->db->prepare("SELECT 1 FROM project_roster WHERE project_id = ? AND user_id = ? LIMIT 1");
-                    $stmtRoster->execute([(int)$camp['project_id'], (int)$userId]);
-                    if ($stmtRoster->fetch()) {
-                        $isRoster = true;
+                    // Only check project roster if sharing mode is not independent
+                    $stmtMode = $this->db->prepare("SELECT campaign_sharing_mode FROM projects WHERE id = ?");
+                    $stmtMode->execute([$camp['project_id']]);
+                    $sharingMode = $stmtMode->fetchColumn();
+                    if (!$sharingMode) {
+                        $sharingMode = 'independent';
+                    }
+
+                    if ($sharingMode !== 'independent') {
+                        $stmtRoster = $this->db->prepare("SELECT 1 FROM project_roster WHERE project_id = ? AND user_id = ? LIMIT 1");
+                        $stmtRoster->execute([(int)$camp['project_id'], (int)$userId]);
+                        if ($stmtRoster->fetch()) {
+                            $isRoster = true;
+                        }
                     }
                 }
             }
