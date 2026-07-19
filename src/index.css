@@ -3974,6 +3974,9 @@ table td.wrap-cell, table th.wrap-cell {
   :root {
     --sidebar-width: 0px !important;
   }
+  .grid-cards-responsive {
+    gap: 0.1rem !important;
+  }
 }
 
 /* Grid layout for customer cards */

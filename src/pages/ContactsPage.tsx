@@ -843,13 +843,13 @@ export const ContactsPage: React.FC = () => {
       <div className={isMobile ? "" : "card"} style={{ padding: isMobile ? '0' : '0.75rem 1rem', marginBottom:'0.75rem', display:'flex', gap:'0.75rem', flexDirection: isMobile ? 'column' : 'row', alignItems: isMobile ? 'stretch' : 'center', background: isMobile ? 'transparent' : undefined, border: isMobile ? 'none' : undefined, boxShadow: isMobile ? 'none' : undefined }}>
         {isMobile ? (
           <div style={{ display: 'flex', gap: '4px', alignItems: 'center', width: '100%', position: 'relative' }}>
-            <div className="filter-search" style={{ flex: 1, position: 'relative', height: '32px', borderRadius: '8px', border: '1px solid var(--color-border)', boxSizing: 'border-box', paddingRight: '2rem' }}>
-              <Search size={12} style={{ color:'var(--color-text-muted)', marginLeft: '4px' }}/>
+            <div className="filter-search" style={{ flex: 1, position: 'relative', height: '32px', borderRadius: '8px', border: '1px solid var(--color-border)', boxSizing: 'border-box', padding: 0, display: 'flex', alignItems: 'center', marginBottom: 0 }}>
+              <Search size={12} style={{ color:'var(--color-text-muted)', marginLeft: '8px', marginRight: '4px', flexShrink: 0 }}/>
               <input 
                 placeholder="Tìm tên, email, điện thoại..." 
                 value={search} 
                 onChange={e=>{setSearch(e.target.value);setPage(1);}} 
-                style={{ paddingRight: '0.5rem', height: '100%', fontSize: '0.75rem' }}
+                style={{ border: 'none', background: 'transparent', outline: 'none', padding: '0 8px', height: '100%', fontSize: '0.75rem', flex: 1, minWidth: 0 }}
               />
               <div style={{ position: 'absolute', right: '0.5rem', top: '50%', transform: 'translateY(-50%)', display: 'flex', alignItems: 'center' }}>
                 <AnimatePresence>
@@ -873,10 +873,12 @@ export const ContactsPage: React.FC = () => {
             {/* More Actions Trigger (...) */}
             <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
               <button 
+                className="btn"
                 onClick={() => setShowMobileActions(!showMobileActions)}
                 style={{
                   height: '32px',
                   width: '32px',
+                  minWidth: '32px',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
