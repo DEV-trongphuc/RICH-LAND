@@ -125,16 +125,16 @@ class ReportController
         }
 
         // Retrieve dynamic settings
-        $resOpp = $this->db->prepare("SELECT setting_value FROM system_settings WHERE tenant_id = ? AND setting_key = 'deal_opportunity_status' LIMIT 1");
-        $resOpp->execute([$tid]);
+        $resOpp = $this->db->prepare("SELECT setting_value FROM system_settings WHERE setting_key = 'deal_opportunity_status' LIMIT 1");
+        $resOpp->execute();
         $oppStatus = $resOpp->fetchColumn() ?: 'booking';
 
-        $resWon = $this->db->prepare("SELECT setting_value FROM system_settings WHERE tenant_id = ? AND setting_key = 'deal_won_status' LIMIT 1");
-        $resWon->execute([$tid]);
+        $resWon = $this->db->prepare("SELECT setting_value FROM system_settings WHERE setting_key = 'deal_won_status' LIMIT 1");
+        $resWon->execute();
         $wonStatus = $resWon->fetchColumn() ?: 'dong_deal';
 
-        $resHier = $this->db->prepare("SELECT setting_value FROM system_settings WHERE tenant_id = ? AND setting_key = 'pipeline_status_hierarchy' LIMIT 1");
-        $resHier->execute([$tid]);
+        $resHier = $this->db->prepare("SELECT setting_value FROM system_settings WHERE setting_key = 'pipeline_status_hierarchy' LIMIT 1");
+        $resHier->execute();
         $hierJson = $resHier->fetchColumn();
         $hierarchy = $hierJson ? json_decode($hierJson, true) : ['chua_xac_dinh', 'quan_tam', 'dong_y_gap', 'da_gap', 'booking', 'dat_coc', 'dong_deal'];
         if (!is_array($hierarchy)) {
