@@ -2500,7 +2500,12 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
   useEffect(() => {
     if (data.consultant_profile) {
       const isSaleOrManager = ['sale', 'manager'].includes(String(displayUser?.role || user?.role).toLowerCase());
-      setProfileActiveTab(isSaleOrManager ? 'schedule' : 'personal');
+      const isMobileViewport = window.innerWidth <= 1024;
+      if (isMobileViewport) {
+        setProfileActiveTab('');
+      } else {
+        setProfileActiveTab(isSaleOrManager ? 'schedule' : 'personal');
+      }
       setEditName(data.consultant_profile.name || '');
       setEditAvatar(data.consultant_profile.avatar || '');
       const fallbackStart = sysSettings?.global_work_start_time || '08:00';
@@ -7341,7 +7346,94 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
             title={t("Kho chung trống")}
             description={t("Hiện tại không có khách hàng tiềm năng nào được công khai để nhận.")}
           />
+        ) : isMobile ? (
+          /* ── Mobile Card View ── */
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+            {paginatedPublicLeads.map((lead) => {
+              const hasClaimed = lead.takers && lead.takers.some((t: any) => Number(t.id) === Number(displayUser?.id) || Number(t.id) === Number(displayUser?.consultant_id));
+              const isFull = lead.takers && lead.takers.length >= 2;
+              const takerCount = lead.takers ? lead.takers.length : 0;
+              const canClaim = !hasClaimed && !isFull && isClaimingLeadId === null && !isAdmin;
+
+              // Determine badge colors based on takerCount
+              const badgeBg = isFull ? 'rgba(100, 116, 139, 0.1)' : (takerCount === 1 ? 'rgba(37, 99, 235, 0.1)' : 'rgba(16, 185, 129, 0.1)');
+              const badgeColor = isFull ? '#64748b' : (takerCount === 1 ? '#2563eb' : '#10b981');
+              const badgeText = `Public (${takerCount}/2)`;
+
+              return (
+                <div 
+                  key={lead.id}
+                  onClick={() => {
+                    if (canClaim) {
+                      handleClaimLead(lead.id, lead.full_name || lead.name);
+                    }
+                  }}
+                  style={{
+                    background: 'var(--color-surface)',
+                    border: '1px solid var(--color-border-light)',
+                    borderRadius: '16px',
+                    padding: '12px 16px',
+                    boxShadow: '0 4px 12px rgba(0,0,0,0.02)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: '12px',
+                    cursor: canClaim ? 'pointer' : 'default'
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1, minWidth: 0 }}>
+                    <div style={{ flexShrink: 0 }}>
+                      <Avatar name={lead.full_name || t('Khách hàng')} size={42} />
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0, gap: '2px' }}>
+                      <span style={{ fontWeight: 700, fontSize: '0.95rem', color: 'var(--color-text)', lineHeight: 1.2 }}>
+                        {lead.full_name || t('Khách hàng')}
+                      </span>
+                      <span style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)' }}>
+                        {t('Điện thoại')}: {lead.phone || '—'}
+                      </span>
+                      <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>
+                        {lead.email || '—'}
+                      </span>
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '6px', flexShrink: 0 }}>
+                    <div style={{
+                      padding: '4px 8px',
+                      borderRadius: '12px',
+                      fontSize: '0.7rem',
+                      fontWeight: 700,
+                      background: badgeBg,
+                      color: badgeColor,
+                      whiteSpace: 'nowrap'
+                    }}>
+                      {badgeText}
+                    </div>
+                    {canClaim && (
+                      <span style={{ fontSize: '0.72rem', color: 'var(--color-primary)', fontWeight: 600, textDecoration: 'underline' }}>
+                        {t('Nhận ngay')}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+            
+            {/* Mobile Pagination */}
+            {databankTotalPages > 1 && (
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '1rem', marginTop: '1rem' }}>
+                <button onClick={() => setDatabankPage(prev => Math.max(prev - 1, 1))} disabled={databankPage === 1} className="btn sm secondary" style={{ height: 32, padding: '0 12px' }}>
+                  {t('Trước')}
+                </button>
+                <span style={{ fontSize: '0.8125rem', fontWeight: 600 }}>{databankPage} / {databankTotalPages}</span>
+                <button onClick={() => setDatabankPage(prev => Math.min(prev + 1, databankTotalPages))} disabled={databankPage === databankTotalPages || databankTotalPages === 0} className="btn sm secondary" style={{ height: 32, padding: '0 12px' }}>
+                  {t('Sau')}
+                </button>
+              </div>
+            )}
+          </div>
         ) : (
+          /* ── Desktop Table View ── */
           <div style={{
             background: 'var(--color-surface)',
             border: '1px solid var(--color-border)',
@@ -7350,9 +7442,9 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
             boxShadow: '0 4px 20px rgba(0,0,0,0.02)'
           }}>
             <div style={{
-              overflowX: isMobile ? 'visible' : 'auto',
-              maxHeight: isMobile ? 'none' : '680px',
-              overflowY: isMobile ? 'visible' : 'auto'
+              overflowX: 'auto',
+              maxHeight: '680px',
+              overflowY: 'auto'
             }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.875rem' }}>
                 <thead>
@@ -8161,14 +8253,32 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
         height: '28px',
         borderRadius: '7px',
         backgroundColor: bgColor,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
+        display: 'grid',
+        placeItems: 'center',
         flexShrink: 0
       }}>
-        <IconComponent size={15} color="white" style={{ display: 'block', margin: 0 }} />
+        <IconComponent size={15} color="white" style={{ display: 'block', width: '15px', height: '15px', margin: 'auto' }} />
       </div>
     );
+
+    const cardContainerStyle = (isMobile: boolean, customBorderRadius?: string): React.CSSProperties => (isMobile ? {
+      padding: '1.25rem 1rem',
+      display: 'flex',
+      flexDirection: 'column',
+      gap: '1.25rem',
+      background: 'var(--color-surface)',
+      borderRadius: '12px',
+      boxShadow: 'none'
+    } : {
+      padding: '2rem',
+      display: 'flex',
+      flexDirection: 'column',
+      gap: '1.5rem',
+      background: 'var(--color-surface)',
+      borderRadius: customBorderRadius || '12px',
+      border: '1px solid var(--color-border-light)',
+      boxShadow: '0 4px 20px rgba(0,0,0,0.02)'
+    });
 
     const onLeave = isCurrentlyOnLeave(profile);
 
@@ -8193,14 +8303,14 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
     };
 
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem', padding: '1.5rem 0' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: isMobile ? '1rem' : '1rem', padding: isMobile ? '0.25rem 0' : '0.5rem 0' }}>
         {/* Sticky Header block */}
         {(!isMobile || profileActiveTab) && (
           <div style={{
             position: 'sticky',
             top: isMobile ? '-1.25rem' : '-1.5rem',
             zIndex: 100,
-            background: 'var(--color-bg)',
+            background: isMobile ? 'var(--color-surface)' : 'var(--color-bg)',
             padding: isMobile ? '1rem 0 0.75rem 0' : '1.5rem 0 1rem 0',
             display: 'flex',
             justifyContent: 'space-between',
@@ -8710,7 +8820,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                         type="button"
                         className={`${styles.sidebarTabBtn} ${profileActiveTab === 'schedule' ? styles.sidebarTabActive : ''}`}
                         onClick={() => setProfileActiveTab('schedule')}
-                        style={{ width: '100%', border: 'none', background: 'transparent', textAlign: 'left', cursor: 'pointer' }}
+                        style={{ width: '100%', border: 'none', textAlign: 'left', cursor: 'pointer' }}
                       >
                         {renderColoredIcon(Clock, '#f09a37')}
                         <span style={{ whiteSpace: 'nowrap' }}>{t('Lịch trực nhận data')}</span>
@@ -8720,7 +8830,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                       type="button"
                       className={`${styles.sidebarTabBtn} ${profileActiveTab === 'personal' ? styles.sidebarTabActive : ''}`}
                       onClick={() => setProfileActiveTab('personal')}
-                      style={{ width: '100%', border: 'none', background: 'transparent', textAlign: 'left', cursor: 'pointer' }}
+                      style={{ width: '100%', border: 'none', textAlign: 'left', cursor: 'pointer' }}
                     >
                       {renderColoredIcon(User, '#eb4e3d')}
                       <span style={{ whiteSpace: 'nowrap' }}>{t('Thông tin cá nhân')}</span>
@@ -8729,7 +8839,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                       type="button"
                       className={`${styles.sidebarTabBtn} ${profileActiveTab === 'erp' ? styles.sidebarTabActive : ''}`}
                       onClick={() => setProfileActiveTab('erp')}
-                      style={{ width: '100%', border: 'none', background: 'transparent', textAlign: 'left', cursor: 'pointer' }}
+                      style={{ width: '100%', border: 'none', textAlign: 'left', cursor: 'pointer' }}
                     >
                       {renderColoredIcon(Layers, '#5856d6')}
                       <span style={{ whiteSpace: 'nowrap' }}>{t('Hồ sơ & ERP')}</span>
@@ -8738,7 +8848,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                       type="button"
                       className={`${styles.sidebarTabBtn} ${profileActiveTab === 'certificates' ? styles.sidebarTabActive : ''}`}
                       onClick={() => setProfileActiveTab('certificates')}
-                      style={{ width: '100%', border: 'none', background: 'transparent', textAlign: 'left', cursor: 'pointer' }}
+                      style={{ width: '100%', border: 'none', textAlign: 'left', cursor: 'pointer' }}
                     >
                       {renderColoredIcon(Award, '#f2a20b')}
                       <span style={{ whiteSpace: 'nowrap' }}>{t('Bằng cấp & Chứng chỉ')}</span>
@@ -8747,7 +8857,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                       type="button"
                       className={`${styles.sidebarTabBtn} ${profileActiveTab === 'hr_records' ? styles.sidebarTabActive : ''}`}
                       onClick={() => setProfileActiveTab('hr_records')}
-                      style={{ width: '100%', border: 'none', background: 'transparent', textAlign: 'left', cursor: 'pointer' }}
+                      style={{ width: '100%', border: 'none', textAlign: 'left', cursor: 'pointer' }}
                     >
                       {renderColoredIcon(AlertCircle, '#ff9500')}
                       <span style={{ whiteSpace: 'nowrap' }}>{t('Khen thưởng & Kỷ luật')}</span>
@@ -8756,7 +8866,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                       type="button"
                       className={`${styles.sidebarTabBtn} ${profileActiveTab === 'contact' ? styles.sidebarTabActive : ''}`}
                       onClick={() => setProfileActiveTab('contact')}
-                      style={{ width: '100%', border: 'none', background: 'transparent', textAlign: 'left', cursor: 'pointer' }}
+                      style={{ width: '100%', border: 'none', textAlign: 'left', cursor: 'pointer' }}
                     >
                       {renderColoredIcon(Server, '#007af5')}
                       <span style={{ whiteSpace: 'nowrap' }}>{t('Liên hệ & Tài khoản')}</span>
@@ -8765,7 +8875,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                       type="button"
                       className={`${styles.sidebarTabBtn} ${profileActiveTab === 'payment' ? styles.sidebarTabActive : ''}`}
                       onClick={() => setProfileActiveTab('payment')}
-                      style={{ width: '100%', border: 'none', background: 'transparent', textAlign: 'left', cursor: 'pointer' }}
+                      style={{ width: '100%', border: 'none', textAlign: 'left', cursor: 'pointer' }}
                     >
                       {renderColoredIcon(Receipt, '#34c759')}
                       <span style={{ whiteSpace: 'nowrap' }}>{t('Thanh toán & Thuế')}</span>
@@ -8774,7 +8884,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                       type="button"
                       className={`${styles.sidebarTabBtn} ${profileActiveTab === 'emergency' ? styles.sidebarTabActive : ''}`}
                       onClick={() => setProfileActiveTab('emergency')}
-                      style={{ width: '100%', border: 'none', background: 'transparent', textAlign: 'left', cursor: 'pointer' }}
+                      style={{ width: '100%', border: 'none', textAlign: 'left', cursor: 'pointer' }}
                     >
                       {renderColoredIcon(Scale, '#ff2d55')}
                       <span style={{ whiteSpace: 'nowrap' }}>{t('Liên hệ khẩn cấp')}</span>
@@ -8783,7 +8893,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                       type="button"
                       className={`${styles.sidebarTabBtn} ${profileActiveTab === 'documents' ? styles.sidebarTabActive : ''}`}
                       onClick={() => setProfileActiveTab('documents')}
-                      style={{ width: '100%', border: 'none', background: 'transparent', textAlign: 'left', cursor: 'pointer' }}
+                      style={{ width: '100%', border: 'none', textAlign: 'left', cursor: 'pointer' }}
                     >
                       {renderColoredIcon(FileText, '#8e8e93')}
                       <span style={{ whiteSpace: 'nowrap' }}>{t('Lưu trữ tài liệu')}</span>
@@ -8798,13 +8908,17 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
           {(!isMobile || profileActiveTab) && (
             <div className={styles.contentArea} style={{
               flex: 1,
-              padding: isMobile ? '1.5rem 1rem' : '2rem',
-              background: 'var(--color-surface)',
-              overflowY: 'auto'
+              padding: isMobile ? '0 1rem' : '2rem',
+              background: isMobile ? 'transparent' : 'var(--color-surface)',
+              overflowY: 'auto',
+              borderTopRightRadius: isMobile ? '0px' : '16px',
+              borderBottomRightRadius: isMobile ? '0px' : '16px',
+              borderTopLeftRadius: '0px',
+              borderBottomLeftRadius: '0px'
             }}>
             {/* 1. PERSONAL INFO */}
             {profileActiveTab === 'personal' && (
-              <div className="card animate-fade-in" style={{ padding: '2rem', display: 'flex', flexDirection: 'column', gap: '1.5rem', background: 'var(--color-surface)', borderRadius: '12px', border: '1px solid var(--color-border-light)', boxShadow: '0 4px 20px rgba(0,0,0,0.02)' }}>
+              <div className="card animate-fade-in" style={cardContainerStyle(isMobile)}>
                 <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-text)', textTransform: 'uppercase', letterSpacing: '0.5px', margin: '0 0 0.5rem 0', display: 'flex', alignItems: 'center', gap: 8 }}>
                   <User size={16} color="var(--color-primary)" /> {t('Thông tin cá nhân')}
                 </h3>
