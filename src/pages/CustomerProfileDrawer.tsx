@@ -1556,7 +1556,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
 
   const handleCreateCoopSlip = async () => {
     // Validate customer status
-    const currentStatus = contact?.pipeline_status || 'chua_xac_dinh';
+    const currentStatus = baseData?.pipeline_status || contact?.pipeline_status || 'chua_xac_dinh';
     if (coopEligibleStatuses.length > 0 && !coopEligibleStatuses.includes(currentStatus)) {
       const allowedLabels = coopEligibleStatuses.map(slug => {
         const foundStage = pipelineStages.find(s => s.id === slug);
@@ -5928,8 +5928,8 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                             <button
                               className="btn primary"
                               onClick={handleCreateCoopSlip}
-                              disabled={coopEligibleStatuses.length > 0 && !coopEligibleStatuses.includes(contact?.pipeline_status || 'chua_xac_dinh')}
-                              style={coopEligibleStatuses.length > 0 && !coopEligibleStatuses.includes(contact?.pipeline_status || 'chua_xac_dinh') ? { opacity: 0.5, cursor: 'not-allowed' } : {}}
+                              disabled={coopEligibleStatuses.length > 0 && !coopEligibleStatuses.includes(baseData?.pipeline_status || contact?.pipeline_status || 'chua_xac_dinh')}
+                              style={coopEligibleStatuses.length > 0 && !coopEligibleStatuses.includes(baseData?.pipeline_status || contact?.pipeline_status || 'chua_xac_dinh') ? { opacity: 0.5, cursor: 'not-allowed' } : {}}
                             >
                               <Plus size={16} /> Thiết lập hợp tác hoa hồng
                             </button>
