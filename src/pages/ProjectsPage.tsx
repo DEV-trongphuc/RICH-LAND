@@ -609,7 +609,7 @@ export default function ProjectsPage() {
             {!isReply && (
               <button
                 onClick={() => setReplyTo({ id: comment.id, userName: comment.user_name || 'Thành viên' })}
-                style={{ background: 'transparent', border: 'none', color: 'var(--color-primary)', fontSize: '0.7rem', padding: '4px 0 0 0', cursor: 'pointer', fontWeight: 700, textAlign: 'left', width: 'fit-content' }}
+                style={{ alignSelf: 'flex-end', background: 'transparent', border: 'none', color: 'var(--color-primary)', fontSize: '0.7rem', padding: '4px 0 0 0', cursor: 'pointer', fontWeight: 700, width: 'fit-content' }}
                 className="hover-lift"
               >
                 Phản hồi
@@ -3450,7 +3450,7 @@ export default function ProjectsPage() {
             exit={{ opacity: 0, scale: 0.9, y: 10 }}
             style={{
               position: 'fixed',
-              top: quickUserCard.y + 15,
+              top: quickUserCard.y > window.innerHeight / 2 ? Math.max(10, quickUserCard.y - 370) : quickUserCard.y + 15,
               left: Math.min(quickUserCard.x - 130, window.innerWidth - 290),
               zIndex: 20000,
               width: 270,
@@ -3493,7 +3493,7 @@ export default function ProjectsPage() {
                 {quickUserCard.name}
               </h4>
               <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', display: 'block', marginBottom: '6px', fontWeight: 600 }}>
-                RL-${String(quickUserCard.id).padStart(4, '0')}
+                RL-{String(quickUserCard.id).padStart(4, '0')}
               </span>
               
               <p style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--color-primary)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '8px' }}>

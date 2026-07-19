@@ -647,7 +647,7 @@ const ActivityComments: React.FC<{
                     })}
                     <button
                       onClick={() => setReplyTo({ id: c.id, userName: c.user_name || 'Đồng nghiệp' })}
-                      style={{ background: 'transparent', border: 'none', color: 'var(--color-primary)', fontSize: '0.72rem', padding: '4px 0 0 0', cursor: 'pointer', fontWeight: 700, display: 'block' }}
+                      style={{ alignSelf: 'flex-end', background: 'transparent', border: 'none', color: 'var(--color-primary)', fontSize: '0.72rem', padding: '4px 0 0 0', cursor: 'pointer', fontWeight: 700, display: 'block', width: 'fit-content' }}
                       className="hover-lift"
                     >
                       Phản hồi
