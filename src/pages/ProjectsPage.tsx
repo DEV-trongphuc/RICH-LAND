@@ -1760,7 +1760,7 @@ export default function ProjectsPage() {
                     </div>
                     <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', fontWeight: 600, opacity: 0.85, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Đường dẫn Folder liên kết</span>
                   </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
                     {parseFolderPaths(editingProject?.folder_path).length === 0 ? (
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 14px', background: '#f3f4f6', border: '1px solid var(--color-border-light)', borderRadius: '12px', color: '#6b7280', fontSize: '0.8rem', fontWeight: 550, cursor: 'not-allowed' }}>
                         <Info size={12} style={{ opacity: 0.6 }} />
@@ -1801,7 +1801,7 @@ export default function ProjectsPage() {
                     </div>
                     <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', fontWeight: 600, opacity: 0.85, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Tài liệu liên kết</span>
                   </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
                     {parseIds(editingProject?.document_ids).length === 0 ? (
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 14px', background: '#f3f4f6', border: '1px solid var(--color-border-light)', borderRadius: '12px', color: '#6b7280', fontSize: '0.8rem', fontWeight: 550, cursor: 'not-allowed' }}>
                         <Info size={12} style={{ opacity: 0.6 }} />
