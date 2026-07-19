@@ -1314,12 +1314,10 @@ export default function ProjectsPage() {
                                 onMouseEnter={e => {
                                   e.currentTarget.style.background = isGoogleSheets ? 'rgba(16, 185, 129, 0.1)' : 'rgba(100, 116, 139, 0.08)';
                                   e.currentTarget.style.borderColor = isGoogleSheets ? 'rgba(16, 185, 129, 0.2)' : 'rgba(100, 116, 139, 0.2)';
-                                  e.currentTarget.style.transform = 'translateY(-1px)';
                                 }}
                                 onMouseLeave={e => {
                                   e.currentTarget.style.background = isGoogleSheets ? 'rgba(16, 185, 129, 0.05)' : 'rgba(100, 116, 139, 0.05)';
                                   e.currentTarget.style.borderColor = isGoogleSheets ? '1px solid rgba(16, 185, 129, 0.1)' : 'rgba(100, 116, 139, 0.12)';
-                                  e.currentTarget.style.transform = 'none';
                                 }}
                               >
                                 {isGoogleSheets ? (
@@ -1703,7 +1701,6 @@ export default function ProjectsPage() {
                                 cursor: 'pointer',
                                 transition: 'all 0.2s ease'
                               }}
-                              className="hover-lift"
                               onMouseEnter={e => {
                                 e.currentTarget.style.borderColor = 'rgba(100, 116, 139, 0.2)';
                                 e.currentTarget.style.background = 'rgba(100, 116, 139, 0.08)';
