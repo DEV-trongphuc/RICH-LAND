@@ -1209,7 +1209,7 @@ class ContactController {
             return 'all';
         }
 
-        if (in_array($auth['role'], ['sale', 'sales'], true) && $module === 'deals') {
+        if (in_array($auth['role'], ['sale', 'sales'], true) && ($module === 'deals' || $module === 'leads')) {
             return $action === 'delete' ? 'none' : 'own';
         }
 
