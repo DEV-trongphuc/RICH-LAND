@@ -405,7 +405,12 @@ export const CompanyDrawer: React.FC<CompanyDrawerProps> = ({ isOpen, onClose, e
                   <p className={styles.subtitle} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <Briefcase size={14} /> {formData?.industry || 'Chưa cập nhật ngành nghề'} · MST: {formData?.tax_id || 'Chưa cập nhật'}
                   </p>
-                  <div style={{ display: 'flex', gap: '1rem', marginTop: '0.5rem' }}>
+                  <div style={{ 
+                    display: 'flex', 
+                    flexDirection: isMobileOrTablet ? 'column' : 'row', 
+                    gap: isMobileOrTablet ? '0.35rem' : '1rem', 
+                    marginTop: '0.5rem' 
+                  }}>
                     <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: '4px' }}>
                       <Phone size={12} /> {formData?.phone || 'Chưa có SĐT'}
                     </span>
