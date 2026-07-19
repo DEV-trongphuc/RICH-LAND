@@ -2472,14 +2472,16 @@ switch ($action) {
         $contactsTypes = "i";
 
         if ($isSale) {
-            $contactsWhere[] = "c.owner_id = ?";
+            $contactsWhere[] = "(c.owner_id = ? OR FIND_IN_SET(?, c.collaborator_ids))";
             $contactsParams[] = $saleUserId;
-            $contactsTypes .= "i";
+            $contactsParams[] = $saleUserId;
+            $contactsTypes .= "ii";
         } else {
             if ($saleFilterId !== null) {
-                $contactsWhere[] = "c.owner_id = ?";
+                $contactsWhere[] = "(c.owner_id = ? OR FIND_IN_SET(?, c.collaborator_ids))";
                 $contactsParams[] = $saleUserId;
-                $contactsTypes .= "i";
+                $contactsParams[] = $saleUserId;
+                $contactsTypes .= "ii";
             }
         }
 
@@ -2515,12 +2517,13 @@ switch ($action) {
             $stmtDatabank->close();
         }
 
-        // ĐƯỢC CHIA
+        // ĐƯỢC CHIA (Exclude coop contacts)
         $stmtDistributed = $conn->prepare("
             SELECT COUNT(DISTINCT c.id) as cnt 
             FROM contacts c 
             WHERE $contactsWhereClause 
               AND c.source NOT IN ('databank', 'ca_nhan', 'gioi_thieu')
+              AND (c.collaborator_ids IS NULL OR c.collaborator_ids = '')
               AND EXISTS (
                   SELECT 1 FROM leads l2 
                   JOIN distribution_logs dl2 ON dl2.lead_id = l2.id 
@@ -2537,8 +2540,27 @@ switch ($action) {
             $stmtDistributed->close();
         }
 
+        // HỢP TÁC (COOP)
+        $stmtCoop = $conn->prepare("
+            SELECT COUNT(DISTINCT c.id) as cnt 
+            FROM contacts c 
+            WHERE $contactsWhereClause 
+              AND (FIND_IN_SET(?, c.collaborator_ids) OR (c.owner_id = ? AND c.collaborator_ids IS NOT NULL AND c.collaborator_ids != ''))
+        ");
+        $coopCount = 0;
+        if ($stmtCoop) {
+            $coopParams = $contactsParams;
+            $coopParams[] = $saleUserId;
+            $coopParams[] = $saleUserId;
+            $coopTypes = $contactsTypes . "ii";
+            $stmtCoop->bind_param($coopTypes, ...$coopParams);
+            $stmtCoop->execute();
+            $coopCount = (int) ($stmtCoop->get_result()->fetch_assoc()['cnt'] ?? 0);
+            $stmtCoop->close();
+        }
+
         // TỰ NHẬP
-        $selfCount = max(0, $contactsCount - $databankCount - $distributedCount);
+        $selfCount = max(0, $contactsCount - $databankCount - $distributedCount - $coopCount);
 
         // 4. Query distribution by round using contacts table
         $sqlByRound = "
@@ -2684,6 +2706,7 @@ switch ($action) {
             'stats' => [
                 'total_received' => $contactsCount,
                 'distributed_count' => $distributedCount,
+                'coop_count' => $coopCount,
                 'databank_count' => $databankCount,
                 'self_count' => $selfCount,
                 'tickets_total' => (int) ($ticketStats['total'] ?? 0),

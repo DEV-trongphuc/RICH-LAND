@@ -4,7 +4,8 @@ import {
   Users, AlertTriangle, RefreshCw,
   GitBranch, UserPlus, Zap, Calendar, BarChart2, Scale,
   FileSpreadsheet, MessageCircle, Database, Server, ExternalLink, Clock, CheckCircle, Cpu,
-  ShieldAlert, Filter, Ticket as TicketIcon
+  ShieldAlert, Filter, Ticket as TicketIcon,
+  FileText, CheckSquare, AlertCircle, CheckCircle2, Settings
 } from 'lucide-react';
 import {
   Bar, XAxis, YAxis, CartesianGrid,
@@ -22,6 +23,7 @@ import { KpiCardSkeleton, Skeleton, ChartSkeleton } from '../components/ui/Skele
 
 import { Avatar } from '../components/ui/Avatar';
 import { WarRoomFlightDeck } from '../components/Dashboard/WarRoomFlightDeck';
+import { useAuthStore } from '../store/authStore';
 
 const parseServerDate = (dateStr: string) => {
   if (!dateStr) return new Date();
@@ -35,6 +37,7 @@ const parseServerDate = (dateStr: string) => {
 
 const DashboardInner = ({ isActive }: { isActive: boolean }) => {
   const { t, language } = useLanguage();
+  const user = useAuthStore(state => state.user);
   const daysOfWeek = [
     t('Thứ 2'),
     t('Thứ 3'),
@@ -119,6 +122,24 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
       return (val / 1000).toFixed(1).replace(/\.0$/, '') + 'k';
     }
     return val.toLocaleString();
+  };
+
+  const getCurrentDateVi = () => {
+    const days = [
+      t('Chủ Nhật'),
+      t('Thứ Hai'),
+      t('Thứ Ba'),
+      t('Thứ Tư'),
+      t('Thứ Năm'),
+      t('Thứ Sáu'),
+      t('Thứ Bảy')
+    ];
+    const now = new Date();
+    const dayName = days[now.getDay()];
+    const date = String(now.getDate()).padStart(2, '0');
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const year = now.getFullYear();
+    return `${dayName}, ngày ${date}/${month}/${year}`;
   };
 
   const getMetricLabel = (metric: string) => {
@@ -669,184 +690,255 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
         </div>
       </div>
 
-      {/* Visual Pending Approvals Center */}
-      {(pendingTicketsCount > 0 || heldLeadsCount > 0 || pendingCheckInsCount > 0 || pendingCoopsCount > 0) && (
-        <div className="card approval-banner-card">
-          <style>{`
-            .approval-banner-card {
-              position: relative;
-              padding: 1.5rem 1.75rem;
-              margin-bottom: 1.5rem;
-              background: var(--color-surface) !important;
-              border: 1px solid ${theme === 'dark' ? 'rgba(189, 29, 45, 0.25)' : 'rgba(189, 29, 45, 0.12)'};
-              border-radius: 20px;
-              animation: slideUp 0.4s ease-out both;
-              box-shadow: ${theme === 'dark'
-                ? '0 10px 25px rgba(0, 0, 0, 0.3)'
-                : '0 10px 25px rgba(189, 29, 45, 0.03)'};
-              overflow: hidden;
-            }
-            .approval-banner-content {
-              display: flex;
-              align-items: center;
-              justify-content: space-between;
-              flex-wrap: wrap;
-              gap: 16px;
-            }
-            .approval-badges-container {
-              display: flex;
-              gap: 10px;
-              flex-wrap: wrap;
-            }
-            .approval-badge-btn {
-              padding: 6px 16px;
-              height: 34px;
-              font-size: 0.8125rem;
-              font-weight: 700;
-              border-radius: 20px;
-              display: inline-flex;
-              align-items: center;
-              gap: 8px;
-              cursor: pointer;
-              transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-              border: 1px solid transparent;
-            }
-            .approval-badge-btn:hover {
-              transform: translateY(-2px);
-            }
-            .approval-badge-btn:active {
-              transform: translateY(0);
-            }
-            .badge-ticket {
-              border-color: ${theme === 'dark' ? 'rgba(239, 68, 68, 0.3)' : 'rgba(239, 68, 68, 0.2)'} !important;
-              color: ${theme === 'dark' ? '#f87171' : '#ef4444'} !important;
-              background: ${theme === 'dark' ? 'rgba(239, 68, 68, 0.15)' : 'rgba(239, 68, 68, 0.05)'} !important;
-            }
-            .badge-ticket:hover {
-              background: #ef4444 !important;
-              color: white !important;
-              box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
-            }
-            .badge-ai {
-              border-color: ${theme === 'dark' ? 'rgba(245, 158, 11, 0.3)' : 'rgba(245, 158, 11, 0.2)'} !important;
-              color: ${theme === 'dark' ? '#fbbf24' : '#d97706'} !important;
-              background: ${theme === 'dark' ? 'rgba(245, 158, 11, 0.15)' : 'rgba(245, 158, 11, 0.05)'} !important;
-            }
-            .badge-ai:hover {
-              background: #d97706 !important;
-              color: white !important;
-              box-shadow: 0 4px 12px rgba(217, 119, 6, 0.4);
-            }
-            .badge-attendance {
-              border-color: ${theme === 'dark' ? 'rgba(189, 29, 45, 0.3)' : 'rgba(189, 29, 45, 0.2)'} !important;
-              color: ${theme === 'dark' ? '#fca5a5' : '#BD1D2D'} !important;
-              background: ${theme === 'dark' ? 'rgba(189, 29, 45, 0.15)' : 'rgba(189, 29, 45, 0.05)'} !important;
-            }
-            .badge-attendance:hover {
-              background: #BD1D2D !important;
-              color: white !important;
-              box-shadow: 0 4px 12px rgba(189, 29, 45, 0.4);
-            }
-            .badge-coop {
-              border-color: ${theme === 'dark' ? 'rgba(163, 20, 34, 0.3)' : 'rgba(163, 20, 34, 0.2)'} !important;
-              color: ${theme === 'dark' ? '#fca5a5' : '#a31422'} !important;
-              background: ${theme === 'dark' ? 'rgba(163, 20, 34, 0.15)' : 'rgba(163, 20, 34, 0.05)'} !important;
-            }
-            .badge-coop:hover {
-              background: #a31422 !important;
-              color: white !important;
-              box-shadow: 0 4px 12px rgba(163, 20, 34, 0.4);
-            }
-            @media (max-width: 768px) {
-              .approval-banner-card {
-                padding: 1.25rem 1rem !important;
-                margin-bottom: 1.25rem !important;
-              }
-              .approval-banner-content {
-                flex-direction: column;
-                align-items: flex-start !important;
-                gap: 16px !important;
-              }
-              .approval-badges-container {
-                width: 100%;
-                flex-direction: column;
-                gap: 8px !important;
-              }
-              .approval-badge-btn {
-                width: 100%;
-                justify-content: center;
-                height: 38px;
-              }
-          `}</style>
+      {/* Personalized Welcome Card with Premium Aesthetics */}
+      {(() => {
+        const issues = [];
+        if (pendingTicketsCount > 0) {
+          issues.push({
+            type: 'ticket',
+            text: pendingTicketsCount + ' ' + t('ticket hỗ trợ đang chờ phản hồi hoặc xử lý.'),
+            action: () => navigate('/tickets')
+          });
+        }
+        if (heldLeadsCount > 0) {
+          issues.push({
+            type: 'gatekeeper',
+            text: heldLeadsCount + ' ' + t('lead đang bị tạm giữ tại Gatekeeper.'),
+            action: () => navigate('/gatekeeper')
+          });
+        }
+        if (pendingCheckInsCount > 0) {
+          issues.push({
+            type: 'checkin',
+            text: pendingCheckInsCount + ' ' + t('yêu cầu chấm công/đi trễ cần duyệt.'),
+            action: () => navigate('/attendance')
+          });
+        }
+        if (pendingCoopsCount > 0) {
+          issues.push({
+            type: 'coop',
+            text: pendingCoopsCount + ' ' + t('yêu cầu liên kết môi giới cần duyệt.'),
+            action: () => navigate('/cooperation-slips?status=pending_me')
+          });
+        }
 
-          <div className="approval-banner-content">
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <div style={{
-                width: 44,
-                height: 44,
-                borderRadius: '12px',
-                background: theme === 'dark' ? 'rgba(189, 29, 45, 0.2)' : 'rgba(189, 29, 45, 0.08)',
-                color: theme === 'dark' ? '#ff4d6d' : '#BD1D2D',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                flexShrink: 0,
-                boxShadow: theme === 'dark' ? '0 0 12px rgba(189, 29, 45, 0.3)' : '0 0 8px rgba(189, 29, 45, 0.05)',
-                border: theme === 'dark' ? '1px solid rgba(189, 29, 45, 0.3)' : '1px solid rgba(189, 29, 45, 0.1)'
-              }}>
-                <ShieldAlert size={22} className="animate-pulse" />
+        const getRoleLabel = (role: string) => {
+          if (role === 'admin') return t('Quản trị viên');
+          if (role === 'superadmin' || role === 'super_admin') return t('Giám đốc điều hành');
+          if (role === 'director') return t('Giám đốc');
+          if (role === 'manager') return t('Quản lý');
+          return role;
+        };
+
+        return (
+          <>
+            <style>{`
+              .welcome-banner {
+                position: relative;
+                overflow: hidden;
+                background: linear-gradient(135deg, #181515 0%, #381f21 50%, #121010 100%) !important;
+                border: 1px solid rgba(189, 29, 45, 0.4) !important;
+                border-radius: 20px !important;
+                box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25), 0 1px 0 rgba(255, 255, 255, 0.08) inset !important;
+                transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1) !important;
+                padding: 1.75rem 2.25rem !important;
+                display: flex;
+                flex-direction: row;
+                align-items: center;
+                justify-content: space-between;
+                flex-wrap: wrap;
+                gap: 1.5rem;
+                margin-bottom: 1.5rem;
+              }
+              .welcome-banner::before {
+                content: '';
+                position: absolute;
+                top: -50%;
+                right: -20%;
+                width: 350px;
+                height: 350px;
+                border-radius: 50%;
+                background: radial-gradient(circle, rgba(189, 29, 45, 0.15) 0%, transparent 70%);
+                pointer-events: none;
+              }
+              .welcome-banner:hover {
+                transform: translateY(-2px);
+                box-shadow: 0 14px 35px rgba(189, 29, 45, 0.22), 0 1px 0 rgba(255, 255, 255, 0.12) inset !important;
+                border-color: rgba(189, 29, 45, 0.55) !important;
+              }
+              .welcome-action-btn {
+                transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
+                cursor: pointer;
+                border-radius: 12px !important;
+                padding: 10px 20px !important;
+                font-size: 0.8rem !important;
+                font-weight: 750 !important;
+                display: inline-flex !important;
+                align-items: center !important;
+                gap: 8px !important;
+                height: 38px !important;
+              }
+              .welcome-action-btn.primary-btn {
+                background: linear-gradient(135deg, #BD1D2D 0%, #a31422 100%) !important;
+                border: none !important;
+                color: white !important;
+                box-shadow: 0 4px 14px rgba(189, 29, 45, 0.45) !important;
+              }
+              .welcome-action-btn.primary-btn:hover {
+                transform: translateY(-2px);
+                box-shadow: 0 8px 20px rgba(189, 29, 45, 0.6) !important;
+                filter: brightness(1.15);
+              }
+              .welcome-action-btn.outline-btn {
+                background: rgba(255, 255, 255, 0.05) !important;
+                border: 1px solid rgba(255, 255, 255, 0.18) !important;
+                color: #ffffff !important;
+              }
+              .welcome-action-btn.outline-btn:hover {
+                background: rgba(189, 29, 45, 0.18) !important;
+                border-color: rgba(189, 29, 45, 0.5) !important;
+                color: #ffffff !important;
+                transform: translateY(-2px);
+                box-shadow: 0 8px 20px rgba(189, 29, 45, 0.25) !important;
+              }
+              .welcome-task-row {
+                background: rgba(255, 255, 255, 0.04) !important;
+                border: 1px solid rgba(255, 255, 255, 0.12) !important;
+                border-radius: 12px !important;
+                padding: 10px 16px !important;
+                display: flex;
+                align-items: center;
+                gap: 12px;
+                font-size: 0.825rem;
+                color: #ffffff !important;
+                font-weight: 700 !important;
+                transition: all 0.2s ease;
+                cursor: pointer;
+                text-decoration: none;
+                box-shadow: 0 2px 6px rgba(0,0,0,0.15) !important;
+              }
+              .welcome-task-row:hover {
+                background: rgba(189, 29, 45, 0.15) !important;
+                border-color: rgba(189, 29, 45, 0.4) !important;
+                color: #ffffff !important;
+                transform: translateX(4px);
+                box-shadow: 0 4px 12px rgba(189, 29, 45, 0.25) !important;
+              }
+            `}</style>
+
+            <div className="welcome-banner">
+              {/* Left section: Welcome Info */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem', flex: '1 1 340px', minWidth: 0 }}>
+                <div style={{ position: 'relative', flexShrink: 0 }}>
+                  <Avatar 
+                    name={user?.full_name || 'User'} 
+                    src={user?.avatar_url} 
+                    size={60} 
+                    style={{ border: '2.5px solid rgba(189, 29, 45, 0.45)', boxShadow: '0 0 16px rgba(189, 29, 45, 0.3)' }}
+                  />
+                  <span className="animate-pulse" style={{
+                    position: 'absolute',
+                    bottom: 2,
+                    right: 2,
+                    width: 14,
+                    height: 14,
+                    borderRadius: '50%',
+                    backgroundColor: '#10b981',
+                    border: '2.5px solid #181515',
+                    boxShadow: '0 0 10px #10b981'
+                  }} />
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', minWidth: 0 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+                    <h2 style={{ fontSize: '1.35rem', fontWeight: 800, color: '#ffffff', margin: 0, letterSpacing: '-0.3px', textShadow: '0 2px 4px rgba(0,0,0,0.3)' }}>
+                      {t('Xin chào')}, {user?.full_name || 'Ban điều hành'}
+                    </h2>
+                    <span style={{ 
+                      fontSize: '0.68rem', 
+                      fontWeight: 900, 
+                      color: '#ffffff', 
+                      background: 'linear-gradient(135deg, #BD1D2D 0%, #a31422 100%)', 
+                      padding: '4px 12px', 
+                      borderRadius: '20px', 
+                      textTransform: 'uppercase',
+                      boxShadow: '0 2px 8px rgba(189, 29, 45, 0.5)',
+                      letterSpacing: '0.6px'
+                    }}>
+                      {getRoleLabel(user?.role || '')}
+                    </span>
+                  </div>
+                  
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', fontSize: '0.825rem', color: '#e4e4e7' }}>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontWeight: 600 }}>
+                      <Clock size={13} style={{ color: '#ff4d5a' }} />
+                      {getCurrentDateVi()}
+                    </span>
+                  </div>
+                </div>
               </div>
-              <div>
-                <h4 style={{ fontWeight: 800, fontSize: '1.05rem', color: 'var(--color-text)', margin: 0, letterSpacing: '-0.02em' }}>
-                  {t('Hộp thư Phê duyệt & Tồn đọng')}
+
+              {/* Middle section: Issues/Tasks */}
+              <div style={{ flex: '2 1 380px', display: 'flex', flexDirection: 'column', gap: '10px', minWidth: '280px' }}>
+                <h4 style={{ margin: 0, fontSize: '0.72rem', fontWeight: 800, color: '#f4f4f5', textTransform: 'uppercase', letterSpacing: '1px', opacity: 0.9 }}>
+                  {t('Nhiệm vụ & Phê duyệt tồn đọng')}
                 </h4>
-                <p style={{ fontSize: '0.825rem', color: 'var(--color-text-muted)', margin: '4px 0 0', lineHeight: 1.4 }}>
-                  {t('Hệ thống phát hiện đang có các yêu cầu chờ bạn xem xét và phê duyệt:')}
-                </p>
+                {issues.length > 0 ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    {issues.map((issue, index) => (
+                      <div 
+                        key={index} 
+                        onClick={issue.action}
+                        className="welcome-task-row"
+                      >
+                        {issue.type === 'coop' && <Scale size={14} style={{ color: '#fbbf24' }} />}
+                        {issue.type === 'ticket' && <TicketIcon size={14} style={{ color: '#60a5fa' }} />}
+                        {issue.type === 'gatekeeper' && <Filter size={14} style={{ color: '#a78bfa' }} />}
+                        {issue.type === 'checkin' && <Clock size={14} style={{ color: '#ff8a8a' }} />}
+                        <span style={{ flex: 1 }}>{issue.text}</span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div style={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    gap: '12px', 
+                    padding: '12px 18px', 
+                    background: 'rgba(16, 185, 129, 0.08)', 
+                    border: '1px solid rgba(16, 185, 129, 0.25)', 
+                    borderRadius: '12px', 
+                    color: '#5ef08f',
+                    boxShadow: '0 2px 8px rgba(16, 185, 129, 0.1)'
+                  }}>
+                    <CheckCircle2 size={16} style={{ flexShrink: 0 }} />
+                    <span style={{ fontSize: '0.825rem', fontWeight: 700 }}>
+                      {t('Tuyệt vời! Không có yêu cầu phê duyệt nào đang chờ xử lý hôm nay. Chúc bạn một ngày làm việc hiệu quả! 🚀')}
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              {/* Right section: Quick Actions */}
+              <div style={{ display: 'flex', gap: '8px', flexShrink: 0, flexWrap: 'wrap', width: isMobile ? '100%' : 'auto', justifyContent: isMobile ? 'flex-start' : 'flex-end' }}>
+                <button 
+                  onClick={() => navigate('/rules')}
+                  className="welcome-action-btn primary-btn"
+                >
+                  <Settings size={14} />
+                  {t('Cấu hình chia')}
+                </button>
+                <button 
+                  onClick={() => setShowWarRoom(true)}
+                  className="welcome-action-btn outline-btn"
+                >
+                  <Zap size={14} />
+                  {t('War Room')}
+                </button>
               </div>
             </div>
-            
-            <div className="approval-badges-container">
-              {pendingTicketsCount > 0 && (
-                <button
-                  onClick={() => navigate('/tickets')}
-                  className="approval-badge-btn badge-ticket"
-                >
-                  <TicketIcon size={13} />
-                  <span>{pendingTicketsCount} {t('Ticket lỗi')}</span>
-                </button>
-              )}
-              {heldLeadsCount > 0 && (
-                <button
-                  onClick={() => navigate('/gatekeeper')}
-                  className="approval-badge-btn badge-ai"
-                >
-                  <Filter size={13} />
-                  <span>{heldLeadsCount} {t('Lọc AI')}</span>
-                </button>
-              )}
-              {pendingCheckInsCount > 0 && (
-                <button
-                  onClick={() => navigate('/attendance')}
-                  className="approval-badge-btn badge-attendance"
-                >
-                  <Clock size={13} />
-                  <span>{pendingCheckInsCount} {t('Chấm công')}</span>
-                </button>
-              )}
-              {pendingCoopsCount > 0 && (
-                <button
-                  onClick={() => navigate('/cooperation-slips?status=pending_me')}
-                  className="approval-badge-btn badge-coop"
-                >
-                  <Scale size={13} />
-                  <span>{pendingCoopsCount} {t('Hợp tác')}</span>
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
+          </>
+        );
+      })()}
 
       {/* AI Pre-screener evaluation strip */}
       {aiScreenerEnabled && (

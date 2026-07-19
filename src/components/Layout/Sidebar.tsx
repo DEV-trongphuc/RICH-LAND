@@ -232,7 +232,7 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileC
         onMouseLeave={() => setIsHovered(false)}
         style={{
           width: isCollapsed ? 60 : 220,
-          background: 'var(--sidebar-bg)',
+          background: 'linear-gradient(135deg, #181515 0%, #381f21 50%, #121010 100%)',
           color: '#dadada',
           display: 'flex',
           flexDirection: 'column',
