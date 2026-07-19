@@ -768,6 +768,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
   const [nightShiftLoading, setNightShiftLoading] = useState(true);
   const [nightShiftCanToggle, setNightShiftCanToggle] = useState(true);
   const [nightShiftDate, setNightShiftDate] = useState('');
+  const isTodayWeekend = new Date().getDay() === 0 || new Date().getDay() === 6;
   const [nightShiftDeadline, setNightShiftDeadline] = useState('');
   const [togglingNightShift, setTogglingNightShift] = useState(false);
 
@@ -9411,106 +9412,6 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                       )}
                     </div>
 
-                    {/* Night Shift Registration Card */}
-                    <div className="card" style={{
-                      padding: '1.5rem',
-                      background: 'var(--color-surface)',
-                      border: '1px solid var(--color-border-light)',
-                      borderRadius: '16px',
-                      boxShadow: '0 4px 20px rgba(0, 0, 0, 0.02), inset 0 1px 0 rgba(255, 255, 255, 0.6)',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      gap: '1rem',
-                      transition: 'all 0.3s ease'
-                    }}>
-                      <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
-                        <div style={{
-                          width: '40px',
-                          height: '40px',
-                          borderRadius: '10px',
-                          background: 'rgba(245, 158, 11, 0.08)',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          flexShrink: 0
-                        }}>
-                          <ShieldAlert size={20} color="var(--color-warning)" />
-                        </div>
-                        <div style={{ flex: 1 }}>
-                          <h3 style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--color-text)', margin: 0, letterSpacing: '-0.01em' }}>
-                            {t(`ĐĂNG KÝ TRỰC CA ĐÊM (${nightStartHour}-${nightEndHour})`)}
-                          </h3>
-                          <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', marginTop: 4, marginBottom: 0, lineHeight: '1.45' }}>
-                            {t('Nhận lead tự động trong ca đêm. Danh sách đăng ký tự reset vào lúc 6:00 sáng hôm sau.')}
-                          </p>
-                          {nightShiftDeadline && (
-                            <span style={{
-                              fontSize: '0.72rem',
-                              fontWeight: 600,
-                              color: 'var(--color-text-muted)',
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              marginTop: '6px',
-                              background: 'rgba(100, 116, 139, 0.08)',
-                              padding: '2px 8px',
-                              borderRadius: '4px'
-                            }}>
-                              {t('Hạn chót đăng ký:')} {nightShiftDeadline} {t('hôm nay')}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-
-                      <div style={{
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
-                        background: 'var(--color-bg-alt)',
-                        padding: '10px 14px',
-                        borderRadius: '12px',
-                        border: '1px solid var(--color-border-light)'
-                      }}>
-                        <span style={{ fontSize: '0.8125rem', fontWeight: 500, color: 'var(--color-text-light)' }}>
-                          {t('Đăng ký trực hôm nay:')}
-                        </span>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                          <span style={{
-                            fontSize: '0.8rem',
-                            fontWeight: 700,
-                            color: nightShiftRegistered 
-                              ? 'var(--color-success)' 
-                              : (nightShiftCanToggle ? 'var(--color-text-muted)' : 'var(--color-danger)'),
-                            background: nightShiftRegistered 
-                              ? 'rgba(16, 185, 129, 0.1)' 
-                              : (nightShiftCanToggle ? 'rgba(100, 116, 139, 0.08)' : 'var(--color-danger-light)'),
-                            padding: '3px 8px',
-                            borderRadius: '6px'
-                          }}>
-                            {nightShiftRegistered 
-                              ? t('Đã đăng ký trực') 
-                              : (nightShiftCanToggle ? t('Chưa đăng ký') : t('Đã hết hạn đăng ký'))}
-                          </span>
-                          {['sale', 'manager'].includes(String(effectiveRole).toLowerCase()) && (
-                            <div style={{ opacity: nightShiftCanToggle ? 1 : 0.5, pointerEvents: nightShiftCanToggle ? 'auto' : 'none' }}>
-                              <ToggleSwitch
-                                checked={nightShiftRegistered}
-                                onChange={handleToggleNightShift}
-                              />
-                            </div>
-                          )}
-                        </div>
-                      </div>
-
-                      {!nightShiftCanToggle && (
-                        <div style={{
-                          background: 'var(--color-danger-light)', color: 'var(--color-danger)', padding: '10px 14px',
-                          borderRadius: '10px', border: '1px solid rgba(239, 68, 68, 0.2)', fontSize: '0.78rem', display: 'flex', alignItems: 'center', gap: 8
-                        }}>
-                          <Info size={14} />
-                          <span>{t(`Quá hạn đăng ký (${nightShiftDeadline}). Bạn không thể thay đổi đăng ký trực ca đêm hôm nay.`)}</span>
-                        </div>
-                      )}
-                    </div>
                     {/* Weekend Shift Registration Card */}
                     {weekendShiftAllow && (
                       <div className="card" style={{
@@ -9676,6 +9577,117 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                         </div>
                       </div>
                     )}
+                    {/* Night Shift Registration Card */}
+                    <div className="card" style={{
+                      padding: '1.5rem',
+                      background: 'var(--color-surface)',
+                      border: '1px solid var(--color-border-light)',
+                      borderRadius: '16px',
+                      boxShadow: '0 4px 20px rgba(0, 0, 0, 0.02), inset 0 1px 0 rgba(255, 255, 255, 0.6)',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '1rem',
+                      transition: 'all 0.3s ease'
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+                        <div style={{
+                          width: '40px',
+                          height: '40px',
+                          borderRadius: '10px',
+                          background: 'rgba(245, 158, 11, 0.08)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          flexShrink: 0
+                        }}>
+                          <ShieldAlert size={20} color="var(--color-warning)" />
+                        </div>
+                        <div style={{ flex: 1 }}>
+                          <h3 style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--color-text)', margin: 0, letterSpacing: '-0.01em' }}>
+                            {t(`ĐĂNG KÝ TRỰC CA ĐÊM (${nightStartHour}-${nightEndHour})`)}
+                          </h3>
+                          <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', marginTop: 4, marginBottom: 0, lineHeight: '1.45' }}>
+                            {t('Nhận lead tự động trong ca đêm. Danh sách đăng ký tự reset vào lúc 6:00 sáng hôm sau.')}
+                          </p>
+                          {nightShiftDeadline && (
+                            <span style={{
+                              fontSize: '0.72rem',
+                              fontWeight: 600,
+                              color: 'var(--color-text-muted)',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              marginTop: '6px',
+                              background: 'rgba(100, 116, 139, 0.08)',
+                              padding: '2px 8px',
+                              borderRadius: '4px'
+                            }}>
+                              {t('Hạn chót đăng ký:')} {nightShiftDeadline} {t('hôm nay')}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      <div style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        background: 'var(--color-bg-alt)',
+                        padding: '10px 14px',
+                        borderRadius: '12px',
+                        border: '1px solid var(--color-border-light)'
+                      }}>
+                        <span style={{ fontSize: '0.8125rem', fontWeight: 500, color: 'var(--color-text-light)' }}>
+                          {t('Đăng ký trực hôm nay:')}
+                        </span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                          <span style={{
+                            fontSize: '0.8rem',
+                            fontWeight: 700,
+                            color: nightShiftRegistered 
+                              ? 'var(--color-success)' 
+                              : ((nightShiftCanToggle && !isTodayWeekend) ? 'var(--color-text-muted)' : (isTodayWeekend ? 'var(--color-text-muted)' : 'var(--color-danger)')),
+                            background: nightShiftRegistered 
+                              ? 'rgba(16, 185, 129, 0.1)' 
+                              : ((nightShiftCanToggle && !isTodayWeekend) ? 'rgba(100, 116, 139, 0.08)' : (isTodayWeekend ? 'rgba(100, 116, 139, 0.08)' : 'var(--color-danger-light)')),
+                            padding: '3px 8px',
+                            borderRadius: '6px'
+                          }}>
+                            {nightShiftRegistered 
+                              ? t('Đã đăng ký trực') 
+                              : ((nightShiftCanToggle && !isTodayWeekend) ? t('Chưa đăng ký') : (isTodayWeekend ? t('Nghỉ trực ca đêm') : t('Đã hết hạn đăng ký')))}
+                          </span>
+                          {['sale', 'manager'].includes(String(effectiveRole).toLowerCase()) && (
+                            <div style={{ opacity: (nightShiftCanToggle && !isTodayWeekend) ? 1 : 0.5, pointerEvents: (nightShiftCanToggle && !isTodayWeekend) ? 'auto' : 'none' }}>
+                              <ToggleSwitch
+                                checked={nightShiftRegistered}
+                                onChange={handleToggleNightShift}
+                              />
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {(!nightShiftCanToggle || isTodayWeekend) && (
+                        <div style={{
+                          background: isTodayWeekend ? 'rgba(100, 116, 139, 0.08)' : 'var(--color-danger-light)',
+                          color: isTodayWeekend ? 'var(--color-text-muted)' : 'var(--color-danger)',
+                          padding: '10px 14px',
+                          borderRadius: '10px',
+                          border: isTodayWeekend ? '1px solid var(--color-border-light)' : '1px solid rgba(239, 68, 68, 0.2)',
+                          fontSize: '0.78rem',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 8
+                        }}>
+                          <Info size={14} />
+                          <span>
+                            {isTodayWeekend 
+                              ? t('Hôm nay là cuối tuần. Vui lòng đăng ký trực cuối tuần ở trên.')
+                              : t(`Quá hạn đăng ký (${nightShiftDeadline}). Bạn không thể thay đổi đăng ký trực ca đêm hôm nay.`)}
+                          </span>
+                        </div>
+                      )}
+                    </div>
                     {/* Holiday Shift Registration Card */}
                     {holidayShifts.length > 0 && (
                       <div className="card" style={{
