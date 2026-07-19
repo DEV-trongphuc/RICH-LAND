@@ -4154,7 +4154,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                     name={sh.name} 
                                     size={22}
                                     style={{
-                                      border: sh.signed ? '2px solid var(--color-success)' : '2px solid var(--color-warning)',
+                                      border: '2px solid var(--color-primary)',
                                       boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
                                     }}
                                   />
@@ -4435,7 +4435,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                             name={sh.name} 
                                             size={18}
                                             style={{
-                                              border: sh.signed ? '1.5px solid var(--color-success)' : '1.5px solid var(--color-warning)',
+                                              border: '1.5px solid var(--color-primary)',
                                               boxShadow: '0 1px 2px rgba(0,0,0,0.1)'
                                             }}
                                           />

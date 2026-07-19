@@ -1117,6 +1117,7 @@ class ContactController {
         $stmtLead = $this->db->prepare("SELECT id FROM leads WHERE person_id = ? ORDER BY id DESC LIMIT 1");
         $stmtLead->execute([$personId]);
         $leadId = $stmtLead->fetchColumn();
+        $leadId = $leadId ? (int)$leadId : null;
 
         // 2. Count active contacts for this Person
         $stmtCount = $this->db->prepare("SELECT COUNT(*) FROM contacts WHERE person_id = ? AND tenant_id = ? AND owner_id IS NOT NULL AND deleted_at IS NULL");
