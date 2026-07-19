@@ -26,19 +26,6 @@ if (strpos($action, '?') !== false) {
     $_REQUEST = array_merge($_REQUEST, $extraGet);
 }
 
-if ($action === 'get_user_role') {
-    header('Access-Control-Allow-Origin: *');
-    header('Content-Type: application/json');
-    require_once __DIR__ . '/db_connect.php';
-    $res = $conn->query("SELECT id, role, full_name, email, team_id, permissions_json FROM users WHERE email LIKE '%haidang%' OR full_name LIKE '%Đăng%'");
-    $users = [];
-    while ($row = $res->fetch_assoc()) {
-        $users[] = $row;
-    }
-    echo json_encode($users);
-    exit;
-}
-
 $segments = explode('/', $action);
 $baseAction = explode('&', $segments[0])[0];
 if (in_array($baseAction, [
