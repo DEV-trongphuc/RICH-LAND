@@ -1955,60 +1955,33 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
       {/* Mobile Bottom Navigation Bar */}
       <div className="mobile-bottom-nav">
         <button 
-          className={`mobile-bottom-nav-item ${location.pathname === '/' ? 'active' : ''}`}
-          onClick={() => navigate('/')}
-        >
-          <Home />
-          <span className="mobile-bottom-nav-item-label">{t('Tổng quan')}</span>
-        </button>
-        <button 
           className={`mobile-bottom-nav-item ${location.pathname === '/contacts' ? 'active' : ''}`}
           onClick={() => navigate('/contacts')}
         >
-          <Users />
+          <Users size={20} />
           <span className="mobile-bottom-nav-item-label">{t('Khách hàng')}</span>
         </button>
-        {user?.role === 'sale' ? (
-          <button 
-            className={`mobile-bottom-nav-item ${location.pathname === '/workspace' ? 'active' : ''}`}
-            onClick={() => navigate('/workspace')}
-          >
-            <CheckSquare />
-            <span className="mobile-bottom-nav-item-label">{t('Bàn làm việc')}</span>
-          </button>
-        ) : (
-          <button 
-            className={`mobile-bottom-nav-item ${location.pathname === '/data' ? 'active' : ''}`}
-            onClick={() => navigate('/data')}
-          >
-            <Database />
-            <span className="mobile-bottom-nav-item-label">{t('Kho Data')}</span>
-          </button>
-        )}
         <button 
-          className={`mobile-bottom-nav-item ${location.pathname === '/calendar' ? 'active' : ''}`}
-          onClick={() => navigate('/calendar')}
+          className={`mobile-bottom-nav-item ${location.pathname === '/workspace' ? 'active' : ''}`}
+          onClick={() => navigate('/workspace')}
         >
-          <Calendar />
-          <span className="mobile-bottom-nav-item-label">{t('Lịch biểu')}</span>
+          <CheckSquare size={20} />
+          <span className="mobile-bottom-nav-item-label">{t('Bàn làm việc')}</span>
         </button>
-        {user?.role === 'sale' ? (
-          <button 
-            className={`mobile-bottom-nav-item ${location.pathname === '/databank' ? 'active' : ''}`}
-            onClick={() => navigate('/databank')}
-          >
-            <Database />
-            <span className="mobile-bottom-nav-item-label">{t('Databank')}</span>
-          </button>
-        ) : (
-          <button 
-            className={`mobile-bottom-nav-item ${location.pathname === '/reports-crm' ? 'active' : ''}`}
-            onClick={() => navigate('/reports-crm')}
-          >
-            <BarChart2 />
-            <span className="mobile-bottom-nav-item-label">{t('Báo cáo')}</span>
-          </button>
-        )}
+        <button 
+          className={`mobile-bottom-nav-item ${location.pathname === '/data' ? 'active' : ''}`}
+          onClick={() => navigate('/data')}
+        >
+          <Database size={20} />
+          <span className="mobile-bottom-nav-item-label">{t('Kho Data')}</span>
+        </button>
+        <button 
+          className={`mobile-bottom-nav-item ${location.pathname === '/schedule' ? 'active' : ''}`}
+          onClick={() => navigate('/schedule')}
+        >
+          <Calendar size={20} />
+          <span className="mobile-bottom-nav-item-label">{t('Thông tin')}</span>
+        </button>
       </div>
 
       <AIChatbot />

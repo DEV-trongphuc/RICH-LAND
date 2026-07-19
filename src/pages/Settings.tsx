@@ -1,9 +1,9 @@
-import { useEffect, useState } from 'react';
-import { motion } from 'framer-motion';
+import React, { useEffect, useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useUIStore } from '../store/uiStore';
 import { withRouterFreezer } from '../components/RouterFreezer';
-import { Mail, Settings2, Save, Send, Server, Database, Activity, ChevronDown, ChevronUp, Zap, Shield, MessageCircle, RefreshCw, Settings as SettingsIcon, BarChart2, Clock, Calendar, Users, CheckCircle, Plus, Trash2, Edit2, FileSpreadsheet, Upload, Download, X, Search, UserCheck, FileText, Tag, Scale, Layers, HelpCircle, Filter, Briefcase, GripVertical, Info } from 'lucide-react';
+import { Mail, Settings2, Save, Send, Server, Database, Activity, ChevronDown, ChevronUp, Zap, Shield, MessageCircle, RefreshCw, Settings as SettingsIcon, BarChart2, Clock, Calendar, Users, CheckCircle, Plus, Trash2, Edit2, FileSpreadsheet, Upload, Download, X, Search, UserCheck, FileText, Tag, Scale, Layers, HelpCircle, Filter, Briefcase, GripVertical, Info, ChevronRight, ArrowLeft, ChevronLeft } from 'lucide-react';
 import { CustomSelect } from '../components/ui/CustomSelect';
 import { ToggleSwitch } from '../components/ui/ToggleSwitch';
 import { CustomModal } from '../components/ui/CustomModal';
@@ -149,7 +149,7 @@ const SettingsInner = () => {
             <span style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--color-text)' }}>{title}</span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>
-            {isCollapsed ? t('Xem hướng dẫn cơ chế') : t('Thu gọn')}
+            {!isMobile && (isCollapsed ? t('Xem hướng dẫn cơ chế') : t('Thu gọn'))}
             {isCollapsed ? <ChevronDown size={14} /> : <ChevronUp size={14} />}
           </div>
         </div>
@@ -214,8 +214,12 @@ const SettingsInner = () => {
     icon: item.icon
   })));
 
-  const [activeTab, setActiveTab] = useState<string>('business_limits');
+  const [activeTab, setActiveTab] = useState<string>(window.innerWidth <= 768 ? 'menu' : 'business_limits');
   const [showTestEmailModal, setShowTestEmailModal] = useState(false);
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'instant' });
+  }, [activeTab]);
 
   // States for Gemini API Connection
   const [geminiApiKey, setGeminiApiKey] = useState('');
@@ -1744,85 +1748,240 @@ const SettingsInner = () => {
 
   const showGlobalSave = true;
   const showTestEmailButton = true;
+ 
+  const getTabIconBg = (tab: string) => {
+    const colors: Record<string, string> = {
+      business_limits: '#3b82f6',
+      time_schedule: '#ec4899',
+      fallback: '#f59e0b',
+      starvation_prevention: '#ef4444',
+      pipeline_stages: '#8b5cf6',
+      duplicate_filter: '#10b981',
+      blacklist: '#06b6d4',
+      tag_management: '#6366f1',
+      legacy_mapping: '#14b8a6',
+      error_reasons: '#f43f5e',
+      auto_approve_ticket: '#10b981',
+      email_config: '#0ea5e9',
+      zalo_bot: '#2563eb',
+      automated_reports: '#f97316',
+      ai_assistant: '#a855f7',
+      workflow_templates: '#64748b',
+      database_maintenance: '#475569',
+    };
+    return colors[tab] || 'var(--color-primary)';
+  };
 
   return (
     <div style={{ padding: isMobile ? '0.5rem 0 1rem 0' : '0.75rem 2rem 2rem', display: 'flex', flexDirection: 'column', gap: '1.25rem', animation: 'fadeIn 0.3s', minWidth: 0 }}>
-      <div className="page-header settings-page-header" style={{
-        position: 'sticky',
-        top: '-1.25rem',
-        zIndex: 90,
-        backgroundColor: 'var(--color-bg)',
-        paddingTop: '0.5rem',
-        paddingBottom: '0.75rem',
-        borderBottom: '1px solid var(--color-border)',
-        marginBottom: '0.25rem',
-        display: 'flex',
-        flexDirection: isMobile ? 'column' : 'row',
-        alignItems: isMobile ? 'stretch' : 'center',
-        justifyContent: 'space-between',
-        gap: isMobile ? '12px' : '0.5rem'
-      }}>
-        <div>
-          <h1 className="page-title" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <Settings2 size={24} color="var(--color-primary)" /> {t('Cài đặt Hệ thống')}
-          </h1>
-          <p className="page-subtitle">{t('Cấu hình Email, Webhooks và các tích hợp nâng cao.')}</p>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap', width: isMobile ? '100%' : 'auto', justifyContent: isMobile ? 'flex-end' : 'flex-start' }}>
-          {showTestEmailButton && (
-            <button
-              className="btn outline"
-              onClick={() => setShowTestEmailModal(true)}
-              disabled={loading}
-              style={{
-                height: '38px',
-                borderRadius: '8px',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-                fontSize: '0.875rem',
-                fontWeight: 600
-              }}
-            >
-              <Send size={14} />
-              <span>{t('Gửi Test Email')}</span>
-            </button>
+      {(!isMobile || activeTab === 'menu') && (
+        <div className="page-header settings-page-header" style={{
+          position: 'sticky',
+          top: '-1.25rem',
+          zIndex: 90,
+          backgroundColor: 'var(--color-bg)',
+          paddingTop: '0.5rem',
+          paddingBottom: '0.75rem',
+          borderBottom: '1px solid var(--color-border)',
+          marginBottom: '0.25rem',
+          display: 'flex',
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: '0.5rem',
+          width: '100%'
+        }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', flex: 1 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', width: '100%' }}>
+              <h1 className="page-title" style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: isMobile ? '1.15rem' : '1.5rem', margin: 0, fontWeight: 800 }}>
+                <Settings2 size={isMobile ? 20 : 24} color="var(--color-primary)" /> {t('Cài đặt')}
+              </h1>
+              {dbVersion && (
+                <span style={{
+                  fontSize: '0.725rem',
+                  fontWeight: 700,
+                  background: 'var(--color-primary-light)',
+                  color: 'var(--color-primary)',
+                  padding: '3px 8px',
+                  borderRadius: 12,
+                  border: '1px solid rgba(163, 20, 34, 0.15)',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 4
+                }}>
+                  v{dbVersion}
+                </span>
+              )}
+            </div>
+            {!isMobile && (
+              <p className="page-subtitle" style={{ margin: 0 }}>{t('Cấu hình Email, Webhooks và các tích hợp nâng cao.')}</p>
+            )}
+          </div>
+          {!isMobile && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+              {showTestEmailButton && (
+                <button
+                  className="btn outline"
+                  onClick={() => setShowTestEmailModal(true)}
+                  disabled={loading}
+                  style={{
+                    height: '38px',
+                    borderRadius: '8px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    fontSize: '0.875rem',
+                    fontWeight: 600
+                  }}
+                >
+                  <Send size={14} />
+                  <span>{t('Gửi Test Email')}</span>
+                </button>
+              )}
+              {showGlobalSave && (
+                <button className="btn primary" onClick={handleSave} disabled={saving || loading}>
+                  {saving ? <Activity size={16} className="spin" /> : <Save size={16} />}
+                  <span>{t('Lưu cấu hình')}</span>
+                </button>
+              )}
+            </div>
           )}
-          {dbVersion && (
-            <span style={{
-              fontSize: '0.8125rem',
-              fontWeight: 700,
-              background: 'var(--color-primary-light)',
-              color: 'var(--color-primary)',
-              padding: '6px 12px',
-              borderRadius: 20,
-              border: '1px solid rgba(163, 20, 34, 0.2)',
+        </div>
+      )}
+ 
+      {/* Mobile Subpage Header (HyperOS style back navigation) */}
+      {isMobile && activeTab !== 'menu' && (
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '12px 16px',
+          borderBottom: '1px solid var(--color-border-light)',
+          background: 'var(--color-surface)',
+          position: 'sticky',
+          top: '-1.5rem',
+          zIndex: 99,
+          marginBottom: '1.25rem',
+          marginTop: '-1.5rem',
+          marginLeft: '-1.5rem',
+          marginRight: '-1.5rem',
+          width: 'calc(100% + 3rem)',
+          boxSizing: 'border-box',
+          borderRadius: '0 0 16px 16px',
+          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.08)'
+        }}>
+          <button 
+            onClick={() => setActiveTab('menu')}
+            className="os-header-circle-btn"
+            style={{
+              width: '36px',
+              height: '36px',
+              minWidth: '36px',
+              minHeight: '36px',
+              maxWidth: '36px',
+              maxHeight: '36px',
+              padding: 0,
+              borderRadius: '50%',
               display: 'inline-flex',
               alignItems: 'center',
-              gap: 6
-            }}>
-              <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--color-primary)' }} />
-              {t('Phiên bản')} v{dbVersion}
-            </span>
-          )}
-          {showGlobalSave && (
-            <button className="btn primary" onClick={handleSave} disabled={saving || loading}>
-              {saving ? <Activity size={16} className="spin" /> : <Save size={16} />}
-              <span className="hide-on-mobile">{t('Lưu cấu hình')}</span>
-            </button>
-          )}
+              justifyContent: 'center',
+              boxSizing: 'border-box',
+              border: '1px solid var(--color-border-light)',
+              background: 'var(--color-bg)',
+              color: 'var(--color-primary)',
+              cursor: 'pointer',
+              outline: 'none',
+              flexShrink: 0
+            }}
+          >
+            <ChevronLeft size={20} />
+          </button>
+          <span style={{ 
+            fontWeight: 800, 
+            fontSize: '0.8rem', 
+            color: 'var(--color-text)', 
+            maxWidth: '180px', 
+            whiteSpace: 'nowrap', 
+            overflow: 'hidden', 
+            textOverflow: 'ellipsis',
+            textAlign: 'center',
+            flex: 1,
+            margin: '0 10px'
+          }}>
+            {tabOptions.find(t => t.value === activeTab)?.label}
+          </span>
+          <button 
+            onClick={handleSave} 
+            disabled={saving || loading}
+            className="os-header-circle-btn primary"
+            style={{
+              width: '36px',
+              height: '36px',
+              minWidth: '36px',
+              minHeight: '36px',
+              maxWidth: '36px',
+              maxHeight: '36px',
+              padding: 0,
+              borderRadius: '50%',
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              boxSizing: 'border-box',
+              background: 'var(--color-primary)',
+              color: '#ffffff',
+              border: 'none',
+              cursor: 'pointer',
+              outline: 'none',
+              flexShrink: 0
+            }}
+          >
+            {saving ? <Activity size={16} className="spin" /> : <Save size={16} />}
+          </button>
         </div>
-      </div>
-
-      {/* Mobile Tab Selector */}
-      <div className="mobile-only" style={{ marginBottom: '1.5rem' }}>
-        <CustomSelect
-          options={tabOptions}
-          value={activeTab}
-          onChange={(val) => setActiveTab(val)}
-          width="100%"
-        />
-      </div>
+      )}
+ 
+      {/* Mobile Category List Group (HyperOS Settings Style) */}
+      <AnimatePresence mode="wait">
+        {isMobile && activeTab === 'menu' && (
+          <motion.div 
+            key="os-menu"
+            initial={{ x: '-10%', opacity: 0 }}
+            animate={{ x: 0, opacity: 1 }}
+            exit={{ x: '-10%', opacity: 0 }}
+            transition={{ duration: 0.15 }}
+            style={{ display: 'flex', flexDirection: 'column', gap: '1rem', width: '100%' }}
+          >
+            {categories.map((category, catIdx) => (
+              <div key={`os-cat-${catIdx}`}>
+                <div style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '6px', paddingLeft: '8px' }}>
+                  {category.title}
+                </div>
+                <div className="os-list-group">
+                  {category.items.map((item) => (
+                    <button 
+                      key={`os-item-${item.value}`}
+                      className="os-list-item"
+                      onClick={() => setActiveTab(item.value)}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', minWidth: 0, flex: 1 }}>
+                        <div className="os-list-icon" style={{ backgroundColor: getTabIconBg(item.value), color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '30px', height: '30px', borderRadius: '8px', marginLeft: '14px', marginRight: '14px', flexShrink: 0 }}>
+                          {React.cloneElement(item.icon as any, { size: 14, color: '#ffffff', strokeWidth: 2.5 })}
+                        </div>
+                        <div className="os-list-content">
+                          <div className="os-list-title" style={{ fontSize: '0.9375rem', fontWeight: 500, color: 'var(--color-text)' }}>{item.label}</div>
+                        </div>
+                      </div>
+                      <div className="os-list-chevron" style={{ marginRight: '8px' }}>
+                        <ChevronRight size={16} />
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <div style={{ display: 'flex', gap: '2rem', alignItems: 'flex-start', marginTop: 0 }}>
         {/* Left Sidebar (Desktop only) */}
@@ -1884,7 +2043,17 @@ const SettingsInner = () => {
         </div>
 
         {/* Right Content Area */}
-        <div style={{ flex: 1, minWidth: 0, width: '100%' }}>
+        <AnimatePresence mode="wait">
+          {(!isMobile || activeTab !== 'menu') && (
+            <motion.div
+              key={`os-pane-${activeTab}`}
+              initial={isMobile ? { x: '100%', opacity: 0.8 } : { opacity: 0 }}
+              animate={{ x: 0, opacity: 1 }}
+              exit={isMobile ? { x: '100%', opacity: 0.8 } : { opacity: 0 }}
+              transition={isMobile ? { duration: 0.12, ease: 'linear' } : { type: 'spring', damping: 25, stiffness: 200 }}
+              style={{ flex: 1, minWidth: 0, width: '100%' }}
+              className="subtab-enter-active"
+            >
           {loading ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
               <CardSkeleton height={220} />
@@ -2031,7 +2200,14 @@ const SettingsInner = () => {
             {/* ===== TAB: WORKFLOW TEMPLATES ===== */}
             <div style={{ display: activeTab === 'workflow_templates' ? 'block' : 'none' }} className="subtab-enter-active">
               <div className="card" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', marginBottom: '1rem' }}>
+                <div style={{ 
+                  display: 'flex', 
+                  flexDirection: isMobile ? 'column' : 'row',
+                  justifyContent: 'space-between', 
+                  alignItems: isMobile ? 'flex-start' : 'center', 
+                  gap: '12px', 
+                  marginBottom: '1rem' 
+                }}>
                   <div>
                     <h3 style={{ fontSize: '1.125rem', fontWeight: 700, margin: 0, color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 8 }}>
                       <Activity size={18} color="var(--color-primary)" />
@@ -2057,6 +2233,12 @@ const SettingsInner = () => {
                         is_active: 1
                       });
                       setShowWorkflowModal(true);
+                    }}
+                    style={{
+                      width: isMobile ? '100%' : 'auto',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
                     }}
                   >
                     <Plus size={14} /> {t('Thêm mẫu mới')}
@@ -2175,7 +2357,14 @@ const SettingsInner = () => {
             {/* ===== TAB: TAGS MANAGEMENT ===== */}
             <div style={{ display: activeTab === 'tag_management' ? 'block' : 'none' }} className="subtab-enter-active">
               <div className="card" style={{ padding: '2rem', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                <div style={{ 
+                  display: 'flex', 
+                  flexDirection: isMobile ? 'column' : 'row',
+                  justifyContent: 'space-between', 
+                  alignItems: isMobile ? 'flex-start' : 'center', 
+                  gap: isMobile ? '12px' : '0',
+                  marginBottom: '1rem' 
+                }}>
                   <div>
                     <h3 style={{ fontSize: '1.25rem', fontWeight: 800, margin: 0, color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 10 }}>
                       <span style={{ display: 'inline-flex', background: 'rgba(163,20,34,0.1)', color: 'var(--color-primary)', padding: 8, borderRadius: 10 }}>
@@ -2187,7 +2376,17 @@ const SettingsInner = () => {
                       {t('Tạo và quản lý các nhãn phân loại màu sắc dùng chung cho Khách hàng Tiềm năng và Doanh nghiệp.')}
                     </p>
                   </div>
-                  <button className="btn primary" onClick={openAddTagModal} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <button 
+                    className="btn primary" 
+                    onClick={openAddTagModal} 
+                    style={{ 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      justifyContent: 'center',
+                      gap: 8,
+                      width: isMobile ? '100%' : 'auto' 
+                    }}
+                  >
                     <Plus size={16} /> {t('Thêm Tag Mới')}
                   </button>
                 </div>
@@ -4540,37 +4739,64 @@ function doPost(e) {
                             <div
                               key={dayKey}
                               style={{
-                                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                                display: 'flex', 
+                                flexDirection: isMobile ? 'column' : 'row',
+                                justifyContent: 'space-between', 
+                                alignItems: isMobile ? 'stretch' : 'center',
+                                gap: isMobile ? '8px' : '10px',
                                 padding: '10px 14px', borderRadius: '12px', border: '1px solid var(--color-border-light)',
                                 background: isActive ? 'var(--color-surface)' : 'var(--color-bg)',
                                 transition: 'all 0.2s'
                               }}
                             >
-                              <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', margin: 0, userSelect: 'none' }}>
-                                <input
-                                  type="checkbox"
-                                  className="custom-checkbox"
-                                  checked={isActive}
-                                  onChange={(e) => {
-                                    const val = e.target.checked;
-                                    setGlobalWorkSchedule((prev: any) => ({
-                                      ...prev,
-                                      [dayKey]: { ...(prev[dayKey] || { start: globalWorkStartTime, end: globalWorkEndTime }), active: val }
-                                    }));
-                                  }}
-                                />
-                                <span style={{ fontWeight: 700, fontSize: '0.85rem', color: isActive ? 'var(--color-text)' : 'var(--color-text-muted)' }}>
-                                  {t(dayLabel)}
-                                </span>
-                              </label>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: isMobile ? '100%' : 'auto' }}>
+                                <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', margin: 0, userSelect: 'none', whiteSpace: 'nowrap' }}>
+                                  <input
+                                    type="checkbox"
+                                    className="custom-checkbox"
+                                    checked={isActive}
+                                    onChange={(e) => {
+                                      const val = e.target.checked;
+                                      setGlobalWorkSchedule((prev: any) => ({
+                                        ...prev,
+                                        [dayKey]: { ...(prev[dayKey] || { start: globalWorkStartTime, end: globalWorkEndTime }), active: val }
+                                      }));
+                                    }}
+                                  />
+                                  <span style={{ fontWeight: 700, fontSize: '0.85rem', color: isActive ? 'var(--color-text)' : 'var(--color-text-muted)' }}>
+                                    {t(dayLabel)}
+                                  </span>
+                                </label>
+                                {isMobile && !isActive && (
+                                  <span style={{
+                                    padding: '2px 8px', borderRadius: '6px', fontSize: '0.725rem', fontWeight: 700,
+                                    background: 'var(--color-danger-light)',
+                                    color: 'var(--color-danger)'
+                                  }}>
+                                    {t('Nghỉ')}
+                                  </span>
+                                )}
+                              </div>
 
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                              <div style={{ 
+                                display: 'flex', 
+                                alignItems: 'center', 
+                                gap: '10px', 
+                                justifyContent: isMobile ? 'flex-start' : 'flex-end',
+                                width: isMobile ? '100%' : 'auto'
+                              }}>
                                 {isActive ? (
-                                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                  <div style={{ 
+                                    display: 'flex', 
+                                    alignItems: 'center', 
+                                    gap: '6px',
+                                    width: isMobile ? '100%' : 'auto',
+                                    justifyContent: isMobile ? 'space-between' : 'flex-start'
+                                  }}>
                                     <input
                                       type="time"
                                       className="form-input"
-                                      style={{ width: '92px', height: '34px', fontSize: '0.8rem', padding: '0 6px', textAlign: 'center', borderRadius: '6px' }}
+                                      style={{ width: isMobile ? '45%' : '92px', height: '34px', fontSize: '0.8rem', padding: '0 6px', textAlign: 'center', borderRadius: '6px' }}
                                       value={config.start || globalWorkStartTime}
                                       onChange={(e) => {
                                         const val = e.target.value;
@@ -4584,7 +4810,7 @@ function doPost(e) {
                                     <input
                                       type="time"
                                       className="form-input"
-                                      style={{ width: '92px', height: '34px', fontSize: '0.8rem', padding: '0 6px', textAlign: 'center', borderRadius: '6px' }}
+                                      style={{ width: isMobile ? '45%' : '92px', height: '34px', fontSize: '0.8rem', padding: '0 6px', textAlign: 'center', borderRadius: '6px' }}
                                       value={config.end || globalWorkEndTime}
                                       onChange={(e) => {
                                         const val = e.target.value;
@@ -4596,13 +4822,15 @@ function doPost(e) {
                                     />
                                   </div>
                                 ) : (
-                                  <span style={{
-                                    padding: '2px 8px', borderRadius: '6px', fontSize: '0.725rem', fontWeight: 700,
-                                    background: 'var(--color-danger-light)',
-                                    color: 'var(--color-danger)'
-                                  }}>
-                                    {t('Nghỉ')}
-                                  </span>
+                                  !isMobile && (
+                                    <span style={{
+                                      padding: '2px 8px', borderRadius: '6px', fontSize: '0.725rem', fontWeight: 700,
+                                      background: 'var(--color-danger-light)',
+                                      color: 'var(--color-danger)'
+                                    }}>
+                                      {t('Nghỉ')}
+                                    </span>
+                                  )
                                 )}
                               </div>
                             </div>
@@ -5434,130 +5662,241 @@ function doPost(e) {
                           style={{
                             border: `1px solid ${isDuplicate ? 'var(--color-danger)' : 'var(--color-border)'}`,
                             borderRadius: '12px',
-                            padding: '12px 16px',
+                            padding: isMobile ? '12px 14px' : '12px 16px',
                             display: 'flex',
-                            alignItems: 'center',
+                            flexDirection: isMobile ? 'column' : 'row',
+                            alignItems: isMobile ? 'stretch' : 'center',
                             justifyContent: 'space-between',
+                            gap: isMobile ? '10px' : '0',
                             background: isDuplicate ? 'var(--color-danger-light)' : (draggedIndex === index ? 'var(--color-bg-secondary)' : 'var(--color-surface)'),
                             opacity: draggedIndex === index ? 0.5 : 1,
                             transition: 'all 0.2s',
                             cursor: 'grab'
                           }}
                         >
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flex: 1, minWidth: 0 }}>
-                            {/* Drag Handle */}
-                            <div style={{ color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', marginRight: '-4px', cursor: 'grab' }}>
-                              <GripVertical size={16} />
-                            </div>
+                          {isMobile ? (
+                            <>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                  <div style={{ color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', cursor: 'grab' }}>
+                                    <GripVertical size={16} />
+                                  </div>
+                                  <span style={{ fontWeight: 800, color: isDuplicate ? 'var(--color-danger)' : 'var(--color-primary)', fontSize: '0.85rem' }}>
+                                    #{index + 1}
+                                  </span>
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setPipelineStatusHierarchy(prev => prev.filter((_, i) => i !== index));
+                                    setPipelineStatusLabels(prev => {
+                                      const next = { ...prev };
+                                      delete next[status];
+                                      return next;
+                                    });
+                                  }}
+                                  className="btn outline"
+                                  style={{ padding: '4px 8px', fontSize: '0.725rem', height: '28px', color: 'var(--color-danger)', borderColor: 'var(--color-danger-light)', display: 'flex', alignItems: 'center', gap: 4 }}
+                                >
+                                  <Trash2 size={12} /> {t('Xóa')}
+                                </button>
+                              </div>
 
-                            {/* 1. Index */}
-                            <span style={{ fontWeight: 800, color: isDuplicate ? 'var(--color-danger)' : 'var(--color-primary)', width: '30px', flexShrink: 0 }}>
-                              #{index + 1}
-                            </span>
-                            
-                            {/* 2. Input */}
-                            <div style={{ flex: 1, minWidth: '150px', maxWidth: '300px' }}>
-                              <input
-                                type="text"
-                                value={label}
-                                placeholder={t('Tên trạng thái (tiếng Việt)...')}
-                                onChange={e => {
-                                  const newLabel = e.target.value;
-                                  const newSlug = generateSlug(newLabel);
-                                  
-                                  const newHierarchy = [...pipelineStatusHierarchy];
-                                  newHierarchy[index] = newSlug;
-                                  setPipelineStatusHierarchy(newHierarchy);
+                              <div style={{ width: '100%' }}>
+                                <input
+                                  type="text"
+                                  value={label}
+                                  placeholder={t('Tên trạng thái (tiếng Việt)...')}
+                                  onChange={e => {
+                                    const newLabel = e.target.value;
+                                    const newSlug = generateSlug(newLabel);
+                                    
+                                    const newHierarchy = [...pipelineStatusHierarchy];
+                                    newHierarchy[index] = newSlug;
+                                    setPipelineStatusHierarchy(newHierarchy);
 
-                                  setPipelineStatusLabels(prev => {
-                                    const next = { ...prev };
-                                    delete next[status];
-                                    next[newSlug] = newLabel;
-                                    return next;
-                                  });
-                                }}
-                                className="form-input"
-                                style={{
-                                  margin: 0,
-                                  padding: '6px 12px',
-                                  fontSize: '0.875rem',
-                                  borderColor: isDuplicate ? 'var(--color-danger)' : undefined,
-                                  boxShadow: isDuplicate ? '0 0 0 1px var(--color-danger-light)' : undefined,
-                                  width: '100%'
-                                }}
-                              />
-                            </div>
+                                    setPipelineStatusLabels(prev => {
+                                      const next = { ...prev };
+                                      delete next[status];
+                                      next[newSlug] = newLabel;
+                                      return next;
+                                    });
+                                  }}
+                                  className="form-input"
+                                  style={{
+                                    margin: 0,
+                                    padding: '6px 12px',
+                                    fontSize: '0.875rem',
+                                    borderColor: isDuplicate ? 'var(--color-danger)' : undefined,
+                                    boxShadow: isDuplicate ? '0 0 0 1px var(--color-danger-light)' : undefined,
+                                    width: '100%'
+                                  }}
+                                />
+                              </div>
 
-                            {/* 3. Key label (Fixed width for perfect alignment) */}
-                            <div style={{ width: '180px', flexShrink: 0 }}>
-                              <span style={{
-                                fontSize: '0.75rem',
-                                fontFamily: 'monospace',
-                                background: isDuplicate ? 'var(--color-danger-light)' : 'var(--color-bg)',
-                                color: isDuplicate ? 'var(--color-danger)' : 'var(--color-text-muted)',
-                                padding: '4px 8px',
-                                borderRadius: '6px',
-                                border: `1px solid ${isDuplicate ? 'var(--color-danger)' : 'var(--color-border)'}`,
-                                fontWeight: 600,
-                                display: 'inline-block',
-                                maxWidth: '100%',
-                                overflow: 'hidden',
-                                textOverflow: 'ellipsis',
-                                whiteSpace: 'nowrap'
-                              }}>
-                                {isDuplicate ? `${t('Mã trùng:')} ${status}` : `key: ${status}`}
-                              </span>
-                            </div>
-                            
-                            {/* 4. Toggle Switch (Fixed width for straight column alignment) */}
-                            <div style={{ width: '160px', flexShrink: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                              <ToggleSwitch
-                                checked={coopEligibleStatuses.split(',').map((s: string) => s.trim()).filter(Boolean).includes(status)}
-                                onChange={checked => {
-                                  const currentList = coopEligibleStatuses.split(',').map((s: string) => s.trim()).filter(Boolean);
-                                  let newList;
-                                  if (checked) {
-                                    if (!currentList.includes(status)) {
-                                      currentList.push(status);
-                                    }
-                                    newList = currentList;
-                                  } else {
-                                    newList = currentList.filter(s => s !== status);
-                                  }
-                                  setCoopEligibleStatuses(newList.join(','));
-                                }}
-                              />
-                              <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 600, userSelect: 'none' }}>
-                                {t('Cho phép hợp tác')}
-                              </span>
-                            </div>
+                              <div style={{ width: '100%' }}>
+                                <span style={{
+                                  fontSize: '0.725rem',
+                                  fontFamily: 'monospace',
+                                  background: isDuplicate ? 'var(--color-danger-light)' : 'var(--color-bg)',
+                                  color: isDuplicate ? 'var(--color-danger)' : 'var(--color-text-muted)',
+                                  padding: '3px 8px',
+                                  borderRadius: '6px',
+                                  border: `1px solid ${isDuplicate ? 'var(--color-danger)' : 'var(--color-border)'}`,
+                                  fontWeight: 600,
+                                  display: 'inline-block',
+                                  maxWidth: '100%',
+                                  overflow: 'hidden',
+                                  textOverflow: 'ellipsis',
+                                  whiteSpace: 'nowrap'
+                                }}>
+                                  {isDuplicate ? `${t('Mã trùng:')} ${status}` : `key: ${status}`}
+                                </span>
+                              </div>
 
-                            {/* 5. Security Timer inline input */}
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginLeft: '24px' }}>
-                              <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>
-                                {t('Hạn bảo mật:')}
-                              </span>
-                              {renderInlineDurationInput(status)}
-                            </div>
-                          </div>
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', borderTop: '1px solid var(--color-border-light)', paddingTop: '8px', width: '100%' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                  <ToggleSwitch
+                                    checked={coopEligibleStatuses.split(',').map((s: string) => s.trim()).filter(Boolean).includes(status)}
+                                    onChange={checked => {
+                                      const currentList = coopEligibleStatuses.split(',').map((s: string) => s.trim()).filter(Boolean);
+                                      let newList;
+                                      if (checked) {
+                                        if (!currentList.includes(status)) {
+                                          currentList.push(status);
+                                        }
+                                        newList = currentList;
+                                      } else {
+                                        newList = currentList.filter(s => s !== status);
+                                      }
+                                      setCoopEligibleStatuses(newList.join(','));
+                                    }}
+                                  />
+                                  <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 600, userSelect: 'none' }}>
+                                    {t('Cho phép hợp tác')}
+                                  </span>
+                                </div>
 
-                          <div style={{ display: 'flex', gap: '6px', marginLeft: '12px' }}>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setPipelineStatusHierarchy(prev => prev.filter((_, i) => i !== index));
-                                setPipelineStatusLabels(prev => {
-                                  const next = { ...prev };
-                                  delete next[status];
-                                  return next;
-                                });
-                              }}
-                              className="btn outline"
-                              style={{ padding: '6px 10px', fontSize: '0.75rem', height: '32px', color: 'var(--color-danger)', borderColor: 'var(--color-danger-light)' }}
-                            >
-                              <Trash2 size={13} />
-                            </button>
-                          </div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                  <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>
+                                    {t('Hạn bảo mật:')}
+                                  </span>
+                                  {renderInlineDurationInput(status)}
+                                </div>
+                              </div>
+                            </>
+                          ) : (
+                            <>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flex: 1, minWidth: 0 }}>
+                                <div style={{ color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', marginRight: '-4px', cursor: 'grab' }}>
+                                  <GripVertical size={16} />
+                                </div>
+
+                                <span style={{ fontWeight: 800, color: isDuplicate ? 'var(--color-danger)' : 'var(--color-primary)', width: '30px', flexShrink: 0 }}>
+                                  #{index + 1}
+                                </span>
+                                
+                                <div style={{ flex: 1, minWidth: '150px', maxWidth: '300px' }}>
+                                  <input
+                                    type="text"
+                                    value={label}
+                                    placeholder={t('Tên trạng thái (tiếng Việt)...')}
+                                    onChange={e => {
+                                      const newLabel = e.target.value;
+                                      const newSlug = generateSlug(newLabel);
+                                      
+                                      const newHierarchy = [...pipelineStatusHierarchy];
+                                      newHierarchy[index] = newSlug;
+                                      setPipelineStatusHierarchy(newHierarchy);
+
+                                      setPipelineStatusLabels(prev => {
+                                        const next = { ...prev };
+                                        delete next[status];
+                                        next[newSlug] = newLabel;
+                                        return next;
+                                      });
+                                    }}
+                                    className="form-input"
+                                    style={{
+                                      margin: 0,
+                                      padding: '6px 12px',
+                                      fontSize: '0.875rem',
+                                      borderColor: isDuplicate ? 'var(--color-danger)' : undefined,
+                                      boxShadow: isDuplicate ? '0 0 0 1px var(--color-danger-light)' : undefined,
+                                      width: '100%'
+                                    }}
+                                  />
+                                </div>
+
+                                <div style={{ width: '180px', flexShrink: 0 }}>
+                                  <span style={{
+                                    fontSize: '0.75rem',
+                                    fontFamily: 'monospace',
+                                    background: isDuplicate ? 'var(--color-danger-light)' : 'var(--color-bg)',
+                                    color: isDuplicate ? 'var(--color-danger)' : 'var(--color-text-muted)',
+                                    padding: '4px 8px',
+                                    borderRadius: '6px',
+                                    border: `1px solid ${isDuplicate ? 'var(--color-danger)' : 'var(--color-border)'}`,
+                                    fontWeight: 600,
+                                    display: 'inline-block',
+                                    maxWidth: '100%',
+                                    overflow: 'hidden',
+                                    textOverflow: 'ellipsis',
+                                    whiteSpace: 'nowrap'
+                                  }}>
+                                    {isDuplicate ? `${t('Mã trùng:')} ${status}` : `key: ${status}`}
+                                  </span>
+                                </div>
+                                
+                                <div style={{ width: '160px', flexShrink: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                  <ToggleSwitch
+                                    checked={coopEligibleStatuses.split(',').map((s: string) => s.trim()).filter(Boolean).includes(status)}
+                                    onChange={checked => {
+                                      const currentList = coopEligibleStatuses.split(',').map((s: string) => s.trim()).filter(Boolean);
+                                      let newList;
+                                      if (checked) {
+                                        if (!currentList.includes(status)) {
+                                          currentList.push(status);
+                                        }
+                                        newList = currentList;
+                                      } else {
+                                        newList = currentList.filter(s => s !== status);
+                                      }
+                                      setCoopEligibleStatuses(newList.join(','));
+                                    }}
+                                  />
+                                  <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 600, userSelect: 'none' }}>
+                                    {t('Cho phép hợp tác')}
+                                  </span>
+                                </div>
+
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginLeft: '24px' }}>
+                                  <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>
+                                    {t('Hạn bảo mật:')}
+                                  </span>
+                                  {renderInlineDurationInput(status)}
+                                </div>
+                              </div>
+
+                              <div style={{ display: 'flex', gap: '6px', marginLeft: '12px' }}>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setPipelineStatusHierarchy(prev => prev.filter((_, i) => i !== index));
+                                    setPipelineStatusLabels(prev => {
+                                      const next = { ...prev };
+                                      delete next[status];
+                                      return next;
+                                    });
+                                  }}
+                                  className="btn outline"
+                                  style={{ padding: '6px 10px', fontSize: '0.75rem', height: '32px', color: 'var(--color-danger)', borderColor: 'var(--color-danger-light)' }}
+                                >
+                                  <Trash2 size={13} />
+                                </button>
+                              </div>
+                            </>
+                          )}
                         </div>
                       );
                     });
@@ -6035,7 +6374,9 @@ function doPost(e) {
             </div>
           </div>
         )}
-      </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
       {/* Custom Modal for Test Email */}
       <CustomModal
@@ -6566,34 +6907,6 @@ function doPost(e) {
         )}
       </ConfirmModal>
 
-      {/* Floating Save Button on Mobile */}
-      {!loading && showGlobalSave && (
-        <div className="mobile-only" style={{
-          position: 'fixed',
-          bottom: '2rem',
-          right: '1.5rem',
-          zIndex: 99,
-        }}>
-          <button 
-            className="btn primary" 
-            onClick={handleSave} 
-            disabled={saving} 
-            style={{ 
-              borderRadius: '50%', 
-              width: 56, 
-              height: 56, 
-              display: 'flex', 
-              alignItems: 'center', 
-              justifyContent: 'center',
-              padding: 0,
-              boxShadow: '0 4px 14px 0 rgba(163, 20, 34, 0.4)'
-            }}
-            title={t("Lưu cấu hình")}
-          >
-            {saving ? <Activity size={24} className="spin" /> : <Save size={24} />}
-          </button>
-        </div>
-      )}
     </div>
   );
 };

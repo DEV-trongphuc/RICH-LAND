@@ -162,9 +162,9 @@ const CampaignCardSkeleton = () => (
 );
 
 export default function ProjectsPage() {
-  const [isMobile, setIsMobile] = useState(false);
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 991);
   useEffect(() => {
-    const handleResize = () => setIsMobile(window.innerWidth <= 768);
+    const handleResize = () => setIsMobile(window.innerWidth <= 991);
     handleResize();
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
@@ -3360,12 +3360,12 @@ export default function ProjectsPage() {
         alignItems: 'center',
         flexWrap: 'wrap',
         gap: '0.75rem',
-        background: '#ffffff',
-        border: '1px solid var(--color-border-light)',
+        background: isMobile ? 'transparent' : '#ffffff',
+        border: isMobile ? 'none' : '1px solid var(--color-border-light)',
         borderRadius: '12px',
-        padding: '0.625rem 1.25rem',
+        padding: isMobile ? '0' : '0.625rem 1.25rem',
         marginBottom: '1.25rem',
-        boxShadow: 'var(--shadow-sm)',
+        boxShadow: isMobile ? 'none' : 'var(--shadow-sm)',
         width: '100%'
       }}>
         {/* Left: Tab selector (Underline style) */}
@@ -3423,16 +3423,17 @@ export default function ProjectsPage() {
         </div>
 
         {/* Middle/Right: Filter & Stats consolidated */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap', width: isMobile ? '100%' : 'auto' }}>
           {activeSubTab === 'campaigns' && (
             <div style={{
               display: 'flex',
               alignItems: 'center',
               gap: '8px',
-              height: '38px'
+              height: '38px',
+              width: isMobile ? '100%' : 'auto'
             }}>
               <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--color-text-muted)', whiteSpace: 'nowrap' }}>Dự án:</span>
-              <div style={{ width: '180px' }}>
+              <div style={{ width: isMobile ? '100%' : '180px' }}>
                 <CustomSelect
                   options={[
                     { value: '', label: 'Tất cả dự án' },
@@ -3450,6 +3451,7 @@ export default function ProjectsPage() {
           )}
 
           <div style={{ 
+            display: isMobile ? 'none' : 'flex',
             fontSize: '0.8rem', 
             color: 'var(--color-text-muted)', 
             fontWeight: 700,
@@ -3458,7 +3460,6 @@ export default function ProjectsPage() {
             borderRadius: '8px',
             border: '1px solid var(--color-border-light)',
             height: '38px',
-            display: 'flex',
             alignItems: 'center',
             boxSizing: 'border-box'
           }}>

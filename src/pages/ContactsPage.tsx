@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { createPortal } from 'react-dom';
-import { Plus, Search, Phone, Mail, Eye, Trash2, X, Download, Users, Tag as TagIcon, UserCheck, RefreshCw, Filter, LayoutGrid, List, ArrowDownUp, Columns, Building2, Briefcase, Loader2, User, Calendar, AlertTriangle, AlertCircle, CheckSquare, Layers } from 'lucide-react';
+import { Plus, Search, Phone, Mail, Eye, Trash2, X, Download, Users, Tag as TagIcon, UserCheck, RefreshCw, Filter, LayoutGrid, List, ArrowDownUp, Columns, Building2, Briefcase, Loader2, User, Calendar, AlertTriangle, AlertCircle, CheckSquare, Layers, MoreHorizontal, ChevronRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Avatar } from '../components/ui/Avatar';
 import { useUIStore } from '../store/uiStore';
@@ -320,13 +320,14 @@ export const ContactsPage: React.FC = () => {
   }, [showCreateModal, user, isSale]);
 
   // New Enterprise Features State
-  const [viewMode, setViewMode] = useState<'list' | 'card'>(() => window.innerWidth <= 768 ? 'card' : 'list');
-  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+  const [viewMode, setViewMode] = useState<'list' | 'card'>(() => window.innerWidth <= 991 ? 'card' : 'list');
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 991);
+  const [showMobileActions, setShowMobileActions] = useState(false);
 
   useEffect(() => {
     const handleResize = () => {
-      setIsMobile(window.innerWidth <= 768);
-      if (window.innerWidth <= 768) {
+      setIsMobile(window.innerWidth <= 991);
+      if (window.innerWidth <= 991) {
         setViewMode('card');
       }
     };
@@ -753,6 +754,9 @@ export const ContactsPage: React.FC = () => {
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', width: '100%', justifyContent: 'space-between' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
               <h1 className="page-title" style={{ margin: 0 }}>Liên hệ & Khách hàng</h1>
+              <span style={{ fontSize: '0.85rem', color: 'var(--color-text-light)', fontWeight: 600, marginTop: '2px' }}>
+                {loading ? '(...)' : `(${total} liên hệ)`}
+              </span>
               {user?.role === 'sale' && (
                 <div style={{
                   display: 'flex',
@@ -779,24 +783,25 @@ export const ContactsPage: React.FC = () => {
               )}
             </div>
           </div>
-          <p className="page-subtitle" style={{ marginTop: '4px' }}>{loading ? '...' : `${total} liên hệ`}</p>
         </div>
         
         {/* Render export buttons only if not on mobile */}
-        <div className="flex gap-2" style={{ display: isMobile ? 'none' : 'flex' }}>
-          {user?.role !== 'viewer' && !isSale && (
-            <button className="btn outline" onClick={() => setShowImportExport(true)} title="Nhập/Xuất Dữ liệu">
-              <Download size={14}/>
-              <span className="hide-on-mobile"> Nhập/Xuất Dữ liệu</span>
-            </button>
-          )}
-          {user?.role !== 'viewer' && user?.role !== 'sale' && (
-            <button className="btn outline" onClick={bulkExport} title="Xuất dữ liệu theo bộ lọc">
-              <Download size={14}/>
-              <span> Xuất theo bộ lọc</span>
-            </button>
-          )}
-        </div>
+        {!isMobile && (
+          <div className="flex gap-2">
+            {user?.role !== 'viewer' && !isSale && (
+              <button className="btn outline" onClick={() => setShowImportExport(true)} title="Nhập/Xuất Dữ liệu">
+                <Download size={14}/>
+                <span className="hide-on-mobile"> Nhập/Xuất Dữ liệu</span>
+              </button>
+            )}
+            {user?.role !== 'viewer' && user?.role !== 'sale' && (
+              <button className="btn outline" onClick={bulkExport} title="Xuất dữ liệu theo bộ lọc">
+                <Download size={14}/>
+                <span> Xuất theo bộ lọc</span>
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
       {isSale && pendingLeadsCount > 0 && (
@@ -835,192 +840,467 @@ export const ContactsPage: React.FC = () => {
       )}
 
       {/* Search + filter row */}
-      <div className="card" style={{ padding: isMobile ? '10px' : '0.75rem 1rem', marginBottom:'0.75rem', display:'flex', gap:'0.75rem', flexDirection: isMobile ? 'column' : 'row', alignItems: isMobile ? 'stretch' : 'center' }}>
-        {/* Row 1: Search and separate Filter Button */}
-        <div style={{ display: 'flex', gap: '8px', width: '100%', flex: 1, alignItems: 'center' }}>
-          <div className="filter-search" style={{ flex: 1, position: 'relative', width: 'auto', height: '38px', borderRadius: '8px', border: '1px solid var(--color-border)', boxSizing: 'border-box', paddingRight: '2.5rem' }}>
-            <Search size={14} style={{ color:'var(--color-text-muted)', marginLeft: '4px' }}/>
-            <input 
-              placeholder="Tìm tên, email, điện thoại..." 
-              value={search} 
-              onChange={e=>{setSearch(e.target.value);setPage(1);}} 
-              style={{ paddingRight: '0.5rem', height: '100%' }}
-            />
-            <div style={{ position: 'absolute', right: '0.5rem', top: '50%', transform: 'translateY(-50%)', display: 'flex', alignItems: 'center' }}>
+      <div className={isMobile ? "" : "card"} style={{ padding: isMobile ? '0' : '0.75rem 1rem', marginBottom:'0.75rem', display:'flex', gap:'0.75rem', flexDirection: isMobile ? 'column' : 'row', alignItems: isMobile ? 'stretch' : 'center', background: isMobile ? 'transparent' : undefined, border: isMobile ? 'none' : undefined, boxShadow: isMobile ? 'none' : undefined }}>
+        {isMobile ? (
+          <div style={{ display: 'flex', gap: '4px', alignItems: 'center', width: '100%', position: 'relative' }}>
+            <div className="filter-search" style={{ flex: 1, position: 'relative', height: '32px', borderRadius: '8px', border: '1px solid var(--color-border)', boxSizing: 'border-box', paddingRight: '2rem' }}>
+              <Search size={12} style={{ color:'var(--color-text-muted)', marginLeft: '4px' }}/>
+              <input 
+                placeholder="Tìm tên, email, điện thoại..." 
+                value={search} 
+                onChange={e=>{setSearch(e.target.value);setPage(1);}} 
+                style={{ paddingRight: '0.5rem', height: '100%', fontSize: '0.75rem' }}
+              />
+              <div style={{ position: 'absolute', right: '0.5rem', top: '50%', transform: 'translateY(-50%)', display: 'flex', alignItems: 'center' }}>
+                <AnimatePresence>
+                  {search && (
+                    <motion.button 
+                      initial={{ opacity: 0, scale: 0.8 }} 
+                      animate={{ opacity: 1, scale: 1 }} 
+                      exit={{ opacity: 0, scale: 0.8 }}
+                      transition={{ duration: 0.15 }}
+                      className="btn-icon-bare" 
+                      onClick={() => setSearch('')} 
+                      style={{ padding: 4, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', border: 'none', background: 'transparent' }}
+                    >
+                      <X size={12} style={{ color: 'var(--color-text-muted)' }}/>
+                    </motion.button>
+                  )}
+                </AnimatePresence>
+              </div>
+            </div>
+ 
+            {/* More Actions Trigger (...) */}
+            <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+              <button 
+                onClick={() => setShowMobileActions(!showMobileActions)}
+                style={{
+                  height: '32px',
+                  width: '32px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer',
+                  border: '1px solid var(--color-border)',
+                  borderRadius: '8px',
+                  background: showMobileActions ? 'var(--color-border-light)' : 'var(--color-surface)',
+                  color: 'var(--color-text)',
+                  outline: 'none',
+                  boxShadow: 'var(--shadow-sm)',
+                  padding: 0,
+                  boxSizing: 'border-box'
+                }}
+              >
+                <MoreHorizontal size={16} />
+              </button>
+ 
+              {/* Mobile Actions Dropdown */}
               <AnimatePresence>
-                {search && (
-                  <motion.button 
-                    initial={{ opacity: 0, scale: 0.8 }} 
-                    animate={{ opacity: 1, scale: 1 }} 
-                    exit={{ opacity: 0, scale: 0.8 }}
-                    transition={{ duration: 0.15 }}
-                    className="btn-icon-bare" 
-                    onClick={() => setSearch('')} 
-                    style={{ padding: 4, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', border: 'none', background: 'transparent' }}
-                    title="Xóa tìm kiếm"
-                  >
-                    <X size={14} style={{ color: 'var(--color-text-muted)' }}/>
-                  </motion.button>
+                {showMobileActions && (
+                  <>
+                    {/* Backdrop to close dropdown */}
+                    <div 
+                      onClick={() => setShowMobileActions(false)} 
+                      style={{ position: 'fixed', inset: 0, zIndex: 998, background: 'transparent' }}
+                    />
+                    <motion.div
+                      initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                      transition={{ duration: 0.15 }}
+                      style={{
+                        position: 'absolute',
+                        right: 0,
+                        top: '38px',
+                        width: '200px',
+                        background: 'var(--color-surface)',
+                        border: '1px solid var(--color-border)',
+                        borderRadius: '12px',
+                        boxShadow: 'var(--shadow-lg)',
+                        padding: '6px',
+                        zIndex: 999,
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '2px'
+                      }}
+                    >
+                      {/* Advanced Filter Toggle */}
+                      <button
+                        onClick={() => {
+                          setShowAdvancedFilters(!showAdvancedFilters);
+                          setShowMobileActions(false);
+                        }}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '8px',
+                          width: '100%',
+                          padding: '8px 12px',
+                          border: 'none',
+                          background: showAdvancedFilters ? 'var(--color-bg-light)' : 'transparent',
+                          color: showAdvancedFilters ? 'var(--color-primary)' : 'var(--color-text)',
+                          borderRadius: '8px',
+                          fontSize: '0.75rem',
+                          fontWeight: 600,
+                          textAlign: 'left',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        <Filter size={12} />
+                        <span>Bộ lọc nâng cao</span>
+                      </button>
+ 
+                      {/* Multi-select Toggle */}
+                      <button
+                        onClick={() => {
+                          if (isMultiSelectMode) setSelected(new Set());
+                          setIsMultiSelectMode(!isMultiSelectMode);
+                          setShowMobileActions(false);
+                        }}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '8px',
+                          width: '100%',
+                          padding: '8px 12px',
+                          border: 'none',
+                          background: isMultiSelectMode ? 'var(--color-bg-light)' : 'transparent',
+                          color: isMultiSelectMode ? 'var(--color-primary)' : 'var(--color-text)',
+                          borderRadius: '8px',
+                          fontSize: '0.75rem',
+                          fontWeight: 600,
+                          textAlign: 'left',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        <CheckSquare size={12} />
+                        <span>Chọn nhiều liên hệ</span>
+                      </button>
+ 
+                      <div style={{ height: '1px', background: 'var(--color-border-light)', margin: '4px 0' }} />
+ 
+                      {/* Sorting Dropdowns inside mobile menu */}
+                      <div style={{ padding: '4px 12px', fontSize: '0.65rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>
+                        Sắp xếp
+                      </div>
+                      {(['newest', 'score_desc', 'deal_desc'] as const).map((mode) => (
+                        <button
+                          key={mode}
+                          onClick={() => {
+                            setSortBy(mode);
+                            setShowMobileActions(false);
+                          }}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px',
+                            width: '100%',
+                            padding: '6px 12px 6px 24px',
+                            border: 'none',
+                            background: sortBy === mode ? 'var(--color-bg-light)' : 'transparent',
+                            color: sortBy === mode ? 'var(--color-primary)' : 'var(--color-text)',
+                            borderRadius: '6px',
+                            fontSize: '0.725rem',
+                            fontWeight: 600,
+                            textAlign: 'left',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          <span style={{ width: 4, height: 4, borderRadius: '50%', background: sortBy === mode ? 'var(--color-primary)' : 'transparent', display: 'inline-block' }} />
+                          <span>
+                            {mode === 'newest' ? 'Mới nhất' : mode === 'score_desc' ? 'Theo Score' : 'Theo Deal'}
+                          </span>
+                        </button>
+                      ))}
+ 
+                      <div style={{ height: '1px', background: 'var(--color-border-light)', margin: '4px 0' }} />
+ 
+                      {/* View Mode Toggle inside mobile menu */}
+                      <div style={{ padding: '4px 12px', fontSize: '0.65rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>
+                        Kiểu hiển thị
+                      </div>
+                      {(['list', 'card'] as const).map((mode) => (
+                        <button
+                          key={mode}
+                          onClick={() => {
+                            setViewMode(mode);
+                            setShowMobileActions(false);
+                          }}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px',
+                            width: '100%',
+                            padding: '6px 12px 6px 24px',
+                            border: 'none',
+                            background: viewMode === mode ? 'var(--color-bg-light)' : 'transparent',
+                            color: viewMode === mode ? 'var(--color-primary)' : 'var(--color-text)',
+                            borderRadius: '6px',
+                            fontSize: '0.725rem',
+                            fontWeight: 600,
+                            textAlign: 'left',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          <span style={{ width: 4, height: 4, borderRadius: '50%', background: viewMode === mode ? 'var(--color-primary)' : 'transparent', display: 'inline-block' }} />
+                          <span>{mode === 'list' ? 'Dạng danh sách' : 'Dạng ô vuông'}</span>
+                        </button>
+                      ))}
+ 
+                      {(user?.role as string) !== 'viewer' && (!isSale || user?.role !== 'sale') && (
+                        <>
+                          <div style={{ height: '1px', background: 'var(--color-border-light)', margin: '4px 0' }} />
+                          {/* Import/Export Action */}
+                          {(user?.role as string) !== 'viewer' && !isSale && (
+                            <button
+                              onClick={() => {
+                                setShowImportExport(true);
+                                setShowMobileActions(false);
+                              }}
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '8px',
+                                width: '100%',
+                                padding: '8px 12px',
+                                border: 'none',
+                                background: 'transparent',
+                                color: 'var(--color-text)',
+                                borderRadius: '8px',
+                                fontSize: '0.75rem',
+                                fontWeight: 600,
+                                textAlign: 'left',
+                                cursor: 'pointer'
+                              }}
+                            >
+                              <Download size={12} />
+                              <span>Nhập/Xuất Dữ liệu</span>
+                            </button>
+                          )}
+                          {/* Filter Export Action */}
+                          {(user?.role as string) !== 'viewer' && user?.role !== 'sale' && (
+                            <button
+                              onClick={() => {
+                                bulkExport();
+                                setShowMobileActions(false);
+                              }}
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '8px',
+                                width: '100%',
+                                padding: '8px 12px',
+                                border: 'none',
+                                background: 'transparent',
+                                color: 'var(--color-text)',
+                                borderRadius: '8px',
+                                fontSize: '0.75rem',
+                                fontWeight: 600,
+                                textAlign: 'left',
+                                cursor: 'pointer'
+                              }}
+                            >
+                              <Download size={12} />
+                              <span>Xuất theo bộ lọc</span>
+                            </button>
+                          )}
+                        </>
+                      )}
+                    </motion.div>
+                  </>
                 )}
               </AnimatePresence>
             </div>
           </div>
-
-          <button 
-            onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
-            style={{
-              height: '38px',
-              padding: '0 0.875rem',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '6px',
-              cursor: 'pointer',
-              border: '1px solid var(--color-border)',
-              borderRadius: '8px',
-              background: showAdvancedFilters ? 'var(--color-border-light)' : 'var(--color-surface)',
-              color: showAdvancedFilters ? 'var(--color-primary)' : 'var(--color-text)',
-              fontWeight: 600,
-              fontSize: '0.85rem',
-              transition: 'all 0.2s',
-              boxShadow: 'var(--shadow-sm)',
-              outline: 'none'
-            }}
-            title="Bộ lọc nâng cao"
-          >
-            <Filter size={14} />
-            <span>Bộ lọc</span>
-          </button>
-        </div>
-
-        {/* Row 2: Chọn nhanh, Sort Select & View Mode switchers */}
-        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', justifyContent: isMobile ? 'space-between' : 'flex-end', width: isMobile ? '100%' : 'auto', flexShrink: 0 }}>
-          <button 
-            onClick={() => {
-              if (isMultiSelectMode) {
-                setSelected(new Set());
-              }
-              setIsMultiSelectMode(!isMultiSelectMode);
-            }}
-            style={{
-              height: '38px',
-              padding: '0 0.875rem',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '6px',
-              cursor: 'pointer',
-              border: isMultiSelectMode ? '1px solid var(--color-primary)' : '1px solid var(--color-border)',
-              borderRadius: '8px',
-              background: isMultiSelectMode ? 'rgba(189, 29, 45, 0.08)' : 'var(--color-surface)',
-              color: isMultiSelectMode ? 'var(--color-primary)' : 'var(--color-text)',
-              fontWeight: 600,
-              fontSize: '0.85rem',
-              transition: 'all 0.2s',
-              boxShadow: 'var(--shadow-sm)',
-              outline: 'none'
-            }}
-            title="Chọn nhiều liên hệ"
-          >
-            <CheckSquare size={14} />
-            <span>Chọn nhanh</span>
-          </button>
-          {!isMobile && <div style={{ flex: 1 }} />}
-          
-          <div style={{ width: isMobile ? '130px' : 170 }}>
-            <CustomSelect 
-              value={sortBy} 
-              onChange={val => setSortBy(val as any)} 
-              options={[
-                { value: 'newest', label: 'Mới nhất', icon: <ArrowDownUp size={14} /> },
-                { value: 'score_desc', label: 'Score', icon: <ArrowDownUp size={14} /> },
-                { value: 'deal_desc', label: 'Deal', icon: <ArrowDownUp size={14} /> }
-              ]} 
-            />
-          </div>
-
-          <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-            <div style={{
-              display: 'flex',
-              background: 'var(--color-border-light)',
-              border: '1px solid var(--color-border)',
-              padding: '2px',
-              borderRadius: '8px',
-              gap: '2px',
-              alignItems: 'center',
-              height: '38px',
-              boxSizing: 'border-box'
-            }}>
+        ) : (
+          <>
+            {/* Row 1: Search and separate Filter Button */}
+            <div style={{ display: 'flex', gap: '8px', width: '100%', flex: 1, alignItems: 'center' }}>
+              <div className="filter-search" style={{ flex: 1, position: 'relative', width: 'auto', height: '38px', borderRadius: '8px', border: '1px solid var(--color-border)', boxSizing: 'border-box', paddingRight: '2.5rem' }}>
+                <Search size={14} style={{ color:'var(--color-text-muted)', marginLeft: '4px' }}/>
+                <input 
+                  placeholder="Tìm tên, email, điện thoại..." 
+                  value={search} 
+                  onChange={e=>{setSearch(e.target.value);setPage(1);}} 
+                  style={{ paddingRight: '0.5rem', height: '100%' }}
+                />
+                <div style={{ position: 'absolute', right: '0.5rem', top: '50%', transform: 'translateY(-50%)', display: 'flex', alignItems: 'center' }}>
+                  <AnimatePresence>
+                    {search && (
+                      <motion.button 
+                        initial={{ opacity: 0, scale: 0.8 }} 
+                        animate={{ opacity: 1, scale: 1 }} 
+                        exit={{ opacity: 0, scale: 0.8 }}
+                        transition={{ duration: 0.15 }}
+                        className="btn-icon-bare" 
+                        onClick={() => setSearch('')} 
+                        style={{ padding: 4, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', border: 'none', background: 'transparent' }}
+                        title="Xóa tìm kiếm"
+                      >
+                        <X size={14} style={{ color: 'var(--color-text-muted)' }}/>
+                      </motion.button>
+                    )}
+                  </AnimatePresence>
+                </div>
+              </div>
+ 
               <button 
-                onClick={() => setViewMode('list')} 
-                title="Danh sách"
-                style={{ 
-                  padding: 0, 
-                  height: '32px', 
-                  width: '32px', 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  justifyContent: 'center', 
-                  borderRadius: '6px',
-                  border: 'none',
-                  outline: 'none',
-                  boxShadow: viewMode === 'list' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
-                  background: viewMode === 'list' ? 'var(--color-surface)' : 'transparent',
-                  color: viewMode === 'list' ? 'var(--color-text)' : 'var(--color-text-light)',
+                onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
+                style={{
+                  height: '38px',
+                  padding: '0 0.875rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '6px',
                   cursor: 'pointer',
-                  transition: 'all 0.2s'
+                  border: '1px solid var(--color-border)',
+                  borderRadius: '8px',
+                  background: showAdvancedFilters ? 'var(--color-border-light)' : 'var(--color-surface)',
+                  color: showAdvancedFilters ? 'var(--color-primary)' : 'var(--color-text)',
+                  fontWeight: 600,
+                  fontSize: '0.85rem',
+                  transition: 'all 0.2s',
+                  boxShadow: 'var(--shadow-sm)',
+                  outline: 'none'
                 }}
+                title="Bộ lọc nâng cao"
               >
-                <List size={16} />
-              </button>
-              <button 
-                onClick={() => setViewMode('card')} 
-                title="Dạng thẻ"
-                style={{ 
-                  padding: 0, 
-                  height: '32px', 
-                  width: '32px', 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  justifyContent: 'center', 
-                  borderRadius: '6px',
-                  border: 'none',
-                  outline: 'none',
-                  boxShadow: viewMode === 'card' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
-                  background: viewMode === 'card' ? 'var(--color-surface)' : 'transparent',
-                  color: viewMode === 'card' ? 'var(--color-text)' : 'var(--color-text-light)',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s'
-                }}
-              >
-                <LayoutGrid size={16} />
+                <Filter size={14} />
+                <span>Bộ lọc</span>
               </button>
             </div>
-            
-            <button 
-              onClick={() => setShowColumns(true)} 
-              title="Tùy chỉnh cột"
-              style={{ 
-                padding: 0, 
-                height: '38px', 
-                width: '38px', 
-                display: 'flex', 
-                alignItems: 'center', 
-                justifyContent: 'center', 
-                borderRadius: '8px',
-                border: '1px solid var(--color-border)',
-                background: 'var(--color-surface)',
-                color: 'var(--color-text)',
-                outline: 'none',
-                boxShadow: 'none',
-                cursor: 'pointer',
-                transition: 'all 0.2s'
-              }}
-            >
-              <Columns size={16} />
-            </button>
-          </div>
-        </div>
+ 
+            {/* Row 2: Chọn nhanh, Sort Select & View Mode switchers */}
+            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', justifyContent: isMobile ? 'space-between' : 'flex-end', width: isMobile ? '100%' : 'auto', flexShrink: 0 }}>
+              <button 
+                onClick={() => {
+                  if (isMultiSelectMode) {
+                    setSelected(new Set());
+                  }
+                  setIsMultiSelectMode(!isMultiSelectMode);
+                }}
+                style={{
+                  height: '38px',
+                  padding: '0 0.875rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '6px',
+                  cursor: 'pointer',
+                  border: isMultiSelectMode ? '1px solid var(--color-primary)' : '1px solid var(--color-border)',
+                  borderRadius: '8px',
+                  background: isMultiSelectMode ? 'rgba(189, 29, 45, 0.08)' : 'var(--color-surface)',
+                  color: isMultiSelectMode ? 'var(--color-primary)' : 'var(--color-text)',
+                  fontWeight: 600,
+                  fontSize: '0.85rem',
+                  transition: 'all 0.2s',
+                  boxShadow: 'var(--shadow-sm)',
+                  outline: 'none'
+                }}
+                title="Chọn nhiều liên hệ"
+              >
+                <CheckSquare size={14} />
+                <span>Chọn nhanh</span>
+              </button>
+              {!isMobile && <div style={{ flex: 1 }} />}
+              
+              <div style={{ width: isMobile ? '130px' : 170 }}>
+                <CustomSelect 
+                  value={sortBy} 
+                  onChange={val => setSortBy(val as any)} 
+                  options={[
+                    { value: 'newest', label: 'Mới nhất', icon: <ArrowDownUp size={14} /> },
+                    { value: 'score_desc', label: 'Score', icon: <ArrowDownUp size={14} /> },
+                    { value: 'deal_desc', label: 'Deal', icon: <ArrowDownUp size={14} /> }
+                  ]} 
+                />
+              </div>
+ 
+              <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                <div style={{
+                  display: 'flex',
+                  background: 'var(--color-border-light)',
+                  border: '1px solid var(--color-border)',
+                  padding: '2px',
+                  borderRadius: '8px',
+                  gap: '2px',
+                  alignItems: 'center',
+                  height: '38px',
+                  boxSizing: 'border-box'
+                }}>
+                  <button 
+                    onClick={() => setViewMode('list')} 
+                    title="Danh sách"
+                    style={{ 
+                      padding: 0, 
+                      height: '32px', 
+                      width: '32px', 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      justifyContent: 'center', 
+                      borderRadius: '6px',
+                      border: 'none',
+                      outline: 'none',
+                      boxShadow: viewMode === 'list' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+                      background: viewMode === 'list' ? 'var(--color-surface)' : 'transparent',
+                      color: viewMode === 'list' ? 'var(--color-text)' : 'var(--color-text-light)',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s'
+                    }}
+                  >
+                    <List size={16} />
+                  </button>
+                  <button 
+                    onClick={() => setViewMode('card')} 
+                    title="Dạng thẻ"
+                    style={{ 
+                      padding: 0, 
+                      height: '32px', 
+                      width: '32px', 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      justifyContent: 'center', 
+                      borderRadius: '6px',
+                      border: 'none',
+                      outline: 'none',
+                      boxShadow: viewMode === 'card' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+                      background: viewMode === 'card' ? 'var(--color-surface)' : 'transparent',
+                      color: viewMode === 'card' ? 'var(--color-text)' : 'var(--color-text-light)',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s'
+                    }}
+                  >
+                    <LayoutGrid size={16} />
+                  </button>
+                </div>
+                
+                <button 
+                  onClick={() => setShowColumns(true)} 
+                  title="Tùy chỉnh cột"
+                  style={{ 
+                    padding: 0, 
+                    height: '38px', 
+                    width: '38px', 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    justifyContent: 'center', 
+                    borderRadius: '8px',
+                    border: '1px solid var(--color-border)',
+                    background: 'var(--color-surface)',
+                    color: 'var(--color-text)',
+                    outline: 'none',
+                    boxShadow: 'none',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s'
+                  }}
+                >
+                  <Columns size={16} />
+                </button>
+              </div>
+            </div>
+          </>
+        )}
       </div>
 
       {/* Collapsible Advanced Filters Panel */}
@@ -1310,11 +1590,11 @@ export const ContactsPage: React.FC = () => {
 
       {/* Table */}
       {loading ? (
-        <div className="card">
+        <div className={isMobile ? "" : "card"} style={{ background: isMobile ? 'transparent' : undefined, border: isMobile ? 'none' : undefined, padding: isMobile ? 0 : undefined, boxShadow: isMobile ? 'none' : undefined }}>
           <TableSkeleton rows={6} cols={6} />
         </div>
       ) : (
-        <div className="card" style={{ overflow: 'visible' }}>
+        <div className={isMobile ? "" : "card"} style={{ overflow: 'visible', background: isMobile ? 'transparent' : undefined, border: isMobile ? 'none' : undefined, padding: isMobile ? 0 : undefined, boxShadow: isMobile ? 'none' : undefined }}>
           {viewMode === 'list' ? (
 
             <div className="table-wrap" style={{ maxHeight: 'calc(100vh - 340px)', overflowY: 'auto' }}>
@@ -1679,14 +1959,16 @@ export const ContactsPage: React.FC = () => {
                         background: 'var(--color-surface)',
                         border: '1px solid var(--color-border-light)', 
                         borderRadius: '16px',
-                        padding: '1.25rem',
+                        padding: isMobile ? '12px 16px' : '1.25rem',
                         cursor: 'pointer',
                         boxShadow: '0 4px 12px rgba(0, 0, 0, 0.03)',
                         transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
                         position: 'relative',
                         display: 'flex',
-                        flexDirection: 'column',
+                        flexDirection: isMobile ? 'row' : 'column',
+                        alignItems: isMobile ? 'center' : 'stretch',
                         justifyContent: 'space-between',
+                        gap: isMobile ? '12px' : '0',
                         overflow: 'hidden'
                       }}
                       onMouseEnter={e => {
@@ -1700,127 +1982,159 @@ export const ContactsPage: React.FC = () => {
                         e.currentTarget.style.borderColor = 'var(--color-border-light)';
                       }}
                     >
-                      {/* Top Accent line colored by Status */}
-                      <div style={{
-                        position: 'absolute',
-                        top: 0,
-                        left: 0,
-                        right: 0,
-                        height: '4px',
-                        background: c.stage_color || (
-                                    c.status === 'lead' ? 'var(--color-primary)' :
-                                    c.status === 'qualified' ? 'var(--color-warning)' :
-                                    c.status === 'customer' ? 'var(--color-success)' :
-                                    'var(--color-text-muted)'
-                                    )
-                      }} />
-
-                      {/* Header Section */}
-                      <div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem', width: '100%' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.875rem' }}>
-                            <Avatar name={fullName} size={42} />
-                            <div>
-                              <h3 style={{ fontWeight: 800, fontSize: '0.95rem', color: 'var(--color-text)', marginBottom: '2px', lineHeight: 1.2, display: 'flex', alignItems: 'center' }}>
+                      {isMobile ? (
+                        <>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1, minWidth: 0 }}>
+                            {isMultiSelectMode ? (
+                              <div onClick={e => e.stopPropagation()} style={{ flexShrink: 0 }}>
+                                <CustomCheckbox 
+                                  checked={selected.has(c.id)} 
+                                  onChange={() => toggleSelect(c.id)} 
+                                />
+                              </div>
+                            ) : (
+                              <div style={{ flexShrink: 0 }}>
+                                <Avatar name={fullName} size={42} />
+                              </div>
+                            )}
+                            <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+                              <span style={{ fontWeight: 700, fontSize: '0.95rem', color: 'var(--color-text)', lineHeight: 1.2 }}>
                                 {fullName}
-                                {c.dl_status === 'databank_claim' || c.source === 'databank' ? (
-                                  <span title="Khách hàng từ Databank" style={{ display: 'inline-flex', marginLeft: '6px', color: 'var(--color-text-muted)', flexShrink: 0 }}>
-                                    <Layers size={14} />
-                                  </span>
-                                ) : !c.dl_status && c.source !== 'databank' ? (
-                                  <span title="Khách hàng cá nhân" style={{ display: 'inline-flex', marginLeft: '6px', color: 'var(--color-text-muted)', flexShrink: 0 }}>
-                                    <User size={14} />
-                                  </span>
-                                ) : null}
-                              </h3>
-                              <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                <Building2 size={11} /> {c.company_name || 'Khách hàng cá nhân'}
-                              </p>
+                              </span>
+                              <span style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', marginTop: '4px' }}>
+                                Điện thoại: {c.phone || '—'}
+                              </span>
                             </div>
                           </div>
-                          <div onClick={e => e.stopPropagation()} style={{ marginRight: '-4px', marginTop: '-4px' }}>
-                            <CustomCheckbox 
-                              checked={selected.has(c.id)} 
-                              onChange={() => toggleSelect(c.id)} 
-                            />
+                          <div style={{ color: 'var(--color-text-light)', display: 'flex', alignItems: 'center', flexShrink: 0 }}>
+                            <ChevronRight size={18} />
                           </div>
-                        </div>
+                        </>
+                      ) : (
+                        <>
+                          {/* Top Accent line colored by Status */}
+                          <div style={{
+                            position: 'absolute',
+                            top: 0,
+                            left: 0,
+                            right: 0,
+                            height: '4px',
+                            background: c.stage_color || (
+                                        c.status === 'lead' ? 'var(--color-primary)' :
+                                        c.status === 'qualified' ? 'var(--color-warning)' :
+                                        c.status === 'customer' ? 'var(--color-success)' :
+                                        'var(--color-text-muted)'
+                                        )
+                          }} />
 
-                        {/* Contact Details Quick View */}
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '1rem', padding: '0.625rem', background: 'var(--color-bg)', borderRadius: '10px' }}>
-                          {c.phone && (
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.78rem', color: 'var(--color-text)', fontWeight: 600 }}>
-                              <Phone size={12} style={{ color: 'var(--color-text-muted)' }} />
-                              <span>{c.phone}</span>
+                          {/* Header Section */}
+                          <div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem', width: '100%' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.875rem' }}>
+                                <Avatar name={fullName} size={42} />
+                                <div>
+                                  <h3 style={{ fontWeight: 800, fontSize: '0.95rem', color: 'var(--color-text)', marginBottom: '2px', lineHeight: 1.2, display: 'flex', alignItems: 'center' }}>
+                                    {fullName}
+                                    {c.dl_status === 'databank_claim' || c.source === 'databank' ? (
+                                      <span title="Khách hàng từ Databank" style={{ display: 'inline-flex', marginLeft: '6px', color: 'var(--color-text-muted)', flexShrink: 0 }}>
+                                        <Layers size={14} />
+                                      </span>
+                                    ) : !c.dl_status && c.source !== 'databank' ? (
+                                      <span title="Khách hàng cá nhân" style={{ display: 'inline-flex', marginLeft: '6px', color: 'var(--color-text-muted)', flexShrink: 0 }}>
+                                        <User size={14} />
+                                      </span>
+                                    ) : null}
+                                  </h3>
+                                  <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                    <Building2 size={11} /> {c.company_name || 'Khách hàng cá nhân'}
+                                  </p>
+                                </div>
+                              </div>
+                              <div onClick={e => e.stopPropagation()} style={{ marginRight: '-4px', marginTop: '-4px' }}>
+                                <CustomCheckbox 
+                                  checked={selected.has(c.id)} 
+                                  onChange={() => toggleSelect(c.id)} 
+                                />
+                              </div>
                             </div>
-                          )}
-                          {c.email && (
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.72rem', color: 'var(--color-text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                              <Mail size={12} style={{ color: 'var(--color-text-muted)' }} />
-                              <span>{c.email}</span>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                      
-                      {/* Status Badges & Score */}
-                      <div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                          {c.stage_name ? (
-                            <span 
-                              className="badge" 
-                              style={{ 
-                                borderRadius: '8px', 
-                                padding: '4px 8px', 
-                                fontSize: '0.72rem', 
-                                fontWeight: 700,
-                                backgroundColor: `${c.stage_color}1a`, 
-                                color: c.stage_color || 'var(--color-primary)', 
-                                border: `1px solid ${c.stage_color}33`
-                              }}
-                            >
-                              {c.stage_name}
-                            </span>
-                          ) : (
-                            <span className={`badge ${STATUS_CLASS[c.status] || 'info'}`} style={{ borderRadius: '8px', padding: '4px 8px', fontSize: '0.72rem', fontWeight: 700 }}>
-                              {STATUS_LABEL[c.status] || c.status}
-                            </span>
-                          )}
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                            <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', fontWeight: 500 }}>Đánh giá:</span>
-                            <span style={{ 
-                              fontSize: '0.75rem', 
-                              padding: '2px 8px', 
-                              background: c.score >= 80 ? 'rgba(16, 185, 129, 0.1)' : c.score >= 60 ? 'rgba(245, 158, 11, 0.1)' : 'rgba(107, 114, 128, 0.1)', 
-                              color: c.score >= 80 ? 'var(--color-success)' : c.score >= 60 ? 'var(--color-warning)' : 'var(--color-text-muted)',
-                              borderRadius: '6px', 
-                              fontWeight: 700 
-                            }}>
-                              {c.score} pts
-                            </span>
-                          </div>
-                        </div>
 
-                        {/* Footer Grid */}
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', paddingTop: '0.875rem', borderTop: '1px solid var(--color-border-light)' }}>
-                          <div>
-                            <p style={{ fontSize: '0.65rem', textTransform: 'uppercase', color: 'var(--color-text-muted)', fontWeight: 700, marginBottom: '2px', letterSpacing: '0.02em' }}>Ngày tạo</p>
-                            <p style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text)' }}>
-                              {c.created_at ? (() => {
-                                const d = new Date(c.created_at);
-                                const pad = (n: number) => String(n).padStart(2, '0');
-                                return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()}`;
-                              })() : '—'}
-                            </p>
+                            {/* Contact Details Quick View */}
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '1rem', padding: '0.625rem', background: 'var(--color-bg)', borderRadius: '10px' }}>
+                              {c.phone && (
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.78rem', color: 'var(--color-text)', fontWeight: 600 }}>
+                                  <Phone size={12} style={{ color: 'var(--color-text-muted)' }} />
+                                  <span>{c.phone}</span>
+                                </div>
+                              )}
+                              {c.email && (
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.72rem', color: 'var(--color-text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                  <Mail size={12} style={{ color: 'var(--color-text-muted)' }} />
+                                  <span>{c.email}</span>
+                                </div>
+                              )}
+                            </div>
                           </div>
+                          
+                          {/* Status Badges & Score */}
                           <div>
-                            <p style={{ fontSize: '0.65rem', textTransform: 'uppercase', color: 'var(--color-text-muted)', fontWeight: 700, marginBottom: '2px', letterSpacing: '0.02em' }}>Tương tác cuối</p>
-                            <p style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text)' }}>
-                              {formatTimeAgo(getInteractionTime(c.last_contact, c.updated_at, c.created_at))}
-                            </p>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                              {c.stage_name ? (
+                                <span 
+                                  className="badge" 
+                                  style={{ 
+                                    borderRadius: '8px', 
+                                    padding: '4px 8px', 
+                                    fontSize: '0.72rem', 
+                                    fontWeight: 700,
+                                    backgroundColor: `${c.stage_color}1a`, 
+                                    color: c.stage_color || 'var(--color-primary)', 
+                                    border: `1px solid ${c.stage_color}33`
+                                  }}
+                                >
+                                  {c.stage_name}
+                                </span>
+                              ) : (
+                                <span className={`badge ${STATUS_CLASS[c.status] || 'info'}`} style={{ borderRadius: '8px', padding: '4px 8px', fontSize: '0.72rem', fontWeight: 700 }}>
+                                  {STATUS_LABEL[c.status] || c.status}
+                                </span>
+                              )}
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', fontWeight: 500 }}>Đánh giá:</span>
+                                <span style={{ 
+                                  fontSize: '0.75rem', 
+                                  padding: '2px 8px', 
+                                  background: c.score >= 80 ? 'rgba(16, 185, 129, 0.1)' : c.score >= 60 ? 'rgba(245, 158, 11, 0.1)' : 'rgba(107, 114, 128, 0.1)', 
+                                  color: c.score >= 80 ? 'var(--color-success)' : c.score >= 60 ? 'var(--color-warning)' : 'var(--color-text-muted)',
+                                  borderRadius: '6px', 
+                                  fontWeight: 700 
+                                }}>
+                                  {c.score} pts
+                                </span>
+                              </div>
+                            </div>
+
+                            {/* Footer Grid */}
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', paddingTop: '0.875rem', borderTop: '1px solid var(--color-border-light)' }}>
+                              <div>
+                                <p style={{ fontSize: '0.65rem', textTransform: 'uppercase', color: 'var(--color-text-muted)', fontWeight: 700, marginBottom: '2px', letterSpacing: '0.02em' }}>Ngày tạo</p>
+                                <p style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text)' }}>
+                                  {c.created_at ? (() => {
+                                    const d = new Date(c.created_at);
+                                    const pad = (n: number) => String(n).padStart(2, '0');
+                                    return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()}`;
+                                  })() : '—'}
+                                </p>
+                              </div>
+                              <div>
+                                <p style={{ fontSize: '0.65rem', textTransform: 'uppercase', color: 'var(--color-text-muted)', fontWeight: 700, marginBottom: '2px', letterSpacing: '0.02em' }}>Tương tác cuối</p>
+                                <p style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text)' }}>
+                                  {formatTimeAgo(getInteractionTime(c.last_contact, c.updated_at, c.created_at))}
+                                </p>
+                              </div>
+                            </div>
                           </div>
-                        </div>
-                      </div>
+                        </>
+                      )}
                     </motion.div>
                   );
                 })}

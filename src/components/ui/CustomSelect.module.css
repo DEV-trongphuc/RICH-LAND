@@ -84,8 +84,9 @@
   top: calc(100% + 0.5rem);
   left: 0;
   width: 100%;
-  min-width: max-content;
-  max-width: 320px;
+  min-width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
   background: #ffffff;
   border: 1px solid rgba(0, 0, 0, 0.1);
   border-radius: var(--radius-md);

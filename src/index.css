@@ -1416,15 +1416,15 @@ select:focus {
 }
 
 .grid-2 {
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .grid-3 {
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 .grid-4 {
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
 /* Stat card */
@@ -1741,11 +1741,21 @@ select:focus {
 }
 
 @media (max-width: 767px) {
-
   .grid-2,
   .grid-3,
   .grid-4 {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 1024px) {
+  [class*="drawer"] .grid-2,
+  [class*="drawer"] .grid-3,
+  [class*="drawer"] .grid-4,
+  [class*="Drawer"] .grid-2,
+  [class*="Drawer"] .grid-3,
+  [class*="Drawer"] .grid-4 {
+    grid-template-columns: 1fr !important;
   }
 
   .page-header {
@@ -3871,66 +3881,80 @@ table td.wrap-cell, table th.wrap-cell {
   justify-content: center;
   flex: 1;
   height: 100%;
-  color: var(--color-text-muted);
+  color: var(--color-text-muted) !important;
   text-decoration: none;
-  gap: 3px;
+  gap: 4px;
   background: transparent;
   border: none;
   cursor: pointer;
-  transition: color 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   outline: none;
   position: relative;
+  padding: 0 !important;
+}
+
+/* Premium active pill indicator behind the icon (like Android/Material Design) */
+.mobile-bottom-nav-item::before {
+  content: '';
+  position: absolute;
+  top: 6px;
+  left: 50%;
+  margin-left: -24px; /* Center the 48px width pill */
+  width: 48px;
+  height: 28px;
+  border-radius: 14px;
+  background: rgba(163, 20, 34, 0.08); /* Brand primary color tint */
+  opacity: 0;
+  transform: scaleX(0.5);
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  z-index: 1;
+}
+
+.mobile-bottom-nav-item.active::before {
+  opacity: 1;
+  transform: scaleX(1);
 }
 
 .mobile-bottom-nav-item svg {
-  width: 20px;
-  height: 20px;
-  transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), color 0.25s;
+  width: 22px !important;
+  height: 22px !important;
+  min-width: 22px !important;
+  min-height: 22px !important;
+  flex-shrink: 0 !important;
+  position: relative;
+  z-index: 2;
+  transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1), color 0.25s;
+  color: var(--color-text-muted) !important;
 }
 
 .mobile-bottom-nav-item:active svg {
-  transform: scale(0.85);
+  transform: scale(0.85) !important;
 }
 
 .mobile-bottom-nav-item-label {
-  font-size: 9px;
-  font-weight: 700;
-  letter-spacing: -0.0125em;
-  transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.25s;
-  opacity: 0.75;
+  font-size: 10px !important;
+  font-weight: 600 !important;
+  letter-spacing: -0.01em;
+  transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+  opacity: 0.8;
+  position: relative;
+  z-index: 2;
 }
 
 .mobile-bottom-nav-item.active {
-  color: var(--color-primary);
+  color: var(--color-primary) !important;
 }
 
 .mobile-bottom-nav-item.active svg {
-  transform: translateY(-4px) scale(1.1);
-  color: var(--color-primary);
+  transform: translateY(-5px) scale(1.15) !important;
+  color: var(--color-primary) !important;
 }
 
 .mobile-bottom-nav-item.active .mobile-bottom-nav-item-label {
-  transform: translateY(-1px);
-  opacity: 1;
-  font-weight: 800;
-}
-
-.mobile-bottom-nav-item::after {
-  content: '';
-  position: absolute;
-  bottom: 4px;
-  width: 4px;
-  height: 4px;
-  border-radius: 50%;
-  background: var(--color-primary);
-  opacity: 0;
-  transform: scale(0);
-  transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.25s;
-}
-
-.mobile-bottom-nav-item.active::after {
-  opacity: 1;
-  transform: scale(1);
+  transform: translateY(-2px) !important;
+  opacity: 1 !important;
+  font-weight: 800 !important;
+  color: var(--color-primary) !important;
 }
 
 @media (min-width: 769px) {
@@ -4285,7 +4309,7 @@ div[role="status"] {
   }
   
   /* Buttons & Controls scaling (making them compact) */
-  .btn, button, select, input, .form-input, .filter-search, .custom-select-trigger {
+  .btn, select, input:not([type="checkbox"]):not([type="radio"]), .form-input, .filter-search, .custom-select-trigger {
     height: 32px !important;
     font-size: 0.75rem !important;
     padding-top: 0 !important;
@@ -4306,15 +4330,15 @@ div[role="status"] {
   }
   
   /* Icon alignment & scaling inside buttons */
-  .btn svg, button svg {
+  .btn svg, .filter-search svg, .btn-icon svg {
     width: 12px !important;
     height: 12px !important;
   }
   
-  /* Search field adjustments on mobile */
   .filter-search input {
     font-size: 0.75rem !important;
     padding-left: 24px !important;
+    height: 100% !important;
   }
   .filter-search svg {
     width: 12px !important;
@@ -4329,4 +4353,267 @@ div[role="status"] {
   div[style*="gap: 0.5rem"], div[style*="gap:0.5rem"] {
     gap: 0.25rem !important;
   }
-}
+
+  /* Full Screen Overlays (HyperOS Drawer-on-Drawer style) */
+  .modal-sheet, 
+  .modal-content, 
+  .custom-modal,
+  .drawer-sheet {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    width: 100vw !important;
+    max-width: 100vw !important;
+    height: 100vh !important;
+    max-height: 100vh !important;
+    border-radius: 0 !important;
+    margin: 0 !important;
+    transform: none !important;
+    box-shadow: none !important;
+    border: none !important;
+    display: flex !important;
+    flex-direction: column !important;
+    z-index: 10600 !important;
+    background: var(--color-surface) !important;
+  }
+
+  /* When multiple drawer overlays stack, we adjust z-indexes dynamically */
+  .drawer-sheet + .drawer-sheet,
+  .modal-sheet + .modal-sheet {
+    z-index: 10700 !important;
+  }
+
+  .modal-body, .drawer-body {
+    overflow-y: auto !important;
+    flex: 1 !important;
+    padding: 1.25rem !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+
+  .modal-header, .drawer-header {
+    padding: 1rem 1.25rem !important;
+    border-bottom: 1px solid var(--color-border-light) !important;
+    flex-shrink: 0 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+  }
+
+  .modal-footer, .drawer-footer {
+    padding: 1rem 1.25rem !important;
+    border-top: 1px solid var(--color-border-light) !important;
+    flex-shrink: 0 !important;
+    background: var(--color-surface) !important;
+  }
+
+  /* Drawer back arrow helper on mobile */
+  .drawer-back-btn, .modal-back-btn {
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+    cursor: pointer !important;
+    font-size: 0.875rem !important;
+    font-weight: 700 !important;
+    color: var(--color-primary) !important;
+  }
+
+  /* Set spacious height & paddings on mobile category lists to match HyperOS tactile feeling */
+  .os-list-item {
+    padding: 16px 20px !important;
+    height: auto !important;
+    min-height: 58px !important;
+  }
+
+  /* Perfect circular header action buttons on mobile settings subpage */
+  .os-header-circle-btn {
+    width: 36px !important;
+    height: 36px !important;
+    padding: 0 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    border-radius: 50% !important;
+    border: 1px solid var(--color-border-light) !important;
+    background: var(--color-bg) !important;
+    color: var(--color-primary) !important;
+    box-shadow: var(--shadow-sm) !important;
+    outline: none !important;
+    cursor: pointer !important;
+    flex-shrink: 0 !important;
+    min-width: 36px !important;
+    box-sizing: border-box !important;
+  }
+
+  .os-header-circle-btn.primary {
+    background: var(--color-primary) !important;
+    color: #ffffff !important;
+    border: none !important;
+  }
+
+  .os-floating-save-btn {
+    width: 56px !important;
+    height: 56px !important;
+    padding: 0 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    border-radius: 50% !important;
+    box-sizing: border-box !important;
+  }
+
+  /* Settings forms optimization (HyperOS / iOS settings style) */
+  .subtab-enter-active {
+    padding: 0 !important;
+    width: 100% !important;
+  }
+
+  .subtab-enter-active .card {
+    padding: 16px !important;
+    margin: 0 0 16px 0 !important;
+    border: 1px solid var(--color-border-light) !important;
+    border-radius: 16px !important;
+    background: var(--color-surface) !important;
+    box-shadow: var(--shadow-sm) !important;
+  }
+
+  /* Flatten nested card blocks inside Settings subtabs on mobile to prevent overlapping card borders */
+  .subtab-enter-active .card div[style*="padding: 1.5rem"],
+  .subtab-enter-active .card div[style*="padding:1.5rem"],
+  .subtab-enter-active .card div[style*="padding: 1.25rem"],
+  .subtab-enter-active .card div[style*="padding:1.25rem"],
+  .subtab-enter-active .card div[style*="padding: 2rem"],
+  .subtab-enter-active .card div[style*="padding:2rem"] {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    margin: 0 0 16px 0 !important;
+  }
+
+  /* Force all headings and help banner contents to left-align on mobile */
+  .subtab-enter-active h3, 
+  .subtab-enter-active h4, 
+  .subtab-enter-active h5,
+  .subtab-enter-active p,
+  .subtab-enter-active label,
+  .subtab-enter-active .form-label,
+  .subtab-enter-active span {
+    text-align: left !important;
+  }
+
+  /* Force flex containers to justify start (left-align) except toggle rows and item headers */
+  .subtab-enter-active div[style*="display: flex"],
+  .subtab-enter-active div[style*="display:flex"] {
+    justify-content: flex-start !important;
+  }
+
+  /* Restore space-between for toggle switches and header actions */
+  .subtab-enter-active div[style*="justify-content: space-between"],
+  .subtab-enter-active div[style*="justify-content:space-between"],
+  .subtab-enter-active div[style*="justifyContent: 'space-between'"],
+  .subtab-enter-active div[style*="justifyContent:'space-between'"] {
+    justify-content: space-between !important;
+  }
+
+  /* Stack grid layouts vertically on mobile (restricted to inner settings card fields) */
+  .subtab-enter-active .card div[style*="grid-template-columns"],
+  .subtab-enter-active .card div[style*="gridTemplateColumns"] {
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+  }
+
+  /* Input fields should take full width on mobile unless they are inside a flex-row with checkbox */
+  .subtab-enter-active input.form-input,
+  .subtab-enter-active select.form-input,
+  .subtab-enter-active textarea {
+    width: 100% !important;
+  }
+
+  /* Except for time inputs and small fields in schedule rows */
+  .subtab-enter-active input[type="time"] {
+    width: auto !important;
+  }
+}
+
+/* Settings List Group like HyperOS (Globally available classes) */
+.os-list-group {
+  background: var(--color-surface);
+  border-radius: 12px;
+  border: 1px solid var(--color-border-light);
+  margin-bottom: 1rem;
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+}
+
+.os-list-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--color-border-light);
+  cursor: pointer;
+  transition: background 0.2s ease;
+  background: transparent;
+  border-top: none;
+  border-left: none;
+  border-right: none;
+  width: 100%;
+  text-align: left;
+}
+
+.os-list-item:last-child {
+  border-bottom: none;
+}
+
+.os-list-item:active {
+  background: var(--color-border-light);
+}
+
+.os-list-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: var(--color-bg);
+  color: var(--color-primary);
+  margin-right: 12px;
+  flex-shrink: 0;
+}
+
+.os-list-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.os-list-title {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--color-text);
+  line-height: 1.25;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.os-list-subtitle {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+  margin-top: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.os-list-chevron {
+  color: var(--color-text-light);
+  display: flex;
+  align-items: center;
+  margin-left: 8px;
+  flex-shrink: 0;
+}

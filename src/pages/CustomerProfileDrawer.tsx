@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, User, Users, Phone, Mail, MapPin, Briefcase, Plus, Search, Send, History, CheckSquare, DollarSign, HelpCircle, FileText, ShoppingCart, Tag as TagIcon, Target, Pencil, Trash2, LifeBuoy, AlertCircle, Clock, UserCheck, Activity, Calendar, CheckCircle2, ChevronLeft, ChevronRight, ChevronDown, Check, Camera, Loader2, MessageSquare, PenTool, Lightbulb, Upload, Paperclip, CreditCard, Ban, ShieldAlert, Copy, Folder, FolderPlus, ArrowRightLeft, List, LayoutGrid, RotateCcw, RefreshCw, Layers } from 'lucide-react';
+import { X, User, Users, Phone, Mail, MapPin, Briefcase, Plus, Search, Send, History, CheckSquare, DollarSign, HelpCircle, FileText, ShoppingCart, Tag as TagIcon, Target, Pencil, Trash2, LifeBuoy, AlertCircle, Clock, UserCheck, Activity, Calendar, CheckCircle2, ChevronLeft, ChevronRight, ChevronDown, Check, Camera, Loader2, MessageSquare, PenTool, Lightbulb, Upload, Paperclip, CreditCard, Ban, ShieldAlert, Copy, Folder, FolderPlus, ArrowRightLeft, List, LayoutGrid, RotateCcw, RefreshCw, Layers, Save } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { LeadScoreRing } from '../components/ui/LeadScoreRing';
 import { TagInput } from '../components/ui/TagInput';
@@ -874,6 +874,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
   const [activeTab, setActiveTab] = useState<string>('info');
   const [taskViewMode, setTaskViewMode] = useState<'kanban' | 'list'>('kanban');
   const [prevContactId, setPrevContactId] = useState<number | null>(null);
+  const [showMobilePipelineSelector, setShowMobilePipelineSelector] = useState(false);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -884,12 +885,14 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
       setActiveTab('timeline');
     } else if (isOpen && hasHighlightNote) {
       setActiveTab('tags');
-    } else if (isOpen && initialTab) {
-      setActiveTab(initialTab);
     } else if (isOpen) {
-      setActiveTab('info');
+      if (isMobileOrTablet) {
+        setActiveTab(''); // On mobile, always default opening to the main tab menu list
+      } else {
+        setActiveTab(initialTab || 'info');
+      }
     }
-  }, [isOpen, initialTab]);
+  }, [isOpen, initialTab, isMobileOrTablet]);
 
   useEffect(() => {
     if (isOpen && activeTab === 'timeline') {
@@ -3363,6 +3366,50 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
 
   if (typeof document === 'undefined') return null;
 
+  const handleStageTransition = (targetId: string, targetName: string) => {
+    const currentIdx = pipelineStages.findIndex(s => String(s.id) === String(formData.pipeline_status || 'chua_xac_dinh'));
+    const safeIndex = currentIdx === -1 ? 0 : currentIdx;
+
+    // Guard: Only owner or admin can change pipeline status
+    const isOwner = Number(currentUser?.id) === Number(formData.owner_id || contact?.owner_id);
+    const isAdmin = currentUser?.role && ['admin', 'superadmin', 'super_admin', 'assistant', 'director', 'manager'].includes(currentUser.role);
+    if (currentUser?.role === 'sale' && !isOwner && !isAdmin) {
+      addToast('Chặn thao tác: Chỉ chủ sở hữu (Owner) mới có quyền chuyển trạng thái khách hàng!', 'error');
+      return;
+    }
+
+    const targetIdx = pipelineStages.findIndex(s => String(s.id) === String(targetId));
+    const isBackward = targetIdx !== -1 && targetIdx < safeIndex;
+
+    const currentStageObj = pipelineStages[safeIndex];
+    const targetStageObj = pipelineStages[targetIdx];
+    const isFromDeposit = currentStageObj?.name?.toLowerCase()?.includes('cọc') || currentStageObj?.name?.toLowerCase()?.includes('deposit');
+    const isToSuccess = targetStageObj?.name?.toLowerCase()?.includes('hợp đồng') || targetStageObj?.name?.toLowerCase()?.includes('won') || targetStageObj?.name?.toLowerCase()?.includes('thành công') || targetStageObj?.is_won;
+    const isCancellation = isFromDeposit && !isToSuccess;
+
+    if (isBackward && !isCancellation) {
+      addToast("Không thể di chuyển ngược giai đoạn trên Pipeline.", "error");
+      return;
+    }
+
+    // Check interaction guardrail: if transitioning to 'churned' or 'dong_deal' (Đã rời bỏ/Đóng), must have at least 1 activity
+    if ((targetId === 'churned' || targetId === 'dong_deal') && drawerActivities.length === 0) {
+      addToast('Chặn đóng deal: Khách hàng chưa từng có tương tác nào! Vui lòng tạo ghi chú cuộc gọi, email hoặc hoạt động trước.', 'error');
+      return;
+    }
+
+    // Check TTL1 constraint: moving to status index >= 2 (e.g. 'dong_y_gap' / 'Đồng Ý Gặp' or later)
+    if (targetIdx >= 2) {
+      const count = Object.values(ttl1Data).filter(Boolean).length;
+      if (count < 4) {
+        addToast('Chặn chuyển giai đoạn: Yêu cầu hoàn thành tối thiểu 4/5 nhóm thông tin trong Form TTL1!', 'error');
+        return;
+      }
+    }
+    
+    setPipelineModal({ isOpen: true, targetId, targetLabel: targetName, note: '' });
+  };
+
   const pipelineStepperBar = (
     <div style={{ position: 'relative', display: 'flex', alignItems: 'center', background: 'var(--color-surface)', borderBottom: '1px solid var(--color-border-light)', overflow: 'hidden', width: '100%', flexShrink: 0 }}>
       {!isMobileOrTablet && (
@@ -3386,45 +3433,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                 key={st.id}
                 onClick={() => {
                   if (isCurrent) return;
-
-                  // Guard: Only owner or admin can change pipeline status
-                  const isOwner = Number(currentUser?.id) === Number(formData.owner_id || contact?.owner_id);
-                  const isAdmin = currentUser?.role && ['admin', 'superadmin', 'super_admin', 'assistant', 'director', 'manager'].includes(currentUser.role);
-                  if (currentUser?.role === 'sale' && !isOwner && !isAdmin) {
-                    addToast('Chặn thao tác: Chỉ chủ sở hữu (Owner) mới có quyền chuyển trạng thái khách hàng!', 'error');
-                    return;
-                  }
-
-                  const targetIdx = pipelineStages.findIndex(s => String(s.id) === String(st.id));
-                  const isBackward = targetIdx !== -1 && targetIdx < safeIndex;
-
-                  const currentStageObj = pipelineStages[safeIndex];
-                  const targetStageObj = pipelineStages[targetIdx];
-                  const isFromDeposit = currentStageObj?.name?.toLowerCase()?.includes('cọc') || currentStageObj?.name?.toLowerCase()?.includes('deposit');
-                  const isToSuccess = targetStageObj?.name?.toLowerCase()?.includes('hợp đồng') || targetStageObj?.name?.toLowerCase()?.includes('won') || targetStageObj?.name?.toLowerCase()?.includes('thành công') || targetStageObj?.is_won;
-                  const isCancellation = isFromDeposit && !isToSuccess;
-
-                  if (isBackward && !isCancellation) {
-                    addToast("Không thể di chuyển ngược giai đoạn trên Pipeline.", "error");
-                    return;
-                  }
-
-                  // Check interaction guardrail: if transitioning to 'churned' or 'dong_deal' (Đã rời bỏ/Đóng), must have at least 1 activity
-                  if ((st.id === 'churned' || st.id === 'dong_deal') && drawerActivities.length === 0) {
-                    addToast('Chặn đóng deal: Khách hàng chưa từng có tương tác nào! Vui lòng tạo ghi chú cuộc gọi, email hoặc hoạt động trước.', 'error');
-                    return;
-                  }
-
-                  // Check TTL1 constraint: moving to status index >= 2 (e.g. 'dong_y_gap' / 'Đồng Ý Gặp' or later)
-                  if (targetIdx >= 2) {
-                    const count = Object.values(ttl1Data).filter(Boolean).length;
-                    if (count < 4) {
-                      addToast('Chặn chuyển giai đoạn: Yêu cầu hoàn thành tối thiểu 4/5 nhóm thông tin trong Form TTL1!', 'error');
-                      return;
-                    }
-                  }
-                  
-                  setPipelineModal({ isOpen: true, targetId: String(st.id), targetLabel: st.name, note: '' });
+                  handleStageTransition(String(st.id), st.name);
                 }}
                 style={{
                   flex: '1 0 auto', minWidth: '135px', position: 'relative', height: '32px', cursor: isCurrent ? 'default' : 'pointer',
@@ -3782,7 +3791,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                     onClick={handleClose} 
                     style={{ background: 'transparent', border: 'none', color: 'var(--color-text-muted)', cursor: 'pointer', padding: '4px', display: 'flex', alignItems: 'center' }}
                   >
-                    <X size={20} />
+                    <ChevronLeft size={22} />
                   </button>
                   <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', margin: '0 0.5rem', overflow: 'hidden' }}>
                     <Avatar 
@@ -3808,14 +3817,14 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                     onClick={handleSave}
                     className="btn success sm"
                     style={{
-                      padding: '6px 14px',
+                      padding: isMobileOrTablet ? '6px 8px' : '6px 14px',
                       borderRadius: '8px',
                       fontSize: '0.8rem',
                       fontWeight: 700,
                       height: '32px',
                       display: 'flex',
                       alignItems: 'center',
-                      gap: '6px',
+                      gap: isMobileOrTablet ? '0' : '6px',
                       background: 'var(--color-primary)',
                       borderColor: 'var(--color-primary)',
                       color: 'white',
@@ -3823,7 +3832,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                     }}
                   >
                     <CheckSquare size={14} />
-                    <span>Lưu</span>
+                    {!isMobileOrTablet && <span>Lưu</span>}
                   </button>
                 </div>
               ) : (
@@ -4228,285 +4237,448 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                   <DrawerSkeleton />
                 ) : (
                   <>
-                    {isMobileOrTablet && (
-                  <>
-                    {/* Compact Mobile Profile Info Card */}
-                    <div style={{
-                      background: 'linear-gradient(135deg, var(--color-surface) 0%, var(--color-bg-dark) 100%)',
-                      padding: '0.75rem 1rem',
-                      borderBottom: '1px solid var(--color-border-light)',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      gap: '8px',
-                      flexShrink: 0
-                    }}>
-                      {/* Row 1: Status Badges & Scoring */}
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
-                          <span className={`badge ${formData.status === 'customer' ? 'success' : formData.status === 'qualified' ? 'warning' : 'info'}`} style={{ padding: '2px 6px', fontSize: '0.625rem', borderRadius: '4px' }}>
-                            {formData.status === 'customer' ? 'VIP' : formData.status === 'qualified' ? 'Đã thẩm định' : 'Tiềm năng'}
-                          </span>
-                          {formData.temperature && tempLabels[formData.temperature] && (
-                            <span 
-                              style={{ 
-                                padding: '2px 6px', 
-                                fontSize: '0.625rem', 
-                                borderRadius: '4px',
-                                fontWeight: 700,
-                                color: tempLabels[formData.temperature].color,
-                                background: tempLabels[formData.temperature].bg,
-                                border: `1px solid ${tempLabels[formData.temperature].color}33`
-                              }}
-                              title={`Nhiệt độ sale chốt: ${tempLabels[formData.temperature].label}`}
-                            >
-                              {tempLabels[formData.temperature].label}
-                            </span>
-                          )}
-                          {formData.suggested_temperature && tempLabels[formData.suggested_temperature] && (
-                            <span 
-                              style={{ 
-                                padding: '2px 6px', 
-                                fontSize: '0.625rem', 
-                                borderRadius: '4px',
-                                fontWeight: 600,
-                                color: '#64748b',
-                                background: 'var(--color-bg)',
-                                border: '1px solid var(--color-border-light)'
-                              }}
-                              title={`Máy đề xuất: ${tempLabels[formData.suggested_temperature].label}`}
-                            >
-                              AI: {tempLabels[formData.suggested_temperature].label}
-                            </span>
-                          )}
-                          {formData.not_lead_proposed === 1 && (
-                            <span className="badge danger" style={{ padding: '2px 6px', fontSize: '0.625rem', borderRadius: '4px' }}>Chờ duyệt loại</span>
-                          )}
-                        </div>
+                    {(!isMobileOrTablet || !activeTab) && (
+                      <div className={styles.sidebarTabs} style={isMobileOrTablet ? { width: '100%', gap: '0.25rem', padding: '16px', overflowY: 'auto' } : { gap: '0.25rem', overflowY: 'auto' }}>
+                        {isMobileOrTablet ? (
+                          <div style={{ display: 'flex', flexDirection: 'column', width: '100%' }}>
+                            {/* Compact Mobile Profile Info Card */}
+                            <div style={{
+                              background: 'linear-gradient(135deg, var(--color-surface) 0%, var(--color-bg-dark) 100%)',
+                              padding: '1rem',
+                              borderBottom: '1px solid var(--color-border-light)',
+                              display: 'flex',
+                              flexDirection: 'column',
+                              gap: '10px',
+                              borderRadius: '12px',
+                              marginBottom: '1rem'
+                            }}>
+                              <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
+                                {/* Left: Avatar */}
+                                <div style={{ flexShrink: 0 }}>
+                                  <Avatar name={fullName} src={formData.avatar_url} size={48} />
+                                </div>
+                                {/* Right: Basic Info */}
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', flex: 1, minWidth: 0 }}>
+                                  {/* Badges row */}
+                                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', width: '100%' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                                      <span className={`badge ${formData.status === 'customer' ? 'success' : formData.status === 'qualified' ? 'warning' : 'info'}`} style={{ padding: '2px 6px', fontSize: '0.625rem', borderRadius: '4px' }}>
+                                        {formData.status === 'customer' ? 'VIP' : formData.status === 'qualified' ? 'Đã thẩm định' : 'Tiềm năng'}
+                                      </span>
+                                      {formData.temperature && tempLabels[formData.temperature] && (
+                                        <span 
+                                          style={{ 
+                                            padding: '2px 6px', 
+                                            fontSize: '0.625rem', 
+                                            borderRadius: '4px',
+                                            fontWeight: 700,
+                                            color: tempLabels[formData.temperature].color,
+                                            background: tempLabels[formData.temperature].bg,
+                                            border: `1px solid ${tempLabels[formData.temperature].color}33`
+                                          }}
+                                          title={`Nhiệt độ sale chốt: ${tempLabels[formData.temperature].label}`}
+                                        >
+                                          {tempLabels[formData.temperature].label}
+                                        </span>
+                                      )}
+                                      {(() => {
+                                        const currentStageObj = pipelineStages.find(s => String(s.id) === String(formData.pipeline_status || 'chua_xac_dinh'));
+                                        const stColor = currentStageObj ? overridePurpleColor(currentStageObj.color) : 'var(--color-text-muted)';
+                                        return (
+                                          <button 
+                                            onClick={() => setShowMobilePipelineSelector(true)}
+                                            style={{
+                                              padding: '2px 8px',
+                                              fontSize: '0.625rem',
+                                              borderRadius: '4px',
+                                              fontWeight: 800,
+                                              background: currentStageObj ? `${stColor}1a` : 'var(--color-bg)',
+                                              color: stColor,
+                                              border: `1px solid ${stColor}33`,
+                                              display: 'inline-flex',
+                                              alignItems: 'center',
+                                              gap: '4px',
+                                              cursor: 'pointer'
+                                            }}
+                                          >
+                                            <span>{currentStageObj?.name || 'Chưa xác định'}</span>
+                                            <ChevronRight size={10} />
+                                          </button>
+                                        );
+                                      })()}
+                                      {formData.suggested_temperature && tempLabels[formData.suggested_temperature] && (
+                                        <span 
+                                          style={{ 
+                                            padding: '2px 6px', 
+                                            fontSize: '0.625rem', 
+                                            borderRadius: '4px',
+                                            fontWeight: 600,
+                                            color: '#64748b',
+                                            background: 'var(--color-bg)',
+                                            border: '1px solid var(--color-border-light)'
+                                          }}
+                                          title={`Máy đề xuất: ${tempLabels[formData.suggested_temperature].label}`}
+                                        >
+                                          AI: {tempLabels[formData.suggested_temperature].label}
+                                        </span>
+                                      )}
+                                      {formData.not_lead_proposed === 1 && (
+                                        <span className="badge danger" style={{ padding: '2px 6px', fontSize: '0.625rem', borderRadius: '4px' }}>Chờ duyệt loại</span>
+                                      )}
+                                    </div>
+                                    
+                                    <div 
+                                      onClick={() => setActiveTab('scoring')}
+                                      style={{ cursor: 'pointer', flexShrink: 0 }}
+                                    >
+                                      <LeadScoreRing score={score} size={28} showLabel={true} />
+                                    </div>
+                                  </div>
 
-                        <div 
-                          onClick={() => setActiveTab('scoring')}
-                          style={{ cursor: 'pointer', flexShrink: 0, display: 'flex', alignItems: 'center', gap: '4px' }}
-                        >
-                          <LeadScoreRing score={score} size={30} showLabel={true} />
-                        </div>
-                      </div>
-
-                      {/* Row 2: Contact Info Links (Phone, Email) - Inline & Borderless */}
-                      <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '10px 16px', fontSize: '0.75rem', color: 'var(--color-text)' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                          <Phone size={11} className="text-primary" style={{ flexShrink: 0 }} />
-                          <PhoneLink phone={formData.phone} style={{ fontSize: '0.75rem', fontWeight: 700 }} />
-                        </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', minWidth: 0 }}>
-                          <Mail size={11} className="text-muted" style={{ flexShrink: 0 }} />
-                          <span style={{ fontSize: '0.75rem', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '160px' }} title={formData.email}>
-                            {formData.email || 'contact@email.com'}
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* Row 3: Owner, Creation date - Inline & Compact */}
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>
-                        <div 
-                          style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }}
-                          onClick={(e) => showUserCard(e, formData.owner_name)}
-                        >
-                          <Avatar 
-                            src={ownerAvatarUrl}
-                            name={formData.owner_name} 
-                            size={14} 
-                          />
-                          <span style={{ fontWeight: 700, color: '#8a0f1b' }}>{formData.owner_name || 'Chưa nhận'}</span>
-                        </div>
-                        <span>·</span>
-                        <span>Tạo: {new Date(formData.created_at).toLocaleDateString('vi-VN')}</span>
-                      </div>
-                    </div>
-
-                    {/* Pipeline Stepper Bar (Mobile) */}
-                    {pipelineStepperBar}
-                  </>
-                )}
-
-                {/* Sidebar Tabs */}
-                <div className={styles.sidebarTabs} style={isMobileOrTablet ? { gap: '0.25rem' } : { gap: '0.25rem', overflowY: 'auto' }}>
-                  {(() => {
-                    const tabGroups = [
-                      {
-                        title: 'Thông tin & Nhật ký',
-                        tabs: ['info', 'tags', 'ttl1', 'tasks', 'timeline', 'scoring']
-                      },
-                      {
-                        title: 'Giao dịch & Tài liệu',
-                        tabs: ['cooperation', 'docs', 'deals', 'quotes', 'invoices', 'expenses']
-                      },
-                      {
-                        title: 'Nghiệp vụ & Hỗ trợ',
-                        tabs: ['tickets']
-                      }
-                    ];
-
-                    return tabGroups.map((group, groupIdx) => {
-                      const allowedTabs = group.tabs
-                        .map(id => TABS.find(tab => tab.id === id))
-                        .filter((tab): tab is any => !!tab && (isOwnerOrAdmin || (tab.id !== 'quotes' && tab.id !== 'expenses')));
-                      if (allowedTabs.length === 0) return null;
-
-                      return (
-                        <div key={groupIdx} className={styles.tabGroup} style={isMobileOrTablet ? {} : { display: 'flex', flexDirection: 'column', gap: '0.15rem', marginBottom: groupIdx !== tabGroups.length - 1 ? '0.75rem' : 0 }}>
-                          <div className={styles.tabGroupTitle} style={{ 
-                            padding: '0.375rem 0.5rem', 
-                            fontSize: '0.65rem', 
-                            fontWeight: 800, 
-                            color: 'var(--color-text-muted)', 
-                            textTransform: 'uppercase', 
-                            letterSpacing: '0.08em',
-                            opacity: 0.8
-                          }}>
-                            {group.title}
-                          </div>
-                           {allowedTabs.map(tab => (
-                            <button
-                              key={tab.id}
-                              className={`${styles.sidebarTabBtn} ${activeTab === tab.id ? styles.sidebarTabActive : ''}`}
-                              onClick={() => setActiveTab(tab.id)}
-                              style={isMobileOrTablet ? {} : { padding: '11px 0.875rem', fontSize: '0.85rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', gap: '8px' }}
-                            >
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                {tab.icon}
-                                <span>{tab.label}</span>
+                                  {/* Phone and Email details */}
+                                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '0.75rem', color: 'var(--color-text)' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                      <Phone size={11} className="text-primary" style={{ flexShrink: 0 }} />
+                                      <PhoneLink phone={formData.phone} style={{ fontSize: '0.75rem', fontWeight: 700 }} />
+                                    </div>
+                                    {formData.email && (
+                                      <div style={{ display: 'flex', alignItems: 'center', gap: '4px', minWidth: 0 }}>
+                                        <Mail size={11} className="text-muted" style={{ flexShrink: 0 }} />
+                                        <span style={{ fontSize: '0.725rem', color: 'var(--color-text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={formData.email}>
+                                          {formData.email}
+                                        </span>
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
                               </div>
-                              {tab.id === 'tasks' && tasks.filter(t => !t.done).length > 0 && (
-                                <span style={{
-                                  background: 'var(--color-danger)',
-                                  color: 'white',
-                                  fontSize: '0.7rem',
-                                  fontWeight: 700,
-                                  padding: '1px 6px',
-                                  borderRadius: '10px',
-                                  display: 'inline-flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'center',
-                                  minWidth: '18px',
-                                  height: '18px',
-                                  lineHeight: 1
-                                }}>
-                                  {tasks.filter(t => !t.done).length}
-                                </span>
-                              )}
-                              {tab.id === 'cooperation' && coopSlip && (coopSlip.status === 'pending_manager_approval' || coopSlip.shareholders?.some((sh: any) => !sh.signed)) && (
-                                <span style={{
-                                  background: '#f59e0b',
-                                  color: 'white',
-                                  fontSize: '0.675rem',
-                                  fontWeight: 700,
-                                  padding: '3px 8px',
-                                  borderRadius: '20px',
-                                  display: 'inline-flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'center',
-                                  lineHeight: 1
-                                }}>
-                                  {coopSlip.status === 'pending_manager_approval' ? 'Chờ duyệt' : 'Chờ ký'}
-                                </span>
-                              )}
-                            </button>
-                          ))}
-                          {group.title === 'Nghiệp vụ & Hỗ trợ' && 
-                           !['ca_nhan', 'cold_call', 'gioi_thieu'].includes(formData.source || contact?.source) && 
-                           (formData.dl_status || contact?.dl_status) !== 'databank_claim' && 
-                           Number(formData.dl_round_id || contact?.dl_round_id) > 0 && (
-                            <button
-                              className={styles.sidebarTabBtn}
-                              onClick={async () => {
-                                if (reportReasons.length === 0) {
-                                  try {
-                                    const res = await api.get('/api.php?action=get_report_context');
-                                    if (res.data && res.data.success && res.data.data.report_error_reasons) {
-                                      setReportReasons(res.data.data.report_error_reasons);
-                                      setReportReasonType(res.data.data.report_error_reasons[0]?.reason || 'Sai số điện thoại / Số ảo');
-                                    } else {
-                                      setReportReasonType('Sai số điện thoại / Số ảo');
-                                    }
-                                  } catch (e) {
-                                    console.error(e);
-                                    setReportReasonType('Sai số điện thoại / Số ảo');
-                                  }
-                                } else {
-                                  setReportReasonType(reportReasons[0]?.reason || 'Sai số điện thoại / Số ảo');
+
+                              {/* Row 2: Owner & Last Interaction */}
+                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', fontSize: '0.7rem', color: 'var(--color-text-muted)', paddingTop: '8px', borderTop: '1px solid var(--color-border-light)' }}>
+                                <div 
+                                  style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }}
+                                  onClick={(e) => showUserCard(e, formData.owner_name)}
+                                >
+                                  <Avatar 
+                                    src={ownerAvatarUrl}
+                                    name={formData.owner_name} 
+                                    size={14} 
+                                  />
+                                  <span style={{ fontWeight: 700, color: '#8a0f1b' }}>{formData.owner_name || 'Chưa nhận'}</span>
+                                </div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                  <Clock size={11} style={{ color: 'var(--color-text-muted)' }} />
+                                  <span>{formData.last_contact ? `Tương tác: ${AGO(formData.last_contact)}` : 'Chưa tương tác'}</span>
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Mobile Tab Groups */}
+                            {(() => {
+                              const tabGroups = [
+                                {
+                                  title: 'Thông tin & Nhật ký',
+                                  tabs: ['info', 'tags', 'ttl1', 'tasks', 'timeline', 'scoring']
+                                },
+                                {
+                                  title: 'Giao dịch & Tài liệu',
+                                  tabs: ['cooperation', 'docs', 'deals', 'quotes', 'invoices', 'expenses']
+                                },
+                                {
+                                  title: 'Nghiệp vụ & Hỗ trợ',
+                                  tabs: ['tickets']
                                 }
-                                setReportDetails('');
-                                setShowReportModal(true);
-                              }}
-                              style={isMobileOrTablet ? {} : {
-                                padding: '11px 0.875rem',
-                                fontSize: '0.85rem',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '8px',
-                                width: '100%',
-                                border: 'none',
-                                background: 'transparent',
-                                borderRadius: '6px',
-                                textAlign: 'left',
-                                cursor: 'pointer',
-                                fontWeight: 600,
-                                transition: 'all 0.15s ease',
-                                marginTop: '0.15rem'
-                              }}
-                            >
-                              <ShieldAlert size={16} style={{ color: '#ef4444' }} />
-                              <span>Báo lỗi data</span>
-                            </button>
-                          )}
-                          {group.title === 'Nghiệp vụ & Hỗ trợ' && isOwnerOrAdmin && (
-                            <button
-                              className={styles.sidebarTabBtn}
-                              onClick={isReleaseBlocked ? undefined : handleReturnToDatabank}
-                              disabled={isReleaseBlocked}
-                              style={{
-                                padding: '11px 0.875rem',
-                                fontSize: '0.85rem',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '8px',
-                                width: '100%',
-                                border: 'none',
-                                background: 'transparent',
-                                borderRadius: '6px',
-                                textAlign: 'left',
-                                cursor: isReleaseBlocked ? 'not-allowed' : 'pointer',
-                                color: isReleaseBlocked ? 'var(--color-text-muted)' : 'var(--color-danger)',
-                                fontWeight: 600,
-                                opacity: isReleaseBlocked ? 0.5 : 1,
-                                transition: 'all 0.15s ease',
-                                marginTop: '0.15rem'
-                              }}
-                              onMouseEnter={e => {
-                                if (!isReleaseBlocked) e.currentTarget.style.background = 'rgba(220, 38, 38, 0.05)';
-                              }}
-                              onMouseLeave={e => {
-                                if (!isReleaseBlocked) e.currentTarget.style.background = 'transparent';
-                              }}
-                              title={isReleaseBlocked ? t('Không thể trả về Databank do trạng thái khách hàng đặc biệt') : undefined}
-                            >
-                              <RotateCcw size={16} />
-                              <span>Trả về Databank</span>
-                            </button>
-                          )}
-                        </div>
-                      );
-                    });
-                  })()}
-                  <div style={{ marginTop: 'auto', padding: '1rem 0 0 0', borderTop: '1px solid var(--color-border)' }}>
-                    <p style={{ fontSize: '0.725rem', fontWeight: 600, color: 'var(--color-text-muted)', textAlign: 'center' }}>Enterprise CRM</p>
-                  </div>
-                </div>
+                              ];
+
+                              return tabGroups.map((group, groupIdx) => {
+                                const allowedTabs = group.tabs
+                                  .map(id => TABS.find(tab => tab.id === id))
+                                  .filter((tab): tab is any => !!tab && (isOwnerOrAdmin || (tab.id !== 'quotes' && tab.id !== 'expenses')));
+                                if (allowedTabs.length === 0) return null;
+
+                                return (
+                                  <div key={groupIdx} style={{ marginBottom: '1rem' }}>
+                                    <div style={{ 
+                                      padding: '0.25rem 4px', 
+                                      fontSize: '0.7rem', 
+                                      fontWeight: 800, 
+                                      color: 'var(--color-text-muted)', 
+                                      textTransform: 'uppercase', 
+                                      letterSpacing: '0.08em',
+                                      marginBottom: '6px'
+                                    }}>
+                                      {group.title}
+                                    </div>
+                                    <div className="os-list-group">
+                                      {allowedTabs.map(tab => (
+                                        <button
+                                          key={tab.id}
+                                          className="os-list-item"
+                                          onClick={() => setActiveTab(tab.id)}
+                                        >
+                                          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                            <span style={{ color: 'var(--color-primary)', display: 'flex', alignItems: 'center' }}>
+                                              {tab.icon}
+                                            </span>
+                                            <span style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>{tab.label}</span>
+                                          </div>
+                                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                            {tab.id === 'tasks' && tasks.filter(t => !t.done).length > 0 && (
+                                              <span style={{
+                                                background: 'var(--color-danger)',
+                                                color: 'white',
+                                                fontSize: '0.65rem',
+                                                fontWeight: 700,
+                                                padding: '1px 6px',
+                                                borderRadius: '10px',
+                                              }}>
+                                                {tasks.filter(t => !t.done).length}
+                                              </span>
+                                            )}
+                                            {tab.id === 'cooperation' && coopSlip && (coopSlip.status === 'pending_manager_approval' || coopSlip.shareholders?.some((sh: any) => !sh.signed)) && (
+                                              <span style={{
+                                                background: '#f59e0b',
+                                                color: 'white',
+                                                fontSize: '0.65rem',
+                                                fontWeight: 700,
+                                                padding: '2px 6px',
+                                                borderRadius: '10px',
+                                              }}>
+                                                {coopSlip.status === 'pending_manager_approval' ? 'Chờ duyệt' : 'Chờ ký'}
+                                              </span>
+                                            )}
+                                            <ChevronRight size={16} style={{ color: 'var(--color-text-light)' }} />
+                                          </div>
+                                        </button>
+                                      ))}
+                                    </div>
+                                  </div>
+                                );
+                              });
+                            })()}
+                          </div>
+                        ) : (
+                          <>
+                            {(() => {
+                              const tabGroups = [
+                                {
+                                  title: 'Thông tin & Nhật ký',
+                                  tabs: ['info', 'tags', 'ttl1', 'tasks', 'timeline', 'scoring']
+                                },
+                                {
+                                  title: 'Giao dịch & Tài liệu',
+                                  tabs: ['cooperation', 'docs', 'deals', 'quotes', 'invoices', 'expenses']
+                                },
+                                {
+                                  title: 'Nghiệp vụ & Hỗ trợ',
+                                  tabs: ['tickets']
+                                }
+                              ];
+
+                              return tabGroups.map((group, groupIdx) => {
+                                const allowedTabs = group.tabs
+                                  .map(id => TABS.find(tab => tab.id === id))
+                                  .filter((tab): tab is any => !!tab && (isOwnerOrAdmin || (tab.id !== 'quotes' && tab.id !== 'expenses')));
+                                if (allowedTabs.length === 0) return null;
+
+                                return (
+                                  <div key={groupIdx} className={styles.tabGroup} style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem', marginBottom: groupIdx !== tabGroups.length - 1 ? '0.75rem' : 0 }}>
+                                    <div className={styles.tabGroupTitle} style={{ 
+                                      padding: '0.375rem 0.5rem', 
+                                      fontSize: '0.65rem', 
+                                      fontWeight: 800, 
+                                      color: 'var(--color-text-muted)', 
+                                      textTransform: 'uppercase', 
+                                      letterSpacing: '0.08em',
+                                      opacity: 0.8
+                                    }}>
+                                      {group.title}
+                                    </div>
+                                    {allowedTabs.map(tab => (
+                                      <button
+                                        key={tab.id}
+                                        className={`${styles.sidebarTabBtn} ${activeTab === tab.id ? styles.sidebarTabActive : ''}`}
+                                        onClick={() => setActiveTab(tab.id)}
+                                        style={{ padding: '11px 0.875rem', fontSize: '0.85rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', gap: '8px' }}
+                                      >
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                          {tab.icon}
+                                          <span>{tab.label}</span>
+                                        </div>
+                                        {tab.id === 'tasks' && tasks.filter(t => !t.done).length > 0 && (
+                                          <span style={{
+                                            background: 'var(--color-danger)',
+                                            color: 'white',
+                                            fontSize: '0.7rem',
+                                            fontWeight: 700,
+                                            padding: '1px 6px',
+                                            borderRadius: '10px',
+                                            display: 'inline-flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            minWidth: '18px',
+                                            height: '18px',
+                                            lineHeight: 1
+                                          }}>
+                                            {tasks.filter(t => !t.done).length}
+                                          </span>
+                                        )}
+                                        {tab.id === 'cooperation' && coopSlip && (coopSlip.status === 'pending_manager_approval' || coopSlip.shareholders?.some((sh: any) => !sh.signed)) && (
+                                          <span style={{
+                                            background: '#f59e0b',
+                                            color: 'white',
+                                            fontSize: '0.675rem',
+                                            fontWeight: 700,
+                                            padding: '3px 8px',
+                                            borderRadius: '20px',
+                                            display: 'inline-flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            lineHeight: 1
+                                          }}>
+                                            {coopSlip.status === 'pending_manager_approval' ? 'Chờ duyệt' : 'Chờ ký'}
+                                          </span>
+                                        )}
+                                      </button>
+                                    ))}
+                                    {group.title === 'Nghiệp vụ & Hỗ trợ' && 
+                                     !['ca_nhan', 'cold_call', 'gioi_thieu'].includes(formData.source || contact?.source) && 
+                                     (formData.dl_status || contact?.dl_status) !== 'databank_claim' && 
+                                     Number(formData.dl_round_id || contact?.dl_round_id) > 0 && (
+                                      <button
+                                        className={styles.sidebarTabBtn}
+                                        onClick={async () => {
+                                          if (reportReasons.length === 0) {
+                                            try {
+                                              const res = await api.get('/api.php?action=get_report_context');
+                                              if (res.data && res.data.success && res.data.data.report_error_reasons) {
+                                                setReportReasons(res.data.data.report_error_reasons);
+                                                setReportReasonType(res.data.data.report_error_reasons[0]?.reason || 'Sai số điện thoại / Số ảo');
+                                              } else {
+                                                setReportReasonType('Sai số điện thoại / Số ảo');
+                                              }
+                                            } catch (e) {
+                                              console.error(e);
+                                              setReportReasonType('Sai số điện thoại / Số ảo');
+                                            }
+                                          } else {
+                                            setReportReasonType(reportReasons[0]?.reason || 'Sai số điện thoại / Số ảo');
+                                          }
+                                          setReportDetails('');
+                                          setShowReportModal(true);
+                                        }}
+                                        style={{
+                                          padding: '11px 0.875rem',
+                                          fontSize: '0.85rem',
+                                          display: 'flex',
+                                          alignItems: 'center',
+                                          gap: '8px',
+                                          width: '100%',
+                                          border: 'none',
+                                          background: 'transparent',
+                                          borderRadius: '6px',
+                                          textAlign: 'left',
+                                          cursor: 'pointer',
+                                          fontWeight: 600,
+                                          transition: 'all 0.15s ease',
+                                          marginTop: '0.15rem'
+                                        }}
+                                      >
+                                        <ShieldAlert size={16} style={{ color: '#ef4444' }} />
+                                        <span>Báo lỗi data</span>
+                                      </button>
+                                    )}
+                                    {group.title === 'Nghiệp vụ & Hỗ trợ' && isOwnerOrAdmin && (
+                                      <button
+                                        className={styles.sidebarTabBtn}
+                                        onClick={isReleaseBlocked ? undefined : handleReturnToDatabank}
+                                        disabled={isReleaseBlocked}
+                                        style={{
+                                          padding: '11px 0.875rem',
+                                          fontSize: '0.85rem',
+                                          display: 'flex',
+                                          alignItems: 'center',
+                                          gap: '8px',
+                                          width: '100%',
+                                          border: 'none',
+                                          background: 'transparent',
+                                          borderRadius: '6px',
+                                          textAlign: 'left',
+                                          cursor: isReleaseBlocked ? 'not-allowed' : 'pointer',
+                                          color: isReleaseBlocked ? 'var(--color-text-muted)' : 'var(--color-danger)',
+                                          fontWeight: 600,
+                                          opacity: isReleaseBlocked ? 0.5 : 1,
+                                          transition: 'all 0.15s ease',
+                                          marginTop: '0.15rem'
+                                        }}
+                                        onMouseEnter={e => {
+                                          if (!isReleaseBlocked) e.currentTarget.style.background = 'rgba(220, 38, 38, 0.05)';
+                                        }}
+                                        onMouseLeave={e => {
+                                          if (!isReleaseBlocked) e.currentTarget.style.background = 'transparent';
+                                        }}
+                                        title={isReleaseBlocked ? t('Không thể trả về Databank do trạng thái khách hàng đặc biệt') : undefined}
+                                      >
+                                        <RotateCcw size={16} />
+                                        <span>Trả về Databank</span>
+                                      </button>
+                                    )}
+                                  </div>
+                                );
+                              });
+                            })()}
+                            <div style={{ marginTop: 'auto', padding: '1rem 0 0 0', borderTop: '1px solid var(--color-border)' }}>
+                              <p style={{ fontSize: '0.725rem', fontWeight: 600, color: 'var(--color-text-muted)', textAlign: 'center' }}>Enterprise CRM</p>
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    )}
 
 
 
                 {/* Content Area */}
-                <div className={styles.contentArea}>
+                {(!isMobileOrTablet || activeTab) && (
+                  <div 
+                    className={styles.contentArea} 
+                    style={isMobileOrTablet ? { width: '100%', padding: '0', display: 'flex', flexDirection: 'column', flex: 1, overflowY: 'auto' } : undefined}
+                  >
+                    {isMobileOrTablet && activeTab && (
+                      <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        padding: '12px 16px',
+                        background: 'var(--color-surface)',
+                        borderBottom: '1px solid var(--color-border-light)',
+                        position: 'sticky',
+                        top: 0,
+                        zIndex: 10,
+                        flexShrink: 0
+                      }}>
+                        <button
+                          onClick={() => setActiveTab('')}
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            cursor: 'pointer',
+                            color: 'var(--color-primary)',
+                            padding: '4px',
+                            marginLeft: '-4px'
+                          }}
+                        >
+                          <ChevronLeft size={20} />
+                        </button>
+                        <span style={{ fontWeight: 700, fontSize: '0.95rem', color: 'var(--color-text)' }}>
+                          {TABS.find(t => t.id === activeTab)?.label || ''}
+                        </span>
+                      </div>
+                    )}
+
+                    <div style={isMobileOrTablet ? { padding: '16px', flex: 1 } : undefined}>
 
                   {/* INFO TAB */}
                   {activeTab === 'info' && (
@@ -8441,7 +8613,9 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                     </div>
                   )}
 
-                </div>
+                    </div>
+                  </div>
+                )}
               </>
             )}
           </div>
@@ -9966,6 +10140,81 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
           </motion.div>
         </div>,
         document.body
+      )}
+
+      {showMobilePipelineSelector && (
+        <div 
+          className="overlay-backdrop" 
+          style={{ zIndex: 12000, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }} 
+          onClick={() => setShowMobilePipelineSelector(false)}
+        >
+          <motion.div
+            initial={{ y: '100%' }}
+            animate={{ y: 0 }}
+            exit={{ y: '100%' }}
+            transition={{ type: 'spring', damping: 25, stiffness: 220 }}
+            style={{
+              background: 'var(--color-surface)',
+              width: '100%',
+              borderTopLeftRadius: '24px',
+              borderTopRightRadius: '24px',
+              maxHeight: '75vh',
+              overflowY: 'auto',
+              boxShadow: 'var(--shadow-xl)',
+              display: 'flex',
+              flexDirection: 'column',
+              padding: '16px 16px 24px 16px',
+              boxSizing: 'border-box'
+            }}
+            onClick={e => e.stopPropagation()}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', borderBottom: '1px solid var(--color-border-light)', paddingBottom: '12px' }}>
+              <h4 style={{ margin: 0, fontWeight: 800, fontSize: '1rem', color: 'var(--color-text)' }}>Chuyển giai đoạn Pipeline</h4>
+              <button 
+                onClick={() => setShowMobilePipelineSelector(false)}
+                style={{ background: 'transparent', border: 'none', color: 'var(--color-text-muted)', cursor: 'pointer', padding: '4px' }}
+              >
+                <X size={20} />
+              </button>
+            </div>
+            
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', overflowY: 'auto' }} className="no-scrollbar">
+              {pipelineStages.map((st) => {
+                const isCurrent = String(st.id) === String(formData.pipeline_status || 'chua_xac_dinh');
+                const stColor = overridePurpleColor(st.color);
+                return (
+                  <button
+                    key={st.id}
+                    onClick={() => {
+                      setShowMobilePipelineSelector(false);
+                      if (isCurrent) return;
+                      handleStageTransition(String(st.id), st.name);
+                    }}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      padding: '12px 16px',
+                      borderRadius: '12px',
+                      border: isCurrent ? `1.5px solid ${stColor}` : '1px solid var(--color-border-light)',
+                      background: isCurrent ? `${stColor}10` : 'var(--color-bg-alt)',
+                      color: isCurrent ? stColor : 'var(--color-text)',
+                      fontWeight: isCurrent ? 800 : 600,
+                      fontSize: '0.875rem',
+                      cursor: 'pointer',
+                      textAlign: 'left',
+                      width: '100%',
+                      boxSizing: 'border-box'
+                    }}
+                  >
+                    <span>{st.name}</span>
+                    {isCurrent && <UserCheck size={16} />}
+                  </button>
+                );
+              })}
+            </div>
+          </motion.div>
+        </div>
       )}
     </>,
     document.body

@@ -44,6 +44,14 @@ const PLACEHOLDERS: Record<string, string> = {
 
 export const ActivityModal: React.FC<ActivityModalProps> = ({ isOpen, onClose, entityType, entityId, onSuccess, userId, activity, onSwitchToTask }) => {
   const { addToast } = useUIStore();
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth <= 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   const [formData, setFormData] = useState({
     type: 'call',
     subject: '',
@@ -184,23 +192,70 @@ export const ActivityModal: React.FC<ActivityModalProps> = ({ isOpen, onClose, e
 
   return (
     <AnimatePresence>
-      <div className="overlay-backdrop" style={{ zIndex: 11000, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={onClose}>
+      <div 
+        className="overlay-backdrop" 
+        style={{ 
+          zIndex: 11000, 
+          display: 'flex', 
+          alignItems: isMobile ? 'flex-end' : 'center', 
+          justifyContent: 'center' 
+        }} 
+        onClick={onClose}
+      >
         <motion.div 
           className="modal-sheet" 
-          style={{ width: '100%', maxWidth: 640, padding: 0 }}
-          initial={{ opacity: 0, y: 20, scale: 0.95 }} 
-          animate={{ opacity: 1, y: 0, scale: 1 }} 
-          exit={{ opacity: 0, y: 20, scale: 0.95 }}
+          style={{ 
+            width: '100%', 
+            maxWidth: isMobile ? '100%' : 540, 
+            padding: 0,
+            borderTopLeftRadius: '24px',
+            borderTopRightRadius: '24px',
+            borderBottomLeftRadius: isMobile ? '0' : '24px',
+            borderBottomRightRadius: isMobile ? '0' : '24px',
+            maxHeight: isMobile ? '85vh' : '90vh',
+            display: 'flex',
+            flexDirection: 'column',
+            overflow: 'hidden',
+            boxShadow: 'var(--shadow-xl)'
+          }}
+          initial={isMobile ? { y: '100%' } : { opacity: 0, y: 20, scale: 0.95 }} 
+          animate={isMobile ? { y: 0 } : { opacity: 1, y: 0, scale: 1 }} 
+          exit={isMobile ? { y: '100%' } : { opacity: 0, y: 20, scale: 0.95 }}
+          transition={{ type: 'spring', damping: 25, stiffness: 220 }}
           onClick={e => e.stopPropagation()}
         >
-          <div className="modal-header">
-            <h3>{activity?.id ? 'Cập nhật hoạt động' : 'Thêm hoạt động mới'}</h3>
-            <button className="btn-icon-bare" onClick={onClose}><X size={20}/></button>
+          <div 
+            className="modal-header"
+            style={{
+              padding: isMobile ? '12px 16px' : '16px 24px',
+              borderBottom: '1px solid var(--color-border-light)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              flexShrink: 0
+            }}
+          >
+            <h3 style={{ margin: 0, fontSize: isMobile ? '1rem' : '1.15rem', fontWeight: 800 }}>
+              {activity?.id ? 'Cập nhật hoạt động' : 'Thêm hoạt động mới'}
+            </h3>
+            <button className="btn-icon-bare" onClick={onClose} style={{ padding: '4px', cursor: 'pointer' }}>
+              <X size={isMobile ? 18 : 20} />
+            </button>
           </div>
           
-          <form onSubmit={handleSubmit} className="modal-body">
+          <form 
+            onSubmit={handleSubmit} 
+            className="modal-body no-scrollbar"
+            style={{
+              overflowY: 'auto',
+              padding: isMobile ? '16px' : '24px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: isMobile ? '12px' : '18px'
+            }}
+          >
             {/* Type selector */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '0.75rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: isMobile ? '6px' : '10px' }}>
               {TYPES.map(t => (
                 <button 
                   key={t.id} type="button"
@@ -216,8 +271,8 @@ export const ActivityModal: React.FC<ActivityModalProps> = ({ isOpen, onClose, e
                     });
                   }}
                   style={{
-                    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.625rem',
-                    padding: '12px 0', borderRadius: '12px', cursor: 'pointer',
+                    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px',
+                    padding: isMobile ? '8px 0' : '12px 0', borderRadius: '12px', cursor: 'pointer',
                     background: formData.type === t.id ? `${t.color}15` : 'var(--color-bg-alt)',
                     border: formData.type === t.id ? `1.5px solid ${t.color}` : '1px solid var(--color-border)',
                     color: formData.type === t.id ? t.color : 'var(--color-text-muted)',
@@ -226,35 +281,35 @@ export const ActivityModal: React.FC<ActivityModalProps> = ({ isOpen, onClose, e
                     outline: 'none'
                   }}
                 >
-                  <div style={{ transform: formData.type === t.id ? 'scale(1.12)' : 'scale(1)', transition: 'transform 0.2s' }}>
+                  <div style={{ transform: formData.type === t.id ? 'scale(1.08)' : 'scale(1)', transition: 'transform 0.2s', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     {t.icon}
                   </div>
-                  <span style={{ fontSize: '0.8125rem' }}>{t.label}</span>
+                  <span style={{ fontSize: isMobile ? '0.7rem' : '0.8125rem' }}>{t.label}</span>
                 </button>
               ))}
             </div>
 
             {formData.type === 'call' ? (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', marginTop: '1.25rem' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: isMobile ? '10px' : '15px' }}>
                 {/* Loại cuộc gọi */}
                 <div>
                   <label className="form-label">Loại cuộc gọi</label>
-                  <div style={{ display: 'flex', gap: '0.75rem' }}>
+                  <div style={{ display: 'flex', gap: '8px' }}>
                     <button
                       type="button"
                       onClick={() => setFormData({ ...formData, call_direction: 'outbound' })}
                       className={`btn sm ${formData.call_direction === 'outbound' ? 'primary' : 'outline'}`}
-                      style={{ flex: 1, height: 38, fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+                      style={{ flex: 1, height: isMobile ? 32 : 36, fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
                     >
-                      <PhoneOutgoing size={15} /> Gọi đi
+                      <PhoneOutgoing size={13} /> Gọi đi
                     </button>
                     <button
                       type="button"
                       onClick={() => setFormData({ ...formData, call_direction: 'inbound' })}
                       className={`btn sm ${formData.call_direction === 'inbound' ? 'primary' : 'outline'}`}
-                      style={{ flex: 1, height: 38, fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+                      style={{ flex: 1, height: isMobile ? 32 : 36, fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
                     >
-                      <PhoneIncoming size={15} /> Gọi đến
+                      <PhoneIncoming size={13} /> Gọi đến
                     </button>
                   </div>
                 </div>
@@ -262,7 +317,7 @@ export const ActivityModal: React.FC<ActivityModalProps> = ({ isOpen, onClose, e
                 {/* Kết quả cuộc gọi */}
                 <div>
                   <label className="form-label">Kết quả cuộc gọi</label>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))', gap: '0.5rem' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(88px, 1fr))', gap: '6px' }}>
                     {[
                       { value: 'reached', label: 'Đã kết nối', color: '#10b981' },
                       { value: 'no_answer', label: 'Không nghe máy', color: '#f59e0b' },
@@ -276,12 +331,14 @@ export const ActivityModal: React.FC<ActivityModalProps> = ({ isOpen, onClose, e
                         onClick={() => setFormData({ ...formData, call_outcome: out.value as any })}
                         className="btn sm"
                         style={{
-                          height: 36,
+                          height: isMobile ? 32 : 36,
                           border: `1px solid ${formData.call_outcome === out.value ? out.color : 'var(--color-border)'}`,
                           background: formData.call_outcome === out.value ? `${out.color}15` : 'var(--color-surface)',
                           color: formData.call_outcome === out.value ? out.color : 'var(--color-text)',
                           fontWeight: formData.call_outcome === out.value ? 700 : 500,
-                          cursor: 'pointer'
+                          cursor: 'pointer',
+                          fontSize: isMobile ? '0.72rem' : '0.8rem',
+                          padding: '0 4px'
                         }}
                       >
                         {out.label}
@@ -292,7 +349,7 @@ export const ActivityModal: React.FC<ActivityModalProps> = ({ isOpen, onClose, e
 
                 {/* Thời lượng - Only show if Đã kết nối (reached) */}
                 {formData.call_outcome === 'reached' && (
-                  <div className="animate-fade" style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                  <div className="animate-fade" style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <label className="form-label" style={{ margin: 0 }}>Thời lượng: <strong style={{ color: 'var(--color-primary)' }}>{formData.call_duration} phút</strong></label>
                       <div style={{ display: 'flex', gap: '4px' }}>
@@ -302,7 +359,7 @@ export const ActivityModal: React.FC<ActivityModalProps> = ({ isOpen, onClose, e
                             type="button"
                             onClick={() => setFormData({ ...formData, call_duration: mins })}
                             className="btn sm outline"
-                            style={{ padding: '2px 8px', fontSize: '0.75rem', height: 24, cursor: 'pointer' }}
+                            style={{ padding: '2px 6px', fontSize: '0.7rem', height: 22, cursor: 'pointer' }}
                           >
                             {mins}p
                           </button>
@@ -317,7 +374,7 @@ export const ActivityModal: React.FC<ActivityModalProps> = ({ isOpen, onClose, e
                       onChange={e => setFormData({ ...formData, call_duration: Number(e.target.value) })}
                       style={{ width: '100%', accentColor: 'var(--color-primary)', cursor: 'pointer' }}
                     />
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.7rem', color: 'var(--color-text-muted)', marginTop: 4 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.65rem', color: 'var(--color-text-muted)', marginTop: 2 }}>
                       <span>1 phút</span>
                       <span>30 phút</span>
                       <span>60 phút</span>
@@ -329,7 +386,7 @@ export const ActivityModal: React.FC<ActivityModalProps> = ({ isOpen, onClose, e
                 {/* Thời gian thực hiện */}
                 <div className="form-group" style={{ margin: 0 }}>
                   <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                    <Calendar size={14} /> Thời gian thực hiện
+                    <Calendar size={13} /> Thời gian thực hiện
                   </label>
                   <input 
                     type="datetime-local" 
@@ -341,7 +398,7 @@ export const ActivityModal: React.FC<ActivityModalProps> = ({ isOpen, onClose, e
               </div>
             ) : (
               <>
-                <div className="form-group" style={{ marginTop: '1.25rem' }}>
+                <div className="form-group" style={{ margin: 0 }}>
                   <label className="form-label">Tiêu đề hoạt động <span style={{ color: 'var(--color-danger)' }}>*</span></label>
                   <input 
                     className="form-input" 
@@ -349,14 +406,14 @@ export const ActivityModal: React.FC<ActivityModalProps> = ({ isOpen, onClose, e
                     value={formData.subject}
                     onChange={e => setFormData({ ...formData, subject: e.target.value })}
                     autoFocus
-                    style={{ fontSize: '1rem', padding: '0.75rem 1rem' }}
+                    style={{ fontSize: isMobile ? '0.85rem' : '0.95rem', padding: '0.5rem 0.75rem' }}
                   />
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: formData.type === 'zalo_connect' ? '1fr' : '1fr 1fr 1fr', gap: '1.5rem' }}>
-                  <div className="form-group">
+                <div style={{ display: 'grid', gridTemplateColumns: (isMobile || formData.type === 'zalo_connect') ? '1fr' : '1fr 1fr 1fr', gap: isMobile ? '10px' : '16px' }}>
+                  <div className="form-group" style={{ margin: 0 }}>
                     <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                      <Calendar size={14} /> Thời gian thực hiện
+                      <Calendar size={13} /> Thời gian thực hiện
                     </label>
                     <input 
                       type="datetime-local" 
@@ -367,7 +424,7 @@ export const ActivityModal: React.FC<ActivityModalProps> = ({ isOpen, onClose, e
                   </div>
                   {formData.type !== 'zalo_connect' && (
                     <>
-                      <div className="form-group">
+                      <div className="form-group" style={{ margin: 0 }}>
                         <label className="form-label">Mức độ ưu tiên</label>
                         <CustomSelect 
                           options={[
@@ -379,7 +436,7 @@ export const ActivityModal: React.FC<ActivityModalProps> = ({ isOpen, onClose, e
                           onChange={val => setFormData({ ...formData, priority: val as string })}
                         />
                       </div>
-                      <div className="form-group">
+                      <div className="form-group" style={{ margin: 0 }}>
                         <label className="form-label">Trạng thái</label>
                         <div style={{ 
                           display: 'flex', 
@@ -387,7 +444,7 @@ export const ActivityModal: React.FC<ActivityModalProps> = ({ isOpen, onClose, e
                           borderRadius: '30px', 
                           padding: '3px', 
                           border: '1px solid var(--color-border-light)',
-                          height: 42,
+                          height: 38,
                           alignItems: 'center'
                         }}>
                           <button 
@@ -398,7 +455,7 @@ export const ActivityModal: React.FC<ActivityModalProps> = ({ isOpen, onClose, e
                               border: 'none', 
                               borderRadius: '30px', 
                               padding: '4px 6px', 
-                              fontSize: '0.8125rem', 
+                              fontSize: '0.75rem', 
                               fontWeight: formData.status === 'planned' ? 700 : 500, 
                               cursor: 'pointer', 
                               transition: 'all 0.2s',
@@ -420,7 +477,7 @@ export const ActivityModal: React.FC<ActivityModalProps> = ({ isOpen, onClose, e
                               border: 'none', 
                               borderRadius: '30px', 
                               padding: '4px 6px', 
-                              fontSize: '0.8125rem', 
+                              fontSize: '0.75rem', 
                               fontWeight: formData.status === 'done' ? 700 : 500, 
                               cursor: 'pointer', 
                               transition: 'all 0.2s',
@@ -443,13 +500,13 @@ export const ActivityModal: React.FC<ActivityModalProps> = ({ isOpen, onClose, e
             )}
 
             {formData.type === 'meeting' && formData.status === 'done' && (
-              <div className="form-group" style={{ marginTop: '1.25rem' }}>
+              <div className="form-group" style={{ margin: 0 }}>
                 <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '4px', color: 'var(--color-text)', fontWeight: 600 }}>
-                  <Camera size={14} style={{ color: '#10b981' }} /> Ảnh minh chứng gặp gỡ <span style={{ color: 'var(--color-danger)' }}>*</span>
+                  <Camera size={13} style={{ color: '#10b981' }} /> Ảnh minh chứng gặp gỡ <span style={{ color: 'var(--color-danger)' }}>*</span>
                 </label>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                   {proofImagePreview ? (
-                    <div style={{ position: 'relative', width: '100%', height: '180px', borderRadius: '10px', overflow: 'hidden', border: '1px solid var(--color-border)' }}>
+                    <div style={{ position: 'relative', width: '100%', height: '150px', borderRadius: '10px', overflow: 'hidden', border: '1px solid var(--color-border)' }}>
                       <img src={proofImagePreview} alt="Proof preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                       <button 
                         type="button"
@@ -457,15 +514,15 @@ export const ActivityModal: React.FC<ActivityModalProps> = ({ isOpen, onClose, e
                           setProofImageFile(null);
                           setProofImagePreview(null);
                         }}
-                        style={{ position: 'absolute', top: '8px', right: '8px', background: 'rgba(0,0,0,0.6)', color: 'white', border: 'none', borderRadius: '50%', width: '28px', height: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
+                        style={{ position: 'absolute', top: '8px', right: '8px', background: 'rgba(0,0,0,0.6)', color: 'white', border: 'none', borderRadius: '50%', width: '26px', height: '26px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
                       >
-                        <X size={14} />
+                        <X size={12} />
                       </button>
                     </div>
                   ) : (
-                    <label style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', width: '100%', height: '120px', border: '2px dashed var(--color-border)', borderRadius: '10px', cursor: 'pointer', background: 'var(--color-bg)', transition: 'border-color 0.2s', padding: '1rem' }} className="hover-lift">
-                      <Camera size={28} style={{ color: 'var(--color-text-muted)', marginBottom: '6px' }} />
-                      <span style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>Tải ảnh minh chứng lên (Ảnh gặp gỡ tại sa bàn, v.v.)</span>
+                    <label style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100px', border: '2px dashed var(--color-border)', borderRadius: '10px', cursor: 'pointer', background: 'var(--color-bg)', transition: 'border-color 0.2s', padding: '0.5rem' }} className="hover-lift">
+                      <Camera size={24} style={{ color: 'var(--color-text-muted)', marginBottom: '4px' }} />
+                      <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 600, textAlign: 'center' }}>Tải ảnh minh chứng gặp gỡ lên</span>
                       <input 
                         type="file" 
                         accept="image/*" 
@@ -488,26 +545,34 @@ export const ActivityModal: React.FC<ActivityModalProps> = ({ isOpen, onClose, e
               </div>
             )}
 
-            <div className="form-group" style={{ marginTop: '1.25rem' }}>
+            <div className="form-group" style={{ margin: 0 }}>
               <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                <AlignLeft size={14} /> Ghi chú chi tiết
+                <AlignLeft size={13} /> Ghi chú chi tiết
               </label>
               <MentionInput 
                 className="form-input" 
-                rows={4} 
+                rows={isMobile ? 3 : 4} 
                 placeholder="Nhập nội dung chi tiết của hoạt động (Sử dụng @ để tag user/sale)..."
                 value={formData.body}
                 onChange={e => setFormData({ ...formData, body: e.target.value })}
                 style={{ resize: 'none' }}
               />
             </div>
-
-
           </form>
 
-          <div className="modal-footer">
-            <button type="button" className="btn outline lg" onClick={onClose} disabled={loading}>Hủy bỏ</button>
-            <button type="button" className="btn primary lg" onClick={handleSubmit} disabled={loading}>
+          <div 
+            className="modal-footer"
+            style={{
+              padding: isMobile ? '12px 16px' : '16px 24px',
+              borderTop: '1px solid var(--color-border-light)',
+              background: 'var(--color-surface)',
+              display: 'flex',
+              gap: '10px',
+              flexShrink: 0
+            }}
+          >
+            <button type="button" className="btn outline lg" style={{ flex: 1 }} onClick={onClose} disabled={loading}>Hủy bỏ</button>
+            <button type="button" className="btn primary lg" style={{ flex: 1 }} onClick={handleSubmit} disabled={loading}>
               {loading ? 'Đang lưu...' : 'Lưu hoạt động'}
             </button>
           </div>

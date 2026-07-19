@@ -532,6 +532,10 @@ Bạn có thể gõ rõ từ khóa hoặc click vào các gợi ý bên dưới 
         style={{
           width: 52,
           height: 52,
+          minWidth: 52,
+          minHeight: 52,
+          maxWidth: 52,
+          maxHeight: 52,
           borderRadius: '50%',
           background: 'var(--chatbot-btn-bg)',
           padding: 0,
@@ -546,7 +550,8 @@ Bạn có thể gõ rõ từ khóa hoặc click vào các gợi ý bên dưới 
           position: 'absolute',
           bottom: 0,
           right: 0,
-          overflow: 'visible'
+          overflow: 'visible',
+          boxSizing: 'border-box'
         }}
         className="pulse-chatbot"
         onMouseEnter={() => setIsHovered(true)}
