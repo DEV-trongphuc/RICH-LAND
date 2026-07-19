@@ -11115,7 +11115,6 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                     { name: 'Nhật ký Data', key: 'data', icon: Database },
                     { name: 'Khách hàng CRM', key: 'crm-contacts', icon: Users, route: '/contacts' },
                     { name: 'Lịch biểu', key: 'calendar', icon: Calendar },
-                    { name: 'Đối soát công bằng', key: 'fair-share', icon: Scale },
                     { name: 'Ticket Lỗi Data', key: 'tickets', icon: Ticket, badgeCount: data.stats.tickets_pending },
                     { name: 'Ticket Hỗ Trợ', key: 'support-tickets', icon: LifeBuoy, route: '/support-tickets' }
                   ]
@@ -11384,7 +11383,6 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                     { name: 'Nhật ký Data', key: 'data', icon: Database },
                     { name: 'Khách hàng CRM', key: 'crm-contacts', icon: Users, route: '/contacts' },
                     { name: 'Lịch biểu', key: 'calendar', icon: Calendar },
-                    { name: 'Đối soát công bằng', key: 'fair-share', icon: Scale },
                     { name: 'Ticket Lỗi Data', key: 'tickets', icon: Ticket, badgeCount: data.stats.tickets_pending },
                     { name: 'Ticket Hỗ Trợ', key: 'support-tickets', icon: LifeBuoy, route: '/support-tickets' }
                   ]
