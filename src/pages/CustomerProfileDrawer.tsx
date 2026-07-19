@@ -3878,7 +3878,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                 <div className={styles.profileHeader}>
                   {/* Absolute Close Button */}
                   <button className={styles.closeBtnAbsolute} onClick={handleClose} aria-label="Close drawer">
-                    <LogOut size={20} style={{ transform: 'rotate(180deg)' }} />
+                    <X size={20} />
                   </button>
 
                   {/* Not Lead Proposal Banner */}
@@ -4151,8 +4151,8 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                               alignItems: 'center', 
                               gap: '6px', 
                               padding: '2px 8px 2px 4px', 
-                              background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.08) 0%, rgba(147, 51, 234, 0.08) 100%)', 
-                              border: '1px solid rgba(59, 130, 246, 0.15)', 
+                              background: '#e2e8f0', 
+                              border: '1px solid var(--color-border-light)', 
                               borderRadius: '20px',
                               boxShadow: 'var(--shadow-sm)'
                             }}
@@ -4166,7 +4166,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                               padding: '2px 6px',
                               background: 'var(--color-surface)',
                               borderRadius: '9999px',
-                              border: '1px solid rgba(59, 130, 246, 0.1)'
+                              border: '1px solid var(--color-border-light)'
                             }}>
                               Chăm sóc chung
                             </span>
@@ -4374,18 +4374,138 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                               </div>
 
                               {/* Row 2: Owner & Last Interaction */}
-                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', fontSize: '0.7rem', color: 'var(--color-text-muted)', paddingTop: '8px', borderTop: 'none' }}>
-                                <div 
-                                  style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }}
-                                  onClick={(e) => showUserCard(e, formData.owner_name)}
-                                >
-                                  <Avatar 
-                                    src={ownerAvatarUrl}
-                                    name={formData.owner_name} 
-                                    size={14} 
-                                  />
-                                  <span style={{ fontWeight: 700, color: '#8a0f1b' }}>{formData.owner_name || 'Chưa nhận'}</span>
-                                </div>
+                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', fontSize: '0.7rem', color: 'var(--color-text-muted)', paddingTop: '8px', borderTop: 'none', flexWrap: 'wrap' }}>
+                                {coopSlip ? (
+                                  <div
+                                    style={{ 
+                                      display: 'flex', 
+                                      alignItems: 'center', 
+                                      gap: '4px', 
+                                      padding: '2px 6px 2px 3px', 
+                                      background: 'rgba(163, 20, 34, 0.08)', 
+                                      border: '1px solid rgba(163, 20, 34, 0.15)', 
+                                      borderRadius: '20px',
+                                      boxShadow: 'var(--shadow-sm)'
+                                    }}
+                                  >
+                                    <span style={{ 
+                                      fontSize: '0.6rem', 
+                                      fontWeight: 800, 
+                                      color: 'var(--color-primary)', 
+                                      textTransform: 'uppercase', 
+                                      padding: '1px 4px',
+                                      background: 'var(--color-surface)',
+                                      borderRadius: '9999px',
+                                      border: '1px solid rgba(163, 20, 34, 0.1)'
+                                    }}>
+                                      Hợp tác
+                                    </span>
+                                    <div style={{ display: 'flex', alignItems: 'center', marginLeft: '2px' }}>
+                                      {(coopSlip.shareholders || []).map((sh: any, shIdx: number) => (
+                                        <div 
+                                          key={shIdx} 
+                                          style={{ 
+                                            marginLeft: shIdx > 0 ? '-6px' : '0', 
+                                            position: 'relative',
+                                            cursor: 'pointer'
+                                          }}
+                                          onClick={(e) => showUserCard(e, sh.name)}
+                                          title={`${sh.name} (${sh.percentage}%) - ${sh.signed ? 'Đã ký' : 'Chờ ký'}`}
+                                        >
+                                          <Avatar 
+                                            src={resolveAttachmentUrl(sh.avatar)}
+                                            name={sh.name} 
+                                            size={18}
+                                            style={{
+                                              border: sh.signed ? '1.5px solid var(--color-success)' : '1.5px solid var(--color-warning)',
+                                              boxShadow: '0 1px 2px rgba(0,0,0,0.1)'
+                                            }}
+                                          />
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                ) : collabsList.length > 0 ? (
+                                  <div
+                                    style={{ 
+                                      display: 'flex', 
+                                      alignItems: 'center', 
+                                      gap: '4px', 
+                                      padding: '2px 6px 2px 3px', 
+                                      background: '#e2e8f0', 
+                                      border: '1px solid var(--color-border-light)', 
+                                      borderRadius: '20px',
+                                      boxShadow: 'var(--shadow-sm)'
+                                    }}
+                                  >
+                                    <span style={{ 
+                                      fontSize: '0.6rem', 
+                                      fontWeight: 800, 
+                                      color: 'var(--color-primary)', 
+                                      textTransform: 'uppercase', 
+                                      padding: '1px 4px',
+                                      background: 'var(--color-surface)',
+                                      borderRadius: '9999px',
+                                      border: '1px solid var(--color-border-light)'
+                                    }}>
+                                      Chăm sóc chung
+                                    </span>
+                                    <div style={{ display: 'flex', alignItems: 'center', marginLeft: '2px' }}>
+                                      <div 
+                                        style={{ 
+                                          position: 'relative',
+                                          cursor: 'pointer'
+                                        }}
+                                        onClick={(e) => showUserCard(e, formData.owner_name)}
+                                        title={`${formData.owner_name || 'Sale phụ trách'} (Chính)`}
+                                      >
+                                        <Avatar 
+                                          src={ownerAvatarUrl}
+                                          name={formData.owner_name} 
+                                          size={18}
+                                          style={{
+                                            border: '1.5px solid var(--color-primary)',
+                                            boxShadow: '0 1px 2px rgba(0,0,0,0.1)'
+                                          }}
+                                        />
+                                      </div>
+                                      {collabsList.map((collab: any, cIdx: number) => (
+                                        <div 
+                                          key={cIdx} 
+                                          style={{ 
+                                            marginLeft: '-6px', 
+                                            position: 'relative',
+                                            cursor: 'pointer'
+                                          }}
+                                          onClick={(e) => showUserCard(e, collab.full_name)}
+                                          title={`${collab.full_name} (Phụ)`}
+                                        >
+                                          <Avatar 
+                                            src={collab.avatar_url}
+                                            name={collab.full_name} 
+                                            size={18}
+                                            style={{
+                                              border: '1.5px solid #9333ea',
+                                              boxShadow: '0 1px 2px rgba(0,0,0,0.1)'
+                                            }}
+                                          />
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <div
+                                    style={{ display: 'flex', alignItems: 'center', gap: '4px', padding: '2px 6px', background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: '6px', cursor: 'pointer' }}
+                                    onClick={(e) => showUserCard(e, formData.owner_name)}
+                                  >
+                                    <Avatar 
+                                      src={ownerAvatarUrl}
+                                      name={formData.owner_name} 
+                                      size={16} 
+                                    />
+                                    <span style={{ fontSize: '0.7rem', fontWeight: 700, color: '#8a0f1b' }}>{formData.owner_name || 'Chưa nhận'}</span>
+                                  </div>
+                                )}
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                                   <Clock size={11} style={{ color: 'var(--color-text-muted)' }} />
                                   <span>{formData.last_contact ? `Tương tác: ${AGO(formData.last_contact)}` : 'Chưa tương tác'}</span>
