@@ -8140,6 +8140,21 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
       );
     }
 
+    const getTabLabel = (tab: string) => {
+      switch (tab) {
+        case 'schedule': return t('Lịch trực nhận data');
+        case 'personal': return t('Thông tin cá nhân');
+        case 'erp': return t('Hồ sơ & ERP');
+        case 'certificates': return t('Bằng cấp & Chứng chỉ');
+        case 'hr_records': return t('Khen thưởng & Kỷ luật');
+        case 'contact': return t('Liên hệ & Tài khoản');
+        case 'payment': return t('Thanh toán & Thuế');
+        case 'emergency': return t('Liên hệ khẩn cấp');
+        case 'documents': return t('Lưu trữ tài liệu');
+        default: return '';
+      }
+    };
+
     const renderColoredIcon = (IconComponent: any, bgColor: string) => (
       <div style={{
         width: '28px',
@@ -8151,7 +8166,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
         justifyContent: 'center',
         flexShrink: 0
       }}>
-        <IconComponent size={15} color="white" />
+        <IconComponent size={15} color="white" style={{ display: 'block', margin: 0 }} />
       </div>
     );
 
@@ -8180,82 +8195,84 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem', padding: '1.5rem 0' }}>
         {/* Sticky Header block */}
-        <div style={{
-          position: 'sticky',
-          top: isMobile ? '-1.25rem' : '-1.5rem',
-          zIndex: 100,
-          background: 'var(--color-bg)',
-          padding: isMobile ? '1rem 0 0.75rem 0' : '1.5rem 0 1rem 0',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          borderBottom: '1px solid var(--color-border)',
-          margin: isMobile ? '-1.25rem 0 1rem 0' : '-1.5rem 0 1.5rem 0',
-          gap: '12px'
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
-            {isMobile && profileActiveTab && (
-              <button 
-                onClick={() => setProfileActiveTab('')} 
-                style={{ border: 'none', background: 'transparent', padding: '4px', cursor: 'pointer', color: 'var(--color-text)', display: 'flex', alignItems: 'center' }}
+        {(!isMobile || profileActiveTab) && (
+          <div style={{
+            position: 'sticky',
+            top: isMobile ? '-1.25rem' : '-1.5rem',
+            zIndex: 100,
+            background: 'var(--color-bg)',
+            padding: isMobile ? '1rem 0 0.75rem 0' : '1.5rem 0 1rem 0',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            borderBottom: '1px solid var(--color-border)',
+            margin: isMobile ? '-1.25rem 0 1rem 0' : '-1.5rem 0 1.5rem 0',
+            gap: '12px'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
+              {isMobile && profileActiveTab && (
+                <button 
+                  onClick={() => setProfileActiveTab('')} 
+                  style={{ border: 'none', background: 'transparent', padding: '4px', cursor: 'pointer', color: 'var(--color-text)', display: 'flex', alignItems: 'center' }}
+                >
+                  <ChevronLeft size={20} />
+                </button>
+              )}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', minWidth: 0 }}>
+                <h2 style={{ 
+                  fontSize: isMobile ? '1.1rem' : '1.5rem', 
+                  fontWeight: 800, 
+                  color: 'var(--color-text)', 
+                  margin: 0,
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis'
+                }}>
+                  {isMobile ? getTabLabel(profileActiveTab) : t('QUẢN LÝ TÀI KHOẢN')}
+                </h2>
+                {!isMobile && (
+                  <p style={{ fontSize: '0.875rem', color: 'var(--color-text-light)', margin: 0 }}>
+                    {t('Cấu hình thông tin cá nhân, ảnh đại diện và thời gian trực nhận lead tự động.')}
+                  </p>
+                )}
+              </div>
+            </div>
+
+            {(!isMobile || profileActiveTab) && (
+              <button
+                className="btn primary"
+                style={isMobile ? { 
+                  height: '36px', 
+                  width: '44px', 
+                  borderRadius: '10px', 
+                  padding: '0', 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'center', 
+                  flexShrink: 0
+                } : { 
+                  height: '38px', 
+                  padding: '0 1.5rem', 
+                  borderRadius: '8px', 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  gap: '6px', 
+                  flexShrink: 0,
+                  fontSize: '0.875rem'
+                }}
+                onClick={handleSaveProfile}
+                disabled={savingProfile || isUploadingAvatar}
               >
-                <ChevronLeft size={20} />
+                {savingProfile ? (
+                  <RefreshCw size={isMobile ? 16 : 14} className="spin" />
+                ) : (
+                  <Save size={isMobile ? 16 : 14} />
+                )}
+                {!isMobile && (savingProfile ? t('Đang lưu...') : t('Lưu thiết lập'))}
               </button>
             )}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', minWidth: 0 }}>
-              <h2 style={{ 
-                fontSize: isMobile ? '1.1rem' : '1.5rem', 
-                fontWeight: 800, 
-                color: 'var(--color-text)', 
-                margin: 0,
-                whiteSpace: 'nowrap',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis'
-              }}>
-                {t('QUẢN LÝ TÀI KHOẢN')}
-              </h2>
-              {!isMobile && (
-                <p style={{ fontSize: '0.875rem', color: 'var(--color-text-light)', margin: 0 }}>
-                  {t('Cấu hình thông tin cá nhân, ảnh đại diện và thời gian trực nhận lead tự động.')}
-                </p>
-              )}
-            </div>
           </div>
-
-          {(!isMobile || profileActiveTab) && (
-            <button
-              className="btn primary"
-              style={isMobile ? { 
-                height: '36px', 
-                width: '44px', 
-                borderRadius: '10px', 
-                padding: '0', 
-                display: 'flex', 
-                alignItems: 'center', 
-                justifyContent: 'center', 
-                flexShrink: 0
-              } : { 
-                height: '38px', 
-                padding: '0 1.5rem', 
-                borderRadius: '8px', 
-                display: 'flex', 
-                alignItems: 'center', 
-                gap: '6px', 
-                flexShrink: 0,
-                fontSize: '0.875rem'
-              }}
-              onClick={handleSaveProfile}
-              disabled={savingProfile || isUploadingAvatar}
-            >
-              {savingProfile ? (
-                <RefreshCw size={isMobile ? 16 : 14} className="spin" />
-              ) : (
-                <Save size={isMobile ? 16 : 14} />
-              )}
-              {!isMobile && (savingProfile ? t('Đang lưu...') : t('Lưu thiết lập'))}
-            </button>
-          )}
-        </div>
+        )}
 
         {/* Responsive flex container with sidebar tabs */}
         <div className={styles.drawerBody} style={{
@@ -8695,7 +8712,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                         onClick={() => setProfileActiveTab('schedule')}
                         style={{ width: '100%', border: 'none', background: 'transparent', textAlign: 'left', cursor: 'pointer' }}
                       >
-                        <Clock size={15} />
+                        {renderColoredIcon(Clock, '#f09a37')}
                         <span style={{ whiteSpace: 'nowrap' }}>{t('Lịch trực nhận data')}</span>
                       </button>
                     )}
@@ -8705,7 +8722,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                       onClick={() => setProfileActiveTab('personal')}
                       style={{ width: '100%', border: 'none', background: 'transparent', textAlign: 'left', cursor: 'pointer' }}
                     >
-                      <User size={15} />
+                      {renderColoredIcon(User, '#eb4e3d')}
                       <span style={{ whiteSpace: 'nowrap' }}>{t('Thông tin cá nhân')}</span>
                     </button>
                     <button
@@ -8714,7 +8731,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                       onClick={() => setProfileActiveTab('erp')}
                       style={{ width: '100%', border: 'none', background: 'transparent', textAlign: 'left', cursor: 'pointer' }}
                     >
-                      <Layers size={15} />
+                      {renderColoredIcon(Layers, '#5856d6')}
                       <span style={{ whiteSpace: 'nowrap' }}>{t('Hồ sơ & ERP')}</span>
                     </button>
                     <button
@@ -8723,7 +8740,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                       onClick={() => setProfileActiveTab('certificates')}
                       style={{ width: '100%', border: 'none', background: 'transparent', textAlign: 'left', cursor: 'pointer' }}
                     >
-                      <Award size={15} />
+                      {renderColoredIcon(Award, '#f2a20b')}
                       <span style={{ whiteSpace: 'nowrap' }}>{t('Bằng cấp & Chứng chỉ')}</span>
                     </button>
                     <button
@@ -8732,7 +8749,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                       onClick={() => setProfileActiveTab('hr_records')}
                       style={{ width: '100%', border: 'none', background: 'transparent', textAlign: 'left', cursor: 'pointer' }}
                     >
-                      <AlertCircle size={15} />
+                      {renderColoredIcon(AlertCircle, '#ff9500')}
                       <span style={{ whiteSpace: 'nowrap' }}>{t('Khen thưởng & Kỷ luật')}</span>
                     </button>
                     <button
@@ -8741,7 +8758,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                       onClick={() => setProfileActiveTab('contact')}
                       style={{ width: '100%', border: 'none', background: 'transparent', textAlign: 'left', cursor: 'pointer' }}
                     >
-                      <Server size={15} />
+                      {renderColoredIcon(Server, '#007af5')}
                       <span style={{ whiteSpace: 'nowrap' }}>{t('Liên hệ & Tài khoản')}</span>
                     </button>
                     <button
@@ -8750,7 +8767,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                       onClick={() => setProfileActiveTab('payment')}
                       style={{ width: '100%', border: 'none', background: 'transparent', textAlign: 'left', cursor: 'pointer' }}
                     >
-                      <Receipt size={15} />
+                      {renderColoredIcon(Receipt, '#34c759')}
                       <span style={{ whiteSpace: 'nowrap' }}>{t('Thanh toán & Thuế')}</span>
                     </button>
                     <button
@@ -8759,7 +8776,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                       onClick={() => setProfileActiveTab('emergency')}
                       style={{ width: '100%', border: 'none', background: 'transparent', textAlign: 'left', cursor: 'pointer' }}
                     >
-                      <Scale size={15} />
+                      {renderColoredIcon(Scale, '#ff2d55')}
                       <span style={{ whiteSpace: 'nowrap' }}>{t('Liên hệ khẩn cấp')}</span>
                     </button>
                     <button
@@ -8768,7 +8785,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                       onClick={() => setProfileActiveTab('documents')}
                       style={{ width: '100%', border: 'none', background: 'transparent', textAlign: 'left', cursor: 'pointer' }}
                     >
-                      <FileText size={15} />
+                      {renderColoredIcon(FileText, '#8e8e93')}
                       <span style={{ whiteSpace: 'nowrap' }}>{t('Lưu trữ tài liệu')}</span>
                     </button>
                   </>
