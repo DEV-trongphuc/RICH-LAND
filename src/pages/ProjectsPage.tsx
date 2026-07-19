@@ -1062,6 +1062,7 @@ export default function ProjectsPage() {
     if (!path) return <span style={{ color: 'var(--color-text-light)', fontStyle: 'italic', fontSize: '0.85rem' }}>Không có folder liên kết</span>;
     const isUrl = path.startsWith('http://') || path.startsWith('https://');
     if (isUrl) {
+      const isDriveUrl = path.toLowerCase().includes('drive');
       return (
         <a 
           href={path} 
@@ -1090,8 +1091,21 @@ export default function ProjectsPage() {
             e.currentTarget.style.borderColor = 'rgba(100, 116, 139, 0.12)';
           }}
         >
-          <HardDrive size={14} color="#10b981" />
-          <span>Mở Google Drive</span>
+          {isDriveUrl ? (
+            <>
+              <img 
+                src="https://upload.wikimedia.org/wikipedia/commons/thumb/1/12/Google_Drive_icon_%282020%29.svg/1280px-Google_Drive_icon_%282020%29.svg.png" 
+                alt="Google Drive" 
+                style={{ width: '14px', height: '14px', objectFit: 'contain', flexShrink: 0 }} 
+              />
+              <span>Mở Google Drive</span>
+            </>
+          ) : (
+            <>
+              <ExternalLink size={14} color="#3b82f6" style={{ flexShrink: 0 }} />
+              <span>Mở liên kết</span>
+            </>
+          )}
         </a>
       );
     }

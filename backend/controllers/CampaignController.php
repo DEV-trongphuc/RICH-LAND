@@ -143,6 +143,7 @@ class CampaignController {
         }
     }
 
+    public function store(array $auth): void {
         $b = getBody();
         $name = trim($b['name'] ?? '');
         $description = trim($b['description'] ?? '');
