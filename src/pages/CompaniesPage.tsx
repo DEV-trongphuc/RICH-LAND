@@ -110,7 +110,9 @@ export const CompaniesPage: React.FC = () => {
         await api.post('/companies', formData);
         addToast('Đã thêm công ty mới', 'success');
       }
-      setShowModal(false);
+      if (!editItem) {
+        setShowModal(false);
+      }
       fetchCompanies();
     } catch (err: any) {
       addToast(err.response?.data?.message || 'Lỗi khi lưu công ty', 'error');

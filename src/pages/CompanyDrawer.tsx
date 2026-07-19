@@ -760,15 +760,35 @@ export const CompanyDrawer: React.FC<CompanyDrawerProps> = ({ isOpen, onClose, e
                       </div>
                     </div>
                   ) : (
-                    visibleTabs.map(tab => (
-                      <button 
-                        key={tab.id} 
-                        className={`${styles.sidebarTabBtn} ${activeTab === tab.id ? styles.sidebarTabActive : ''}`}
-                        onClick={() => setActiveTab(tab.id)}
-                      >
-                        {tab.icon} {tab.label}
-                      </button>
-                    ))
+                    visibleTabs.map(tab => {
+                      let bgColor = '#8e8e93';
+                      if (tab.id === 'info') bgColor = '#eb4e3d';
+                      else if (tab.id === 'activities') bgColor = '#f09a37';
+                      else if (tab.id === 'contacts') bgColor = '#007af5';
+                      else if (tab.id === 'deals') bgColor = '#34c759';
+                      else if (tab.id === 'invoices') bgColor = '#5856d6';
+                      else if (tab.id === 'expenses') bgColor = '#ff2d55';
+                      else if (tab.id === 'docs') bgColor = '#3b82f6';
+                      else if (tab.id === 'settings') bgColor = '#555555';
+
+                      let IconComp = tab.icon.type;
+
+                      return (
+                        <button 
+                          key={tab.id} 
+                          className={`${styles.sidebarTabBtn} ${activeTab === tab.id ? styles.sidebarTabActive : ''}`}
+                          onClick={() => setActiveTab(tab.id)}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '12px'
+                          }}
+                        >
+                          {renderColoredIcon(IconComp, bgColor)}
+                          <span>{tab.label}</span>
+                        </button>
+                      );
+                    })
                   )}
                 </div>
               )}
