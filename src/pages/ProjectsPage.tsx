@@ -31,6 +31,7 @@ interface Project {
   developer?: string;
   location?: string;
   created_at: string;
+  updated_at?: string;
   roster_count?: number;
   doc_count?: number;
   document_ids?: string;
@@ -956,6 +957,24 @@ export default function ProjectsPage() {
     return ['admin', 'superadmin', 'super_admin', 'director', 'manager'].includes(user.role) ||
            teams.some(t => Number(t.leader_id) === Number(user.id));
   }, [user, teams]);
+
+  const formatLastUpdated = (updatedAtStr: string | undefined, createdAtStr: string | undefined) => {
+    const targetStr = updatedAtStr || createdAtStr;
+    if (!targetStr) return '';
+    try {
+      const t = targetStr.replace(' ', 'T');
+      const date = new Date(t);
+      if (isNaN(date.getTime())) return '';
+      const day = String(date.getDate()).padStart(2, '0');
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const year = date.getFullYear();
+      const hours = String(date.getHours()).padStart(2, '0');
+      const minutes = String(date.getMinutes()).padStart(2, '0');
+      return `Cập nhật: ${day}/${month}/${year} ${hours}:${minutes}`;
+    } catch (e) {
+      return '';
+    }
+  };
 
   const canEditProject = (proj: Project) => {
     if (!user) return false;
@@ -3716,6 +3735,11 @@ export default function ProjectsPage() {
                         );
                       })()}
                     </div>
+                    {/* Last updated timestamp */}
+                    <div style={{ fontSize: '0.7rem', color: 'var(--color-text-light)', marginTop: '8px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                      <span style={{ display: 'inline-flex', opacity: 0.6 }}><RefreshCw size={10} /></span>
+                      <span>{formatLastUpdated(proj.updated_at, proj.created_at)}</span>
+                    </div>
                   </div>
 
                   {/* Actions Row */}
@@ -4046,29 +4070,11 @@ export default function ProjectsPage() {
                               <span>Thời gian: <strong>{camp.start_date || '...'}</strong> đến <strong>{camp.end_date || '...'}</strong></span>
                             </div>
                           )}
-
-                          {camp.folder_path && (
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }} onClick={e => e.stopPropagation()}>
-                              <span style={{ color: 'var(--color-text-light)', display: 'inline-flex' }}><Folder size={13} /></span>
-                              <span>Thư mục:</span>
-                              {renderFolderPathLink(camp.folder_path, camp.project_id)}
-                            </div>
-                          )}
-
-                          {camp.reference_url && (
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }} onClick={e => e.stopPropagation()}>
-                              <span style={{ color: 'var(--color-text-light)', display: 'inline-flex' }}><Link2 size={13} /></span>
-                              <span>Liên kết khác:</span>
-                              <a 
-                                href={camp.reference_url} 
-                                target="_blank" 
-                                rel="noopener noreferrer" 
-                                style={{ color: '#3b82f6', textDecoration: 'none', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '4px' }}
-                              >
-                                Mở liên kết <ExternalLink size={11} />
-                              </a>
-                            </div>
-                          )}
+                        </div>
+                        {/* Last updated timestamp */}
+                        <div style={{ fontSize: '0.7rem', color: 'var(--color-text-light)', marginTop: '8px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                          <span style={{ display: 'inline-flex', opacity: 0.6 }}><RefreshCw size={10} /></span>
+                          <span>{formatLastUpdated(camp.updated_at, camp.created_at)}</span>
                         </div>
                       </div>
 
