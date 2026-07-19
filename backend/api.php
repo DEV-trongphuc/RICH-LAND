@@ -2447,18 +2447,32 @@ switch ($action) {
             $contactsDateCondition = "c.created_at >= '$startEsc 00:00:00' AND c.created_at <= '$endEsc 23:59:59'";
         }
 
+        $saleUserId = (int)$decodedUser['id'];
+        if (!$isSale && $saleFilterId !== null) {
+            $stmtUser = $conn->prepare("SELECT u.id FROM users u JOIN consultants cons ON u.email = cons.email WHERE cons.id = ?");
+            if ($stmtUser) {
+                $stmtUser->bind_param("i", $saleFilterId);
+                $stmtUser->execute();
+                $resUser = $stmtUser->get_result()->fetch_assoc();
+                if ($resUser) {
+                    $saleUserId = (int)$resUser['id'];
+                }
+                $stmtUser->close();
+            }
+        }
+
         $contactsWhere = ["c.tenant_id = ?", "c.deleted_at IS NULL"];
         $contactsParams = [$tid];
         $contactsTypes = "i";
 
         if ($isSale) {
             $contactsWhere[] = "c.owner_id = ?";
-            $contactsParams[] = $saleId;
+            $contactsParams[] = $saleUserId;
             $contactsTypes .= "i";
         } else {
             if ($saleFilterId !== null) {
                 $contactsWhere[] = "c.owner_id = ?";
-                $contactsParams[] = $saleFilterId;
+                $contactsParams[] = $saleUserId;
                 $contactsTypes .= "i";
             }
         }
@@ -2482,7 +2496,9 @@ switch ($action) {
               AND (c.source = 'databank' OR EXISTS (
                   SELECT 1 FROM leads l2 
                   JOIN distribution_logs dl2 ON dl2.lead_id = l2.id 
-                  WHERE l2.person_id = c.person_id AND dl2.assigned_to = c.owner_id AND dl2.status = 'databank_claim'
+                  JOIN users u2 ON u2.id = c.owner_id
+                  JOIN consultants cons2 ON u2.email = cons2.email
+                  WHERE l2.person_id = c.person_id AND dl2.assigned_to = cons2.id AND dl2.status = 'databank_claim'
               ))
         ");
         $databankCount = 0;
@@ -2501,7 +2517,9 @@ switch ($action) {
               AND (c.source != 'databank' AND EXISTS (
                   SELECT 1 FROM leads l2 
                   JOIN distribution_logs dl2 ON dl2.lead_id = l2.id 
-                  WHERE l2.person_id = c.person_id AND dl2.assigned_to = c.owner_id AND dl2.status IN ('assigned', 'compensation', 'rule_6_month', 'pending_work_hours', 'fallback', 'success')
+                  JOIN users u2 ON u2.id = c.owner_id
+                  JOIN consultants cons2 ON u2.email = cons2.email
+                  WHERE l2.person_id = c.person_id AND dl2.assigned_to = cons2.id AND dl2.status IN ('assigned', 'compensation', 'rule_6_month', 'pending_work_hours', 'fallback', 'success')
               ))
         ");
         $distributedCount = 0;
@@ -2520,12 +2538,14 @@ switch ($action) {
             SELECT COALESCE(r.round_name, 'Tự nhập / Khác') as round_name, COUNT(c.id) as count
             FROM contacts c
             LEFT JOIN leads l ON c.person_id = l.person_id
+            LEFT JOIN users u2 ON u2.id = c.owner_id
+            LEFT JOIN consultants cons2 ON u2.email = cons2.email
             LEFT JOIN (
                 SELECT lead_id, assigned_to, MAX(round_id) as round_id 
                 FROM distribution_logs 
                 WHERE status != 'silent'
                 GROUP BY lead_id, assigned_to
-            ) dl ON dl.lead_id = l.id AND dl.assigned_to = c.owner_id
+            ) dl ON dl.lead_id = l.id AND dl.assigned_to = cons2.id
             LEFT JOIN distribution_rounds r ON dl.round_id = r.id
             WHERE $contactsWhereClause
             GROUP BY COALESCE(r.round_name, 'Tự nhập / Khác')

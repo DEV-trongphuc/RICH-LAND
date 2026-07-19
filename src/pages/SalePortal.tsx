@@ -8,7 +8,7 @@ import {
   Clock3, GitBranch, ArrowUpRight, ShieldAlert, Send, ArrowLeft,
   Sun, Moon, ChevronDown, ChevronUp, AlertTriangle, ChevronLeft, ChevronRight,
   LayoutDashboard, Database, Ticket, Calendar, RefreshCw, Menu, Tag, Server, Scale, Settings, Info, Cpu,
-  Camera, Video, Layers, Plus, Receipt, Building2, Users, User, UserCheck, Trash2, CheckSquare, X, Paperclip, LifeBuoy, Fingerprint, LayoutGrid, Monitor, Tv, Phone, Save, Award
+  Camera, Video, Layers, Plus, Receipt, Building2, Users, User, UserCheck, UserPlus, Trash2, CheckSquare, X, Paperclip, LifeBuoy, Fingerprint, LayoutGrid, Monitor, Tv, Phone, Save, Award
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { createPortal } from 'react-dom';
@@ -5933,60 +5933,60 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
         id: 'total',
         key: 'data', 
         status: 'all', 
-        label: t('DATA KHÁCH HÀNG'), 
+        label: t('TỔNG KHÁCH HÀNG'), 
         value: data.stats.total_received, 
         color: '#a31422', 
         bg: 'rgba(163, 20, 34, 0.08)', 
-        icon: FileText,
+        icon: Users,
         change: '+100%', 
         up: true,
         bullets: [
-          { text: t('Tổng nhận được bàn giao'), color: '#a31422' }
+          { text: t('Tổng data đang chăm sóc'), color: '#a31422' }
         ]
       },
       { 
-        id: 'tickets',
-        key: 'tickets', 
-        status: 'pending', 
-        label: t('TICKET BÁO LỖI'), 
-        value: data.stats.tickets_total, 
+        id: 'distributed',
+        key: 'data', 
+        status: 'distributed', 
+        label: t('ĐƯỢC CHIA'), 
+        value: data.stats.distributed_count, 
+        color: '#007af5', 
+        bg: 'rgba(0, 122, 245, 0.08)', 
+        icon: Send,
+        change: '+100%', 
+        up: true,
+        bullets: [
+          { text: t('Nhận từ lượt chia tự động'), color: '#007af5' }
+        ]
+      },
+      { 
+        id: 'databank',
+        key: 'data', 
+        status: 'databank', 
+        label: t('TỪ DATABANK'), 
+        value: data.stats.databank_count, 
+        color: '#34c759', 
+        bg: 'rgba(52, 199, 89, 0.08)', 
+        icon: Database,
+        change: '+100%', 
+        up: true,
+        bullets: [
+          { text: t('Claim từ Kho Databank'), color: '#34c759' }
+        ]
+      },
+      { 
+        id: 'self',
+        key: 'data', 
+        status: 'self', 
+        label: t('TỰ NHẬP'), 
+        value: data.stats.self_count, 
         color: '#f59e0b', 
         bg: 'rgba(245, 158, 11, 0.08)', 
-        icon: AlertCircle,
-        change: '0%', 
+        icon: UserPlus,
+        change: '+100%', 
         up: true,
         bullets: [
-          { text: `${data.stats.tickets_pending} ${t('đang chờ duyệt')}`, color: '#f59e0b' }
-        ]
-      },
-      { 
-        id: 'approved',
-        key: 'data', 
-        status: 'approved_ticket', 
-        label: t('ĐÃ DUYỆT BÙ'), 
-        value: data.stats.tickets_approved, 
-        color: '#10b981', 
-        bg: 'rgba(16, 185, 129, 0.08)', 
-        icon: CheckCircle2,
-        change: '0%', 
-        up: true,
-        bullets: [
-          { text: t('Hợp lệ & Đã được bù'), color: '#10b981' }
-        ]
-      },
-      { 
-        id: 'rejected',
-        key: 'data', 
-        status: 'rejected_ticket', 
-        label: t('TỪ CHỐI BÙ'), 
-        value: data.stats.tickets_rejected, 
-        color: '#ef4444', 
-        bg: 'rgba(239, 68, 68, 0.08)', 
-        icon: XCircle,
-        change: '0%', 
-        up: false,
-        bullets: [
-          { text: t('Bị từ chối / Không đền bù'), color: '#ef4444' }
+          { text: t('Tự tạo hoặc giới thiệu'), color: '#f59e0b' }
         ]
       }
     ];
@@ -6003,17 +6003,17 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
             box-shadow: 0 6px 16px rgba(163, 20, 34, 0.15) !important;
             border-color: #a31422 !important;
           }
-          .stat-card.tickets-card:hover {
+          .stat-card.distributed-card:hover {
+            box-shadow: 0 6px 16px rgba(0, 122, 245, 0.15) !important;
+            border-color: #007af5 !important;
+          }
+          .stat-card.databank-card:hover {
+            box-shadow: 0 6px 16px rgba(52, 199, 89, 0.15) !important;
+            border-color: #34c759 !important;
+          }
+          .stat-card.self-card:hover {
             box-shadow: 0 6px 16px rgba(245, 158, 11, 0.15) !important;
             border-color: #f59e0b !important;
-          }
-          .stat-card.approved-card:hover {
-            box-shadow: 0 6px 16px rgba(16, 185, 129, 0.15) !important;
-            border-color: #10b981 !important;
-          }
-          .stat-card.rejected-card:hover {
-            box-shadow: 0 6px 16px rgba(239, 68, 68, 0.15) !important;
-            border-color: #ef4444 !important;
           }
         `}</style>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
