@@ -368,7 +368,7 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
 
   const renderCommentContent = (text: string) => {
     if (!text) return '';
-    const regex = /(https?:\/\/[^\s]+|@[a-zA-Z0-9_\u00C0-\u1EF9()]+)/g;
+    const regex = /(https?:\/\/[^\s]+|@[\p{L}\p{N}_()]+)/gu;
     const parts = text.split(regex);
     return parts.map((part, idx) => {
       if (part.startsWith('http://') || part.startsWith('https://')) {

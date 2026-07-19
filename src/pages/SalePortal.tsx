@@ -1511,7 +1511,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
   const renderFormattedText = (text: string) => {
     if (!text) return '';
     // Regex matches URLs or @mentions (supporting unicode characters and parentheses like @Minh_Khôi_(Manager))
-    const regex = /(https?:\/\/[^\s]+|@[a-zA-Z0-9_\u00C0-\u1EF9()]+)/g;
+    const regex = /(https?:\/\/[^\s]+|@[\p{L}\p{N}_()]+)/gu;
     const parts = text.split(regex);
     return parts.map((part, index) => {
       if (part.startsWith('http://') || part.startsWith('https://')) {
