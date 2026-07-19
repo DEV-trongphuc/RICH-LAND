@@ -173,6 +173,26 @@ export const Header = ({
     }
   }, []);
 
+  // Watch pendingInboxCount for new gatekeeper/approval hold requests (for managers/admins)
+  const prevPendingInboxCount = useRef<number | undefined>(undefined);
+  useEffect(() => {
+    if (pendingInboxCount !== undefined) {
+      const prev = prevPendingInboxCount.current;
+      prevPendingInboxCount.current = pendingInboxCount;
+      if (prev !== undefined && pendingInboxCount > prev) {
+        if ('Notification' in window && Notification.permission === 'granted') {
+          new Notification('Hộp kiểm duyệt RICH LAND', {
+            body: `Có dữ liệu mới đang chờ xử lý trong Hộp kiểm duyệt (${pendingInboxCount} yêu cầu).`,
+            icon: '/LOGO.jpg'
+          });
+        }
+        if (!isWindowFocused.current) {
+          startFlashingTitle(unreadCount + pendingInboxCount);
+        }
+      }
+    }
+  }, [pendingInboxCount, unreadCount]);
+
   // When notification modal opens, stop flashing title
   useEffect(() => {
     if (isNotifModalOpen) {
