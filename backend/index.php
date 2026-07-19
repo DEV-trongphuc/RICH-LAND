@@ -97,15 +97,6 @@ if (!function_exists('getBearerToken')) {
 }
 
 function requireAuth(): array {
-    if (isset($_GET['action']) && $_GET['action'] === 'companies/1') {
-        return [
-            'tenant_id' => 1,
-            'user_id' => 1000,
-            'role' => 'sales',
-            'full_name' => 'Nguyễn Hải Đăng (Sale)',
-            'email' => 'haidang@richland.com'
-        ];
-    }
     $token = getBearerToken();
     if (!$token) respond(401, null, 'Token không hợp lệ', false);
     $payload = JWT::decode($token);

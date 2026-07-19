@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Building2, FileText, FileBadge, Tag as TagIcon, Phone, Mail, MapPin, Search, Calendar, Users, Briefcase, Plus, HelpCircle, Globe, Settings, Download, Trash2, Edit, Pencil, Loader2, History, ChevronLeft, ChevronRight, Camera } from 'lucide-react';
+import { X, Building2, FileText, FileBadge, Tag as TagIcon, Phone, Mail, MapPin, Search, Calendar, Users, Briefcase, Plus, HelpCircle, Globe, Settings, Download, Trash2, Edit, Pencil, Loader2, History, ChevronLeft, ChevronRight, Camera, Save } from 'lucide-react';
 import { CustomSelect } from '../components/ui/CustomSelect';
 import { CustomCheckbox } from '../components/ui/CustomCheckbox';
 import { AddressSelect } from '../components/ui/AddressSelect';
@@ -394,20 +394,219 @@ export const CompanyDrawer: React.FC<CompanyDrawerProps> = ({ isOpen, onClose, e
           willChange: 'transform, opacity'
         }}
       >
-            {/* Header */}
-            <div className={styles.header}>
-              <div className={styles.headerProfile}>
+            {/* Header / Sticky Top Bar */}
+            {isMobileOrTablet ? (
+              <div style={{
+                position: 'sticky',
+                top: 0,
+                zIndex: 150,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '0.5rem 1.25rem',
+                background: 'var(--color-surface)',
+                borderBottom: '1px solid var(--color-border-light)',
+                height: '56px',
+                boxSizing: 'border-box',
+                width: '100%',
+                flexShrink: 0
+              }}>
+                <button 
+                  type="button"
+                  onClick={() => {
+                    if (activeTab) {
+                      setActiveTab('');
+                    } else {
+                      handleClose();
+                    }
+                  }} 
+                  style={{ background: 'transparent', border: 'none', color: 'var(--color-text-muted)', cursor: 'pointer', padding: '6px', display: 'flex', alignItems: 'center' }}
+                >
+                  <ChevronLeft size={24} />
+                </button>
+                <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', margin: '0 0.5rem', overflow: 'hidden' }}>
+                  <h3 style={{ fontSize: '0.9rem', fontWeight: 800, color: 'var(--color-text)', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {activeTab ? (visibleTabs.find(t => t.id === activeTab)?.label || 'Chi tiết') : (formData?.name || 'Tên Công Ty')}
+                  </h3>
+                </div>
+                <button
+                  disabled={isSaving}
+                  onClick={handleSave}
+                  style={{
+                    padding: '6px 12px',
+                    borderRadius: '10px',
+                    fontSize: '0.8rem',
+                    fontWeight: 700,
+                    height: '36px',
+                    width: '44px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    background: 'var(--color-primary)',
+                    borderColor: 'var(--color-primary)',
+                    color: 'white',
+                    border: 'none',
+                    cursor: 'pointer'
+                  }}
+                >
+                  <Save size={18} />
+                </button>
+              </div>
+            ) : (
+              <div className={styles.header}>
+                <div className={styles.headerProfile}>
+                  <div 
+                    className={styles.avatarContainer}
+                    style={{ 
+                      background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)', 
+                      fontSize: '1.25rem', 
+                      width: 56, 
+                      height: 56, 
+                      boxShadow: '0 4px 12px rgba(37, 99, 235, 0.3)',
+                      cursor: disableEdit ? 'default' : 'pointer',
+                      color: 'white',
+                      fontWeight: 700
+                    }}
+                    onClick={() => {
+                      if (!disableEdit) {
+                        document.getElementById('company-logo-upload')?.click();
+                      }
+                    }}
+                  >
+                    {formData?.logo_url ? (
+                      <img 
+                        src={formData.logo_url.startsWith('http') ? formData.logo_url : `${import.meta.env.VITE_API_URL || '/backend'}/${formData.logo_url}`} 
+                        alt="Company Logo" 
+                        style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+                      />
+                    ) : (
+                      formData?.name?.[0] || 'C'
+                    )}
+                    {!disableEdit && (
+                      <div className={styles.avatarOverlay}>
+                        <Camera size={16} />
+                      </div>
+                    )}
+                  </div>
+                  <div>
+                    <h2 className={styles.title}>{formData?.name || 'Tên Công Ty'}</h2>
+                    <p className={styles.subtitle} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <Briefcase size={14} /> {formData?.industry || 'Chưa cập nhật ngành nghề'} · MST: {formData?.tax_id || 'Chưa cập nhật'}
+                    </p>
+                    <div style={{ 
+                      display: 'flex', 
+                      flexDirection: 'row', 
+                      gap: '1rem', 
+                      marginTop: '0.5rem' 
+                    }}>
+                      <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <Phone size={12} /> {formData?.phone || 'Chưa có SĐT'}
+                      </span>
+                      <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <Mail size={12} /> {formData?.email || 'Chưa có Email'}
+                      </span>
+                      <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <Globe size={12} /> {formData?.website || 'Chưa có Website'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+                <div className={styles.headerActions} style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <span className={`badge ${formData?.status === 'active' ? 'success' : formData?.status === 'inactive' ? 'danger' : 'warning'}`}>
+                    {formData?.status === 'active' ? 'Hoạt động' : formData?.status === 'inactive' ? 'Ngừng' : 'Tiềm năng'}
+                  </span>
+                  <button 
+                    className="btn primary sm" 
+                    disabled={isSaving}
+                    style={{ 
+                      background: 'var(--color-primary)', 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      gap: 6,
+                      padding: '6px 14px',
+                      fontSize: '0.8rem',
+                      height: '32px'
+                    }}
+                    onClick={handleSave}
+                  >
+                    {isSaving ? 'Đang lưu...' : 'Lưu thay đổi'}
+                  </button>
+                  <button className={styles.closeBtn} onClick={handleClose} style={{ marginLeft: '4px' }}><X size={20} /></button>
+                </div>
+              </div>
+            )}
+
+            {/* Logo Upload Input Element */}
+            <input 
+              type="file" 
+              id="company-logo-upload" 
+              accept="image/*" 
+              style={{ display: 'none' }} 
+              onChange={async (e) => {
+                if (e.target.files?.[0]) {
+                  const file = e.target.files[0];
+                  try {
+                    const compressed = await compressToWebP(file);
+                    const formDataUpload = new FormData();
+                    formDataUpload.append('file', compressed);
+                    if (formData.logo_url) {
+                      formDataUpload.append('previous_url', formData.logo_url);
+                    }
+                    const res = await api.post('api.php?action=upload', formDataUpload, {
+                      headers: { 'Content-Type': 'multipart/form-data' }
+                    });
+                    if (res.data?.success) {
+                      const newLogoUrl = res.data.data.url;
+                      setFormData(prev => ({ ...prev, logo_url: newLogoUrl }));
+                      if (entity?.id) {
+                        const updateRes = await api.put(`api.php?action=companies/${entity.id}`, { logo_url: newLogoUrl });
+                        if (updateRes.data?.success) {
+                          addToast('Cập nhật logo công ty thành công.', 'success');
+                          if (onSave) {
+                            onSave(updateRes.data.data);
+                          }
+                        }
+                      } else {
+                        addToast('Đã tải lên logo công ty.', 'success');
+                      }
+                    }
+                  } catch (err: any) {
+                    addToast('Lỗi tải lên logo: ' + err.message, 'error');
+                  }
+                }
+              }}
+            />
+
+            {/* Mobile Profile Block (only rendered at root menu level) */}
+            {isMobileOrTablet && !activeTab && (
+              <div style={{
+                padding: '1.5rem 1rem',
+                borderBottom: '1px solid var(--color-border-light)',
+                background: 'var(--color-surface)',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                textAlign: 'center',
+                gap: '1rem',
+                flexShrink: 0
+              }}>
                 <div 
                   className={styles.avatarContainer}
                   style={{ 
                     background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)', 
-                    fontSize: '1.25rem', 
-                    width: 56, 
-                    height: 56, 
+                    fontSize: '1.5rem', 
+                    width: 72, 
+                    height: 72, 
+                    borderRadius: '50%',
+                    position: 'relative',
                     boxShadow: '0 4px 12px rgba(37, 99, 235, 0.3)',
                     cursor: disableEdit ? 'default' : 'pointer',
                     color: 'white',
-                    fontWeight: 700
+                    fontWeight: 700,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    overflow: 'hidden'
                   }}
                   onClick={() => {
                     if (!disableEdit) {
@@ -426,96 +625,46 @@ export const CompanyDrawer: React.FC<CompanyDrawerProps> = ({ isOpen, onClose, e
                   )}
                   {!disableEdit && (
                     <div className={styles.avatarOverlay}>
-                      <Camera size={16} />
+                      <Camera size={18} />
                     </div>
                   )}
                 </div>
-                <input 
-                  type="file" 
-                  id="company-logo-upload" 
-                  accept="image/*" 
-                  style={{ display: 'none' }} 
-                  onChange={async (e) => {
-                    if (e.target.files?.[0]) {
-                      const file = e.target.files[0];
-                      try {
-                        const compressed = await compressToWebP(file);
-                        const formDataUpload = new FormData();
-                        formDataUpload.append('file', compressed);
-                        if (formData.logo_url) {
-                          formDataUpload.append('previous_url', formData.logo_url);
-                        }
-                        const res = await api.post('api.php?action=upload', formDataUpload, {
-                          headers: { 'Content-Type': 'multipart/form-data' }
-                        });
-                        if (res.data?.success) {
-                          const newLogoUrl = res.data.data.url;
-                          setFormData(prev => ({ ...prev, logo_url: newLogoUrl }));
-                          
-                          if (entity?.id) {
-                            const updateRes = await api.put(`api.php?action=companies/${entity.id}`, { logo_url: newLogoUrl });
-                            if (updateRes.data?.success) {
-                              addToast('Cập nhật logo công ty thành công.', 'success');
-                              if (onSave) {
-                                onSave(updateRes.data.data);
-                              }
-                            }
-                          } else {
-                            addToast('Đã tải lên logo công ty.', 'success');
-                          }
-                        }
-                      } catch (err: any) {
-                        addToast('Lỗi tải lên logo: ' + err.message, 'error');
-                      }
-                    }
-                  }}
-                />
+                
                 <div>
-                  <h2 className={styles.title}>{formData?.name || 'Tên Công Ty'}</h2>
-                  <p className={styles.subtitle} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <Briefcase size={14} /> {formData?.industry || 'Chưa cập nhật ngành nghề'} · MST: {formData?.tax_id || 'Chưa cập nhật'}
+                  <h2 style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--color-text)', margin: '0 0 0.25rem 0' }}>{formData?.name || 'Tên Công Ty'}</h2>
+                  <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', margin: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+                    <Briefcase size={14} /> {formData?.industry || 'Chưa cập nhật ngành nghề'}
                   </p>
+                  <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', margin: '0.25rem 0 0 0' }}>
+                    MST: {formData?.tax_id || 'Chưa cập nhật'}
+                  </p>
+                  
                   <div style={{ 
                     display: 'flex', 
-                    flexDirection: isMobileOrTablet ? 'column' : 'row', 
-                    gap: isMobileOrTablet ? '0.35rem' : '1rem', 
-                    marginTop: '0.5rem' 
+                    flexDirection: 'column', 
+                    gap: '0.35rem', 
+                    marginTop: '0.75rem',
+                    alignItems: 'center'
                   }}>
-                    <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: '6px' }}>
                       <Phone size={12} /> {formData?.phone || 'Chưa có SĐT'}
                     </span>
-                    <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: '6px' }}>
                       <Mail size={12} /> {formData?.email || 'Chưa có Email'}
                     </span>
-                    <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: '6px' }}>
                       <Globe size={12} /> {formData?.website || 'Chưa có Website'}
+                    </span>
+                  </div>
+                  
+                  <div style={{ marginTop: '0.875rem' }}>
+                    <span className={`badge ${formData?.status === 'active' ? 'success' : formData?.status === 'inactive' ? 'danger' : 'warning'}`}>
+                      {formData?.status === 'active' ? 'Hoạt động' : formData?.status === 'inactive' ? 'Ngừng' : 'Tiềm năng'}
                     </span>
                   </div>
                 </div>
               </div>
-              <div className={styles.headerActions} style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <span className={`badge ${formData?.status === 'active' ? 'success' : formData?.status === 'inactive' ? 'danger' : 'warning'}`}>
-                  {formData?.status === 'active' ? 'Hoạt động' : formData?.status === 'inactive' ? 'Ngừng' : 'Tiềm năng'}
-                </span>
-                <button 
-                  className="btn primary sm" 
-                  disabled={isSaving}
-                  style={{ 
-                    background: 'var(--color-primary)', 
-                    display: 'flex', 
-                    alignItems: 'center', 
-                    gap: 6,
-                    padding: '6px 14px',
-                    fontSize: '0.8rem',
-                    height: '32px'
-                  }}
-                  onClick={handleSave}
-                >
-                  {isSaving ? 'Đang lưu...' : 'Lưu thay đổi'}
-                </button>
-                <button className={styles.closeBtn} onClick={handleClose} style={{ marginLeft: '4px' }}><X size={20} /></button>
-              </div>
-            </div>
+            )}
 
             {/* Layout Split: Left Sidebar & Content */}
             <div className={styles.drawerBody}>
@@ -610,31 +759,7 @@ export const CompanyDrawer: React.FC<CompanyDrawerProps> = ({ isOpen, onClose, e
                     flexDirection: 'column'
                   } : undefined}
                 >
-                  {isMobileOrTablet && activeTab && (
-                    <button
-                      type="button"
-                      onClick={() => setActiveTab('')}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '6px',
-                        padding: '8px 12px',
-                        borderRadius: '8px',
-                        border: '1px solid var(--color-border)',
-                        background: 'var(--color-surface)',
-                        color: 'var(--color-text)',
-                        fontSize: '0.825rem',
-                        fontWeight: 655,
-                        cursor: 'pointer',
-                        marginBottom: '1rem',
-                        boxShadow: 'var(--shadow-sm)',
-                        alignSelf: 'flex-start'
-                      }}
-                    >
-                      <ChevronLeft size={14} />
-                      Quay lại
-                    </button>
-                  )}
+
                 {activeTab === 'info' && (
                   <fieldset disabled={disableEdit} style={{ border: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '1.5rem', width: '100%' }} className="animate-fade">
                     <div className="card-panel">

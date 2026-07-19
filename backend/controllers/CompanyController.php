@@ -97,13 +97,16 @@ class CompanyController {
             INSERT INTO companies (tenant_id,owner_id,created_by,name,tax_id,industry,website,social_link,phone,email,address,ward,city,country,size,status,tags,notes,stage_id,expected_revenue,legal_representative,erp_code,sla_level,wholesale_price,vat_exempt,dedicated_rep_id,logo_url)
             VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
         ");
+        $ownerId = (isset($b['owner_id']) && $b['owner_id'] !== '' && $b['owner_id'] !== null) ? (int)$b['owner_id'] : (int)$auth['user_id'];
+        $expectedRevenue = (isset($b['expected_revenue']) && $b['expected_revenue'] !== '' && $b['expected_revenue'] !== null) ? (float)$b['expected_revenue'] : 0.00;
+
         $stmt->execute([
-            $auth['tenant_id'], $b['owner_id'] ?? $auth['user_id'], $auth['user_id'],
+            $auth['tenant_id'], $ownerId, $auth['user_id'],
             $b['name'], $b['tax_id']??null, $b['industry']??null, $b['website']??null, $b['social_link']??null,
             $b['phone']??null, $b['email']??null, $b['address']??null, $b['ward']??null, $b['city']??null,
             $b['country']??'Việt Nam', $b['size']??null, $b['status']??'prospect',
             json_encode($b['tags']??[]), $b['notes']??null, $stageId,
-            $b['expected_revenue']??0, $b['legal_representative']??null, $b['erp_code']??null,
+            $expectedRevenue, $b['legal_representative']??null, $b['erp_code']??null,
             $b['sla_level']??'standard',
             (isset($b['wholesale_price']) && $b['wholesale_price']) ? 1 : 0,
             (isset($b['vat_exempt']) && $b['vat_exempt']) ? 1 : 0,
@@ -159,6 +162,15 @@ class CompanyController {
         if (array_key_exists('vat_exempt', $b)) $b['vat_exempt'] = $b['vat_exempt'] ? 1 : 0;
         if (array_key_exists('dedicated_rep_id', $b)) {
             $b['dedicated_rep_id'] = ($b['dedicated_rep_id'] !== '' && $b['dedicated_rep_id'] !== null) ? (int)$b['dedicated_rep_id'] : null;
+        }
+        if (array_key_exists('owner_id', $b)) {
+            $b['owner_id'] = ($b['owner_id'] !== '' && $b['owner_id'] !== null) ? (int)$b['owner_id'] : null;
+        }
+        if (array_key_exists('stage_id', $b)) {
+            $b['stage_id'] = ($b['stage_id'] !== '' && $b['stage_id'] !== null) ? (int)$b['stage_id'] : null;
+        }
+        if (array_key_exists('expected_revenue', $b)) {
+            $b['expected_revenue'] = ($b['expected_revenue'] !== '' && $b['expected_revenue'] !== null) ? (float)$b['expected_revenue'] : 0.00;
         }
 
         $fields = ['owner_id','name','tax_id','industry','website','social_link','phone','email','address','ward','city','country','size','status','notes','stage_id','expected_revenue','legal_representative','erp_code','sla_level','wholesale_price','vat_exempt','dedicated_rep_id','logo_url'];

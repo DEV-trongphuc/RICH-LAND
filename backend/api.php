@@ -456,7 +456,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 $action = $_GET['action'] ?? '';
 
 // Require authentication for all endpoints except login
-$publicActions = ['login', 'login_google', 'login_google_sale', 'submit_report', 'get_report_context', 'debug_companies_db', 'test_put', 'companies/1'];
+$publicActions = ['login', 'login_google', 'login_google_sale', 'submit_report', 'get_report_context', 'debug_companies_db'];
 
 if (!in_array($action, $publicActions)) {
     $token = getBearerToken();
@@ -1631,46 +1631,8 @@ if (!function_exists('getTicketNotifyAdmins')) {
 
 switch ($action) {
     case 'debug_companies_db':
-        $res1 = $conn->query("DESCRIBE custom_field_values")->fetch_all(MYSQLI_ASSOC);
-        $res2 = $conn->query("DESCRIBE companies")->fetch_all(MYSQLI_ASSOC);
-        echo json_encode(['success' => true, 'custom_field_values' => $res1, 'companies' => $res2]);
-        exit;
-
-    case 'test_put':
-        try {
-            require_once __DIR__ . '/controllers/CompanyController.php';
-            if (!function_exists('respond')) {
-                function respond($code, $data = null, $msg = '', $success = true) {
-                    echo json_encode(['code' => $code, 'data' => $data, 'message' => $msg, 'success' => $success]);
-                    exit;
-                }
-            }
-            if (!function_exists('getBody')) {
-                function getBody() {
-                    return ['logo_url' => 'uploads/tenant_1/test_logo.png'];
-                }
-            }
-            if (!function_exists('logActivity')) {
-                function logActivity($db, $tid, $uid, $action, $res = null, $resId = null, $data = null) {}
-            }
-            if (!function_exists('logInteraction')) {
-                function logInteraction($db, $tid, $uid, $type, $title, $content, $res = null, $resId = null) {}
-            }
-            if (!function_exists('saveCustomFields')) {
-                function saveCustomFields($db, $tid, $id, $type, $fields) {}
-            }
-            if (!function_exists('getCustomFields')) {
-                function getCustomFields($db, $tid, $id, $type) { return []; }
-            }
-
-            $db = new PDO("mysql:host=" . DB_HOST . ";dbname=" . DB_NAME . ";charset=utf8mb4", DB_USER, DB_PASS);
-            $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-            $ctrl = new CompanyController($db);
-            $auth = ['tenant_id' => 1, 'user_id' => 1, 'role' => 'admin'];
-            $ctrl->update($auth, 1);
-        } catch (Exception $e) {
-            echo json_encode(['success' => false, 'error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
-        }
+        $res = $conn->query("DESCRIBE companies")->fetch_all(MYSQLI_ASSOC);
+        echo json_encode(['success' => true, 'columns' => $res]);
         exit;
 
     case 'get_zalo_send_logs':
