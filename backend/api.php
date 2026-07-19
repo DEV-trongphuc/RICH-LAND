@@ -4153,8 +4153,7 @@ switch ($action) {
                 }
             }
 
-            $dateOfWeek = (int)date('N', strtotime($date));
-            $isWeekend = ($dateOfWeek == 7 || ($dateOfWeek == 6 && $isSatOff));
+            $isWeekend = isRestDayForUser($conn, $dbUserId, $date);
 
             $tableName = 'night_shift_registrations';
             if (!empty($holidayName)) {

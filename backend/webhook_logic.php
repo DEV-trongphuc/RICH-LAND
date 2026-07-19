@@ -881,25 +881,7 @@ function hasApprovedShiftForDate($conn, $userId, $date)
     }
 
     // 2. Check if date is a rest day (weekend)
-    $dayOfWeek = (int)date('N', strtotime($date));
-    $isRestDay = false;
-    if ($dayOfWeek == 7) {
-        $isRestDay = true;
-    } else if ($dayOfWeek == 6) {
-        $stmtSched = $conn->prepare("SELECT work_schedule FROM users WHERE id = ?");
-        if ($stmtSched) {
-            $stmtSched->bind_param("i", $userId);
-            $stmtSched->execute();
-            $sRow = $stmtSched->get_result()->fetch_assoc();
-            $stmtSched->close();
-            if ($sRow && !empty($sRow['work_schedule'])) {
-                $sched = json_decode($sRow['work_schedule'], true);
-                if (isset($sched[6]) && isset($sched[6]['active']) && !(bool)$sched[6]['active']) {
-                    $isRestDay = true;
-                }
-            }
-        }
-    }
+    $isRestDay = isRestDayForUser($conn, $userId, $date);
 
     if ($isRestDay) {
         $stmt = $conn->prepare("SELECT 1 FROM weekend_shift_registrations WHERE user_id = ? AND shift_date = ? AND approved = 1 LIMIT 1");
@@ -1833,25 +1815,7 @@ function checkConsultantGates($conn, $consultantId, $lead = null)
     }
 
     // Determine if today is a rest day (weekend/off day) for this user
-    $isRestDay = false;
-    if ($dayOfWeek == 7) {
-        $isRestDay = true;
-    } else if ($dayOfWeek == 6) {
-        // Check user's schedule if Saturday is inactive
-        $stmtSched = $conn->prepare("SELECT work_schedule FROM users WHERE id = ?");
-        if ($stmtSched) {
-            $stmtSched->bind_param("i", $targetUserId);
-            $stmtSched->execute();
-            $sRow = $stmtSched->get_result()->fetch_assoc();
-            $stmtSched->close();
-            if ($sRow && !empty($sRow['work_schedule'])) {
-                $sched = json_decode($sRow['work_schedule'], true);
-                if (isset($sched[6]) && isset($sched[6]['active']) && !(bool)$sched[6]['active']) {
-                    $isRestDay = true;
-                }
-            }
-        }
-    }
+    $isRestDay = isRestDayForUser($conn, $targetUserId, $todayStr);
 
     if (!empty($holidayName)) {
         // Holiday constraint

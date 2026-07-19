@@ -52,6 +52,43 @@ if (!function_exists('get_system_setting')) {
     }
 }
 
+if (!function_exists('isRestDayForUser')) {
+    function isRestDayForUser($conn, $userId, $date) {
+        $dayOfWeek = (int)date('N', strtotime($date));
+        if ($dayOfWeek == 7) {
+            return true; // Sunday is always rest day
+        }
+        if ($dayOfWeek == 6) { // Saturday
+            // 1. Check user's individual schedule
+            $stmtSched = $conn->prepare("SELECT work_schedule FROM users WHERE id = ?");
+            if ($stmtSched) {
+                $stmtSched->bind_param("i", $userId);
+                $stmtSched->execute();
+                $sRow = $stmtSched->get_result()->fetch_assoc();
+                $stmtSched->close();
+                if ($sRow && !empty($sRow['work_schedule'])) {
+                    $sched = json_decode($sRow['work_schedule'], true);
+                    if (isset($sched[6]) && isset($sched[6]['active'])) {
+                        return !(bool)$sched[6]['active'];
+                    }
+                }
+            }
+            
+            // 2. Fallback to global work schedule
+            $resSched = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'global_work_schedule' LIMIT 1");
+            if ($resSched && $gRow = $resSched->fetch_assoc()) {
+                $schedule = json_decode($gRow['setting_value'], true);
+                if (isset($schedule["6"]) && isset($schedule["6"]["active"])) {
+                    return !(bool)$schedule["6"]["active"];
+                }
+            }
+            
+            return true; // default Saturday is off if not specified
+        }
+        return false;
+    }
+}
+
 if (!function_exists('get_lead_recall_minutes')) {
     function get_lead_recall_minutes($conn, $lastInteractionDate, $connectionRecallMins = 0) {
         $connectionRecallMins = (int)$connectionRecallMins;
