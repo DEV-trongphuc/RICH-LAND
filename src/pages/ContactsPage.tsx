@@ -1398,11 +1398,11 @@ export const ContactsPage: React.FC = () => {
                                 <p style={{ fontWeight: 700, fontSize: '0.875rem', color: 'var(--color-text)', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center' }}>
                                   {fullName}
                                   {c.dl_status === 'databank_claim' || c.source === 'databank' ? (
-                                    <span title="Khách hàng từ Databank" style={{ display: 'inline-flex', marginLeft: '6px', color: '#d97706', flexShrink: 0 }}>
+                                    <span title="Khách hàng từ Databank" style={{ display: 'inline-flex', marginLeft: '6px', color: 'var(--color-text-muted)', flexShrink: 0 }}>
                                       <Layers size={13} />
                                     </span>
                                   ) : !c.dl_status && c.source !== 'databank' ? (
-                                    <span title="Khách hàng cá nhân" style={{ display: 'inline-flex', marginLeft: '6px', color: '#3b82f6', flexShrink: 0 }}>
+                                    <span title="Khách hàng cá nhân" style={{ display: 'inline-flex', marginLeft: '6px', color: 'var(--color-text-muted)', flexShrink: 0 }}>
                                       <User size={13} />
                                     </span>
                                   ) : null}
@@ -1706,11 +1706,11 @@ export const ContactsPage: React.FC = () => {
                               <h3 style={{ fontWeight: 800, fontSize: '0.95rem', color: 'var(--color-text)', marginBottom: '2px', lineHeight: 1.2, display: 'flex', alignItems: 'center' }}>
                                 {fullName}
                                 {c.dl_status === 'databank_claim' || c.source === 'databank' ? (
-                                  <span title="Khách hàng từ Databank" style={{ display: 'inline-flex', marginLeft: '6px', color: '#d97706', flexShrink: 0 }}>
+                                  <span title="Khách hàng từ Databank" style={{ display: 'inline-flex', marginLeft: '6px', color: 'var(--color-text-muted)', flexShrink: 0 }}>
                                     <Layers size={14} />
                                   </span>
                                 ) : !c.dl_status && c.source !== 'databank' ? (
-                                  <span title="Khách hàng cá nhân" style={{ display: 'inline-flex', marginLeft: '6px', color: '#3b82f6', flexShrink: 0 }}>
+                                  <span title="Khách hàng cá nhân" style={{ display: 'inline-flex', marginLeft: '6px', color: 'var(--color-text-muted)', flexShrink: 0 }}>
                                     <User size={14} />
                                   </span>
                                 ) : null}

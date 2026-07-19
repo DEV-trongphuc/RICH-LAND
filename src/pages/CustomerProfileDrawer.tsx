@@ -3732,11 +3732,11 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                     <h3 style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--color-text)', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'flex', alignItems: 'center' }}>
                       {fullName}
                       {((formData.dl_status || contact?.dl_status) === 'databank_claim' || (formData.source || contact?.source) === 'databank') ? (
-                        <span title="Khách hàng từ Databank" style={{ display: 'inline-flex', marginLeft: '6px', color: '#d97706', flexShrink: 0 }}>
+                        <span title="Khách hàng từ Databank" style={{ display: 'inline-flex', marginLeft: '6px', color: 'var(--color-text-muted)', flexShrink: 0 }}>
                           <Layers size={13} />
                         </span>
                       ) : (!(formData.dl_status || contact?.dl_status) && (formData.source || contact?.source) !== 'databank') ? (
-                        <span title="Khách hàng cá nhân" style={{ display: 'inline-flex', marginLeft: '6px', color: '#3b82f6', flexShrink: 0 }}>
+                        <span title="Khách hàng cá nhân" style={{ display: 'inline-flex', marginLeft: '6px', color: 'var(--color-text-muted)', flexShrink: 0 }}>
                           <User size={13} />
                         </span>
                       ) : null}
@@ -3886,11 +3886,11 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                         <h2 style={{ fontSize: '1.35rem', fontWeight: 800, color: 'var(--color-text)', letterSpacing: '-0.02em', wordBreak: 'break-word', display: 'flex', alignItems: 'center', gap: '6px' }}>
                           {fullName}
                           {((formData.dl_status || contact?.dl_status) === 'databank_claim' || (formData.source || contact?.source) === 'databank') ? (
-                            <span title="Khách hàng từ Databank" style={{ display: 'inline-flex', marginLeft: '6px', color: '#d97706', flexShrink: 0 }}>
+                            <span title="Khách hàng từ Databank" style={{ display: 'inline-flex', marginLeft: '6px', color: 'var(--color-text-muted)', flexShrink: 0 }}>
                               <Layers size={15} />
                             </span>
                           ) : (!(formData.dl_status || contact?.dl_status) && (formData.source || contact?.source) !== 'databank') ? (
-                            <span title="Khách hàng cá nhân" style={{ display: 'inline-flex', marginLeft: '6px', color: '#3b82f6', flexShrink: 0 }}>
+                            <span title="Khách hàng cá nhân" style={{ display: 'inline-flex', marginLeft: '6px', color: 'var(--color-text-muted)', flexShrink: 0 }}>
                               <User size={15} />
                             </span>
                           ) : null}
