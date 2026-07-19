@@ -3524,9 +3524,65 @@ export default function ProjectsPage() {
                         </div>
                         <div>
                           <h3 style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--color-text)', margin: 0, lineHeight: 1.35, letterSpacing: '-0.01em' }}>{proj.name}</h3>
-                          <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', fontFamily: 'monospace', fontWeight: 600, display: 'inline-block', marginTop: '2px' }}>
-                            Mã: {proj.code}
-                          </span>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap', marginTop: '2px' }}>
+                            <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', fontFamily: 'monospace', fontWeight: 600 }}>
+                              Mã: {proj.code}
+                            </span>
+                            {(() => {
+                              const projManagers = parseIds(proj.manager_ids).map(id => users.find(u => Number(u.id) === Number(id))).filter(Boolean);
+                              if (projManagers.length === 0) return null;
+                              return (
+                                <div style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                                  <span style={{ fontSize: '0.7rem', color: 'var(--color-text-light)', fontWeight: 600 }}>QL:</span>
+                                  <div style={{ display: 'inline-flex', alignItems: 'center' }}>
+                                    {projManagers.map((m: any, idx) => (
+                                      <div 
+                                        key={m.id} 
+                                        style={{ 
+                                          marginLeft: idx > 0 ? '-6px' : '0', 
+                                          zIndex: 10 - idx,
+                                          position: 'relative'
+                                        }}
+                                        title={`${m.full_name || m.username} (${m.role})`}
+                                      >
+                                        {m.avatar_url || m.avatar ? (
+                                          <img 
+                                            src={m.avatar_url || m.avatar} 
+                                            alt={m.full_name} 
+                                            style={{ 
+                                              width: '20px', 
+                                              height: '20px', 
+                                              borderRadius: '50%', 
+                                              border: '1.5px solid #ffffff', 
+                                              objectFit: 'cover',
+                                              boxShadow: '0 1px 3px rgba(0,0,0,0.1)' 
+                                            }} 
+                                          />
+                                        ) : (
+                                          <div style={{ 
+                                            width: '20px', 
+                                            height: '20px', 
+                                            borderRadius: '50%', 
+                                            border: '1.5px solid #ffffff', 
+                                            background: '#f3f4f6', 
+                                            color: '#4b5563', 
+                                            display: 'flex', 
+                                            alignItems: 'center', 
+                                            justifyContent: 'center', 
+                                            fontSize: '0.55rem', 
+                                            fontWeight: 700,
+                                            boxShadow: '0 1px 3px rgba(0,0,0,0.1)' 
+                                          }}>
+                                            {(m.full_name || m.username || 'M').charAt(0).toUpperCase()}
+                                          </div>
+                                        )}
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              );
+                            })()}
+                          </div>
                         </div>
                       </div>
                       <span
@@ -3888,9 +3944,65 @@ export default function ProjectsPage() {
                             </div>
                             <div>
                               <h3 style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--color-text)', margin: 0, lineHeight: 1.35, letterSpacing: '-0.01em' }} className="line-clamp-1">{camp.name}</h3>
-                              <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', fontFamily: 'monospace', fontWeight: 600, display: 'inline-block', marginTop: '2px' }}>
-                                ID: {camp.id}
-                              </span>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap', marginTop: '2px' }}>
+                                <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', fontFamily: 'monospace', fontWeight: 600 }}>
+                                  ID: {camp.id}
+                                </span>
+                                {(() => {
+                                  const campManagers = parseIds(camp.manager_ids).map(id => users.find(u => Number(u.id) === Number(id))).filter(Boolean);
+                                  if (campManagers.length === 0) return null;
+                                  return (
+                                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                                      <span style={{ fontSize: '0.7rem', color: 'var(--color-text-light)', fontWeight: 600 }}>QL:</span>
+                                      <div style={{ display: 'inline-flex', alignItems: 'center' }}>
+                                        {campManagers.map((m: any, idx) => (
+                                          <div 
+                                            key={m.id} 
+                                            style={{ 
+                                              marginLeft: idx > 0 ? '-6px' : '0', 
+                                              zIndex: 10 - idx,
+                                              position: 'relative'
+                                            }}
+                                            title={`${m.full_name || m.username} (${m.role})`}
+                                          >
+                                            {m.avatar_url || m.avatar ? (
+                                              <img 
+                                                src={m.avatar_url || m.avatar} 
+                                                alt={m.full_name} 
+                                                style={{ 
+                                                  width: '20px', 
+                                                  height: '20px', 
+                                                  borderRadius: '50%', 
+                                                  border: '1.5px solid #ffffff', 
+                                                  objectFit: 'cover',
+                                                  boxShadow: '0 1px 3px rgba(0,0,0,0.1)' 
+                                                }} 
+                                              />
+                                            ) : (
+                                              <div style={{ 
+                                                width: '20px', 
+                                                height: '20px', 
+                                                borderRadius: '50%', 
+                                                border: '1.5px solid #ffffff', 
+                                                background: '#f3f4f6', 
+                                                color: '#4b5563', 
+                                                display: 'flex', 
+                                                alignItems: 'center', 
+                                                justifyContent: 'center', 
+                                                fontSize: '0.55rem', 
+                                                fontWeight: 700,
+                                                boxShadow: '0 1px 3px rgba(0,0,0,0.1)' 
+                                              }}>
+                                                {(m.full_name || m.username || 'M').charAt(0).toUpperCase()}
+                                              </div>
+                                            )}
+                                          </div>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  );
+                                })()}
+                              </div>
                             </div>
                           </div>
                           <span 
@@ -3921,10 +4033,42 @@ export default function ProjectsPage() {
                           </p>
                         )}
 
-                        {/* Associated project name tag preview */}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>
-                          <span style={{ color: 'var(--color-text-light)', display: 'inline-flex' }}><Building2 size={13} /></span>
-                          <span>Dự án liên kết: <strong style={{ color: 'var(--color-primary)' }}>{associatedProj ? associatedProj.name : 'Chưa liên kết'}</strong></span>
+                        {/* Rich Campaign Info List (Dates, Folder, Reference links) */}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '0.8rem', color: 'var(--color-text-muted)', borderTop: '1px dotted var(--color-border-light)', paddingTop: '8px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <span style={{ color: 'var(--color-text-light)', display: 'inline-flex' }}><Building2 size={13} /></span>
+                            <span>Dự án liên kết: <strong style={{ color: 'var(--color-primary)' }}>{associatedProj ? associatedProj.name : 'Chưa liên kết'}</strong></span>
+                          </div>
+
+                          {(camp.start_date || camp.end_date) && (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                              <span style={{ color: 'var(--color-text-light)', display: 'inline-flex' }}><Calendar size={13} /></span>
+                              <span>Thời gian: <strong>{camp.start_date || '...'}</strong> đến <strong>{camp.end_date || '...'}</strong></span>
+                            </div>
+                          )}
+
+                          {camp.folder_path && (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }} onClick={e => e.stopPropagation()}>
+                              <span style={{ color: 'var(--color-text-light)', display: 'inline-flex' }}><Folder size={13} /></span>
+                              <span>Thư mục:</span>
+                              {renderFolderPathLink(camp.folder_path, camp.project_id)}
+                            </div>
+                          )}
+
+                          {camp.reference_url && (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }} onClick={e => e.stopPropagation()}>
+                              <span style={{ color: 'var(--color-text-light)', display: 'inline-flex' }}><Link2 size={13} /></span>
+                              <span>Liên kết khác:</span>
+                              <a 
+                                href={camp.reference_url} 
+                                target="_blank" 
+                                rel="noopener noreferrer" 
+                                style={{ color: '#3b82f6', textDecoration: 'none', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                              >
+                                Mở liên kết <ExternalLink size={11} />
+                              </a>
+                            </div>
+                          )}
                         </div>
                       </div>
 
