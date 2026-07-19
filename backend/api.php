@@ -1631,8 +1631,9 @@ if (!function_exists('getTicketNotifyAdmins')) {
 
 switch ($action) {
     case 'debug_companies_db':
-        $res = $conn->query("DESCRIBE companies")->fetch_all(MYSQLI_ASSOC);
-        echo json_encode(['success' => true, 'columns' => $res]);
+        $res1 = $conn->query("DESCRIBE custom_field_values")->fetch_all(MYSQLI_ASSOC);
+        $res2 = $conn->query("DESCRIBE companies")->fetch_all(MYSQLI_ASSOC);
+        echo json_encode(['success' => true, 'custom_field_values' => $res1, 'companies' => $res2]);
         exit;
 
     case 'test_put':
