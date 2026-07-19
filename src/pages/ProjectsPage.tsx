@@ -1089,7 +1089,7 @@ export default function ProjectsPage() {
             e.currentTarget.style.borderColor = 'rgba(100, 116, 139, 0.12)';
           }}
         >
-          <HardDrive size={14} />
+          <HardDrive size={14} color="#10b981" />
           <span>Mở Google Drive</span>
         </a>
       );
@@ -1130,7 +1130,7 @@ export default function ProjectsPage() {
           e.currentTarget.style.borderColor = 'rgba(100, 116, 139, 0.12)';
         }}
       >
-        <Folder size={14} />
+        <Folder size={14} color="#f59e0b" fill="#f59e0b" />
         <span>{path}</span>
       </button>
     );
@@ -1710,7 +1710,7 @@ export default function ProjectsPage() {
                                 e.currentTarget.style.background = 'rgba(100, 116, 139, 0.05)';
                               }}
                             >
-                              <Megaphone size={14} style={{ flexShrink: 0 }} />
+                              <Megaphone size={14} color="var(--color-primary)" style={{ flexShrink: 0 }} />
                               {camp.name}
                             </span>
                           ))}
@@ -1827,7 +1827,7 @@ export default function ProjectsPage() {
                               e.currentTarget.style.background = 'var(--color-bg-light)';
                             }}
                           >
-                            <FileText size={14} style={{ flexShrink: 0 }} /> {formatFileName(fileObj.name, 40)}
+                            <FileText size={14} color="#3b82f6" style={{ flexShrink: 0 }} /> {formatFileName(fileObj.name, 40)}
                           </a>
                         );
                       })
