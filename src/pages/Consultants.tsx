@@ -158,7 +158,7 @@ const ConsultantsInner = () => {
   const activeTab = showAllTabs ? activeTabRaw : 'consultants';
 
   const [teams, setTeams] = useState<any[]>([]);
-  const [teamsLoading, setTeamsLoading] = useState(false);
+  const [teamsLoading, setTeamsLoading] = useState(true);
   const [teamModalOpen, setTeamModalOpen] = useState(false);
   const [editingTeam, setEditingTeam] = useState<any>(null);
   const [teamFormData, setTeamFormData] = useState({
@@ -974,7 +974,11 @@ const ConsultantsInner = () => {
             </div>
             <div style={{ display: 'flex', flexDirection: 'column' }}>
               <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.3px' }}>{t('Tổng TVV')}</span>
-              <span style={{ fontSize: '1.375rem', fontWeight: 700, color: 'var(--color-text)', marginTop: '1px', lineHeight: 1.1 }}>{users.length}</span>
+              {loading ? (
+                <div style={{ height: '22px', width: '36px', background: 'var(--color-border-light)', borderRadius: '4px', marginTop: '4px' }} className="animate-pulse" />
+              ) : (
+                <span style={{ fontSize: '1.375rem', fontWeight: 700, color: 'var(--color-text)', marginTop: '1px', lineHeight: 1.1 }}>{users.length}</span>
+              )}
             </div>
           </div>
 
@@ -985,7 +989,11 @@ const ConsultantsInner = () => {
             </div>
             <div style={{ display: 'flex', flexDirection: 'column' }}>
               <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.3px' }}>{t('Đang nhận Data')}</span>
-              <span style={{ fontSize: '1.375rem', fontWeight: 700, color: 'var(--color-success)', marginTop: '1px', lineHeight: 1.1 }}>{activeCount}</span>
+              {loading ? (
+                <div style={{ height: '22px', width: '36px', background: 'var(--color-border-light)', borderRadius: '4px', marginTop: '4px' }} className="animate-pulse" />
+              ) : (
+                <span style={{ fontSize: '1.375rem', fontWeight: 700, color: 'var(--color-success)', marginTop: '1px', lineHeight: 1.1 }}>{activeCount}</span>
+              )}
             </div>
           </div>
 
@@ -996,7 +1004,11 @@ const ConsultantsInner = () => {
             </div>
             <div style={{ display: 'flex', flexDirection: 'column' }}>
               <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.3px' }}>{t('Đang nghỉ phép')}</span>
-              <span style={{ fontSize: '1.375rem', fontWeight: 700, color: 'var(--color-warning)', marginTop: '1px', lineHeight: 1.1 }}>{leaveCount}</span>
+              {loading ? (
+                <div style={{ height: '22px', width: '36px', background: 'var(--color-border-light)', borderRadius: '4px', marginTop: '4px' }} className="animate-pulse" />
+              ) : (
+                <span style={{ fontSize: '1.375rem', fontWeight: 700, color: 'var(--color-warning)', marginTop: '1px', lineHeight: 1.1 }}>{leaveCount}</span>
+              )}
             </div>
           </div>
 
@@ -1007,7 +1019,11 @@ const ConsultantsInner = () => {
             </div>
             <div style={{ display: 'flex', flexDirection: 'column' }}>
               <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.3px' }}>{t('Ngừng hoạt động')}</span>
-              <span style={{ fontSize: '1.375rem', fontWeight: 700, color: 'var(--color-danger)', marginTop: '1px', lineHeight: 1.1 }}>{inactiveCount}</span>
+              {loading ? (
+                <div style={{ height: '22px', width: '36px', background: 'var(--color-border-light)', borderRadius: '4px', marginTop: '4px' }} className="animate-pulse" />
+              ) : (
+                <span style={{ fontSize: '1.375rem', fontWeight: 700, color: 'var(--color-danger)', marginTop: '1px', lineHeight: 1.1 }}>{inactiveCount}</span>
+              )}
             </div>
           </div>
         </div>
@@ -1678,9 +1694,45 @@ const ConsultantsInner = () => {
                           <span>{t('Dự án trọng điểm')}:</span>
                         </div>
                         {team.focus_project ? (
-                          <span className="badge success sm" style={{ fontWeight: 700, fontSize: '0.7rem' }}>
-                            {team.focus_project}
-                          </span>
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', justifyContent: 'flex-end', maxWidth: '70%' }}>
+                            {team.focus_project.split(',').map((p: string) => p.trim()).filter(Boolean).map((projName: string) => {
+                              const projObj = projects.find((p: any) => p.name === projName);
+                              return (
+                                <span 
+                                  key={projName} 
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    if (projObj) {
+                                      navigate(`/projects?project_id=${projObj.id}`);
+                                    } else {
+                                      navigate('/projects');
+                                    }
+                                  }}
+                                  className="badge sm" 
+                                  style={{ 
+                                    fontWeight: 700, 
+                                    fontSize: '0.7rem',
+                                    background: 'var(--color-bg-alt)',
+                                    color: 'var(--color-text-muted)',
+                                    border: '1px solid var(--color-border-light)',
+                                    cursor: 'pointer',
+                                    transition: 'all 0.2s',
+                                    userSelect: 'none'
+                                  }}
+                                  onMouseEnter={e => {
+                                    e.currentTarget.style.background = 'var(--color-border-light)';
+                                    e.currentTarget.style.color = 'var(--color-text)';
+                                  }}
+                                  onMouseLeave={e => {
+                                    e.currentTarget.style.background = 'var(--color-bg-alt)';
+                                    e.currentTarget.style.color = 'var(--color-text-muted)';
+                                  }}
+                                >
+                                  {projName}
+                                </span>
+                              );
+                            })}
+                          </div>
                         ) : (
                           <span style={{ color: 'var(--color-text-muted)', fontStyle: 'italic' }}>{t('Chưa gán')}</span>
                         )}
@@ -1792,7 +1844,17 @@ const ConsultantsInner = () => {
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', width: '100%', textAlign: 'left' }}>
-          {(() => {
+          {teamsLoading ? (
+            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, 1fr)', gap: isMobile ? '1rem' : '1.5rem', padding: '0.25rem' }}>
+              {[...Array(3)].map((_, i) => (
+                <div key={i} className="card animate-pulse" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem', minHeight: '200px' }}>
+                  <div style={{ height: '24px', width: '65%', background: 'var(--color-border-light)', borderRadius: '4px' }} />
+                  <div style={{ height: '16px', width: '45%', background: 'var(--color-border-light)', borderRadius: '4px' }} />
+                  <div style={{ height: '40px', width: '100%', background: 'var(--color-border-light)', borderRadius: '8px', marginTop: 'auto' }} />
+                </div>
+              ))}
+            </div>
+          ) : (() => {
             const branchMap: Record<string, any[]> = {};
             teams.forEach(team => {
               const fullAddress = team.branch || '';
