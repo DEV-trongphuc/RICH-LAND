@@ -1208,7 +1208,7 @@ export default function ProjectsPage() {
               <div className="responsive-grid-4" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.75rem', marginBottom: '0.5rem' }}>
                 {/* 1. Tổng Khách Hàng */}
                 <div 
-                  className="stat-card" 
+                  className="stat-card hover-lift" 
                   onClick={user && ['admin', 'superadmin', 'super_admin', 'director'].includes(user.role) ? () => {
                     if (editingProject?.id) {
                       navigate(`/contacts?project_id=${editingProject.id}`);
@@ -1221,74 +1221,130 @@ export default function ProjectsPage() {
                     background: 'var(--color-surface)', 
                     border: '1px solid var(--color-border-light)', 
                     borderRadius: '12px', 
-                    boxShadow: '0 4px 20px rgba(0,0,0,0.02)',
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.02)',
                     cursor: user && ['admin', 'superadmin', 'super_admin', 'director'].includes(user.role) ? 'pointer' : 'default',
-                    transition: 'all 0.2s ease'
+                    transition: 'all 0.2s ease',
+                    position: 'relative',
+                    overflow: 'hidden'
                   }}
-                  onMouseEnter={user && ['admin', 'superadmin', 'super_admin', 'director'].includes(user.role) ? e => {
-                    e.currentTarget.style.transform = 'translateY(-2px)';
-                    e.currentTarget.style.boxShadow = '0 6px 24px rgba(0,0,0,0.04)';
-                    e.currentTarget.style.borderColor = 'var(--color-primary-light)';
-                  } : undefined}
-                  onMouseLeave={user && ['admin', 'superadmin', 'super_admin', 'director'].includes(user.role) ? e => {
-                    e.currentTarget.style.transform = 'none';
-                    e.currentTarget.style.boxShadow = '0 4px 20px rgba(0,0,0,0.02)';
-                    e.currentTarget.style.borderColor = 'var(--color-border-light)';
-                  } : undefined}
                 >
+                  <div className="decor-svg" style={{ color: '#ef4444' }}>
+                    <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: '100%', height: '100%' }}>
+                      <path d="M50 45 C 58 45, 65 38, 65 30 C 65 22, 58 15, 50 15 C 42 15, 35 22, 35 30 C 35 38, 42 45, 50 45 Z" stroke="currentColor" strokeWidth="2" />
+                      <path d="M20 80 C 20 65, 33 55, 50 55 C 67 55, 80 65, 80 80" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                    </svg>
+                  </div>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-                    <span className="stat-label" style={{ fontSize: '0.6875rem', fontWeight: 600, color: 'var(--color-text-muted)', opacity: 0.85, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Tổng Khách Hàng</span>
-                    <div style={{ width: '28px', height: '28px', borderRadius: '8px', background: 'rgba(100, 116, 139, 0.08)', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Users size={14} /></div>
+                    <span className="stat-label" style={{ fontSize: '0.6875rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Tổng Khách Hàng</span>
+                    <div className="stat-icon" style={{ width: '28px', height: '28px', borderRadius: '8px', background: 'rgba(239, 68, 68, 0.08)', color: '#ef4444', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Users size={14} /></div>
                   </div>
                   <div>
-                    <div className="stat-value" style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--color-text)', lineHeight: 1 }}>
+                    <div className="stat-value" style={{ fontSize: '1.35rem', fontWeight: 800, color: 'var(--color-text)', lineHeight: 1 }}>
                       {projectStats.total_leads}
                     </div>
-                    <div style={{ fontSize: '0.6875rem', color: 'var(--color-text-light)', marginTop: '4px', fontWeight: 550 }}>Khách hàng tiềm năng</div>
+                    <div className="stat-desc" style={{ fontSize: '0.6875rem', color: 'var(--color-text-light)', marginTop: '4px', fontWeight: 550 }}>Khách hàng tiềm năng</div>
                   </div>
                 </div>
 
                 {/* 2. Cơ Hội Bán Hàng */}
-                <div className="stat-card" style={{ display: 'flex', flexDirection: 'column', padding: '0.75rem 1rem', background: 'var(--color-surface)', border: '1px solid var(--color-border-light)', borderRadius: '12px', boxShadow: '0 4px 20px rgba(0,0,0,0.02)' }}>
+                <div 
+                  className="stat-card hover-lift" 
+                  style={{ 
+                    display: 'flex', 
+                    flexDirection: 'column', 
+                    padding: '0.75rem 1rem', 
+                    background: 'var(--color-surface)', 
+                    border: '1px solid var(--color-border-light)', 
+                    borderRadius: '12px', 
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.02)',
+                    position: 'relative',
+                    overflow: 'hidden'
+                  }}
+                >
+                  <div className="decor-svg" style={{ color: '#3b82f6' }}>
+                    <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: '100%', height: '100%' }}>
+                      <path d="M50 20 L 80 35 L 50 50 L 20 35 Z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
+                      <path d="M20 50 L 50 65 L 80 50" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                      <path d="M20 65 L 50 80 L 80 65" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  </div>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-                    <span className="stat-label" style={{ fontSize: '0.6875rem', fontWeight: 600, color: 'var(--color-text-muted)', opacity: 0.85, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Cơ Hội Bán Hàng</span>
-                    <div style={{ width: '28px', height: '28px', borderRadius: '8px', background: 'rgba(100, 116, 139, 0.08)', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Layers size={14} /></div>
+                    <span className="stat-label" style={{ fontSize: '0.6875rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Cơ Hội Bán Hàng</span>
+                    <div className="stat-icon" style={{ width: '28px', height: '28px', borderRadius: '8px', background: 'rgba(59, 130, 246, 0.08)', color: '#3b82f6', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Layers size={14} /></div>
                   </div>
                   <div>
-                    <div className="stat-value" style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--color-text)', lineHeight: 1 }}>
+                    <div className="stat-value" style={{ fontSize: '1.35rem', fontWeight: 800, color: 'var(--color-text)', lineHeight: 1 }}>
                       {projectStats.total_deals}
                     </div>
-                    <div style={{ fontSize: '0.6875rem', color: 'var(--color-text-light)', marginTop: '4px', fontWeight: 550 }}>Cơ cơ hội giao dịch</div>
+                    <div className="stat-desc" style={{ fontSize: '0.6875rem', color: 'var(--color-text-light)', marginTop: '4px', fontWeight: 550 }}>Cơ cơ hội giao dịch</div>
                   </div>
                 </div>
 
                 {/* 3. Doanh Thu */}
-                <div className="stat-card" style={{ display: 'flex', flexDirection: 'column', padding: '0.75rem 1rem', background: 'var(--color-surface)', border: '1px solid var(--color-border-light)', borderRadius: '12px', boxShadow: '0 4px 20px rgba(0,0,0,0.02)' }}>
+                <div 
+                  className="stat-card hover-lift" 
+                  style={{ 
+                    display: 'flex', 
+                    flexDirection: 'column', 
+                    padding: '0.75rem 1rem', 
+                    background: 'var(--color-surface)', 
+                    border: '1px solid var(--color-border-light)', 
+                    borderRadius: '12px', 
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.02)',
+                    position: 'relative',
+                    overflow: 'hidden'
+                  }}
+                >
+                  <div className="decor-svg" style={{ color: '#10b981' }}>
+                    <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: '100%', height: '100%' }}>
+                      <rect x="25" y="20" width="50" height="60" rx="4" stroke="currentColor" strokeWidth="2" />
+                      <path d="M35 35 H 45 M 55 35 H 65 M 35 50 H 45 M 55 50 H 65 M 35 65 H 45 M 55 65 H 65" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                    </svg>
+                  </div>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-                    <span className="stat-label" style={{ fontSize: '0.6875rem', fontWeight: 600, color: 'var(--color-text-muted)', opacity: 0.85, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Doanh Thu</span>
-                    <div style={{ width: '28px', height: '28px', borderRadius: '8px', background: 'rgba(100, 116, 139, 0.08)', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Building2 size={14} /></div>
+                    <span className="stat-label" style={{ fontSize: '0.6875rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Doanh Thu</span>
+                    <div className="stat-icon" style={{ width: '28px', height: '28px', borderRadius: '8px', background: 'rgba(16, 185, 129, 0.08)', color: '#10b981', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Building2 size={14} /></div>
                   </div>
                   <div>
-                    <div className="stat-value" style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--color-text)', lineHeight: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={projectStats.actual_revenue.toLocaleString('vi-VN') + ' VND'}>
+                    <div className="stat-value" style={{ fontSize: '1.35rem', fontWeight: 800, color: 'var(--color-text)', lineHeight: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={projectStats.actual_revenue.toLocaleString('vi-VN') + ' VND'}>
                       {projectStats.actual_revenue >= 1000000000 
                         ? `${(projectStats.actual_revenue / 1000000000).toFixed(2)} tỷ` 
                         : `${(projectStats.actual_revenue / 1000000).toFixed(0)} triệu`}
                     </div>
-                    <div style={{ fontSize: '0.6875rem', color: 'var(--color-text-light)', marginTop: '4px', fontWeight: 550 }}>Từ hóa đơn thực tế</div>
+                    <div className="stat-desc" style={{ fontSize: '0.6875rem', color: 'var(--color-text-light)', marginTop: '4px', fontWeight: 550 }}>Từ hóa đơn thực tế</div>
                   </div>
                 </div>
 
                 {/* 4. Tỷ Lệ Chốt */}
-                <div className="stat-card" style={{ display: 'flex', flexDirection: 'column', padding: '0.75rem 1rem', background: 'var(--color-surface)', border: '1px solid var(--color-border-light)', borderRadius: '12px', boxShadow: '0 4px 20px rgba(0,0,0,0.02)' }}>
+                <div 
+                  className="stat-card hover-lift" 
+                  style={{ 
+                    display: 'flex', 
+                    flexDirection: 'column', 
+                    padding: '0.75rem 1rem', 
+                    background: 'var(--color-surface)', 
+                    border: '1px solid var(--color-border-light)', 
+                    borderRadius: '12px', 
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.02)',
+                    position: 'relative',
+                    overflow: 'hidden'
+                  }}
+                >
+                  <div className="decor-svg" style={{ color: '#f59e0b' }}>
+                    <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: '100%', height: '100%' }}>
+                      <rect x="25" y="25" width="50" height="50" rx="6" stroke="currentColor" strokeWidth="2" />
+                      <path d="M40 50 L 47 57 L 62 42" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  </div>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-                    <span className="stat-label" style={{ fontSize: '0.6875rem', fontWeight: 600, color: 'var(--color-text-muted)', opacity: 0.85, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Tỷ Lệ Chốt</span>
-                    <div style={{ width: '28px', height: '28px', borderRadius: '8px', background: 'rgba(100, 116, 139, 0.08)', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><CheckSquare size={14} /></div>
+                    <span className="stat-label" style={{ fontSize: '0.6875rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Tỷ Lệ Chốt</span>
+                    <div className="stat-icon" style={{ width: '28px', height: '28px', borderRadius: '8px', background: 'rgba(245, 158, 11, 0.08)', color: '#f59e0b', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><CheckSquare size={14} /></div>
                   </div>
                   <div>
-                    <div className="stat-value" style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--color-text)', lineHeight: 1 }}>
+                    <div className="stat-value" style={{ fontSize: '1.35rem', fontWeight: 800, color: 'var(--color-text)', lineHeight: 1 }}>
                       {projectStats.win_rate}%
                     </div>
-                    <div style={{ fontSize: '0.6875rem', color: 'var(--color-text-light)', marginTop: '4px', fontWeight: 550 }}>Tỷ lệ giao dịch thành công</div>
+                    <div className="stat-desc" style={{ fontSize: '0.6875rem', color: 'var(--color-text-light)', marginTop: '4px', fontWeight: 550 }}>Tỷ lệ giao dịch thành công</div>
                   </div>
                 </div>
               </div>
@@ -2159,7 +2215,7 @@ export default function ProjectsPage() {
               <div className="responsive-grid-4" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.75rem', marginBottom: '1.25rem' }}>
                 {/* 1. Tổng Khách Hàng */}
                 <div 
-                  className="stat-card" 
+                  className="stat-card hover-lift" 
                   onClick={user && ['admin', 'superadmin', 'super_admin', 'director'].includes(user.role) ? () => {
                     if (editingCampaign?.id) {
                       navigate(`/contacts?campaign_id=${editingCampaign.id}`);
@@ -2172,74 +2228,130 @@ export default function ProjectsPage() {
                     background: 'var(--color-surface)', 
                     border: '1px solid var(--color-border-light)', 
                     borderRadius: '12px', 
-                    boxShadow: '0 4px 20px rgba(0,0,0,0.02)',
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.02)',
                     cursor: user && ['admin', 'superadmin', 'super_admin', 'director'].includes(user.role) ? 'pointer' : 'default',
-                    transition: 'all 0.2s ease'
+                    transition: 'all 0.2s ease',
+                    position: 'relative',
+                    overflow: 'hidden'
                   }}
-                  onMouseEnter={user && ['admin', 'superadmin', 'super_admin', 'director'].includes(user.role) ? e => {
-                    e.currentTarget.style.transform = 'translateY(-2px)';
-                    e.currentTarget.style.boxShadow = '0 6px 24px rgba(0,0,0,0.04)';
-                    e.currentTarget.style.borderColor = 'var(--color-primary-light)';
-                  } : undefined}
-                  onMouseLeave={user && ['admin', 'superadmin', 'super_admin', 'director'].includes(user.role) ? e => {
-                    e.currentTarget.style.transform = 'none';
-                    e.currentTarget.style.boxShadow = '0 4px 20px rgba(0,0,0,0.02)';
-                    e.currentTarget.style.borderColor = 'var(--color-border-light)';
-                  } : undefined}
                 >
+                  <div className="decor-svg" style={{ color: '#ef4444' }}>
+                    <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: '100%', height: '100%' }}>
+                      <path d="M50 45 C 58 45, 65 38, 65 30 C 65 22, 58 15, 50 15 C 42 15, 35 22, 35 30 C 35 38, 42 45, 50 45 Z" stroke="currentColor" strokeWidth="2" />
+                      <path d="M20 80 C 20 65, 33 55, 50 55 C 67 55, 80 65, 80 80" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                    </svg>
+                  </div>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-                    <span className="stat-label" style={{ fontSize: '0.6875rem', fontWeight: 600, color: 'var(--color-text-muted)', opacity: 0.85, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Tổng Khách Hàng</span>
-                    <div style={{ width: '28px', height: '28px', borderRadius: '8px', background: 'rgba(100, 116, 139, 0.08)', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Users size={14} /></div>
+                    <span className="stat-label" style={{ fontSize: '0.6875rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Tổng Khách Hàng</span>
+                    <div className="stat-icon" style={{ width: '28px', height: '28px', borderRadius: '8px', background: 'rgba(239, 68, 68, 0.08)', color: '#ef4444', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Users size={14} /></div>
                   </div>
                   <div>
-                    <div className="stat-value" style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--color-text)', lineHeight: 1 }}>
+                    <div className="stat-value" style={{ fontSize: '1.35rem', fontWeight: 800, color: 'var(--color-text)', lineHeight: 1 }}>
                       {campaignStats.total_leads}
                     </div>
-                    <div style={{ fontSize: '0.6875rem', color: 'var(--color-text-light)', marginTop: '4px', fontWeight: 550 }}>Khách hàng tiềm năng</div>
+                    <div className="stat-desc" style={{ fontSize: '0.6875rem', color: 'var(--color-text-light)', marginTop: '4px', fontWeight: 550 }}>Khách hàng tiềm năng</div>
                   </div>
                 </div>
 
                 {/* 2. Cơ Hội Bán Hàng */}
-                <div className="stat-card" style={{ display: 'flex', flexDirection: 'column', padding: '0.75rem 1rem', background: 'var(--color-surface)', border: '1px solid var(--color-border-light)', borderRadius: '12px', boxShadow: '0 4px 20px rgba(0,0,0,0.02)' }}>
+                <div 
+                  className="stat-card hover-lift" 
+                  style={{ 
+                    display: 'flex', 
+                    flexDirection: 'column', 
+                    padding: '0.75rem 1rem', 
+                    background: 'var(--color-surface)', 
+                    border: '1px solid var(--color-border-light)', 
+                    borderRadius: '12px', 
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.02)',
+                    position: 'relative',
+                    overflow: 'hidden'
+                  }}
+                >
+                  <div className="decor-svg" style={{ color: '#3b82f6' }}>
+                    <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: '100%', height: '100%' }}>
+                      <path d="M50 20 L 80 35 L 50 50 L 20 35 Z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
+                      <path d="M20 50 L 50 65 L 80 50" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                      <path d="M20 65 L 50 80 L 80 65" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  </div>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-                    <span className="stat-label" style={{ fontSize: '0.6875rem', fontWeight: 600, color: 'var(--color-text-muted)', opacity: 0.85, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Cơ Hội Bán Hàng</span>
-                    <div style={{ width: '28px', height: '28px', borderRadius: '8px', background: 'rgba(100, 116, 139, 0.08)', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Layers size={14} /></div>
+                    <span className="stat-label" style={{ fontSize: '0.6875rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Cơ Hội Bán Hàng</span>
+                    <div className="stat-icon" style={{ width: '28px', height: '28px', borderRadius: '8px', background: 'rgba(59, 130, 246, 0.08)', color: '#3b82f6', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Layers size={14} /></div>
                   </div>
                   <div>
-                    <div className="stat-value" style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--color-text)', lineHeight: 1 }}>
+                    <div className="stat-value" style={{ fontSize: '1.35rem', fontWeight: 800, color: 'var(--color-text)', lineHeight: 1 }}>
                       {campaignStats.converted_leads}
                     </div>
-                    <div style={{ fontSize: '0.6875rem', color: 'var(--color-text-light)', marginTop: '4px', fontWeight: 550 }}>Cơ hội giao dịch</div>
+                    <div className="stat-desc" style={{ fontSize: '0.6875rem', color: 'var(--color-text-light)', marginTop: '4px', fontWeight: 550 }}>Cơ hội giao dịch</div>
                   </div>
                 </div>
 
                 {/* 3. Doanh Thu */}
-                <div className="stat-card" style={{ display: 'flex', flexDirection: 'column', padding: '0.75rem 1rem', background: 'var(--color-surface)', border: '1px solid var(--color-border-light)', borderRadius: '12px', boxShadow: '0 4px 20px rgba(0,0,0,0.02)' }}>
+                <div 
+                  className="stat-card hover-lift" 
+                  style={{ 
+                    display: 'flex', 
+                    flexDirection: 'column', 
+                    padding: '0.75rem 1rem', 
+                    background: 'var(--color-surface)', 
+                    border: '1px solid var(--color-border-light)', 
+                    borderRadius: '12px', 
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.02)',
+                    position: 'relative',
+                    overflow: 'hidden'
+                  }}
+                >
+                  <div className="decor-svg" style={{ color: '#10b981' }}>
+                    <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: '100%', height: '100%' }}>
+                      <rect x="25" y="20" width="50" height="60" rx="4" stroke="currentColor" strokeWidth="2" />
+                      <path d="M35 35 H 45 M 55 35 H 65 M 35 50 H 45 M 55 50 H 65 M 35 65 H 45 M 55 65 H 65" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                    </svg>
+                  </div>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-                    <span className="stat-label" style={{ fontSize: '0.6875rem', fontWeight: 600, color: 'var(--color-text-muted)', opacity: 0.85, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Doanh Thu</span>
-                    <div style={{ width: '28px', height: '28px', borderRadius: '8px', background: 'rgba(100, 116, 139, 0.08)', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Building2 size={14} /></div>
+                    <span className="stat-label" style={{ fontSize: '0.6875rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Doanh Thu</span>
+                    <div className="stat-icon" style={{ width: '28px', height: '28px', borderRadius: '8px', background: 'rgba(16, 185, 129, 0.08)', color: '#10b981', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Building2 size={14} /></div>
                   </div>
                   <div>
-                    <div className="stat-value" style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--color-text)', lineHeight: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={campaignStats.actual_revenue.toLocaleString('vi-VN') + ' VND'}>
+                    <div className="stat-value" style={{ fontSize: '1.35rem', fontWeight: 800, color: 'var(--color-text)', lineHeight: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={campaignStats.actual_revenue.toLocaleString('vi-VN') + ' VND'}>
                       {campaignStats.actual_revenue >= 1000000000 
                         ? `${(campaignStats.actual_revenue / 1000000000).toFixed(2)} tỷ` 
                         : `${(campaignStats.actual_revenue / 1000000).toFixed(0)} triệu`}
                     </div>
-                    <div style={{ fontSize: '0.6875rem', color: 'var(--color-text-light)', marginTop: '4px', fontWeight: 550 }}>Từ hóa đơn thực tế</div>
+                    <div className="stat-desc" style={{ fontSize: '0.6875rem', color: 'var(--color-text-light)', marginTop: '4px', fontWeight: 550 }}>Từ hóa đơn thực tế</div>
                   </div>
                 </div>
 
                 {/* 4. Tỷ Lệ Chốt */}
-                <div className="stat-card" style={{ display: 'flex', flexDirection: 'column', padding: '0.75rem 1rem', background: 'var(--color-surface)', border: '1px solid var(--color-border-light)', borderRadius: '12px', boxShadow: '0 4px 20px rgba(0,0,0,0.02)' }}>
+                <div 
+                  className="stat-card hover-lift" 
+                  style={{ 
+                    display: 'flex', 
+                    flexDirection: 'column', 
+                    padding: '0.75rem 1rem', 
+                    background: 'var(--color-surface)', 
+                    border: '1px solid var(--color-border-light)', 
+                    borderRadius: '12px', 
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.02)',
+                    position: 'relative',
+                    overflow: 'hidden'
+                  }}
+                >
+                  <div className="decor-svg" style={{ color: '#f59e0b' }}>
+                    <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: '100%', height: '100%' }}>
+                      <rect x="25" y="25" width="50" height="50" rx="6" stroke="currentColor" strokeWidth="2" />
+                      <path d="M40 50 L 47 57 L 62 42" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  </div>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-                    <span className="stat-label" style={{ fontSize: '0.6875rem', fontWeight: 600, color: 'var(--color-text-muted)', opacity: 0.85, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Tỷ Lệ Chốt</span>
-                    <div style={{ width: '28px', height: '28px', borderRadius: '8px', background: 'rgba(100, 116, 139, 0.08)', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><CheckSquare size={14} /></div>
+                    <span className="stat-label" style={{ fontSize: '0.6875rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Tỷ Lệ Chốt</span>
+                    <div className="stat-icon" style={{ width: '28px', height: '28px', borderRadius: '8px', background: 'rgba(245, 158, 11, 0.08)', color: '#f59e0b', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><CheckSquare size={14} /></div>
                   </div>
                   <div>
-                    <div className="stat-value" style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--color-text)', lineHeight: 1 }}>
+                    <div className="stat-value" style={{ fontSize: '1.35rem', fontWeight: 800, color: 'var(--color-text)', lineHeight: 1 }}>
                       {campaignStats.conversion_rate}%
                     </div>
-                    <div style={{ fontSize: '0.6875rem', color: 'var(--color-text-light)', marginTop: '4px', fontWeight: 550 }}>Tỷ lệ giao dịch thành công</div>
+                    <div className="stat-desc" style={{ fontSize: '0.6875rem', color: 'var(--color-text-light)', marginTop: '4px', fontWeight: 550 }}>Tỷ lệ giao dịch thành công</div>
                   </div>
                 </div>
               </div>
