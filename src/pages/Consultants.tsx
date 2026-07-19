@@ -291,7 +291,11 @@ const ConsultantsInner = () => {
   const fetchProjects = async () => {
     try {
       const json = await fetchAPI('projects');
-      if (json && Array.isArray(json)) setProjects(json);
+      if (json && json.success && Array.isArray(json.data)) {
+        setProjects(json.data);
+      } else if (json && Array.isArray(json)) {
+        setProjects(json);
+      }
     } catch (e: any) {
       console.error('Failed to fetch projects:', e);
     }
