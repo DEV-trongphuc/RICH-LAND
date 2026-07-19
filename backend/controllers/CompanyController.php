@@ -206,18 +206,22 @@ class CompanyController {
             }
         }
 
-        if ($sets) {
-            $params[]=$id; $params[]=$auth['tenant_id'];
-            $stmt = $this->db->prepare("UPDATE companies SET ".implode(',',$sets)." WHERE id=? AND tenant_id=?");
-            $stmt->execute($params);
+        try {
+            if ($sets) {
+                $params[]=$id; $params[]=$auth['tenant_id'];
+                $stmt = $this->db->prepare("UPDATE companies SET ".implode(',',$sets)." WHERE id=? AND tenant_id=?");
+                $stmt->execute($params);
+            }
+            
+            if (isset($b['custom_fields']) && is_array($b['custom_fields'])) {
+                saveCustomFields($this->db, $auth['tenant_id'], $id, 'company', $b['custom_fields']);
+            }
+            
+            logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'UPDATE', 'company', $id, json_encode(['name' => $oldCompany['name']]));
+            $this->show($auth, $id);
+        } catch (Exception $e) {
+            respond(500, null, "Exception: " . $e->getMessage() . " at " . $e->getFile() . ":" . $e->getLine(), false);
         }
-        
-        if (isset($b['custom_fields']) && is_array($b['custom_fields'])) {
-            saveCustomFields($this->db, $auth['tenant_id'], $id, 'company', $b['custom_fields']);
-        }
-        
-        logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'UPDATE', 'company', $id, json_encode(['name' => $oldCompany['name']]));
-        $this->show($auth, $id);
     }
 
     public function moveStage(array $auth, int $id): void {
