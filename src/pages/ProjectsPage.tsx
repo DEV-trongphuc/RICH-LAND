@@ -3543,39 +3543,9 @@ export default function ProjectsPage() {
                         </div>
                         <div>
                           <h3 style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--color-text)', margin: 0, lineHeight: 1.35, letterSpacing: '-0.01em' }}>{proj.name}</h3>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap', marginTop: '2px' }}>
-                            <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', fontFamily: 'monospace', fontWeight: 600 }}>
-                              Mã: {proj.code}
-                            </span>
-                            {(() => {
-                              const projManagers = parseIds(proj.manager_ids).map(id => users.find(u => Number(u.id) === Number(id))).filter(Boolean);
-                              if (projManagers.length === 0) return null;
-                              return (
-                                <div style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                                  <span style={{ fontSize: '0.7rem', color: 'var(--color-text-light)', fontWeight: 600 }}>QL:</span>
-                                  <div style={{ display: 'inline-flex', alignItems: 'center' }}>
-                                    {projManagers.map((m: any, idx) => (
-                                      <div 
-                                        key={m.id} 
-                                        style={{ 
-                                          marginLeft: idx > 0 ? '-6px' : '0', 
-                                          zIndex: 10 - idx,
-                                          position: 'relative'
-                                        }}
-                                        title={`${m.full_name || m.username} (${m.role})`}
-                                      >
-                                        <Avatar 
-                                          src={m.avatar_url || m.avatar} 
-                                          name={m.full_name || m.username} 
-                                          size={20} 
-                                        />
-                                      </div>
-                                    ))}
-                                  </div>
-                                </div>
-                              );
-                            })()}
-                          </div>
+                          <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', fontFamily: 'monospace', fontWeight: 600, display: 'inline-block', marginTop: '2px' }}>
+                            Mã: {proj.code}
+                          </span>
                         </div>
                       </div>
                       <span
@@ -3709,6 +3679,38 @@ export default function ProjectsPage() {
                         );
                       })()}
                     </div>
+                    {/* Project Managers Row with Overlapping Avatars and Text */}
+                    {(() => {
+                      const projManagers = parseIds(proj.manager_ids).map(id => users.find(u => Number(u.id) === Number(id))).filter(Boolean);
+                      if (projManagers.length === 0) return null;
+                      return (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '12px', padding: '6px 12px', background: 'rgba(100, 116, 139, 0.05)', border: '1px solid rgba(100, 116, 139, 0.12)', borderRadius: '100px', width: 'fit-content' }}>
+                          <span style={{ color: 'var(--color-text-light)', display: 'inline-flex' }}><Users size={12} /></span>
+                          <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>Quản lý:</span>
+                          <div style={{ display: 'inline-flex', alignItems: 'center' }}>
+                            {projManagers.map((m: any, idx) => (
+                              <div 
+                                key={m.id} 
+                                style={{ 
+                                  marginLeft: idx > 0 ? '-6px' : '0', 
+                                  zIndex: 10 - idx,
+                                  position: 'relative'
+                                }}
+                              >
+                                <Avatar src={m.avatar_url || m.avatar} name={m.full_name || m.username} size={18} />
+                              </div>
+                            ))}
+                          </div>
+                          <span style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--color-text)' }}>
+                            {projManagers.length === 1 ? (
+                              projManagers[0].full_name || projManagers[0].username
+                            ) : (
+                              `${projManagers[0].full_name || projManagers[0].username} và +${projManagers.length - 1} người khác`
+                            )}
+                          </span>
+                        </div>
+                      );
+                    })()}
                     {/* Last updated timestamp */}
                     <div style={{ fontSize: '0.7rem', color: 'var(--color-text-light)', marginTop: '8px', display: 'flex', alignItems: 'center', gap: '4px' }}>
                       <span style={{ display: 'inline-flex', opacity: 0.6 }}><RefreshCw size={10} /></span>
@@ -3942,39 +3944,9 @@ export default function ProjectsPage() {
                             </div>
                             <div>
                               <h3 style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--color-text)', margin: 0, lineHeight: 1.35, letterSpacing: '-0.01em' }} className="line-clamp-1">{camp.name}</h3>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap', marginTop: '2px' }}>
-                                <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', fontFamily: 'monospace', fontWeight: 600 }}>
-                                  ID: {camp.id}
-                                </span>
-                                {(() => {
-                                  const campManagers = parseIds(camp.manager_ids).map(id => users.find(u => Number(u.id) === Number(id))).filter(Boolean);
-                                  if (campManagers.length === 0) return null;
-                                  return (
-                                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                                      <span style={{ fontSize: '0.7rem', color: 'var(--color-text-light)', fontWeight: 600 }}>QL:</span>
-                                      <div style={{ display: 'inline-flex', alignItems: 'center' }}>
-                                        {campManagers.map((m: any, idx) => (
-                                          <div 
-                                            key={m.id} 
-                                            style={{ 
-                                              marginLeft: idx > 0 ? '-6px' : '0', 
-                                              zIndex: 10 - idx,
-                                              position: 'relative'
-                                            }}
-                                            title={`${m.full_name || m.username} (${m.role})`}
-                                          >
-                                            <Avatar 
-                                              src={m.avatar_url || m.avatar} 
-                                              name={m.full_name || m.username} 
-                                              size={20} 
-                                            />
-                                          </div>
-                                        ))}
-                                      </div>
-                                    </div>
-                                  );
-                                })()}
-                              </div>
+                              <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', fontFamily: 'monospace', fontWeight: 600, display: 'inline-block', marginTop: '2px' }}>
+                                ID: {camp.id}
+                              </span>
                             </div>
                           </div>
                           <span 
@@ -4005,7 +3977,7 @@ export default function ProjectsPage() {
                           </p>
                         )}
 
-                        {/* Rich Campaign Info List (Dates, Folder, Reference links) */}
+                        {/* Rich Campaign Info List (Dates, Project, Managers) */}
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '0.8rem', color: 'var(--color-text-muted)', borderTop: '1px dotted var(--color-border-light)', paddingTop: '8px' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                             <span style={{ color: 'var(--color-text-light)', display: 'inline-flex' }}><Building2 size={13} /></span>
@@ -4018,6 +3990,39 @@ export default function ProjectsPage() {
                               <span>Thời gian: <strong>{camp.start_date || '...'}</strong> đến <strong>{camp.end_date || '...'}</strong></span>
                             </div>
                           )}
+
+                          {/* Campaign Managers Row with Overlapping Avatars and Text */}
+                          {(() => {
+                            const campManagers = parseIds(camp.manager_ids).map(id => users.find(u => Number(u.id) === Number(id))).filter(Boolean);
+                            if (campManagers.length === 0) return null;
+                            return (
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '12px', padding: '6px 12px', background: 'rgba(100, 116, 139, 0.05)', border: '1px solid rgba(100, 116, 139, 0.12)', borderRadius: '100px', width: 'fit-content' }}>
+                                <span style={{ color: 'var(--color-text-light)', display: 'inline-flex' }}><Users size={12} /></span>
+                                <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>Quản lý:</span>
+                                <div style={{ display: 'inline-flex', alignItems: 'center' }}>
+                                  {campManagers.map((m: any, idx) => (
+                                    <div 
+                                      key={m.id} 
+                                      style={{ 
+                                        marginLeft: idx > 0 ? '-6px' : '0', 
+                                        zIndex: 10 - idx,
+                                        position: 'relative'
+                                      }}
+                                    >
+                                      <Avatar src={m.avatar_url || m.avatar} name={m.full_name || m.username} size={18} />
+                                    </div>
+                                  ))}
+                                </div>
+                                <span style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--color-text)' }}>
+                                  {campManagers.length === 1 ? (
+                                    campManagers[0].full_name || campManagers[0].username
+                                  ) : (
+                                    `${campManagers[0].full_name || campManagers[0].username} và +${campManagers.length - 1} người khác`
+                                  )}
+                                </span>
+                              </div>
+                            );
+                          })()}
                         </div>
                         {/* Last updated timestamp */}
                         <div style={{ fontSize: '0.7rem', color: 'var(--color-text-light)', marginTop: '8px', display: 'flex', alignItems: 'center', gap: '4px' }}>
@@ -4082,10 +4087,11 @@ export default function ProjectsPage() {
               />
             </div>
           </>
-        )}
-        </>
-      )}
-      </div>
+        )
+      }
+      </>
+    )}
+    </div>
 
       {/* Edit Modal (converted to Drawer) */}
       {renderDrawer(
