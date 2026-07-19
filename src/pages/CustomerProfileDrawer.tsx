@@ -6742,100 +6742,144 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                             <span>Tương tác</span>
                           </button>
 
-                          {/* Filter Button (...) */}
-                          <button
-                            onClick={() => setShowFilterDropdown(prev => !prev)}
-                            style={{
-                              width: '34px',
-                              height: '34px',
-                              borderRadius: '8px',
-                              border: '1px solid var(--color-border)',
-                              background: showFilterDropdown ? 'var(--color-bg-alt)' : 'var(--color-surface)',
-                              color: 'var(--color-text)',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              cursor: 'pointer',
-                              fontWeight: 700,
-                              fontSize: '1rem'
-                            }}
-                            title="Lọc tương tác"
-                          >
-                            ...
-                          </button>
-
-                          {/* Dropdown Menu */}
-                          {showFilterDropdown && (
+                          {/* Filter Button (...) / Subtabs on Desktop */}
+                          {isMobileOrTablet ? (
                             <>
-                              {/* Overlay to close when clicking outside */}
-                              <div 
-                                onClick={() => setShowFilterDropdown(false)}
+                              <button
+                                onClick={() => setShowFilterDropdown(prev => !prev)}
                                 style={{
-                                  position: 'fixed',
-                                  top: 0,
-                                  left: 0,
-                                  right: 0,
-                                  bottom: 0,
-                                  zIndex: 998,
-                                  background: 'transparent'
+                                  width: '34px',
+                                  height: '34px',
+                                  borderRadius: '8px',
+                                  border: '1px solid var(--color-border)',
+                                  background: showFilterDropdown ? 'var(--color-bg-alt)' : 'var(--color-surface)',
+                                  color: 'var(--color-text)',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  cursor: 'pointer',
+                                  fontWeight: 700,
+                                  fontSize: '1rem'
                                 }}
-                              />
-                              <div style={{
-                                position: 'absolute',
-                                top: '40px',
-                                right: 0,
-                                width: '160px',
-                                background: 'var(--color-surface)',
-                                border: '1px solid var(--color-border)',
-                                borderRadius: '10px',
-                                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
-                                padding: '6px',
-                                zIndex: 999,
-                                display: 'flex',
-                                flexDirection: 'column',
-                                gap: '2px'
-                              }}>
-                                {[
-                                  { value: 'all', label: 'Tất cả', icon: null },
-                                  { value: 'call', label: 'Cuộc gọi', icon: <Phone size={13} /> },
-                                  { value: 'email', label: 'Email', icon: <Mail size={13} /> },
-                                  { value: 'meeting', label: 'Gặp gỡ', icon: <Users size={13} /> },
-                                  { value: 'task', label: 'Công việc', icon: <CheckSquare size={13} /> }
-                                ].map(tab => {
-                                  const isSelected = timelineFilter === tab.value;
-                                  return (
-                                    <button
-                                      key={tab.value}
-                                      onClick={() => {
-                                        setTimelineFilter(tab.value as any);
-                                        setShowFilterDropdown(false);
-                                      }}
-                                      style={{
-                                        width: '100%',
-                                        padding: '8px 10px',
-                                        borderRadius: '6px',
-                                        border: 'none',
-                                        fontSize: '0.78rem',
-                                        fontWeight: isSelected ? 700 : 500,
-                                        cursor: 'pointer',
-                                        background: isSelected ? 'var(--color-bg-alt)' : 'transparent',
-                                        color: isSelected ? 'var(--color-primary)' : 'var(--color-text)',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        gap: '8px',
-                                        textAlign: 'left'
-                                      }}
-                                    >
-                                      <span style={{ display: 'flex', alignItems: 'center', color: isSelected ? 'var(--color-primary)' : 'var(--color-text-muted)' }}>
-                                        {tab.icon || <List size={13} />}
-                                      </span>
-                                      <span>{tab.label}</span>
-                                      {isSelected && <span style={{ marginLeft: 'auto', fontSize: '0.75rem', fontWeight: 'bold' }}>✓</span>}
-                                    </button>
-                                  );
-                                })}
-                              </div>
+                                title="Lọc tương tác"
+                              >
+                                ...
+                              </button>
+
+                              {/* Dropdown Menu */}
+                              {showFilterDropdown && (
+                                <>
+                                  {/* Overlay to close when clicking outside */}
+                                  <div 
+                                    onClick={() => setShowFilterDropdown(false)}
+                                    style={{
+                                      position: 'fixed',
+                                      top: 0,
+                                      left: 0,
+                                      right: 0,
+                                      bottom: 0,
+                                      zIndex: 998,
+                                      background: 'transparent'
+                                    }}
+                                  />
+                                  <div style={{
+                                    position: 'absolute',
+                                    top: '40px',
+                                    right: 0,
+                                    width: '160px',
+                                    background: 'var(--color-surface)',
+                                    border: '1px solid var(--color-border)',
+                                    borderRadius: '10px',
+                                    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
+                                    padding: '6px',
+                                    zIndex: 999,
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    gap: '2px'
+                                  }}>
+                                    {[
+                                      { value: 'all', label: 'Tất cả', icon: null },
+                                      { value: 'call', label: 'Cuộc gọi', icon: <Phone size={13} /> },
+                                      { value: 'email', label: 'Email', icon: <Mail size={13} /> },
+                                      { value: 'meeting', label: 'Gặp gỡ', icon: <Users size={13} /> },
+                                      { value: 'task', label: 'Công việc', icon: <CheckSquare size={13} /> }
+                                    ].map(tab => {
+                                      const isSelected = timelineFilter === tab.value;
+                                      return (
+                                        <button
+                                          key={tab.value}
+                                          onClick={() => {
+                                            setTimelineFilter(tab.value as any);
+                                            setShowFilterDropdown(false);
+                                          }}
+                                          style={{
+                                            width: '100%',
+                                            padding: '8px 10px',
+                                            borderRadius: '6px',
+                                            border: 'none',
+                                            fontSize: '0.78rem',
+                                            fontWeight: isSelected ? 700 : 500,
+                                            cursor: 'pointer',
+                                            background: isSelected ? 'var(--color-bg-alt)' : 'transparent',
+                                            color: isSelected ? 'var(--color-primary)' : 'var(--color-text)',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '8px',
+                                            textAlign: 'left'
+                                          }}
+                                        >
+                                          <span style={{ display: 'flex', alignItems: 'center', color: isSelected ? 'var(--color-primary)' : 'var(--color-text-muted)' }}>
+                                            {tab.icon || <List size={13} />}
+                                          </span>
+                                          <span>{tab.label}</span>
+                                          {isSelected && <span style={{ marginLeft: 'auto', fontSize: '0.75rem', fontWeight: 'bold' }}>✓</span>}
+                                        </button>
+                                      );
+                                    })}
+                                  </div>
+                                </>
+                              )}
                             </>
+                          ) : (
+                            /* Horizontal subtabs on desktop */
+                            <div style={{ display: 'flex', alignItems: 'center', background: 'var(--color-bg-alt)', padding: '3px', borderRadius: '8px', gap: '2px', border: '1px solid var(--color-border-light)' }}>
+                              {[
+                                { value: 'all', label: 'Tất cả', icon: null },
+                                { value: 'call', label: 'Cuộc gọi', icon: <Phone size={13} /> },
+                                { value: 'email', label: 'Email', icon: <Mail size={13} /> },
+                                { value: 'meeting', label: 'Gặp gỡ', icon: <Users size={13} /> },
+                                { value: 'task', label: 'Công việc', icon: <CheckSquare size={13} /> }
+                              ].map(tab => {
+                                const isSelected = timelineFilter === tab.value;
+                                return (
+                                  <button
+                                    key={tab.value}
+                                    onClick={() => setTimelineFilter(tab.value as any)}
+                                    style={{
+                                      padding: '5px 12px',
+                                      borderRadius: '6px',
+                                      border: 'none',
+                                      fontSize: '0.75rem',
+                                      fontWeight: isSelected ? 700 : 500,
+                                      cursor: 'pointer',
+                                      background: isSelected ? 'var(--color-surface)' : 'transparent',
+                                      color: isSelected ? 'var(--color-primary)' : 'var(--color-text-muted)',
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      gap: '6px',
+                                      transition: 'all 0.15s ease',
+                                      height: '28px',
+                                      boxShadow: isSelected ? '0 1px 3px rgba(0, 0, 0, 0.05)' : 'none'
+                                    }}
+                                  >
+                                    <span style={{ display: 'flex', alignItems: 'center', color: isSelected ? 'var(--color-primary)' : 'var(--color-text-muted)' }}>
+                                      {tab.icon || <List size={13} />}
+                                    </span>
+                                    <span>{tab.label}</span>
+                                  </button>
+                                );
+                              })}
+                            </div>
                           )}
                         </div>
                       </div>
