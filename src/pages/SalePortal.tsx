@@ -10014,16 +10014,18 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                                   </div>
                                 </div>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                  <span style={{
-                                    fontSize: '0.8rem',
-                                    fontWeight: 700,
-                                    color: weekendShiftSat.registered ? (weekendShiftSat.approved ? 'var(--color-success)' : 'var(--color-warning)') : 'var(--color-text-muted)',
-                                    background: weekendShiftSat.registered ? (weekendShiftSat.approved ? 'rgba(16, 185, 129, 0.1)' : 'rgba(245, 158, 11, 0.1)') : 'rgba(100, 116, 139, 0.08)',
-                                    padding: '3px 8px',
-                                    borderRadius: '6px'
-                                  }}>
-                                    {weekendShiftSat.registered ? (weekendShiftSat.approved ? t('Đã duyệt trực') : t('Chờ duyệt')) : t('Chưa đăng ký')}
-                                  </span>
+                                  {(!isMobile || weekendShiftSat.registered) && (
+                                    <span style={{
+                                      fontSize: '0.8rem',
+                                      fontWeight: 700,
+                                      color: weekendShiftSat.registered ? (weekendShiftSat.approved ? 'var(--color-success)' : 'var(--color-warning)') : 'var(--color-text-muted)',
+                                      background: weekendShiftSat.registered ? (weekendShiftSat.approved ? 'rgba(16, 185, 129, 0.1)' : 'rgba(245, 158, 11, 0.1)') : 'rgba(100, 116, 139, 0.08)',
+                                      padding: '3px 8px',
+                                      borderRadius: '6px'
+                                    }}>
+                                      {weekendShiftSat.registered ? (weekendShiftSat.approved ? t('Đã duyệt trực') : t('Chờ duyệt')) : t('Chưa đăng ký')}
+                                    </span>
+                                  )}
                                   {['sale', 'manager'].includes(String(effectiveRole).toLowerCase()) && (
                                     <div style={{ opacity: weekendShiftSat.can_toggle ? 1 : 0.6 }}>
                                       <ToggleSwitch
@@ -10091,16 +10093,18 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                                   </div>
                                 </div>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                  <span style={{
-                                    fontSize: '0.8rem',
-                                    fontWeight: 700,
-                                    color: weekendShiftSun.registered ? (weekendShiftSun.approved ? 'var(--color-success)' : 'var(--color-warning)') : 'var(--color-text-muted)',
-                                    background: weekendShiftSun.registered ? (weekendShiftSun.approved ? 'rgba(16, 185, 129, 0.1)' : 'rgba(245, 158, 11, 0.1)') : 'rgba(100, 116, 139, 0.08)',
-                                    padding: '3px 8px',
-                                    borderRadius: '6px'
-                                  }}>
-                                    {weekendShiftSun.registered ? (weekendShiftSun.approved ? t('Đã duyệt trực') : t('Chờ duyệt')) : t('Chưa đăng ký')}
-                                  </span>
+                                  {(!isMobile || weekendShiftSun.registered) && (
+                                    <span style={{
+                                      fontSize: '0.8rem',
+                                      fontWeight: 700,
+                                      color: weekendShiftSun.registered ? (weekendShiftSun.approved ? 'var(--color-success)' : 'var(--color-warning)') : 'var(--color-text-muted)',
+                                      background: weekendShiftSun.registered ? (weekendShiftSun.approved ? 'rgba(16, 185, 129, 0.1)' : 'rgba(245, 158, 11, 0.1)') : 'rgba(100, 116, 139, 0.08)',
+                                      padding: '3px 8px',
+                                      borderRadius: '6px'
+                                    }}>
+                                      {weekendShiftSun.registered ? (weekendShiftSun.approved ? t('Đã duyệt trực') : t('Chờ duyệt')) : t('Chưa đăng ký')}
+                                    </span>
+                                  )}
                                   {['sale', 'manager'].includes(String(effectiveRole).toLowerCase()) && (
                                     <div style={{ opacity: weekendShiftSun.can_toggle ? 1 : 0.6 }}>
                                       <ToggleSwitch
@@ -10205,22 +10209,24 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                           {t('Đăng ký trực hôm nay:')}
                         </span>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                          <span style={{
-                            fontSize: '0.8rem',
-                            fontWeight: 700,
-                            color: nightShiftRegistered 
-                              ? 'var(--color-success)' 
-                              : ((nightShiftCanToggle && !isTodayWeekend) ? 'var(--color-text-muted)' : (isTodayWeekend ? 'var(--color-text-muted)' : 'var(--color-danger)')),
-                            background: nightShiftRegistered 
-                              ? 'rgba(16, 185, 129, 0.1)' 
-                              : ((nightShiftCanToggle && !isTodayWeekend) ? 'rgba(100, 116, 139, 0.08)' : (isTodayWeekend ? 'rgba(100, 116, 139, 0.08)' : 'var(--color-danger-light)')),
-                            padding: '3px 8px',
-                            borderRadius: '6px'
-                          }}>
-                            {nightShiftRegistered 
-                              ? t('Đã đăng ký trực') 
-                              : ((nightShiftCanToggle && !isTodayWeekend) ? t('Chưa đăng ký') : (isTodayWeekend ? t('Nghỉ trực ca đêm') : t('Đã hết hạn đăng ký')))}
-                          </span>
+                          {(!isMobile || nightShiftRegistered) && (
+                            <span style={{
+                              fontSize: '0.8rem',
+                              fontWeight: 700,
+                              color: nightShiftRegistered 
+                                ? 'var(--color-success)' 
+                                : ((nightShiftCanToggle && !isTodayWeekend) ? 'var(--color-text-muted)' : (isTodayWeekend ? 'var(--color-text-muted)' : 'var(--color-danger)')),
+                              background: nightShiftRegistered 
+                                ? 'rgba(16, 185, 129, 0.1)' 
+                                : ((nightShiftCanToggle && !isTodayWeekend) ? 'rgba(100, 116, 139, 0.08)' : (isTodayWeekend ? 'rgba(100, 116, 139, 0.08)' : 'var(--color-danger-light)')),
+                              padding: '3px 8px',
+                              borderRadius: '6px'
+                            }}>
+                              {nightShiftRegistered 
+                                ? t('Đã đăng ký trực') 
+                                : ((nightShiftCanToggle && !isTodayWeekend) ? t('Chưa đăng ký') : (isTodayWeekend ? t('Nghỉ trực ca đêm') : t('Đã hết hạn đăng ký')))}
+                            </span>
+                          )}
                           {['sale', 'manager'].includes(String(effectiveRole).toLowerCase()) && (
                             <div style={{ opacity: (nightShiftCanToggle && !isTodayWeekend) ? 1 : 0.6 }}>
                               <ToggleSwitch
@@ -10429,7 +10435,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                           {/* Grid with 7 days */}
                           <div style={{
                             display: 'grid',
-                            gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))',
+                            gridTemplateColumns: isMobile ? 'repeat(3, 1fr)' : 'repeat(auto-fit, minmax(110px, 1fr))',
                             gap: '8px',
                             marginTop: '0.25rem'
                           }}>
@@ -10467,7 +10473,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                                     }
                                   }}
                                   style={{
-                                    padding: '12px 10px',
+                                    padding: isMobile ? '8px 4px' : '12px 10px',
                                     borderRadius: '12px',
                                     border: borderStyle,
                                     background: backgroundStyle,
@@ -10479,10 +10485,10 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                                     flexDirection: 'column',
                                     alignItems: 'center',
                                     justifyContent: 'center',
-                                    gap: '6px',
+                                    gap: isMobile ? '4px' : '6px',
                                     transition: 'all 0.2s',
                                     textAlign: 'center',
-                                    minHeight: '90px',
+                                    minHeight: isMobile ? '72px' : '90px',
                                     userSelect: 'none'
                                   }}
                                   className="weekly-date-card"
