@@ -1630,6 +1630,10 @@ if (!function_exists('getTicketNotifyAdmins')) {
 }
 
 switch ($action) {
+    case 'debug_companies_db':
+        $res = $conn->query("DESCRIBE companies")->fetch_all(MYSQLI_ASSOC);
+        echo json_encode(['success' => true, 'columns' => $res]);
+        exit;
 
     case 'get_zalo_send_logs':
         $logFile = __DIR__ . '/zalo_send_log.txt';
