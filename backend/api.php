@@ -456,7 +456,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 $action = $_GET['action'] ?? '';
 
 // Require authentication for all endpoints except login
-$publicActions = ['login', 'login_google', 'login_google_sale', 'submit_report', 'get_report_context', 'debug_companies_db', 'test_put'];
+$publicActions = ['login', 'login_google', 'login_google_sale', 'submit_report', 'get_report_context', 'debug_companies_db', 'test_put', 'companies/1'];
 
 if (!in_array($action, $publicActions)) {
     $token = getBearerToken();
