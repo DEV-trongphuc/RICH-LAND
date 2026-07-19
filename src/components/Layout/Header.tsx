@@ -1904,7 +1904,7 @@ export const Header = ({
           </button>
         }
       >
-        <div style={{ display: 'flex', flexDirection: 'column', minHeight: '400px', maxHeight: '70vh' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', minHeight: '400px', height: isMobile ? '80vh' : 'auto', maxHeight: isMobile ? '80vh' : '70vh' }}>
           {showNotifSettings ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', padding: '0.5rem 0' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
@@ -2111,7 +2111,7 @@ export const Header = ({
               </div>
 
               {/* List area */}
-              <div style={{ flex: 1, overflowY: 'auto', paddingRight: '4px' }} className="custom-scrollbar">
+              <div style={{ flex: 1, overflowY: 'auto', paddingRight: '6px', paddingLeft: '6px', paddingTop: '6px', paddingBottom: '6px' }} className="custom-scrollbar">
                 {(() => {
                   const filtered = notifications.filter(n => {
                     if (notifFilter === 'unread') return !n.is_read;
@@ -2271,8 +2271,8 @@ export const Header = ({
                               )}
                             </div>
 
-                            <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: '3px' }}>
-                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '0.5rem' }}>
+                            <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: '3px', position: 'relative' }}>
+                              <div style={{ paddingRight: '56px' }}>
                                 <h4 style={{
                                   margin: 0,
                                   fontSize: '0.875rem',
@@ -2297,34 +2297,37 @@ export const Header = ({
                                     }} />
                                   )}
                                 </h4>
-                                <span style={{ 
-                                  fontSize: '0.72rem', 
-                                  color: 'var(--color-text-muted)', 
-                                  fontWeight: 600, 
-                                  whiteSpace: 'nowrap' 
-                                }}>
-                                  {(() => {
-                                    if (!notif.created_at) return '';
-                                    const d = new Date(notif.created_at.replace(' ', 'T'));
-                                    if (isNaN(d.getTime())) return notif.created_at;
-                                    
-                                    const now = new Date();
-                                    const diffMs = now.getTime() - d.getTime();
-                                    const diffMins = Math.floor(diffMs / 60000);
-                                    
-                                    if (diffMins < 1) return t("Vừa xong");
-                                    if (diffMins < 60) return `${diffMins} ${t("phút trước")}`;
-                                    if (diffMins < 1440) {
-                                      const hrs = Math.floor(diffMins / 60);
-                                      return `${hrs} ${t("giờ trước")}`;
-                                    }
-                                    const days = Math.floor(diffMins / 1440);
-                                    return `${days} ${t("ngày trước")}`;
-                                  })()}
-                                </span>
                               </div>
+
+                              <span style={{ 
+                                fontSize: '0.72rem', 
+                                color: 'var(--color-text-muted)', 
+                                fontWeight: 600, 
+                                whiteSpace: 'nowrap',
+                                marginTop: '1px'
+                              }}>
+                                {(() => {
+                                  if (!notif.created_at) return '';
+                                  const d = new Date(notif.created_at.replace(' ', 'T'));
+                                  if (isNaN(d.getTime())) return notif.created_at;
+                                  
+                                  const now = new Date();
+                                  const diffMs = now.getTime() - d.getTime();
+                                  const diffMins = Math.floor(diffMs / 60000);
+                                  
+                                  if (diffMins < 1) return t("Vừa xong");
+                                  if (diffMins < 60) return `${diffMins} ${t("phút trước")}`;
+                                  if (diffMins < 1440) {
+                                    const hrs = Math.floor(diffMins / 60);
+                                    return `${hrs} ${t("giờ trước")}`;
+                                  }
+                                  const days = Math.floor(diffMins / 1440);
+                                  return `${days} ${t("ngày trước")}`;
+                                })()}
+                              </span>
+
                               <p style={{
-                                margin: 0,
+                                margin: '4px 0 0 0',
                                 fontSize: '0.8125rem',
                                 color: 'var(--color-text-muted)',
                                 lineHeight: '1.4',
@@ -2340,11 +2343,12 @@ export const Header = ({
                             <div 
                               className="notif-actions"
                               style={{ 
+                                position: 'absolute',
+                                top: '10px',
+                                right: '10px',
                                 display: 'flex', 
-                                gap: '4px', 
-                                flexShrink: 0, 
-                                opacity: 0.8,
-                                alignSelf: 'center'
+                                gap: '2px', 
+                                zIndex: 10
                               }}
                               onClick={e => e.stopPropagation()}
                             >

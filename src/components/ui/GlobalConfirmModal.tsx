@@ -5,7 +5,7 @@ import { useUIStore } from '../../store/uiStore';
 
 export const GlobalConfirmModal: React.FC = () => {
   const { confirmModal, closeConfirm } = useUIStore();
-  const { isOpen, title, message, confirmText = 'Xác nhận', cancelText = 'Hủy', extraText, isDanger, impactInfo, requireWordMatch, requirePromptInput, promptPlaceholder, onConfirm, onCancel, onExtra } = confirmModal;
+  const { isOpen, title, message, confirmText = 'Xác nhận', cancelText = 'Hủy', extraText, isDanger, impactInfo, requireWordMatch, requirePromptInput, optionalPromptInput, promptPlaceholder, onConfirm, onCancel, onExtra } = confirmModal;
   const [matchInput, setMatchInput] = React.useState('');
   const [promptInput, setPromptInput] = React.useState('');
   const [isMobile, setIsMobile] = React.useState(window.innerWidth <= 768);
@@ -29,7 +29,7 @@ export const GlobalConfirmModal: React.FC = () => {
 
   const handleConfirm = () => {
     if (isLocked) return;
-    onConfirm(requirePromptInput ? promptInput : undefined);
+    onConfirm((requirePromptInput || optionalPromptInput) ? promptInput : undefined);
     closeConfirm();
   };
 
@@ -207,7 +207,7 @@ export const GlobalConfirmModal: React.FC = () => {
                 </div>
               )}
 
-              {requirePromptInput && (
+              {(requirePromptInput || optionalPromptInput) && (
                 <div style={{ marginTop: '1rem' }}>
                   <input
                     type="text"
@@ -227,7 +227,7 @@ export const GlobalConfirmModal: React.FC = () => {
                       outline: 'none'
                     }}
                     onKeyDown={(e) => {
-                      if (e.key === 'Enter' && promptInput.trim()) {
+                      if (e.key === 'Enter' && (!requirePromptInput || promptInput.trim())) {
                         handleConfirm();
                       }
                     }}

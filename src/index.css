@@ -3905,26 +3905,51 @@ table td.wrap-cell, table th.wrap-cell {
   padding: 0 !important;
 }
 
-/* Premium active pill indicator behind the icon (like Android/Material Design) */
+/* Premium active top-bar indicator for the active item */
 .mobile-bottom-nav-item::before {
   content: '';
   position: absolute;
-  top: 6px;
+  top: 0;
   left: 50%;
-  margin-left: -24px; /* Center the 48px width pill */
-  width: 48px;
-  height: 28px;
-  border-radius: 14px;
-  background: rgba(163, 20, 34, 0.08); /* Brand primary color tint */
+  transform: translateX(-50%) scaleX(0);
+  width: 36px;
+  height: 3px;
+  border-radius: 0 0 3px 3px;
+  background: var(--color-primary);
   opacity: 0;
-  transform: scaleX(0.5);
   transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-  z-index: 1;
+  z-index: 3;
 }
 
 .mobile-bottom-nav-item.active::before {
   opacity: 1;
-  transform: scaleX(1);
+  transform: translateX(-50%) scaleX(1);
+}
+
+/* Premium radial gradient glow behind active item icon */
+.mobile-bottom-nav-item::after {
+  content: '';
+  position: absolute;
+  top: 40%;
+  left: 50%;
+  transform: translate(-50%, -50%) scale(0.4);
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(163, 20, 34, 0.14) 0%, rgba(163, 20, 34, 0) 70%);
+  opacity: 0;
+  transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  z-index: 1;
+  pointer-events: none;
+}
+
+[data-theme="dark"] .mobile-bottom-nav-item::after {
+  background: radial-gradient(circle, rgba(239, 68, 68, 0.16) 0%, rgba(239, 68, 68, 0) 70%);
+}
+
+.mobile-bottom-nav-item.active::after {
+  opacity: 1;
+  transform: translate(-50%, -50%) scale(1.2);
 }
 
 .mobile-bottom-nav-item svg {
@@ -3948,7 +3973,7 @@ table td.wrap-cell, table th.wrap-cell {
   font-weight: 600 !important;
   letter-spacing: -0.01em;
   transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
-  opacity: 0.8;
+  opacity: 0.75;
   position: relative;
   z-index: 2;
 }
@@ -3958,14 +3983,14 @@ table td.wrap-cell, table th.wrap-cell {
 }
 
 .mobile-bottom-nav-item.active svg {
-  transform: translateY(-5px) scale(1.15) !important;
+  transform: translateY(-3px) scale(1.12) !important;
   color: var(--color-primary) !important;
 }
 
 .mobile-bottom-nav-item.active .mobile-bottom-nav-item-label {
-  transform: translateY(-2px) !important;
+  transform: translateY(-1px) !important;
   opacity: 1 !important;
-  font-weight: 800 !important;
+  font-weight: 750 !important;
   color: var(--color-primary) !important;
 }
 

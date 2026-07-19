@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Plus, Search, Building2, X, Loader2, Pencil, Trash2, Globe, Phone, Mail, MapPin, Users, LayoutGrid, List, Filter, RefreshCw, Download, DollarSign, Briefcase } from 'lucide-react';
+import { Plus, Search, Building2, X, Loader2, Pencil, Trash2, Globe, Phone, Mail, MapPin, Users, LayoutGrid, List, Filter, RefreshCw, Download, DollarSign, Briefcase, MoreHorizontal } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Avatar } from '../components/ui/Avatar';
 import { useUIStore } from '../store/uiStore';
@@ -41,6 +41,7 @@ export const CompaniesPage: React.FC = () => {
   const [viewMode, setViewMode] = useState<'card' | 'list'>('card');
   const [page, setPage] = useState(1);
   const [showImportExport, setShowImportExport] = useState(false);
+  const [showFiltersMenu, setShowFiltersMenu] = useState(false);
   const [pageSize, setPageSize] = useState<number>(() => {
     return Number(localStorage.getItem('richland_companies_page_size')) || 10;
   });
@@ -145,51 +146,160 @@ export const CompaniesPage: React.FC = () => {
 
   return (
     <div className="page-container anim-fade-up">
-      <div className="page-header">
+      <div className="page-header" style={{ display: 'flex', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', width: '100%', gap: '8px', marginBottom: '1.5rem' }}>
         <div>
-          <h1 className="page-title">Công ty</h1>
-          <p className="page-subtitle">{loading ? '...' : `${total} công ty khách hàng`}</p>
+          <h1 className="page-title" style={{ fontSize: isMobile ? '1.45rem' : '1.75rem' }}>Công ty</h1>
+          <p className="page-subtitle" style={{ fontSize: '0.8rem' }}>{loading ? '...' : `${total} công ty khách hàng`}</p>
         </div>
-        <div style={{ display: 'flex', gap: '6px', alignItems: 'center', width: isMobile ? '100%' : 'auto', flexWrap: 'wrap' }}>
-          <button className="btn-icon" onClick={fetchCompanies} title="Làm mới" style={{ flexShrink: 0 }}>
-            <RefreshCw size={16} />
+        {!isSale && (
+          <button 
+            className="btn primary" 
+            onClick={openCreate} 
+            title="Thêm công ty" 
+            style={{ 
+              padding: isMobile ? '8px' : '8px 16px', 
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'center', 
+              borderRadius: '8px',
+              height: '36px',
+              gap: '4px',
+              flexShrink: 0
+            }}
+          >
+            <Plus size={16} />
+            {!isMobile && <span>Thêm công ty</span>}
           </button>
-          {!isSale && (
-            <>
-              <button className="btn outline" onClick={() => setShowImportExport(true)} title="Nhập/Xuất" style={{ flex: isMobile ? 1 : 'none', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '4px' }}>
-                <Download size={16} />
-                <span>Nhập/Xuất</span>
-              </button>
-              <button className="btn primary" onClick={openCreate} title="Thêm công ty" style={{ flex: isMobile ? 1 : 'none', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '4px' }}>
-                <Plus size={16} />
-                <span>Thêm công ty</span>
-              </button>
-            </>
-          )}
-        </div>
+        )}
       </div>
 
       {/* Filter Bar */}
       <div className="card" style={{ marginBottom: '1rem', padding: '0.75rem', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-        <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: '8px', width: '100%', alignItems: isMobile ? 'stretch' : 'center' }}>
-          <div className="filter-search" style={{ flex: 1, minWidth: 0, width: '100%' }}>
-            <Search size={15} style={{ color: 'var(--color-text-muted)' }} />
-            <input placeholder="Tìm tên công ty, ngành nghề..." style={{ fontSize: '0.85rem' }} value={search} onChange={e => setSearch(e.target.value)} />
-            {search && <button onClick={() => setSearch('')}><X size={14} /></button>}
+        <div style={{ display: 'flex', gap: '8px', width: '100%', alignItems: 'center', position: 'relative' }}>
+          
+          {/* Custom Styled Search Input */}
+          <div style={{ position: 'relative', flex: 1, minWidth: 0 }}>
+            <input
+              type="text"
+              placeholder="Tìm tên công ty, ngành nghề..."
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              className="form-input"
+              style={{
+                paddingLeft: '36px',
+                borderRadius: '10px',
+                fontSize: '0.875rem',
+                width: '100%',
+                height: '42px',
+                border: '1px solid var(--color-border)'
+              }}
+            />
+            <Search size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-muted)', pointerEvents: 'none' }} />
+            {search && (
+              <button
+                onClick={() => setSearch('')}
+                style={{
+                  position: 'absolute',
+                  right: '12px',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  background: 'none',
+                  border: 'none',
+                  color: 'var(--color-text-muted)',
+                  cursor: 'pointer',
+                  padding: 4,
+                  display: 'flex',
+                  alignItems: 'center'
+                }}
+              >
+                <X size={16} />
+              </button>
+            )}
           </div>
           
-          <div className="mobile-only" style={{ width: isMobile ? '100%' : '130px', flexShrink: 0 }}>
-            <CustomSelect
-              value={statusFilter}
-              onChange={val => setStatusFilter(val as any)}
-              options={[
-                { value: '', label: 'Trạng thái' },
-                { value: 'active', label: 'Hoạt động' },
-                { value: 'inactive', label: 'Ngừng' },
-                { value: 'prospect', label: 'Tiềm năng' }
-              ]}
-            />
+          {/* Status Filter ... Button */}
+          <div style={{ position: 'relative' }}>
+            <button
+              onClick={() => setShowFiltersMenu(!showFiltersMenu)}
+              className="btn outline"
+              style={{
+                height: '42px',
+                width: '42px',
+                padding: 0,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                borderRadius: '10px',
+                border: '1px solid var(--color-border)',
+                background: statusFilter ? 'var(--color-primary-light)' : 'transparent',
+                color: statusFilter ? 'var(--color-primary)' : 'var(--color-text)'
+              }}
+              title="Bộ lọc trạng thái"
+            >
+              <MoreHorizontal size={20} />
+            </button>
+
+            {/* Dropdown Popover */}
+            {showFiltersMenu && (
+              <>
+                <div 
+                  onClick={() => setShowFiltersMenu(false)}
+                  style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 999 }}
+                />
+                <div style={{
+                  position: 'absolute',
+                  top: '48px',
+                  right: 0,
+                  width: '180px',
+                  backgroundColor: 'var(--color-surface)',
+                  border: '1px solid var(--color-border)',
+                  borderRadius: '12px',
+                  boxShadow: 'var(--shadow-lg)',
+                  padding: '8px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '4px',
+                  zIndex: 1000
+                }}>
+                  <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', padding: '4px 8px', textTransform: 'uppercase' }}>
+                    Trạng thái
+                  </div>
+                  {[
+                    { value: '', label: 'Tất cả' },
+                    { value: 'active', label: 'Hoạt động' },
+                    { value: 'inactive', label: 'Ngừng' },
+                    { value: 'prospect', label: 'Tiềm năng' }
+                  ].map(item => {
+                    const isSelected = statusFilter === item.value;
+                    return (
+                      <button
+                        key={item.value}
+                        onClick={() => {
+                          setStatusFilter(item.value);
+                          setShowFiltersMenu(false);
+                        }}
+                        style={{
+                          width: '100%',
+                          textAlign: 'left',
+                          padding: '8px 12px',
+                          fontSize: '0.85rem',
+                          borderRadius: '8px',
+                          border: 'none',
+                          cursor: 'pointer',
+                          background: isSelected ? 'var(--color-primary-light)' : 'transparent',
+                          color: isSelected ? 'var(--color-primary)' : 'var(--color-text)',
+                          fontWeight: isSelected ? 700 : 500
+                        }}
+                      >
+                        {item.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </>
+            )}
           </div>
+
         </div>
 
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', flexWrap: 'wrap', gap: '8px' }}>

@@ -1969,18 +1969,18 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
           <span className="mobile-bottom-nav-item-label">{t('Bàn làm việc')}</span>
         </button>
         <button 
-          className={`mobile-bottom-nav-item ${location.pathname === '/data' ? 'active' : ''}`}
-          onClick={() => navigate('/data')}
+          className={`mobile-bottom-nav-item ${location.pathname === '/databank' ? 'active' : ''}`}
+          onClick={() => navigate('/databank')}
         >
           <Database size={20} />
           <span className="mobile-bottom-nav-item-label">{t('Kho Data')}</span>
         </button>
         <button 
-          className={`mobile-bottom-nav-item ${location.pathname === '/schedule' ? 'active' : ''}`}
-          onClick={() => navigate('/schedule')}
+          className={`mobile-bottom-nav-item ${location.pathname === '/accounts' ? 'active' : ''}`}
+          onClick={() => navigate('/accounts')}
         >
-          <Calendar size={20} />
-          <span className="mobile-bottom-nav-item-label">{t('Thông tin')}</span>
+          <UserCheck size={20} />
+          <span className="mobile-bottom-nav-item-label">{t('Tài khoản')}</span>
         </button>
       </div>
 

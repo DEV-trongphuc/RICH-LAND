@@ -1042,22 +1042,48 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
       >
         {/* Header */}
         <div style={{
-          padding: '1.25rem 1.5rem',
+          padding: '0.75rem 1rem',
           borderBottom: '1px solid var(--color-border)',
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
-          backgroundColor: 'var(--color-surface)'
+          backgroundColor: 'var(--color-surface)',
+          minHeight: '60px'
         }}>
-          <div>
-            <h2 style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--color-text)', margin: 0 }}>
-              {account ? t('Hồ sơ Nhân sự') : t('Thêm Nhân sự')}
-            </h2>
-            <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', margin: '4px 0 0' }}>
-              {account ? `${t('Mã nhân viên')}: ${employeeId || '—'} · ${name}` : t('Khai báo hồ sơ làm việc và thông tin ERP mới.')}
-            </p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0, flex: 1 }}>
+            {/* Close Button as "<" ChevronLeft on the Left */}
+            <button 
+              onClick={onClose}
+              style={{
+                padding: '8px',
+                borderRadius: '8px',
+                border: 'none',
+                backgroundColor: 'transparent',
+                color: 'var(--color-text)',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0
+              }}
+              className="hover-bg-muted"
+              title={t('Quay lại')}
+            >
+              <ChevronLeft size={20} />
+            </button>
+            
+            <div style={{ minWidth: 0 }}>
+              <h2 style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--color-text)', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                {account ? t('Hồ sơ Nhân sự') : t('Thêm Nhân sự')}
+              </h2>
+              <p style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', margin: '2px 0 0', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                {account ? `${t('Mã nhân viên')}: ${employeeId || '—'} · ${name}` : t('Khai báo hồ sơ làm việc.')}
+              </p>
+            </div>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          
+          {/* Save Button with ONLY icon on the Right */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
             {!loading && (
               <button 
                 type="submit"
@@ -1068,33 +1094,18 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
                   borderRadius: '8px',
                   display: 'flex',
                   alignItems: 'center',
-                  gap: '6px',
+                  justifyContent: 'center',
+                  width: '36px',
+                  height: '36px',
+                  padding: 0,
                   fontSize: '0.8125rem',
-                  padding: '8px 16px',
                   fontWeight: 600
                 }}
+                title={t('Lưu Hồ sơ Nhân sự')}
               >
-                {isSaving ? <Loader2 size={14} className="spin" /> : <Save size={14} />}
-                {isSaving ? t('Đang lưu...') : t('Lưu Hồ sơ Nhân sự')}
+                {isSaving ? <Loader2 size={16} className="spin" /> : <Save size={18} />}
               </button>
             )}
-            <button 
-              onClick={onClose}
-              style={{
-                padding: '6px',
-                borderRadius: '8px',
-                border: 'none',
-                backgroundColor: 'transparent',
-                color: 'var(--color-text-muted)',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center'
-              }}
-              className="hover-bg-muted"
-            >
-              <X size={20} />
-            </button>
           </div>
         </div>
 
@@ -1492,7 +1503,7 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
                         <label className="form-label">{t('Email cá nhân')}</label>
                         <input type="email" className="form-input" value={personalEmail} onChange={e => setPersonalEmail(e.target.value)} placeholder="a@gmail.com" />
                       </div>
-                      <div className="form-group" style={{ gridColumn: 'span 3' }}>
+                      <div className="form-group" style={{ gridColumn: isMobileOrTablet ? 'span 1' : 'span 3' }}>
                         <div style={{ display: 'grid', gridTemplateColumns: isMobileOrTablet ? '1fr' : '1fr 1fr', gap: '1rem' }}>
                           <div className="form-group" style={{ margin: 0 }}>
                             <AddressSelect

@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import { withRouterFreezer } from '../components/RouterFreezer';
 import { fetchAPI } from '../utils/api';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -18,6 +19,7 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
   const { t } = useLanguage();
   const { user } = useAuth();
   const { showConfirm } = useUIStore();
+  const location = useLocation();
   const [showInfoModal, setShowInfoModal] = useState(false);
   const [sysSettings, setSysSettings] = useState<any>(null);
   const managerBehaviorMode = user?.manager_behavior_mode || 'combined';
@@ -38,6 +40,32 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const dateParam = params.get('date') || params.get('open_date');
+    const viewParam = params.get('view');
+
+    if (viewParam === 'calendar') {
+      setViewMode('calendar');
+    } else if (viewParam === 'list') {
+      setViewMode('list');
+    }
+
+    if (dateParam) {
+      const parts = dateParam.split('-');
+      if (parts.length === 3) {
+        const year = parseInt(parts[0], 10);
+        const month = parseInt(parts[1], 10);
+        if (!isNaN(year) && !isNaN(month)) {
+          setCurrentYear(year);
+          setCurrentMonth(month);
+        }
+      }
+      setSelectedDateForDetail(dateParam);
+      setModalTab('checkin');
+    }
+  }, [location.search]);
 
   const [loading, setLoading] = useState(true);
   const [checkIns, setCheckIns] = useState<any[]>([]);
@@ -1546,10 +1574,22 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
                               {row.status === 'pending_approval' && canApprove && (
                                 <>
                                   <button
-                                    onClick={() => handleUpdateStatus(row.id, 'approved')}
+                                    onClick={() => {
+                                      showConfirm({
+                                        title: t('Phê duyệt đi trễ'),
+                                        message: t('Bạn có chắc chắn muốn phê duyệt yêu cầu đi trễ này?'),
+                                        optionalPromptInput: true,
+                                        promptPlaceholder: t('Nhập lưu ý/nội dung phê duyệt (tùy chọn)...'),
+                                        confirmText: t('Phê duyệt'),
+                                        cancelText: t('Hủy'),
+                                        onConfirm: (reason) => {
+                                          handleUpdateStatus(row.id, 'approved', reason ? reason.trim() : undefined);
+                                        }
+                                      });
+                                    }}
                                     disabled={actionSubmittingId === row.id}
                                     className="btn success sm icon-only"
-                                    title={t('Duyệt nhận lead')}
+                                    title={t('Duyệt đi trễ')}
                                     style={{ width: 28, height: 28, padding: 0, borderRadius: '6px' }}
                                   >
                                     <Check size={14} />
@@ -1852,7 +1892,19 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
                             {row.status === 'pending_approval' && canApprove && (
                               <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', marginTop: '4px' }}>
                                 <button
-                                  onClick={() => handleUpdateStatus(row.id, 'approved')}
+                                  onClick={() => {
+                                    showConfirm({
+                                      title: t('Phê duyệt đi trễ'),
+                                      message: t('Bạn có chắc chắn muốn phê duyệt yêu cầu đi trễ này?'),
+                                      optionalPromptInput: true,
+                                      promptPlaceholder: t('Nhập lưu ý/nội dung phê duyệt (tùy chọn)...'),
+                                      confirmText: t('Phê duyệt'),
+                                      cancelText: t('Hủy'),
+                                      onConfirm: (reason) => {
+                                        handleUpdateStatus(row.id, 'approved', reason ? reason.trim() : undefined);
+                                      }
+                                    });
+                                  }}
                                   className="btn success sm"
                                   style={{ padding: '3px 10px', fontSize: '0.7rem', height: 'auto', borderRadius: '6px' }}
                                 >

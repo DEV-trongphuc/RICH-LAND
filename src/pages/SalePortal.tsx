@@ -34,7 +34,7 @@ import { useLanguage } from '../contexts/LanguageContext';
 import { Avatar } from '../components/ui/Avatar';
 import { EmptyCard } from '../components/ui/EmptyCard';
 import { Pagination } from '../components/ui/Pagination';
-import { TableSkeleton, StatRowSkeleton, CalendarSkeleton, CardSkeleton } from '../components/ui/Skeleton';
+import { TableSkeleton, StatRowSkeleton, CalendarSkeleton, CardSkeleton, Skeleton } from '../components/ui/Skeleton';
 import { ToggleSwitch } from '../components/ui/ToggleSwitch';
 import { FairShareAudit } from './FairShareAudit';
 import { InvoicesPage } from './InvoicesPage';
@@ -7146,13 +7146,15 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
       <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
         {/* Header Block */}
         <div style={{
-          display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem',
           background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: '16px', padding: '1rem 1.5rem',
-          boxShadow: '0 4px 20px rgba(0,0,0,0.02)'
+          boxShadow: '0 4px 20px rgba(0,0,0,0.02)', display: 'flex', flexDirection: 'column', gap: '0.75rem'
         }}>
-          <div>
-            <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-text)', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
-              {t('KHO DATA CHUNG (DATABANK)')}
+          {/* Top header row */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', gap: '1rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+              <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-text)', margin: 0 }}>
+                {t('KHO DATA CHUNG (DATABANK)')}
+              </h3>
               <button
                 onClick={() => setShowDatabankHelpModal(true)}
                 style={{
@@ -7183,56 +7185,8 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                 <Info size={11} />
                 <span style={{ fontSize: '0.68rem', fontWeight: 600 }}>{t("Giải thích cơ chế")}</span>
               </button>
-            </h3>
-            <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', margin: '2px 0 0' }}>
-              {t('Danh sách các khách hàng tiềm năng đã công khai. Bấm "Nhận Data" để trực tiếp nhận chăm sóc.')}
-            </p>
-          </div>
+            </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
-            {/* 3 Quota Badges */}
-            {publicQuota && [
-              {
-                label: t('Giờ'),
-                value: publicQuota.claims_hour,
-                limit: publicQuota.limit_hour,
-                icon: <Clock size={12} />,
-                color: 'var(--color-primary)',
-              },
-              {
-                label: t('Ngày'),
-                value: publicQuota.claims_day,
-                limit: publicQuota.limit_day,
-                icon: <Calendar size={12} />,
-                color: '#d97706',
-              },
-              {
-                label: t('Tháng'),
-                value: publicQuota.claims_month,
-                limit: publicQuota.limit_month,
-                icon: <Layers size={12} />,
-                color: '#2563eb',
-              }
-            ].map((q, idx) => (
-              <div key={idx} style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-                background: 'transparent',
-                border: '1px solid var(--color-border-light)',
-                borderRadius: '8px',
-                padding: '4px 10px',
-                height: '32px'
-              }} title={t('Hạn mức ') + q.label}>
-                <span style={{ color: q.color, display: 'flex', alignItems: 'center' }}>{q.icon}</span>
-                <span style={{ fontSize: '0.78rem', color: 'var(--color-text-light)', fontWeight: 600 }}>{q.label}:</span>
-                <span style={{ fontSize: '0.78rem', color: 'var(--color-text)', fontWeight: 800 }}>
-                  {q.value} / {q.limit}
-                </span>
-              </div>
-            ))}
-
-            {/* Quick settings button for Admin */}
             {isAdmin && (
               <button
                 onClick={() => setShowDatabankSettingsModal(true)}
@@ -7256,42 +7210,125 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                 <Settings size={14} />
               </button>
             )}
+          </div>
 
-            {/* Delete button for Admin */}
-            {isAdmin && selectedPublicLeads.length > 0 && (
-              <button
-                onClick={() => handleDeletePublicLeads(selectedPublicLeads)}
-                className="btn danger sm"
-                style={{
-                  borderRadius: '8px',
-                  padding: '0 12px',
-                  height: '32px',
-                  fontSize: '0.75rem',
-                  fontWeight: 700,
+          {/* Description & Quotas row */}
+          <div style={{
+            display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem',
+            borderTop: '1px solid var(--color-border-light)', paddingTop: '0.5rem'
+          }}>
+            <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', margin: 0, flex: 1, minWidth: '240px' }}>
+              {t('Danh sách các khách hàng tiềm năng đã công khai. Bấm "Nhận Data" để trực tiếp nhận chăm sóc.')}
+            </p>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+              {/* 3 Quota Badges */}
+              {publicQuota && [
+                {
+                  label: t('Giờ'),
+                  value: publicQuota.claims_hour,
+                  limit: publicQuota.limit_hour,
+                  icon: <Clock size={12} />,
+                  color: 'var(--color-primary)',
+                },
+                {
+                  label: t('Ngày'),
+                  value: publicQuota.claims_day,
+                  limit: publicQuota.limit_day,
+                  icon: <Calendar size={12} />,
+                  color: '#d97706',
+                },
+                {
+                  label: t('Tháng'),
+                  value: publicQuota.claims_month,
+                  limit: publicQuota.limit_month,
+                  icon: <Layers size={12} />,
+                  color: '#2563eb',
+                }
+              ].map((q, idx) => (
+                <div key={idx} style={{
                   display: 'flex',
                   alignItems: 'center',
                   gap: '6px',
-                  background: '#dc2626',
-                  color: 'white',
-                  border: 'none',
-                  boxShadow: '0 2px 8px rgba(220, 38, 38, 0.2)',
-                  cursor: 'pointer'
-                }}
-              >
-                <Trash2 size={14} />
-                {t('Xóa đã chọn')} ({selectedPublicLeads.length})
-              </button>
-            )}
+                  background: 'transparent',
+                  border: '1px solid var(--color-border-light)',
+                  borderRadius: '8px',
+                  padding: '4px 10px',
+                  height: '30px'
+                }} title={t('Hạn mức ') + q.label}>
+                  <span style={{ color: q.color, display: 'flex', alignItems: 'center' }}>{q.icon}</span>
+                  <span style={{ fontSize: '0.75rem', color: 'var(--color-text-light)', fontWeight: 600 }}>{q.label}:</span>
+                  <span style={{ fontSize: '0.75rem', color: 'var(--color-text)', fontWeight: 800 }}>
+                    {q.value} / {q.limit}
+                  </span>
+                </div>
+              ))}
+
+              {/* Delete button for Admin */}
+              {isAdmin && selectedPublicLeads.length > 0 && (
+                <button
+                  onClick={() => handleDeletePublicLeads(selectedPublicLeads)}
+                  className="btn danger sm"
+                  style={{
+                    height: '30px',
+                    padding: '0 12px',
+                    borderRadius: '8px',
+                    fontSize: '0.75rem',
+                    fontWeight: 600,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    backgroundColor: '#dc2626',
+                    color: 'white',
+                    border: 'none',
+                    boxShadow: '0 2px 8px rgba(220, 38, 38, 0.2)',
+                    cursor: 'pointer'
+                  }}
+                >
+                  <Trash2 size={12} />
+                  {t('Xóa đã chọn')} ({selectedPublicLeads.length})
+                </button>
+              )}
+            </div>
           </div>
         </div>
 
         {publicLoading ? (
-          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '200px' }}>
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.75rem' }}>
-              <div className="animate-spin" style={{ width: '2rem', height: '2rem', border: '3px solid rgba(189,29,45,0.2)', borderTopColor: '#BD1D2D', borderRadius: '50%' }}></div>
-              <span style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)' }}>{t('Đang tải danh sách kho chung...')}</span>
+          isMobile ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+              {[...Array(4)].map((_, i) => (
+                <div 
+                  key={i}
+                  style={{
+                    background: 'var(--color-surface)',
+                    border: '1px solid var(--color-border-light)',
+                    borderRadius: '16px',
+                    padding: '12px 16px',
+                    boxShadow: '0 4px 12px rgba(0,0,0,0.02)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: '12px'
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1, minWidth: 0 }}>
+                    <Skeleton width={42} height={42} borderRadius="50%" />
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', flex: 1 }}>
+                      <Skeleton width="60%" height={14} />
+                      <Skeleton width="40%" height={10} />
+                      <Skeleton width="50%" height={10} />
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '8px', flexShrink: 0 }}>
+                    <Skeleton width={68} height={22} borderRadius={12} />
+                    <Skeleton width={50} height={12} />
+                  </div>
+                </div>
+              ))}
             </div>
-          </div>
+          ) : (
+            <TableSkeleton cols={isAdmin ? 5 : 4} rows={6} />
+          )
         ) : publicLeads.length === 0 ? (
           <EmptyCard
             icon={<Database size={48} />}

@@ -25,6 +25,7 @@ export interface ConfirmModalState {
   impactInfo?: string; // e.g. "Ảnh hưởng đến 45 khách hàng"
   requireWordMatch?: string; // e.g. "DELETE"
   requirePromptInput?: boolean;
+  optionalPromptInput?: boolean;
   promptPlaceholder?: string;
   onConfirm: (promptValue?: string) => void;
   onCancel?: () => void;

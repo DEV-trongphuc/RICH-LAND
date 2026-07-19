@@ -220,6 +220,193 @@ const AccountsInner = () => {
     });
   };
 
+  const renderLogDetails = (detailsRaw: any) => {
+    try {
+      const details = typeof detailsRaw === 'string' ? JSON.parse(detailsRaw) : detailsRaw;
+      if (!details || Object.keys(details).length === 0) {
+        return <span style={{ color: 'var(--color-text-muted)', fontStyle: 'italic' }}>{t('Không có chi tiết')}</span>;
+      }
+      if (details.message && Object.keys(details).length === 1) {
+        return <span style={{ color: 'var(--color-text)', fontWeight: 500 }}>{details.message}</span>;
+      }
+
+      const KEY_LABELS: Record<string, string> = {
+        round_id: t('Vòng (ID)'),
+        round_name: t('Tên vòng'),
+        compensations: t('Bù data'),
+        log_id: t('ID log'),
+        lead_id: t('ID lead'),
+        lead_name: t('Tên lead'),
+        phone: t('Số điện thoại'),
+        new_consultant_id: t('ID TVV mới'),
+        new_consultant_name: t('Tên TVV mới'),
+        is_duplicate: t('Trùng lặp'),
+        keys: t('Cấu hình thay đổi'),
+        id: t('ID'),
+        name: t('Tên hiển thị'),
+        email: t('Email đăng nhập'),
+        status: t('Trạng thái'),
+        target_round_id: t('Vòng chuyển hướng'),
+        logical_operator: t('Điều kiện logic'),
+        sheet_name: t('Tên trang tính'),
+        sheet_column: t('Cột trang tính'),
+        system_field: t('Trường hệ thống'),
+        connection_id: t('ID kết nối'),
+        message: t('Thông báo'),
+        admin_ids: t('Admin nhận thông báo'),
+        compensate_skipped: t('Bù cho người cũ'),
+        skipped_consultant_id: t('ID người cũ')
+      };
+
+      const renderValue = (key: string, val: any) => {
+        if (key === 'compensations' && typeof val === 'object' && val !== null) {
+          return (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '4px' }}>
+              {Object.entries(val as any).map(([cid, count]: [string, any]) => (
+                <span key={cid} style={{ 
+                  display: 'inline-flex', 
+                  padding: '2px 8px', 
+                  borderRadius: '12px', 
+                  background: Number(count) > 0 ? 'rgba(163, 20, 34, 0.1)' : 'var(--color-bg)',
+                  color: Number(count) > 0 ? 'var(--color-primary)' : 'var(--color-text-muted)',
+                  border: Number(count) > 0 ? '1px solid rgba(163, 20, 34, 0.2)' : '1px solid var(--color-border)',
+                  fontSize: '0.7rem',
+                  fontWeight: 600
+                }}>
+                  ID {cid}: {String(count)} lượt
+                </span>
+              ))}
+            </div>
+          );
+        }
+
+        if (key === 'keys' && Array.isArray(val)) {
+          const showAll = val.length <= 5;
+          const visibleKeys = showAll ? val : val.slice(0, 4);
+          const remainingCount = val.length - 4;
+          const tooltipText = !showAll ? val.slice(4).join(', ') : '';
+          return (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginTop: '4px' }}>
+              {visibleKeys.map((k: string) => (
+                <span key={k} style={{ 
+                  display: 'inline-flex', 
+                  padding: '2px 8px', 
+                  borderRadius: '6px', 
+                  background: 'var(--color-bg)',
+                  border: '1px solid var(--color-border)',
+                  color: 'var(--color-text-light)',
+                  fontSize: '0.7rem',
+                  fontFamily: 'monospace'
+                }}>
+                  {k}
+                </span>
+              ))}
+              {!showAll && (
+                <span 
+                  title={tooltipText}
+                  style={{ 
+                    display: 'inline-flex', 
+                    padding: '2px 8px', 
+                    borderRadius: '6px', 
+                    background: 'rgba(59, 130, 246, 0.1)',
+                    border: '1px dashed rgba(59, 130, 246, 0.3)',
+                    color: '#3b82f6',
+                    fontSize: '0.7rem',
+                    fontWeight: 600,
+                    cursor: 'help'
+                  }}
+                >
+                  +{remainingCount} khác...
+                </span>
+              )}
+            </div>
+          );
+        }
+
+        if (key === 'admin_ids' && Array.isArray(val)) {
+          return (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '4px' }}>
+              {val.map((id: any) => (
+                <span key={id} style={{ 
+                  display: 'inline-flex', 
+                  padding: '2px 8px', 
+                  borderRadius: '12px', 
+                  background: 'rgba(59, 130, 246, 0.1)',
+                  color: '#3b82f6',
+                  border: '1px solid rgba(59, 130, 246, 0.2)',
+                  fontSize: '0.7rem',
+                  fontWeight: 600
+                }}>
+                  Admin ID {id}
+                </span>
+              ))}
+            </div>
+          );
+        }
+
+        if (typeof val === 'boolean') {
+          return val ? (
+            <span style={{ color: 'var(--color-danger)', fontWeight: 700, background: 'rgba(239, 68, 68, 0.1)', padding: '2px 6px', borderRadius: 4, fontSize: '0.75rem' }}>{t('Có (Trùng)')}</span>
+          ) : (
+            <span style={{ color: 'var(--color-success)', fontWeight: 600, background: 'rgba(16, 185, 129, 0.1)', padding: '2px 6px', borderRadius: 4, fontSize: '0.75rem' }}>{t('Không')}</span>
+          );
+        }
+
+        if (typeof val === 'object' && val !== null) {
+          return <span style={{ fontFamily: 'monospace', fontSize: '0.75rem' }}>{JSON.stringify(val)}</span>;
+        }
+
+        if (key === 'status') {
+          if (val === 'active') return <span style={{ color: 'var(--color-success)', fontWeight: 600 }}>{t('Hoạt động')}</span>;
+          if (val === 'inactive') return <span style={{ color: 'var(--color-danger)', fontWeight: 600 }}>{t('Ngừng hoạt động')}</span>;
+          return <span>{String(val)}</span>;
+        }
+
+        return <span style={{ color: 'var(--color-text)', wordBreak: 'break-word' }}>{String(val)}</span>;
+      };
+
+      return (
+        <div style={{ 
+          display: 'flex', 
+          flexWrap: 'wrap',
+          gap: '4px 12px', 
+          padding: '6px 10px', 
+          background: theme === 'dark' ? 'var(--color-bg)' : '#f8fafc', 
+          borderRadius: '8px', 
+          border: theme === 'dark' ? '1px solid var(--color-border)' : '1px solid var(--color-border-light)',
+          maxWidth: '650px',
+          minWidth: '240px',
+          fontSize: '0.75rem',
+          lineHeight: '1.4'
+        }}>
+          {Object.entries(details).map(([key, val]) => {
+            const label = KEY_LABELS[key] || key;
+            const isBlockElement = (key === 'compensations' || key === 'keys' || key === 'admin_ids');
+            return (
+              <div key={key} style={{ 
+                display: 'flex', 
+                flexDirection: isBlockElement ? 'column' : 'row',
+                alignItems: isBlockElement ? 'flex-start' : 'center',
+                gap: isBlockElement ? '2px' : '4px',
+              }}>
+                <span style={{ 
+                  fontWeight: 600, 
+                  color: 'var(--color-text-muted)', 
+                  flexShrink: 0
+                }}>
+                  {label}:
+                </span>
+                <div style={{ color: 'var(--color-text)' }}>{renderValue(key, val)}</div>
+              </div>
+            );
+          })}
+        </div>
+      );
+    } catch {
+      return <span style={{ fontFamily: 'monospace', fontSize: '0.8rem', background: theme === 'dark' ? 'var(--color-bg)' : '#f8fafc', padding: '6px 10px', borderRadius: 6, border: theme === 'dark' ? '1px solid var(--color-border)' : '1px solid var(--color-border-light)' }}>{String(detailsRaw || '')}</span>;
+    }
+  };
+
   const fetchLogs = async () => {
     setLoadingLogs(true);
     setLogsPage(1);
@@ -751,15 +938,30 @@ const AccountsInner = () => {
 
   return (
     <div style={{ animation: 'fadeIn 0.3s ease-out' }}>
-      <div className="page-header">
+      <div className="page-header" style={{ display: 'flex', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', width: '100%', gap: '8px', marginBottom: '1.5rem' }}>
         <div>
-          <h1 className="page-title" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <UserCog size={28} color="var(--color-primary)" /> {t('Quản lý Tài khoản')}
+          <h1 className="page-title" style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: isMobile ? '1.45rem' : '1.75rem' }}>
+            <UserCog size={isMobile ? 22 : 28} color="var(--color-primary)" /> {t('Tài khoản')}
           </h1>
-          <p className="page-subtitle" style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem', marginTop: '0.25rem' }}>{t('Quản trị hệ thống và phân quyền truy cập cho nhân viên.')}</p>
+          <p className="page-subtitle" style={{ color: 'var(--color-text-muted)', fontSize: '0.8rem', marginTop: '0.25rem' }}>{t('Quản trị hệ thống và phân quyền truy cập.')}</p>
         </div>
-        <button onClick={openAddModal} className="btn primary responsive-btn-full" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.75rem 1.25rem', fontSize: '0.875rem' }}>
-          <Plus size={18} /> <span>{t('Thêm')}<span className="hide-on-mobile"> {t('tài khoản')}</span></span>
+        <button 
+          onClick={openAddModal} 
+          className="btn primary" 
+          style={{ 
+            padding: isMobile ? '8px' : '8px 16px', 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'center', 
+            borderRadius: '8px',
+            height: '36px',
+            gap: '4px',
+            flexShrink: 0
+          }}
+          title={t('Thêm tài khoản')}
+        >
+          <Plus size={18} />
+          {!isMobile && <span>{t('Thêm')}</span>}
         </button>
       </div>
 
@@ -1130,304 +1332,421 @@ const AccountsInner = () => {
             <TableSkeleton cols={5} rows={8} />
           ) : (
             <>
-              <div className="table-wrap responsive-table-wrap mobile-card-table" style={{ border: 'none', borderRadius: 0, maxHeight: '600px', overflowY: 'auto' }}>
-              <table className="mobile-table-compact" style={{ width: '100%', minWidth: 950, borderCollapse: 'collapse' }}>
-                <thead>
-                  <tr style={{ background: 'var(--color-bg)', borderBottom: '1px solid var(--color-border)' }}>
-                    <th style={{ padding: '1rem 1.5rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', position: 'sticky', top: 0, zIndex: 10, background: 'var(--color-bg)' }}>{t('Thời gian')}</th>
-                    <th style={{ padding: '1rem 1.5rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', position: 'sticky', top: 0, zIndex: 10, background: 'var(--color-bg)' }}>{t('Người thực hiện')}</th>
-                    <th style={{ padding: '1rem 1.5rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', position: 'sticky', top: 0, zIndex: 10, background: 'var(--color-bg)' }}>{t('Hành động')}</th>
-                    <th style={{ padding: '1rem 1.5rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', position: 'sticky', top: 0, zIndex: 10, background: 'var(--color-bg)' }}>{t('Chi tiết')}</th>
-                    <th style={{ padding: '1rem 1.5rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', position: 'sticky', top: 0, zIndex: 10, background: 'var(--color-bg)' }}>IP Address</th>
-                    <th style={{ padding: '1rem 1.5rem', textAlign: 'right', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', position: 'sticky', top: 0, zIndex: 10, background: 'var(--color-bg)' }}>{t('Thao tác')}</th>
-                  </tr>
-                </thead>
-                <tbody>
+              {isMobile ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', padding: '1rem', maxHeight: '600px', overflowY: 'auto' }} className="custom-scrollbar">
                   {paginatedLogs.map(log => {
-                    const renderLogDetails = (detailsRaw: any) => {
-                      try {
-                        const details = typeof detailsRaw === 'string' ? JSON.parse(detailsRaw) : detailsRaw;
-                        if (!details || Object.keys(details).length === 0) {
-                          return <span style={{ color: 'var(--color-text-muted)', fontStyle: 'italic' }}>{t('Không có chi tiết')}</span>;
-                        }
-                        if (details.message && Object.keys(details).length === 1) {
-                          return <span style={{ color: 'var(--color-text)', fontWeight: 500 }}>{details.message}</span>;
-                        }
-
-                        const KEY_LABELS: Record<string, string> = {
-                          round_id: t('Vòng (ID)'),
-                          round_name: t('Tên vòng'),
-                          compensations: t('Bù data'),
-                          log_id: t('ID log'),
-                          lead_id: t('ID lead'),
-                          lead_name: t('Tên lead'),
-                          phone: t('Số điện thoại'),
-                          new_consultant_id: t('ID TVV mới'),
-                          new_consultant_name: t('Tên TVV mới'),
-                          is_duplicate: t('Trùng lặp'),
-                          keys: t('Cấu hình thay đổi'),
-                          id: t('ID'),
-                          name: t('Tên hiển thị'),
-                          email: t('Email đăng nhập'),
-                          status: t('Trạng thái'),
-                          target_round_id: t('Vòng chuyển hướng'),
-                          logical_operator: t('Điều kiện logic'),
-                          sheet_name: t('Tên trang tính'),
-                          sheet_column: t('Cột trang tính'),
-                          system_field: t('Trường hệ thống'),
-                          connection_id: t('ID kết nối'),
-                          message: t('Thông báo'),
-                          admin_ids: t('Admin nhận thông báo'),
-                          compensate_skipped: t('Bù cho người cũ'),
-                          skipped_consultant_id: t('ID người cũ')
-                        };
-
-                        const renderValue = (key: string, val: any) => {
-                          if (key === 'compensations' && typeof val === 'object' && val !== null) {
-                            return (
-                              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '4px' }}>
-                                {Object.entries(val as any).map(([cid, count]: [string, any]) => (
-                                  <span key={cid} style={{ 
-                                    display: 'inline-flex', 
-                                    padding: '2px 8px', 
-                                    borderRadius: '12px', 
-                                    background: Number(count) > 0 ? 'rgba(163, 20, 34, 0.1)' : 'var(--color-bg)',
-                                    color: Number(count) > 0 ? 'var(--color-primary)' : 'var(--color-text-muted)',
-                                    border: Number(count) > 0 ? '1px solid rgba(163, 20, 34, 0.2)' : '1px solid var(--color-border)',
-                                    fontSize: '0.7rem',
-                                    fontWeight: 600
-                                  }}>
-                                    ID {cid}: {String(count)} lượt
-                                  </span>
-                                ))}
-                              </div>
-                            );
-                          }
-
-                          if (key === 'keys' && Array.isArray(val)) {
-                            const showAll = val.length <= 5;
-                            const visibleKeys = showAll ? val : val.slice(0, 4);
-                            const remainingCount = val.length - 4;
-                            const tooltipText = !showAll ? val.slice(4).join(', ') : '';
-                            return (
-                              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginTop: '4px' }}>
-                                {visibleKeys.map((k: string) => (
-                                  <span key={k} style={{ 
-                                    display: 'inline-flex', 
-                                    padding: '2px 8px', 
-                                    borderRadius: '6px', 
-                                    background: 'var(--color-bg)',
-                                    border: '1px solid var(--color-border)',
-                                    color: 'var(--color-text-light)',
-                                    fontSize: '0.7rem',
-                                    fontFamily: 'monospace'
-                                  }}>
-                                    {k}
-                                  </span>
-                                ))}
-                                {!showAll && (
-                                  <span 
-                                    title={tooltipText}
-                                    style={{ 
-                                      display: 'inline-flex', 
-                                      padding: '2px 8px', 
-                                      borderRadius: '6px', 
-                                      background: 'rgba(59, 130, 246, 0.1)',
-                                      border: '1px dashed rgba(59, 130, 246, 0.3)',
-                                      color: '#3b82f6',
-                                      fontSize: '0.7rem',
-                                      fontWeight: 600,
-                                      cursor: 'help'
-                                    }}
-                                  >
-                                    +{remainingCount} khác...
-                                  </span>
-                                )}
-                              </div>
-                            );
-                          }
-
-                          if (key === 'admin_ids' && Array.isArray(val)) {
-                            return (
-                              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '4px' }}>
-                                {val.map((id: any) => (
-                                  <span key={id} style={{ 
-                                    display: 'inline-flex', 
-                                    padding: '2px 8px', 
-                                    borderRadius: '12px', 
-                                    background: 'rgba(59, 130, 246, 0.1)',
-                                    color: '#3b82f6',
-                                    border: '1px solid rgba(59, 130, 246, 0.2)',
-                                    fontSize: '0.7rem',
-                                    fontWeight: 600
-                                  }}>
-                                    Admin ID {id}
-                                  </span>
-                                ))}
-                              </div>
-                            );
-                          }
-
-                          if (typeof val === 'boolean') {
-                            return val ? (
-                              <span style={{ color: 'var(--color-danger)', fontWeight: 700, background: 'rgba(239, 68, 68, 0.1)', padding: '2px 6px', borderRadius: 4, fontSize: '0.75rem' }}>{t('Có (Trùng)')}</span>
-                            ) : (
-                              <span style={{ color: 'var(--color-success)', fontWeight: 600, background: 'rgba(16, 185, 129, 0.1)', padding: '2px 6px', borderRadius: 4, fontSize: '0.75rem' }}>{t('Không')}</span>
-                            );
-                          }
-
-                          if (typeof val === 'object' && val !== null) {
-                            return <span style={{ fontFamily: 'monospace', fontSize: '0.75rem' }}>{JSON.stringify(val)}</span>;
-                          }
-
-                          if (key === 'status') {
-                            if (val === 'active') return <span style={{ color: 'var(--color-success)', fontWeight: 600 }}>{t('Hoạt động')}</span>;
-                            if (val === 'inactive') return <span style={{ color: 'var(--color-danger)', fontWeight: 600 }}>{t('Ngừng hoạt động')}</span>;
-                            return <span>{String(val)}</span>;
-                          }
-
-                          return <span style={{ color: 'var(--color-text)', wordBreak: 'break-word' }}>{String(val)}</span>;
-                        };
-
-                        return (
-                          <div style={{ 
-                            display: 'flex', 
-                            flexWrap: 'wrap',
-                            gap: '4px 12px', 
-                            padding: '6px 10px', 
-                            background: theme === 'dark' ? 'var(--color-bg)' : '#f8fafc', 
-                            borderRadius: '8px', 
-                            border: theme === 'dark' ? '1px solid var(--color-border)' : '1px solid var(--color-border-light)',
-                            maxWidth: '650px',
-                            minWidth: '240px',
-                            fontSize: '0.75rem',
-                            lineHeight: '1.4'
-                          }}>
-                            {Object.entries(details).map(([key, val]) => {
-                              const label = KEY_LABELS[key] || key;
-                              const isBlockElement = (key === 'compensations' || key === 'keys' || key === 'admin_ids');
-                              return (
-                                <div key={key} style={{ 
-                                  display: 'flex', 
-                                  flexDirection: isBlockElement ? 'column' : 'row',
-                                  alignItems: isBlockElement ? 'flex-start' : 'center',
-                                  gap: isBlockElement ? '2px' : '4px',
-                                }}>
-                                  <span style={{ 
-                                    fontWeight: 600, 
-                                    color: 'var(--color-text-muted)', 
-                                    flexShrink: 0
-                                  }}>
-                                    {label}:
-                                  </span>
-                                  <div style={{ color: 'var(--color-text)' }}>{renderValue(key, val)}</div>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        );
-                      } catch {
-                        return <span style={{ fontFamily: 'monospace', fontSize: '0.8rem', background: theme === 'dark' ? 'var(--color-bg)' : '#f8fafc', padding: '6px 10px', borderRadius: 6, border: theme === 'dark' ? '1px solid var(--color-border)' : '1px solid var(--color-border-light)' }}>{String(detailsRaw || '')}</span>;
-                      }
-                    };
-
                     const rollbackableActions = ['REASSIGN_LEAD', 'EDIT_CONSULTANT', 'TOGGLE_CONSULTANT_VACATION', 'APPROVE_REPORT', 'REJECT_REPORT'];
                     const isRollbackable = rollbackableActions.includes(log.action);
                     const isRolledBack = Number(log.is_rolled_back) === 1;
-
                     return (
-                      <tr key={log.id} style={{ borderBottom: '1px solid var(--color-border)', transition: 'background 0.2s', opacity: isRolledBack ? 0.65 : 1 }} className="table-row-hover">
-                        <td data-label={t('Thời gian')} style={{ padding: '1rem 1.5rem' }}>
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                            <span style={{ fontSize: '0.8125rem', color: 'var(--color-text)', fontWeight: 600 }}>{new Date(log.created_at).toLocaleDateString('vi-VN')}</span>
-                            <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{new Date(log.created_at).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>
-                          </div>
-                        </td>
-                        <td data-label={t('Người thực hiện')} style={{ padding: '1rem 1.5rem' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                            <Avatar src={log.account_avatar} name={log.account_name || 'System'} size={28} />
-                            <div style={{ fontWeight: 600, color: 'var(--color-text)' }}>
-                              {log.account_name || t('Hệ thống')}
-                              <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 400, marginTop: 2 }}>{log.account_email}</div>
+                      <div
+                        key={log.id}
+                        style={{
+                          padding: '12px 16px',
+                          background: 'var(--color-surface)',
+                          border: '1px solid var(--color-border-light)',
+                          borderRadius: '12px',
+                          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.03)',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '8px',
+                          opacity: isRolledBack ? 0.65 : 1
+                        }}
+                      >
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <Avatar src={log.account_avatar} name={log.account_name || 'System'} size={24} />
+                            <div style={{ display: 'flex', flexDirection: 'column' }}>
+                              <span style={{ fontWeight: 700, fontSize: '0.85rem', color: 'var(--color-text)' }}>
+                                {log.account_name || t('Hệ thống')}
+                              </span>
+                              <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>
+                                {log.account_email}
+                              </span>
                             </div>
                           </div>
-                        </td>
-                        <td data-label={t('Hành động')} style={{ padding: '1rem 1.5rem' }}>
+                          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2 }}>
+                            <span style={{ fontSize: '0.72rem', color: 'var(--color-text)', fontWeight: 600 }}>
+                              {new Date(log.created_at).toLocaleDateString('vi-VN')}
+                            </span>
+                            <span style={{ fontSize: '0.68rem', color: 'var(--color-text-muted)' }}>
+                              {new Date(log.created_at).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                            </span>
+                          </div>
+                        </div>
+
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '6px', marginTop: '2px' }}>
                           <span style={{
                             background: log.action === 'LOGIN' ? 'rgba(59, 130, 246, 0.1)' : isRolledBack ? 'var(--color-border)' : 'rgba(163, 20, 34, 0.1)',
                             color: log.action === 'LOGIN' ? '#3b82f6' : isRolledBack ? 'var(--color-text-muted)' : 'var(--color-primary)',
-                            padding: '4px 10px',
-                            borderRadius: 6,
-                            fontSize: '0.75rem',
+                            padding: '3px 8px',
+                            borderRadius: '6px',
+                            fontSize: '0.7rem',
                             fontWeight: 700,
                             textDecoration: isRolledBack ? 'line-through' : 'none'
                           }}>
                             {log.action}
                           </span>
-                        </td>
-                        <td data-label={t('Chi tiết')} style={{ padding: '1rem 1.5rem', fontSize: '0.8125rem', color: 'var(--color-text-light)' }}>
+                          
+                          <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)' }}>
+                            IP: {log.ip_address}
+                          </span>
+                        </div>
+
+                        <div style={{ fontSize: '0.8rem', color: 'var(--color-text-light)', borderLeft: '2px solid var(--color-border)', paddingLeft: '8px', margin: '4px 0' }}>
                           {renderLogDetails(log.details)}
-                        </td>
-                        <td data-label="IP Address" style={{ padding: '1rem 1.5rem', color: 'var(--color-text-muted)', fontSize: '0.8125rem' }}>
-                          {log.ip_address}
-                        </td>
-                        <td data-label={t('Thao tác')} style={{ padding: '1rem 1.5rem', textAlign: 'right' }}>
-                          {isRolledBack ? (
-                            <span style={{ 
-                              fontSize: '0.75rem', 
-                              color: 'var(--color-text-muted)', 
-                              background: 'var(--color-bg)',
-                              padding: '4px 8px', 
-                              borderRadius: '6px',
-                              fontWeight: 600,
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: 4
-                            }}>
-                              <Check size={12} /> {t('Đã hoàn tác')}
-                            </span>
-                          ) : isRollbackable ? (
-                            <button
-                              onClick={(e) => { e.stopPropagation(); handleRollback(log.id); }}
-                              disabled={rollingBackLogId === log.id}
-                              className="btn ghost sm"
-                              style={{ 
-                                padding: '4px 8px', 
-                                color: 'var(--color-danger)', 
-                                display: 'inline-flex', 
-                                alignItems: 'center', 
-                                gap: 4,
-                                fontSize: '0.75rem',
-                                fontWeight: 600
-                              }}
-                              title={t("Hoàn tác hành động này")}
-                            >
-                              {rollingBackLogId === log.id ? (
-                                <RefreshCw size={12} className="spin" />
-                              ) : (
-                                <RotateCcw size={12} />
-                              )}
-                              <span>{t('Hoàn tác')}</span>
-                            </button>
-                          ) : (
-                            <span style={{ color: 'var(--color-text-muted)', fontSize: '0.75rem', fontStyle: 'italic' }}>-</span>
-                          )}
-                        </td>
-                      </tr>
+                        </div>
+
+                        {(isRollbackable || isRolledBack) && (
+                          <div style={{ display: 'flex', justifyContent: 'flex-end', borderTop: '1px solid var(--color-border-light)', paddingTop: '6px', marginTop: '2px' }}>
+                            {isRolledBack ? (
+                              <span style={{ 
+                                fontSize: '0.72rem', 
+                                color: 'var(--color-text-muted)', 
+                                background: 'var(--color-bg)',
+                                padding: '3px 6px', 
+                                borderRadius: '4px',
+                                fontWeight: 600,
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: 4
+                              }}>
+                                <Check size={11} /> {t('Đã hoàn tác')}
+                              </span>
+                            ) : (
+                              <button
+                                onClick={(e) => { e.stopPropagation(); handleRollback(log.id); }}
+                                disabled={rollingBackLogId === log.id}
+                                className="btn ghost sm"
+                                style={{ 
+                                  padding: '4px 8px', 
+                                  color: 'var(--color-danger)', 
+                                  display: 'inline-flex', 
+                                  alignItems: 'center', 
+                                  gap: 4,
+                                  fontSize: '0.72rem',
+                                  fontWeight: 600
+                                }}
+                              >
+                                {rollingBackLogId === log.id ? (
+                                  <RefreshCw size={11} className="spin" />
+                                ) : (
+                                  <RotateCcw size={11} />
+                                )}
+                                <span>{t('Hoàn tác')}</span>
+                              </button>
+                            )}
+                          </div>
+                        )}
+                      </div>
                     );
                   })}
                   {logs.length === 0 && (
-                    <tr className="empty-state-row">
-                      <td colSpan={6}>
-                        <div style={{ padding: '3rem 2rem', textAlign: 'center', color: 'var(--color-text-muted)' }}>
-                          {t('Chưa có lịch sử hoạt động nào được ghi lại.')}
-                        </div>
-                      </td>
-                    </tr>
+                    <div style={{ padding: '3rem 2rem', textAlign: 'center', color: 'var(--color-text-muted)' }}>
+                      {t('Chưa có lịch sử hoạt động nào được ghi lại.')}
+                    </div>
                   )}
-                </tbody>
-              </table>
-            </div>
+                </div>
+              ) : (
+                <div className="table-wrap responsive-table-wrap mobile-card-table" style={{ border: 'none', borderRadius: 0, maxHeight: '600px', overflowY: 'auto' }}>
+                  <table className="mobile-table-compact" style={{ width: '100%', minWidth: 950, borderCollapse: 'collapse' }}>
+                    <thead>
+                      <tr style={{ background: 'var(--color-bg)', borderBottom: '1px solid var(--color-border)' }}>
+                        <th style={{ padding: '1rem 1.5rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', position: 'sticky', top: 0, zIndex: 10, background: 'var(--color-bg)' }}>{t('Thời gian')}</th>
+                        <th style={{ padding: '1rem 1.5rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', position: 'sticky', top: 0, zIndex: 10, background: 'var(--color-bg)' }}>{t('Người thực hiện')}</th>
+                        <th style={{ padding: '1rem 1.5rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', position: 'sticky', top: 0, zIndex: 10, background: 'var(--color-bg)' }}>{t('Hành động')}</th>
+                        <th style={{ padding: '1rem 1.5rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', position: 'sticky', top: 0, zIndex: 10, background: 'var(--color-bg)' }}>{t('Chi tiết')}</th>
+                        <th style={{ padding: '1rem 1.5rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', position: 'sticky', top: 0, zIndex: 10, background: 'var(--color-bg)' }}>IP Address</th>
+                        <th style={{ padding: '1rem 1.5rem', textAlign: 'right', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', position: 'sticky', top: 0, zIndex: 10, background: 'var(--color-bg)' }}>{t('Thao tác')}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {paginatedLogs.map(log => {
+                        const renderLogDetails = (detailsRaw: any) => {
+                          try {
+                            const details = typeof detailsRaw === 'string' ? JSON.parse(detailsRaw) : detailsRaw;
+                            if (!details || Object.keys(details).length === 0) {
+                              return <span style={{ color: 'var(--color-text-muted)', fontStyle: 'italic' }}>{t('Không có chi tiết')}</span>;
+                            }
+                            if (details.message && Object.keys(details).length === 1) {
+                              return <span style={{ color: 'var(--color-text)', fontWeight: 500 }}>{details.message}</span>;
+                            }
+
+                            const KEY_LABELS: Record<string, string> = {
+                              round_id: t('Vòng (ID)'),
+                              round_name: t('Tên vòng'),
+                              compensations: t('Bù data'),
+                              log_id: t('ID log'),
+                              lead_id: t('ID lead'),
+                              lead_name: t('Tên lead'),
+                              phone: t('Số điện thoại'),
+                              new_consultant_id: t('ID TVV mới'),
+                              new_consultant_name: t('Tên TVV mới'),
+                              is_duplicate: t('Trùng lặp'),
+                              keys: t('Cấu hình thay đổi'),
+                              id: t('ID'),
+                              name: t('Tên hiển thị'),
+                              email: t('Email đăng nhập'),
+                              status: t('Trạng thái'),
+                              target_round_id: t('Vòng chuyển hướng'),
+                              logical_operator: t('Điều kiện logic'),
+                              sheet_name: t('Tên trang tính'),
+                              sheet_column: t('Cột trang tính'),
+                              system_field: t('Trường hệ thống'),
+                              connection_id: t('ID kết nối'),
+                              message: t('Thông báo'),
+                              admin_ids: t('Admin nhận thông báo'),
+                              compensate_skipped: t('Bù cho người cũ'),
+                              skipped_consultant_id: t('ID người cũ')
+                            };
+
+                            const renderValue = (key: string, val: any) => {
+                              if (key === 'compensations' && typeof val === 'object' && val !== null) {
+                                return (
+                                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '4px' }}>
+                                    {Object.entries(val as any).map(([cid, count]: [string, any]) => (
+                                      <span key={cid} style={{ 
+                                        display: 'inline-flex', 
+                                        padding: '2px 8px', 
+                                        borderRadius: '12px', 
+                                        background: Number(count) > 0 ? 'rgba(163, 20, 34, 0.1)' : 'var(--color-bg)',
+                                        color: Number(count) > 0 ? 'var(--color-primary)' : 'var(--color-text-muted)',
+                                        border: Number(count) > 0 ? '1px solid rgba(163, 20, 34, 0.2)' : '1px solid var(--color-border)',
+                                        fontSize: '0.7rem',
+                                        fontWeight: 600
+                                      }}>
+                                        ID {cid}: {String(count)} lượt
+                                      </span>
+                                    ))}
+                                  </div>
+                                );
+                              }
+
+                              if (key === 'keys' && Array.isArray(val)) {
+                                const showAll = val.length <= 5;
+                                const visibleKeys = showAll ? val : val.slice(0, 4);
+                                const remainingCount = val.length - 4;
+                                const tooltipText = !showAll ? val.slice(4).join(', ') : '';
+                                return (
+                                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginTop: '4px' }}>
+                                    {visibleKeys.map((k: string) => (
+                                      <span key={k} style={{ 
+                                        display: 'inline-flex', 
+                                        padding: '2px 8px', 
+                                        borderRadius: '6px', 
+                                        background: 'var(--color-bg)',
+                                        border: '1px solid var(--color-border)',
+                                        color: 'var(--color-text-light)',
+                                        fontSize: '0.7rem',
+                                        fontFamily: 'monospace'
+                                      }}>
+                                        {k}
+                                      </span>
+                                    ))}
+                                    {!showAll && (
+                                      <span 
+                                        title={tooltipText}
+                                        style={{ 
+                                          display: 'inline-flex', 
+                                          padding: '2px 8px', 
+                                          borderRadius: '6px', 
+                                          background: 'rgba(59, 130, 246, 0.1)',
+                                          border: '1px dashed rgba(59, 130, 246, 0.3)',
+                                          color: '#3b82f6',
+                                          fontSize: '0.7rem',
+                                          fontWeight: 600,
+                                          cursor: 'help'
+                                        }}
+                                      >
+                                        +{remainingCount} khác...
+                                      </span>
+                                    )}
+                                  </div>
+                                );
+                              }
+
+                              if (key === 'admin_ids' && Array.isArray(val)) {
+                                return (
+                                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '4px' }}>
+                                    {val.map((id: any) => (
+                                      <span key={id} style={{ 
+                                        display: 'inline-flex', 
+                                        padding: '2px 8px', 
+                                        borderRadius: '12px', 
+                                        background: 'rgba(59, 130, 246, 0.1)',
+                                        color: '#3b82f6',
+                                        border: '1px solid rgba(59, 130, 246, 0.2)',
+                                        fontSize: '0.7rem',
+                                        fontWeight: 600
+                                      }}>
+                                        Admin ID {id}
+                                      </span>
+                                    ))}
+                                  </div>
+                                );
+                              }
+
+                              if (typeof val === 'boolean') {
+                                return val ? (
+                                  <span style={{ color: 'var(--color-danger)', fontWeight: 700, background: 'rgba(239, 68, 68, 0.1)', padding: '2px 6px', borderRadius: 4, fontSize: '0.75rem' }}>{t('Có (Trùng)')}</span>
+                                ) : (
+                                  <span style={{ color: 'var(--color-success)', fontWeight: 600, background: 'rgba(16, 185, 129, 0.1)', padding: '2px 6px', borderRadius: 4, fontSize: '0.75rem' }}>{t('Không')}</span>
+                                );
+                              }
+
+                              if (typeof val === 'object' && val !== null) {
+                                return <span style={{ fontFamily: 'monospace', fontSize: '0.75rem' }}>{JSON.stringify(val)}</span>;
+                              }
+
+                              if (key === 'status') {
+                                if (val === 'active') return <span style={{ color: 'var(--color-success)', fontWeight: 600 }}>{t('Hoạt động')}</span>;
+                                if (val === 'inactive') return <span style={{ color: 'var(--color-danger)', fontWeight: 600 }}>{t('Ngừng hoạt động')}</span>;
+                                return <span>{String(val)}</span>;
+                              }
+
+                              return <span style={{ color: 'var(--color-text)', wordBreak: 'break-word' }}>{String(val)}</span>;
+                            };
+
+                            return (
+                              <div style={{ 
+                                display: 'flex', 
+                                flexWrap: 'wrap',
+                                gap: '4px 12px', 
+                                padding: '6px 10px', 
+                                background: theme === 'dark' ? 'var(--color-bg)' : '#f8fafc', 
+                                borderRadius: '8px', 
+                                border: theme === 'dark' ? '1px solid var(--color-border)' : '1px solid var(--color-border-light)',
+                                maxWidth: '650px',
+                                minWidth: '240px',
+                                fontSize: '0.75rem',
+                                lineHeight: '1.4'
+                              }}>
+                                {Object.entries(details).map(([key, val]) => {
+                                  const label = KEY_LABELS[key] || key;
+                                  const isBlockElement = (key === 'compensations' || key === 'keys' || key === 'admin_ids');
+                                  return (
+                                    <div key={key} style={{ 
+                                      display: 'flex', 
+                                      flexDirection: isBlockElement ? 'column' : 'row',
+                                      alignItems: isBlockElement ? 'flex-start' : 'center',
+                                      gap: isBlockElement ? '2px' : '4px',
+                                    }}>
+                                      <span style={{ 
+                                        fontWeight: 600, 
+                                        color: 'var(--color-text-muted)', 
+                                        flexShrink: 0
+                                      }}>
+                                        {label}:
+                                      </span>
+                                      <div style={{ color: 'var(--color-text)' }}>{renderValue(key, val)}</div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            );
+                          } catch {
+                            return <span style={{ fontFamily: 'monospace', fontSize: '0.8rem', background: theme === 'dark' ? 'var(--color-bg)' : '#f8fafc', padding: '6px 10px', borderRadius: 6, border: theme === 'dark' ? '1px solid var(--color-border)' : '1px solid var(--color-border-light)' }}>{String(detailsRaw || '')}</span>;
+                          }
+                        };
+
+                        const rollbackableActions = ['REASSIGN_LEAD', 'EDIT_CONSULTANT', 'TOGGLE_CONSULTANT_VACATION', 'APPROVE_REPORT', 'REJECT_REPORT'];
+                        const isRollbackable = rollbackableActions.includes(log.action);
+                        const isRolledBack = Number(log.is_rolled_back) === 1;
+
+                        return (
+                          <tr key={log.id} style={{ borderBottom: '1px solid var(--color-border)', transition: 'background 0.2s', opacity: isRolledBack ? 0.65 : 1 }} className="table-row-hover">
+                            <td data-label={t('Thời gian')} style={{ padding: '1rem 1.5rem' }}>
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                                <span style={{ fontSize: '0.8125rem', color: 'var(--color-text)', fontWeight: 600 }}>{new Date(log.created_at).toLocaleDateString('vi-VN')}</span>
+                                <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{new Date(log.created_at).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>
+                              </div>
+                            </td>
+                            <td data-label={t('Người thực hiện')} style={{ padding: '1rem 1.5rem' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                <Avatar src={log.account_avatar} name={log.account_name || 'System'} size={28} />
+                                <div style={{ fontWeight: 600, color: 'var(--color-text)' }}>
+                                  {log.account_name || t('Hệ thống')}
+                                  <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 400, marginTop: 2 }}>{log.account_email}</div>
+                                </div>
+                              </div>
+                            </td>
+                            <td data-label={t('Hành động')} style={{ padding: '1rem 1.5rem' }}>
+                              <span style={{
+                                background: log.action === 'LOGIN' ? 'rgba(59, 130, 246, 0.1)' : isRolledBack ? 'var(--color-border)' : 'rgba(163, 20, 34, 0.1)',
+                                color: log.action === 'LOGIN' ? '#3b82f6' : isRolledBack ? 'var(--color-text-muted)' : 'var(--color-primary)',
+                                padding: '4px 10px',
+                                borderRadius: 6,
+                                fontSize: '0.75rem',
+                                fontWeight: 700,
+                                textDecoration: isRolledBack ? 'line-through' : 'none'
+                              }}>
+                                {log.action}
+                              </span>
+                            </td>
+                            <td data-label={t('Chi tiết')} style={{ padding: '1rem 1.5rem', fontSize: '0.8125rem', color: 'var(--color-text-light)' }}>
+                              {renderLogDetails(log.details)}
+                            </td>
+                            <td data-label="IP Address" style={{ padding: '1rem 1.5rem', color: 'var(--color-text-muted)', fontSize: '0.8125rem' }}>
+                              {log.ip_address}
+                            </td>
+                            <td data-label={t('Thao tác')} style={{ padding: '1rem 1.5rem', textAlign: 'right' }}>
+                              {isRolledBack ? (
+                                <span style={{ 
+                                  fontSize: '0.75rem', 
+                                  color: 'var(--color-text-muted)', 
+                                  background: 'var(--color-bg)',
+                                  padding: '4px 8px', 
+                                  borderRadius: '6px',
+                                  fontWeight: 600,
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: 4
+                                }}>
+                                  <Check size={12} /> {t('Đã hoàn tác')}
+                                </span>
+                              ) : isRollbackable ? (
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); handleRollback(log.id); }}
+                                  disabled={rollingBackLogId === log.id}
+                                  className="btn ghost sm"
+                                  style={{ 
+                                    padding: '4px 8px', 
+                                    color: 'var(--color-danger)', 
+                                    display: 'inline-flex', 
+                                    alignItems: 'center', 
+                                    gap: 4,
+                                    fontSize: '0.75rem',
+                                    fontWeight: 600
+                                  }}
+                                  title={t("Hoàn tác hành động này")}
+                                >
+                                  {rollingBackLogId === log.id ? (
+                                    <RefreshCw size={12} className="spin" />
+                                  ) : (
+                                    <RotateCcw size={12} />
+                                  )}
+                                  <span>{t('Hoàn tác')}</span>
+                                </button>
+                              ) : (
+                                <span style={{ color: 'var(--color-text-muted)', fontSize: '0.75rem', fontStyle: 'italic' }}>-</span>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                      {logs.length === 0 && (
+                        <tr className="empty-state-row">
+                          <td colSpan={6}>
+                            <div style={{ padding: '3rem 2rem', textAlign: 'center', color: 'var(--color-text-muted)' }}>
+                              {t('Chưa có lịch sử hoạt động nào được ghi lại.')}
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              )}
 
             {/* Pagination */}
             {!loadingLogs && totalLogPages > 0 && (

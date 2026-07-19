@@ -2,7 +2,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { createPortal } from 'react-dom';
 import { withRouterFreezer } from '../components/RouterFreezer';
-import { Users, Plus, Trash2, Mail, MessageCircle, Shield, UserX, Clock, X, Link2Off, User, Send, Check, RefreshCw, BarChart2, Calendar, Scale, Eye, CheckCircle, AlertTriangle, Building2, ChevronLeft, ChevronRight, Search, Phone, Info, TrendingUp, Paperclip, Link2, File as FileIcon, Folder, Download, MapPin } from 'lucide-react';
+import { Users, Plus, Trash2, Mail, MessageCircle, Shield, UserX, Clock, X, Link2Off, User, Send, Check, RefreshCw, BarChart2, Calendar, Scale, Eye, CheckCircle, AlertTriangle, Building2, ChevronLeft, ChevronRight, Search, Phone, Info, TrendingUp, Paperclip, Link2, File as FileIcon, Folder, Download, MapPin, MoreHorizontal } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { CustomModal } from '../components/ui/CustomModal';
 import { ConfirmModal } from '../components/ui/ConfirmModal';
@@ -128,6 +128,7 @@ const ConsultantsInner = () => {
   const [deleteId, setDeleteId] = useState<number | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [showMobileTabMenu, setShowMobileTabMenu] = useState(false);
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -820,11 +821,11 @@ const ConsultantsInner = () => {
   }, [teams.length]);
 
   return (
-    <div>
+    <div className="anim-fade-up">
       {/* Header */}
-      <div className="page-header">
+      <div className="page-header" style={{ display: 'flex', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', width: '100%', gap: '8px', marginBottom: '1.5rem' }}>
         <div>
-          <h1 className="page-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <h1 className="page-title" style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: isMobile ? '1.45rem' : '1.75rem' }}>
             {activeTab === 'teams' ? t('Quản lý Nhóm (Team)') : activeTab === 'branches' ? t('Chi nhánh Kinh doanh') : t('Quản lý Tư vấn viên')}
             <button
               onClick={() => setShowInfoModal(true)}
@@ -854,10 +855,10 @@ const ConsultantsInner = () => {
               title={t("Xem hướng dẫn thiết lập nhân sự, team và dự án trọng điểm")}
             >
               <Info size={12} style={{ marginTop: 1 }} />
-              <span style={{ fontSize: '0.7rem', fontWeight: 600 }}>{t("Giải thích cơ chế")}</span>
+              <span style={{ fontSize: '0.7rem', fontWeight: 600 }}>{t("Cơ chế")}</span>
             </button>
           </h1>
-          <p className="page-subtitle">
+          <p className="page-subtitle" style={{ fontSize: '0.8rem' }}>
             {activeTab === 'teams'
               ? t('Danh sách nhóm phân chia công việc và chỉ tiêu dự án')
               : activeTab === 'branches'
@@ -866,18 +867,28 @@ const ConsultantsInner = () => {
           </p>
         </div>
         {isWriteAuthorized && activeTab === 'teams' ? (
-          <button onClick={openAddTeamModal} className="btn primary responsive-btn-full">
-            <Plus size={16} /> {t('Thêm Nhóm')}
+          <button 
+            onClick={openAddTeamModal} 
+            className="btn primary"
+            style={{ padding: isMobile ? '8px' : '8px 16px', display: 'flex', alignItems: 'center', gap: '4px', borderRadius: '8px', height: '36px', flexShrink: 0 }}
+          >
+            <Plus size={16} />
+            {!isMobile && <span>{t('Thêm Nhóm')}</span>}
           </button>
         ) : activeTab === 'branches' ? null : isWriteAuthorized ? (
-          <button onClick={openAddModal} className="btn primary responsive-btn-full">
-            <Plus size={16} /> {t('Thêm TVV')}
+          <button 
+            onClick={openAddModal} 
+            className="btn primary"
+            style={{ padding: isMobile ? '8px' : '8px 16px', display: 'flex', alignItems: 'center', gap: '4px', borderRadius: '8px', height: '36px', flexShrink: 0 }}
+          >
+            <Plus size={16} />
+            {!isMobile && <span>{t('Thêm TVV')}</span>}
           </button>
         ) : null}
       </div>
 
       {/* Tab bar */}
-      {showAllTabs && (
+      {showAllTabs && !isMobile && (
         <div className="segmented-control-wrapper" style={{ marginBottom: '1.5rem' }}>
           <div style={{
             display: 'flex',
@@ -951,7 +962,7 @@ const ConsultantsInner = () => {
       <div key={activeTab} className="subtab-enter-active" style={{ display: 'flex', flexDirection: 'column', width: '100%' }}>
         {/* Summary Cards */}
         {activeTab === 'consultants' && (
-        <div className="responsive-grid-4" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginBottom: '1.5rem' }}>
+        <div className="responsive-grid-4" style={{ display: isMobile ? 'none' : 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginBottom: '1.5rem' }}>
           {/* Card 1: Tổng TVV */}
           <div className="stat-card" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '1rem 1.25rem', background: 'var(--color-surface)', border: '1px solid var(--color-border-light)', borderRadius: '10px' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '40px', height: '40px', borderRadius: '8px', background: 'rgba(73, 80, 87, 0.06)', color: 'var(--color-text-muted)' }}>
@@ -1002,57 +1013,139 @@ const ConsultantsInner = () => {
       {activeTab === 'consultants' ? (
         <div className="card" style={{ overflow: 'hidden' }}>
           <div style={{
-            padding: '1.25rem 1.5rem',
+            padding: isMobile ? '0.75rem 1rem' : '1.25rem 1.5rem',
             borderBottom: '1px solid var(--color-border)',
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
             backgroundColor: 'var(--color-surface)',
-            gap: '1rem',
+            gap: '0.75rem',
             flexWrap: 'wrap'
           }}>
-            <div style={{ position: 'relative', width: '100%', maxWidth: '360px' }}>
-              <input
-                type="text"
-                placeholder={t('Tìm kiếm tên, email, điện thoại...')}
-                value={searchQuery}
-                onChange={e => {
-                  setSearchQuery(e.target.value);
-                  setConsultantsPage(1);
-                }}
-                className="form-input"
-                style={{
-                  paddingLeft: '12px',
-                  borderRadius: '10px',
-                  fontSize: '0.875rem',
-                  width: '100%'
-                }}
-              />
-              {searchQuery && (
-                <button
-                  onClick={() => {
-                    setSearchQuery('');
+            <div style={{ display: 'flex', gap: '8px', flex: 1, minWidth: isMobile ? '100%' : '360px', maxWidth: isMobile ? '100%' : '360px', alignItems: 'center' }}>
+              <div style={{ position: 'relative', flex: 1, minWidth: 0 }}>
+                <input
+                  type="text"
+                  placeholder={t('Tìm kiếm tên, email, điện thoại...')}
+                  value={searchQuery}
+                  onChange={e => {
+                    setSearchQuery(e.target.value);
                     setConsultantsPage(1);
                   }}
+                  className="form-input"
                   style={{
-                    position: 'absolute',
-                    right: '12px',
-                    top: '50%',
-                    transform: 'translateY(-50%)',
-                    background: 'none',
-                    border: 'none',
-                    color: 'var(--color-text-muted)',
-                    cursor: 'pointer',
-                    padding: '2px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center'
+                    paddingLeft: '12px',
+                    borderRadius: '10px',
+                    fontSize: '0.875rem',
+                    width: '100%',
+                    height: '38px'
                   }}
-                >
-                  <X size={14} />
-                </button>
+                />
+                {searchQuery && (
+                  <button
+                    onClick={() => {
+                      setSearchQuery('');
+                      setConsultantsPage(1);
+                    }}
+                    style={{
+                      position: 'absolute',
+                      right: '12px',
+                      top: '50%',
+                      transform: 'translateY(-50%)',
+                      background: 'none',
+                      border: 'none',
+                      color: 'var(--color-text-muted)',
+                      cursor: 'pointer',
+                      padding: '2px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}
+                  >
+                    <X size={14} />
+                  </button>
+                )}
+              </div>
+
+              {/* Mobile Tab Selector ... Button */}
+              {isMobile && (
+                <div style={{ position: 'relative', flexShrink: 0 }}>
+                  <button
+                    onClick={() => setShowMobileTabMenu(!showMobileTabMenu)}
+                    style={{
+                      height: '38px',
+                      width: '38px',
+                      padding: 0,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      borderRadius: '10px',
+                      border: '1px solid var(--color-border)',
+                      background: 'transparent',
+                      color: 'var(--color-text)'
+                    }}
+                  >
+                    <MoreHorizontal size={18} />
+                  </button>
+
+                  {showMobileTabMenu && (
+                    <>
+                      <div 
+                        onClick={() => setShowMobileTabMenu(false)}
+                        style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 999 }}
+                      />
+                      <div style={{
+                        position: 'absolute',
+                        top: '44px',
+                        right: 0,
+                        width: '160px',
+                        backgroundColor: 'var(--color-surface)',
+                        border: '1px solid var(--color-border)',
+                        borderRadius: '12px',
+                        boxShadow: 'var(--shadow-lg)',
+                        padding: '6px',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '4px',
+                        zIndex: 1000
+                      }}>
+                        <div style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--color-text-muted)', padding: '2px 8px', textTransform: 'uppercase' }}>
+                          {t('Chuyển Tab')}
+                        </div>
+                        {[
+                          { id: 'consultants', label: t('Tư vấn viên') },
+                          { id: 'teams', label: t('Nhóm (Team)') },
+                          { id: 'branches', label: t('Chi nhánh') }
+                        ].map(tab => (
+                          <button
+                            key={tab.id}
+                            onClick={() => {
+                              navigate(`/consultants?tab=${tab.id}`);
+                              setShowMobileTabMenu(false);
+                            }}
+                            style={{
+                              width: '100%',
+                              textAlign: 'left',
+                              padding: '8px 10px',
+                              fontSize: '0.825rem',
+                              borderRadius: '8px',
+                              border: 'none',
+                              cursor: 'pointer',
+                              background: activeTab === tab.id ? 'var(--color-primary-light)' : 'transparent',
+                              color: activeTab === tab.id ? 'var(--color-primary)' : 'var(--color-text)',
+                              fontWeight: activeTab === tab.id ? 700 : 500
+                            }}
+                          >
+                            {tab.label}
+                          </button>
+                        ))}
+                      </div>
+                    </>
+                  )}
+                </div>
               )}
             </div>
+
             <div style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', fontWeight: 500 }}>
               {t('Tổng số')}: <strong style={{ color: 'var(--color-text)' }}>{filteredUsers.length}</strong> / {users.length} {t('tư vấn viên')}
             </div>

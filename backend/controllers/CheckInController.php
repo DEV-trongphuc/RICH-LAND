@@ -285,7 +285,7 @@ class CheckInController {
                 $title = "Yêu cầu duyệt đi trễ";
                 $body = "Nhân viên " . $userName . " đã check-in trễ lúc " . substr($currentTime, 0, 5) . " và gửi lý do: \"" . $reason . "\"";
                 $type = "attendance";
-                $link = "/attendance";
+                $link = "/attendance?view=calendar&date=" . $today;
 
                 $insertNotif = $this->db->prepare("
                     INSERT INTO notifications (user_id, tenant_id, title, body, type, link)
