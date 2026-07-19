@@ -9674,7 +9674,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
             <button
               className="btn primary"
               style={{ flex: 1 }}
-              disabled={selectedCollaborators.length === 0 || coopLoading}
+              disabled={coopLoading}
               onClick={async () => {
                 setCoopLoading(true);
                 try {

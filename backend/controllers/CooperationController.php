@@ -721,33 +721,34 @@ class CooperationController {
         }
 
         $collaborators = $b['collaborators'] ?? [];
-        if (empty($collaborators)) {
-            respond(422, null, 'Cần chọn ít nhất một nhân sự hợp tác', false);
-        }
-
-        // Validate that collaborators does not include the owner
-        $collaboratorIds = array_map('intval', $collaborators);
-        $collaboratorIds = array_values(array_filter($collaboratorIds, function($id) use ($ownerId) {
-            return $id > 0 && $id !== $ownerId;
-        }));
-
-        if (empty($collaboratorIds)) {
-            respond(422, null, 'Nhân sự hợp tác không hợp lệ hoặc trùng với chủ sở hữu', false);
-        }
-
-        if (count($collaboratorIds) > 2) {
-            respond(422, null, 'Hệ thống chỉ hỗ trợ hợp tác tối đa 3 nhân sự (Chủ sở hữu + 2 người hợp tác)', false);
-        }
-
         $shares = [];
-        // Auto-split: Owner + N collaborators
-        $totalCount = 1 + count($collaboratorIds);
-        $basePercent = floor(100 / $totalCount);
-        $remainder = 100 - ($basePercent * $totalCount);
 
-        $shares[$ownerId] = (int)($basePercent + $remainder);
-        foreach ($collaboratorIds as $cid) {
-            $shares[$cid] = (int)$basePercent;
+        if (!empty($collaborators)) {
+            // Validate that collaborators does not include the owner
+            $collaboratorIds = array_map('intval', $collaborators);
+            $collaboratorIds = array_values(array_filter($collaboratorIds, function($id) use ($ownerId) {
+                return $id > 0 && $id !== $ownerId;
+            }));
+
+            if (count($collaboratorIds) > 2) {
+                respond(422, null, 'Hệ thống chỉ hỗ trợ hợp tác tối đa 3 nhân sự (Chủ sở hữu + 2 người hợp tác)', false);
+            }
+
+            if (!empty($collaboratorIds)) {
+                // Auto-split: Owner + N collaborators
+                $totalCount = 1 + count($collaboratorIds);
+                $basePercent = floor(100 / $totalCount);
+                $remainder = 100 - ($basePercent * $totalCount);
+
+                $shares[$ownerId] = (int)($basePercent + $remainder);
+                foreach ($collaboratorIds as $cid) {
+                    $shares[$cid] = (int)$basePercent;
+                }
+            } else {
+                $shares[$ownerId] = 100;
+            }
+        } else {
+            $shares[$ownerId] = 100;
         }
 
         $sharesJson = json_encode($shares);
