@@ -204,6 +204,7 @@ const TABS = [
   { id: 'deals', label: 'Phiếu đặt cọc', icon: <CreditCard size={16} /> },
   { id: 'quotes', label: 'Báo giá', icon: <ShoppingCart size={16} /> },
   { id: 'expenses', label: 'Chi phí', icon: <DollarSign size={16} /> },
+  { id: 'tickets', label: 'Hỗ trợ & Khiếu nại', icon: <LifeBuoy size={16} /> },
 ];
 
 const renderColoredTabIcon = (tabId: string, IconComponent: any) => {
@@ -742,42 +743,27 @@ const ActivityComments: React.FC<{
 
 const DrawerSkeleton = () => {
   return (
-    <div className="skeleton-wrapper" style={{ padding: '2rem', display: 'flex', flexDirection: 'column', gap: '2rem', height: '100%', background: 'var(--color-surface)', animation: 'pulse 1.5s infinite ease-in-out' }}>
-      {/* Header Skeleton */}
-      <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'center', borderBottom: '1px solid var(--color-border-light)', paddingBottom: '1.5rem' }}>
-        <div style={{ width: '60px', height: '60px', borderRadius: '50%', background: 'var(--color-border-light)' }}></div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', flex: 1 }}>
-          <div style={{ width: '40%', height: '24px', borderRadius: '4px', background: 'var(--color-border-light)' }}></div>
-          <div style={{ display: 'flex', gap: '1rem' }}>
-            <div style={{ width: '20%', height: '16px', borderRadius: '4px', background: 'var(--color-border-light)' }}></div>
-            <div style={{ width: '25%', height: '16px', borderRadius: '4px', background: 'var(--color-border-light)' }}></div>
-          </div>
-        </div>
+    <div className="skeleton-wrapper" style={{ display: 'flex', flex: 1, gap: '2rem', height: '100%', background: 'var(--color-surface)', animation: 'pulse 1.5s infinite ease-in-out' }}>
+      {/* Sidebar Skeleton */}
+      <div className="skeleton-sidebar" style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', width: '250px', borderRight: '1px solid var(--color-border-light)', padding: '1.5rem 1rem' }}>
+        {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(i => (
+          <div key={i} style={{ width: '100%', height: '36px', borderRadius: '8px', background: 'var(--color-border-light)' }}></div>
+        ))}
       </div>
 
-      {/* Body Skeleton */}
-      <div className="skeleton-body" style={{ display: 'flex', gap: '2rem', flex: 1 }}>
-        {/* Sidebar Skeleton */}
-        <div className="skeleton-sidebar" style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', width: '200px', borderRight: '1px solid var(--color-border-light)', paddingRight: '1.5rem' }}>
+      {/* Content Area Skeleton */}
+      <div className="skeleton-content" style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '1.5rem', padding: '1.5rem 2rem 1.5rem 0' }}>
+        <div className="skeleton-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
           {[1, 2, 3, 4, 5, 6].map(i => (
-            <div key={i} style={{ width: '100%', height: '36px', borderRadius: '8px', background: 'var(--color-border-light)' }}></div>
+            <div key={i} style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+              <div style={{ width: '30%', height: '14px', borderRadius: '4px', background: 'var(--color-border-light)' }}></div>
+              <div style={{ width: '100%', height: '38px', borderRadius: '8px', background: 'var(--color-border-light)' }}></div>
+            </div>
           ))}
         </div>
-
-        {/* Content Area Skeleton */}
-        <div className="skeleton-content" style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-          <div className="skeleton-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
-            {[1, 2, 3, 4].map(i => (
-              <div key={i} style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                <div style={{ width: '30%', height: '14px', borderRadius: '4px', background: 'var(--color-border-light)' }}></div>
-                <div style={{ width: '100%', height: '38px', borderRadius: '8px', background: 'var(--color-border-light)' }}></div>
-              </div>
-            ))}
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '1rem' }}>
-            <div style={{ width: '15%', height: '14px', borderRadius: '4px', background: 'var(--color-border-light)' }}></div>
-            <div style={{ width: '100%', height: '100px', borderRadius: '8px', background: 'var(--color-border-light)' }}></div>
-          </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '1rem' }}>
+          <div style={{ width: '15%', height: '14px', borderRadius: '4px', background: 'var(--color-border-light)' }}></div>
+          <div style={{ width: '100%', height: '120px', borderRadius: '8px', background: 'var(--color-border-light)' }}></div>
         </div>
       </div>
 
@@ -789,21 +775,16 @@ const DrawerSkeleton = () => {
         }
         @media (max-width: 1024px) {
           .skeleton-wrapper {
-            padding: 1.25rem 1rem !important;
-            gap: 1.5rem !important;
-          }
-          .skeleton-body {
             flex-direction: column !important;
             gap: 1.5rem !important;
-            overflow-y: auto;
+            padding: 1rem !important;
           }
           .skeleton-sidebar {
             width: 100% !important;
             border-right: none !important;
-            padding-right: 0 !important;
+            padding: 0 0 0.5rem 0 !important;
             flex-direction: row !important;
             overflow-x: auto;
-            padding-bottom: 0.5rem;
             border-bottom: 1px solid var(--color-border-light);
             flex-shrink: 0;
             gap: 0.75rem !important;
@@ -811,6 +792,9 @@ const DrawerSkeleton = () => {
           .skeleton-sidebar > div {
             width: 100px !important;
             flex-shrink: 0;
+          }
+          .skeleton-content {
+            padding: 0 !important;
           }
           .skeleton-grid {
             grid-template-columns: 1fr !important;
@@ -2184,16 +2168,18 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
         setDeals(depositsList);
 
         // Auto-sync contact expected_revenue & win_probability based on current deposits
-        const totalRev = depositsList.length > 0 ? depositsList.reduce((sum, d) => sum + (Number(d.value) || 0), 0) : 0;
-        const avgProb = depositsList.length > 0 ? Math.round(depositsList.reduce((total, d) => total + (Number(d.prob) || 0), 0) / depositsList.length) : 0;
-        if (totalRev !== Number(formData.expected_revenue || 0) || avgProb !== Number(formData.win_probability || 0)) {
-          api.put(`/contacts/${contact.id}`, {
-            expected_revenue: totalRev,
-            win_probability: avgProb
-          }).then(() => {
-            setFormData(prev => ({ ...prev, expected_revenue: totalRev, win_probability: avgProb }));
-            setBaseData(prev => ({ ...prev, expected_revenue: totalRev, win_probability: avgProb }));
-          }).catch(err => console.error("Error syncing contact metrics:", err));
+        if (depositsList.length > 0) {
+          const totalRev = depositsList.reduce((sum, d) => sum + (Number(d.value) || 0), 0);
+          const avgProb = Math.round(depositsList.reduce((total, d) => total + (Number(d.prob) || 0), 0) / depositsList.length);
+          if (totalRev !== Number(formData.expected_revenue || 0) || avgProb !== Number(formData.win_probability || 0)) {
+            api.put(`/contacts/${contact.id}`, {
+              expected_revenue: totalRev,
+              win_probability: avgProb
+            }).then(() => {
+              setFormData(prev => ({ ...prev, expected_revenue: totalRev, win_probability: avgProb }));
+              setBaseData(prev => ({ ...prev, expected_revenue: totalRev, win_probability: avgProb }));
+            }).catch(err => console.error("Error syncing contact metrics:", err));
+          }
         }
       }
 
@@ -3493,17 +3479,19 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
           return pipelineStages.map((st, i) => {
             const isActive = i <= safeIndex;
             const isCurrent = i === safeIndex;
+            const isBackward = i < safeIndex;
             const stColor = overridePurpleColor(st.color);
             return (
               <div
                 key={st.id}
                 onClick={() => {
-                  if (isCurrent) return;
+                  if (isCurrent || isBackward) return;
                   handleStageTransition(String(st.id), st.name);
                 }}
                 style={{
-                  flex: '1 0 auto', minWidth: '135px', position: 'relative', height: '32px', cursor: isCurrent ? 'default' : 'pointer',
-                  display: 'flex', alignItems: 'center', transition: 'all 0.3s'
+                  flex: '1 0 auto', minWidth: '135px', position: 'relative', height: '32px', cursor: isCurrent ? 'default' : (isBackward ? 'not-allowed' : 'pointer'),
+                  display: 'flex', alignItems: 'center', transition: 'all 0.3s',
+                  opacity: isBackward ? 0.5 : 1
                 }}
               >
                 <div style={{
@@ -6349,6 +6337,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                           ...salesUsers
                                             .filter(u => {
                                               if (idx === 0) return true;
+                                              if (String(u.id) === String(share.user_id)) return true;
                                               return String(u.id) !== String(currentUser?.consultant_id) && String(u.id) !== String(currentUser?.id);
                                             })
 
@@ -10535,41 +10524,46 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                 <X size={20} />
               </button>
             </div>
-            
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', overflowY: 'auto' }} className="no-scrollbar">
-              {pipelineStages.map((st) => {
-                const isCurrent = String(st.id) === String(formData.pipeline_status || 'chua_xac_dinh');
-                const stColor = overridePurpleColor(st.color);
-                return (
-                  <button
-                    key={st.id}
-                    onClick={() => {
-                      setShowMobilePipelineSelector(false);
-                      if (isCurrent) return;
-                      handleStageTransition(String(st.id), st.name);
-                    }}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      padding: '12px 16px',
-                      borderRadius: '12px',
-                      border: isCurrent ? `1.5px solid ${stColor}` : '1px solid var(--color-border-light)',
-                      background: isCurrent ? `${stColor}10` : 'var(--color-bg-alt)',
-                      color: isCurrent ? stColor : 'var(--color-text)',
-                      fontWeight: isCurrent ? 800 : 600,
-                      fontSize: '0.875rem',
-                      cursor: 'pointer',
-                      textAlign: 'left',
-                      width: '100%',
-                      boxSizing: 'border-box'
-                    }}
-                  >
-                    <span>{st.name}</span>
-                    {isCurrent && <UserCheck size={16} />}
-                  </button>
-                );
-              })}
+              {(() => {
+                const currentIdx = pipelineStages.findIndex(s => String(s.id) === String(formData.pipeline_status || 'chua_xac_dinh'));
+                return pipelineStages.map((st, idx) => {
+                  const isCurrent = String(st.id) === String(formData.pipeline_status || 'chua_xac_dinh');
+                  const isBackward = idx < currentIdx;
+                  const stColor = overridePurpleColor(st.color);
+                  return (
+                    <button
+                      key={st.id}
+                      disabled={isBackward}
+                      onClick={() => {
+                        setShowMobilePipelineSelector(false);
+                        if (isCurrent || isBackward) return;
+                        handleStageTransition(String(st.id), st.name);
+                      }}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        padding: '12px 16px',
+                        borderRadius: '12px',
+                        border: isCurrent ? `1.5px solid ${stColor}` : '1px solid var(--color-border-light)',
+                        background: isCurrent ? `${stColor}10` : 'var(--color-bg-alt)',
+                        color: isCurrent ? stColor : 'var(--color-text)',
+                        fontWeight: isCurrent ? 800 : 600,
+                        fontSize: '0.875rem',
+                        cursor: isCurrent ? 'default' : (isBackward ? 'not-allowed' : 'pointer'),
+                        opacity: isBackward ? 0.4 : 1,
+                        textAlign: 'left',
+                        width: '100%',
+                        boxSizing: 'border-box'
+                      }}
+                    >
+                      <span>{st.name}</span>
+                      {isCurrent && <UserCheck size={16} />}
+                    </button>
+                  );
+                });
+              })()}
             </div>
           </motion.div>
         </div>

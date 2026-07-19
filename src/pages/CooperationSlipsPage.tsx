@@ -1059,8 +1059,8 @@ export default function CooperationSlipsPage() {
                               fontWeight: 600,
                               cursor: 'pointer',
                               border: 'none',
-                              background: 'var(--color-text)',
-                              color: 'var(--color-surface)',
+                              background: 'var(--color-success)',
+                              color: '#fff',
                               transition: 'all 0.2s'
                             }}
                           >
