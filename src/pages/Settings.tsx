@@ -1792,7 +1792,7 @@ const SettingsInner = () => {
           width: '100%'
         }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', flex: 1 }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', width: '100%' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <h1 className="page-title" style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: isMobile ? '1.15rem' : '1.5rem', margin: 0, fontWeight: 800 }}>
                 <Settings2 size={isMobile ? 20 : 24} color="var(--color-primary)" /> {t('Cài đặt')}
               </h1>

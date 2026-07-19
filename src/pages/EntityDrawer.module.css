@@ -78,8 +78,8 @@
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  padding: 11px 1.25rem;
-  font-size: 0.9rem;
+  padding: 9px 1rem;
+  font-size: 0.8125rem;
   font-weight: 600;
   color: var(--color-text-light);
   border-radius: var(--radius-md);
