@@ -1678,16 +1678,11 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
                           const badge = getBadgeConfig(log.status, log.round_name, log.report_status, log.ai_screener_status, log.created_at);
                           return (
                             <span
-                              className="badge"
+                              className="badge recent-log-badge"
                               style={{
                                 background: badge.bg,
                                 color: badge.color,
                                 border: 'none',
-                                padding: isMobile ? '2px 6px' : '4px 8px',
-                                fontSize: isMobile ? '0.55rem' : '0.65rem',
-                                borderRadius: '20px',
-                                fontWeight: 700,
-                                whiteSpace: 'nowrap',
                                 cursor: (log.status === 'databank' || log.status === 'databank_claim' || log.status === 'released_to_kho') ? 'pointer' : 'default'
                               }}
                               onClick={(e) => {

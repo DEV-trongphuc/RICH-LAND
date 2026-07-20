@@ -5022,3 +5022,23 @@ div[role="status"] {
   gap: 10px;
 }
 
+/* Custom compact badge style for recent logs */
+.recent-log-badge {
+  font-size: 0.55rem !important;
+  padding: 1.5px 5px !important;
+  border-radius: 20px !important;
+  font-weight: 700 !important;
+  white-space: nowrap !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  line-height: 1.1 !important;
+}
+
+@media (max-width: 768px) {
+  .recent-log-badge {
+    font-size: 0.5rem !important;
+    padding: 1px 4px !important;
+  }
+}
+
