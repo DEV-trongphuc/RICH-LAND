@@ -174,6 +174,8 @@ function sendZaloMessageToMultiple($botToken, $chatIdsArray, $text, $sync = true
         return $success;
     }
 
+
+
     $url = "https://bot-api.zaloplatforms.com/bot" . $botToken . "/sendMessage";
     $multiHandle = curl_multi_init();
     $curlHandles = [];

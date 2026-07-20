@@ -26,7 +26,7 @@ function runDailyReportCron($conn)
         WHERE status = 'leave' AND leave_end IS NOT NULL AND leave_end < CURDATE()
     ");
 
-    $settingRes = $conn->query("SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('zalo_daily_report_time', 'last_daily_report_date', 'zalo_bot_token', 'daily_report_admins', 'last_daily_report_timestamp', 'zalo_admin_group_chat_id', 'zalo_notify_only_group')");
+    $settingRes = $conn->query("SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('zalo_daily_report_time', 'last_daily_report_date', 'zalo_bot_token', 'daily_report_admins', 'last_daily_report_timestamp', 'zalo_admin_group_chat_id', 'zalo_notify_only_group', 'telegram_bot_token', 'telegram_admin_group_chat_id')");
     $settings = [];
     if ($settingRes) {
         while ($row = $settingRes->fetch_assoc()) {
@@ -39,10 +39,6 @@ function runDailyReportCron($conn)
         $reportTime = '17:00';
     $lastRunDate = $settings['last_daily_report_date'] ?? '';
     $botToken = $settings['zalo_bot_token'] ?? '';
-
-    if (empty($botToken)) {
-        return;
-    }
 
     $today = date('Y-m-d');
     $currentTime = date('H:i');
@@ -249,12 +245,12 @@ function runDailyReportCron($conn)
             if (!empty($adminIds)) {
                 $inPlaceholders = implode(',', array_fill(0, count($adminIds), '?'));
                 $types = str_repeat('i', count($adminIds));
-                $adminStmt = $conn->prepare("SELECT email, name, zalo_chat_id FROM accounts WHERE id IN ($inPlaceholders)");
+                $adminStmt = $conn->prepare("SELECT email, name, zalo_chat_id, telegram_chat_id FROM accounts WHERE id IN ($inPlaceholders)");
                 $adminStmt->bind_param($types, ...$adminIds);
                 $adminStmt->execute();
                 $adminRes = $adminStmt->get_result();
             } else {
-                $adminRes = $conn->query("SELECT email, name, zalo_chat_id FROM accounts WHERE role = 'admin' OR role = 'superadmin' OR id = 1");
+                $adminRes = $conn->query("SELECT email, name, zalo_chat_id, telegram_chat_id FROM accounts WHERE role = 'admin' OR role = 'superadmin' OR id = 1");
             }
             $admins = [];
             if ($adminRes) {
@@ -268,18 +264,19 @@ function runDailyReportCron($conn)
             $admins[] = [
                 'name' => 'Zalo Admin Group',
                 'email' => '',
-                'zalo_chat_id' => $adminGroupChatId
+                'zalo_chat_id' => $adminGroupChatId,
+                'telegram_chat_id' => ''
             ];
         } else {
             if (!empty($adminIds)) {
                 $inPlaceholders = implode(',', array_fill(0, count($adminIds), '?'));
                 $types = str_repeat('i', count($adminIds));
-                $adminStmt = $conn->prepare("SELECT email, name, zalo_chat_id FROM accounts WHERE id IN ($inPlaceholders)");
+                $adminStmt = $conn->prepare("SELECT email, name, zalo_chat_id, telegram_chat_id FROM accounts WHERE id IN ($inPlaceholders)");
                 $adminStmt->bind_param($types, ...$adminIds);
                 $adminStmt->execute();
                 $adminRes = $adminStmt->get_result();
             } else {
-                $adminRes = $conn->query("SELECT email, name, zalo_chat_id FROM accounts WHERE role = 'admin' OR role = 'superadmin' OR id = 1");
+                $adminRes = $conn->query("SELECT email, name, zalo_chat_id, telegram_chat_id FROM accounts WHERE role = 'admin' OR role = 'superadmin' OR id = 1");
             }
             $admins = [];
             if ($adminRes) {
@@ -293,7 +290,8 @@ function runDailyReportCron($conn)
                 $admins[] = [
                     'name' => 'Zalo Admin Group',
                     'email' => '',
-                    'zalo_chat_id' => $adminGroupChatId
+                    'zalo_chat_id' => $adminGroupChatId,
+                    'telegram_chat_id' => ''
                 ];
             }
         }
@@ -327,35 +325,73 @@ function runDailyReportCron($conn)
             $msg .= "💡 Gõ /report dd/mm hoặc /report dd/mm to dd/mm để xem báo cáo.\n";
             $msg .= "💡 Gõ /tools để xem thêm các câu lệnh nhanh.";
 
-            $adminChatIds = [];
-            foreach ($admins as $adm) {
-                if (!empty($adm['zalo_chat_id'])) {
-                    $adminChatIds[] = $adm['zalo_chat_id'];
+            // 1. Send Zalo (Completely Independent)
+            try {
+                $adminChatIds = [];
+                foreach ($admins as $adm) {
+                    if (!empty($adm['zalo_chat_id'])) {
+                        $adminChatIds[] = $adm['zalo_chat_id'];
+                    }
                 }
-            }
-            $adminChatIds = array_unique($adminChatIds);
-            if (!empty($botToken) && !empty($adminChatIds)) {
-                sendZaloMessageToMultiple($botToken, $adminChatIds, $msg);
+                $adminChatIds = array_unique($adminChatIds);
+                if (!empty($botToken) && !empty($adminChatIds)) {
+                    sendZaloMessageToMultiple($botToken, $adminChatIds, $msg);
+                }
+            } catch (Throwable $zaloEx) {
+                error_log("Error sending daily report Zalo: " . $zaloEx->getMessage());
             }
 
-            foreach ($admins as $adm) {
-                // Gửi Email
-                if (!empty($adm['email'])) {
-                    sendDailyReportEmailToAdmins(
-                        $adm['email'],
-                        $adm['name'] ?: 'Quản trị viên',
-                        $totalData,
-                        $saleStatsHtml,
-                        $totalTicket,
-                        $totalReminder,
-                        $approvedTicket,
-                        $rejectedTicket,
-                        $pendingTicket,
-                        $totalBlocked,
-                        $totalHeldByAI,
-                        $totalBelowStandard
-                    );
+            // 2. Send Telegram (Completely Independent)
+            try {
+                $telegramBotToken = $settings['telegram_bot_token'] ?? '';
+                $telegramAdminGroupChatId = $settings['telegram_admin_group_chat_id'] ?? '';
+
+                $telegramChatIds = [];
+                foreach ($admins as $adm) {
+                    if (!empty($adm['telegram_chat_id'])) {
+                        $telegramChatIds[] = $adm['telegram_chat_id'];
+                    }
                 }
+                if (!empty($telegramAdminGroupChatId)) {
+                    $telegramChatIds[] = $telegramAdminGroupChatId;
+                }
+                $telegramChatIds = array_unique(array_filter($telegramChatIds));
+
+                if (!empty($telegramBotToken) && !empty($telegramChatIds)) {
+                    require_once __DIR__ . '/telegram_bot.php';
+                    $tgText = $msg;
+                    $tgText = preg_replace('/\[\s*([^\]]+?)\s*\]/', '<b>[$1]</b>', $tgText);
+                    $tgText = preg_replace('/❖\s*([^:]+?)\s*:/', '❖ <b>$1</b>:', $tgText);
+                    foreach ($telegramChatIds as $tgChatId) {
+                        sendTelegramMessage($telegramBotToken, $tgChatId, $tgText);
+                    }
+                }
+            } catch (Throwable $tgEx) {
+                error_log("Error sending daily report Telegram: " . $tgEx->getMessage());
+            }
+
+            // 3. Send Email (Completely Independent)
+            try {
+                foreach ($admins as $adm) {
+                    if (!empty($adm['email'])) {
+                        sendDailyReportEmailToAdmins(
+                            $adm['email'],
+                            $adm['name'] ?: 'Quản trị viên',
+                            $totalData,
+                            $saleStatsHtml,
+                            $totalTicket,
+                            $totalReminder,
+                            $approvedTicket,
+                            $rejectedTicket,
+                            $pendingTicket,
+                            $totalBlocked,
+                            $totalHeldByAI,
+                            $totalBelowStandard
+                        );
+                    }
+                }
+            } catch (Throwable $emailEx) {
+                error_log("Error sending daily report Email: " . $emailEx->getMessage());
             }
         }
 

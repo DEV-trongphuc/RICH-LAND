@@ -4796,7 +4796,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                     }}
                     title={t('Chế độ Focus')}
                     style={{
-                      width: '32px',
+                      width: isMobile ? '32px' : 'auto',
                       height: '28px',
                       borderRadius: '6px',
                       border: 'none',
@@ -4808,12 +4808,14 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      padding: 0,
+                      padding: isMobile ? 0 : '0 8px',
+                      gap: '4px',
                       outline: 'none',
                       transform: 'none'
                     }}
                   >
                     <Monitor size={16} />
+                    {!isMobile && <span style={{ fontSize: '0.72rem', fontWeight: 700 }}>FOCUS</span>}
                   </button>
                 </div>
               )}
@@ -5176,16 +5178,12 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
           </div>
         ) : (
           <>
-            {/* Back button when inside a team view or focus mode */}
-            {((isAdminOrManager && wsTeamId && wsSubTab !== 'personal') || wsViewMode === 'focus') && (
+            {/* Back button when inside a team view */}
+            {((isAdminOrManager && wsTeamId && wsSubTab !== 'personal') && wsViewMode !== 'focus') && (
               <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '1.5rem', background: 'var(--color-surface)', padding: '1rem 1.25rem', borderRadius: '16px', border: '1px solid var(--color-border-light)', boxShadow: 'var(--shadow-sm)' }}>
                 <button
                   onClick={() => {
-                    if (wsViewMode === 'focus') {
-                      setWsViewMode('grid');
-                    } else {
-                      setWsTeamId('');
-                    }
+                    setWsTeamId('');
                   }}
                   style={{
                     height: 38,
@@ -5934,9 +5932,30 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                 gap: '8px' 
               }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ fontWeight: 800, fontSize: '0.9rem', color: 'var(--color-text)' }}>
-                    {t('CHẾ ĐỘ TẬP TRUNG')}
-                  </span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <button
+                      onClick={() => setWsViewMode('grid')}
+                      style={{
+                        border: 'none',
+                        background: 'transparent',
+                        color: 'var(--color-text-light)',
+                        cursor: 'pointer',
+                        padding: '4px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        borderRadius: '6px',
+                        transition: 'background-0.2s'
+                      }}
+                      className="hover-bg-light"
+                      title={t('Quay lại')}
+                    >
+                      <ChevronLeft size={16} />
+                    </button>
+                    <span style={{ fontWeight: 800, fontSize: '0.9rem', color: 'var(--color-text)' }}>
+                      {t('CHẾ ĐỘ TẬP TRUNG')}
+                    </span>
+                  </div>
                   <button 
                     onClick={() => setWsViewMode('grid')}
                     style={{
@@ -6487,23 +6506,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                       }
                       const timeStr = todayCheckIn.check_in_time ? todayCheckIn.check_in_time.substring(0, 5) : '';
                       if (todayCheckIn.status === 'approved') {
-                        return (
-                          <span style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '4px',
-                            background: 'rgba(255, 255, 255, 0.08)',
-                            color: '#ffffff',
-                            border: '1px solid rgba(255, 255, 255, 0.18)',
-                            padding: '2px 8px',
-                            borderRadius: '12px',
-                            fontWeight: 600,
-                            fontSize: '0.675rem'
-                          }}>
-                            <CheckCircle2 size={11} />
-                            {t('Đã chấm công lúc ') + timeStr}
-                          </span>
-                        );
+                        return null;
                       }
                       if (todayCheckIn.status === 'pending_approval') {
                         return (
@@ -6569,23 +6572,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                         }
                         const timeStr = todayCheckIn.check_in_time ? todayCheckIn.check_in_time.substring(0, 5) : '';
                         if (todayCheckIn.status === 'approved') {
-                          return (
-                            <span style={{
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: '4px',
-                              background: 'rgba(255, 255, 255, 0.08)',
-                              color: '#ffffff',
-                              border: '1px solid rgba(255, 255, 255, 0.18)',
-                              padding: '2px 8px',
-                              borderRadius: '12px',
-                              fontWeight: 600,
-                              fontSize: '0.675rem'
-                            }}>
-                              <CheckCircle2 size={11} />
-                              {t('Đã chấm công lúc ') + timeStr}
-                            </span>
-                          );
+                          return null;
                         }
                         if (todayCheckIn.status === 'pending_approval') {
                           return (
@@ -6650,7 +6637,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
           
 {/* Middle section: Issues/Tasks */}
           <div style={{ flex: isMobile ? '1 1 100%' : '2 1 380px', display: 'flex', flexDirection: 'column', gap: isMobile ? '6px' : '10px', minWidth: isMobile ? '100%' : '280px' }}>
-            <h4 style={{ margin: 0, fontSize: '0.72rem', fontWeight: 800, color: '#f4f4f5', textTransform: 'uppercase', letterSpacing: '1px', opacity: 0.9 }}>
+            <h4 style={{ margin: 0, fontSize: '0.72rem', fontWeight: 500, color: '#f4f4f5', textTransform: 'uppercase', letterSpacing: '1px', opacity: 0.9 }}>
               {t('Nhiệm vụ & Vấn đề cần giải quyết')}
             </h4>
             {issues.length > 0 ? (
@@ -7930,46 +7917,52 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
 
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
               {/* 3 Quota Badges */}
-              {publicQuota && [
-                {
-                  label: t('Giờ'),
-                  value: publicQuota.claims_hour,
-                  limit: publicQuota.limit_hour,
-                  icon: <Clock size={12} />,
-                  color: 'var(--color-primary)',
-                },
-                {
-                  label: t('Ngày'),
-                  value: publicQuota.claims_day,
-                  limit: publicQuota.limit_day,
-                  icon: <Calendar size={12} />,
-                  color: '#d97706',
-                },
-                {
-                  label: t('Tháng'),
-                  value: publicQuota.claims_month,
-                  limit: publicQuota.limit_month,
-                  icon: <Layers size={12} />,
-                  color: '#2563eb',
-                }
-              ].map((q, idx) => (
-                <div key={idx} style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  background: 'transparent',
-                  border: '1px solid var(--color-border-light)',
-                  borderRadius: '8px',
-                  padding: '4px 10px',
-                  height: '30px'
-                }} title={t('Hạn mức ') + q.label}>
-                  <span style={{ color: q.color, display: 'flex', alignItems: 'center' }}>{q.icon}</span>
-                  <span style={{ fontSize: '0.75rem', color: 'var(--color-text-light)', fontWeight: 600 }}>{q.label}:</span>
-                  <span style={{ fontSize: '0.75rem', color: 'var(--color-text)', fontWeight: 800 }}>
-                    {q.value} / {q.limit}
-                  </span>
+              {publicQuota && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexWrap: 'nowrap', flexShrink: 0 }}>
+                  {[
+                    {
+                      label: t('Giờ'),
+                      value: publicQuota.claims_hour,
+                      limit: publicQuota.limit_hour,
+                      icon: <Clock size={12} />,
+                      color: 'var(--color-primary)',
+                    },
+                    {
+                      label: t('Ngày'),
+                      value: publicQuota.claims_day,
+                      limit: publicQuota.limit_day,
+                      icon: <Calendar size={12} />,
+                      color: '#d97706',
+                    },
+                    {
+                      label: t('Tháng'),
+                      value: publicQuota.claims_month,
+                      limit: publicQuota.limit_month,
+                      icon: <Layers size={12} />,
+                      color: '#2563eb',
+                    }
+                  ].map((q, idx) => (
+                    <div key={idx} style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      background: 'transparent',
+                      border: '1px solid var(--color-border-light)',
+                      borderRadius: '8px',
+                      padding: '4px 6px',
+                      height: '30px',
+                      whiteSpace: 'nowrap',
+                      flexShrink: 0
+                    }} title={t('Hạn mức ') + q.label}>
+                      <span style={{ color: q.color, display: 'flex', alignItems: 'center' }}>{q.icon}</span>
+                      <span style={{ fontSize: '0.72rem', color: 'var(--color-text-light)', fontWeight: 600 }}>{q.label}:</span>
+                      <span style={{ fontSize: '0.72rem', color: 'var(--color-text)', fontWeight: 800, marginLeft: '2px' }}>
+                        {q.value}/{q.limit}
+                      </span>
+                    </div>
+                  ))}
                 </div>
-              ))}
+              )}
               {/* Status Filter for Admin */}
               {isAdmin && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>

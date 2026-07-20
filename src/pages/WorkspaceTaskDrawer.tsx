@@ -1036,7 +1036,7 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
         top: 0,
         bottom: 0,
         boxShadow: '-10px 0 30px rgba(0,0,0,0.15)',
-        transform: animateIn ? 'translateX(0)' : 'translateX(160px)',
+        transform: animateIn ? 'translateX(0)' : (isMobileOrTablet ? 'translateX(100%)' : 'translateX(160px)'),
         opacity: animateIn ? 1 : 0,
         transition: 'transform 0.42s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.42s cubic-bezier(0.16, 1, 0.3, 1)',
         willChange: 'transform, opacity'
@@ -1173,7 +1173,7 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
         </div>
 
         {/* Drawer Body - 2 Columns Layout */}
-        <div style={{ display: 'flex', flexDirection: isMobileOrTablet ? 'column' : 'row', flex: 1, overflowY: 'auto', padding: isMobileOrTablet ? '1rem 1rem 5rem 1rem' : (embedMode ? '1rem 1rem 4.5rem 1rem' : '1.5rem 1.5rem 4.5rem 1.5rem'), gap: isMobileOrTablet ? '1rem' : (embedMode ? '1rem' : '1.5rem') }} className={`custom-scrollbar ${embedMode ? 'focus-right-column' : ''}`}>
+        <div style={{ display: 'flex', flexDirection: isMobileOrTablet ? 'column' : 'row', flex: 1, overflowY: 'auto', padding: isMobileOrTablet ? '1rem 1rem 100px 1rem' : (embedMode ? '1rem 1rem 4.5rem 1rem' : '1.5rem 1.5rem 4.5rem 1.5rem'), gap: isMobileOrTablet ? '1rem' : (embedMode ? '1rem' : '1.5rem') }} className={`custom-scrollbar ${embedMode ? 'focus-right-column' : ''}`}>
           
           {/* Left Column (3/5) */}
           <div style={{ flex: isMobileOrTablet ? 'none' : 3, display: 'flex', flexDirection: 'column', gap: isMobileOrTablet ? '1rem' : (embedMode ? '1rem' : '1.5rem'), minWidth: 0 }}>
@@ -1742,7 +1742,40 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
                                 <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginTop: '8px' }}>
                                   {commentParsedAtts.map((url: any, aIdx: number) => {
                                     const name = typeof url === 'string' ? url.substring(url.lastIndexOf('/') + 1) : (url.name || 'File');
-                                    const href = typeof url === 'string' ? url : (url.url || '#');
+                                    const rawHref = typeof url === 'string' ? url : (url.url || '#');
+
+                                    const apiBase = import.meta.env.VITE_API_URL || '/backend';
+                                    let href = rawHref;
+                                    if (rawHref && rawHref.startsWith('uploads/')) {
+                                      href = `${apiBase}/${rawHref}`;
+                                    } else if (rawHref && rawHref.startsWith('storage/uploads/')) {
+                                      href = `${apiBase}/${rawHref.replace('storage/uploads/', 'uploads/')}`;
+                                    }
+
+                                    const isImage = /\.(jpg|jpeg|png|gif|webp|svg)/i.test(href);
+
+                                    if (isImage) {
+                                      return (
+                                        <div key={aIdx} style={{ marginTop: '4px', display: 'inline-block' }}>
+                                          <a href={href} target="_blank" rel="noreferrer">
+                                            <img 
+                                              src={href} 
+                                              alt={name} 
+                                              style={{ 
+                                                maxWidth: '240px', 
+                                                maxHeight: '160px', 
+                                                borderRadius: '8px', 
+                                                border: '1px solid var(--color-border-light)', 
+                                                objectFit: 'cover',
+                                                cursor: 'zoom-in',
+                                                boxShadow: 'var(--shadow-sm)'
+                                              }} 
+                                            />
+                                          </a>
+                                        </div>
+                                      );
+                                    }
+
                                     return (
                                       <a key={aIdx} href={href} target="_blank" rel="noreferrer" style={{ display: 'flex', alignItems: 'center', gap: '4px', background: 'var(--color-surface)', border: '1px solid var(--color-border-light)', padding: '2px 6px', borderRadius: '4px', textDecoration: 'none', color: 'var(--color-primary)', fontSize: '0.65rem' }}>
                                         <FileText size={10} />
@@ -1754,7 +1787,7 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
                               )}
                               
                               {!isReply && (
-                                <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
+                                <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '4px' }}>
                                   <button
                                     onClick={() => setReplyTo({ id: comment.id, userName: commUser?.full_name || comment.user_name || 'Đồng nghiệp' })}
                                     style={{ background: 'transparent', border: 'none', color: 'var(--color-primary)', fontSize: '0.7rem', padding: 0, cursor: 'pointer', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '2px' }}

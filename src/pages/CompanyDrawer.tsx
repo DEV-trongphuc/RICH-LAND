@@ -389,7 +389,7 @@ export const CompanyDrawer: React.FC<CompanyDrawerProps> = ({ isOpen, onClose, e
       <div
         className={styles.drawer}
         style={{
-          transform: animateIn ? 'translateX(0)' : 'translateX(160px)',
+          transform: animateIn ? 'translateX(0)' : (isMobileOrTablet ? 'translateX(100%)' : 'translateX(160px)'),
           opacity: animateIn ? 1 : 0,
           transition: 'transform 0.42s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.42s cubic-bezier(0.16, 1, 0.3, 1)',
           willChange: 'transform, opacity'
@@ -713,9 +713,14 @@ export const CompanyDrawer: React.FC<CompanyDrawerProps> = ({ isOpen, onClose, e
             {/* Layout Split: Left Sidebar & Content */}
             <div className={styles.drawerBody}>
               {/* Sidebar Tabs */}
-              {(!isMobileOrTablet || !activeTab) && (
-                <div 
-                  className={!isMobileOrTablet ? styles.sidebarTabs : undefined}
+              <AnimatePresence>
+                {(!isMobileOrTablet || !activeTab) && (
+                  <motion.div
+                    initial={isMobileOrTablet ? { opacity: 0, x: -30 } : false}
+                    animate={isMobileOrTablet ? { opacity: 1, x: 0 } : false}
+                    exit={isMobileOrTablet ? { opacity: 0, x: -30 } : false}
+                    transition={{ type: 'spring', damping: 28, stiffness: 300 }}
+                    className={!isMobileOrTablet ? styles.sidebarTabs : undefined}
                   style={isMobileOrTablet ? {
                     width: '100%',
                     display: 'flex',
@@ -806,16 +811,23 @@ export const CompanyDrawer: React.FC<CompanyDrawerProps> = ({ isOpen, onClose, e
                       );
                     })
                   )}
-                </div>
-              )}
+                  </motion.div>
+                )}
+              </AnimatePresence>
 
               {/* Content Area */}
-              {(!isMobileOrTablet || activeTab) && (
-                <div 
-                  className={!isMobileOrTablet ? styles.contentArea : undefined}
+              <AnimatePresence>
+                {(!isMobileOrTablet || activeTab) && (
+                  <motion.div 
+                    key={activeTab || 'content'}
+                    initial={isMobileOrTablet ? { opacity: 0, x: 30 } : false}
+                    animate={isMobileOrTablet ? { opacity: 1, x: 0 } : false}
+                    exit={isMobileOrTablet ? { opacity: 0, x: 30 } : false}
+                    transition={{ type: 'spring', damping: 28, stiffness: 300 }}
+                    className={!isMobileOrTablet ? styles.contentArea : undefined}
                   style={isMobileOrTablet ? {
                     flex: 1,
-                    padding: '1.25rem 1rem',
+                    padding: '1.25rem 1rem 100px 1rem',
                     overflowY: 'auto',
                     backgroundColor: 'var(--color-bg)',
                     width: '100%',
@@ -1551,8 +1563,9 @@ export const CompanyDrawer: React.FC<CompanyDrawerProps> = ({ isOpen, onClose, e
                     </div>
                   </div>
                 )}
-              </div>
+              </motion.div>
             )}
+            </AnimatePresence>
             </div>
 
             {/* Footer */}
