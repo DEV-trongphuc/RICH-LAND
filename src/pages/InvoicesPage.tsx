@@ -45,6 +45,13 @@ export const InvoicesPage: React.FC = () => {
   const [previewItem, setPreviewItem] = useState<any>(null);
   const [total, setTotal] = useState(0);
   const [summary, setSummary] = useState<any>({ total_rev: 0, paid_amt: 0, pending_amt: 0, overdue_amt: 0 });
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth <= 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const fetchInvoices = useCallback(async () => {
     setLoading(true);
@@ -188,6 +195,22 @@ export const InvoicesPage: React.FC = () => {
 
   return (
     <div>
+      <style>{`
+        @media (max-width: 768px) {
+          .empty-state-row td {
+            padding: 1rem 0 !important;
+          }
+          .empty-state-row td > div[class*="emptyCard"] {
+            background: transparent !important;
+            border: none !important;
+            box-shadow: none !important;
+            padding: 2rem 1rem !important;
+            margin: 0 !important;
+            width: 100% !important;
+            max-width: 100% !important;
+          }
+        }
+      `}</style>
       {/* Header */}
       <div className="page-header">
         <div>
@@ -348,27 +371,60 @@ export const InvoicesPage: React.FC = () => {
       </div>
 
       {/* Status filter tabs */}
-      <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}>
-        {[
-          { key: '', label: 'Tất cả', count: items.length },
-          { key: 'paid', label: 'Đã thanh toán', count: items.filter(i => i.status === 'paid').length },
-          { key: 'pending', label: 'Chờ thanh toán', count: items.filter(i => i.status === 'pending').length },
-          { key: 'overdue', label: 'Quá hạn', count: items.filter(i => i.status === 'overdue').length },
-        ].map(tab => (
-          <button key={tab.key} onClick={() => { setStatusFilter(tab.key); setPage(1); }}
-            style={{ padding: '0.4rem 1rem', borderRadius: 'var(--radius-full)', fontSize: '0.8125rem', fontWeight: 600, cursor: 'pointer', transition: 'all 0.18s', border: '1px solid', borderColor: statusFilter === tab.key ? 'var(--color-primary)' : 'var(--color-border-light)', background: statusFilter === tab.key ? 'var(--color-primary-light)' : 'var(--color-surface)', color: statusFilter === tab.key ? 'var(--color-primary)' : 'var(--color-text-light)' }}>
-            {tab.label} <span style={{ marginLeft: '4px', opacity: 0.75 }}>({tab.count})</span>
-          </button>
-        ))}
-      </div>
+      {!isMobile && (
+        <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}>
+          {[
+            { key: '', label: 'Tất cả', count: items.length },
+            { key: 'paid', label: 'Đã thanh toán', count: items.filter(i => i.status === 'paid').length },
+            { key: 'pending', label: 'Chờ thanh toán', count: items.filter(i => i.status === 'pending').length },
+            { key: 'overdue', label: 'Quá hạn', count: items.filter(i => i.status === 'overdue').length },
+          ].map(tab => (
+            <button key={tab.key} onClick={() => { setStatusFilter(tab.key); setPage(1); }}
+              style={{ padding: '0.4rem 1rem', borderRadius: 'var(--radius-full)', fontSize: '0.8125rem', fontWeight: 600, cursor: 'pointer', transition: 'all 0.18s', border: '1px solid', borderColor: statusFilter === tab.key ? 'var(--color-primary)' : 'var(--color-border-light)', background: statusFilter === tab.key ? 'var(--color-primary-light)' : 'var(--color-surface)', color: statusFilter === tab.key ? 'var(--color-primary)' : 'var(--color-text-light)' }}>
+              {tab.label} <span style={{ marginLeft: '4px', opacity: 0.75 }}>({tab.count})</span>
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Filter bar */}
-      <div className="card" style={{ padding: '0.875rem 1.25rem', marginBottom: '1rem', display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
-        <div className="filter-search" style={{ flex: 1 }}>
+      <div className="card" style={{ padding: '0.875rem 1.25rem', marginBottom: '1rem', display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
+        <div className="filter-search" style={{ flex: 1, minWidth: '150px' }}>
           <Search size={15} style={{ color: 'var(--color-text-muted)' }} />
-          <input placeholder="Tìm mã hóa đơn, khách hàng, công ty..." value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} />
+          <input placeholder="Tìm mã hóa đơn, khách hàng, công ty..." value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} style={{ width: '100%' }} />
           {search && <button onClick={() => setSearch('')}><X size={13} /></button>}
         </div>
+
+        {isMobile && (
+          <select
+            value={statusFilter}
+            onChange={e => { setStatusFilter(e.target.value); setPage(1); }}
+            style={{
+              padding: '0.45rem 1.75rem 0.45rem 0.75rem',
+              borderRadius: '8px',
+              fontSize: '0.8125rem',
+              fontWeight: 600,
+              border: '1px solid var(--color-border)',
+              background: 'var(--color-surface)',
+              color: 'var(--color-text)',
+              cursor: 'pointer',
+              outline: 'none',
+              minWidth: '130px',
+              maxWidth: '150px',
+              boxShadow: 'var(--shadow-xs)',
+              appearance: 'none',
+              backgroundImage: `url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238e8e93' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E")`,
+              backgroundRepeat: 'no-repeat',
+              backgroundPosition: 'right 8px center',
+              backgroundSize: '12px'
+            }}
+          >
+            <option value="">Tất cả ({items.length})</option>
+            <option value="paid">Đã thanh toán ({items.filter(i => i.status === 'paid').length})</option>
+            <option value="pending">Chờ thanh toán ({items.filter(i => i.status === 'pending').length})</option>
+            <option value="overdue">Quá hạn ({items.filter(i => i.status === 'overdue').length})</option>
+          </select>
+        )}
         {selected.size > 0 && (
           <div className="flex gap-2">
             <button className="btn outline sm"><Printer size={13} /> In {selected.size} HĐ</button>
@@ -478,7 +534,7 @@ export const InvoicesPage: React.FC = () => {
                 })}
               </AnimatePresence>
               {!loading && items.length === 0 && (
-                <tr className="empty-row">
+                <tr className="empty-state-row">
                   <td colSpan={7} style={{ padding: '2rem 1rem' }}>
                     <EmptyCard
                       icon={<FileText />}

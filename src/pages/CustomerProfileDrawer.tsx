@@ -7048,13 +7048,15 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                               background: 'var(--color-bg-light)',
                               borderRadius: '12px',
                               border: '1px solid var(--color-border-light)',
-                              padding: '12px 16px',
+                              padding: isMobileOrTablet ? '14px 16px' : '16px 20px',
                               display: 'flex',
-                              flexDirection: 'column',
-                              gap: '12px'
+                              flexDirection: isMobileOrTablet ? 'column' : 'row',
+                              alignItems: isMobileOrTablet ? 'stretch' : 'center',
+                              justifyContent: 'space-between',
+                              gap: '16px'
                             }}>
                               {/* Column 1: Project details */}
-                              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: isMobileOrTablet ? 'none' : '2', minWidth: 0 }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.7rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                                   <Briefcase size={13} style={{ color: 'var(--color-primary)' }} />
                                   <span>Dự án giao dịch</span>
@@ -7074,24 +7076,49 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                 </div>
                               </div>
 
-                              {/* Column 2: Expected Revenue */}
-                              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', borderLeft: '1px solid var(--color-border-light)', paddingLeft: '1.25rem' }}>
-                                <span style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                                  Doanh thu dự kiến
-                                </span>
-                                <span style={{ fontSize: '1.05rem', fontWeight: 800, color: 'var(--color-text)' }}>
-                                  {FMT(coopSlip.expected_revenue)}
-                                </span>
-                              </div>
+                              {/* Nested financial columns: Always horizontal on both mobile and desktop */}
+                              <div style={{
+                                display: 'flex',
+                                flexDirection: 'row',
+                                gap: '12px',
+                                flex: isMobileOrTablet ? 'none' : '2',
+                                borderTop: isMobileOrTablet ? '1px solid var(--color-border-light)' : 'none',
+                                paddingTop: isMobileOrTablet ? '12px' : '0',
+                                width: isMobileOrTablet ? '100%' : 'auto'
+                              }}>
+                                {/* Column 2: Expected Revenue */}
+                                <div style={{ 
+                                  display: 'flex', 
+                                  flexDirection: 'column', 
+                                  gap: '4px', 
+                                  borderLeft: isMobileOrTablet ? 'none' : '1px solid var(--color-border-light)', 
+                                  paddingLeft: isMobileOrTablet ? '0' : '1.5rem',
+                                  flex: 1
+                                }}>
+                                  <span style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                                    Doanh thu dự kiến
+                                  </span>
+                                  <span style={{ fontSize: '1.05rem', fontWeight: 800, color: 'var(--color-text)' }}>
+                                    {FMT(coopSlip.expected_revenue)}
+                                  </span>
+                                </div>
 
-                              {/* Column 3: Expected Commission */}
-                              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', borderLeft: '1px solid var(--color-border-light)', paddingLeft: '1.25rem' }}>
-                                <span style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--color-primary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                                  Hoa hồng dự kiến
-                                </span>
-                                <span style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--color-primary)' }}>
-                                  {FMT(coopSlip.expected_commission)}
-                                </span>
+                                {/* Column 3: Expected Commission */}
+                                <div style={{ 
+                                  display: 'flex', 
+                                  flexDirection: 'column', 
+                                  gap: '4px', 
+                                  borderLeft: '1px solid var(--color-border-light)', 
+                                  paddingLeft: isMobileOrTablet ? '12px' : '1.5rem',
+                                  flex: 1
+                                }}>
+                                  <span style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--color-primary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                                    Hoa hồng dự kiến
+                                  </span>
+                                  <span style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--color-primary)' }}>
+                                    {FMT(coopSlip.expected_commission)}
+                                  </span>
+                                </div>
                               </div>
                             </div>
 
@@ -7159,7 +7186,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                               <h4 style={{ fontWeight: 700, marginBottom: '1.25rem', fontSize: '0.95rem', color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: '6px' }}>
                                 <Users size={16} style={{ color: 'var(--color-primary)' }} /> Bảng chữ ký và tỷ lệ
                               </h4>
-                              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                              <div style={{ display: 'grid', gridTemplateColumns: isMobileOrTablet ? '1fr' : 'repeat(2, 1fr)', gap: '16px' }}>
                                 {coopSlip.shareholders?.map((sh: any) => (
                                   <div 
                                     key={sh.user_id} 
