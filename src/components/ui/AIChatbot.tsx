@@ -816,6 +816,28 @@ Bạn có thể gõ rõ từ khóa hoặc click vào các gợi ý bên dưới 
           }}>
             <button
               type="button"
+              onClick={() => setChatMode('project_campaign')}
+              style={{
+                flex: 1,
+                padding: '10px 12px',
+                border: 'none',
+                background: chatMode === 'project_campaign' ? 'var(--chatbot-card-bg)' : 'transparent',
+                color: chatMode === 'project_campaign' ? '#a31422' : 'var(--chatbot-text-muted)',
+                fontWeight: 700,
+                fontSize: '0.8rem',
+                cursor: 'pointer',
+                borderRadius: '8px',
+                transition: 'all 0.2s',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '6px'
+              }}
+            >
+              {t('Hỏi Dự án / Chiến dịch')}
+            </button>
+            <button
+              type="button"
               onClick={() => {
                 setChatMode('general');
                 setSelectedEntity(null);
@@ -839,28 +861,6 @@ Bạn có thể gõ rõ từ khóa hoặc click vào các gợi ý bên dưới 
               }}
             >
               {t('Chat thường')}
-            </button>
-            <button
-              type="button"
-              onClick={() => setChatMode('project_campaign')}
-              style={{
-                flex: 1,
-                padding: '10px 12px',
-                border: 'none',
-                background: chatMode === 'project_campaign' ? 'var(--chatbot-card-bg)' : 'transparent',
-                color: chatMode === 'project_campaign' ? '#a31422' : 'var(--chatbot-text-muted)',
-                fontWeight: 700,
-                fontSize: '0.8rem',
-                cursor: 'pointer',
-                borderRadius: '8px',
-                transition: 'all 0.2s',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '6px'
-              }}
-            >
-              {t('Hỏi Dự án / Chiến dịch')}
             </button>
           </div>
 
