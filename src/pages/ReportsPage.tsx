@@ -237,6 +237,13 @@ export const ReportsPage: React.FC = () => {
               borderRadius: 'var(--radius-md)',
               flexShrink: 0
             }}
+            ref={el => {
+              if (el && isMobile) {
+                el.style.setProperty('flex-grow', '0', 'important');
+                el.style.setProperty('width', '38px', 'important');
+                el.style.setProperty('min-width', '38px', 'important');
+              }
+            }}
           >
             <Download size={16} style={{ color: '#fff' }} />
             {!isMobile && <span style={{ marginLeft: '6px', color: '#fff', fontWeight: 600 }}>Xuất PDF</span>}
