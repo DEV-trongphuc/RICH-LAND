@@ -871,24 +871,43 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
                     <h2 className="welcome-banner-title" style={{ fontSize: isMobile ? '1.05rem' : '1.25rem' }}>
                       {t('Xin chào')}, {user?.name || 'Ban điều hành'}
                     </h2>
-                    <span style={{ 
-                      fontSize: '0.625rem', 
-                      fontWeight: 900, 
-                      color: '#ffffff', 
-                      padding: '2px 8px', 
-                      borderRadius: '20px', 
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.5px',
-                      ...getRoleBadgeStyle(user?.role || '')
-                    }}>
-                      {getRoleLabel(user?.role || '')}
-                    </span>
+                    {isMobile && (
+                      <span style={{ 
+                        fontSize: '0.625rem', 
+                        fontWeight: 900, 
+                        color: '#ffffff', 
+                        padding: '2px 8px', 
+                        borderRadius: '20px', 
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.5px',
+                        ...getRoleBadgeStyle(user?.role || '')
+                      }}>
+                        {getRoleLabel(user?.role || '')}
+                      </span>
+                    )}
                   </div>
                   
                   <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '0.75rem', color: '#cbd5e1', fontWeight: 500 }}>
                     <Clock size={12} style={{ color: '#ff4d5a' }} />
                     {getCurrentDateVi()}
                   </span>
+
+                  {!isMobile && (
+                    <div style={{ display: 'flex' }}>
+                      <span style={{ 
+                        fontSize: '0.625rem', 
+                        fontWeight: 900, 
+                        color: '#ffffff', 
+                        padding: '2px 8px', 
+                        borderRadius: '20px', 
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.5px',
+                        ...getRoleBadgeStyle(user?.role || '')
+                      }}>
+                        {getRoleLabel(user?.role || '')}
+                      </span>
+                    </div>
+                  )}
                 </div>
               </div>
 
