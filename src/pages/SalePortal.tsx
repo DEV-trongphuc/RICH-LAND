@@ -6301,14 +6301,30 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
           .stat-card {
             position: relative;
             overflow: hidden;
-            background: var(--color-surface) !important;
+            background: linear-gradient(135deg, var(--color-surface) 0%, #151517 100%) !important;
             border: 1px solid var(--color-border-light) !important;
-            box-shadow: 0 4px 18px rgba(0, 0, 0, 0.03) !important;
-            transition: box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.05) !important;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
           }
           .stat-card:hover {
-            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.06) !important;
-            border-color: var(--color-border) !important;
+            transform: translateY(-2px);
+            box-shadow: 0 12px 30px rgba(0, 0, 0, 0.6), 0 0 20px rgba(255, 255, 255, 0.03) !important;
+          }
+          .stat-card.total-card:hover {
+            border-color: rgba(163, 20, 34, 0.6) !important;
+            box-shadow: 0 12px 30px rgba(0, 0, 0, 0.65), 0 0 20px rgba(163, 20, 34, 0.25) !important;
+          }
+          .stat-card.distributed-card:hover {
+            border-color: rgba(0, 122, 245, 0.6) !important;
+            box-shadow: 0 12px 30px rgba(0, 0, 0, 0.65), 0 0 20px rgba(0, 122, 245, 0.25) !important;
+          }
+          .stat-card.personal-card:hover {
+            border-color: rgba(16, 185, 129, 0.6) !important;
+            box-shadow: 0 12px 30px rgba(0, 0, 0, 0.65), 0 0 20px rgba(16, 185, 129, 0.25) !important;
+          }
+          .stat-card.error_ticket-card:hover {
+            border-color: rgba(239, 68, 68, 0.6) !important;
+            box-shadow: 0 12px 30px rgba(0, 0, 0, 0.65), 0 0 20px rgba(239, 68, 68, 0.25) !important;
           }
           .decor-svg {
             position: absolute;

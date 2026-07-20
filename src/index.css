@@ -603,6 +603,50 @@
   --skeleton-shine: #3A3A3C;
 }
 
+/* Premium Dark Mode Aesthetics & High Contrast Enhancements */
+[data-theme="dark"] .card {
+  background: linear-gradient(145deg, #1C1C1E 0%, #131315 100%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.05) !important;
+}
+
+[data-theme="dark"] .card:hover {
+  border-color: rgba(255, 255, 255, 0.12) !important;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.65), inset 0 1px 0 rgba(255, 255, 255, 0.08) !important;
+}
+
+/* Make inputs look sharp and premium in dark mode */
+[data-theme="dark"] .form-input,
+[data-theme="dark"] .form-select,
+[data-theme="dark"] .form-textarea,
+[data-theme="dark"] select,
+[data-theme="dark"] input[type="text"],
+[data-theme="dark"] input[type="date"],
+[data-theme="dark"] textarea {
+  background: #141416 !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  color: #ffffff !important;
+  box-shadow: inset 0 1px 2px rgba(0,0,0,0.4) !important;
+  transition: all 0.2s ease !important;
+}
+
+[data-theme="dark"] .form-input:focus,
+[data-theme="dark"] .form-select:focus,
+[data-theme="dark"] select:focus,
+[data-theme="dark"] input[type="text"]:focus,
+[data-theme="dark"] input[type="date"]:focus,
+[data-theme="dark"] textarea:focus {
+  border-color: var(--color-primary) !important;
+  box-shadow: 0 0 0 3px rgba(255, 69, 58, 0.18), inset 0 1px 2px rgba(0,0,0,0.4) !important;
+}
+
+/* Premium sidebar items in dark mode */
+[data-theme="dark"] .sidebar-nav-item.active {
+  background: rgba(255, 69, 58, 0.12) !important;
+  border-left: 3px solid var(--color-primary) !important;
+  color: #ffffff !important;
+}
+
 [data-theme="dark"] th {
   background-color: var(--color-bg);
   color: var(--color-text);
