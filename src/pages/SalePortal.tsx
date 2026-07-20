@@ -835,6 +835,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
   const [checkInSubmitting, setCheckInSubmitting] = useState(false);
   const [checkInReason, setCheckInReason] = useState('');
   const [todayCheckIn, setTodayCheckIn] = useState<any>(null);
+  const [isCheckInLoaded, setIsCheckInLoaded] = useState(false);
   const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
   const [isCameraActive, setIsCameraActive] = useState(false);
@@ -2046,6 +2047,8 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
       }
     } catch (err) {
       console.error("Error loading check-in status:", err);
+    } finally {
+      setIsCheckInLoaded(true);
     }
   };
 
@@ -6186,7 +6189,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
         action: () => setActiveTab('workspace')
       });
     }
-    if (!isAdmin && !isOvertime && (!todayCheckIn || todayCheckIn.status === 'rejected')) {
+    if (isCheckInLoaded && !isAdmin && !isOvertime && (!todayCheckIn || todayCheckIn.status === 'rejected')) {
       issues.push({
         type: 'checkin',
         text: t('Bạn chưa hoàn thành chấm công ngày hôm nay.'),
@@ -6640,7 +6643,18 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
             <h4 style={{ margin: 0, fontSize: '0.72rem', fontWeight: 500, color: '#f4f4f5', textTransform: 'uppercase', letterSpacing: '1px', opacity: 0.9 }}>
               {t('Nhiệm vụ & Vấn đề cần giải quyết')}
             </h4>
-            {issues.length > 0 ? (
+            {loading ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <div className="welcome-task-row" style={{ cursor: 'default' }}>
+                  <Skeleton width={14} height={14} borderRadius="50%" style={{ '--skeleton-base': 'rgba(255, 255, 255, 0.08)', '--skeleton-shine': 'rgba(255, 255, 255, 0.15)' } as React.CSSProperties} />
+                  <Skeleton width="60%" height={12} style={{ '--skeleton-base': 'rgba(255, 255, 255, 0.08)', '--skeleton-shine': 'rgba(255, 255, 255, 0.15)' } as React.CSSProperties} />
+                </div>
+                <div className="welcome-task-row" style={{ cursor: 'default' }}>
+                  <Skeleton width={14} height={14} borderRadius="50%" style={{ '--skeleton-base': 'rgba(255, 255, 255, 0.08)', '--skeleton-shine': 'rgba(255, 255, 255, 0.15)' } as React.CSSProperties} />
+                  <Skeleton width="45%" height={12} style={{ '--skeleton-base': 'rgba(255, 255, 255, 0.08)', '--skeleton-shine': 'rgba(255, 255, 255, 0.15)' } as React.CSSProperties} />
+                </div>
+              </div>
+            ) : issues.length > 0 ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 {issues.map((issue, index) => (
                   <div 
@@ -6693,7 +6707,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
 
           {/* Right section: Quick Actions */}
           <div style={{ display: 'flex', gap: '8px', flexShrink: 0, flexWrap: 'nowrap', width: isMobile ? '100%' : 'auto', justifyContent: isMobile ? 'stretch' : 'flex-end' }}>
-            {!isAdmin && !isOvertime && (!todayCheckIn || todayCheckIn.status === 'rejected') && (
+            {isCheckInLoaded && !isAdmin && !isOvertime && (!todayCheckIn || todayCheckIn.status === 'rejected') && (
               <button 
                 onClick={() => setCheckInModalOpen(true)}
                 className="welcome-action-btn primary-btn"
@@ -6847,41 +6861,60 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                 </div>
 
                 <div style={{ flex: 1, display: 'flex', flexDirection: 'column', position: 'relative', zIndex: 2 }}>
-                  <div className="stat-value" style={{ fontWeight: 800, color: 'var(--color-text)', fontSize: isMobile ? '1.5rem' : '2.25rem', lineHeight: 1.1 }}>{kpi.value}</div>
+                  <div className="stat-value" style={{ fontWeight: 800, color: 'var(--color-text)', fontSize: isMobile ? '1.5rem' : '2.25rem', lineHeight: 1.1 }}>
+                    {loading ? (
+                      <Skeleton width="60px" height={isMobile ? 24 : 36} style={{ margin: '4px 0' }} />
+                    ) : (
+                      kpi.value
+                    )}
+                  </div>
                   
                   <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px', marginBottom: '8px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-                    {kpi.bullets.map((b, bIdx) => (
-                      <span key={bIdx} style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
-                        <span style={{ width: 6, height: 6, borderRadius: '50%', background: b.color, display: 'inline-block', flexShrink: 0 }} />
-                        <span>{b.text}</span>
-                      </span>
-                    ))}
+                    {loading ? (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', width: '100%', marginTop: '4px' }}>
+                        <Skeleton width="80%" height={8} />
+                        {kpi.bullets.length > 1 && <Skeleton width="50%" height={8} />}
+                      </div>
+                    ) : (
+                      kpi.bullets.map((b, bIdx) => (
+                        <span key={bIdx} style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+                          <span style={{ width: 6, height: 6, borderRadius: '50%', background: b.color, display: 'inline-block', flexShrink: 0 }} />
+                          <span>{b.text}</span>
+                        </span>
+                      ))
+                    )}
                   </div>
 
-                  {(() => {
-                    const isIncrease = kpi.change.startsWith('+');
-                    const isZero = kpi.change === '0%';
-                    const changeColor = isZero ? 'var(--color-text-light)' : (kpi.up ? 'var(--color-success)' : 'var(--color-danger)');
-                    return (
-                      <div className="stat-change" style={{ marginTop: 'auto', display: 'flex', alignItems: 'center', gap: '4px', color: changeColor, fontWeight: 700, fontSize: '0.75rem' }}>
-                        {!isZero && (
-                          isIncrease ? (
-                            <svg viewBox="0 0 24 24" width="8" height="8" fill="currentColor" style={{ flexShrink: 0 }}>
-                              <path d="M12 5l9 14H3z" />
-                            </svg>
-                          ) : (
-                            <svg viewBox="0 0 24 24" width="8" height="8" fill="currentColor" style={{ flexShrink: 0 }}>
-                              <path d="M12 19L3 5h18z" />
-                            </svg>
-                          )
-                        )}
-                        {kpi.change}
-                        <span className="stat-desc" style={{ color: 'var(--color-text-light)', marginLeft: '4px', fontWeight: 500 }}>
-                          {t('so với kỳ trước')}
-                        </span>
-                      </div>
-                    );
-                  })()}
+                  {loading ? (
+                    <div style={{ marginTop: 'auto', paddingTop: '4px' }}>
+                      <Skeleton width="60%" height={10} />
+                    </div>
+                  ) : (
+                    (() => {
+                      const isIncrease = kpi.change.startsWith('+');
+                      const isZero = kpi.change === '0%';
+                      const changeColor = isZero ? 'var(--color-text-light)' : (kpi.up ? 'var(--color-success)' : 'var(--color-danger)');
+                      return (
+                        <div className="stat-change" style={{ marginTop: 'auto', display: 'flex', alignItems: 'center', gap: '4px', color: changeColor, fontWeight: 700, fontSize: '0.75rem' }}>
+                          {!isZero && (
+                            isIncrease ? (
+                              <svg viewBox="0 0 24 24" width="8" height="8" fill="currentColor" style={{ flexShrink: 0 }}>
+                                <path d="M12 5l9 14H3z" />
+                              </svg>
+                            ) : (
+                              <svg viewBox="0 0 24 24" width="8" height="8" fill="currentColor" style={{ flexShrink: 0 }}>
+                                <path d="M12 19L3 5h18z" />
+                              </svg>
+                            )
+                          )}
+                          {kpi.change}
+                          <span className="stat-desc" style={{ color: 'var(--color-text-light)', marginLeft: '4px', fontWeight: 500 }}>
+                            {t('so với kỳ trước')}
+                          </span>
+                        </div>
+                      );
+                    })()
+                  )}
                 </div>
               </div>
             );
@@ -6894,57 +6927,66 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
         <div className="responsive-grid-6-4" style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '6fr 4fr', gap: '1.25rem' }}>
           {/* Chart Left (Performance) */}
           <div className="card" style={{ padding: '1.25rem', minWidth: 0 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '10px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Clock3 size={18} color="var(--color-primary)" />
-                <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-text)', margin: 0 }}>
-                  {flowViewMode === 'day' ? t('LƯU LƯỢNG NHẬN DATA THEO NGÀY') : t('LƯU LƯỢNG NHẬN DATA THEO KHUNG GIỜ')}
-                </h3>
+            {loading ? (
+              <div style={{ height: 320, display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                <Skeleton width="40%" height={20} />
+                <Skeleton width="100%" height={260} borderRadius={12} />
               </div>
-              <div style={{ display: 'flex', background: 'var(--color-bg)', padding: '3px', borderRadius: '8px', border: '1px solid var(--color-border-light)' }}>
-                <button
-                  onClick={() => setFlowViewMode('day')}
-                  style={{
-                    padding: '4px 10px', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 600, border: 'none', cursor: 'pointer',
-                    background: flowViewMode === 'day' ? 'var(--color-surface)' : 'transparent',
-                    color: flowViewMode === 'day' ? 'var(--color-primary)' : 'var(--color-text-muted)'
-                  }}
-                >
-                  {t('Theo ngày')}
-                </button>
-                <button
-                  onClick={() => setFlowViewMode('hour')}
-                  style={{
-                    padding: '4px 10px', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 600, border: 'none', cursor: 'pointer',
-                    background: flowViewMode === 'hour' ? 'var(--color-surface)' : 'transparent',
-                    color: flowViewMode === 'hour' ? 'var(--color-primary)' : 'var(--color-text-muted)'
-                  }}
-                >
-                  {t('Theo giờ')}
-                </button>
-              </div>
-            </div>
-            <div style={{ height: 260 }}>
-              <ResponsiveContainer width="100%" height="100%">
-                <ComposedChart data={activeChartData} margin={{ left: -20, right: 5, top: 10 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border-light)" vertical={false} />
-                  <XAxis dataKey={flowViewMode === 'day' ? 'date' : 'time'} tick={{ fontSize: 10, fill: 'var(--color-text-muted)' }} axisLine={false} tickLine={false} />
-                  <YAxis tick={{ fontSize: 10, fill: 'var(--color-text-muted)' }} axisLine={false} tickLine={false} width={35} />
-                  <Tooltip content={({ active, payload, label }) => {
-                    if (active && payload && payload.length) {
-                      return (
-                        <div style={{ background: 'var(--color-surface)', padding: '8px 12px', borderRadius: '8px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', border: '1px solid var(--color-border)', fontSize: '0.8rem' }}>
-                          <div style={{ fontWeight: 700, color: 'var(--color-text)' }}>{label}</div>
-                          <div style={{ color: 'var(--color-primary)', marginTop: 2 }}>{t('Số lượng data: ')}<span style={{ fontWeight: 800 }}>{payload[0].value}</span></div>
-                        </div>
-                      );
-                    }
-                    return null;
-                  }} />
-                  <Bar dataKey="volume" fill="var(--color-primary)" fillOpacity={0.85} radius={[4, 4, 0, 0]} maxBarSize={16} />
-                </ComposedChart>
-              </ResponsiveContainer>
-            </div>
+            ) : (
+              <>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '10px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <Clock3 size={18} color="var(--color-primary)" />
+                    <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-text)', margin: 0 }}>
+                      {flowViewMode === 'day' ? t('LƯU LƯỢNG NHẬN DATA THEO NGÀY') : t('LƯU LƯỢNG NHẬN DATA THEO KHUNG GIỜ')}
+                    </h3>
+                  </div>
+                  <div style={{ display: 'flex', background: 'var(--color-bg)', padding: '3px', borderRadius: '8px', border: '1px solid var(--color-border-light)' }}>
+                    <button
+                      onClick={() => setFlowViewMode('day')}
+                      style={{
+                        padding: '4px 10px', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 600, border: 'none', cursor: 'pointer',
+                        background: flowViewMode === 'day' ? 'var(--color-surface)' : 'transparent',
+                        color: flowViewMode === 'day' ? 'var(--color-primary)' : 'var(--color-text-muted)'
+                      }}
+                    >
+                      {t('Theo ngày')}
+                    </button>
+                    <button
+                      onClick={() => setFlowViewMode('hour')}
+                      style={{
+                        padding: '4px 10px', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 600, border: 'none', cursor: 'pointer',
+                        background: flowViewMode === 'hour' ? 'var(--color-surface)' : 'transparent',
+                        color: flowViewMode === 'hour' ? 'var(--color-primary)' : 'var(--color-text-muted)'
+                      }}
+                    >
+                      {t('Theo giờ')}
+                    </button>
+                  </div>
+                </div>
+                <div style={{ height: 260 }}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <ComposedChart data={activeChartData} margin={{ left: -20, right: 5, top: 10 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border-light)" vertical={false} />
+                      <XAxis dataKey={flowViewMode === 'day' ? 'date' : 'time'} tick={{ fontSize: 10, fill: 'var(--color-text-muted)' }} axisLine={false} tickLine={false} />
+                      <YAxis tick={{ fontSize: 10, fill: 'var(--color-text-muted)' }} axisLine={false} tickLine={false} width={35} />
+                      <Tooltip content={({ active, payload, label }) => {
+                        if (active && payload && payload.length) {
+                          return (
+                            <div style={{ background: 'var(--color-surface)', padding: '8px 12px', borderRadius: '8px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', border: '1px solid var(--color-border)', fontSize: '0.8rem' }}>
+                              <div style={{ fontWeight: 700, color: 'var(--color-text)' }}>{label}</div>
+                              <div style={{ color: 'var(--color-primary)', marginTop: 2 }}>{t('Số lượng data: ')}<span style={{ fontWeight: 800 }}>{payload[0].value}</span></div>
+                            </div>
+                          );
+                        }
+                        return null;
+                      }} />
+                      <Bar dataKey="volume" fill="var(--color-primary)" fillOpacity={0.85} radius={[4, 4, 0, 0]} maxBarSize={16} />
+                    </ComposedChart>
+                  </ResponsiveContainer>
+                </div>
+              </>
+            )}
           </div>
 
           {/* Recent Leads Feed (y như bên Lịch sử giao Data gần đây) */}
@@ -6957,7 +6999,13 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
               >{t('Xem tất cả')}</span>
             </div>
             <div style={{ flex: 1, padding: '0.5rem 0.5rem 1.25rem 0.5rem', overflowY: 'auto', maxHeight: 280 }} className="custom-scrollbar">
-              {recentLeads.length > 0 ? (
+              {loading ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', padding: '0.5rem' }}>
+                  <StatRowSkeleton />
+                  <StatRowSkeleton />
+                  <StatRowSkeleton />
+                </div>
+              ) : recentLeads.length > 0 ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
                   {recentLeads.map((lead: any) => (
                     <div key={lead.log_id} className="hover-lift" style={{
