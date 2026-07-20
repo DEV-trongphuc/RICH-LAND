@@ -813,6 +813,329 @@ const formatNumberWithCommas = (val: any) => {
   return cleanVal.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
 };
 
+interface TimelineItemProps {
+  ev: any;
+  index: number;
+  currentUser: any;
+  drawerActivities: any[];
+  users: any[];
+  isMobile: boolean;
+  formatNote: (text: string) => any;
+  resolveAttachmentUrl: (url: string) => string;
+  formatMeetingTime: (date: string) => string;
+  handleTimelineItemClick: (ev: any) => void;
+  deleteActivity: (id: number) => void;
+  setEditingActivity: (ev: any) => void;
+  setShowActivityModal: (show: boolean) => void;
+  showUserCard: (e: React.MouseEvent, name: string) => void;
+  handleCompleteMeeting: (ev: any) => void;
+  handleCancelMeeting: (ev: any) => void;
+  handleRescheduleMeetingClick: (ev: any) => void;
+}
+
+const TimelineItem = React.memo<TimelineItemProps>(({
+  ev,
+  index,
+  currentUser,
+  drawerActivities,
+  users,
+  isMobile,
+  formatNote,
+  resolveAttachmentUrl,
+  formatMeetingTime,
+  handleTimelineItemClick,
+  deleteActivity,
+  setEditingActivity,
+  setShowActivityModal,
+  showUserCard,
+  handleCompleteMeeting,
+  handleCancelMeeting,
+  handleRescheduleMeetingClick
+}) => {
+  return (
+    <motion.div
+      initial={{ opacity: 0, x: -10 }}
+      animate={{ opacity: 1, x: 0 }}
+      transition={{ delay: Math.min(index * 0.04, 0.25) }}
+      id={`activity-item-${ev.id}`}
+      style={{ display: 'flex', gap: '1rem', marginBottom: '1.25rem', position: 'relative' }}
+      className="timeline-event-item gpu-accelerated"
+    >
+      {/* Step Node */}
+      <div style={{ width: 38, height: 38, borderRadius: '50%', background: `${ev.color}15`, border: `2px solid ${ev.color}`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, zIndex: 1, backgroundColor: 'var(--color-surface)', boxShadow: `0 0 0 4px var(--color-bg)` }}>
+        <div style={{ color: ev.color, display: 'flex' }}>{ev.icon}</div>
+      </div>
+
+      {/* Step Content */}
+      <div
+        onClick={() => handleTimelineItemClick(ev)}
+        style={{ 
+          flex: 1, 
+          padding: '8px 10px', 
+          background: 'var(--color-surface)', 
+          borderRadius: '12px', 
+          border: '1px solid var(--color-border-light)', 
+          boxShadow: 'var(--shadow-sm)', 
+          transition: 'all 0.2s', 
+          cursor: ['call', 'email', 'meeting', 'task'].includes(ev.type) ? 'pointer' : 'default',
+          position: 'relative'
+        }}
+        onMouseEnter={e => { if (['call', 'email', 'meeting', 'task'].includes(ev.type)) e.currentTarget.style.borderColor = ev.color; }}
+        onMouseLeave={e => { if (['call', 'email', 'meeting', 'task'].includes(ev.type)) e.currentTarget.style.borderColor = 'var(--color-border-light)'; }}
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', paddingRight: currentUser && ['admin', 'superadmin', 'super_admin', 'director'].includes(currentUser.role) ? '54px' : '0px' }}>
+          {ev.title && (
+            <h4 style={{ fontWeight: 800, fontSize: '0.9rem', color: 'var(--color-text)', margin: 0, paddingRight: '8px' }}>
+              {ev.title}
+            </h4>
+          )}
+          
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', alignItems: 'center', fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
+            <span style={{ fontSize: '0.68rem', fontWeight: 700, color: ev.color, background: `${ev.color}12`, padding: '1px 6px', borderRadius: '4px', textTransform: 'uppercase' }}>
+              {ev.type === 'meeting' ? (ev.status === 'cancelled' ? 'Hủy gặp' : (ev.status === 'planned' ? 'Lịch gặp' : 'Đã gặp')) : ev.type === 'zalo_connect' ? 'Zalo' : ev.type.toUpperCase()}
+            </span>
+            <span>•</span>
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+              <Avatar name={ev.user} src={ev.avatar} size="sm" style={{ width: '15px', height: '15px' }} />
+              <strong>{ev.user}</strong>
+            </div>
+            <span>•</span>
+            <span>{new Date(ev.time).toLocaleDateString('vi-VN')} {new Date(ev.time).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}</span>
+            {ev.type === 'meeting' && ev.due_date && (
+              <>
+                <span>•</span>
+                <span style={{ color: 'var(--color-warning)', fontWeight: 600 }}>
+                  Lịch gặp: {formatMeetingTime(ev.due_date)}
+                </span>
+              </>
+            )}
+          </div>
+        </div>
+
+        {currentUser && ['admin', 'superadmin', 'super_admin', 'director'].includes(currentUser.role) && (
+          <div 
+            onClick={(e) => e.stopPropagation()}
+            style={{ 
+              position: 'absolute', 
+              top: '6px', 
+              right: '6px', 
+              display: 'flex', 
+              gap: '2px',
+              zIndex: 10
+            }}
+          >
+            <button
+              className="btn ghost sm"
+              style={{ padding: '2px', height: '24px', width: '24px', color: 'var(--color-text-muted)', opacity: 0.6 }}
+              onClick={(e) => {
+                e.stopPropagation();
+                const rawAct = drawerActivities.find((x: any) => x.id === ev.id);
+                if (rawAct) {
+                  setEditingActivity(rawAct);
+                  setShowActivityModal(true);
+                }
+              }}
+            >
+              <Pencil size={12} />
+            </button>
+            <button
+              className="btn ghost sm"
+              style={{ padding: '2px', height: '24px', width: '24px', color: 'var(--color-danger)', opacity: 0.6 }}
+              onClick={(e) => { e.stopPropagation(); deleteActivity(ev.id); }}
+            >
+              <Trash2 size={12} />
+            </button>
+          </div>
+        )}
+
+        {(ev.note || ev.expense_image_url) && (() => {
+          const linkMatch = ev.note ? ev.note.match(/Tài liệu\/Link đính kèm:\s*(.*)$/m) : null;
+          const linkUrl = linkMatch ? linkMatch[1].trim() : (ev.expense_image_url || '');
+          let displayNoteText = linkMatch ? ev.note.replace(/Tài liệu\/Link đính kèm:\s*.*$/m, '').trim() : (ev.note || '');
+          let currentBody = displayNoteText.trim();
+          let wasParsed = false;
+          while (currentBody.startsWith('{"erp_task"') || currentBody.startsWith('{"erp_task":')) {
+            try {
+              const parsed = JSON.parse(currentBody);
+              wasParsed = true;
+              if (typeof parsed.erp_task?.description === 'string') {
+                currentBody = parsed.erp_task.description.trim();
+              } else {
+                break;
+              }
+            } catch (e) {
+              break;
+            }
+          }
+          if (wasParsed) {
+            displayNoteText = currentBody;
+          }
+
+          const hasContent = displayNoteText.trim() !== '' || 
+                            linkUrl.trim() !== '' || 
+                            (ev.type === 'call' && !!(ev as any).metadata?.recording_url) || 
+                            (ev.type === 'email' && !!(ev as any).metadata?.email_subject) || 
+                            (ev.type === 'meeting' && !!(ev as any).metadata?.zoom_link) || 
+                            !!ev.edit_history;
+
+          if (!hasContent) return null;
+
+          return (
+            <div style={{ padding: '0.5rem 0.75rem', background: 'var(--color-bg)', borderRadius: 'var(--radius-md)', marginTop: '0.375rem', border: '1px solid var(--color-border-light)' }}>
+              {displayNoteText && (
+                <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-light)', lineHeight: 1.5, margin: 0 }}>{formatNote(displayNoteText)}</p>
+              )}
+
+              {linkUrl && (
+                <div style={{ marginTop: '0.75rem', display: 'flex', alignItems: 'center', gap: '8px' }} onClick={e => e.stopPropagation()}>
+                  {/\.(jpg|jpeg|png|gif|webp)$/i.test(linkUrl) ? (
+                    <Camera size={14} style={{ color: '#10b981' }} />
+                  ) : (
+                    <FileText size={14} style={{ color: 'var(--color-primary)' }} />
+                  )}
+                  <a
+                    href={resolveAttachmentUrl(linkUrl)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{ fontSize: '0.8125rem', color: 'var(--color-primary)', fontWeight: 600, textDecoration: 'underline' }}
+                  >
+                    {linkUrl.split('/').pop()}
+                  </a>
+                </div>
+              )}
+            
+              {/* Rich Metadata Rendering */}
+              {ev.type === 'call' && (ev as any).metadata?.recording_url && (
+                <div style={{ marginTop: '0.75rem', padding: '0.5rem', background: 'var(--color-surface)', borderRadius: '8px', border: '1px solid var(--color-border)', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <button className="btn-icon sm" style={{ background: 'var(--color-primary)', color: 'white' }}><Activity size={14} /></button>
+                  <div style={{ flex: 1, height: '4px', background: '#e2e8f0', borderRadius: '2px', position: 'relative' }}>
+                    <div style={{ width: '60%', height: '100%', background: 'var(--color-primary)', borderRadius: '2px' }} />
+                  </div>
+                  <span style={{ fontSize: '0.65rem', fontWeight: 700, color: 'var(--color-text-muted)' }}>{(ev as any).metadata.duration || '0:00'}</span>
+                </div>
+              )}
+
+              {ev.type === 'email' && (ev as any).metadata?.email_subject && (
+                <div style={{ marginTop: '0.75rem', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.75rem' }}>
+                  <span className="badge info" style={{ fontSize: '0.65rem' }}>{(ev as any).metadata.status === 'opened' ? 'Đã mở' : 'Đã gửi'}</span>
+                  <span style={{ color: 'var(--color-text-muted)' }}>{(ev as any).metadata.opens || 0} lượt mở • Lần cuối: {new Date((ev as any).metadata.last_open).toLocaleTimeString('vi-VN')}</span>
+                </div>
+              )}
+
+              {ev.type === 'meeting' && (ev as any).metadata?.zoom_link && (
+                <div style={{ marginTop: '0.75rem', display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                  <a href={(ev as any).metadata.zoom_link} target="_blank" rel="noreferrer" className="btn outline sm" style={{ fontSize: '0.7rem', height: '28px', padding: '0 8px' }}>Tham gia Zoom</a>
+                  <div style={{ display: 'flex', gap: '-4px' }}>
+                    {((ev as any).metadata.participants || []).map((p: string, pi: number) => (
+                      <Avatar key={pi} name={p} size={20} style={{ border: '2px solid white' }} />
+                    ))}
+                  </div>
+                </div>
+              )}
+              {ev.edit_history && (
+                <div style={{ marginTop: '0.75rem', paddingTop: '0.75rem', borderTop: '1px solid rgba(0,0,0,0.05)' }}>
+                  <EditHistoryIndicator history={ev.edit_history} />
+                </div>
+              )}
+            </div>
+          );
+        })()}
+
+        {['call', 'email', 'meeting', 'task', 'note', 'zalo_connect'].includes(ev.type) && (
+          <ActivityComments 
+            activityId={ev.id} 
+            initialCount={Number(ev.comment_count) || 0} 
+            users={users} 
+            onMentionClick={showUserCard}
+            actions={ev.type === 'meeting' && (ev.status === 'planned' || ev.status === 'rescheduled') && (
+              <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleCompleteMeeting(ev);
+                  }}
+                  className="btn sm success"
+                  style={{
+                    height: '24px',
+                    fontSize: '0.75rem',
+                    fontWeight: 600,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    cursor: 'pointer',
+                    border: 'none',
+                    borderRadius: '4px',
+                    padding: '0 10px',
+                    backgroundColor: '#10b981',
+                    color: 'white'
+                  }}
+                >
+                  <Check size={12} />
+                  <span>Đã gặp</span>
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleCancelMeeting(ev);
+                  }}
+                  className="btn sm danger"
+                  style={{
+                    height: '24px',
+                    fontSize: '0.75rem',
+                    fontWeight: 600,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    cursor: 'pointer',
+                    border: 'none',
+                    borderRadius: '4px',
+                    padding: '0 10px',
+                    backgroundColor: '#ef4444',
+                    color: 'white'
+                  }}
+                >
+                  <X size={12} />
+                  <span>Hủy lịch</span>
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleRescheduleMeetingClick(ev);
+                  }}
+                  className="btn sm warning"
+                  style={{
+                    height: '24px',
+                    fontSize: '0.75rem',
+                    fontWeight: 600,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    cursor: 'pointer',
+                    border: 'none',
+                    borderRadius: '4px',
+                    padding: '0 10px',
+                    backgroundColor: '#f59e0b',
+                    color: 'white'
+                  }}
+                >
+                  <Calendar size={12} />
+                  <span>Dời lịch</span>
+                </button>
+              </div>
+            )}
+          />
+        )}
+      </div>
+    </motion.div>
+  );
+}, (prevProps, nextProps) => {
+  return prevProps.ev.id === nextProps.ev.id &&
+         prevProps.ev.time === nextProps.ev.time &&
+         prevProps.ev.status === nextProps.ev.status &&
+         prevProps.ev.comment_count === nextProps.ev.comment_count &&
+         prevProps.index === nextProps.index;
+});
+
 export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contact, onUpdate, initialTab }) => {
   const { addToast, showConfirm, showCall } = useUIStore();
   const navigate = useNavigate();
@@ -7489,280 +7812,27 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                           <div style={{ position: 'absolute', left: 18, top: 10, bottom: 0, width: 0, borderLeft: '2px dashed var(--color-border-light)' }} />
 
                           {timeline.map((ev: any, index) => (
-                          <motion.div
-                            key={ev.id}
-                            initial={{ opacity: 0, x: -10 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            transition={{ delay: index * 0.1 }}
-                            id={`activity-item-${ev.id}`}
-                            style={{ display: 'flex', gap: '1rem', marginBottom: '1.25rem', position: 'relative' }}
-                          >
-                            {/* Step Node */}
-                            <div style={{ width: 38, height: 38, borderRadius: '50%', background: `${ev.color}15`, border: `2px solid ${ev.color}`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, zIndex: 1, backgroundColor: 'var(--color-surface)', boxShadow: `0 0 0 4px var(--color-bg)` }}>
-                              <div style={{ color: ev.color, display: 'flex' }}>{ev.icon}</div>
-                            </div>
-
-                            {/* Step Content */}
-                            <div
-                              onClick={() => handleTimelineItemClick(ev)}
-                              style={{ 
-                                flex: 1, 
-                                padding: '8px 10px', 
-                                background: 'var(--color-surface)', 
-                                borderRadius: '12px', 
-                                border: '1px solid var(--color-border-light)', 
-                                boxShadow: 'var(--shadow-sm)', 
-                                transition: 'all 0.2s', 
-                                cursor: ['call', 'email', 'meeting', 'task'].includes(ev.type) ? 'pointer' : 'default',
-                                position: 'relative'
-                              }}
-                              onMouseEnter={e => { if (['call', 'email', 'meeting', 'task'].includes(ev.type)) e.currentTarget.style.borderColor = ev.color; }}
-                              onMouseLeave={e => { if (['call', 'email', 'meeting', 'task'].includes(ev.type)) e.currentTarget.style.borderColor = 'var(--color-border-light)'; }}
-                            >
-                              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', paddingRight: currentUser && ['admin', 'superadmin', 'super_admin', 'director'].includes(currentUser.role) ? '54px' : '0px' }}>
-                                {ev.title && (
-                                  <h4 style={{ fontWeight: 800, fontSize: '0.9rem', color: 'var(--color-text)', margin: 0, paddingRight: '8px' }}>
-                                    {ev.title}
-                                  </h4>
-                                )}
-                                
-                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', alignItems: 'center', fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
-                                  <span style={{ fontSize: '0.68rem', fontWeight: 700, color: ev.color, background: `${ev.color}12`, padding: '1px 6px', borderRadius: '4px', textTransform: 'uppercase' }}>
-                                    {ev.type === 'meeting' ? (ev.status === 'cancelled' ? 'Hủy gặp' : (ev.status === 'planned' ? 'Lịch gặp' : 'Đã gặp')) : ev.type === 'zalo_connect' ? 'Zalo' : ev.type.toUpperCase()}
-                                  </span>
-                                  <span>•</span>
-                                  <div style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                                    <Avatar name={ev.user} src={ev.avatar} size="sm" style={{ width: '15px', height: '15px' }} />
-                                    <strong>{ev.user}</strong>
-                                  </div>
-                                  <span>•</span>
-                                  <span>{new Date(ev.time).toLocaleDateString('vi-VN')} {new Date(ev.time).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}</span>
-                                  {ev.type === 'meeting' && ev.due_date && (
-                                    <>
-                                      <span>•</span>
-                                      <span style={{ color: 'var(--color-warning)', fontWeight: 600 }}>
-                                        Lịch gặp: {formatMeetingTime(ev.due_date)}
-                                      </span>
-                                    </>
-                                  )}
-                                </div>
-                              </div>
-
-                              {currentUser && ['admin', 'superadmin', 'super_admin', 'director'].includes(currentUser.role) && (
-                                <div 
-                                  onClick={(e) => e.stopPropagation()}
-                                  style={{ 
-                                    position: 'absolute', 
-                                    top: '6px', 
-                                    right: '6px', 
-                                    display: 'flex', 
-                                    gap: '2px',
-                                    zIndex: 10
-                                  }}
-                                >
-                                  <button
-                                    className="btn ghost sm"
-                                    style={{ padding: '2px', height: '24px', width: '24px', color: 'var(--color-text-muted)', opacity: 0.6 }}
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      const rawAct = drawerActivities.find((x: any) => x.id === ev.id);
-                                      if (rawAct) {
-                                        setEditingActivity(rawAct);
-                                        setShowActivityModal(true);
-                                      }
-                                    }}
-                                  >
-                                    <Pencil size={12} />
-                                  </button>
-                                  <button
-                                    className="btn ghost sm"
-                                    style={{ padding: '2px', height: '24px', width: '24px', color: 'var(--color-danger)', opacity: 0.6 }}
-                                    onClick={(e) => { e.stopPropagation(); deleteActivity(ev.id); }}
-                                  >
-                                    <Trash2 size={12} />
-                                  </button>
-                                </div>
-                              )}
-                              {(ev.note || ev.expense_image_url) && (() => {
-                                const linkMatch = ev.note ? ev.note.match(/Tài liệu\/Link đính kèm:\s*(.*)$/m) : null;
-                                const hasLink = !!linkMatch || !!ev.expense_image_url;
-                                const linkUrl = linkMatch ? linkMatch[1].trim() : (ev.expense_image_url || '');
-                                let displayNoteText = linkMatch ? ev.note.replace(/Tài liệu\/Link đính kèm:\s*.*$/m, '').trim() : (ev.note || '');
-                                let currentBody = displayNoteText.trim();
-                                 let wasParsed = false;
-                                 while (currentBody.startsWith('{"erp_task"') || currentBody.startsWith('{"erp_task":')) {
-                                   try {
-                                     const parsed = JSON.parse(currentBody);
-                                     wasParsed = true;
-                                     if (typeof parsed.erp_task?.description === 'string') {
-                                       currentBody = parsed.erp_task.description.trim();
-                                     } else {
-                                       break;
-                                     }
-                                   } catch (e) {
-                                     break;
-                                   }
-                                 }
-                                 if (wasParsed) {
-                                   displayNoteText = currentBody;
-                                 }
-
-                                 const hasContent = displayNoteText.trim() !== '' || 
-                                                    linkUrl.trim() !== '' || 
-                                                    (ev.type === 'call' && !!(ev as any).metadata?.recording_url) || 
-                                                    (ev.type === 'email' && !!(ev as any).metadata?.email_subject) || 
-                                                    (ev.type === 'meeting' && !!(ev as any).metadata?.zoom_link) || 
-                                                    !!ev.edit_history;
-
-                                 if (!hasContent) return null;
-
-                                 return (
-                                   <div style={{ padding: '0.5rem 0.75rem', background: 'var(--color-bg)', borderRadius: 'var(--radius-md)', marginTop: '0.375rem', border: '1px solid var(--color-border-light)' }}>
-                                    {displayNoteText && (
-                                      <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-light)', lineHeight: 1.5, margin: 0 }}>{formatNote(displayNoteText)}</p>
-                                    )}
-
-                                    {linkUrl && (
-                                      <div style={{ marginTop: '0.75rem', display: 'flex', alignItems: 'center', gap: '8px' }} onClick={e => e.stopPropagation()}>
-                                        {/\.(jpg|jpeg|png|gif|webp)$/i.test(linkUrl) ? (
-                                          <Camera size={14} style={{ color: '#10b981' }} />
-                                        ) : (
-                                          <FileText size={14} style={{ color: 'var(--color-primary)' }} />
-                                        )}
-                                        <a
-                                          href={resolveAttachmentUrl(linkUrl)}
-                                          target="_blank"
-                                          rel="noopener noreferrer"
-                                          style={{ fontSize: '0.8125rem', color: 'var(--color-primary)', fontWeight: 600, textDecoration: 'underline' }}
-                                        >
-                                          {linkUrl.split('/').pop()}
-                                        </a>
-                                      </div>
-                                    )}
-                                  
-                                  {/* Rich Metadata Rendering */}
-                                  {ev.type === 'call' && (ev as any).metadata?.recording_url && (
-                                    <div style={{ marginTop: '0.75rem', padding: '0.5rem', background: 'var(--color-surface)', borderRadius: '8px', border: '1px solid var(--color-border)', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                      <button className="btn-icon sm" style={{ background: 'var(--color-primary)', color: 'white' }}><Activity size={14} /></button>
-                                      <div style={{ flex: 1, height: '4px', background: '#e2e8f0', borderRadius: '2px', position: 'relative' }}>
-                                        <div style={{ width: '60%', height: '100%', background: 'var(--color-primary)', borderRadius: '2px' }} />
-                                      </div>
-                                      <span style={{ fontSize: '0.65rem', fontWeight: 700, color: 'var(--color-text-muted)' }}>{(ev as any).metadata.duration || '0:00'}</span>
-                                    </div>
-                                  )}
-
-                                  {ev.type === 'email' && (ev as any).metadata?.email_subject && (
-                                    <div style={{ marginTop: '0.75rem', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.75rem' }}>
-                                      <span className="badge info" style={{ fontSize: '0.65rem' }}>{(ev as any).metadata.status === 'opened' ? 'Đã mở' : 'Đã gửi'}</span>
-                                      <span style={{ color: 'var(--color-text-muted)' }}>{(ev as any).metadata.opens || 0} lượt mở • Lần cuối: {new Date((ev as any).metadata.last_open).toLocaleTimeString('vi-VN')}</span>
-                                    </div>
-                                  )}
-
-                                  {ev.type === 'meeting' && (ev as any).metadata?.zoom_link && (
-                                    <div style={{ marginTop: '0.75rem', display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                                      <a href={(ev as any).metadata.zoom_link} target="_blank" rel="noreferrer" className="btn outline sm" style={{ fontSize: '0.7rem', height: '28px', padding: '0 8px' }}>Tham gia Zoom</a>
-                                      <div style={{ display: 'flex', gap: '-4px' }}>
-                                        {((ev as any).metadata.participants || []).map((p: string, pi: number) => (
-                                          <Avatar key={pi} name={p} size={20} style={{ border: '2px solid white' }} />
-                                        ))}
-                                      </div>
-                                    </div>
-                                  )}
-                                  {ev.edit_history && (
-                                    <div style={{ marginTop: '0.75rem', paddingTop: '0.75rem', borderTop: '1px solid rgba(0,0,0,0.05)' }}>
-                                      <EditHistoryIndicator history={ev.edit_history} />
-                                    </div>
-                                  )}
-                                  </div>
-                                );
-                              })()}
-                              {['call', 'email', 'meeting', 'task', 'note', 'zalo_connect'].includes(ev.type) && (
-                                <ActivityComments 
-                                  activityId={ev.id} 
-                                  initialCount={Number(ev.comment_count) || 0} 
-                                  users={users} 
-                                  onMentionClick={showUserCard}
-                                  actions={ev.type === 'meeting' && (ev.status === 'planned' || ev.status === 'rescheduled') && (
-                                    <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-                                      <button
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          handleCompleteMeeting(ev);
-                                        }}
-                                        className="btn sm success"
-                                        style={{
-                                          height: '24px',
-                                          fontSize: '0.75rem',
-                                          fontWeight: 600,
-                                          display: 'flex',
-                                          alignItems: 'center',
-                                          gap: '4px',
-                                          cursor: 'pointer',
-                                          border: 'none',
-                                          borderRadius: '4px',
-                                          padding: '0 10px',
-                                          backgroundColor: '#10b981',
-                                          color: 'white'
-                                        }}
-                                      >
-                                        <Check size={12} />
-                                        <span>Đã gặp</span>
-                                      </button>
-                                      <button
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          handleCancelMeeting(ev);
-                                        }}
-                                        className="btn sm danger"
-                                        style={{
-                                          height: '24px',
-                                          fontSize: '0.75rem',
-                                          fontWeight: 600,
-                                          display: 'flex',
-                                          alignItems: 'center',
-                                          gap: '4px',
-                                          cursor: 'pointer',
-                                          border: 'none',
-                                          borderRadius: '4px',
-                                          padding: '0 10px',
-                                          backgroundColor: '#ef4444',
-                                          color: 'white'
-                                        }}
-                                      >
-                                        <X size={12} />
-                                        <span>Hủy lịch</span>
-                                      </button>
-                                      <button
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          handleRescheduleMeetingClick(ev);
-                                        }}
-                                        className="btn sm warning"
-                                        style={{
-                                          height: '24px',
-                                          fontSize: '0.75rem',
-                                          fontWeight: 600,
-                                          display: 'flex',
-                                          alignItems: 'center',
-                                          gap: '4px',
-                                          cursor: 'pointer',
-                                          border: 'none',
-                                          borderRadius: '4px',
-                                          padding: '0 10px',
-                                          backgroundColor: '#f59e0b',
-                                          color: 'white'
-                                        }}
-                                      >
-                                        <Calendar size={12} />
-                                        <span>Dời lịch</span>
-                                      </button>
-                                    </div>
-                                  )}
-                                />
-                              )}
-                            </div>
-                          </motion.div>
-                        ))}
+                            <TimelineItem
+                              key={ev.id}
+                              ev={ev}
+                              index={index}
+                              currentUser={currentUser}
+                              drawerActivities={drawerActivities}
+                              users={users}
+                              isMobile={isMobileOrTablet}
+                              formatNote={formatNote}
+                              resolveAttachmentUrl={resolveAttachmentUrl}
+                              formatMeetingTime={formatMeetingTime}
+                              handleTimelineItemClick={handleTimelineItemClick}
+                              deleteActivity={deleteActivity}
+                              setEditingActivity={setEditingActivity}
+                              setShowActivityModal={setShowActivityModal}
+                              showUserCard={showUserCard}
+                              handleCompleteMeeting={handleCompleteMeeting}
+                              handleCancelMeeting={handleCancelMeeting}
+                              handleRescheduleMeetingClick={handleRescheduleMeetingClick}
+                            />
+                          ))}
                         </div>
                       )}
                     </div>

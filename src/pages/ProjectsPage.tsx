@@ -5863,238 +5863,363 @@ export default function ProjectsPage() {
           const combinedDocs = [...projectDocs, ...formattedLinkedDocs];
 
           return (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-              {/* Linked Folder Area */}
-              {selectedProj?.folder_path && parseFolderPaths(selectedProj.folder_path).length > 0 && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  {parseFolderPaths(selectedProj.folder_path).map((f, idx) => (
-                    <div 
-                      key={idx}
-                      onClick={() => {
-                        console.log('Clicked folder card:', f.path, 'selectedProjectId:', selectedProjectId);
-                        if (f.type !== 'link' && selectedProjectId) {
-                          handleOpenFolderModal(f.path, selectedProjectId);
-                        }
-                      }}
-                      style={{
-                        padding: '0.85rem 1rem',
-                        border: '1px solid var(--color-border)',
-                        borderRadius: 'var(--radius-lg)',
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
-                        background: f.type === 'link' ? 'rgba(59, 130, 246, 0.04)' : 'rgba(16, 185, 129, 0.04)',
-                        borderColor: f.type === 'link' ? 'rgba(59, 130, 246, 0.15)' : 'rgba(16, 185, 129, 0.15)',
-                        cursor: f.type === 'link' ? 'default' : 'pointer',
-                        transition: 'all 0.2s ease'
-                      }}
-                      onMouseEnter={e => {
-                        if (f.type !== 'link') {
-                          e.currentTarget.style.borderColor = 'rgba(16, 185, 129, 0.3)';
-                          e.currentTarget.style.background = 'rgba(16, 185, 129, 0.08)';
-                          e.currentTarget.style.transform = 'translateY(-1px)';
-                        }
-                      }}
-                      onMouseLeave={e => {
-                        if (f.type !== 'link') {
-                          e.currentTarget.style.borderColor = 'rgba(16, 185, 129, 0.15)';
-                          e.currentTarget.style.background = 'rgba(16, 185, 129, 0.04)';
-                          e.currentTarget.style.transform = 'none';
-                        }
-                      }}
-                    >
-                      <div style={{ flex: 1, minWidth: 0, marginRight: '1rem' }}>
-                        <h4 style={{ margin: 0, fontSize: '0.825rem', fontWeight: 700, color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                          {f.type === 'link' ? <HardDrive size={15} color="#3b82f6" /> : <Folder size={15} color="#10b981" />}
-                          {f.type === 'link' ? 'Google Drive liên kết' : 'Thư mục tài liệu'}
-                        </h4>
-                        <p style={{ margin: '2px 0 0', fontSize: '0.72rem', color: 'var(--color-text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                          {f.path}
-                        </p>
-                      </div>
-                      {f.type === 'link' ? (
-                        <a
-                          href={f.path}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="btn success sm"
-                          style={{ borderRadius: '10px', fontSize: '0.75rem', height: '32px', display: 'inline-flex', alignItems: 'center', gap: '6px', whiteSpace: 'nowrap', textDecoration: 'none', background: '#3b82f6', color: '#fff', border: 'none' }}
-                          onClick={e => e.stopPropagation()}
-                        >
-                          <ExternalLink size={12} />
-                          Mở Link
-                        </a>
-                      ) : (
-                        <button
-                          type="button"
-                          className="btn success sm"
-                          style={{ borderRadius: '10px', fontSize: '0.75rem', height: '32px', display: 'inline-flex', alignItems: 'center', gap: '6px', whiteSpace: 'nowrap', background: 'var(--color-primary)', color: '#fff', border: 'none', cursor: 'pointer' }}
-                          onClick={e => {
-                            e.stopPropagation();
-                            console.log('Clicked folder button: icon=folder, path=', f.path, 'selectedProjectId:', selectedProjectId);
-                            if (selectedProjectId) {
-                              handleOpenFolderModal(f.path, selectedProjectId);
-                            }
-                          }}
-                        >
-                          <Folder size={12} />
-                          Kho tài liệu
-                        </button>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
-              {/* Upload Area for Admins */}
-              {isAdmin && (
-                <div style={{
-                  padding: '1rem',
-                  border: '1px dashed var(--color-border)',
-                  borderRadius: 'var(--radius-lg)',
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  background: 'var(--color-surface-hover)'
-                }}>
-                  <div>
-                    <h4 style={{ margin: 0, fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)' }}>Tải tài liệu mới lên</h4>
-                    <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>Chấp nhận file PDF, Word, Excel, Hình ảnh</p>
-                  </div>
-                  <label className="btn secondary sm" style={{ cursor: 'pointer' }}>
-                    <Upload size={14} />
-                    {uploadingDoc ? 'Đang tải...' : 'Chọn file'}
-                    <input type="file" disabled={uploadingDoc} onChange={handleUploadFile} style={{ display: 'none' }} />
-                  </label>
-                </div>
-              )}
+            <div className="project-docs-container" style={{ display: 'flex', flexDirection: 'column', height: '100%', gap: '1rem' }}>
+              <style>{`
+                .project-docs-layout {
+                  display: flex;
+                  gap: 1.5rem;
+                }
+                .project-docs-main {
+                  flex: 1.3;
+                  display: flex;
+                  flex-direction: column;
+                  gap: 1rem;
+                  min-width: 0;
+                }
+                .project-docs-sidebar {
+                  width: 320px;
+                  display: flex;
+                  flex-direction: column;
+                  gap: 1.25rem;
+                  flex-shrink: 0;
+                }
+                .file-grid {
+                  display: grid;
+                  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+                  gap: 1rem;
+                  max-height: 520px;
+                  overflow-y: auto;
+                  padding: 4px;
+                }
+                .file-card {
+                  background: var(--color-surface);
+                  border: 1px solid var(--color-border-light);
+                  border-radius: var(--radius-lg);
+                  padding: 1rem;
+                  display: flex;
+                  flex-direction: column;
+                  justify-content: space-between;
+                  transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+                  position: relative;
+                }
+                .file-card:hover {
+                  transform: translateY(-2px);
+                  border-color: var(--color-border);
+                  box-shadow: var(--shadow-md);
+                }
+                @media (max-width: 1024px) {
+                  .project-docs-layout {
+                    flex-direction: column-reverse;
+                  }
+                  .project-docs-sidebar {
+                    width: 100%;
+                  }
+                  .file-grid {
+                    grid-template-columns: 1fr;
+                    max-height: 400px;
+                  }
+                }
+              `}</style>
 
-              {/* List */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', overflowY: 'auto', paddingRight: '4px' }}>
-                {combinedDocs.length === 0 ? (
-                  <div style={{ textAlign: 'center', padding: '2rem 0', color: 'var(--color-text-muted)' }}>Chưa có tài liệu nào cho dự án này</div>
-                ) : (
-                  combinedDocs.map(doc => (
-                    <div
-                      key={`${doc.isLinkedOnly ? 'link' : 'direct'}-${doc.id}`}
-                      style={{
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
-                        padding: '0.75rem 1rem',
-                        border: '1px solid var(--color-border)',
-                        borderRadius: 'var(--radius-lg)',
-                        background: 'var(--color-surface)'
-                      }}
-                    >
-                      <div style={{ flex: 1, marginRight: '1rem', minWidth: 0 }}>
-                        {editingDocKey === `${doc.isLinkedOnly ? 'link' : 'direct'}-${doc.id}` ? (
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%' }}>
-                            <input
-                              type="text"
-                              className="form-input"
-                              value={editDocNameVal}
-                              onChange={e => setEditDocNameVal(e.target.value)}
-                              style={{
-                                fontSize: '0.875rem',
-                                padding: '4px 8px',
-                                height: '32px',
-                                borderRadius: '6px',
-                                width: '100%',
-                                maxWidth: '380px'
-                              }}
-                              autoFocus
-                              onKeyDown={e => {
-                                if (e.key === 'Enter') handleSaveRenameDoc(doc);
-                                if (e.key === 'Escape') setEditingDocKey(null);
-                              }}
-                            />
-                            <button
-                              onClick={() => handleSaveRenameDoc(doc)}
-                              className="btn success sm"
-                              style={{ minWidth: 'auto', padding: '0 0.5rem', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#10b981', color: '#fff', border: 'none', borderRadius: '6px' }}
-                              title="Lưu"
-                            >
-                              <Check size={14} />
-                            </button>
-                            <button
-                              onClick={() => setEditingDocKey(null)}
-                              className="btn secondary sm"
-                              style={{ minWidth: 'auto', padding: '0 0.5rem', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '6px' }}
-                              title="Hủy"
-                            >
-                              <X size={14} />
-                            </button>
-                          </div>
-                        ) : (
-                          <>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                              <h4 style={{ margin: 0, fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={doc.name}>
-                                {formatFileName(doc.name, 75)}
-                              </h4>
-                              {doc.isLinkedOnly ? (
-                                <span style={{ fontSize: '0.625rem', padding: '2px 8px', borderRadius: '100px', background: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6', border: '1px solid rgba(59, 130, 246, 0.2)', fontWeight: 700, whiteSpace: 'nowrap', flexShrink: 0 }}>
-                                  Tệp liên kết
+              <div className="project-docs-layout">
+                {/* Main Content Area: Documents Grid */}
+                <div className="project-docs-main">
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                      Tài liệu hiện có ({combinedDocs.length})
+                    </span>
+                  </div>
+
+                  {combinedDocs.length === 0 ? (
+                    <div style={{ textAlign: 'center', padding: '4rem 0', color: 'var(--color-text-muted)', background: 'var(--color-surface-hover)', borderRadius: 'var(--radius-lg)', border: '1px dashed var(--color-border)' }}>
+                      <FileText size={40} style={{ opacity: 0.3, marginBottom: '0.75rem', color: 'var(--color-text-muted)' }} />
+                      <p style={{ margin: 0, fontSize: '0.875rem' }}>Chưa có tài liệu nào cho dự án này</p>
+                    </div>
+                  ) : (
+                    <div className="file-grid no-scrollbar">
+                      {combinedDocs.map(doc => {
+                        const isLink = doc.isLinkedOnly;
+                        const docKey = `${isLink ? 'link' : 'direct'}-${doc.id}`;
+                        const isEditing = editingDocKey === docKey;
+
+                        return (
+                          <div key={docKey} className="file-card gpu-accelerated">
+                            <div>
+                              {/* File Type Badge and Header */}
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.75rem' }}>
+                                <div style={{
+                                  width: 38,
+                                  height: 38,
+                                  borderRadius: '10px',
+                                  background: isLink ? 'rgba(59, 130, 246, 0.08)' : 'rgba(16, 185, 129, 0.08)',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  color: isLink ? '#3b82f6' : '#10b981'
+                                }}>
+                                  {isLink ? <ExternalLink size={18} /> : <FileText size={18} />}
+                                </div>
+                                <span style={{
+                                  fontSize: '0.625rem',
+                                  padding: '2px 8px',
+                                  borderRadius: '100px',
+                                  background: isLink ? 'rgba(59, 130, 246, 0.1)' : 'rgba(16, 185, 129, 0.1)',
+                                  color: isLink ? '#3b82f6' : '#10b981',
+                                  border: `1px solid ${isLink ? 'rgba(59, 130, 246, 0.2)' : 'rgba(16, 185, 129, 0.2)'}`,
+                                  fontWeight: 700
+                                }}>
+                                  {isLink ? 'Liên kết' : 'Tải lên'}
                                 </span>
+                              </div>
+
+                              {/* File Name Info */}
+                              {isEditing ? (
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', width: '100%', marginBottom: '0.5rem' }}>
+                                  <input
+                                    type="text"
+                                    className="form-input"
+                                    value={editDocNameVal}
+                                    onChange={e => setEditDocNameVal(e.target.value)}
+                                    style={{
+                                      fontSize: '0.8125rem',
+                                      padding: '4px 8px',
+                                      height: '28px',
+                                      borderRadius: '6px',
+                                      flex: 1
+                                    }}
+                                    autoFocus
+                                    onKeyDown={e => {
+                                      if (e.key === 'Enter') handleSaveRenameDoc(doc);
+                                      if (e.key === 'Escape') setEditingDocKey(null);
+                                    }}
+                                  />
+                                  <button
+                                    onClick={() => handleSaveRenameDoc(doc)}
+                                    className="btn success sm"
+                                    style={{ minWidth: 'auto', padding: '4px 8px', height: '28px', background: '#10b981', color: '#fff', border: 'none', borderRadius: '6px' }}
+                                    title="Lưu"
+                                  >
+                                    <Check size={12} />
+                                  </button>
+                                  <button
+                                    onClick={() => setEditingDocKey(null)}
+                                    className="btn secondary sm"
+                                    style={{ minWidth: 'auto', padding: '4px 8px', height: '28px', borderRadius: '6px' }}
+                                    title="Hủy"
+                                  >
+                                    <X size={12} />
+                                  </button>
+                                </div>
                               ) : (
-                                <span style={{ fontSize: '0.625rem', padding: '2px 8px', borderRadius: '100px', background: 'rgba(16, 185, 129, 0.1)', color: '#10b981', border: '1px solid rgba(16, 185, 129, 0.2)', fontWeight: 700, whiteSpace: 'nowrap', flexShrink: 0 }}>
-                                  Tệp tải lên
-                                </span>
+                                <h4 
+                                  style={{
+                                    margin: '0 0 4px',
+                                    fontSize: '0.875rem',
+                                    fontWeight: 700,
+                                    color: 'var(--color-text)',
+                                    lineHeight: 1.4,
+                                    wordBreak: 'break-word',
+                                    display: '-webkit-box',
+                                    WebkitLineClamp: 2,
+                                    WebkitBoxOrient: 'vertical',
+                                    overflow: 'hidden'
+                                  }}
+                                  title={doc.name}
+                                >
+                                  {formatFileName(doc.name, 60)}
+                                </h4>
                               )}
+
+                              {/* File Details Metadata */}
+                              <p style={{ margin: 0, fontSize: '0.72rem', color: 'var(--color-text-muted)', lineHeight: 1.5 }}>
+                                Người tải: <strong>{doc.uploaded_by_name}</strong>
+                              </p>
+                              <p style={{ margin: '2px 0 0', fontSize: '0.72rem', color: 'var(--color-text-muted)' }}>
+                                {(doc.file_size / 1024 / 1024).toFixed(2)} MB • {new Date(doc.created_at).toLocaleDateString('vi-VN')}
+                              </p>
                             </div>
-                            <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px' }}>
-                              {doc.uploaded_by_name} • {(doc.file_size / 1024 / 1024).toFixed(2)} MB • {new Date(doc.created_at).toLocaleDateString()}
-                            </p>
-                          </>
-                        )}
-                      </div>
-                      {editingDocKey !== `${doc.isLinkedOnly ? 'link' : 'direct'}-${doc.id}` && (
-                        <div style={{ display: 'flex', gap: '0.5rem' }}>
-                          <button
-                            onClick={() => handleRenameDoc(doc)}
-                            className="btn secondary sm"
-                            style={{ minWidth: 'auto', padding: '0 0.5rem' }}
-                            title="Đổi tên"
-                          >
-                            <Edit size={14} />
-                          </button>
-                          <button
+
+                            {/* Action Buttons Container */}
+                            {!isEditing && (
+                              <div style={{ display: 'flex', gap: '0.375rem', marginTop: '1rem', borderTop: '1px solid var(--color-border-light)', paddingTop: '0.75rem', justifyContent: 'flex-end' }}>
+                                <button
+                                  onClick={() => handleRenameDoc(doc)}
+                                  className="btn secondary sm"
+                                  style={{ height: '28px', padding: '0 8px', borderRadius: '6px', fontSize: '0.72rem', minWidth: 'auto' }}
+                                  title="Đổi tên"
+                                >
+                                  <Edit size={12} />
+                                </button>
+                                <button
+                                  onClick={() => {
+                                    if (doc.isLinkedOnly) {
+                                      const url = `${import.meta.env.VITE_API_URL || '/backend'}/${doc.file_path}`;
+                                      window.open(url, '_blank');
+                                    } else {
+                                      handleDownloadDoc(doc.id);
+                                    }
+                                  }}
+                                  className="btn success sm"
+                                  style={{ height: '28px', padding: '0 10px', borderRadius: '6px', fontSize: '0.72rem', background: 'rgba(59, 130, 246, 0.08)', color: '#3b82f6', border: 'none', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                                  title="Tải xuống / Mở"
+                                >
+                                  <Download size={12} />
+                                  <span>Tải về</span>
+                                </button>
+                                {isAdmin && !doc.isLinkedOnly && (
+                                  <button
+                                    onClick={() => handleDeleteDoc(doc.id)}
+                                    className="btn danger sm"
+                                    style={{ height: '28px', padding: '0 8px', borderRadius: '6px', fontSize: '0.72rem', backgroundColor: 'var(--color-red-light)', borderColor: 'var(--color-red-light)', color: 'var(--color-red)', minWidth: 'auto' }}
+                                    title="Xóa"
+                                  >
+                                    <Trash2 size={12} />
+                                  </button>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+
+                {/* Sidebar Column: Project Info & Upload */}
+                <div className="project-docs-sidebar">
+                  {/* Project Info Block */}
+                  <div style={{
+                    padding: '1rem',
+                    background: 'var(--color-bg)',
+                    borderRadius: 'var(--radius-lg)',
+                    border: '1px solid var(--color-border-light)'
+                  }}>
+                    <h3 style={{ margin: '0 0 6px', fontSize: '0.925rem', fontWeight: 800, color: 'var(--color-text)' }}>
+                      Dự Án: {selectedProj?.name || 'Thông tin dự án'}
+                    </h3>
+                    <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--color-text-muted)', lineHeight: 1.4 }}>
+                      Mã dự án: <strong>{selectedProj?.code || 'N/A'}</strong><br />
+                      Địa chỉ: {selectedProj?.location || 'Chưa cập nhật'}
+                    </p>
+                  </div>
+
+                  {/* Folders & Links Section */}
+                  {selectedProj?.folder_path && parseFolderPaths(selectedProj.folder_path).length > 0 && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                        Thư mục & liên kết ngoài
+                      </span>
+                      {parseFolderPaths(selectedProj.folder_path).map((f, idx) => {
+                        const isGdrive = f.type === 'link';
+                        return (
+                          <div 
+                            key={idx}
                             onClick={() => {
-                              if (doc.isLinkedOnly) {
-                                const url = `${import.meta.env.VITE_API_URL || '/backend'}/${doc.file_path}`;
-                                window.open(url, '_blank');
-                              } else {
-                                handleDownloadDoc(doc.id);
+                              if (!isGdrive && selectedProjectId) {
+                                handleOpenFolderModal(f.path, selectedProjectId);
                               }
                             }}
-                            className="btn secondary sm"
-                            style={{ minWidth: 'auto', padding: '0 0.5rem' }}
-                            title="Tải xuống / Mở"
+                            style={{
+                              padding: '0.75rem',
+                              border: '1px solid var(--color-border)',
+                              borderRadius: 'var(--radius-md)',
+                              display: 'flex',
+                              flexDirection: 'column',
+                              gap: '6px',
+                              background: isGdrive ? 'rgba(59, 130, 246, 0.03)' : 'rgba(16, 185, 129, 0.03)',
+                              borderColor: isGdrive ? 'rgba(59, 130, 246, 0.12)' : 'rgba(16, 185, 129, 0.12)',
+                              cursor: isGdrive ? 'default' : 'pointer',
+                              transition: 'all 0.2s ease'
+                            }}
+                            onMouseEnter={e => {
+                              if (!isGdrive) {
+                                e.currentTarget.style.borderColor = 'rgba(16, 185, 129, 0.3)';
+                                e.currentTarget.style.background = 'rgba(16, 185, 129, 0.06)';
+                              }
+                            }}
+                            onMouseLeave={e => {
+                              if (!isGdrive) {
+                                e.currentTarget.style.borderColor = 'rgba(16, 185, 129, 0.12)';
+                                e.currentTarget.style.background = 'rgba(16, 185, 129, 0.03)';
+                              }
+                            }}
                           >
-                            <Download size={14} />
-                          </button>
-                          {isAdmin && !doc.isLinkedOnly && (
-                            <button
-                              onClick={() => handleDeleteDoc(doc.id)}
-                              className="btn danger sm"
-                              style={{ minWidth: 'auto', padding: '0 0.5rem', backgroundColor: 'var(--color-red-light)', borderColor: 'var(--color-red-light)', color: 'var(--color-red)' }}
-                              title="Xóa"
-                            >
-                              <Trash2 size={14} />
-                            </button>
-                          )}
-                        </div>
-                      )}
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <span style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                {isGdrive ? <HardDrive size={14} color="#3b82f6" /> : <Folder size={14} color="#10b981" />}
+                                {isGdrive ? 'Google Drive' : 'Thư mục tài liệu'}
+                              </span>
+                              {isGdrive ? (
+                                <a
+                                  href={f.path}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="btn success sm"
+                                  style={{ borderRadius: '6px', fontSize: '0.7rem', height: '24px', padding: '0 8px', display: 'inline-flex', alignItems: 'center', gap: '4px', textDecoration: 'none', background: '#3b82f6', color: '#fff', border: 'none', cursor: 'pointer' }}
+                                  onClick={e => e.stopPropagation()}
+                                >
+                                  <ExternalLink size={10} />
+                                  Mở
+                                </a>
+                              ) : (
+                                <button
+                                  type="button"
+                                  className="btn success sm"
+                                  style={{ borderRadius: '6px', fontSize: '0.7rem', height: '24px', padding: '0 8px', display: 'inline-flex', alignItems: 'center', gap: '4px', background: 'var(--color-primary)', color: '#fff', border: 'none', cursor: 'pointer' }}
+                                  onClick={e => {
+                                    e.stopPropagation();
+                                    if (selectedProjectId) {
+                                      handleOpenFolderModal(f.path, selectedProjectId);
+                                    }
+                                  }}
+                                >
+                                  <Folder size={10} />
+                                  Mở
+                                </button>
+                              )}
+                            </div>
+                            <p style={{ margin: 0, fontSize: '0.68rem', color: 'var(--color-text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={f.path}>
+                              {f.path}
+                            </p>
+                          </div>
+                        );
+                      })}
                     </div>
-                  ))
-                )}
+                  )}
+
+                  {/* Upload Section (Admin) */}
+                  {isAdmin && (
+                    <div style={{
+                      padding: '1rem',
+                      border: '1px dashed var(--color-border)',
+                      borderRadius: 'var(--radius-lg)',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '0.75rem',
+                      background: 'var(--color-surface-hover)'
+                    }}>
+                      <div>
+                        <h4 style={{ margin: 0, fontSize: '0.8125rem', fontWeight: 800, color: 'var(--color-text)' }}>Tải tài liệu mới</h4>
+                        <p style={{ margin: '2px 0 0', fontSize: '0.68rem', color: 'var(--color-text-muted)' }}>Chấp nhận PDF, Word, Excel, Hình ảnh</p>
+                      </div>
+                      <label className="btn secondary sm" style={{ cursor: 'pointer', width: '100%', justifyContent: 'center', height: '32px', borderRadius: '6px' }}>
+                        <Upload size={14} style={{ marginRight: '6px' }} />
+                        {uploadingDoc ? 'Đang tải...' : 'Chọn file'}
+                        <input type="file" disabled={uploadingDoc} onChange={handleUploadFile} style={{ display: 'none' }} />
+                      </label>
+                    </div>
+                  )}
+                </div>
               </div>
-              <div style={{ borderTop: '1px solid var(--color-border-light)', paddingTop: '1rem', display: 'flex', justifyContent: 'flex-end' }}>
-                <button type="button" className="btn secondary sm" style={{ borderRadius: '100px' }} onClick={() => setIsDocsModalOpen(false)}>Đóng</button>
+
+              {/* Footer */}
+              <div style={{ borderTop: '1px solid var(--color-border-light)', marginTop: '0.5rem', paddingTop: '1rem', display: 'flex', justifyContent: 'flex-end' }}>
+                <button type="button" className="btn secondary sm" style={{ borderRadius: '100px', fontWeight: 700 }} onClick={() => setIsDocsModalOpen(false)}>Đóng</button>
               </div>
             </div>
           );
         })(),
-        '700px'
+        '1000px'
       )}
 
       {/* Campaign Create/Edit Modal (converted to Drawer) */}

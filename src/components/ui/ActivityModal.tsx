@@ -192,7 +192,7 @@ export const ActivityModal: React.FC<ActivityModalProps> = ({ isOpen, onClose, e
 
   return (
     <AnimatePresence>
-      <div 
+      <motion.div 
         className="overlay-backdrop" 
         style={{ 
           zIndex: 1000050, 
@@ -200,6 +200,10 @@ export const ActivityModal: React.FC<ActivityModalProps> = ({ isOpen, onClose, e
           alignItems: isMobile ? 'flex-end' : 'center', 
           justifyContent: 'center' 
         }} 
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
         onClick={onClose}
       >
         <motion.div 
@@ -218,10 +222,10 @@ export const ActivityModal: React.FC<ActivityModalProps> = ({ isOpen, onClose, e
             overflow: 'hidden',
             boxShadow: 'var(--shadow-xl)'
           }}
-          initial={isMobile ? { y: '100%' } : { opacity: 0, y: 20, scale: 0.95 }} 
+          initial={isMobile ? { y: '100%' } : { opacity: 0, y: 20, scale: 0.96 }} 
           animate={isMobile ? { y: 0 } : { opacity: 1, y: 0, scale: 1 }} 
-          exit={isMobile ? { y: '100%' } : { opacity: 0, y: 20, scale: 0.95 }}
-          transition={{ type: 'spring', damping: 25, stiffness: 220 }}
+          exit={isMobile ? { y: '100%' } : { opacity: 0, y: 20, scale: 0.96 }}
+          transition={{ type: 'spring', damping: 30, stiffness: 350, mass: 0.8 }}
           onClick={e => e.stopPropagation()}
         >
           <div 
@@ -577,7 +581,7 @@ export const ActivityModal: React.FC<ActivityModalProps> = ({ isOpen, onClose, e
             </button>
           </div>
         </motion.div>
-      </div>
+      </motion.div>
     </AnimatePresence>
   );
 };

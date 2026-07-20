@@ -5049,3 +5049,39 @@ div[role="status"] {
   }
 }
 
+/* GPU Hardware Acceleration and Smooth Transition Utilities */
+.gpu-accelerated {
+  will-change: transform, opacity;
+  transform: translate3d(0, 0, 0);
+  backface-visibility: hidden;
+  perspective: 1000px;
+}
+
+.overlay-backdrop, 
+.drawer, 
+.modal-sheet,
+.sidebar-container,
+.stat-card,
+.timeline-card,
+.timeline-event-item {
+  will-change: transform, opacity;
+  transform: translate3d(0, 0, 0);
+  backface-visibility: hidden;
+}
+
+/* Apple Native Cubic Bezier (out-quintic) for super fluid animations */
+.smooth-transition {
+  transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+/* Eliminate tap delay on touch-screens for responsive feedback */
+button, 
+a, 
+.tab-button, 
+.nav-item, 
+.stat-card,
+[role="button"] {
+  touch-action: manipulation;
+}
+
+

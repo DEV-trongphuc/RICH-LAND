@@ -216,11 +216,20 @@ export const CreateExpenseModal: React.FC<Props> = ({ isOpen, onClose, initialEn
 
   return (
     <AnimatePresence>
-      <div className="overlay-backdrop" style={{ zIndex: 1000050 }}>
+      <motion.div 
+        className="overlay-backdrop" 
+        style={{ zIndex: 1000050, display: 'flex', alignItems: isMobile ? 'flex-end' : 'center', justifyContent: 'center' }}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+        onClick={onClose}
+      >
         <motion.div
-          initial={{ opacity: 0, scale: 0.96, y: 20 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          exit={{ opacity: 0, scale: 0.96, y: 20 }}
+          initial={isMobile ? { y: '100%' } : { opacity: 0, scale: 0.96, y: 20 }}
+          animate={isMobile ? { y: 0 } : { opacity: 1, scale: 1, y: 0 }}
+          exit={isMobile ? { y: '100%' } : { opacity: 0, scale: 0.96, y: 20 }}
+          transition={{ type: 'spring', damping: 30, stiffness: 350, mass: 0.8 }}
           className="modal-sheet"
           style={{ width: '100%', maxWidth: isMobile ? '100%' : '880px' }}
           onClick={e => e.stopPropagation()}
@@ -708,7 +717,7 @@ export const CreateExpenseModal: React.FC<Props> = ({ isOpen, onClose, initialEn
             </button>
           </div>
         </motion.div>
-      </div>
+      </motion.div>
     </AnimatePresence>
   );
 };
