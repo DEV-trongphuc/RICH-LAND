@@ -195,7 +195,7 @@ export const ActivityModal: React.FC<ActivityModalProps> = ({ isOpen, onClose, e
       <div 
         className="overlay-backdrop" 
         style={{ 
-          zIndex: 11000, 
+          zIndex: 1000050, 
           display: 'flex', 
           alignItems: isMobile ? 'flex-end' : 'center', 
           justifyContent: 'center' 
