@@ -1566,14 +1566,14 @@ export const Header = ({
             if (lowercase.includes('bàn làm việc') || lowercase.includes('chấm công') || lowercase.includes('hoạt động')) return { bg: 'linear-gradient(135deg, #10b981, #047857)', color: '#ffffff' };
             if (lowercase.includes('báo cáo') || lowercase.includes('thống kê')) return { bg: 'linear-gradient(135deg, #6366f1, #4338ca)', color: '#ffffff' };
             if (lowercase.includes('databank') || lowercase.includes('kho data')) return { bg: 'linear-gradient(135deg, #f59e0b, #b45309)', color: '#ffffff' };
-            if (lowercase.includes('khách hàng') || lowercase.includes('contacts')) return { bg: 'linear-gradient(135deg, #06b6d4, #0891b2)', color: '#ffffff' };
-            if (lowercase.includes('pipeline') || lowercase.includes('chi phí')) return { bg: 'linear-gradient(135deg, #f43f5e, #be123c)', color: '#ffffff' };
+            if (lowercase.includes('khách hàng') || lowercase.includes('contacts')) return { bg: 'linear-gradient(135deg, #f43f5e, #be123c)', color: '#ffffff' };
+            if (lowercase.includes('pipeline') || lowercase.includes('chi phí')) return { bg: 'linear-gradient(135deg, #a855f7, #7e22ce)', color: '#ffffff' };
             if (lowercase.includes('phân bổ') || lowercase.includes('chiến dịch')) return { bg: 'linear-gradient(135deg, #ff7a00, #d05300)', color: '#ffffff' };
             if (lowercase.includes('đối soát') || lowercase.includes('phân quyền')) return { bg: 'linear-gradient(135deg, #ec4899, #be185d)', color: '#ffffff' };
             if (lowercase.includes('ai') || lowercase.includes('gatekeeper')) return { bg: 'linear-gradient(135deg, #14b8a6, #0f766e)', color: '#ffffff' };
             if (lowercase.includes('ticket')) return { bg: 'linear-gradient(135deg, #0ea5e9, #0369a1)', color: '#ffffff' };
             if (lowercase.includes('dự án') || lowercase.includes('công ty')) return { bg: 'linear-gradient(135deg, #64748b, #475569)', color: '#ffffff' };
-            if (lowercase.includes('giỏ hàng') || lowercase.includes('sản phẩm')) return { bg: 'linear-gradient(135deg, #a855f7, #7e22ce)', color: '#ffffff' };
+            if (lowercase.includes('giỏ hàng') || lowercase.includes('sản phẩm')) return { bg: 'linear-gradient(135deg, #06b6d4, #0891b2)', color: '#ffffff' };
             if (lowercase.includes('tài liệu')) return { bg: 'linear-gradient(135deg, #eab308, #a16207)', color: '#ffffff' };
             if (lowercase.includes('chủ đầu tư')) return { bg: 'linear-gradient(135deg, #84cc16, #4d7c0f)', color: '#ffffff' };
             if (lowercase.includes('báo giá') || lowercase.includes('hóa đơn')) return { bg: 'linear-gradient(135deg, #10b981, #059669)', color: '#ffffff' };
@@ -1795,7 +1795,7 @@ export const Header = ({
                           <div style={{ flex: 1, height: '1px', background: 'var(--color-border-light)' }} />
                         </div>
 
-                        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fill, minmax(300px, 1fr))', gap: isMobile ? '6px' : '12px 24px' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fill, minmax(300px, 1fr))', gap: isMobile ? '10px' : '12px 24px' }}>
                           {group.items.map(item => {
                             const IconComponent = item.icon;
                             const colors = getItemColor(item.name);
@@ -1811,7 +1811,7 @@ export const Header = ({
                                   display: 'flex',
                                   alignItems: 'center',
                                   gap: '12px',
-                                  padding: isMobile ? '6px 8px' : '8px 12px',
+                                  padding: isMobile ? '10px 12px' : '8px 12px',
                                   borderRadius: '8px',
                                   cursor: 'pointer',
                                   transition: 'all 0.2s ease-in-out',
@@ -1824,8 +1824,8 @@ export const Header = ({
                                 }}
                               >
                                 <div style={{
-                                  width: isMobile ? '28px' : '32px',
-                                  height: isMobile ? '28px' : '32px',
+                                  width: isMobile ? '34px' : '32px',
+                                  height: isMobile ? '34px' : '32px',
                                   borderRadius: '50%',
                                   background: colors.bg,
                                   display: 'flex',
@@ -1834,10 +1834,10 @@ export const Header = ({
                                   flexShrink: 0,
                                   boxShadow: '0 2px 6px rgba(0,0,0,0.06)'
                                 }}>
-                                  <IconComponent size={isMobile ? 14 : 16} color={colors.color} strokeWidth={2} />
+                                  <IconComponent size={isMobile ? 18 : 16} color={colors.color} strokeWidth={2} />
                                 </div>
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', minWidth: 0 }}>
-                                  <span style={{ fontSize: isMobile ? '0.8rem' : '0.85rem', fontWeight: 700, color: 'var(--color-text)', lineHeight: 1.25, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                  <span style={{ fontSize: isMobile ? '0.92rem' : '0.85rem', fontWeight: 700, color: 'var(--color-text)', lineHeight: 1.25, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                                     {t(item.name)}
                                   </span>
                                   {!isMobile && (
