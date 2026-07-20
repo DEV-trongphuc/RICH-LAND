@@ -5864,24 +5864,28 @@ export default function ProjectsPage() {
           const combinedDocs = [...projectDocs, ...formattedLinkedDocs];
 
           return (
-            <div className="project-docs-container" style={{ display: 'flex', flexDirection: 'column', height: '100%', gap: '1rem' }}>
+            <div className="project-docs-container" style={{ display: 'flex', flexDirection: 'column', height: '100%', borderRadius: '12px' }}>
               <style>{`
+                .project-docs-container {
+                  background: #fff;
+                  padding: 1.25rem;
+                  gap: 1rem;
+                }
                 .project-docs-layout {
-                  display: grid;
-                  grid-template-columns: 1fr 340px;
+                  display: flex;
+                  flex-direction: column;
+                  gap: 1.25rem;
+                }
+                .project-docs-top-card {
+                  background: var(--color-surface);
+                  border: 1px solid var(--color-border-light);
+                  border-radius: 12px;
+                  padding: 1rem 1.25rem;
+                  display: flex;
+                  justify-content: space-between;
+                  align-items: center;
                   gap: 1.5rem;
-                }
-                .project-docs-main {
-                  display: flex;
-                  flex-direction: column;
-                  gap: 1.25rem;
-                  min-width: 0;
-                }
-                .project-docs-sidebar {
-                  display: flex;
-                  flex-direction: column;
-                  gap: 1.25rem;
-                  flex-shrink: 0;
+                  flex-wrap: wrap;
                 }
                 .explorer-layout {
                   display: grid;
@@ -5929,6 +5933,10 @@ export default function ProjectsPage() {
                 .category-btn.active.image {
                   color: #ec4899;
                 }
+                .category-badge {
+                  font-size: 0.72rem;
+                  opacity: 0.8;
+                }
                 .table-container {
                   background: var(--color-surface);
                   border: 1px solid var(--color-border-light);
@@ -5960,23 +5968,167 @@ export default function ProjectsPage() {
                 .doc-row:hover {
                   background-color: var(--color-bg-secondary);
                 }
-                @media (max-width: 1024px) {
-                  .project-docs-layout {
-                    grid-template-columns: 1fr;
+                @media (max-width: 768px) {
+                  .project-docs-container {
+                    padding: 0.5rem !important;
+                    gap: 0.75rem;
+                  }
+                  .project-docs-top-card {
+                    flex-direction: column;
+                    align-items: flex-start;
+                    gap: 1rem;
+                    padding: 0.75rem;
                   }
                   .explorer-layout {
                     grid-template-columns: 1fr;
+                  }
+                  .category-sidebar {
+                    flex-direction: row;
+                    overflow-x: auto;
+                    padding-bottom: 8px;
+                    gap: 0.5rem;
+                    border-bottom: 1px solid var(--color-border-light);
+                    -webkit-overflow-scrolling: touch;
+                  }
+                  .category-btn {
+                    padding: 0.5rem 0.875rem !important;
+                    border-radius: 100px !important;
+                    background: var(--color-bg-secondary) !important;
+                    border: 1px solid var(--color-border-light) !important;
+                    font-size: 0.75rem !important;
+                    flex-shrink: 0;
+                    display: inline-flex !important;
+                    align-items: center;
+                    gap: 6px;
+                    justify-content: center !important;
+                  }
+                  .category-btn.active {
+                    background: var(--color-primary) !important;
+                    color: #fff !important;
+                    border-color: var(--color-primary) !important;
+                  }
+                  .category-btn.active .category-badge {
+                    background: rgba(255, 255, 255, 0.2) !important;
+                    color: #fff !important;
+                  }
+                  .category-btn .category-badge {
+                    background: var(--color-border-light);
+                    color: var(--color-text-muted);
+                    padding: 1px 6px;
+                    border-radius: 100px;
+                    font-size: 0.68rem;
+                    margin-left: 2px;
+                    opacity: 1 !important;
+                  }
+                  .doc-table th:nth-child(3),
+                  .doc-table td:nth-child(3),
+                  .doc-table th:nth-child(4),
+                  .doc-table td:nth-child(4) {
+                    display: none;
                   }
                 }
               `}</style>
 
               <div className="project-docs-layout">
-                {/* Main Content Area: Documents Explorer */}
-                <div className="project-docs-main">
+                {/* Top Horizontal Card: Project Info & Folder Links */}
+                <div className="project-docs-top-card">
+                  {/* Left part: Project details */}
+                  <div style={{ flex: 1, minWidth: '280px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                      <Building2 size={15} style={{ color: 'var(--color-primary)' }} />
+                      <span style={{ fontSize: '0.68rem', fontWeight: 800, color: 'var(--color-primary)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Dự Án Đang Xem</span>
+                      <span style={{ background: 'var(--color-bg-secondary)', padding: '1px 6px', borderRadius: '4px', fontFamily: 'monospace', fontSize: '0.72rem', fontWeight: 700, color: 'var(--color-text)', border: '1px solid var(--color-border-light)', marginLeft: '8px' }}>
+                        {selectedProj?.code || 'N/A'}
+                      </span>
+                    </div>
+                    <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 800, color: 'var(--color-text)' }}>
+                      {selectedProj?.name || 'Thông tin dự án'}
+                    </h3>
+                    {selectedProj?.location && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginTop: '4px', fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
+                        <MapPin size={12} style={{ color: 'var(--color-text-muted)' }} />
+                        <span>{selectedProj.location}</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Right part: Folders & Links rendered horizontally */}
+                  {selectedProj?.folder_path && parseFolderPaths(selectedProj.folder_path).length > 0 && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                      {parseFolderPaths(selectedProj.folder_path).map((f, idx) => {
+                        const isGdrive = f.type === 'link';
+                        return (
+                          <div 
+                            key={idx}
+                            onClick={() => {
+                              if (!isGdrive && selectedProjectId) {
+                                handleOpenFolderModal(f.path, selectedProjectId);
+                              } else if (isGdrive) {
+                                window.open(f.path, '_blank', 'noopener,noreferrer');
+                              }
+                            }}
+                            style={{
+                              padding: '0.5rem 0.875rem',
+                              border: '1px solid var(--color-border-light)',
+                              borderRadius: '8px',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '10px',
+                              background: 'var(--color-bg-secondary)',
+                              cursor: 'pointer',
+                              transition: 'all 0.15s ease',
+                              height: '38px'
+                            }}
+                            onMouseEnter={e => {
+                              e.currentTarget.style.borderColor = isGdrive ? '#1a73e8' : 'var(--color-primary)';
+                              e.currentTarget.style.backgroundColor = 'var(--color-surface)';
+                            }}
+                            onMouseLeave={e => {
+                              e.currentTarget.style.borderColor = 'var(--color-border-light)';
+                              e.currentTarget.style.backgroundColor = 'var(--color-bg-secondary)';
+                            }}
+                          >
+                            <div style={{
+                              width: 24,
+                              height: 24,
+                              borderRadius: '4px',
+                              background: isGdrive ? '#e8f0fe' : '#e6f4ea',
+                              color: isGdrive ? '#1a73e8' : '#137333',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              flexShrink: 0
+                            }}>
+                              {isGdrive ? <HardDrive size={13} /> : <Folder size={13} />}
+                            </div>
+                            <span style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--color-text)' }}>
+                              {isGdrive ? 'Google Drive' : 'Thư mục tài liệu'}
+                            </span>
+                            <span style={{ fontSize: '0.68rem', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: '2px', marginLeft: '4px' }}>
+                              Mở <ExternalLink size={9} />
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+
+                {/* Main Content Area: Documents Explorer (horizontal grid replaced by standard full-width layout) */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--color-border-light)', paddingBottom: '0.75rem' }}>
                     <span style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                      Thư mục tài liệu ({combinedDocs.length})
+                      Danh sách tài liệu ({combinedDocs.length})
                     </span>
+                    {isAdmin && (
+                      <label style={{ cursor: 'pointer', margin: 0 }}>
+                        <div className="btn primary sm" style={{ display: 'flex', alignItems: 'center', gap: '6px', height: '30px', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 700, padding: '0 12px', background: 'var(--color-primary)', color: '#fff', border: 'none' }}>
+                          <Upload size={14} />
+                          <span>{uploadingDoc ? 'Đang tải...' : 'Tải tài liệu'}</span>
+                        </div>
+                        <input type="file" disabled={uploadingDoc} onChange={handleUploadFile} style={{ display: 'none' }} />
+                      </label>
+                    )}
                   </div>
 
                   {(() => {
@@ -6022,7 +6174,7 @@ export default function ProjectsPage() {
                                 <Layers size={14} />
                                 <span>Tất cả tài liệu</span>
                               </div>
-                              <span style={{ fontSize: '0.72rem', opacity: 0.8 }}>({getCount('all')})</span>
+                              <span className="category-badge">({getCount('all')})</span>
                             </button>
                           )}
 
@@ -6036,7 +6188,7 @@ export default function ProjectsPage() {
                                 <HardDrive size={14} />
                                 <span>Google Drive</span>
                               </div>
-                              <span style={{ fontSize: '0.72rem', opacity: 0.8 }}>({getCount('gdrive')})</span>
+                              <span className="category-badge">({getCount('gdrive')})</span>
                             </button>
                           )}
 
@@ -6050,7 +6202,7 @@ export default function ProjectsPage() {
                                 <FileText size={14} />
                                 <span>Tài liệu PDF</span>
                               </div>
-                              <span style={{ fontSize: '0.72rem', opacity: 0.8 }}>({getCount('pdf')})</span>
+                              <span className="category-badge">({getCount('pdf')})</span>
                             </button>
                           )}
 
@@ -6064,7 +6216,7 @@ export default function ProjectsPage() {
                                 <FileSpreadsheet size={14} />
                                 <span>Bảng tính Excel</span>
                               </div>
-                              <span style={{ fontSize: '0.72rem', opacity: 0.8 }}>({getCount('excel')})</span>
+                              <span className="category-badge">({getCount('excel')})</span>
                             </button>
                           )}
 
@@ -6078,7 +6230,7 @@ export default function ProjectsPage() {
                                 <Paperclip size={14} />
                                 <span>Hình ảnh</span>
                               </div>
-                              <span style={{ fontSize: '0.72rem', opacity: 0.8 }}>({getCount('image')})</span>
+                              <span className="category-badge">({getCount('image')})</span>
                             </button>
                           )}
 
@@ -6092,7 +6244,7 @@ export default function ProjectsPage() {
                                 <Info size={14} />
                                 <span>Tài liệu khác</span>
                               </div>
-                              <span style={{ fontSize: '0.72rem', opacity: 0.8 }}>({getCount('other')})</span>
+                              <span className="category-badge">({getCount('other')})</span>
                             </button>
                           )}
                         </div>
@@ -6312,209 +6464,6 @@ export default function ProjectsPage() {
                       </div>
                     );
                   })()}
-                </div>
-
-                {/* Sidebar Column: Project Info & Upload */}
-                <div className="project-docs-sidebar" style={{
-                  background: 'var(--color-surface)',
-                  border: '1px solid var(--color-border-light)',
-                  borderRadius: '12px',
-                  padding: '1.25rem',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '1.25rem',
-                  height: 'fit-content'
-                }}>
-                  {/* Project Info Block */}
-                  <div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-                      <Building2 size={16} style={{ color: 'var(--color-primary)' }} />
-                      <span style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--color-primary)', textTransform: 'uppercase', letterSpacing: '1px' }}>Dự Án Đang Xem</span>
-                    </div>
-                    <h3 style={{ margin: '0 0 8px', fontSize: '1rem', fontWeight: 800, color: 'var(--color-text)' }}>
-                      {selectedProj?.name || 'Thông tin dự án'}
-                    </h3>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '0.78rem', color: 'var(--color-text-muted)', lineHeight: 1.4 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                        <span style={{ fontWeight: 600 }}>Mã dự án:</span>
-                        <span style={{ background: 'var(--color-bg-secondary)', padding: '1px 6px', borderRadius: '4px', fontFamily: 'monospace', fontWeight: 700, color: 'var(--color-text)', border: '1px solid var(--color-border-light)' }}>{selectedProj?.code || 'N/A'}</span>
-                      </div>
-                      {selectedProj?.location && (
-                        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '4px', marginTop: '2px' }}>
-                          <MapPin size={13} style={{ marginTop: '2px', color: 'var(--color-text-muted)', flexShrink: 0 }} />
-                          <span>{selectedProj.location}</span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Folders & Links Section */}
-                  {selectedProj?.folder_path && parseFolderPaths(selectedProj.folder_path).length > 0 && (
-                    <div style={{ borderTop: '1px solid var(--color-border-light)', paddingTop: '1.25rem' }}>
-                      <div style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }}>
-                        Thư mục & liên kết ngoài
-                      </div>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                        {parseFolderPaths(selectedProj.folder_path).map((f, idx) => {
-                          const isGdrive = f.type === 'link';
-                          return (
-                            <div 
-                              key={idx}
-                              onClick={() => {
-                                if (!isGdrive && selectedProjectId) {
-                                  handleOpenFolderModal(f.path, selectedProjectId);
-                                } else if (isGdrive) {
-                                  window.open(f.path, '_blank', 'noopener,noreferrer');
-                                }
-                              }}
-                              style={{
-                                padding: '0.625rem 0.75rem',
-                                border: '1px solid var(--color-border-light)',
-                                borderRadius: '8px',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'space-between',
-                                background: 'var(--color-bg-secondary)',
-                                cursor: 'pointer',
-                                transition: 'all 0.15s ease'
-                              }}
-                              onMouseEnter={e => {
-                                e.currentTarget.style.borderColor = isGdrive ? '#1a73e8' : 'var(--color-primary)';
-                                e.currentTarget.style.backgroundColor = 'var(--color-surface)';
-                              }}
-                              onMouseLeave={e => {
-                                e.currentTarget.style.borderColor = 'var(--color-border-light)';
-                                e.currentTarget.style.backgroundColor = 'var(--color-bg-secondary)';
-                              }}
-                            >
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0, flex: 1 }}>
-                                <div style={{
-                                  width: 28,
-                                  height: 28,
-                                  borderRadius: '6px',
-                                  background: isGdrive ? '#e8f0fe' : '#e6f4ea',
-                                  color: isGdrive ? '#1a73e8' : '#137333',
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'center',
-                                  flexShrink: 0
-                                }}>
-                                  {isGdrive ? <HardDrive size={14} /> : <Folder size={14} />}
-                                </div>
-                                <div style={{ minWidth: 0 }}>
-                                  <div style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--color-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={f.path}>
-                                    {isGdrive ? 'Google Drive' : 'Thư mục tài liệu'}
-                                  </div>
-                                </div>
-                              </div>
-                              
-                              <div style={{ flexShrink: 0, marginLeft: '8px' }}>
-                                {isGdrive ? (
-                                  <a
-                                    href={f.path}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    style={{
-                                      borderRadius: '6px',
-                                      fontSize: '0.75rem',
-                                      fontWeight: 700,
-                                      height: '26px',
-                                      padding: '0 10px',
-                                      display: 'inline-flex',
-                                      alignItems: 'center',
-                                      gap: '4px',
-                                      textDecoration: 'none',
-                                      background: '#e8f0fe',
-                                      color: '#1a73e8',
-                                      border: '1px solid rgba(26, 115, 232, 0.2)',
-                                      transition: 'all 0.15s ease'
-                                    }}
-                                    onClick={e => e.stopPropagation()}
-                                  >
-                                    <ExternalLink size={11} />
-                                    <span>Mở</span>
-                                  </a>
-                                ) : (
-                                  <button
-                                    type="button"
-                                    style={{
-                                      borderRadius: '6px',
-                                      fontSize: '0.75rem',
-                                      fontWeight: 700,
-                                      height: '26px',
-                                      padding: '0 10px',
-                                      display: 'inline-flex',
-                                      alignItems: 'center',
-                                      gap: '4px',
-                                      background: '#e6f4ea',
-                                      color: '#137333',
-                                      border: '1px solid rgba(19, 115, 51, 0.2)',
-                                      cursor: 'pointer',
-                                      transition: 'all 0.15s ease'
-                                    }}
-                                  >
-                                    <Folder size={11} />
-                                    <span>Mở</span>
-                                  </button>
-                                )}
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Upload Section (Admin) */}
-                  {isAdmin && (
-                    <div style={{ borderTop: '1px solid var(--color-border-light)', paddingTop: '1.25rem' }}>
-                      <div style={{
-                        padding: '1rem',
-                        border: '2px dashed var(--color-border-light)',
-                        borderRadius: '8px',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        alignItems: 'center',
-                        textAlign: 'center',
-                        gap: '0.5rem',
-                        background: 'var(--color-bg-secondary)',
-                        transition: 'all 0.15s ease',
-                        cursor: 'pointer'
-                      }}
-                      onMouseEnter={e => {
-                        e.currentTarget.style.borderColor = 'var(--color-primary)';
-                        e.currentTarget.style.backgroundColor = 'var(--color-surface)';
-                      }}
-                      onMouseLeave={e => {
-                        e.currentTarget.style.borderColor = 'var(--color-border-light)';
-                        e.currentTarget.style.backgroundColor = 'var(--color-bg-secondary)';
-                      }}
-                      >
-                        <div style={{
-                          width: 32,
-                          height: 32,
-                          borderRadius: '50%',
-                          background: 'var(--color-surface)',
-                          border: '1px solid var(--color-border-light)',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          color: 'var(--color-primary)'
-                        }}>
-                          <Upload size={14} />
-                        </div>
-                        <div>
-                          <h4 style={{ margin: 0, fontSize: '0.78rem', fontWeight: 800, color: 'var(--color-text)' }}>Tải tài liệu mới</h4>
-                        </div>
-                        <label style={{ cursor: 'pointer', width: '100%' }}>
-                          <div className="btn primary sm" style={{ width: '100%', justifyContent: 'center', height: '28px', borderRadius: '6px', fontSize: '0.72rem', fontWeight: 700, background: 'var(--color-primary)', border: 'none', color: '#fff', display: 'flex', alignItems: 'center' }}>
-                            {uploadingDoc ? 'Đang tải...' : 'Chọn file từ máy'}
-                          </div>
-                          <input type="file" disabled={uploadingDoc} onChange={handleUploadFile} style={{ display: 'none' }} />
-                        </label>
-                      </div>
-                    </div>
-                  )}
                 </div>
               </div>
 
