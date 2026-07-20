@@ -121,9 +121,7 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
   const [cameraError, setCameraError] = useState('');
   const videoRef = React.useRef<HTMLVideoElement>(null);
   const [consultantProfile, setConsultantProfile] = useState<any>(null);
-  const [dismissTelegramReminder, setDismissTelegramReminder] = useState(() => {
-    return sessionStorage.getItem('dismiss_telegram_reminder') === '1';
-  });
+  const [dismissTelegramReminder, setDismissTelegramReminder] = useState(false);
   const [isTelegramModalOpen, setIsTelegramModalOpen] = useState(false);
 
   const [sysSettings, setSysSettings] = useState<any>(null);
