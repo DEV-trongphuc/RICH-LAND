@@ -49,30 +49,18 @@ if (empty($botToken)) {
     exit;
 }
 
-// TỐI ƯU HIỆU SUẤT: Đóng kết nối sớm để Telegram Server không bị treo chờ phản hồi lâu
-ob_end_clean();
-header("Connection: close");
-ignore_user_abort(true);
-ob_start();
-echo json_encode(["message" => "Received"]);
-$size = ob_get_length();
-header("Content-Length: $size");
-ob_end_flush();
-flush();
-if (function_exists('fastcgi_finish_request')) {
-    fastcgi_finish_request();
-}
+try {
+    $textLower = strtolower(trim($text));
 
-$textLower = strtolower(trim($text));
-
-// --- COMMAND LẤY CHAT ID (Public Command) ---
-if ($textLower === '/chatid' || $textLower === '/id' || $textLower === '/info' || $textLower === '/start') {
-    $telegramMsg = "💬 <b>[ HỆ THỐNG RICH LAND ]</b>\n\n"
-        . "• Chat ID của phòng này: <code>$chatId</code>\n\n"
-        . "💡 Bạn hãy copy Chat ID này điền vào cấu hình <b>Telegram Chat ID</b> trong trang Hồ sơ cá nhân hoặc mục Cấu hình hệ thống để nhận các thông báo chia số, duyệt ticket và báo cáo.";
-    sendTelegramMessage($botToken, $chatId, $telegramMsg);
-    exit;
-}
+    // --- COMMAND LẤY CHAT ID (Public Command) ---
+    if ($textLower === '/chatid' || $textLower === '/id' || $textLower === '/info' || $textLower === '/start') {
+        $telegramMsg = "💬 <b>[ HỆ THỐNG RICH LAND ]</b>\n\n"
+            . "• Chat ID của phòng này: <code>$chatId</code>\n\n"
+            . "💡 Bạn hãy copy Chat ID này điền vào cấu hình <b>Telegram Chat ID</b> trong trang Hồ sơ cá nhân hoặc mục Cấu hình hệ thống để nhận các thông báo chia số, duyệt ticket và báo cáo.";
+        sendTelegramMessage($botToken, $chatId, $telegramMsg);
+        echo json_encode(["status" => "ok"]);
+        exit;
+    }
 
 // --- XỬ LÝ TEST COMMAND ---
 if ($textLower === 'test_data' || $textLower === 'test_data_admin' || $textLower === 'test_report') {
@@ -492,9 +480,22 @@ if (strpos($textLower, '/tools') === 0 || strpos($textLower, '/report') === 0 ||
                 . "━━━━━━━━━━━━━━━━━━━━━";
             sendTelegramMessage($botToken, $chatId, $successMsg);
         }
+        echo json_encode(["status" => "ok"]);
         exit;
     }
 
     // Không khớp lệnh hệ thống
     sendTelegramMessage($botToken, $chatId, "⚠️ <b>Xin chào!</b> Tôi là Bot thông báo RICH LAND.\n\n• Gõ <code>/id</code> để xem Chat ID của bạn.\n• Gõ <code>/tools</code> để xem danh sách câu lệnh dành cho quản trị.\n• Để liên kết tài khoản: Nhập <b>Mã ID nhân viên</b> hoặc <b>Email</b> của bạn.");
+    echo json_encode(["status" => "ok"]);
+} catch (Throwable $e) {
+    // Ghi nhận lỗi vào file log để chẩn đoán
+    $errLog = date('[Y-m-d H:i:s]') . " WEBHOOK ERROR: " . $e->getMessage() . " in " . $e->getFile() . " on line " . $e->getLine() . "\n" . $e->getTraceAsString() . "\n\n";
+    @file_put_contents($logFile, $errLog, FILE_APPEND | LOCK_EX);
+
+    // Gửi thông tin lỗi về chat để Admin/Người dùng biết
+    $errorMsg = "❌ <b>[ LỖI HỆ THỐNG ]</b>\nCó lỗi xảy ra khi xử lý yêu cầu của bạn:\n<i>" . htmlspecialchars($e->getMessage()) . "</i>";
+    sendTelegramMessage($botToken, $chatId, $errorMsg);
+
+    // Trả về HTTP 200 để Telegram không gửi lại gói tin bị lỗi liên tục
+    echo json_encode(["status" => "error", "message" => $e->getMessage()]);
 }
