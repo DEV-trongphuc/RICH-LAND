@@ -1390,6 +1390,52 @@ class CooperationController {
             }
         }
 
+        // Fetch Zalo & Telegram group chat configurations from system_settings and notify
+        try {
+            $stmtSettings = $this->db->prepare("SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('zalo_bot_token', 'zalo_admin_group_chat_id', 'telegram_bot_token', 'telegram_admin_group_chat_id')");
+            $stmtSettings->execute();
+            $settings = $stmtSettings->fetchAll(PDO::FETCH_KEY_PAIR) ?: [];
+            
+            $zaloBotToken = $settings['zalo_bot_token'] ?? '';
+            $zaloAdminGroup = $settings['zalo_admin_group_chat_id'] ?? '';
+            $tgBotToken = $settings['telegram_bot_token'] ?? '';
+            $tgAdminGroup = $settings['telegram_admin_group_chat_id'] ?? '';
+
+            $tgText = "⚠️ <b>[ YÊU CẦU CHỈNH SỬA TỶ LỆ HOA HỒNG ]</b> ⚠️\n" .
+                      "━━━━━━━━━━━━━━━━━━━━━\n" .
+                      "• <b>Nhân viên yêu cầu:</b> " . htmlspecialchars($creatorName) . "\n" .
+                      "• <b>Mã phiếu cọc:</b> #" . $id . "\n" .
+                      "• <b>Khách hàng:</b> " . htmlspecialchars($slip['customer_name']) . "\n" .
+                      "• <b>Dự án:</b> " . htmlspecialchars($slip['project_name'] ?? 'Dự án khác') . "\n" .
+                      "• <b>Căn/Lô:</b> " . htmlspecialchars($slip['unit_code'] ?? '—') . "\n" .
+                      "• <b>Lý do yêu cầu:</b> <i>" . htmlspecialchars($reason) . "</i>\n\n" .
+                      "👉 Vui lòng đăng nhập RICH LAND CRM để xem xét và xử lý.";
+
+            $zaloText = "⚠️ [ YÊU CẦU CHỈNH SỬA TỶ LỆ HOA HỒNG ] ⚠️\n" .
+                        "━━━━━━━━━━━━━━━━━━━━━\n" .
+                        "• Nhân viên yêu cầu: " . $creatorName . "\n" .
+                        "• Mã phiếu cọc: #" . $id . "\n" .
+                        "• Khách hàng: " . $slip['customer_name'] . "\n" .
+                        "• Dự án: " . ($slip['project_name'] ?? 'Dự án khác') . "\n" .
+                        "• Căn/Lô: " . ($slip['unit_code'] ?? '—') . "\n" .
+                        "• Lý do yêu cầu: " . $reason . "\n\n" .
+                        "👉 Vui lòng đăng nhập RICH LAND CRM để xem xét và xử lý.";
+
+            // Send Zalo Notification
+            if (!empty($zaloBotToken) && !empty($zaloAdminGroup)) {
+                require_once __DIR__ . '/../zalo_bot.php';
+                sendZaloMessage($zaloBotToken, $zaloAdminGroup, $zaloText);
+            }
+
+            // Send Telegram Notification
+            if (!empty($tgBotToken) && !empty($tgAdminGroup)) {
+                require_once __DIR__ . '/../telegram_bot.php';
+                sendTelegramMessage($tgBotToken, $tgAdminGroup, $tgText);
+            }
+        } catch (Throwable $e) {
+            error_log("Error sending Zalo/Telegram notification for coop adjustment: " . $e->getMessage());
+        }
+
         logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'REQUEST_COOP_ADJUSTMENT', 'cooperation_slip', $id, "Gửi yêu cầu chỉnh sửa tỷ lệ hoa hồng cho phiếu cọc. Lý do: $reason");
 
         respond(200, null, 'Gửi yêu cầu chỉnh sửa tỷ lệ hoa hồng thành công');

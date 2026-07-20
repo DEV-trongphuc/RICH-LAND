@@ -560,7 +560,10 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
       const p4 = fetchAPI('cooperation-slips')
         .then(res => {
           if (res.success && Array.isArray(res.data)) {
-            coopsCount = res.data.filter((c: any) => c.status === 'pending_manager_approval').length;
+            coopsCount = res.data.filter((c: any) => 
+              c.status === 'pending_manager_approval' || 
+              (c.status === 'approved' && c.adjustment_request)
+            ).length;
           }
         });
       const p5 = fetchAPI('get_support_tickets_count&status=open')
