@@ -661,6 +661,29 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
     }
   };
 
+  const handleUnlinkTelegram = async () => {
+    if (!account) return;
+    if (!window.confirm(t('Bạn có chắc chắn muốn hủy liên kết Telegram của tài khoản này không?'))) return;
+    
+    setIsUnlinking(true);
+    try {
+      const json = await fetchAPI('unlink_telegram', {
+        method: 'POST',
+        body: JSON.stringify({ id: account.id, type: 'account' })
+      });
+      if (json.success) {
+        toast.success(t('Đã hủy liên kết Telegram thành công!'));
+        setTelegramChatId('');
+      } else {
+        toast.error(json.message || t('Lỗi khi hủy liên kết'));
+      }
+    } catch (e: any) {
+      toast.error(t('Lỗi') + ': ' + e.message);
+    } finally {
+      setIsUnlinking(false);
+    }
+  };
+
   // Save changes
   const handleCertificateImageUpload = async (index: number, file: File) => {
     try {
@@ -1863,8 +1886,21 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
                           autoComplete="new-password"
                         />
                       </div>
-                      <div className="form-group">
-                        <label className="form-label">{t('Email đăng nhập')} <span style={{ color: 'var(--color-danger)' }}>*</span></label>
+                       <div className="form-group">
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
+                          <label className="form-label" style={{ margin: 0 }}>{t('Email đăng nhập')} <span style={{ color: 'var(--color-danger)' }}>*</span></label>
+                          {account && (
+                            Number(account.is_confirmed) === 1 ? (
+                              <span style={{ fontSize: '0.7rem', color: 'var(--color-success)', background: 'var(--color-success-light)', padding: '2px 8px', borderRadius: 12, fontWeight: 700 }}>
+                                {t('Đã xác thực')}
+                              </span>
+                            ) : (
+                              <span style={{ fontSize: '0.7rem', color: 'var(--color-warning)', background: 'rgba(245, 158, 11, 0.1)', padding: '2px 8px', borderRadius: 12, fontWeight: 700 }}>
+                                {t('Chưa xác thực')}
+                              </span>
+                            )
+                          )}
+                        </div>
                         <input type="email" className="form-input" value={email} onChange={e => setEmail(e.target.value)} placeholder="name@company.com" required />
                       </div>
                       <div className="form-group">
@@ -1878,6 +1914,13 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
                       <div className="form-group">
                         <label className="form-label">Zalo Chat ID</label>
                         <input className="form-input" value={zaloChatId} disabled style={{ backgroundColor: 'var(--color-bg-light)', cursor: 'not-allowed' }} placeholder={t('Chưa liên kết Zalo')} />
+                      </div>
+                      <div className="form-group">
+                        <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                          <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/8/82/Telegram_logo.svg/3840px-Telegram_logo.svg.png" alt="Telegram" style={{ width: 14, height: 14, borderRadius: '50%' }} />
+                          Telegram Chat ID
+                        </label>
+                        <input className="form-input" value={telegramChatId} disabled style={{ backgroundColor: 'var(--color-bg-light)', cursor: 'not-allowed' }} placeholder={t('Chưa liên kết Telegram')} />
                       </div>
 
                       {isAdmin && (
@@ -2018,6 +2061,42 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
                           }}
                         >
                           <Link2Off size={12} /> {t('Hủy liên kết Zalo')}
+                        </button>
+                      </div>
+                    )}
+
+                    {account && telegramChatId && (
+                      <div style={{
+                        padding: '1rem',
+                        background: 'rgba(0, 136, 204, 0.05)',
+                        border: '1px solid rgba(0, 136, 204, 0.15)',
+                        borderRadius: '12px',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '0.75rem',
+                        marginTop: '1rem'
+                      }}>
+                        <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#0088cc', display: 'flex', alignItems: 'center', gap: 4 }}>
+                          <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/8/82/Telegram_logo.svg/3840px-Telegram_logo.svg.png" alt="Telegram" style={{ width: 14, height: 14, borderRadius: '50%' }} />
+                          {t('Liên kết Telegram Bot')}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={handleUnlinkTelegram}
+                          disabled={isUnlinking}
+                          className="btn outline sm"
+                          style={{
+                            fontSize: '0.72rem',
+                            color: 'var(--color-warning)',
+                            borderColor: 'rgba(245, 158, 11, 0.3)',
+                            background: 'var(--color-surface)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 4,
+                            alignSelf: 'flex-start'
+                          }}
+                        >
+                          <Link2Off size={12} /> {t('Hủy liên kết Telegram')}
                         </button>
                       </div>
                     )}

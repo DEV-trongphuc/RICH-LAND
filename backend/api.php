@@ -473,7 +473,7 @@ if (!in_array($action, $publicActions)) {
         'get_unique_sources', 'get_calendar_stats', 'get_calendar_day_details', 
         'contacts', 'deals', 'companies', 'pipeline-stages', 'quotes', 
         'expenses', 'tickets', 'activities', 'users', 'notes', 'cooperation-slips', 
-        'get_accounts', 'edit_account', 'unlink_zalo', 'get_night_shift_status', 
+        'get_accounts', 'edit_account', 'unlink_zalo', 'unlink_telegram', 'get_night_shift_status', 
         'register_night_shift', 'get_consultant_leaves', 'add_consultant_leave', 
         'delete_consultant_leave',
         // Whitelisted missing front-controller routes for Sales
@@ -485,13 +485,13 @@ if (!in_array($action, $publicActions)) {
     $isSelfEdit = false;
     $isSelfUnlink = false;
 
-    if ($action === 'edit_account' || $action === 'unlink_zalo') {
+    if ($action === 'edit_account' || $action === 'unlink_zalo' || $action === 'unlink_telegram') {
         $rawInput = file_get_contents('php://input');
         $inputData = json_decode($rawInput, true);
         if ($action === 'edit_account' && isset($inputData['id']) && (int)$inputData['id'] === (int)$decodedUser['id']) {
             $isSelfEdit = true;
         }
-        if ($action === 'unlink_zalo' && isset($inputData['id']) && isset($inputData['type'])) {
+        if (($action === 'unlink_zalo' || $action === 'unlink_telegram') && isset($inputData['id']) && isset($inputData['type'])) {
             if ($inputData['type'] === 'account' && (int)$inputData['id'] === (int)$decodedUser['id']) {
                 $isSelfUnlink = true;
             } else if ($inputData['type'] === 'consultant') {
@@ -5851,6 +5851,73 @@ switch ($action) {
                     echo json_encode(['success' => true]);
                 } else {
                     echo json_encode(['success' => false, 'message' => 'Không thể hủy liên kết Zalo']);
+                }
+                $stmt->close();
+            } else {
+                echo json_encode(['success' => false, 'message' => 'Lỗi chuẩn bị truy vấn SQL']);
+            }
+        } else {
+            echo json_encode(['success' => false, 'message' => 'Loại tài khoản không hợp lệ']);
+        }
+        break;
+
+    case 'unlink_telegram':
+        $input = json_decode(file_get_contents('php://input'), true);
+        $id = (int) ($input['id'] ?? 0);
+        $type = $input['type'] ?? ''; // 'consultant' or 'account'
+
+        if (!$id) {
+            echo json_encode(['success' => false, 'message' => 'ID không hợp lệ']);
+            break;
+        }
+
+        $isAdmin = $decodedUser['role'] === 'admin' || $decodedUser['role'] === 'superadmin' || $decodedUser['role'] === 'super_admin';
+        if (!$isAdmin) {
+            if ($type === 'account' && $id !== (int)$decodedUser['id']) {
+                echo json_encode(['success' => false, 'message' => 'Bạn không có quyền hủy liên kết Telegram của tài khoản này']);
+                break;
+            }
+            if ($type === 'consultant') {
+                $stmtC = $conn->prepare("SELECT email FROM consultants WHERE id = ? LIMIT 1");
+                if ($stmtC) {
+                    $stmtC->bind_param("i", $id);
+                    $stmtC->execute();
+                    $cRow = $stmtC->get_result()->fetch_assoc();
+                    $stmtC->close();
+                    if (!$cRow || $cRow['email'] !== $decodedUser['email']) {
+                        echo json_encode(['success' => false, 'message' => 'Bạn không có quyền hủy liên kết Telegram của tư vấn viên này']);
+                        break;
+                    }
+                } else {
+                    echo json_encode(['success' => false, 'message' => 'Lỗi chuẩn bị truy vấn SQL']);
+                    break;
+                }
+            }
+        }
+
+        if ($type === 'consultant') {
+            $stmt = $conn->prepare("UPDATE consultants SET telegram_chat_id = NULL WHERE id = ?");
+            if ($stmt) {
+                $stmt->bind_param("i", $id);
+                if ($stmt->execute()) {
+                    logAdminAction($conn, $decodedUser['id'], 'UNLINK_TELEGRAM_CONSULTANT', ['id' => $id]);
+                    echo json_encode(['success' => true]);
+                } else {
+                    echo json_encode(['success' => false, 'message' => 'Không thể hủy liên kết Telegram']);
+                }
+                $stmt->close();
+            } else {
+                echo json_encode(['success' => false, 'message' => 'Lỗi chuẩn bị truy vấn SQL']);
+            }
+        } else if ($type === 'account') {
+            $stmt = $conn->prepare("UPDATE accounts SET telegram_chat_id = NULL WHERE id = ?");
+            if ($stmt) {
+                $stmt->bind_param("i", $id);
+                if ($stmt->execute()) {
+                    logAdminAction($conn, $decodedUser['id'], 'UNLINK_TELEGRAM_ACCOUNT', ['id' => $id]);
+                    echo json_encode(['success' => true]);
+                } else {
+                    echo json_encode(['success' => false, 'message' => 'Không thể hủy liên kết Telegram']);
                 }
                 $stmt->close();
             } else {

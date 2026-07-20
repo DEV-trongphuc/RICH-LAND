@@ -743,7 +743,20 @@ export const ProfilePage: React.FC = () => {
             {openSections.contact && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '0.25rem' }}>
                 <div className="form-group">
-                  <label className="form-label" style={{ fontWeight: 600, color: 'var(--color-text-muted)' }}>{t('Email đăng nhập')}</label>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
+                    <label className="form-label" style={{ fontWeight: 600, color: 'var(--color-text-muted)', margin: 0 }}>{t('Email đăng nhập')}</label>
+                    {user && (
+                      Number((user as any).is_confirmed) === 1 ? (
+                        <span style={{ fontSize: '0.7rem', color: 'var(--color-success)', background: 'var(--color-success-light)', padding: '2px 8px', borderRadius: 12, fontWeight: 700 }}>
+                          {t('Đã xác thực')}
+                        </span>
+                      ) : (
+                        <span style={{ fontSize: '0.7rem', color: 'var(--color-warning)', background: 'rgba(245, 158, 11, 0.1)', padding: '2px 8px', borderRadius: 12, fontWeight: 700 }}>
+                          {t('Chưa xác thực')}
+                        </span>
+                      )
+                    )}
+                  </div>
                   <input
                     type="email"
                     className="form-input"

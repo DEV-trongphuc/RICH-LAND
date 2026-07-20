@@ -182,8 +182,8 @@ export const GlobalConfirmModal: React.FC = () => {
                 </div>
               )}
 
-              {requireWordMatch && (
-                <div style={{ marginTop: '1rem' }}>
+               {requireWordMatch && (
+                <div style={{ marginTop: '1rem', width: '100%' }}>
                   <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)', display: 'block', marginBottom: '6px' }}>
                     Nhập <span style={{ color: 'var(--color-danger)', fontFamily: 'monospace' }}>"{requireWordMatch}"</span> để xác nhận
                   </label>
@@ -208,14 +208,14 @@ export const GlobalConfirmModal: React.FC = () => {
               )}
 
               {(requirePromptInput || optionalPromptInput) && (
-                <div style={{ marginTop: '1rem' }}>
-                  <input
-                    type="text"
+                <div style={{ marginTop: '1rem', width: '100%' }}>
+                  <textarea
                     className="form-input"
                     placeholder={promptPlaceholder || 'Nhập giá trị...'}
                     value={promptInput}
                     onChange={(e) => setPromptInput(e.target.value)}
                     autoFocus
+                    rows={3}
                     style={{ 
                       fontSize: '0.875rem',
                       padding: '10px 14px',
@@ -224,10 +224,14 @@ export const GlobalConfirmModal: React.FC = () => {
                       background: 'var(--color-bg)',
                       color: 'var(--color-text)',
                       border: '1px solid var(--color-border)',
-                      outline: 'none'
+                      outline: 'none',
+                      resize: 'vertical',
+                      minHeight: '80px',
+                      fontFamily: 'inherit'
                     }}
                     onKeyDown={(e) => {
-                      if (e.key === 'Enter' && (!requirePromptInput || promptInput.trim())) {
+                      if (e.key === 'Enter' && !e.shiftKey && (!requirePromptInput || promptInput.trim())) {
+                        e.preventDefault();
                         handleConfirm();
                       }
                     }}
