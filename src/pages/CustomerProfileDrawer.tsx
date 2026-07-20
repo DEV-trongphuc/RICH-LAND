@@ -9976,12 +9976,12 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
               initial={{ opacity: 0, scale: 0.95, y: 10 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 10 }}
               style={{ position: 'relative', background: 'var(--color-surface)', width: '95%', maxWidth: '500px', borderRadius: 'var(--radius-md)', padding: '1.5rem', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)' }}
             >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '0.75rem', color: 'var(--color-warning)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '0.75rem', color: 'var(--color-danger)' }}>
                 <ShieldAlert size={20} />
                 <h3 style={{ fontWeight: 700, fontSize: '1.125rem', margin: 0 }}>Tải lên tài liệu bắt buộc</h3>
               </div>
               <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', marginBottom: '1.25rem', lineHeight: 1.5 }}>
-                Trạng thái <strong>{requiredDocsUploadModal.targetLabel}</strong> yêu cầu các tài liệu hợp tác sau đây. Vui lòng tải lên đầy đủ để hoàn tất việc chuyển trạng thái.
+                Trạng thái <strong style={{ color: 'var(--color-primary)' }}>{requiredDocsUploadModal.targetLabel}</strong> yêu cầu các tài liệu hợp tác sau đây. Vui lòng tải lên đầy đủ để hoàn tất việc chuyển trạng thái.
               </p>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '1.5rem' }}>
