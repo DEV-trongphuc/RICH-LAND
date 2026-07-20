@@ -542,11 +542,13 @@ try {
                 'idx_contacts_pipeline_status' => ['pipeline_status'],
                 'idx_contacts_created_at' => ['created_at'],
                 'idx_contacts_deleted_at' => ['deleted_at'],
+                'idx_contacts_owner_deleted_created' => ['owner_id', 'deleted_at', 'created_at'],
             ],
             'activities' => [
                 'idx_activities_tenant_user' => ['tenant_id', 'user_id'],
                 'idx_activities_related' => ['related_type', 'related_id'],
                 'idx_activities_due_date' => ['due_date'],
+                'idx_activities_user_status_due' => ['user_id', 'status', 'due_date'],
             ],
             'activity_comments' => [
                 'idx_comments_activity_id' => ['activity_id'],
@@ -562,11 +564,13 @@ try {
                 'idx_deals_contact_id' => ['contact_id'],
                 'idx_deals_company_id' => ['company_id'],
                 'idx_deals_created_at' => ['created_at'],
+                'idx_deals_owner_deleted' => ['owner_id', 'deleted_at'],
             ],
             'invoices' => [
                 'idx_invoices_deal_id' => ['deal_id'],
                 'idx_invoices_contact_id' => ['contact_id'],
                 'idx_invoices_status' => ['status'],
+                'idx_invoices_contact_status_deleted' => ['contact_id', 'status', 'deleted_at'],
             ],
             'quotes' => [
                 'idx_quotes_deal_id' => ['deal_id'],
@@ -580,6 +584,15 @@ try {
                 'idx_tickets_contact_id' => ['contact_id'],
                 'idx_tickets_assigned_to' => ['assigned_to'],
                 'idx_tickets_status' => ['status'],
+            ],
+            'cooperation_slips' => [
+                'idx_coop_slips_contact_id' => ['contact_id'],
+                'idx_coop_slips_deposit_slip_id' => ['deposit_slip_id'],
+                'idx_coop_slips_created_at' => ['created_at'],
+            ],
+            'data_reports' => [
+                'idx_data_reports_consultant_status' => ['consultant_id', 'status'],
+                'idx_data_reports_consultant_created' => ['consultant_id', 'created_at'],
             ],
         ];
 
