@@ -944,7 +944,7 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
           <p className="page-subtitle">{t("Phân tích hiệu suất giao data theo thời gian thực — Hệ thống đang hoạt động trơn tru.")}</p>
         </div>
         <div className="mobile-w-full" style={{ display: 'flex', gap: '8px', alignItems: 'center', width: 'auto' }}>
-          <div className="mobile-flex-1" style={{ position: 'relative', zIndex: 100, flex: '1 1 auto', minWidth: '240px', maxWidth: '320px' }}>
+          <div className="mobile-flex-1" style={{ position: 'relative', zIndex: 100, flex: '1 1 auto', minWidth: '180px', maxWidth: isMobile ? 'none' : '320px' }}>
             <CustomSelect
               options={dateOptions}
               value={dateFilter}
@@ -977,7 +977,9 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
               border: 'none',
               boxShadow: '0 2px 6px rgba(189, 29, 45, 0.25)',
               cursor: 'pointer',
-              flexShrink: 0
+              flexShrink: 0,
+              flex: '0 0 38px',
+              minWidth: '38px'
             }}
           >
             <Server size={15} style={{ flexShrink: 0 }} />

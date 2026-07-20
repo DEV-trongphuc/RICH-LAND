@@ -960,15 +960,10 @@ export const Header = ({
             </div>
 
             {/* Check-in status / trigger button */}
-            {(!headerCheckIn || headerCheckIn.status === 'rejected') ? null : headerCheckIn.status === 'approved' ? (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '4px', background: 'rgba(16, 185, 129, 0.1)', border: '1px solid rgba(16, 185, 129, 0.2)', color: 'var(--color-success)', borderRadius: '8px', padding: isMobile ? '4px 6px' : '4px 10px', height: isMobile ? '30px' : '36px', fontSize: '0.72rem', fontWeight: 700, whiteSpace: 'nowrap' }}>
-                <CheckCircle2 size={12} />
-                <span>{isMobile ? 'Đã CC' : t('Đã Chấm công')} ({headerCheckIn.check_in_time.substring(0, 5)})</span>
-              </div>
-            ) : (
+            {(!headerCheckIn || headerCheckIn.status === 'rejected' || headerCheckIn.status === 'approved') ? null : (
               <div style={{ display: 'flex', alignItems: 'center', gap: '4px', background: 'rgba(245, 158, 11, 0.1)', border: '1px solid rgba(245, 158, 11, 0.2)', color: 'var(--color-warning)', borderRadius: '8px', padding: isMobile ? '4px 6px' : '4px 10px', height: isMobile ? '30px' : '36px', fontSize: '0.72rem', fontWeight: 700, whiteSpace: 'nowrap' }}>
                 <Clock size={12} />
-                <span>{isMobile ? 'Chờ duyệt' : t('Chờ duyệt trễ')} ({headerCheckIn.check_in_time.substring(0, 5)})</span>
+                <span>{isMobile ? 'Chờ duyệt' : `${t('Chờ duyệt trễ')} (${headerCheckIn.check_in_time.substring(0, 5)})`}</span>
               </div>
             )}
           </div>
