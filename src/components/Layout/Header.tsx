@@ -809,7 +809,7 @@ export const Header = ({
             height: 36,
             alignItems: 'center',
             justifyContent: 'center',
-            color: 'var(--color-text-light)',
+            color: 'var(--color-primary)',
             borderRadius: 8,
             border: 'none',
             background: 'none',
