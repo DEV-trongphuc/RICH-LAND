@@ -322,7 +322,9 @@ class DepositController {
             $stmt->execute(['deposits/' . $id . '/' . $safeName, $milestoneId, $id]);
 
             logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'UPLOAD_DEPOSIT_UNC', 'deposit_milestone', $milestoneId, "Tải lên UNC cho đợt thanh toán ID: $milestoneId");
-            respond(200, null, 'Đã tải lên ủy nhiệm chi thành công, vui lòng chờ Admin duyệt');
+            respond(200, [
+                'unc_file_path' => 'deposits/' . $id . '/' . $safeName
+            ], 'Đã tải lên ủy nhiệm chi thành công, vui lòng chờ Admin duyệt');
         } else {
             respond(500, null, 'Không thể lưu file trên máy chủ', false);
         }

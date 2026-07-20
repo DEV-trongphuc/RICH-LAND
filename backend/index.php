@@ -916,9 +916,9 @@ switch ($resource) {
     case 'deposits':
         $auth = requireAuth();
         $ctrl = new DepositController($db);
-        if ($resourceId && $subResource === 'milestones' && $segments[3] && ($segments[4] ?? '') === 'approve' && $method === 'POST') $ctrl->approveMilestone($auth, (int)$resourceId, (int)$segments[3]);
-        elseif ($resourceId && $subResource === 'milestones' && $segments[3] && ($segments[4] ?? '') === 'reject' && $method === 'POST') $ctrl->rejectMilestone($auth, (int)$resourceId, (int)$segments[3]);
-        elseif ($resourceId && $subResource === 'milestones' && $segments[3] && $method === 'POST') {
+        if ($resourceId && $subResource === 'milestones' && ($segments[3] ?? '') !== '' && ($segments[4] ?? '') === 'approve' && $method === 'POST') $ctrl->approveMilestone($auth, (int)$resourceId, (int)$segments[3]);
+        elseif ($resourceId && $subResource === 'milestones' && ($segments[3] ?? '') !== '' && ($segments[4] ?? '') === 'reject' && $method === 'POST') $ctrl->rejectMilestone($auth, (int)$resourceId, (int)$segments[3]);
+        elseif ($resourceId && $subResource === 'milestones' && ($segments[3] ?? '') !== '' && $method === 'POST') {
             // Upload UNC standard POST
             $ctrl->uploadUnc($auth, (int)$resourceId, (int)$segments[3]);
         }

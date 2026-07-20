@@ -107,20 +107,8 @@ export const CurrencyInput: React.FC<CurrencyInputProps> = ({
           className={className}
           disabled={disabled}
           required={required}
-          style={{ paddingRight: '45px', width: '100%', fontWeight: 600, ...style }}
+          style={{ width: '100%', fontWeight: 600, ...style }}
         />
-        <span
-          style={{
-            position: 'absolute',
-            right: 12,
-            fontSize: '0.75rem',
-            fontWeight: 700,
-            color: 'var(--color-text-muted, #8e8e93)',
-            pointerEvents: 'none'
-          }}
-        >
-          VND
-        </span>
       </div>
       {showTextHelper && rawNumericValue > 0 && (
         <span

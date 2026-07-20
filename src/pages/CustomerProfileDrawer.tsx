@@ -3654,35 +3654,36 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
   };
 
   const handleUploadUncFromModal = async (e: React.ChangeEvent<HTMLInputElement>, index: number) => {
-    const m = tempMilestones[index];
-    if (!m.id) {
-      addToast('Vui lòng nhấn "Lưu lịch trình" trước khi tải UNC cho đợt thanh toán mới này.', 'error');
-      return;
-    }
     if (!e.target.files || e.target.files.length === 0) return;
     const file = e.target.files[0];
 
     try {
       const formData = new FormData();
-      formData.append('unc', file);
+      formData.append('file', file);
       
-      const res = await api.post(`/deposits/${selectedDepForManage.id}/milestones/${m.id}/unc`, formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
+      const token = localStorage.getItem('access_token') || localStorage.getItem('richland_token') || '';
+      const response = await fetch(`${import.meta.env.VITE_API_URL || '/backend'}/api.php?action=upload&token=${token}`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'X-Auth-Token': token
+        },
+        body: formData
       });
-      if (res.data?.success || res.data) {
-        addToast('Tải ảnh chuyển khoản (UNC) thành công!', 'success');
+      const res = await response.json();
+      
+      if (res.success && res.data?.url) {
+        addToast('Tải ảnh UNC thành công! Hãy nhấn "Lưu lịch trình" để hoàn tất lưu.', 'success');
         
         const updated = [...tempMilestones];
-        updated[index].unc_file_path = res.data.data?.unc_file_path || res.data.unc_file_path;
+        updated[index].unc_file_path = res.data.url;
         updated[index].status = 'paid';
         setTempMilestones(updated);
-        
-        fetchData();
       } else {
-        addToast(res.data?.message || 'Lỗi khi tải ảnh UNC', 'error');
+        addToast(res.message || 'Lỗi khi tải ảnh UNC', 'error');
       }
     } catch (err: any) {
-      addToast(err?.response?.data?.message || err.message || 'Lỗi kết nối', 'error');
+      addToast(err.message || 'Lỗi kết nối', 'error');
     }
   };
 
@@ -12265,7 +12266,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                           {/* View UNC link */}
                           {m.unc_file_path && (
                             <a
-                              href={`${import.meta.env.VITE_API_URL || '/backend'}/uploads/${m.unc_file_path}`}
+                              href={m.unc_file_path.startsWith('uploads/') ? `${import.meta.env.VITE_API_URL || '/backend'}/${m.unc_file_path}` : `${import.meta.env.VITE_API_URL || '/backend'}/uploads/${m.unc_file_path}`}
                               target="_blank"
                               rel="noreferrer"
                               className="btn sm"

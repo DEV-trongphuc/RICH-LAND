@@ -532,11 +532,6 @@ export default function DepositsPage() {
   };
 
   const handleUploadUncFromModal = async (e: React.ChangeEvent<HTMLInputElement>, index: number) => {
-    const m = tempMilestones[index];
-    if (!m.id) {
-      addToast('Vui lòng nhấn "Lưu lịch trình" trước khi tải UNC cho đợt thanh toán mới này.', 'error');
-      return;
-    }
     if (!e.target.files || e.target.files.length === 0) return;
     const file = e.target.files[0];
 
@@ -545,7 +540,7 @@ export default function DepositsPage() {
       const formData = new FormData();
       formData.append('file', compressedFile);
       const token = localStorage.getItem('access_token') || localStorage.getItem('richland_token') || '';
-      const url = `${import.meta.env.VITE_API_URL || '/backend'}/api.php?action=deposits/${selectedDepForManage?.id}/milestones/${m.id}/unc&token=${token}`;
+      const url = `${import.meta.env.VITE_API_URL || '/backend'}/api.php?action=upload&token=${token}`;
 
       const response = await fetch(url, {
         method: 'POST',
@@ -557,12 +552,11 @@ export default function DepositsPage() {
       });
 
       const res = await response.json();
-      if (res.success) {
-        addToast('Tải ảnh UNC thành công, vui lòng chờ Admin duyệt', 'success');
+      if (res.success && res.data?.url) {
+        addToast('Tải ảnh UNC thành công! Hãy nhấn "Lưu lịch trình" để hoàn tất lưu.', 'success');
         const updated = [...tempMilestones];
-        updated[index] = { ...updated[index], status: 'paid', unc_file_path: res.data?.unc_file_path || 'temp_path' };
+        updated[index] = { ...updated[index], status: 'paid', unc_file_path: res.data.url };
         setTempMilestones(updated);
-        loadData();
       } else {
         addToast(res.message || 'Lỗi tải UNC', 'error');
       }
@@ -1763,7 +1757,7 @@ export default function DepositsPage() {
                           {/* View UNC link */}
                           {m.unc_file_path && (
                             <a
-                              href={`${import.meta.env.VITE_API_URL || '/backend'}/uploads/${m.unc_file_path}`}
+                              href={m.unc_file_path.startsWith('uploads/') ? `${import.meta.env.VITE_API_URL || '/backend'}/${m.unc_file_path}` : `${import.meta.env.VITE_API_URL || '/backend'}/uploads/${m.unc_file_path}`}
                               target="_blank"
                               rel="noreferrer"
                               className="btn sm"
