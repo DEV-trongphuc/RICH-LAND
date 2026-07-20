@@ -161,6 +161,7 @@ const ConsultantsInner = () => {
 
   const [teams, setTeams] = useState<any[]>([]);
   const [teamsLoading, setTeamsLoading] = useState(true);
+  const [branchSearchQuery, setBranchSearchQuery] = useState('');
   const [teamModalOpen, setTeamModalOpen] = useState(false);
   const [editingTeam, setEditingTeam] = useState<any>(null);
   const [teamFormData, setTeamFormData] = useState({
@@ -1983,26 +1984,43 @@ const ConsultantsInner = () => {
 
             return (
               <>
-                {/* Branch Config/Setting Info Banner */}
-                <div style={{
-                  padding: '12px 16px',
-                  background: theme === 'dark' ? 'rgba(189, 29, 45, 0.05)' : 'rgba(189, 29, 45, 0.02)',
-                  border: '1px dashed rgba(189, 29, 45, 0.25)',
-                  borderRadius: '16px',
-                  fontSize: '0.8rem',
-                  color: 'var(--color-text-muted)',
-                  lineHeight: '1.5',
-                  display: 'flex',
-                  alignItems: 'flex-start',
-                  gap: '10px'
-                }}>
-                  <span style={{ fontSize: '1.25rem', lineHeight: 1 }}>💡</span>
-                  <div>
-                    <strong style={{ color: 'var(--color-primary)' }}>{t('Cơ chế tự động phân loại:')}</strong> {t('Chi nhánh được liên kết tự động dựa trên Tỉnh/Thành phố được định cấu hình trong trường')} <strong>{t('Địa chỉ chi nhánh')}</strong> {t('của từng Nhóm.')}
-                    {isWriteAuthorized ? (
-                      <span> {t('Để điều chỉnh chi nhánh hoặc cập nhật Trưởng nhóm, bạn chỉ cần')} <strong>{t('nhấp vào thẻ Nhóm bên dưới')}</strong> {t('để mở form cấu hình.')}</span>
-                    ) : (
-                      <span> {t('Bạn cần liên hệ Quản trị viên/Giám đốc để cập nhật thông tin này.')}</span>
+                {/* Branch Search Input */}
+                <div style={{ display: 'flex', gap: '8px', width: '100%', maxWidth: '480px', alignItems: 'center', marginBottom: '0.75rem' }}>
+                  <div style={{ position: 'relative', flex: 1, minWidth: 0 }}>
+                    <input
+                      type="text"
+                      placeholder={t('Tìm kiếm chi nhánh, nhóm...')}
+                      value={branchSearchQuery}
+                      onChange={e => setBranchSearchQuery(e.target.value)}
+                      className="form-input"
+                      style={{
+                        paddingLeft: '12px',
+                        borderRadius: '10px',
+                        fontSize: '0.875rem',
+                        width: '100%',
+                        height: '38px'
+                      }}
+                    />
+                    {branchSearchQuery && (
+                      <button
+                        onClick={() => setBranchSearchQuery('')}
+                        style={{
+                          position: 'absolute',
+                          right: '12px',
+                          top: '50%',
+                          transform: 'translateY(-50%)',
+                          background: 'none',
+                          border: 'none',
+                          color: 'var(--color-text-muted)',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          padding: 0
+                        }}
+                      >
+                        <X size={16} />
+                      </button>
                     )}
                   </div>
                 </div>
@@ -2146,7 +2164,7 @@ const ConsultantsInner = () => {
                       {/* Teams Grid */}
                       <div style={{ 
                         display: 'grid', 
-                        gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', 
+                        gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)', 
                         gap: '1.25rem' 
                       }}>
                         {bTeams.map(team => {
@@ -3879,7 +3897,8 @@ const ConsultantsInner = () => {
                 </h5>
                 <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', margin: 0, lineHeight: 1.4 }}>
                   • <strong>Chi nhánh (Branch)</strong>: Phân chia văn phòng làm việc vật lý (vd: Chi nhánh miền Nam, miền Bắc).<br />
-                  • <strong>Nhóm (Team)</strong>: Các tổ chức bán hàng độc lập có Trưởng nhóm (Leader) phụ trách. Mỗi nhóm có thể cài đặt <strong>Dự án trọng điểm</strong> để phối hợp nhận lead tự động từ hệ thống khi có rule định tuyến khớp dự án đó.
+                  • <strong>Nhóm (Team)</strong>: Các tổ chức bán hàng độc lập có Trưởng nhóm (Leader) phụ trách. Mỗi nhóm có thể cài đặt <strong>Dự án trọng điểm</strong> để phối hợp nhận lead tự động từ hệ thống khi có rule định tuyến khớp dự án đó.<br />
+                  • <strong>Cơ chế tự động phân loại chi nhánh</strong>: Chi nhánh được liên kết tự động dựa trên Tỉnh/Thành phố được định cấu hình trong trường <strong>Địa chỉ chi nhánh</strong> của từng Nhóm. Để điều chỉnh chi nhánh hoặc cập nhật Trưởng nhóm, quản trị viên chỉ cần nhấp trực tiếp vào thẻ Nhóm tương ứng ở tab Nhóm (Team) hoặc tab Chi nhánh để mở form cấu hình.
                 </p>
               </div>
             </div>
