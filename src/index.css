@@ -4811,3 +4811,24 @@ div[role="status"] {
   flex: 0 0 38px !important;
 }
 
+/* Premium KPI Card Hover Styles Synced with Dashboard */
+.stat-card {
+  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.25s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+.stat-card.total-card:hover {
+  box-shadow: 0 6px 16px rgba(163, 20, 34, 0.15) !important;
+  border-color: #a31422 !important;
+}
+.stat-card.distributed-card:hover {
+  box-shadow: 0 6px 16px rgba(59, 130, 246, 0.15) !important;
+  border-color: #3b82f6 !important;
+}
+.stat-card.fair_share_equity-card:hover {
+  box-shadow: 0 6px 16px rgba(16, 185, 129, 0.15) !important;
+  border-color: #10b981 !important;
+}
+.stat-card.out_of_hours-card:hover {
+  box-shadow: 0 6px 16px rgba(245, 158, 11, 0.15) !important;
+  border-color: #f59e0b !important;
+}
+
