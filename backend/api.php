@@ -381,6 +381,7 @@ function parse_zalo_direct_logs($logFile) {
             ];
         }
     }
+    return $logs;
 }
 
 function parse_telegram_direct_logs($logFile) {

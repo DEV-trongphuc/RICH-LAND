@@ -388,16 +388,23 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
   const getAvatarAndNameByTarget = (target: string) => {
     if (!target || target === '-') return { avatar: undefined, name: t('Hệ thống') };
     const cleanTarget = target.trim().toLowerCase();
-    const cons = consultants.find(c => 
-      (c.email && c.email.trim().toLowerCase() === cleanTarget) || 
-      (c.zalo_chat_id && c.zalo_chat_id.trim().toLowerCase() === cleanTarget)
-    );
+    
+    const cons = consultants.find(c => {
+      const emailMatch = c.email && c.email.trim().toLowerCase() === cleanTarget;
+      const zaloMatch = c.zalo_chat_id && c.zalo_chat_id.toString().trim().toLowerCase() === cleanTarget;
+      const teleMatch = c.telegram_chat_id && c.telegram_chat_id.toString().trim().toLowerCase() === cleanTarget;
+      return emailMatch || zaloMatch || teleMatch;
+    });
     if (cons) return { avatar: cons.avatar, name: cons.name };
-    const acc = accounts.find(a => 
-      (a.email && a.email.trim().toLowerCase() === cleanTarget) ||
-      (a.zalo_chat_id && a.zalo_chat_id.trim().toLowerCase() === cleanTarget)
-    );
+    
+    const acc = accounts.find(a => {
+      const emailMatch = a.email && a.email.trim().toLowerCase() === cleanTarget;
+      const zaloMatch = a.zalo_chat_id && a.zalo_chat_id.toString().trim().toLowerCase() === cleanTarget;
+      const teleMatch = a.telegram_chat_id && a.telegram_chat_id.toString().trim().toLowerCase() === cleanTarget;
+      return emailMatch || zaloMatch || teleMatch;
+    });
     if (acc) return { avatar: acc.avatar, name: acc.name || acc.username };
+    
     return { avatar: undefined, name: target };
   };
 
