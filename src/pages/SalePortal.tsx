@@ -6983,6 +6983,12 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                 <div style={{ height: 260 }}>
                   <ResponsiveContainer width="100%" height="100%">
                     <ComposedChart data={activeChartData} margin={{ left: -20, right: 5, top: 10 }}>
+                      <defs>
+                        <linearGradient id="chartBarGrad" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor="var(--color-primary)" stopOpacity={1} />
+                          <stop offset="100%" stopColor="var(--color-primary)" stopOpacity={0.25} />
+                        </linearGradient>
+                      </defs>
                       <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border-light)" vertical={false} />
                       <XAxis dataKey={flowViewMode === 'day' ? 'date' : 'time'} tick={{ fontSize: 10, fill: 'var(--color-text-muted)' }} axisLine={false} tickLine={false} />
                       <YAxis tick={{ fontSize: 10, fill: 'var(--color-text-muted)' }} axisLine={false} tickLine={false} width={35} />
@@ -7029,7 +7035,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                       borderRadius: 'var(--radius-lg)', cursor: 'pointer', transition: 'background 0.2s',
                       borderBottom: '1px solid var(--color-border-light)'
                     }}
-                      onMouseEnter={e => (e.currentTarget.style.background = 'var(--color-bg)')}
+                      onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255, 255, 255, 0.04)')}
                       onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
                       onClick={() => {
                         if (lead.contact_id) {
