@@ -12654,25 +12654,26 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                     style={{
                       display: 'flex',
                       alignItems: 'center',
-                      gap: '6px',
-                      padding: '6px 12px',
+                      gap: '5px',
+                      padding: '4px 10px',
                       borderRadius: '20px',
-                      fontSize: '0.75rem',
+                      fontSize: '0.7rem',
                       fontWeight: 600,
                       cursor: todayCheckIn.status === 'rejected' ? 'pointer' : 'default',
                       border: '1px solid',
                       backgroundColor: 
-                        todayCheckIn.status === 'approved' ? 'rgba(16, 185, 129, 0.1)' :
-                        todayCheckIn.status === 'pending_approval' ? 'rgba(245, 158, 11, 0.1)' :
-                        'rgba(239, 68, 68, 0.1)',
+                        todayCheckIn.status === 'approved' ? 'rgba(255, 255, 255, 0.12)' :
+                        todayCheckIn.status === 'pending_approval' ? 'rgba(245, 158, 11, 0.18)' :
+                        'rgba(239, 68, 68, 0.18)',
                       color: 
-                        todayCheckIn.status === 'approved' ? 'var(--color-success)' :
-                        todayCheckIn.status === 'pending_approval' ? 'var(--color-warning)' :
-                        'var(--color-danger)',
+                        todayCheckIn.status === 'approved' ? '#ffffff' :
+                        todayCheckIn.status === 'pending_approval' ? '#ffe066' :
+                        '#ff8888',
                       borderColor: 
-                        todayCheckIn.status === 'approved' ? 'rgba(16, 185, 129, 0.2)' :
-                        todayCheckIn.status === 'pending_approval' ? 'rgba(245, 158, 11, 0.2)' :
-                        'rgba(239, 68, 68, 0.2)',
+                        todayCheckIn.status === 'approved' ? 'rgba(255, 255, 255, 0.25)' :
+                        todayCheckIn.status === 'pending_approval' ? 'rgba(245, 158, 11, 0.35)' :
+                        'rgba(239, 68, 68, 0.35)',
+                      backdropFilter: 'blur(8px)',
                     }}
                     onClick={() => {
                       if (todayCheckIn.status === 'rejected') {
@@ -12690,7 +12691,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                       height: '6px',
                       borderRadius: '50%',
                       backgroundColor: 
-                        todayCheckIn.status === 'approved' ? 'var(--color-success)' :
+                        todayCheckIn.status === 'approved' ? '#34c759' :
                         todayCheckIn.status === 'pending_approval' ? 'var(--color-warning)' :
                         'var(--color-danger)',
                     }} />
