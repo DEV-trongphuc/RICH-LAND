@@ -28,6 +28,48 @@ if (defined('PHP_BINARY') && !empty(PHP_BINARY)) {
     $phpBin = PHP_BINARY;
 }
 
+// Nếu phiên bản PHP hiện tại của CLI quá cũ (nhỏ hơn 7.0), tìm kiếm các PHP CLI hiện đại hơn
+if (version_compare(PHP_VERSION, '7.0.0', '<')) {
+    $candidates = [
+        '/usr/local/bin/ea-php82',
+        '/usr/local/bin/ea-php81',
+        '/usr/local/bin/ea-php80',
+        '/usr/local/bin/ea-php74',
+        '/usr/local/bin/ea-php73',
+        '/usr/local/bin/ea-php72',
+        '/usr/local/bin/php82',
+        '/usr/local/bin/php81',
+        '/usr/local/bin/php80',
+        '/usr/local/bin/php74',
+        '/usr/bin/php82',
+        '/usr/bin/php81',
+        '/usr/bin/php80',
+        '/usr/bin/php74',
+        '/opt/alt/php82/usr/bin/php',
+        '/opt/alt/php81/usr/bin/php',
+        '/opt/alt/php80/usr/bin/php',
+        '/opt/alt/php74/usr/bin/php',
+        'php74',
+        'php80',
+        'php81',
+        'php82'
+    ];
+    foreach ($candidates as $cand) {
+        $output = [];
+        $returnVar = 0;
+        @exec('"' . $cand . '" -v 2>&1', $output, $returnVar);
+        if ($returnVar === 0 && !empty($output)) {
+            if (preg_match('/PHP\s+([5-9]\.[0-9]+\.[0-9]+)/i', $output[0], $matches)) {
+                $ver = $matches[1];
+                if (version_compare($ver, '7.0.0', '>=')) {
+                    $phpBin = $cand;
+                    break;
+                }
+            }
+        }
+    }
+}
+
 // Danh sách các tiến trình con chạy tuần tự
 // cron_sync.php sẽ xử lý đồng bộ Google Sheets, chia số, báo cáo Ngày/Tuần/Tháng, và gọi AI/Sync Queue
 // cron_mailer.php sẽ gửi email và tin nhắn Zalo bất đồng bộ từ hàng đợi gửi tin
