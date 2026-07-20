@@ -88,7 +88,7 @@ class CheckInController {
                 $month = (int)$_GET['month'];
 
                 // 1. Night shifts
-                $nightSql = "SELECT 'night' as shift_type, r.id, r.user_id, r.shift_date, r.approved, r.created_at, u.full_name as user_name, '' as holiday_name 
+                $nightSql = "SELECT 'night' as shift_type, r.id, r.user_id, r.shift_date, r.approved, r.created_at, u.full_name as user_name, '' as holiday_name, u.avatar_url as user_avatar, u.email as user_email 
                              FROM night_shift_registrations r 
                              JOIN users u ON r.user_id = u.id 
                              WHERE YEAR(r.shift_date) = ? AND MONTH(r.shift_date) = ?";
@@ -102,7 +102,7 @@ class CheckInController {
                 $shifts = array_merge($shifts, $stmtNight->fetchAll(PDO::FETCH_ASSOC) ?: []);
 
                 // 2. Weekend shifts
-                $weekendSql = "SELECT 'weekend' as shift_type, r.id, r.user_id, r.shift_date, r.approved, r.created_at, u.full_name as user_name, '' as holiday_name 
+                $weekendSql = "SELECT 'weekend' as shift_type, r.id, r.user_id, r.shift_date, r.approved, r.created_at, u.full_name as user_name, '' as holiday_name, u.avatar_url as user_avatar, u.email as user_email 
                                FROM weekend_shift_registrations r 
                                JOIN users u ON r.user_id = u.id 
                                WHERE YEAR(r.shift_date) = ? AND MONTH(r.shift_date) = ?";
@@ -116,7 +116,7 @@ class CheckInController {
                 $shifts = array_merge($shifts, $stmtWeekend->fetchAll(PDO::FETCH_ASSOC) ?: []);
 
                 // 3. Holiday shifts
-                $holidaySql = "SELECT 'holiday' as shift_type, r.id, r.user_id, r.shift_date, r.approved, r.created_at, u.full_name as user_name, r.holiday_name 
+                $holidaySql = "SELECT 'holiday' as shift_type, r.id, r.user_id, r.shift_date, r.approved, r.created_at, u.full_name as user_name, r.holiday_name, u.avatar_url as user_avatar, u.email as user_email 
                                FROM holiday_shift_registrations r 
                                JOIN users u ON r.user_id = u.id 
                                WHERE YEAR(r.shift_date) = ? AND MONTH(r.shift_date) = ?";
@@ -134,7 +134,7 @@ class CheckInController {
                 $to = $_GET['to'];
 
                 // 1. Night shifts
-                $nightSql = "SELECT 'night' as shift_type, r.id, r.user_id, r.shift_date, r.approved, r.created_at, u.full_name as user_name, '' as holiday_name 
+                $nightSql = "SELECT 'night' as shift_type, r.id, r.user_id, r.shift_date, r.approved, r.created_at, u.full_name as user_name, '' as holiday_name, u.avatar_url as user_avatar, u.email as user_email 
                              FROM night_shift_registrations r 
                              JOIN users u ON r.user_id = u.id 
                              WHERE r.shift_date BETWEEN ? AND ?";
@@ -148,7 +148,7 @@ class CheckInController {
                 $shifts = array_merge($shifts, $stmtNight->fetchAll(PDO::FETCH_ASSOC) ?: []);
 
                 // 2. Weekend shifts
-                $weekendSql = "SELECT 'weekend' as shift_type, r.id, r.user_id, r.shift_date, r.approved, r.created_at, u.full_name as user_name, '' as holiday_name 
+                $weekendSql = "SELECT 'weekend' as shift_type, r.id, r.user_id, r.shift_date, r.approved, r.created_at, u.full_name as user_name, '' as holiday_name, u.avatar_url as user_avatar, u.email as user_email 
                                FROM weekend_shift_registrations r 
                                JOIN users u ON r.user_id = u.id 
                                WHERE r.shift_date BETWEEN ? AND ?";
@@ -162,7 +162,7 @@ class CheckInController {
                 $shifts = array_merge($shifts, $stmtWeekend->fetchAll(PDO::FETCH_ASSOC) ?: []);
 
                 // 3. Holiday shifts
-                $holidaySql = "SELECT 'holiday' as shift_type, r.id, r.user_id, r.shift_date, r.approved, r.created_at, u.full_name as user_name, r.holiday_name 
+                $holidaySql = "SELECT 'holiday' as shift_type, r.id, r.user_id, r.shift_date, r.approved, r.created_at, u.full_name as user_name, r.holiday_name, u.avatar_url as user_avatar, u.email as user_email 
                                FROM holiday_shift_registrations r 
                                JOIN users u ON r.user_id = u.id 
                                WHERE r.shift_date BETWEEN ? AND ?";

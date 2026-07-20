@@ -15,6 +15,15 @@ import { PeriodFilter, getDateRange } from '../components/ui/PeriodFilter';
 import { useUIStore } from '../store/uiStore';
 import type { Period, DateRange } from '../components/ui/PeriodFilter';
 
+const resolveAttachmentUrl = (path: string | null | undefined): string => {
+  if (!path) return '';
+  if (path.startsWith('http')) return path;
+  const baseUrl = import.meta.env.VITE_API_URL || '';
+  const baseClean = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
+  const pathClean = path.startsWith('/') ? path : '/' + path;
+  return `${baseClean}${pathClean}`;
+};
+
 export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean }) => {
   const { t } = useLanguage();
   const { user } = useAuth();
@@ -126,7 +135,7 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
   const [suppSubmitting, setSuppSubmitting] = useState(false);
 
   // Preview Image Modal state
-  const [previewImage, setPreviewImage] = useState<string | null>(null);
+  const [previewCheckIn, setPreviewCheckIn] = useState<any | null>(null);
 
   // Confirm delete states
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
@@ -671,7 +680,7 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
                                   title={`${c.user_name} (${c.check_in_time})`}
                                 >
                                   <Avatar 
-                                    src={c.user_avatar} 
+                                    src={resolveAttachmentUrl(c.user_avatar)} 
                                     name={c.user_name} 
                                     size={24} 
                                     style={{ border: '2px solid var(--color-surface)', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}
@@ -1520,7 +1529,7 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
                         <tr key={row.id} style={{ borderBottom: '1px solid var(--color-border)', fontSize: '0.8125rem' }} className="group table-row-hover">
                           <td style={{ padding: '12px 16px' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                              <Avatar src={row.user_avatar} name={row.user_name} size={32} />
+                              <Avatar src={resolveAttachmentUrl(row.user_avatar)} name={row.user_name} size={32} />
                               <div style={{ display: 'flex', flexDirection: 'column' }}>
                                 <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>{row.user_name}</span>
                                 <span style={{ fontSize: '0.7rem', color: 'var(--color-text-light)' }}>{row.user_email}</span>
@@ -1543,7 +1552,7 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
                           <td style={{ padding: '12px 16px', textAlign: 'center' }}>
                             {row.selfie_url ? (
                               <a
-                                onClick={() => setPreviewImage(row.selfie_url)}
+                                onClick={() => setPreviewCheckIn(row)}
                                 style={{
                                   display: 'inline-flex',
                                   alignItems: 'center',
@@ -1753,26 +1762,32 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
       )}
 
       {/* Selfie Lightbox Preview Modal */}
-      {previewImage && (
+      {previewCheckIn && (
         <CustomModal
-          isOpen={!!previewImage}
-          onClose={() => setPreviewImage(null)}
+          isOpen={!!previewCheckIn}
+          onClose={() => setPreviewCheckIn(null)}
           title={t('Ảnh selfie check-in')}
           width="480px"
         >
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>
             <img
-              src={previewImage}
+              src={resolveAttachmentUrl(previewCheckIn.selfie_url)}
               style={{ width: '100%', maxHeight: '450px', borderRadius: '8px', objectFit: 'contain', backgroundColor: '#000' }}
               alt="Selfie phóng to"
             />
-            <button
-              onClick={() => setPreviewImage(null)}
-              className="btn secondary sm"
-              style={{ alignSelf: 'flex-end' }}
-            >
-              {t('Đóng')}
-            </button>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', borderTop: '1px solid var(--color-border-light)', paddingTop: '12px', marginTop: '4px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Avatar src={resolveAttachmentUrl(previewCheckIn.user_avatar)} name={previewCheckIn.user_name} size={32} />
+                <span style={{ fontWeight: 650, fontSize: '0.875rem', color: 'var(--color-text)' }}>{previewCheckIn.user_name}</span>
+              </div>
+              <div style={{ fontSize: '0.8125rem', color: 'var(--color-text-light)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <Clock size={14} style={{ color: 'var(--color-primary)' }} />
+                <strong>
+                  {previewCheckIn.check_in_time}
+                  {previewCheckIn.check_in_date && ` - ${previewCheckIn.check_in_date.split('-').reverse().join('/')}`}
+                </strong>
+              </div>
+            </div>
           </div>
         </CustomModal>
       )}
@@ -1787,14 +1802,20 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
           title={`${t('Chi tiết chấm công ngày')} ${selectedDateForDetail}`}
           width="800px"
         >
-          <div style={{ display: 'flex', flexDirection: 'column', minHeight: '400px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', minHeight: isMobile ? '520px' : '450px' }}>
             {/* Sub-tab headers */}
-            <div style={{ display: 'flex', borderBottom: '1px solid var(--color-border-light)', marginBottom: '1.25rem', gap: '1.5rem' }}>
+            <div style={{ 
+              display: 'flex', 
+              borderBottom: '1px solid var(--color-border-light)', 
+              marginBottom: '1.25rem', 
+              gap: isMobile ? '0.25rem' : '1.5rem',
+              justifyContent: isMobile ? 'space-between' : 'flex-start'
+            }}>
               <button
                 onClick={() => setModalTab('checkin')}
                 style={{
-                  padding: '8px 4px 12px 4px',
-                  fontSize: '0.875rem',
+                  padding: isMobile ? '8px 2px 10px 2px' : '8px 4px 12px 4px',
+                  fontSize: isMobile ? '0.72rem' : '0.875rem',
                   fontWeight: 700,
                   color: modalTab === 'checkin' ? 'var(--color-primary)' : 'var(--color-text-light)',
                   border: 'none',
@@ -1804,14 +1825,14 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
                   transition: 'all 0.2s',
                   display: 'flex',
                   alignItems: 'center',
-                  gap: '6px'
+                  gap: isMobile ? '3px' : '6px'
                 }}
               >
-                <Clock size={16} />
-                {t('Nhật ký Check-in')}
+                <Clock size={isMobile ? 13 : 16} />
+                {t('Nhật ký')}
                 <span style={{
-                  fontSize: '0.7rem',
-                  padding: '2px 6px',
+                  fontSize: '0.625rem',
+                  padding: isMobile ? '1px 4px' : '2px 6px',
                   borderRadius: '10px',
                   background: modalTab === 'checkin' ? 'var(--color-primary-light)' : 'var(--color-bg)',
                   color: modalTab === 'checkin' ? 'var(--color-primary)' : 'var(--color-text-muted)',
@@ -1824,8 +1845,8 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
               <button
                 onClick={() => setModalTab('fingerprint')}
                 style={{
-                  padding: '8px 4px 12px 4px',
-                  fontSize: '0.875rem',
+                  padding: isMobile ? '8px 2px 10px 2px' : '8px 4px 12px 4px',
+                  fontSize: isMobile ? '0.72rem' : '0.875rem',
                   fontWeight: 700,
                   color: modalTab === 'fingerprint' ? 'var(--color-primary)' : 'var(--color-text-light)',
                   border: 'none',
@@ -1835,18 +1856,18 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
                   transition: 'all 0.2s',
                   display: 'flex',
                   alignItems: 'center',
-                  gap: '6px'
+                  gap: isMobile ? '3px' : '6px'
                 }}
               >
-                <FileText size={16} />
-                {isSales ? t('Yêu cầu') : t('File Chấm Công & Đồng bộ')}
+                <FileText size={isMobile ? 13 : 16} />
+                {isSales ? t('Yêu cầu') : t('Bảng công')}
               </button>
 
               <button
                 onClick={() => setModalTab('night_duty')}
                 style={{
-                  padding: '8px 4px 12px 4px',
-                  fontSize: '0.875rem',
+                  padding: isMobile ? '8px 2px 10px 2px' : '8px 4px 12px 4px',
+                  fontSize: isMobile ? '0.72rem' : '0.875rem',
                   fontWeight: 700,
                   color: modalTab === 'night_duty' ? 'var(--color-primary)' : 'var(--color-text-light)',
                   border: 'none',
@@ -1856,14 +1877,14 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
                   transition: 'all 0.2s',
                   display: 'flex',
                   alignItems: 'center',
-                  gap: '6px'
+                  gap: isMobile ? '3px' : '6px'
                 }}
               >
-                <Moon size={16} />
-                {t('Log trực đêm')}
+                <Moon size={isMobile ? 13 : 16} />
+                {t('Trực đêm')}
                 <span style={{
-                  fontSize: '0.7rem',
-                  padding: '2px 6px',
+                  fontSize: '0.625rem',
+                  padding: isMobile ? '1px 4px' : '2px 6px',
                   borderRadius: '10px',
                   background: modalTab === 'night_duty' ? 'var(--color-primary-light)' : 'var(--color-bg)',
                   color: modalTab === 'night_duty' ? 'var(--color-primary)' : 'var(--color-text-muted)',
@@ -1900,7 +1921,7 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
                           }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                <Avatar src={row.user_avatar} name={row.user_name} size={28} />
+                                <Avatar src={resolveAttachmentUrl(row.user_avatar)} name={row.user_name} size={28} />
                                 <div style={{ display: 'flex', flexDirection: 'column' }}>
                                   <span style={{ fontWeight: 600, fontSize: '0.8125rem', color: 'var(--color-text)' }}>{row.user_name}</span>
                                   <span style={{ fontSize: '0.6875rem', color: 'var(--color-text-light)' }}>{row.user_email}</span>
@@ -1934,7 +1955,7 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
                               </div>
                               {row.selfie_url && (
                                 <a
-                                  onClick={() => setPreviewImage(row.selfie_url)}
+                                  onClick={() => setPreviewCheckIn(row)}
                                   style={{
                                     display: 'inline-flex',
                                     alignItems: 'center',
@@ -2237,10 +2258,15 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
                           gap: '8px'
                         }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <Avatar src={row.user_avatar} name={row.user_name} size={28} />
-                            <div style={{ display: 'flex', flexDirection: 'column' }}>
+                            <Avatar src={resolveAttachmentUrl(row.user_avatar)} name={row.user_name} size={28} />
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
                               <span style={{ fontWeight: 600, fontSize: '0.8125rem', color: 'var(--color-text)' }}>{row.user_name}</span>
-                              <span style={{ fontSize: '0.6875rem', color: 'var(--color-text-light)' }}>{row.user_email || '—'}</span>
+                              <span style={{ fontSize: '0.6875rem', color: 'var(--color-text-light)', display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                                <span>{row.user_email || '—'}</span>
+                                <span style={{ fontSize: '0.65rem', color: 'var(--color-primary)', fontWeight: 650 }}>
+                                  🌙 {t('Giờ trực:')} {sysSettings?.night_shift_start_time || '18:00'} - {sysSettings?.night_shift_end_time || '06:00'}
+                                </span>
+                              </span>
                             </div>
                           </div>
                           <span style={{
