@@ -2401,7 +2401,9 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
           last_name: d.last_name,
           phone: d.phone,
           avatar_url: d.avatar_url,
-          created_at: d.created_at
+          created_at: d.created_at,
+          created_by: d.created_by,
+          contact_owner_id: d.contact_owner_id
         }));
         setDeals(depositsList);
 
@@ -8024,7 +8026,17 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                 key={d.id} 
                                 className="card-panel table-row-hover" 
                                 style={{ padding: 0, overflow: 'hidden', border: `1px solid var(--color-border)`, transition: 'transform 0.2s, box-shadow 0.2s', borderRadius: '16px', cursor: 'pointer' }}
-                                onClick={() => handleOpenManageMilestones(d)}
+                                onClick={() => {
+                                  const isCreator = String(d.created_by) === String(currentUser?.id);
+                                  const isOwner = String(d.contact_owner_id) === String(currentUser?.id);
+                                  const isStaff = currentUser && ['admin', 'superadmin', 'super_admin', 'assistant', 'manager', 'director'].includes(currentUser.role);
+                                  
+                                  if (isStaff || isCreator || isOwner) {
+                                    handleOpenManageMilestones(d);
+                                  } else {
+                                    addToast('Chỉ chủ sở hữu hoặc người tạo phiếu cọc mới có quyền cập nhật lịch trình.', 'error');
+                                  }
+                                }}
                               >
                                 <div style={{ padding: '1.25rem 1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', background: 'var(--color-surface)' }}>
                                   <div>
@@ -8069,17 +8081,26 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                   </div>
                                 )}
 
-                                {d.stage_id !== 'cancelled' && (
-                                  <div style={{ padding: '0.75rem 1.5rem', display: 'flex', justifyContent: 'flex-end', background: 'var(--color-surface)', borderTop: '1px solid var(--color-border-light)' }}>
-                                    <button 
-                                      className="btn outline danger sm"
-                                      onClick={(e) => { e.stopPropagation(); handleCancelDeposit(d.id); }}
-                                      style={{ display: 'flex', alignItems: 'center', gap: '4px', height: '28px', fontSize: '0.75rem', padding: '0 10px', cursor: 'pointer' }}
-                                    >
-                                      <Ban size={12} /> Hủy đặt cọc (Bể cọc)
-                                    </button>
-                                  </div>
-                                )}
+                                {d.stage_id !== 'cancelled' && (() => {
+                                  const isCreator = String(d.created_by) === String(currentUser?.id);
+                                  const isOwner = String(d.contact_owner_id) === String(currentUser?.id);
+                                  const isStaff = currentUser && ['admin', 'superadmin', 'super_admin', 'assistant', 'manager', 'director'].includes(currentUser.role);
+                                  
+                                  if (isStaff || isCreator || isOwner) {
+                                    return (
+                                      <div style={{ padding: '0.75rem 1.5rem', display: 'flex', justifyContent: 'flex-end', background: 'var(--color-surface)', borderTop: '1px solid var(--color-border-light)' }}>
+                                        <button 
+                                          className="btn outline danger sm"
+                                          onClick={(e) => { e.stopPropagation(); handleCancelDeposit(d.id); }}
+                                          style={{ display: 'flex', alignItems: 'center', gap: '4px', height: '28px', fontSize: '0.75rem', padding: '0 10px', cursor: 'pointer' }}
+                                        >
+                                          <Ban size={12} /> Hủy đặt cọc (Bể cọc)
+                                        </button>
+                                      </div>
+                                    );
+                                  }
+                                  return null;
+                                })()}
                               </div>
                             );
                           })}

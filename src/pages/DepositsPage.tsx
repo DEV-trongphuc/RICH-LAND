@@ -878,32 +878,41 @@ export default function DepositsPage() {
                       <td style={{ padding: '1rem', verticalAlign: 'middle', textAlign: 'right' }} onClick={e => e.stopPropagation()}>
                         <div style={{ display: 'inline-flex', gap: '8px', alignItems: 'center', justifyContent: 'flex-end' }}>
                           {/* Update Button */}
-                          {dep.status !== 'cancelled' && (
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleOpenManageMilestones(dep);
-                              }}
-                              style={{
-                                padding: '6px 12px',
-                                height: '32px',
-                                background: 'rgba(59, 130, 246, 0.08)',
-                                border: '1px solid rgba(59, 130, 246, 0.2)',
-                                color: '#2563eb',
-                                borderRadius: '8px',
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: '4px',
-                                fontSize: '0.75rem',
-                                fontWeight: 700,
-                                cursor: 'pointer',
-                                transition: 'all 0.15s ease'
-                              }}
-                            >
-                              <Edit size={13} />
-                              <span>Cập nhật</span>
-                            </button>
-                          )}
+                          {dep.status !== 'cancelled' && (() => {
+                            const isCreator = String(dep.created_by) === String(user?.id);
+                            const isOwner = String(dep.contact_owner_id) === String(user?.id);
+                            const isStaff = user && ['admin', 'superadmin', 'super_admin', 'assistant', 'manager', 'director'].includes(user.role);
+                            
+                            if (isStaff || isCreator || isOwner) {
+                              return (
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleOpenManageMilestones(dep);
+                                  }}
+                                  style={{
+                                    padding: '6px 12px',
+                                    height: '32px',
+                                    background: 'rgba(59, 130, 246, 0.08)',
+                                    border: '1px solid rgba(59, 130, 246, 0.2)',
+                                    color: '#2563eb',
+                                    borderRadius: '8px',
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '4px',
+                                    fontSize: '0.75rem',
+                                    fontWeight: 700,
+                                    cursor: 'pointer',
+                                    transition: 'all 0.15s ease'
+                                  }}
+                                >
+                                  <Edit size={13} />
+                                  <span>Cập nhật</span>
+                                </button>
+                              );
+                            }
+                            return null;
+                          })()}
 
                           {/* Cancellation Button */}
                           {dep.status !== 'cancelled' && (() => {
@@ -1279,40 +1288,37 @@ export default function DepositsPage() {
       </CustomModal>
 
       {/* Cancel Modal */}
-      {isCancelOpen && (
-        <div style={{ position: 'fixed', inset: 0, zIndex: 12000, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0, 0, 0, 0.82)', backdropFilter: 'blur(4px)', padding: '1rem' }}>
-          <div className="card" style={{ maxWidth: '400px', width: '100%', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem', animation: 'scaleUp 0.2s ease-out' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--color-border)', paddingBottom: '0.5rem' }}>
-              <h2 style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--color-danger)' }}>Báo cáo bể cọc / Hủy mua</h2>
-              <button onClick={() => setIsCancelOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-light)', display: 'flex', alignItems: 'center' }}><X size={20} /></button>
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', lineHeight: 1.5 }}>
-                <strong>Lưu ý:</strong> Nếu chưa được duyệt bất kỳ đợt thanh toán nào, hệ thống sẽ tự động hạ 1 mức nhiệt của KHTN (decay) và chuyển trạng thái về Booking.
-              </p>
-              <div>
-                <label className="form-label">Lý do hủy cọc</label>
-                <textarea
-                  required
-                  placeholder="Nhập lý do chi tiết..."
-                  value={cancelReason}
-                  onChange={e => setCancelReason(e.target.value)}
-                  className="form-input"
-                  style={{ height: '96px', resize: 'none' }}
-                />
-              </div>
-              <button
-                onClick={handleConfirmCancel}
-                disabled={isSaving}
-                className="btn primary w-full"
-                style={{ height: '38px', backgroundColor: 'var(--color-danger)', border: 'none', opacity: isSaving ? 0.7 : 1, cursor: isSaving ? 'not-allowed' : 'pointer' }}
-              >
-                {isSaving ? 'Đang xử lý...' : 'Xác nhận bể cọc'}
-              </button>
-            </div>
+      <CustomModal
+        isOpen={isCancelOpen}
+        onClose={() => setIsCancelOpen(false)}
+        title="Báo cáo bể cọc / Hủy mua"
+        width="400px"
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', lineHeight: 1.5 }}>
+            <strong>Lưu ý:</strong> Nếu chưa được duyệt bất kỳ đợt thanh toán nào, hệ thống sẽ tự động hạ 1 mức nhiệt của KHTN (decay) và chuyển trạng thái về Booking.
+          </p>
+          <div>
+            <label className="form-label">Lý do hủy cọc</label>
+            <textarea
+              required
+              placeholder="Nhập lý do chi tiết..."
+              value={cancelReason}
+              onChange={e => setCancelReason(e.target.value)}
+              className="form-input"
+              style={{ height: '96px', resize: 'none' }}
+            />
           </div>
+          <button
+            onClick={handleConfirmCancel}
+            disabled={isSaving}
+            className="btn primary w-full"
+            style={{ height: '38px', backgroundColor: 'var(--color-danger)', border: 'none', opacity: isSaving ? 0.7 : 1, cursor: isSaving ? 'not-allowed' : 'pointer' }}
+          >
+            {isSaving ? 'Đang xử lý...' : 'Xác nhận bể cọc'}
+          </button>
         </div>
-      )}
+      </CustomModal>
       {/* Explanation of Deposit & Unit Switch Modal */}
       <CustomModal
         isOpen={showInfoModal}
