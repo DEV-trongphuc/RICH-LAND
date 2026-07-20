@@ -716,9 +716,9 @@ export const CompanyDrawer: React.FC<CompanyDrawerProps> = ({ isOpen, onClose, e
               <AnimatePresence>
                 {(!isMobileOrTablet || !activeTab) && (
                   <motion.div
-                    initial={isMobileOrTablet ? { opacity: 0, x: -30 } : false}
-                    animate={isMobileOrTablet ? { opacity: 1, x: 0 } : false}
-                    exit={isMobileOrTablet ? { opacity: 0, x: -30 } : false}
+                    initial={isMobileOrTablet ? { opacity: 0, x: -30 } : undefined}
+                    animate={isMobileOrTablet ? { opacity: 1, x: 0 } : undefined}
+                    exit={isMobileOrTablet ? { opacity: 0, x: -30 } : undefined}
                     transition={{ type: 'spring', damping: 28, stiffness: 300 }}
                     className={!isMobileOrTablet ? styles.sidebarTabs : undefined}
                   style={isMobileOrTablet ? {
@@ -820,9 +820,9 @@ export const CompanyDrawer: React.FC<CompanyDrawerProps> = ({ isOpen, onClose, e
                 {(!isMobileOrTablet || activeTab) && (
                   <motion.div 
                     key={activeTab || 'content'}
-                    initial={isMobileOrTablet ? { opacity: 0, x: 30 } : false}
-                    animate={isMobileOrTablet ? { opacity: 1, x: 0 } : false}
-                    exit={isMobileOrTablet ? { opacity: 0, x: 30 } : false}
+                    initial={isMobileOrTablet ? { opacity: 0, x: 30 } : undefined}
+                    animate={isMobileOrTablet ? { opacity: 1, x: 0 } : undefined}
+                    exit={isMobileOrTablet ? { opacity: 0, x: 30 } : undefined}
                     transition={{ type: 'spring', damping: 28, stiffness: 300 }}
                     className={!isMobileOrTablet ? styles.contentArea : undefined}
                   style={isMobileOrTablet ? {

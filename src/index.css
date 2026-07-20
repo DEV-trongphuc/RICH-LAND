@@ -5039,5 +5039,13 @@ div[role="status"] {
     font-size: 0.58rem !important;
     padding: 2px 5px !important;
   }
+
+  /* Modals and overlay panels must have extra bottom padding so buttons are not cut off */
+  .modal-body {
+    padding-bottom: 100px !important;
+  }
+  .modal-sheet {
+    margin-bottom: 100px !important;
+  }
 }
 

@@ -4788,8 +4788,16 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                   <DrawerSkeleton />
                 ) : (
                   <>
-                    {(!isMobileOrTablet || !activeTab) && (
-                      <div className={styles.sidebarTabs} style={isMobileOrTablet ? { width: '100%', gap: '0.25rem', padding: '16px', overflowY: 'auto' } : { gap: '0.25rem', overflowY: 'auto' }}>
+                    <AnimatePresence>
+                      {(!isMobileOrTablet || !activeTab) && (
+                        <motion.div
+                          initial={isMobileOrTablet ? { opacity: 0, x: -30 } : undefined}
+                          animate={isMobileOrTablet ? { opacity: 1, x: 0 } : undefined}
+                          exit={isMobileOrTablet ? { opacity: 0, x: -30 } : undefined}
+                          transition={{ type: 'spring', damping: 28, stiffness: 300 }}
+                          className={styles.sidebarTabs}
+                          style={isMobileOrTablet ? { width: '100%', gap: '0.25rem', padding: '16px', overflowY: 'auto' } : { gap: '0.25rem', overflowY: 'auto' }}
+                        >
                         {isMobileOrTablet ? (
                           <div style={{ display: 'flex', flexDirection: 'column', width: '100%' }}>
                             {/* Compact Mobile Profile Info Card */}
@@ -5325,17 +5333,22 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                             </div>
                           </>
                         )}
-                      </div>
-                    )}
-
-
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
 
                 {/* Content Area */}
-                {(!isMobileOrTablet || activeTab) && (
-                  <div 
-                    className={styles.contentArea} 
-                    style={isMobileOrTablet ? { width: '100%', minWidth: 0, boxSizing: 'border-box', padding: '0', display: 'flex', flexDirection: 'column', flex: 1, overflowY: 'auto', overflowX: 'hidden' } : undefined}
-                  >
+                <AnimatePresence>
+                  {(!isMobileOrTablet || activeTab) && (
+                    <motion.div 
+                      key={activeTab || 'content'}
+                      initial={isMobileOrTablet ? { opacity: 0, x: 30 } : undefined}
+                      animate={isMobileOrTablet ? { opacity: 1, x: 0 } : undefined}
+                      exit={isMobileOrTablet ? { opacity: 0, x: 30 } : undefined}
+                      transition={{ type: 'spring', damping: 28, stiffness: 300 }}
+                      className={styles.contentArea} 
+                      style={isMobileOrTablet ? { width: '100%', minWidth: 0, boxSizing: 'border-box', padding: '0', display: 'flex', flexDirection: 'column', flex: 1, overflowY: 'auto', overflowX: 'hidden' } : undefined}
+                    >
                     {isMobileOrTablet && activeTab && (
                       <div style={{
                         display: 'flex',
@@ -9794,8 +9807,9 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                   )}
 
                     </div>
-                  </div>
+                  </motion.div>
                 )}
+              </AnimatePresence>
               </>
             )}
           </div>

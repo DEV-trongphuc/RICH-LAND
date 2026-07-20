@@ -188,7 +188,7 @@
     margin-left: auto !important;
   }
   .contentArea {
-    padding: 1rem;
+    padding: 1rem 1rem 120px 1rem !important;
     overflow-y: visible !important;
     height: auto !important;
     flex: none !important;
