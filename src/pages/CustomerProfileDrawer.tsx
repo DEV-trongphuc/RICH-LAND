@@ -4370,7 +4370,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
       >
               <AnimatePresence>
                 {showAvatarModal && (
-                  <div className="overlay-backdrop" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000 }}>
+                  <div className="overlay-backdrop" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000020 }}>
                     <motion.div
                       initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }}
                       style={{ background: 'var(--color-surface)', width: '400px', borderRadius: '24px', padding: '2rem', boxShadow: 'var(--shadow-2xl)' }}

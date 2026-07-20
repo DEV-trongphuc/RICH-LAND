@@ -19,7 +19,7 @@ export const QRCodeCallModal: React.FC = () => {
         <>
           <div
             style={{
-              position: 'fixed', inset: 0, zIndex: 99999,
+              position: 'fixed', inset: 0, zIndex: 1000030,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               padding: '2rem'
             }}
@@ -95,16 +95,9 @@ export const QRCodeCallModal: React.FC = () => {
                       addToast('Đã sao chép số điện thoại', 'success');
                     }}
                     className="btn primary" 
-                    style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+                    style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', height: '42px', borderRadius: '12px' }}
                   >
                     <Copy size={18} /> Sao chép số
-                  </button>
-                  <button 
-                    onClick={closeCall} 
-                    className="btn ghost" 
-                    style={{ flex: 1 }}
-                  >
-                    Đóng
                   </button>
                 </div>
               </div>
