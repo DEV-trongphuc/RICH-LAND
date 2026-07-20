@@ -706,6 +706,48 @@ function sendWelcomeEmailToAdminTicket(
     sendEmailNotification($adminEmail, $subject, '', $content, '', $sync);
 }
 
+function sendTelegramVerificationEmail(
+    int $userId,
+    string $userEmail,
+    string $userName,
+    string $telegramBotUsername,
+    bool $sync = false
+) {
+    $subject = '✈️ Yêu cầu liên kết Telegram Bot';
+    $fName = htmlspecialchars($userName ?: 'Thành viên');
+    $telegramLink = "https://t.me/" . htmlspecialchars($telegramBotUsername);
+
+    $content = '
+        <div style="text-align: center; margin-bottom: 24px;">
+            <div style="width: 64px; height: 64px; background: #e0f2fe; border-radius: 50%; display: inline-block; text-align: center; line-height: 64px; margin-bottom: 16px; vertical-align: middle;">
+                <span style="font-size: 32px; line-height: 64px; vertical-align: middle;">✈️</span>
+            </div>
+            <h2 style="color: #0f172a; margin: 0 0 8px; font-size: 22px;">Chào ' . $fName . '</h2>
+            <p style="color: #64748b; font-size: 15px; margin: 0;">Bạn cần liên kết tài khoản Telegram để nhận thông báo từ hệ thống RICH LAND.</p>
+        </div>
+
+        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 24px; margin-bottom: 24px;">
+            <p style="color: #334155; font-size: 15px; line-height: 1.6; margin: 0 0 16px;">
+                Để <strong>nhận thông báo tức thì qua Telegram</strong> (thông báo chia số, nhắc lịch và báo cáo công việc), vui lòng thực hiện theo 2 bước đơn giản:
+            </p>
+            <ol style="color: #334155; font-size: 15px; line-height: 1.6; margin: 0 0 16px; padding-left: 20px;">
+                <li style="margin-bottom: 8px;">Bấm vào nút <strong>"Liên kết Telegram Bot"</strong> bên dưới.</li>
+                <li>Gửi tin nhắn cho Bot với mã số tài khoản của bạn: <br/><strong style="color: #0284c7; background: #e0f2fe; padding: 4px 8px; border-radius: 4px; display: inline-block; margin-top: 4px; letter-spacing: 0.5px; font-family: monospace; font-size: 16px;">' . $userId . '</strong></li>
+                <li style="margin-top: 8px; font-size: 13px; color: #64748b; list-style-type: none; margin-left: -20px;"><em>(💡Chỉ cần copy mã số ở trên và gửi thẳng cho Telegram Bot)</em></li>
+            </ol>
+        </div>
+
+        <div style="text-align: center; margin-bottom: 32px;">
+            <a href="' . $telegramLink . '?start=' . $userId . '" target="_blank" rel="noopener noreferrer" style="display: inline-block; background: linear-gradient(135deg, #0088cc, #0077b5); color: #ffffff; text-decoration: none; padding: 12px 32px; border-radius: 8px; font-weight: 700; font-size: 16px; box-shadow: 0 4px 6px -1px rgba(0, 136, 204, 0.2), 0 2px 4px -1px rgba(0, 136, 204, 0.1);">
+                BẤM VÀO ĐÂY ĐỂ LIÊN KẾT TELEGRAM
+            </a>
+            <p style="font-size: 13px; color: #94a3b8; margin-top: 12px;">Hoặc copy link này: <br/><span style="color: #0088cc;">' . $telegramLink . '?start=' . $userId . '</span></p>
+        </div>
+    ';
+
+    sendEmailNotification($userEmail, $subject, '', $content, '', $sync);
+}
+
 /**
  * sendAdminConfirmationEmail
  */

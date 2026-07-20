@@ -685,6 +685,29 @@ const ConsultantsInner = () => {
   const [zaloRemindingId, setZaloRemindingId] = useState<number | null>(null);
   const [zaloRemindedId, setZaloRemindedId] = useState<number | null>(null);
 
+  const [tgRemindingId, setTgRemindingId] = useState<number | null>(null);
+  const [tgRemindedId, setTgRemindedId] = useState<number | null>(null);
+
+  const handleResendTelegramVerify = async (consId: number) => {
+    setTgRemindingId(consId);
+    try {
+      const json = await fetchAPI('resend_telegram_verify_consultant', {
+        method: 'POST',
+        body: JSON.stringify({ id: consId })
+      });
+      if (json.success) {
+        toast.success(t('Đã gửi email nhắc liên kết Telegram.'));
+        setTgRemindedId(consId);
+        setTimeout(() => setTgRemindedId(null), 5000);
+      } else {
+        toast.error(json.message || t('Lỗi khi gửi email'));
+      }
+    } catch (e: any) {
+      toast.error(t('Lỗi: ') + e.message);
+    }
+    setTgRemindingId(null);
+  };
+
   const handleResendZaloVerify = async (consId: number) => {
     setZaloRemindingId(consId);
     try {
@@ -1410,6 +1433,17 @@ const ConsultantsInner = () => {
                               }}>
                                 {t('Chưa liên kết')}
                               </span>
+                              {u.email && u.email.toLowerCase() !== user?.email?.toLowerCase() && (
+                                tgRemindedId === u.id ? (
+                                  <span style={{ fontSize: '0.7rem', padding: '2px 6px', color: '#10b981', display: 'flex', alignItems: 'center', gap: 4, fontWeight: 600 }}>
+                                    <Check size={12} /> {t('Đã nhắc')}
+                                  </span>
+                                ) : (
+                                  <button onClick={(e) => { e.stopPropagation(); handleResendTelegramVerify(u.id); }} className="btn ghost" style={{ fontSize: '0.7rem', padding: '2px 6px', color: '#10b981', display: 'flex', alignItems: 'center', gap: 4 }} title={t("Gửi email nhắc liên kết Telegram")} disabled={tgRemindingId === u.id}>
+                                    {tgRemindingId === u.id ? <RefreshCw size={12} className="spin" /> : <Send size={12} />} {tgRemindingId === u.id ? t('Đang gửi...') : t('Nhắc')}
+                                  </button>
+                                )
+                              )}
                             </div>
                           )}
                         </td>

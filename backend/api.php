@@ -13013,6 +13013,64 @@ switch ($action) {
         }
         break;
 
+    case 'resend_telegram_verify_account':
+        $input = json_decode(file_get_contents('php://input'), true);
+        $id = (int) ($input['id'] ?? 0);
+        $stmtAcc = $conn->prepare("SELECT email, name FROM accounts WHERE id = ?");
+        $stmtAcc->bind_param("i", $id);
+        $stmtAcc->execute();
+        $res = $stmtAcc->get_result();
+        if ($res && $res->num_rows > 0) {
+            $account = $res->fetch_assoc();
+            if (empty($account['email'])) {
+                echo json_encode(['success' => false, 'message' => 'Tài khoản này chưa có email để nhận thông báo']);
+                break;
+            }
+            require_once 'mailer.php';
+            $settingStmt = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'telegram_bot_username'");
+            $botUsername = "richlandvietnam_bot"; // Default
+            if ($settingStmt && $settingStmt->num_rows > 0) {
+                $row = $settingStmt->fetch_assoc();
+                if (!empty($row['setting_value']))
+                    $botUsername = $row['setting_value'];
+            }
+            sendTelegramVerificationEmail($id, $account['email'], $account['name'], $botUsername, true);
+            echo json_encode(['success' => true]);
+        } else {
+            echo json_encode(['success' => false, 'message' => 'Không tìm thấy tài khoản']);
+        }
+        break;
+
+    case 'resend_telegram_verify_consultant':
+        $input = json_decode(file_get_contents('php://input'), true);
+        $id = (int) ($input['id'] ?? 0);
+        
+        // Map consultant ID to user ID because they share the same users table ID
+        $stmtCon = $conn->prepare("SELECT id, email, name FROM consultants WHERE id = ?");
+        $stmtCon->bind_param("i", $id);
+        $stmtCon->execute();
+        $res = $stmtCon->get_result();
+        if ($res && $res->num_rows > 0) {
+            $consultant = $res->fetch_assoc();
+            if (empty($consultant['email'])) {
+                echo json_encode(['success' => false, 'message' => 'Tư vấn viên này chưa có email']);
+                break;
+            }
+            require_once 'mailer.php';
+            $settingStmt = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'telegram_bot_username'");
+            $botUsername = "richlandvietnam_bot"; // Default
+            if ($settingStmt && $settingStmt->num_rows > 0) {
+                $row = $settingStmt->fetch_assoc();
+                if (!empty($row['setting_value']))
+                    $botUsername = $row['setting_value'];
+            }
+            sendTelegramVerificationEmail($consultant['id'], $consultant['email'], $consultant['name'], $botUsername, true);
+            echo json_encode(['success' => true]);
+        } else {
+            echo json_encode(['success' => false, 'message' => 'Không tìm thấy tư vấn viên']);
+        }
+        break;
+
     // ── TICKET NOTIFICATION SETTINGS ──────────────────────────────────────────
     case 'get_ticket_settings':
         // Trả về danh sách account_id được chọn nhận thông báo ticket

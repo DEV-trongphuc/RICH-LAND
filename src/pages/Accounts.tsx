@@ -642,6 +642,29 @@ const AccountsInner = () => {
   const [zaloRemindingId, setZaloRemindingId] = useState<number | null>(null);
   const [zaloRemindedId, setZaloRemindedId] = useState<number | null>(null);
 
+  const [tgRemindingId, setTgRemindingId] = useState<number | null>(null);
+  const [tgRemindedId, setTgRemindedId] = useState<number | null>(null);
+
+  const handleResendTelegramVerify = async (accId: number) => {
+    setTgRemindingId(accId);
+    try {
+      const json = await fetchAPI('resend_telegram_verify_account', {
+        method: 'POST',
+        body: JSON.stringify({ id: accId })
+      });
+      if (json.success) {
+        toast.success(t('Đã gửi email nhắc liên kết Telegram.'));
+        setTgRemindedId(accId);
+        setTimeout(() => setTgRemindedId(null), 5000);
+      } else {
+        toast.error(json.message || t('Lỗi khi gửi email'));
+      }
+    } catch (e: any) {
+      toast.error(`${t('Lỗi')}: ` + e.message);
+    }
+    setTgRemindingId(null);
+  };
+
   const handleResendZaloVerify = async (accId: number) => {
     setZaloRemindingId(accId);
     try {
@@ -1245,6 +1268,17 @@ const AccountsInner = () => {
                               }}>
                                 {t('Chưa liên kết')}
                               </span>
+                              {acc.email && (
+                                tgRemindedId === acc.id ? (
+                                  <span style={{ fontSize: '0.7rem', padding: '2px 6px', color: '#10b981', display: 'flex', alignItems: 'center', gap: 4, fontWeight: 600 }}>
+                                    <Check size={12} /> {t('Đã nhắc')}
+                                  </span>
+                                ) : (
+                                  <button onClick={(e) => { e.stopPropagation(); handleResendTelegramVerify(acc.id); }} className="btn ghost" style={{ fontSize: '0.7rem', padding: '2px 6px', color: '#10b981', display: 'flex', alignItems: 'center', gap: 4 }} title={t("Gửi email nhắc liên kết Telegram")} disabled={tgRemindingId === acc.id}>
+                                    {tgRemindingId === acc.id ? <RefreshCw size={12} className="spin" /> : <Send size={12} />} {tgRemindingId === acc.id ? t('Đang gửi...') : t('Nhắc')}
+                                  </button>
+                                )
+                              )}
                             </div>
                           )}
                         </td>
