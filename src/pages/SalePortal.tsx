@@ -2543,6 +2543,8 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
         eventSource.addEventListener('update', () => {
           // Trigger silent refresh of portal data
           loadPortalData(true);
+          // Dispatch custom event to notify sidebar/other components of real-time updates
+          window.dispatchEvent(new Event('realtime-update-received'));
         });
 
         eventSource.onerror = (err) => {

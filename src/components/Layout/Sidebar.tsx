@@ -216,12 +216,14 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileC
     window.addEventListener('task-updated', fetchPending);
     window.addEventListener('lead-accepted', fetchPending);
     window.addEventListener('uncontacted-count-changed', fetchPending);
+    window.addEventListener('realtime-update-received', fetchPending);
     return () => {
       clearInterval(interval);
       window.removeEventListener('ticket-resolved', fetchPending);
       window.removeEventListener('task-updated', fetchPending);
       window.removeEventListener('lead-accepted', fetchPending);
       window.removeEventListener('uncontacted-count-changed', fetchPending);
+      window.removeEventListener('realtime-update-received', fetchPending);
     };
   }, [user]);
 
