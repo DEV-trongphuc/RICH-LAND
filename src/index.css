@@ -4702,3 +4702,13 @@ div[role="status"] {
   background-color: var(--color-bg) !important;
 }
 
+/* Fix mobile button stretching in page headers */
+.resource-health-btn {
+  flex-grow: 0 !important;
+  width: 38px !important;
+  min-width: 38px !important;
+  max-width: 38px !important;
+  flex-shrink: 0 !important;
+  flex: 0 0 38px !important;
+}
+

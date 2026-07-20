@@ -961,7 +961,7 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
 
           {/* Button to open Connection Health Modal styled purple as "Hệ thống" */}
           <button
-            className="btn primary"
+            className="btn primary resource-health-btn"
             onClick={() => setShowHealthModal(true)}
             title={t("Kiểm tra kết nối hệ thống / Tài nguyên sử dụng")}
             style={{
