@@ -1644,6 +1644,11 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
   const [activeOverCol, setActiveOverCol] = useState<'todo' | 'in_progress' | 'done' | null>(null);
   const [zaloSource, setZaloSource] = useState<'primary' | 'secondary' | 'none'>('none');
   const [loadingContactDetails, setLoadingContactDetails] = useState(false);
+
+  if (isOpen && contact?.id && contact.id !== prevContactId && !loadingContactDetails) {
+    setLoadingContactDetails(true);
+  }
+
   const [pipelineStages, setPipelineStages] = useState<any[]>(DEFAULT_PIPELINE_STAGES);
   const [contacts, setContacts] = useState<any[]>([]);
   const [ttl1Data, setTtl1Data] = useState<{
@@ -4369,10 +4374,9 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
       <div
         className={styles.drawer}
         style={{
-          transform: animateIn ? 'translateX(0)' : 'translateX(160px)',
-          opacity: animateIn ? 1 : 0,
-          transition: 'transform 0.42s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.42s cubic-bezier(0.16, 1, 0.3, 1)',
-          willChange: 'transform, opacity',
+          transform: animateIn ? 'translateX(0)' : 'translateX(100%)',
+          transition: 'transform 0.42s cubic-bezier(0.16, 1, 0.3, 1)',
+          willChange: 'transform',
           zIndex: 1000010
         }}
       >

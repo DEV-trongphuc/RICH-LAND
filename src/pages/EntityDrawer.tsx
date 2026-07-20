@@ -88,10 +88,9 @@ export const EntityDrawer: React.FC<EntityDrawerProps> = ({ isOpen, onClose, ent
       <div
         className={styles.drawer}
         style={{
-          transform: animateIn ? 'translateX(0)' : 'translateX(160px)',
-          opacity: animateIn ? 1 : 0,
-          transition: 'transform 0.42s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.42s cubic-bezier(0.16, 1, 0.3, 1)',
-          willChange: 'transform, opacity'
+          transform: animateIn ? 'translateX(0)' : 'translateX(100%)',
+          transition: 'transform 0.42s cubic-bezier(0.16, 1, 0.3, 1)',
+          willChange: 'transform'
         }}
       >
               {/* Header */}

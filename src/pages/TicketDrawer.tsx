@@ -192,10 +192,9 @@ export const TicketDrawer: React.FC<Props> = ({ isOpen, onClose, ticket, onUpdat
       <div
         className={styles.drawer}
         style={{
-          transform: animateIn ? 'translateX(0)' : (isMobile ? 'translateX(100%)' : 'translateX(160px)'),
-          opacity: animateIn ? 1 : 0,
-          transition: 'transform 0.42s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.42s cubic-bezier(0.16, 1, 0.3, 1)',
-          willChange: 'transform, opacity'
+          transform: animateIn ? 'translateX(0)' : 'translateX(100%)',
+          transition: 'transform 0.42s cubic-bezier(0.16, 1, 0.3, 1)',
+          willChange: 'transform'
         }}
       >
             {/* ── Header ── */}

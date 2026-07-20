@@ -1036,10 +1036,9 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
         top: 0,
         bottom: 0,
         boxShadow: '-10px 0 30px rgba(0,0,0,0.15)',
-        transform: animateIn ? 'translateX(0)' : (isMobileOrTablet ? 'translateX(100%)' : 'translateX(160px)'),
-        opacity: animateIn ? 1 : 0,
-        transition: 'transform 0.42s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.42s cubic-bezier(0.16, 1, 0.3, 1)',
-        willChange: 'transform, opacity'
+        transform: animateIn ? 'translateX(0)' : 'translateX(100%)',
+        transition: 'transform 0.42s cubic-bezier(0.16, 1, 0.3, 1)',
+        willChange: 'transform'
       }}
     >
         {/* Drawer Header */}
