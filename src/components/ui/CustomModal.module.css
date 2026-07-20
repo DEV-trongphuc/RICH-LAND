@@ -37,6 +37,9 @@
   z-index: 1001;
   overflow: hidden;
   border: 1px solid rgba(0, 0, 0, 0.04);
+  will-change: transform;
+  transform: translate3d(0, 0, 0);
+  backface-visibility: hidden;
 }
 
 :global([data-theme="dark"]) .modal {
@@ -106,6 +109,11 @@
 }
 
 @media (max-width: 768px) {
+  .backdrop {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    background-color: rgba(0, 0, 0, 0.45) !important;
+  }
   .dragHandle {
     display: block !important;
   }

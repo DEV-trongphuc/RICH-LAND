@@ -220,12 +220,16 @@ export const ActivityModal: React.FC<ActivityModalProps> = ({ isOpen, onClose, e
             display: 'flex',
             flexDirection: 'column',
             overflow: 'hidden',
-            boxShadow: 'var(--shadow-xl)'
+            boxShadow: 'var(--shadow-xl)',
+            willChange: 'transform',
+            transform: 'translate3d(0, 0, 0)',
+            WebkitBackfaceVisibility: 'hidden',
+            backfaceVisibility: 'hidden'
           }}
           initial={isMobile ? { y: '100%' } : { opacity: 0, y: 20, scale: 0.96 }} 
           animate={isMobile ? { y: 0 } : { opacity: 1, y: 0, scale: 1 }} 
           exit={isMobile ? { y: '100%' } : { opacity: 0, y: 20, scale: 0.96 }}
-          transition={{ type: 'spring', damping: 30, stiffness: 350, mass: 0.8 }}
+          transition={isMobile ? { type: 'tween', ease: [0.16, 1, 0.3, 1], duration: 0.35 } : { type: 'spring', damping: 30, stiffness: 350, mass: 0.8 }}
           onClick={e => e.stopPropagation()}
         >
           <div 
