@@ -1435,6 +1435,7 @@ export const Header = ({
                   {t('Báo lỗi')}
                 </a>
 
+                {/* 
                 <a
                   href="/download"
                   style={{
@@ -1462,6 +1463,7 @@ export const Header = ({
                 </a>
 
                 <div style={{ borderBottom: '1px solid var(--color-border)', margin: '4px 0' }} />
+                */}
 
                 <button
                   onClick={handleLogout}

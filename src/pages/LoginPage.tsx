@@ -94,6 +94,7 @@ export const LoginPage: React.FC = () => {
           <p>Demo: admin@richland.crm / password</p>
         </div>
 
+        {/*
         <div style={{ marginTop: '1.25rem', textAlign: 'center', borderTop: '1px solid rgba(148, 163, 184, 0.12)', paddingTop: '1rem' }}>
           <a 
             href="/download" 
@@ -111,6 +112,7 @@ export const LoginPage: React.FC = () => {
             <Laptop size={14} /> Tải ứng dụng Desktop (Windows / macOS)
           </a>
         </div>
+        */}
       </div>
     </div>
   );
