@@ -10377,7 +10377,12 @@ switch ($action) {
             $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
             $domain = $scheme . '://' . $_SERVER['HTTP_HOST'];
         }
-        $webhookUrl = rtrim($domain, '/') . '/backend/telegram_webhook.php';
+        // Tự động phát hiện cấu trúc thư mục (local dùng /backend/ còn production giải nén trực tiếp vào root)
+        if (file_exists(__DIR__ . '/telegram_webhook.php') && !file_exists(__DIR__ . '/../backend/telegram_webhook.php')) {
+            $webhookUrl = rtrim($domain, '/') . '/telegram_webhook.php';
+        } else {
+            $webhookUrl = rtrim($domain, '/') . '/backend/telegram_webhook.php';
+        }
         $url = "https://api.telegram.org/bot" . $botToken . "/setWebhook?url=" . urlencode($webhookUrl);
         $ch = curl_init($url);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
