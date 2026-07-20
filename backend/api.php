@@ -12439,19 +12439,19 @@ switch ($action) {
         } else {
             $targetId = $saleFilterId !== null ? $saleFilterId : $currentSaleConsultantId;
             if (!$targetId) {
-                echo json_encode(['success' => false, 'message' => 'Consultant profile not found']);
-                exit;
-            }
-            $targetUserId = null;
-            $stmtUId = $conn->prepare("SELECT u.id FROM users u JOIN consultants c ON u.email = c.email WHERE c.id = ? LIMIT 1");
-            $stmtUId->bind_param("i", $targetId);
-            $stmtUId->execute();
-            $uRow = $stmtUId->get_result()->fetch_assoc();
-            $stmtUId->close();
-            if ($uRow) {
-                $targetUserId = (int)$uRow['id'];
+                $targetUserId = (int)$decodedUser['id'];
             } else {
-                $targetUserId = $targetId;
+                $targetUserId = null;
+                $stmtUId = $conn->prepare("SELECT u.id FROM users u JOIN consultants c ON u.email = c.email WHERE c.id = ? LIMIT 1");
+                $stmtUId->bind_param("i", $targetId);
+                $stmtUId->execute();
+                $uRow = $stmtUId->get_result()->fetch_assoc();
+                $stmtUId->close();
+                if ($uRow) {
+                    $targetUserId = (int)$uRow['id'];
+                } else {
+                    $targetUserId = $targetId;
+                }
             }
         }
 
