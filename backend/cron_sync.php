@@ -486,6 +486,7 @@ if (!function_exists('releasePendingWorkHoursLeads')) {
         $readyToRelease = [];
         
         while ($row = $res->fetch_assoc()) {
+            $targetUserId = (int) ($row['user_id'] ?? 0);
             $status = $row['consultant_status'];
             $leaveStart = $row['leave_start'] ?? null;
             $leaveEnd = $row['leave_end'] ?? null;
