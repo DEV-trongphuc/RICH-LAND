@@ -380,19 +380,28 @@ if (strpos($textLower, '/tools') === 0 || strpos($textLower, '/report') === 0 ||
         if ($targetType === '' || $targetType === 'admin') {
             $stmtAdmin = null;
             if ($userId > 0 && !empty($email)) {
-                $stmtAdmin = $conn->prepare("SELECT id, name, email, telegram_chat_id FROM accounts WHERE id = ? AND email = ? LIMIT 1");
+                $stmtAdmin = $conn->prepare("SELECT id, name, email, role, telegram_chat_id FROM accounts WHERE id = ? AND email = ? LIMIT 1");
                 if ($stmtAdmin) $stmtAdmin->bind_param("is", $userId, $email);
             } else if ($userId > 0) {
-                $stmtAdmin = $conn->prepare("SELECT id, name, email, telegram_chat_id FROM accounts WHERE id = ? LIMIT 1");
+                $stmtAdmin = $conn->prepare("SELECT id, name, email, role, telegram_chat_id FROM accounts WHERE id = ? LIMIT 1");
                 if ($stmtAdmin) $stmtAdmin->bind_param("i", $userId);
             } else {
-                $stmtAdmin = $conn->prepare("SELECT id, name, email, telegram_chat_id FROM accounts WHERE email = ? LIMIT 1");
+                $stmtAdmin = $conn->prepare("SELECT id, name, email, role, telegram_chat_id FROM accounts WHERE email = ? LIMIT 1");
                 if ($stmtAdmin) $stmtAdmin->bind_param("s", $email);
             }
             if ($stmtAdmin && $stmtAdmin->execute()) {
                 $admin = $stmtAdmin->get_result()->fetch_assoc();
             }
             if ($stmtAdmin) $stmtAdmin->close();
+
+            // Chỉ coi là admin thực sự nếu role không phải sales/nhân viên thường
+            if ($admin) {
+                $role = $admin['role'] ?? '';
+                $isAdminRole = ($role === 'admin' || $role === 'superadmin' || $role === 'assistant' || $role === 'director' || $role === 'manager' || $role === 'leader');
+                if (!$isAdminRole) {
+                    $admin = null;
+                }
+            }
         }
 
         if ($sale && $admin && $targetType === '') {
