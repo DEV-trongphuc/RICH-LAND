@@ -346,7 +346,8 @@ class DepositController {
             // Fetch deposit details to link the invoice and notify owner
             $stmtDep = $this->db->prepare("
                 SELECT d.*, c.company_id, c.first_name, c.last_name, p.name as project_name,
-                       u.email as owner_email, u.full_name as owner_name, u.zalo_chat_id as owner_zalo_chat_id
+                       u.email as owner_email, u.full_name as owner_name, u.zalo_chat_id as owner_zalo_chat_id,
+                       c.owner_id as contact_owner_id, c.created_by as contact_created_by
                 FROM deposits d
                 JOIN contacts c ON d.contact_id = c.id
                 LEFT JOIN projects p ON d.project_id = p.id
@@ -395,20 +396,72 @@ class DepositController {
             $this->db->commit();
             logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'APPROVE_DEPOSIT_MILESTONE', 'deposit_milestone', $milestoneId, "Duyệt đóng tiền đợt ID: $milestoneId");
 
-            // Email owner about milestone approval
-            if ($depositData && !empty($depositData['owner_email'])) {
-                try {
+            // Notify all related users (owner, creator, co-op sales)
+            if ($depositData && $mileData) {
+                $uIdsToNotify = [];
+                if (!empty($depositData['contact_owner_id'])) $uIdsToNotify[(int)$depositData['contact_owner_id']] = true;
+                if (!empty($depositData['contact_created_by'])) $uIdsToNotify[(int)$depositData['contact_created_by']] = true;
+                if (!empty($depositData['created_by'])) $uIdsToNotify[(int)$depositData['created_by']] = true;
+
+                $stmtCoop = $this->db->prepare("
+                    SELECT shares_json 
+                    FROM cooperation_slips 
+                    WHERE deposit_slip_id = ? OR (deposit_slip_id IS NULL AND contact_id = ?) 
+                    LIMIT 1
+                ");
+                $stmtCoop->execute([$id, $depositData['contact_id']]);
+                $coopRow = $stmtCoop->fetch();
+                if ($coopRow && !empty($coopRow['shares_json'])) {
+                    $shares = json_decode($coopRow['shares_json'], true);
+                    if (is_array($shares)) {
+                        foreach ($shares as $uId => $pct) {
+                            $uIdsToNotify[(int)$uId] = true;
+                        }
+                    }
+                }
+
+                $uIdsToNotify = array_keys($uIdsToNotify);
+                if (!empty($uIdsToNotify)) {
+                    $inUsers = implode(',', array_fill(0, count($uIdsToNotify), '?'));
+                    $stmtUsers = $this->db->prepare("SELECT id, full_name, email FROM users WHERE id IN ($inUsers)");
+                    $stmtUsers->execute($uIdsToNotify);
+                    $usersList = $stmtUsers->fetchAll();
+
+                    $notifySubject = "[RICH LAND] Phê duyệt đợt thanh toán cọc khách hàng: " . $depositData['first_name'] . " " . ($depositData['last_name'] ?? '');
+                    $notifyTitle = "PHÊ DUYỆT ĐỢT THANH TOÁN CỌC";
+                    
+                    $stmtNotif = $this->db->prepare("
+                        INSERT INTO notifications (user_id, tenant_id, title, body, type, link) 
+                        VALUES (?, ?, ?, ?, 'cooperation_status', ?)
+                    ");
+
                     require_once __DIR__ . '/../mailer.php';
-                    $emailSubject = "[RICH LAND] Phê duyệt đợt thanh toán cọc khách hàng: " . $depositData['first_name'] . " " . ($depositData['last_name'] ?? '');
-                    $emailTitle = "PHÊ DUYỆT ĐỢT THANH TOÁN CỌC";
-                    $emailContent = "Chào <strong>" . htmlspecialchars($depositData['owner_name']) . "</strong>,<br/><br/>" .
-                                    "Đợt thanh toán <strong>" . htmlspecialchars($mileData['milestone_name']) . "</strong> của khách hàng <strong>" . htmlspecialchars($depositData['first_name'] . " " . ($depositData['last_name'] ?? '')) . "</strong> (Phiếu cọc #" . $id . ") đã được phê duyệt thành công bởi Admin.<br/>" .
-                                    "Số tiền đợt: <strong>" . number_format($total, 0, ',', '.') . " VND</strong>.<br/>" .
-                                    "Hệ thống đã tự động xuất hóa đơn tương ứng.<br/>" .
-                                    "Vui lòng kiểm tra thông tin trên RICH LAND CRM.";
-                    sendEmailNotification($depositData['owner_email'], $emailSubject, $emailTitle, $emailContent, '', false);
-                } catch (Exception $mailEx) {
-                    error_log("Error sending deposit milestone approval email: " . $mailEx->getMessage());
+
+                    foreach ($usersList as $u) {
+                        $notifyContent = "Chào <strong>" . htmlspecialchars($u['full_name']) . "</strong>,<br/><br/>" .
+                                         "Đợt thanh toán <strong>" . htmlspecialchars($mileData['milestone_name']) . "</strong> của khách hàng <strong>" . htmlspecialchars($depositData['first_name'] . " " . ($depositData['last_name'] ?? '')) . "</strong> (Phiếu cọc #" . $id . ") đã được phê duyệt thành công bởi Admin.<br/>" .
+                                         "Số tiền đợt: <strong>" . number_format($total, 0, ',', '.') . " VND</strong>.<br/>" .
+                                         "Hệ thống đã tự động xuất hóa đơn tương ứng.<br/>" .
+                                         "Vui lòng kiểm tra thông tin trên RICH LAND CRM.";
+                        
+                        $cleanBody = strip_tags(str_replace(['<br/>', '<br>', '<strong>', '</strong>', '<em>', '</em>'], [' ', ' ', '', '', '', ''], $notifyContent));
+                        
+                        $stmtNotif->execute([
+                            (int)$u['id'],
+                            $auth['tenant_id'],
+                            $notifySubject,
+                            $cleanBody,
+                            '/deposits'
+                        ]);
+
+                        if (!empty($u['email'])) {
+                            try {
+                                sendEmailNotification($u['email'], $notifySubject, $notifyTitle, $notifyContent, '', false);
+                            } catch (Exception $mailEx) {
+                                error_log("Error sending email: " . $mailEx->getMessage());
+                            }
+                        }
+                    }
                 }
             }
 
@@ -452,6 +505,108 @@ class DepositController {
         $stmt->execute([$milestoneId, $id]);
 
         logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'REJECT_DEPOSIT_MILESTONE', 'deposit_milestone', $milestoneId, "Từ chối đóng tiền đợt ID: $milestoneId. Lý do: $reason");
+
+        // Notify all related users
+        $stmtDep = $this->db->prepare("
+            SELECT d.*, c.first_name, c.last_name, c.created_by as contact_created_by, c.owner_id as contact_owner_id,
+                   u.email as owner_email, u.full_name as owner_name, u.zalo_chat_id as owner_zalo_chat_id
+            FROM deposits d
+            JOIN contacts c ON d.contact_id = c.id
+            LEFT JOIN users u ON c.owner_id = u.id
+            WHERE d.id = ?
+        ");
+        $stmtDep->execute([$id]);
+        $depositData = $stmtDep->fetch();
+
+        $stmtMile = $this->db->prepare("SELECT milestone_name, expected_amount FROM deposit_milestones WHERE id = ?");
+        $stmtMile->execute([$milestoneId]);
+        $mileData = $stmtMile->fetch();
+
+        if ($depositData && $mileData) {
+            $uIdsToNotify = [];
+            if (!empty($depositData['contact_owner_id'])) $uIdsToNotify[(int)$depositData['contact_owner_id']] = true;
+            if (!empty($depositData['contact_created_by'])) $uIdsToNotify[(int)$depositData['contact_created_by']] = true;
+            if (!empty($depositData['created_by'])) $uIdsToNotify[(int)$depositData['created_by']] = true;
+
+            $stmtCoop = $this->db->prepare("
+                SELECT shares_json 
+                FROM cooperation_slips 
+                WHERE deposit_slip_id = ? OR (deposit_slip_id IS NULL AND contact_id = ?) 
+                LIMIT 1
+            ");
+            $stmtCoop->execute([$id, $depositData['contact_id']]);
+            $coopRow = $stmtCoop->fetch();
+            if ($coopRow && !empty($coopRow['shares_json'])) {
+                $shares = json_decode($coopRow['shares_json'], true);
+                if (is_array($shares)) {
+                    foreach ($shares as $uId => $pct) {
+                        $uIdsToNotify[(int)$uId] = true;
+                    }
+                }
+            }
+
+            $uIdsToNotify = array_keys($uIdsToNotify);
+            if (!empty($uIdsToNotify)) {
+                $inUsers = implode(',', array_fill(0, count($uIdsToNotify), '?'));
+                $stmtUsers = $this->db->prepare("SELECT id, full_name, email FROM users WHERE id IN ($inUsers)");
+                $stmtUsers->execute($uIdsToNotify);
+                $usersList = $stmtUsers->fetchAll();
+
+                $notifySubject = "[RICH LAND] Từ chối đợt thanh toán cọc khách hàng: " . $depositData['first_name'] . " " . ($depositData['last_name'] ?? '');
+                $notifyTitle = "TỪ CHỐI ĐỢT THANH TOÁN CỌC - YÊU CẦU TẢI LẠI UNC";
+                
+                $stmtNotif = $this->db->prepare("
+                    INSERT INTO notifications (user_id, tenant_id, title, body, type, link) 
+                    VALUES (?, ?, ?, ?, 'cooperation_status', ?)
+                ");
+
+                require_once __DIR__ . '/../mailer.php';
+
+                foreach ($usersList as $u) {
+                    $notifyContent = "Chào <strong>" . htmlspecialchars($u['full_name']) . "</strong>,<br/><br/>" .
+                                     "Đợt thanh toán <strong>" . htmlspecialchars($mileData['milestone_name']) . "</strong> của khách hàng <strong>" . htmlspecialchars($depositData['first_name'] . " " . ($depositData['last_name'] ?? '')) . "</strong> (Phiếu cọc #" . $id . ") đã bị <strong>từ chối</strong> bởi Admin.<br/>" .
+                                     "Lý do từ chối: <strong>" . htmlspecialchars($reason) . "</strong>.<br/>" .
+                                     "Vui lòng vào cập nhật lại hình ảnh UNC chính xác.";
+                    
+                    $cleanBody = strip_tags(str_replace(['<br/>', '<br>', '<strong>', '</strong>', '<em>', '</em>'], [' ', ' ', '', '', '', ''], $notifyContent));
+                    
+                    $stmtNotif->execute([
+                        (int)$u['id'],
+                        $auth['tenant_id'],
+                        $notifySubject,
+                        $cleanBody,
+                        '/deposits'
+                    ]);
+
+                    if (!empty($u['email'])) {
+                        try {
+                            sendEmailNotification($u['email'], $notifySubject, $notifyTitle, $notifyContent, '', false);
+                        } catch (Exception $mailEx) {
+                            error_log("Error sending email: " . $mailEx->getMessage());
+                        }
+                    }
+                }
+            }
+
+            // Zalo message to owner
+            if (!empty($depositData['owner_zalo_chat_id'])) {
+                try {
+                    $stmtToken = $this->db->query("SELECT setting_value FROM system_settings WHERE setting_key = 'zalo_bot_token' LIMIT 1");
+                    $botToken = $stmtToken ? $stmtToken->fetchColumn() : '';
+                    if (!empty($botToken)) {
+                        require_once __DIR__ . '/../zalo_bot.php';
+                        $zaloMsg = "❌ [ TỪ CHỐI ĐỢT THANH TOÁN CỌC ]\n\n"
+                            . "Chào " . $depositData['owner_name'] . ", đợt thanh toán " . $mileData['milestone_name'] . " của khách hàng " . $depositData['first_name'] . " " . ($depositData['last_name'] ?? '') . " đã bị từ chối.\n"
+                            . "• Lý do: " . $reason . "\n"
+                            . "• Yêu cầu: Vui lòng kiểm tra và tải lại ảnh UNC chính xác trên RICH LAND CRM.";
+                        sendZaloMessage($botToken, $depositData['owner_zalo_chat_id'], $zaloMsg, false);
+                    }
+                } catch (Exception $zaloEx) {
+                    error_log("Error sending Zalo message: " . $zaloEx->getMessage());
+                }
+            }
+        }
+
         respond(200, null, 'Đã từ chối và yêu cầu tải lại UNC');
     }
 
