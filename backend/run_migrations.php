@@ -2850,6 +2850,38 @@ SQL;
             $logMsg("Hoàn thành cập nhật phiên bản 175.", "success");
         }
 
+        // --------------------------------------------------
+        // Step 42: Version 176 (Add system-wide performance indexes)
+        // --------------------------------------------------
+        if ($currentVersion < 176) {
+            $logMsg("Đang chạy cập nhật phiên bản 176 (Tối ưu hóa Index hiệu năng)...", "info");
+            
+            // Check & Create idx_contacts_owner_status on contacts table
+            $chkIdx1 = $conn->query("SHOW INDEX FROM contacts WHERE Key_name = 'idx_contacts_owner_status'");
+            if ($chkIdx1 && $chkIdx1->num_rows === 0) {
+                $conn->query("ALTER TABLE contacts ADD INDEX idx_contacts_owner_status (owner_id, status)");
+                $logMsg("Đã tạo INDEX idx_contacts_owner_status cho bảng contacts.", "success");
+            }
+            
+            // Check & Create idx_activities_related on activities table
+            $chkIdx2 = $conn->query("SHOW INDEX FROM activities WHERE Key_name = 'idx_activities_related'");
+            if ($chkIdx2 && $chkIdx2->num_rows === 0) {
+                $conn->query("ALTER TABLE activities ADD INDEX idx_activities_related (related_type, related_id)");
+                $logMsg("Đã tạo INDEX idx_activities_related cho bảng activities.", "success");
+            }
+
+            // Check & Create idx_comm_created on communication_logs table
+            $chkIdx3 = $conn->query("SHOW INDEX FROM communication_logs WHERE Key_name = 'idx_comm_created'");
+            if ($chkIdx3 && $chkIdx3->num_rows === 0) {
+                $conn->query("ALTER TABLE communication_logs ADD INDEX idx_comm_created (created_at)");
+                $logMsg("Đã tạo INDEX idx_comm_created cho bảng communication_logs.", "success");
+            }
+            
+            $conn->query("INSERT INTO system_settings (setting_key, setting_value) VALUES ('db_version', '176') ON DUPLICATE KEY UPDATE setting_value = '176'");
+            $currentVersion = 176;
+            $logMsg("Hoàn thành cập nhật phiên bản 176.", "success");
+        }
+
     $logMsg("Tự sửa đổi cấu trúc hoàn thành thành công.", "success");
 
     $logMsg("Hệ thống đã cập nhật thành công lên phiên bản mới nhất: " . $currentVersion, "success");
