@@ -804,7 +804,7 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
           onUnifiedInboxClick={() => setIsUnifiedInboxOpen(true)}
         />
 
-        {user && (user.role === 'sale' || user.role === 'admin' || user.role === 'superadmin') && consultantProfile && !consultantProfile.telegram_chat_id && !dismissTelegramReminder && (
+        {user && consultantProfile && !consultantProfile.telegram_chat_id && !dismissTelegramReminder && (
           <div style={{
             background: 'linear-gradient(90deg, #0088cc 0%, #00a8ff 100%)',
             color: '#fff',
@@ -2302,7 +2302,8 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
               flexDirection: 'column',
               width: '100%',
               gap: '10px',
-              marginTop: '0.5rem'
+              marginTop: '0.5rem',
+              paddingBottom: 'calc(env(safe-area-inset-bottom) + 20px)'
             }}>
               <a
                 href={`https://t.me/${sysSettings?.telegram_bot_username || 'richlandvietnam_bot'}?start=${consultantProfile?.id || user?.id || ''}`}

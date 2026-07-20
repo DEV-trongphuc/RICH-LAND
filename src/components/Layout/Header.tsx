@@ -170,10 +170,15 @@ export const Header = ({
     }
   };
 
-  // Auto-request or check on mount
+  // Auto-request or check on mount (only once to avoid prompt spam)
   useEffect(() => {
     if ('Notification' in window && Notification.permission === 'default') {
-      Notification.requestPermission();
+      const alreadyAsked = localStorage.getItem('asked_browser_notifications');
+      if (!alreadyAsked) {
+        Notification.requestPermission().then(() => {
+          localStorage.setItem('asked_browser_notifications', '1');
+        });
+      }
     }
   }, []);
 

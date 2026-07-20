@@ -335,19 +335,6 @@ if (strpos($textLower, '/tools') === 0 || strpos($textLower, '/report') === 0 ||
     if ($userId > 0 || !empty($email)) {
         // Lấy thông tin Telegram hiện tại xem đã liên kết với ai chưa
         $existingSaleOwner = null;
-        try {
-            $descRes = $conn->query("DESCRIBE consultants");
-            $cols = [];
-            if ($descRes) {
-                while ($row = $descRes->fetch_assoc()) {
-                    $cols[] = $row['Field'];
-                }
-            }
-            @file_put_contents($logFile, date('[Y-m-d H:i:s]') . " Columns in consultants view: " . implode(", ", $cols) . "\n", FILE_APPEND | LOCK_EX);
-        } catch (Throwable $descEx) {
-            @file_put_contents($logFile, date('[Y-m-d H:i:s]') . " DESCRIBE ERROR: " . $descEx->getMessage() . "\n", FILE_APPEND | LOCK_EX);
-        }
-
         $stmt = $conn->prepare("SELECT id, name, email FROM consultants WHERE telegram_chat_id = ? LIMIT 1");
         if ($stmt) {
             $stmt->bind_param("s", $chatId);
@@ -526,9 +513,9 @@ if (strpos($textLower, '/tools') === 0 || strpos($textLower, '/report') === 0 ||
     @file_put_contents($logFile, $errLog, FILE_APPEND | LOCK_EX);
 
     // Gửi thông tin lỗi về chat để Admin/Người dùng biết
-    $errorMsg = "❌ <b>[ LỖI HỆ THỐNG ]</b>\nCó lỗi xảy ra khi xử lý yêu cầu của bạn:\n<i>" . htmlspecialchars($e->getMessage()) . "</i>\n• DB: <code>" . htmlspecialchars($dbNameInfo) . "</code>";
+    $errorMsg = "❌ <b>[ LỖI HỆ THỐNG ]</b>\nCó lỗi xảy ra khi xử lý yêu cầu của bạn:\n<i>" . htmlspecialchars($e->getMessage()) . "</i>";
     sendTelegramMessage($botToken, $chatId, $errorMsg);
 
     // Trả về HTTP 200 để Telegram không gửi lại gói tin bị lỗi liên tục
-    echo json_encode(["status" => "error", "message" => $e->getMessage(), "db" => $dbNameInfo]);
+    echo json_encode(["status" => "error", "message" => $e->getMessage()]);
 }
