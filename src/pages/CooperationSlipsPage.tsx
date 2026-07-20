@@ -2344,14 +2344,23 @@ export default function CooperationSlipsPage() {
 
       {/* Configuration Modal */}
       {isUpdateOpen && createPortal(
-        <div style={{ position: 'fixed', inset: 0, zIndex: 999, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0, 0, 0, 0.82)', backdropFilter: 'blur(4px)', padding: '1rem' }}>
-          <div className="card" style={{ maxWidth: '600px', width: '100%', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem', animation: 'scaleUp 0.2s ease-out', overflow: 'visible' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--color-border)', paddingBottom: '0.5rem' }}>
-              <h2 style={{ fontSize: '1.25rem', fontWeight: 700 }}>Cấu hình phân chia tỷ lệ (%)</h2>
-              <button onClick={() => setIsUpdateOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-light)', display: 'flex', alignItems: 'center' }}><X size={20} /></button>
+        <div style={{ position: 'fixed', inset: 0, zIndex: 999, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0, 0, 0, 0.65)', backdropFilter: 'blur(5px)', padding: '1rem' }}>
+          <div className="card" style={{ maxWidth: '560px', width: '100%', padding: '2rem', display: 'flex', flexDirection: 'column', gap: '1.5rem', maxHeight: '92vh', overflowY: 'auto', borderRadius: '24px', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.15), 0 10px 10px -5px rgba(0, 0, 0, 0.04)', border: '1px solid var(--color-border)', animation: 'scaleUp 0.2s ease-out', overflow: 'visible' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '1px solid var(--color-border-light)', paddingBottom: '0.75rem' }}>
+              <div>
+                <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--color-text)', margin: 0, letterSpacing: '-0.025em' }}>
+                  Cấu hình phân chia tỷ lệ (%)
+                </h3>
+                <p style={{ fontSize: '0.825rem', color: 'var(--color-text-muted)', marginTop: '0.375rem', marginBottom: 0, lineHeight: 1.5 }}>
+                  Chỉnh sửa trực tiếp hoa hồng và tỷ lệ. Sau khi lưu, phiếu sẽ được cập nhật và yêu cầu các bên liên quan ký xác nhận lại.
+                </p>
+              </div>
+              <button onClick={() => setIsUpdateOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-light)', display: 'flex', alignItems: 'center', padding: '4px' }}><X size={20} /></button>
             </div>
-            <form onSubmit={handleSaveShares} style={{ display: 'flex', flexDirection: 'column', gap: '1rem', overflow: 'visible' }}>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+            
+            <form onSubmit={handleSaveShares} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', overflow: 'visible' }}>
+              {/* Expected Commission */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                 <label style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                   Hoa hồng dự kiến (VND)
                 </label>
@@ -2359,113 +2368,120 @@ export default function CooperationSlipsPage() {
                   value={updateExpectedCommission}
                   onChange={(val) => setUpdateExpectedCommission(val || 0)}
                   className="form-input"
-                  style={{ width: '100%', height: '38px', fontSize: '0.875rem' }}
+                  style={{ width: '100%', height: '42px', fontSize: '0.9rem', borderRadius: '10px', fontWeight: 600 }}
                 />
               </div>
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', overflow: 'visible' }}>
+              {/* Members and Shares List */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', overflow: 'visible' }}>
                 <label style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                   Thành viên & Tỷ lệ (%)
                 </label>
-                {sharesInput.map((item, idx) => (
-                  <div key={idx} style={{ display: 'flex', gap: '8px', alignItems: 'center', overflow: 'visible' }}>
-                    <div style={{ flex: 1, pointerEvents: idx === 0 ? 'none' : 'auto', opacity: idx === 0 ? 0.8 : 1 }}>
-                      <CustomSelect
-                        value={item.user_id}
-                        onChange={val =>
+                
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', background: 'var(--color-bg-light)', padding: '16px', borderRadius: '16px', border: '1px solid var(--color-border-light)', overflow: 'visible' }}>
+                  {sharesInput.map((item, idx) => (
+                    <div key={idx} style={{ display: 'flex', gap: '10px', alignItems: 'center', padding: '10px 14px', background: 'var(--color-surface)', borderRadius: '12px', border: '1px solid var(--color-border-light)', boxShadow: '0 1px 3px rgba(0,0,0,0.02)', overflow: 'visible' }}>
+                      <div style={{ flex: 1, pointerEvents: idx === 0 ? 'none' : 'auto', opacity: idx === 0 ? 0.8 : 1, overflow: 'visible' }}>
+                        <CustomSelect
+                          value={item.user_id}
+                          onChange={val =>
+                            setSharesInput(prev =>
+                              prev.map((valObj, i) => (i === idx ? { ...valObj, user_id: val } : valObj))
+                            )
+                          }
+                          options={[
+                            { value: '', label: '-- Chọn nhân viên --' },
+                            ...salesAccounts
+                              .filter(s => {
+                                if (idx === 0) return true;
+                                return String(s.id) !== String(user?.id);
+                              })
+                              .filter(s => {
+                                if (idx === 0) return true;
+                                const creatorId = sharesInput[0]?.user_id;
+                                const creatorObj = salesAccounts.find(u => String(u.id) === String(creatorId));
+                                if (!creatorObj || !creatorObj.team_id) return true;
+                                return String(s.team_id) !== String(creatorObj.team_id);
+                              })
+                              .filter(s => {
+                                if (String(s.id) === String(item.user_id)) return true;
+                                return !sharesInput.some((other, otherIdx) => otherIdx !== idx && String(other.user_id) === String(s.id));
+                              })
+                              .map(s => ({ value: String(s.id), label: s.full_name, avatar: (s as any).avatar }))
+                          ]}
+                          size="sm"
+                          showAvatars
+                          searchable
+                        />
+                      </div>
+                      <input
+                        type="number"
+                        required
+                        min="0"
+                        max="100"
+                        placeholder="%"
+                        value={item.percentage}
+                        onChange={e => {
+                          const parsed = parseInt(e.target.value) || 0;
+                          const otherSum = sharesInput.reduce((acc, val, i) => {
+                            if (i === idx) return acc;
+                            return acc + (parseInt(val.percentage) || 0);
+                          }, 0);
+                          const maxAllowed = Math.max(0, 100 - otherSum);
+                          let finalVal = parsed;
+                          if (finalVal > maxAllowed) {
+                            finalVal = maxAllowed;
+                          }
+                          if (finalVal < 0) {
+                            finalVal = 0;
+                          }
+                          const valStr = e.target.value === '' ? '' : String(finalVal);
                           setSharesInput(prev =>
-                            prev.map((valObj, i) => (i === idx ? { ...valObj, user_id: val } : valObj))
-                          )
-                        }
-                        options={[
-                          { value: '', label: '-- Chọn nhân viên --' },
-                          ...salesAccounts
-                            .filter(s => {
-                              if (idx === 0) return true;
-                              return String(s.id) !== String(user?.id);
-                            })
-                            .filter(s => {
-                              if (idx === 0) return true;
-                              const creatorId = sharesInput[0]?.user_id;
-                              const creatorObj = salesAccounts.find(u => String(u.id) === String(creatorId));
-                              if (!creatorObj || !creatorObj.team_id) return true;
-                              return String(s.team_id) !== String(creatorObj.team_id);
-                            })
-                            .filter(s => {
-                              if (String(s.id) === String(item.user_id)) return true;
-                              return !sharesInput.some((other, otherIdx) => otherIdx !== idx && String(other.user_id) === String(s.id));
-                            })
-                            .map(s => ({ value: String(s.id), label: s.full_name, avatar: (s as any).avatar }))
-                        ]}
-                        size="sm"
-                        showAvatars
-                        searchable
+                            prev.map((val, i) => (i === idx ? { ...val, percentage: valStr } : val))
+                          );
+                        }}
+                        className="form-input"
+                        style={{ fontSize: '0.9rem', padding: '8px 12px', width: '80px', height: '38px', borderRadius: '8px', textAlign: 'center', fontWeight: 600 }}
                       />
+                      {sharesInput.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveShareholderInput(idx)}
+                          style={{ padding: '6px', background: 'none', border: 'none', color: 'var(--color-danger)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                        >
+                          <X size={16} />
+                        </button>
+                      )}
                     </div>
-                    <input
-                      type="number"
-                      required
-                      min="0"
-                      max="100"
-                      placeholder="%"
-                      value={item.percentage}
-                      onChange={e => {
-                        const parsed = parseInt(e.target.value) || 0;
-                        const otherSum = sharesInput.reduce((acc, val, i) => {
-                          if (i === idx) return acc;
-                          return acc + (parseInt(val.percentage) || 0);
-                        }, 0);
-                        const maxAllowed = Math.max(0, 100 - otherSum);
-                        let finalVal = parsed;
-                        if (finalVal > maxAllowed) {
-                          finalVal = maxAllowed;
-                        }
-                        if (finalVal < 0) {
-                          finalVal = 0;
-                        }
-                        const valStr = e.target.value === '' ? '' : String(finalVal);
-                        setSharesInput(prev =>
-                          prev.map((val, i) => (i === idx ? { ...val, percentage: valStr } : val))
-                        );
-                      }}
-                      className="form-input"
-                      style={{ fontSize: '0.75rem', padding: '6px 10px', width: '80px', textAlign: 'center' }}
-                    />
-                    {sharesInput.length > 1 && (
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveShareholderInput(idx)}
-                        style={{ padding: '6px', background: 'none', border: 'none', color: 'var(--color-danger)', cursor: 'pointer', display: 'flex' }}
-                      >
-                        <X size={14} />
-                      </button>
-                    )}
+                  ))}
+
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '0.5rem', borderTop: '1px solid var(--color-border-light)' }}>
+                    <button
+                      type="button"
+                      onClick={handleAddShareholderInput}
+                      style={{ fontSize: '0.8rem', color: 'var(--color-primary)', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', fontWeight: 600 }}
+                      className="hover:underline"
+                    >
+                      <UserPlus size={14} /> Thêm nhân viên hỗ trợ
+                    </button>
+                    <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--color-text-muted)' }}>
+                      Tổng: {sharesInput.reduce((acc, s) => acc + (parseInt(s.percentage) || 0), 0)}% / 100%
+                    </span>
                   </div>
-                ))}
+                </div>
               </div>
 
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '0.5rem', borderTop: '1px solid var(--color-border)' }}>
-                <button
-                  type="button"
-                  onClick={handleAddShareholderInput}
-                  style={{ fontSize: '0.75rem', color: 'var(--color-primary)', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '2px' }}
-                  className="hover:underline"
-                >
-                  <UserPlus size={14} /> Thêm nhân viên hỗ trợ
-                </button>
-                <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)' }}>
-                  Tổng: {sharesInput.reduce((acc, s) => acc + (parseInt(s.percentage) || 0), 0)}% / 100%
-                </span>
-              </div>
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '0.5rem' }}>
-                <label className="form-label" style={{ fontSize: '0.75rem', fontWeight: 700 }}>Lý do thay đổi / Yêu cầu điều chỉnh</label>
+              {/* Change Reason Note */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <label style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                  Lý do thay đổi / Yêu cầu điều chỉnh
+                </label>
                 <textarea
                   placeholder="VD: Điều chỉnh thêm sale hỗ trợ ký hợp đồng hoặc chỉnh sửa tỷ lệ..."
                   value={changeReason}
                   onChange={e => setChangeReason(e.target.value)}
                   className="form-input"
-                  style={{ fontSize: '0.75rem', padding: '8px 10px', height: '60px', resize: 'vertical' }}
+                  style={{ width: '100%', padding: '10px 14px', fontSize: '0.875rem', resize: 'none', borderRadius: '10px', lineHeight: 1.5, height: '80px' }}
                   required
                 />
               </div>
@@ -2473,7 +2489,7 @@ export default function CooperationSlipsPage() {
               <button
                 type="submit"
                 className="btn primary w-full"
-                style={{ height: '38px', marginTop: '0.5rem' }}
+                style={{ background: 'var(--color-primary)', color: 'white', border: 'none', height: '46px', borderRadius: '12px', fontSize: '0.9rem', fontWeight: 700, padding: '0 20px', boxShadow: '0 4px 12px rgba(163, 20, 34, 0.2)', cursor: 'pointer', transition: 'all 0.2s', marginTop: '0.5rem' }}
               >
                 Lưu và gửi chữ ký lại
               </button>

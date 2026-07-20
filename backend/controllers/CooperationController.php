@@ -389,11 +389,11 @@ class CooperationController {
         $sharesJson = json_encode($shares);
         $reason = trim($b['reason'] ?? '');
 
-        // If updated by admin/manager directly, keep their existing status (e.g. approved) and preserve existing signatures.
+        // If updated by admin/manager directly, set status to approved_pending_signatures and reset signatures to '{}'
         // Otherwise, reset signatures and request change/approval.
         if ($isManagerOrAdmin) {
-            $newStatus = $slip['status'];
-            $signaturesVal = $slip['signatures_json'];
+            $newStatus = 'approved_pending_signatures';
+            $signaturesVal = '{}';
             
             // Clear any pending adjustment request because it has been addressed/applied directly.
             $stmtClearReq = $this->db->prepare("
