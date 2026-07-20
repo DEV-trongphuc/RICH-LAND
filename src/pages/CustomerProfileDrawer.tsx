@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, User, Users, Phone, Mail, MapPin, Briefcase, Plus, Search, Send, History, CheckSquare, DollarSign, HelpCircle, FileText, ShoppingCart, Tag as TagIcon, Target, Pencil, Trash2, LifeBuoy, AlertCircle, Clock, UserCheck, Activity, Calendar, CheckCircle2, ChevronLeft, ChevronRight, ChevronDown, Check, Camera, Loader2, MessageSquare, PenTool, Lightbulb, Upload, Paperclip, CreditCard, Ban, ShieldAlert, Copy, Folder, FolderPlus, ArrowRightLeft, List, LayoutGrid, RotateCcw, RefreshCw, Layers, Save, LogOut, XCircle } from 'lucide-react';
+import { X, User, Users, Phone, Mail, MapPin, Briefcase, Plus, Search, Send, History, CheckSquare, DollarSign, HelpCircle, FileText, ShoppingCart, Tag as TagIcon, Target, Pencil, Trash2, LifeBuoy, AlertCircle, Clock, UserCheck, Activity, Calendar, CheckCircle2, ChevronLeft, ChevronRight, ChevronDown, Check, Camera, Loader2, MessageSquare, PenTool, Lightbulb, Upload, Paperclip, CreditCard, Ban, ShieldAlert, Copy, Folder, FolderPlus, ArrowRightLeft, List, LayoutGrid, RotateCcw, RefreshCw, Layers, Save, LogOut, XCircle, Eye } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { LeadScoreRing } from '../components/ui/LeadScoreRing';
 import { TagInput } from '../components/ui/TagInput';
@@ -922,6 +922,10 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
     return isMobile ? '' : 'info';
   });
   const [taskViewMode, setTaskViewMode] = useState<'kanban' | 'list'>('kanban');
+  const [showManageModal, setShowManageModal] = useState(false);
+  const [selectedDepForManage, setSelectedDepForManage] = useState<any | null>(null);
+  const [tempMilestones, setTempMilestones] = useState<any[]>([]);
+  const [isSavingMilestones, setIsSavingMilestones] = useState(false);
   const [prevContactId, setPrevContactId] = useState<number | null>(null);
   const [showMobilePipelineSelector, setShowMobilePipelineSelector] = useState(false);
   const [showFilterDropdown, setShowFilterDropdown] = useState(false);
@@ -1115,6 +1119,8 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
   const [depositMilestones, setDepositMilestones] = useState<{ name: string; amount: string }[]>([
     { name: 'Đợt 1 - Cọc giữ chỗ', amount: '' }
   ]);
+  const [depositUncFile, setDepositUncFile] = useState<File | null>(null);
+  const [pendingPipelineTransition, setPendingPipelineTransition] = useState<{ targetId: string; targetLabel: string; note: string } | null>(null);
   const [projectsList, setProjectsList] = useState<any[]>([]);
   const [companiesList, setCompaniesList] = useState<any[]>([]);
   const [showTaskModal, setShowTaskModal] = useState(false);
@@ -3436,6 +3442,12 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
       return;
     }
     
+    // Require UNC proof for milestone 1
+    if (!depositUncFile) {
+      addToast('Vui lòng tải lên minh chứng chuyển khoản (UNC) Đợt 1 để tạo phiếu cọc.', 'error');
+      return;
+    }
+
     // Verify milestones total sum
     const totalM = depositMilestones.reduce((acc, m) => acc + (parseFloat(m.amount) || 0), 0);
     if (Math.abs(totalM - parseFloat(depositPrice)) > 1) {
@@ -3445,6 +3457,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
 
     setIsSubmitting(true);
     try {
+      // 1. Create the deposit slip and milestones
       const res = await api.post('/deposits', {
         contact_id: contact.id,
         project_id: Number(depositProjectId),
@@ -3453,20 +3466,67 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
         expected_commission: parseFloat(depositExpectedCommission) || 0,
         milestones: depositMilestones
       });
-      if (res.data.success || res.data) {
-        addToast('Tạo phiếu cọc thành công!', 'success');
-        confetti({ particleCount: 150, spread: 80, origin: { y: 0.6 } });
-        setShowDealModal(false);
-        // Reset form
-        setDepositProjectId('');
-        setDepositUnitCode('');
-        setDepositPrice('');
-        setDepositExpectedCommission('');
-        setDepositMilestones([{ name: 'Đợt 1 - Cọc giữ chỗ', amount: '' }]);
-        fetchData();
+
+      const responseData = res.data?.data || res.data;
+      const createdDepositId = responseData?.id;
+      const createdMilestones = responseData?.milestones || [];
+
+      if (!createdDepositId || createdMilestones.length === 0) {
+        throw new Error('Không nhận được thông tin phiếu đặt cọc hoặc đợt thanh toán từ máy chủ.');
       }
+
+      // 2. Upload UNC proof to the first milestone
+      const firstMilestone = createdMilestones[0];
+      const formDataUpload = new FormData();
+      formDataUpload.append('file', depositUncFile);
+
+      await api.post(`/deposits/${createdDepositId}/milestones/${firstMilestone.id}`, formDataUpload, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+
+      // 3. Complete pipeline stage transition if pending
+      if (pendingPipelineTransition) {
+        const { targetId, targetLabel, note } = pendingPipelineTransition;
+        const calculatedStatus = 'customer';
+
+        await api.put(`/contacts/${contact.id}`, { 
+          pipeline_status: targetId, 
+          status: calculatedStatus,
+          ttl1_completed: formData.ttl1_completed,
+          ttl1_data: formData.ttl1_data
+        });
+
+        await api.post('/activities', {
+          type: 'note',
+          subject: `Chuyển trạng thái Pipeline → ${targetLabel}`,
+          body: note || null,
+          status: 'done',
+          related_type: 'contact',
+          related_id: contact.id,
+          contact_id: contact.id,
+          user_id: currentUser?.id,
+          due_date: new Date().toISOString().slice(0, 19).replace('T', ' '),
+          done_at: new Date().toISOString().slice(0, 19).replace('T', ' ')
+        });
+
+        setPendingPipelineTransition(null);
+      }
+
+      addToast('Tạo phiếu cọc và tải lên UNC thành công!', 'success');
+      confetti({ particleCount: 150, spread: 80, origin: { y: 0.6 } });
+      setShowDealModal(false);
+
+      // Reset form states
+      setDepositProjectId('');
+      setDepositUnitCode('');
+      setDepositPrice('');
+      setDepositExpectedCommission('');
+      setDepositMilestones([{ name: 'Đợt 1 - Cọc giữ chỗ', amount: '' }]);
+      setDepositUncFile(null);
+      
+      fetchData();
     } catch (e: any) {
-      addToast(e?.response?.data?.message || 'Lỗi khi tạo phiếu cọc', 'error');
+      addToast(e?.response?.data?.message || e.message || 'Lỗi khi tạo phiếu cọc', 'error');
     } finally {
       setIsSubmitting(false);
     }
@@ -3497,6 +3557,140 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
         }
       }
     });
+  };
+  const handleOpenManageMilestones = (dep: any) => {
+    setSelectedDepForManage(dep);
+    setTempMilestones((dep.milestones || []).map((m: any) => ({ ...m })));
+    setShowManageModal(true);
+  };
+
+  const handleAddMilestoneRow = () => {
+    setTempMilestones([
+      ...tempMilestones,
+      {
+        tempId: Date.now() + Math.random(),
+        milestone_name: `Đợt ${tempMilestones.length + 1}`,
+        expected_amount: 0,
+        status: 'pending'
+      }
+    ]);
+  };
+
+  const handleUpdateMilestoneField = (index: number, field: string, value: any) => {
+    const updated = [...tempMilestones];
+    updated[index] = { ...updated[index], [field]: value };
+    setTempMilestones(updated);
+  };
+
+  const handleRemoveMilestoneRow = (index: number) => {
+    const updated = [...tempMilestones];
+    updated.splice(index, 1);
+    setTempMilestones(updated);
+  };
+
+  const handleUploadUncFromModal = async (e: React.ChangeEvent<HTMLInputElement>, index: number) => {
+    const m = tempMilestones[index];
+    if (!m.id) {
+      addToast('Vui lòng nhấn "Lưu lịch trình" trước khi tải UNC cho đợt thanh toán mới này.', 'error');
+      return;
+    }
+    if (!e.target.files || e.target.files.length === 0) return;
+    const file = e.target.files[0];
+
+    try {
+      const formData = new FormData();
+      formData.append('unc', file);
+      
+      const res = await api.post(`/deposits/${selectedDepForManage.id}/milestones/${m.id}/unc`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      if (res.data?.success || res.data) {
+        addToast('Tải ảnh chuyển khoản (UNC) thành công!', 'success');
+        
+        const updated = [...tempMilestones];
+        updated[index].unc_file_path = res.data.data?.unc_file_path || res.data.unc_file_path;
+        updated[index].status = 'paid';
+        setTempMilestones(updated);
+        
+        fetchData();
+      } else {
+        addToast(res.data?.message || 'Lỗi khi tải ảnh UNC', 'error');
+      }
+    } catch (err: any) {
+      addToast(err?.response?.data?.message || err.message || 'Lỗi kết nối', 'error');
+    }
+  };
+
+  const handleApproveFromModal = async (index: number) => {
+    const m = tempMilestones[index];
+    try {
+      const res = await api.post(`/deposits/${selectedDepForManage.id}/milestones/${m.id}/approve`);
+      if (res.data?.success || res.data) {
+        addToast('Phê duyệt đợt tiền thành công!', 'success');
+        
+        const updated = [...tempMilestones];
+        updated[index].status = 'approved';
+        setTempMilestones(updated);
+        
+        fetchData();
+      } else {
+        addToast(res.data?.message || 'Lỗi phê duyệt', 'error');
+      }
+    } catch (err: any) {
+      addToast(err?.response?.data?.message || err.message || 'Lỗi kết nối', 'error');
+    }
+  };
+
+  const handleRejectFromModal = async (index: number) => {
+    const m = tempMilestones[index];
+    try {
+      const res = await api.post(`/deposits/${selectedDepForManage.id}/milestones/${m.id}/reject`);
+      if (res.data?.success || res.data) {
+        addToast('Bác bỏ UNC đợt tiền thành công!', 'success');
+        
+        const updated = [...tempMilestones];
+        updated[index].status = 'failed';
+        setTempMilestones(updated);
+        
+        fetchData();
+      } else {
+        addToast(res.data?.message || 'Lỗi bác bỏ', 'error');
+      }
+    } catch (err: any) {
+      addToast(err?.response?.data?.message || err.message || 'Lỗi kết nối', 'error');
+    }
+  };
+
+  const handleSaveMilestones = async () => {
+    const totalAmount = tempMilestones.reduce((sum, m) => sum + (Number(m.expected_amount) || 0), 0);
+    if (Math.abs(totalAmount - selectedDepForManage.price) > 1) {
+      addToast(`Tổng tiền các đợt (${totalAmount.toLocaleString()} VND) phải bằng đúng Giá bán căn hộ (${selectedDepForManage.price.toLocaleString()} VND)`, 'error');
+      return;
+    }
+
+    try {
+      setIsSavingMilestones(true);
+      const res = await api.put(`/deposits/${selectedDepForManage.id}/milestones`, {
+        milestones: tempMilestones.map(m => ({
+          id: m.id || null,
+          milestone_name: m.milestone_name,
+          expected_amount: m.expected_amount,
+          status: m.status
+        }))
+      });
+
+      if (res.data?.success || res.data) {
+        addToast('Lưu lịch trình thanh toán thành công!', 'success');
+        setShowManageModal(false);
+        fetchData();
+      } else {
+        addToast(res.data?.message || 'Lỗi lưu lịch trình', 'error');
+      }
+    } catch (err: any) {
+      addToast(err?.response?.data?.message || err.message || 'Lỗi kết nối', 'error');
+    } finally {
+      setIsSavingMilestones(false);
+    }
   };
 
   const isReleaseBlocked = (() => {
@@ -7599,7 +7793,12 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '1rem' }}>
                           {deals.map((d: any) => {
                             return (
-                              <div key={d.id} className="card-panel" style={{ padding: 0, overflow: 'hidden', border: `1px solid var(--color-border)`, transition: 'transform 0.2s, box-shadow 0.2s', borderRadius: '16px' }}>
+                              <div 
+                                key={d.id} 
+                                className="card-panel table-row-hover" 
+                                style={{ padding: 0, overflow: 'hidden', border: `1px solid var(--color-border)`, transition: 'transform 0.2s, box-shadow 0.2s', borderRadius: '16px', cursor: 'pointer' }}
+                                onClick={() => handleOpenManageMilestones(d)}
+                              >
                                 <div style={{ padding: '1.25rem 1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', background: 'var(--color-surface)' }}>
                                   <div>
                                     <h4 style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--color-text)', marginBottom: '0.5rem', letterSpacing: '-0.01em' }}>{d.title}</h4>
@@ -7643,12 +7842,12 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                   </div>
                                 )}
 
-                                {isAdmin && d.stage_id !== 'cancelled' && (
+                                {d.stage_id !== 'cancelled' && (
                                   <div style={{ padding: '0.75rem 1.5rem', display: 'flex', justifyContent: 'flex-end', background: 'var(--color-surface)', borderTop: '1px solid var(--color-border-light)' }}>
                                     <button 
                                       className="btn outline danger sm"
                                       onClick={(e) => { e.stopPropagation(); handleCancelDeposit(d.id); }}
-                                      style={{ display: 'flex', alignItems: 'center', gap: '4px', height: '28px', fontSize: '0.75rem', padding: '0 10px' }}
+                                      style={{ display: 'flex', alignItems: 'center', gap: '4px', height: '28px', fontSize: '0.75rem', padding: '0 10px', cursor: 'pointer' }}
                                     >
                                       <Ban size={12} /> Hủy đặt cọc (Bể cọc)
                                     </button>
@@ -9912,6 +10111,13 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                     const targetLabel = pipelineModal.targetLabel;
                     const note = pipelineModal.note;
                     
+                    if (targetId === 'dat_coc') {
+                      setPipelineModal({ isOpen: false, targetId: '', targetLabel: '', note: '' });
+                      setPendingPipelineTransition({ targetId, targetLabel, note });
+                      setShowDealModal(true);
+                      return;
+                    }
+                    
                     if (coopEligibleStatuses.includes(targetId)) {
                       setIsSubmitting(true);
                       try {
@@ -10249,6 +10455,40 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                       )}
                     </div>
                   ))}
+                  
+                  {/* Phase 1 UNC upload */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '0.75rem', padding: '0.75rem', background: 'rgba(59, 130, 246, 0.04)', border: '1px solid rgba(59, 130, 246, 0.12)', borderRadius: '8px' }}>
+                    <label className="form-label" style={{ fontWeight: 700, margin: 0, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                      Minh chứng chuyển khoản Đợt 1 (UNC) <span style={{ color: 'var(--color-danger)' }}>*</span>
+                    </label>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '4px' }}>
+                      <label
+                        className="btn outline sm"
+                        style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', cursor: 'pointer', height: '30px', fontSize: '0.75rem' }}
+                      >
+                        <Upload size={13} /> {depositUncFile ? 'Chọn lại file' : 'Chọn tệp UNC (Ảnh)'}
+                        <input
+                          type="file"
+                          accept="image/*"
+                          style={{ display: 'none' }}
+                          onChange={e => {
+                            if (e.target.files && e.target.files.length > 0) {
+                              setDepositUncFile(e.target.files[0]);
+                            }
+                          }}
+                        />
+                      </label>
+                      {depositUncFile ? (
+                        <span style={{ fontSize: '0.75rem', color: '#10b981', fontWeight: 600 }}>
+                          ✓ {depositUncFile.name}
+                        </span>
+                      ) : (
+                        <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontStyle: 'italic' }}>
+                          Yêu cầu bắt buộc 1 UNC
+                        </span>
+                      )}
+                    </div>
+                  </div>
                 </div>
               </div>
               <div className="modal-footer">
@@ -11332,6 +11572,302 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
           </motion.div>
         </div>
       )}
+
+      {/* Manage Milestones Modal inside Customer Profile Drawer */}
+      <CustomModal
+        isOpen={showManageModal}
+        onClose={() => setShowManageModal(false)}
+        title={`Chi tiết & Lịch trình thanh toán - Căn ${selectedDepForManage?.unit_code}`}
+        width="820px"
+      >
+        {selectedDepForManage && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+            {/* Brief Info */}
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: '1fr 1fr',
+              gap: '0.75rem',
+              background: 'var(--color-surface-hover)',
+              padding: '1rem',
+              borderRadius: '8px',
+              fontSize: '0.8125rem',
+              border: '1px solid var(--color-border-light)'
+            }}>
+              <div>
+                <p style={{ color: 'var(--color-text-muted)', marginBottom: 2 }}>Dự án</p>
+                <p style={{ fontWeight: 700, fontSize: '0.9rem' }}>{selectedDepForManage.project_name}</p>
+              </div>
+              <div>
+                <p style={{ color: 'var(--color-text-muted)', marginBottom: 2 }}>Khách hàng</p>
+                <p style={{ fontWeight: 700, fontSize: '0.9rem' }}>{selectedDepForManage.last_name} {selectedDepForManage.first_name} ({selectedDepForManage.phone})</p>
+              </div>
+              <div>
+                <p style={{ color: 'var(--color-text-muted)', marginBottom: 2 }}>Tổng giá trị căn hộ</p>
+                <p style={{ fontWeight: 700, color: 'var(--color-primary)', fontSize: '0.95rem' }}>
+                  {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(selectedDepForManage.price)}
+                </p>
+              </div>
+              <div>
+                <p style={{ color: 'var(--color-text-muted)', marginBottom: 2 }}>Hoa hồng dự kiến</p>
+                <p style={{ fontWeight: 700, color: '#059669', fontSize: '0.95rem' }}>
+                  {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(selectedDepForManage.expected_commission)}
+                </p>
+              </div>
+            </div>
+
+            {/* Milestones List */}
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+                <h4 style={{ margin: 0, fontWeight: 700, fontSize: '0.875rem' }}>Các đợt thanh toán</h4>
+                <button
+                  className="btn sm"
+                  onClick={handleAddMilestoneRow}
+                  style={{
+                    padding: '4px 10px',
+                    fontSize: '0.75rem',
+                    background: 'rgba(16, 185, 129, 0.08)',
+                    color: '#10b981',
+                    border: '1px solid rgba(16, 185, 129, 0.2)',
+                    fontWeight: 700,
+                    borderRadius: '6px',
+                    cursor: 'pointer'
+                  }}
+                >
+                  + Thêm đợt
+                </button>
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                {/* Table Header */}
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: '2fr 1.2fr 1fr 1fr 1.5fr',
+                  gap: '12px',
+                  alignItems: 'center',
+                  padding: '8px 12px',
+                  background: 'var(--color-surface-hover)',
+                  borderBottom: '2px solid var(--color-border)',
+                  fontSize: '0.75rem',
+                  fontWeight: 700,
+                  color: 'var(--color-text-muted)',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.5px'
+                }}>
+                  <div>Tên đợt thanh toán</div>
+                  <div>Số tiền (VND)</div>
+                  <div style={{ textAlign: 'center' }}>Trạng thái</div>
+                  <div style={{ textAlign: 'center' }}>Minh chứng (UNC)</div>
+                  <div style={{ textAlign: 'right' }}>Thao tác</div>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', maxHeight: '350px', overflowY: 'auto', paddingRight: 4 }}>
+                  {tempMilestones.map((m: any, idx: number) => {
+                    const isLocked = m.status === 'approved' || m.status === 'paid';
+                    return (
+                      <div
+                        key={m.tempId || m.id}
+                        style={{
+                          display: 'grid',
+                          gridTemplateColumns: '2fr 1.2fr 1fr 1fr 1.5fr',
+                          gap: '12px',
+                          alignItems: 'center',
+                          padding: '10px 12px',
+                          background: 'var(--color-surface)',
+                          border: '1px solid var(--color-border-light)',
+                          borderRadius: '8px',
+                          transition: 'all 0.2s',
+                          boxShadow: '0 1px 2px rgba(0,0,0,0.02)'
+                        }}
+                      >
+                        {/* Name input */}
+                        <div>
+                          <input
+                            type="text"
+                            placeholder="Tên đợt (ví dụ: Đợt 1 - Cọc giữ chỗ)"
+                            value={m.milestone_name}
+                            onChange={e => handleUpdateMilestoneField(idx, 'milestone_name', e.target.value)}
+                            className="form-input"
+                            style={{ width: '100%', height: '34px', fontSize: '0.775rem', padding: '0 10px', borderRadius: '6px' }}
+                          />
+                        </div>
+
+                        {/* Amount input */}
+                        <div>
+                          <input
+                            type="number"
+                            placeholder="Số tiền"
+                            value={m.expected_amount || ''}
+                            disabled={isLocked}
+                            onChange={e => handleUpdateMilestoneField(idx, 'expected_amount', parseFloat(e.target.value) || 0)}
+                            className="form-input"
+                            style={{ width: '100%', height: '34px', fontSize: '0.775rem', padding: '0 10px', borderRadius: '6px' }}
+                          />
+                        </div>
+
+                        {/* Status */}
+                        <div style={{ display: 'flex', justifyContent: 'center' }}>
+                          <span style={{
+                            fontSize: '0.7rem',
+                            fontWeight: 700,
+                            padding: '4px 8px',
+                            borderRadius: '9999px',
+                            background: m.status === 'approved' ? 'rgba(16, 185, 129, 0.12)' : m.status === 'paid' ? 'rgba(37, 99, 235, 0.12)' : m.status === 'failed' ? 'rgba(239, 68, 68, 0.12)' : 'rgba(107, 114, 128, 0.12)',
+                            color: m.status === 'approved' ? '#10b981' : m.status === 'paid' ? '#2563eb' : m.status === 'failed' ? '#ef4444' : '#6b7280',
+                            textAlign: 'center',
+                            display: 'inline-block',
+                            whiteSpace: 'nowrap'
+                          }}>
+                            {m.status === 'approved' ? 'Đã duyệt' : m.status === 'paid' ? 'Chờ duyệt' : m.status === 'failed' ? 'Từ chối' : 'Chờ nộp'}
+                          </span>
+                        </div>
+
+                        {/* UNC proof */}
+                        <div style={{ display: 'flex', justifyContent: 'center', gap: '4px' }}>
+                          {/* Upload UNC */}
+                          {m.status !== 'approved' && (
+                            <label
+                              className="btn sm"
+                              style={{
+                                padding: '0 8px',
+                                height: '30px',
+                                cursor: 'pointer',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                borderRadius: '6px',
+                                border: '1px solid var(--color-border)',
+                                background: 'var(--color-surface)',
+                                color: 'var(--color-text-muted)',
+                                transition: 'all 0.15s'
+                              }}
+                              title="Tải ảnh chuyển khoản (UNC)"
+                            >
+                              <Upload size={13} />
+                              <input
+                                type="file"
+                                accept="image/*"
+                                style={{ display: 'none' }}
+                                onChange={e => handleUploadUncFromModal(e, idx)}
+                              />
+                            </label>
+                          )}
+
+                          {/* View UNC link */}
+                          {m.unc_file_path && (
+                            <a
+                              href={`${import.meta.env.VITE_API_URL || '/backend'}/uploads/${m.unc_file_path}`}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="btn sm"
+                              style={{
+                                padding: '0 8px',
+                                height: '30px',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                borderRadius: '6px',
+                                background: 'rgba(59, 130, 246, 0.1)',
+                                color: '#2563eb',
+                                border: 'none',
+                                transition: 'all 0.15s'
+                              }}
+                              title="Xem UNC đã tải lên"
+                            >
+                              <Eye size={13} />
+                            </a>
+                          )}
+                        </div>
+
+                        {/* Actions (Approve/Reject or Delete) */}
+                        <div style={{ display: 'flex', gap: '4px', alignItems: 'center', justifyContent: 'flex-end' }}>
+                          {/* Admin approval/rejection */}
+                          {isAdmin && m.status === 'paid' && (
+                            <>
+                              <button
+                                onClick={() => handleApproveFromModal(idx)}
+                                style={{
+                                  padding: '0 8px',
+                                  height: '30px',
+                                  background: '#10b981',
+                                  color: 'white',
+                                  border: 'none',
+                                  borderRadius: '6px',
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  cursor: 'pointer',
+                                  fontSize: '0.7rem',
+                                  fontWeight: 700
+                                }}
+                                title="Phê duyệt đợt tiền này"
+                              >
+                                <Check size={13} style={{ marginRight: 2 }} /> Duyệt
+                              </button>
+                              <button
+                                onClick={() => handleRejectFromModal(idx)}
+                                style={{
+                                  padding: '0 8px',
+                                  height: '30px',
+                                  background: '#ef4444',
+                                  color: 'white',
+                                  border: 'none',
+                                  borderRadius: '6px',
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  cursor: 'pointer',
+                                  fontSize: '0.7rem',
+                                  fontWeight: 700
+                                }}
+                                title="Bác bỏ minh chứng"
+                              >
+                                <X size={13} style={{ marginRight: 2 }} /> Bác bỏ
+                              </button>
+                            </>
+                          )}
+
+                          {/* Delete row */}
+                          {!isLocked && (
+                            <button
+                              onClick={() => handleRemoveMilestoneRow(idx)}
+                              style={{
+                                padding: '0 8px',
+                                height: '30px',
+                                color: '#ef4444',
+                                border: '1px solid rgba(239, 68, 68, 0.2)',
+                                background: 'transparent',
+                                borderRadius: '6px',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                cursor: 'pointer',
+                                transition: 'all 0.15s'
+                              }}
+                              title="Xóa đợt thanh toán"
+                            >
+                              <Trash2 size={13} />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', borderTop: '1px solid var(--color-border-light)', paddingTop: '0.75rem', marginTop: '0.25rem' }}>
+              <button className="btn" onClick={() => setShowManageModal(false)} style={{ minWidth: 80 }}>
+                Hủy
+              </button>
+              <button className="btn primary" onClick={handleSaveMilestones} style={{ minWidth: 100 }} disabled={isSavingMilestones}>
+                {isSavingMilestones ? 'Đang lưu...' : 'Lưu lịch trình'}
+              </button>
+            </div>
+          </div>
+        )}
+      </CustomModal>
     </>,
     document.body
   );

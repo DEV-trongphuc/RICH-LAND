@@ -147,30 +147,19 @@ class DepositController {
                 $stmtLink = $this->db->prepare("UPDATE cooperation_slips SET deposit_slip_id = ? WHERE id = ?");
                 $stmtLink->execute([$depositId, (int)$existingCoop['id']]);
             } else {
-                // Parse custom shares from request body
-                $isCoop = (bool)($b['is_cooperation'] ?? false);
-                $collaborators = $b['collaborators'] ?? [];
-                
-                $customShares = null;
-                if ($isCoop && !empty($collaborators)) {
-                    $customShares = [];
-                    foreach ($collaborators as $collab) {
-                        $uid = (int)($collab['user_id'] ?? 0);
-                        $pct = (int)($collab['percentage'] ?? 0);
-                        if ($uid > 0) {
-                            $customShares[$uid] = $pct;
-                        }
-                    }
-                } else {
-                    // Independent sale: owner gets 100%
-                    $ownerUid = (int)($contact['owner_id'] ?: $auth['user_id']);
-                    $customShares = [$ownerUid => 100];
-                }
+                // Independent sale: Contact owner gets 100%
+                $ownerUid = (int)($contact['owner_id'] ?: $auth['user_id']);
+                $customShares = [$ownerUid => 100];
 
                 require_once __DIR__ . '/CooperationController.php';
                 $coopCtrl = new CooperationController($this->db);
                 $coopCtrl->autoGenerateSlip($contactId, $depositId, $auth['user_id'], $customShares);
             }
+
+            // Fetch the created milestones to return their IDs to the frontend
+            $stmtGetM = $this->db->prepare("SELECT id, milestone_name, expected_amount, status FROM deposit_milestones WHERE deposit_id = ? ORDER BY id ASC");
+            $stmtGetM->execute([$depositId]);
+            $createdMilestones = $stmtGetM->fetchAll(PDO::FETCH_ASSOC);
 
             $this->db->commit();
             
@@ -179,7 +168,10 @@ class DepositController {
             CapiHelper::sendEvent($this->db, $contactId, 'Purchase', $price);
 
             logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'CREATE_DEPOSIT', 'deposit', $depositId, "Tạo cọc căn $unitCode cho khách hàng " . $contact['first_name'] . " " . $contact['last_name']);
-            respond(200, ['id' => $depositId], 'Tạo phiếu cọc và khởi tạo lịch thanh toán thành công');
+            respond(200, [
+                'id' => $depositId,
+                'milestones' => $createdMilestones
+            ], 'Tạo phiếu cọc và khởi tạo lịch thanh toán thành công');
         } catch (Exception $e) {
             $this->db->rollBack();
             respond(500, null, 'Lỗi lưu phiếu cọc: ' . $e->getMessage(), false);
