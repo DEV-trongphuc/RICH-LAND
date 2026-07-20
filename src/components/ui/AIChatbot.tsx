@@ -328,7 +328,7 @@ Bạn có thể gõ rõ từ khóa hoặc click vào các gợi ý bên dưới 
   };
 
   return (
-    <div className={`chatbot-parent ${isOpen ? 'is-open' : 'is-closed'}`} style={{ position: 'fixed', bottom: 24, right: 24, zIndex: 95 }}>
+    <div className={`chatbot-parent ${isOpen ? 'is-open' : 'is-closed'}`} style={{ position: 'fixed', bottom: 24, right: 24, zIndex: 10005 }}>
       {/* CSS Styles injection */}
       <style>{`
         :root {
