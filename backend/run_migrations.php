@@ -2870,11 +2870,11 @@ SQL;
                 $logMsg("Đã tạo INDEX idx_activities_related cho bảng activities.", "success");
             }
 
-            // Check & Create idx_comm_created on communication_logs table
-            $chkIdx3 = $conn->query("SHOW INDEX FROM communication_logs WHERE Key_name = 'idx_comm_created'");
+            // Check & Create idx_comm_sent on communication_logs table
+            $chkIdx3 = $conn->query("SHOW INDEX FROM communication_logs WHERE Key_name = 'idx_comm_sent'");
             if ($chkIdx3 && $chkIdx3->num_rows === 0) {
-                $conn->query("ALTER TABLE communication_logs ADD INDEX idx_comm_created (created_at)");
-                $logMsg("Đã tạo INDEX idx_comm_created cho bảng communication_logs.", "success");
+                $conn->query("ALTER TABLE communication_logs ADD INDEX idx_comm_sent (sent_at)");
+                $logMsg("Đã tạo INDEX idx_comm_sent cho bảng communication_logs.", "success");
             }
             
             $conn->query("INSERT INTO system_settings (setting_key, setting_value) VALUES ('db_version', '176') ON DUPLICATE KEY UPDATE setting_value = '176'");
