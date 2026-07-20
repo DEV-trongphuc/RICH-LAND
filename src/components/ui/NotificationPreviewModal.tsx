@@ -449,7 +449,7 @@ export const NotificationPreviewModal: React.FC<NotificationPreviewModalProps> =
           alignItems: 'center',
           gap: 8
         }}>
-          {isEmail ? <Mail size={14} style={{ color: '#a31422' }} /> : <MessageCircle size={14} style={{ color: '#0068ff' }} />}
+          {isEmail ? <Mail size={14} style={{ color: '#a31422' }} /> : <img src="https://stc-zpl.zdn.vn/favicon.ico" alt="Zalo" style={{ width: 14, height: 14, borderRadius: '50%' }} />}
           <span>
             {t("Thông báo này được gửi tự động lúc")} <strong>{sentAt}</strong> {t("đến Sale")} <strong>{assignedToName}</strong>
           </span>

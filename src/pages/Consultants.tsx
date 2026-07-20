@@ -2264,7 +2264,7 @@ const ConsultantsInner = () => {
           <div className="card" style={{ width: '100%', maxWidth: 400, maxHeight: '90vh', display: 'flex', flexDirection: 'column', animation: 'modalSpring 0.4s cubic-bezier(0.34, 1.18, 0.64, 1) both' }} onClick={e => e.stopPropagation()}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1.25rem', borderBottom: '1px solid var(--color-border-light)' }}>
               <h3 style={{ fontSize: '1.125rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8 }}>
-                <MessageCircle size={20} fill="#0068ff" color="white" />
+                <img src="https://stc-zpl.zdn.vn/favicon.ico" alt="Zalo" style={{ width: 20, height: 20, borderRadius: '50%' }} />
                 {t('Nhắn tin cho')} {quickMessageTarget.name}
               </h3>
               <button type="button" onClick={() => setQuickMessageOpen(false)} style={{ color: 'var(--color-text-muted)', padding: 4, borderRadius: 8, background: 'transparent', border: 'none', cursor: 'pointer' }}>

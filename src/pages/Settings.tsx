@@ -194,7 +194,7 @@ const SettingsInner = () => {
       title: t('Giao tiếp & Báo cáo'),
       items: [
         { value: 'email_config', label: t('Cấu hình Gửi Email'), icon: <Mail size={15} /> },
-        { value: 'zalo_bot', label: t('Cấu hình Zalo Bot'), icon: <MessageCircle size={15} /> },
+        { value: 'zalo_bot', label: t('Cấu hình Zalo Bot'), icon: <img src="https://stc-zpl.zdn.vn/favicon.ico" alt="Zalo" style={{ width: 15, height: 15, borderRadius: '50%' }} /> },
         { value: 'automated_reports', label: t('Báo cáo tự động'), icon: <BarChart2 size={15} /> }
       ]
     },
@@ -3569,9 +3569,7 @@ function doPost(e) {
             <div style={{ display: activeTab === 'zalo_bot' ? 'block' : 'none' }} className="subtab-enter-active">
               <div className="card" style={{ padding: '1.5rem', marginTop: 0 }}>
                 <h3 style={{ fontSize: '1.125rem', fontWeight: 700, marginBottom: '1rem', color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span style={{ display: 'inline-flex', background: '#0068ff', color: 'white', padding: 4, borderRadius: 6 }}>
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" /></svg>
-                  </span>
+                  <img src="https://stc-zpl.zdn.vn/favicon.ico" alt="Zalo" style={{ width: 24, height: 24, borderRadius: '50%' }} />
                   {t('Cấu hình Zalo Bot (Gửi thông báo Data)')}
                 </h3>
                 <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', marginBottom: '1.25rem', lineHeight: 1.5 }}>
@@ -3851,11 +3849,11 @@ function doPost(e) {
                                 )}
                                 {admin.zalo_chat_id ? (
                                   <span style={{ display: 'flex', alignItems: 'center', gap: 4, color: '#0068ff' }}>
-                                    <MessageCircle size={11} /> {t('Zalo đã liên kết')}
+                                    <img src="https://stc-zpl.zdn.vn/favicon.ico" alt="Zalo" style={{ width: 12, height: 12, borderRadius: '50%' }} /> {t('Zalo đã liên kết')}
                                   </span>
                                 ) : (
                                   <span style={{ display: 'flex', alignItems: 'center', gap: 4, color: '#f59e0b' }}>
-                                    <MessageCircle size={11} /> {t('Chưa liên kết Zalo')}
+                                    <img src="https://stc-zpl.zdn.vn/favicon.ico" alt="Zalo" style={{ width: 12, height: 12, borderRadius: '50%', filter: 'grayscale(100%)' }} /> {t('Chưa liên kết Zalo')}
                                   </span>
                                 )}
                               </div>
