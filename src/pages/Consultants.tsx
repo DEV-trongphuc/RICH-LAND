@@ -21,6 +21,7 @@ import cityData from '../assets/ctiy.json';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { CopyButton } from '../components/ui/CopyButton';
 import {
   ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
   PieChart, Pie, Cell, LabelList
@@ -34,6 +35,7 @@ interface User {
   status: 'active' | 'inactive';
   telegram_id: string | null;
   zalo_chat_id: string | null;
+  telegram_chat_id: string | null;
   created_at: string;
 }
 
@@ -206,6 +208,7 @@ const ConsultantsInner = () => {
     leave_start: string;
     leave_end: string;
     zalo_chat_id: string;
+    telegram_chat_id: string;
     work_start_time: string;
     work_end_time: string;
     work_schedule: any;
@@ -225,6 +228,7 @@ const ConsultantsInner = () => {
     leave_start: '',
     leave_end: '',
     zalo_chat_id: '',
+    telegram_chat_id: '',
     work_start_time: '00:00',
     work_end_time: '23:59',
     work_schedule: null,
@@ -429,6 +433,7 @@ const ConsultantsInner = () => {
       leave_start: '',
       leave_end: '',
       zalo_chat_id: '',
+      telegram_chat_id: '',
       work_start_time: '00:00',
       work_end_time: '23:59',
       work_schedule: null,
@@ -456,6 +461,7 @@ const ConsultantsInner = () => {
       leave_start: user.leave_start || '',
       leave_end: user.leave_end || '',
       zalo_chat_id: user.zalo_chat_id || '',
+      telegram_chat_id: user.telegram_chat_id || '',
       work_start_time: user.work_start_time || '00:00',
       work_end_time: user.work_end_time || '23:59',
       work_schedule: user.work_schedule || null,
@@ -1240,16 +1246,17 @@ const ConsultantsInner = () => {
                     <th style={{ position: 'sticky', top: 0, background: 'var(--color-bg)', zIndex: 10, borderBottom: '1px solid var(--color-border)' }}>{t('Thông tin liên hệ')}</th>
                     <th style={{ position: 'sticky', top: 0, background: 'var(--color-bg)', zIndex: 10, borderBottom: '1px solid var(--color-border)' }}>{t('Nhóm (Team)')}</th>
                     <th style={{ position: 'sticky', top: 0, background: 'var(--color-bg)', zIndex: 10, borderBottom: '1px solid var(--color-border)' }}>{t('Zalo Bot')}</th>
+                    <th style={{ position: 'sticky', top: 0, background: 'var(--color-bg)', zIndex: 10, borderBottom: '1px solid var(--color-border)' }}>{t('Telegram Bot')}</th>
                     <th style={{ position: 'sticky', top: 0, background: 'var(--color-bg)', zIndex: 10, borderBottom: '1px solid var(--color-border)' }}>{t('Trạng thái')}</th>
                     {isWriteAuthorized && <th style={{ position: 'sticky', top: 0, background: 'var(--color-bg)', zIndex: 10, borderBottom: '1px solid var(--color-border)', textAlign: 'right' }}>{t('Thao tác')}</th>}
                   </tr>
                 </thead>
                 <tbody>
                   {loading ? (
-                    [...Array(5)].map((_, i) => <TableRowSkeleton key={i} cols={isWriteAuthorized ? 6 : 5} />)
+                    [...Array(5)].map((_, i) => <TableRowSkeleton key={i} cols={isWriteAuthorized ? 7 : 6} />)
                   ) : users.length === 0 ? (
                     <tr className="empty-state-row">
-                      <td colSpan={isWriteAuthorized ? 6 : 5}>
+                      <td colSpan={isWriteAuthorized ? 7 : 6}>
                       <div style={{ padding: '3rem 2rem', textAlign: 'center' }}>
                         <div style={{ width: 64, height: 64, borderRadius: '50%', background: 'var(--color-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.5rem', boxShadow: 'var(--shadow-sm)' }}>
                           <Users size={32} color="var(--color-text-muted)" />
@@ -1381,8 +1388,32 @@ const ConsultantsInner = () => {
                             )}
                           </div>
                         )}
-                      </td>
-                      <td data-label={t('Trạng thái')} onClick={e => e.stopPropagation()}>
+                        </td>
+                        <td data-label={t('Telegram Bot')} onClick={e => e.stopPropagation()}>
+                          {u.telegram_chat_id ? (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                              <span style={{
+                                display: 'inline-flex', alignItems: 'center', gap: 6,
+                                padding: '4px 10px', borderRadius: 20,
+                                background: '#e8f4fd', color: '#0088cc', fontSize: '0.75rem', fontWeight: 600
+                              }}>
+                                <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/8/82/Telegram_logo.svg/3840px-Telegram_logo.svg.png" alt="Telegram" style={{ width: 14, height: 14, borderRadius: '50%' }} /> {t('Đã liên kết')}
+                              </span>
+                              <CopyButton text={u.telegram_chat_id} />
+                            </div>
+                          ) : (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                              <span style={{
+                                display: 'inline-flex', alignItems: 'center', gap: 6,
+                                padding: '4px 10px', borderRadius: 20,
+                                background: 'var(--color-bg)', color: 'var(--color-text-muted)', fontSize: '0.75rem', fontWeight: 500
+                              }}>
+                                {t('Chưa liên kết')}
+                              </span>
+                            </div>
+                          )}
+                        </td>
+                        <td data-label={t('Trạng thái')} onClick={e => e.stopPropagation()}>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                           {u.status === 'active' ? (
                             Number(u.vacation_mode) ? (

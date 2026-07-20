@@ -18,7 +18,7 @@ $apply = (isset($_GET['apply']) && $_GET['apply'] === 'true')
       || (isset($_POST['execute_migration']) && $_POST['execute_migration'] === '1')
       || ($isCli && in_array('--apply', $argv));
 
-$targetVersion = 173;
+$targetVersion = 174;
 $currentVersion = 0;
 
 // Query current DB version
@@ -2677,6 +2677,95 @@ SQL;
             }
             $conn->query("INSERT INTO system_settings (setting_key, setting_value) VALUES ('db_version', '173') ON DUPLICATE KEY UPDATE setting_value = '173'");
             $currentVersion = 173;
+        }
+
+        if ($currentVersion < 174) {
+            $logMsg("Đang chạy cập nhật phiên bản 174 (Thêm cột telegram_chat_id và cập nhật views)...", "info");
+            try {
+                $conn->query("ALTER TABLE `users` ADD COLUMN `telegram_chat_id` VARCHAR(255) NULL DEFAULT NULL AFTER `zalo_chat_id`");
+                $logMsg("Đã thêm cột telegram_chat_id vào bảng users.", "success");
+            } catch (Throwable $t) {
+                $logMsg("Cột telegram_chat_id đã tồn tại hoặc lỗi: " . $t->getMessage(), "info");
+            }
+
+            try {
+                $conn->query("DROP VIEW IF EXISTS `accounts`");
+                $conn->query("
+                    CREATE VIEW `accounts` AS 
+                    SELECT 
+                      `id`, 
+                      `username`, 
+                      `password_hash`, 
+                      `role`, 
+                      `full_name` AS `name`, 
+                      `created_at`, 
+                      `email`, 
+                      `zalo_chat_id`, 
+                      `telegram_chat_id`,
+                      `is_confirmed`, 
+                      `confirm_token`, 
+                      `last_login_at` AS `last_login`, 
+                      `avatar_url` AS `avatar`,
+                      `dob`,
+                      `gender`,
+                      `citizen_id`,
+                      `address`,
+                      `bank_name`,
+                      `bank_account`,
+                      `phone`,
+                      `is_active`,
+                      `team_id`
+                    FROM `users`
+                ");
+                $logMsg("Đã cập nhật VIEW accounts hỗ trợ telegram_chat_id.", "success");
+            } catch (Throwable $t) {
+                $logMsg("Lỗi khi cập nhật VIEW accounts: " . $t->getMessage(), "error");
+            }
+
+            try {
+                $conn->query("DROP VIEW IF EXISTS `consultants`");
+                $conn->query("
+                    CREATE VIEW `consultants` AS 
+                    SELECT 
+                      `id`, 
+                      `full_name` AS `name`, 
+                      `email`, 
+                      `phone`,
+                      `status`, 
+                      `leave_start`, 
+                      `leave_end`, 
+                      `created_at`, 
+                      `zalo_chat_id`, 
+                      `telegram_chat_id`,
+                      IF(`use_custom_work_hours` = 1, `work_start_time`, (SELECT setting_value FROM system_settings WHERE setting_key = 'global_work_start_time' LIMIT 1)) AS `work_start_time`,
+                      IF(`use_custom_work_hours` = 1, `work_end_time`, (SELECT setting_value FROM system_settings WHERE setting_key = 'global_work_end_time' LIMIT 1)) AS `work_end_time`,
+                      IF(`use_custom_work_hours` = 1, `work_schedule`, (SELECT setting_value FROM system_settings WHERE setting_key = 'global_work_schedule' LIMIT 1)) AS `work_schedule`,
+                      `avatar_url` AS `avatar`, 
+                      `vacation_mode`, 
+                      `overtime_mode`,
+                      `team_id`,
+                      `dob`,
+                      `gender`,
+                      `citizen_id`,
+                      `address`,
+                      `bank_name`,
+                      `bank_account`,
+                      `extra_fields_json`,
+                      `use_custom_work_hours`
+                    FROM `users`
+                    WHERE `role` = 'sales'
+                ");
+                $logMsg("Đã cập nhật VIEW consultants hỗ trợ telegram_chat_id.", "success");
+            } catch (Throwable $t) {
+                $logMsg("Lỗi khi cập nhật VIEW consultants: " . $t->getMessage(), "error");
+            }
+
+            $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('telegram_bot_token', '')");
+            $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('telegram_bot_username', '')");
+            $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('telegram_admin_group_chat_id', '')");
+
+            $conn->query("INSERT INTO system_settings (setting_key, setting_value) VALUES ('db_version', '174') ON DUPLICATE KEY UPDATE setting_value = '174'");
+            $currentVersion = 174;
         }
 
     $logMsg("Tự sửa đổi cấu trúc hoàn thành thành công.", "success");

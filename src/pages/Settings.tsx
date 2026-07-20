@@ -120,6 +120,7 @@ const SettingsInner = () => {
     auto_approve_ticket: false,
     email_config: false,
     zalo_bot: false,
+    telegram_bot: false,
     automated_reports: false,
     ai_assistant: false,
     workflow_templates: false,
@@ -196,6 +197,7 @@ const SettingsInner = () => {
       items: [
         { value: 'email_config', label: t('Cấu hình Gửi Email'), icon: <img src="/imgs/gmail-icon-free-png.webp" alt="Gmail" style={{ width: 15, height: 15 }} /> },
         { value: 'zalo_bot', label: t('Cấu hình Zalo Bot'), icon: <img src="https://stc-zpl.zdn.vn/favicon.ico" alt="Zalo" style={{ width: 15, height: 15, borderRadius: '50%' }} /> },
+        { value: 'telegram_bot', label: t('Cấu hình Telegram Bot'), icon: <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/8/82/Telegram_logo.svg/3840px-Telegram_logo.svg.png" alt="Telegram" style={{ width: 15, height: 15, borderRadius: '50%' }} /> },
         { value: 'automated_reports', label: t('Báo cáo tự động'), icon: <BarChart2 size={15} /> }
       ]
     },
@@ -334,6 +336,11 @@ const SettingsInner = () => {
   const [zaloAdminGroupChatId, setZaloAdminGroupChatId] = useState('');
   const [zaloNotifyOnlyGroup, setZaloNotifyOnlyGroup] = useState(false);
   const [zaloDailyReportTime, setZaloDailyReportTime] = useState('');
+
+  // Telegram Bot config
+  const [telegramBotToken, setTelegramBotToken] = useState('');
+  const [telegramBotUsername, setTelegramBotUsername] = useState('');
+  const [telegramAdminGroupChatId, setTelegramAdminGroupChatId] = useState('');
   const [dailyReportAdmins, setDailyReportAdmins] = useState<number[]>([]);
 
   // Weekly report config
@@ -593,6 +600,9 @@ const SettingsInner = () => {
         if (json.data.zalo_webhook_secret) setZaloWebhookSecret(json.data.zalo_webhook_secret);
         if (json.data.zalo_bot_link) setZaloBotLink(json.data.zalo_bot_link);
         if (json.data.zalo_admin_group_chat_id) setZaloAdminGroupChatId(json.data.zalo_admin_group_chat_id);
+        if (json.data.telegram_bot_token) setTelegramBotToken(json.data.telegram_bot_token);
+        if (json.data.telegram_bot_username) setTelegramBotUsername(json.data.telegram_bot_username);
+        if (json.data.telegram_admin_group_chat_id) setTelegramAdminGroupChatId(json.data.telegram_admin_group_chat_id);
         if (json.data.zalo_notify_only_group !== undefined) {
           setZaloNotifyOnlyGroup(json.data.zalo_notify_only_group === '1' || json.data.zalo_notify_only_group === 1);
         }
@@ -1082,6 +1092,9 @@ const SettingsInner = () => {
       zalo_webhook_secret: zaloWebhookSecret,
       zalo_bot_link: zaloBotLink,
       zalo_admin_group_chat_id: zaloAdminGroupChatId,
+      telegram_bot_token: telegramBotToken,
+      telegram_bot_username: telegramBotUsername,
+      telegram_admin_group_chat_id: telegramAdminGroupChatId,
       zalo_notify_only_group: zaloNotifyOnlyGroup ? '1' : '0',
       zalo_daily_report_time: zaloDailyReportTime,
       daily_report_admins: dailyReportAdmins,
@@ -1775,6 +1788,7 @@ const SettingsInner = () => {
       auto_approve_ticket: '#10b981',
       email_config: '#0ea5e9',
       zalo_bot: '#2563eb',
+      telegram_bot: '#0088cc',
       automated_reports: '#f97316',
       ai_assistant: '#a855f7',
       workflow_templates: '#64748b',
@@ -3683,6 +3697,136 @@ function doPost(e) {
                   <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 8 }}>
                     {t('Copy link Webhook này và Secret Token (nếu có) dán vào phần thiết lập Webhook của Zalo Bot.')}
                   </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Cấu hình Telegram Bot */}
+            <div style={{ display: activeTab === 'telegram_bot' ? 'block' : 'none' }} className="subtab-enter-active">
+              <div className="card" style={{ padding: '1.5rem', marginTop: 0 }}>
+                <h3 style={{ fontSize: '1.125rem', fontWeight: 700, marginBottom: '1rem', color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/8/82/Telegram_logo.svg/3840px-Telegram_logo.svg.png" alt="Telegram" style={{ width: 24, height: 24, borderRadius: '50%' }} />
+                  {t('Cấu hình Telegram Bot (Gửi thông báo Data)')}
+                </h3>
+                <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', marginBottom: '1.25rem', lineHeight: 1.5 }}>
+                  {t('Tính năng này cho phép hệ thống gửi trực tiếp thông báo chia số tới Telegram của Tư vấn viên.')}<br />
+                  {t('Sử dụng @BotFather trên Telegram để khởi tạo Bot mới và nhận Token API.')}
+                </p>
+
+                {renderHelpBanner('telegram_bot', t('Giải thích cơ chế Telegram Bot'), (
+                  <ul style={{ paddingLeft: '1.25rem', margin: 0, display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    <li><strong>{t('Thông báo chia số trực tiếp:')}</strong> {t('Khi có khách hàng mới phân chia cho Sale, hệ thống lập tức đẩy tin nhắn thông báo về Telegram cá nhân của Sale đó kèm link xem chi tiết.')}</li>
+                    <li><strong>{t('Group Chat Admin:')}</strong> {t('Nơi nhận các cảnh báo bảo mật, bộ lọc trùng lặp, yêu cầu đền bù (Ticket) cần duyệt, và các báo cáo cuối ngày.')}</li>
+                    <li><strong>{t('Webhook URL:')}</strong> {t('Điểm nhận tương tác từ Telegram Bot để thực thi các câu lệnh nhanh (/report, /sales, /round...).')}</li>
+                  </ul>
+                ))}
+
+                <div className="responsive-grid-1-1" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+                  <div>
+                    <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>{t('Bot Token (API Token)')}</label>
+                    <input
+                      type="password"
+                      className="form-input"
+                      placeholder={t("Ví dụ: 3573724430:ECJrlT...")}
+                      value={telegramBotToken}
+                      onChange={e => setTelegramBotToken(e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>{t('Bot Username (@username)')}</label>
+                    <input
+                      className="form-input"
+                      placeholder={t("Ví dụ: RichLandCRM_bot")}
+                      value={telegramBotUsername}
+                      onChange={e => setTelegramBotUsername(e.target.value)}
+                    />
+                  </div>
+                </div>
+
+                <div style={{ marginBottom: '1rem' }}>
+                  <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>{t('Telegram Admin Group Chat ID')}</label>
+                  <input
+                    className="form-input"
+                    placeholder={t("Ví dụ: -100123456789")}
+                    value={telegramAdminGroupChatId}
+                    onChange={e => setTelegramAdminGroupChatId(e.target.value)}
+                  />
+                  <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 4 }}>
+                    {t('Mọi cảnh báo bộ lọc (Blacklist/Trùng), yêu cầu duyệt ticket đền bù, và báo cáo tổng kết ngày sẽ được gửi vào Group Chat này.')}
+                  </p>
+                  <div style={{
+                    marginTop: '8px',
+                    background: 'var(--color-bg-dark)',
+                    borderRadius: '8px',
+                    fontSize: '0.8rem',
+                    color: 'var(--color-text-muted)',
+                    lineHeight: '1.5',
+                    border: '1px solid var(--color-border-light)'
+                  }}>
+                    <div 
+                      onClick={() => setShowChatIdGuide(!showChatIdGuide)}
+                      style={{
+                        padding: '10px 12px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        cursor: 'pointer',
+                        userSelect: 'none',
+                        fontWeight: 600,
+                        color: 'var(--color-text)'
+                      }}
+                    >
+                      <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <span>💡</span> {t('Hướng dẫn lấy Chat ID:')}
+                      </span>
+                      {showChatIdGuide ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                    </div>
+
+                    {showChatIdGuide && (
+                      <div style={{ padding: '0 12px 12px 12px' }}>
+                        <ol style={{ margin: 0, paddingLeft: '1.2rem', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                          <li>{t('Mời Bot của bạn vào Group Admin Telegram.')}</li>
+                          <li>{t('Gửi tin nhắn /id hoặc /chatid vào Group.')}</li>
+                          <li>{t('Bot sẽ phản hồi lại Chat ID của nhóm (thường bắt đầu bằng dấu trừ, ví dụ: -100123456789). Hãy copy điền vào ô phía trên.')}</li>
+                        </ol>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 12, padding: '1rem', marginBottom: '1rem' }}>
+                  <label className="form-label">{t('Đăng ký Webhook URL với Telegram Server:')}</label>
+                  <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', marginBottom: '0.75rem' }}>
+                    <code style={{ flex: 1, background: 'var(--color-bg)', padding: '0.5rem', borderRadius: 6, fontSize: '0.875rem', color: 'var(--color-primary)', border: '1px solid var(--color-border)' }}>
+                      {`${import.meta.env.VITE_API_URL || window.location.origin + '/backend'}/telegram_webhook.php`}
+                    </code>
+                  </div>
+                  <button
+                    type="button"
+                    className="btn secondary sm"
+                    onClick={async () => {
+                      if (!telegramBotToken) {
+                        toast.error(t('Vui lòng nhập Bot Token trước khi đăng ký Webhook.'));
+                        return;
+                      }
+                      setTesting(true);
+                      try {
+                        const res = await fetchAPI('setup_telegram_webhook');
+                        if (res.success) {
+                          toast.success(t('Đăng ký Webhook Telegram thành công!'));
+                        } else {
+                          toast.error(res.message || t('Lỗi khi đăng ký Webhook.'));
+                        }
+                      } catch (err: any) {
+                        toast.error(err.message || t('Đăng ký Webhook thất bại.'));
+                      } finally {
+                        setTesting(false);
+                      }
+                    }}
+                    disabled={testing}
+                  >
+                    {testing ? t('Đang xử lý...') : t('Kích hoạt Webhook Telegram')}
+                  </button>
                 </div>
               </div>
             </div>

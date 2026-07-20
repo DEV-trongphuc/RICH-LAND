@@ -193,6 +193,7 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [zaloChatId, setZaloChatId] = useState('');
+  const [telegramChatId, setTelegramChatId] = useState('');
   const [role, setRole] = useState('sale');
   const [avatar, setAvatar] = useState('');
   const [phone, setPhone] = useState('');
@@ -304,6 +305,7 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
       setName(account.name || '');
       setEmail(account.email || '');
       setZaloChatId(account.zalo_chat_id || '');
+      setTelegramChatId(account.telegram_chat_id || '');
       setRole(account.role || 'sale');
       setAvatar(account.avatar || '');
       setPhone(account.phone || '');
@@ -317,6 +319,7 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
           if (res.success && res.data) {
             const d = res.data;
             setZaloChatId(d.zalo_chat_id || '');
+            setTelegramChatId(d.telegram_chat_id || '');
             setVacationMode(d.vacation_mode === 1);
             setOvertimeMode(d.overtime_mode === 1);
             setUseCustomWorkHours(d.use_custom_work_hours === 1);
@@ -433,6 +436,7 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
       setName('');
       setEmail('');
       setZaloChatId('');
+      setTelegramChatId('');
       setRole('sale');
       setAvatar('');
       setPhone('');
@@ -792,6 +796,7 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
         name,
         email,
         zalo_chat_id: zaloChatId,
+        telegram_chat_id: telegramChatId,
         role,
         avatar,
         phone,
@@ -835,6 +840,7 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
           bank_name: bankName || null,
           bank_account: bankAccount || null,
           zalo_chat_id: zaloChatId,
+          telegram_chat_id: telegramChatId,
           overtime_mode: overtimeMode ? 1 : 0,
           use_custom_work_hours: useCustomWorkHours ? 1 : 0,
           leave_start: leaveStart || null,

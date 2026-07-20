@@ -769,6 +769,57 @@ function notifyNightShiftChange($conn, $userId, $shiftDate, $register = true) {
     } catch (Exception $e) {
         error_log("Error sending night shift Zalo notification: " . $e->getMessage());
     }
+
+    // 5. Fetch Telegram Bot token & Admin Group Chat ID
+    $stmtTgToken = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'telegram_bot_token' LIMIT 1");
+    $tgToken = $stmtTgToken->fetch_assoc()['setting_value'] ?? '';
+    $stmtTgAdminChat = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'telegram_admin_group_chat_id' LIMIT 1");
+    $tgAdminChatId = $stmtTgAdminChat->fetch_assoc()['setting_value'] ?? '';
+
+    if (!empty($tgToken)) {
+        require_once __DIR__ . '/telegram_bot.php';
+        $tgNotifyChatIds = [];
+        if (!empty($tgAdminChatId)) {
+            $tgNotifyChatIds[] = $tgAdminChatId;
+        }
+        foreach ($allAdmins as $adm) {
+            if (!empty($adm['telegram_chat_id'])) {
+                $tgNotifyChatIds[] = $adm['telegram_chat_id'];
+            }
+        }
+        if ($leaderId) {
+            $stmtL = $conn->prepare("SELECT telegram_chat_id FROM users WHERE id = ?");
+            if ($stmtL) {
+                $stmtL->bind_param("i", $leaderId);
+                $stmtL->execute();
+                $lRow = $stmtL->get_result()->fetch_assoc();
+                $stmtL->close();
+                if ($lRow && !empty($lRow['telegram_chat_id']) && !in_array($lRow['telegram_chat_id'], $tgNotifyChatIds)) {
+                    $tgNotifyChatIds[] = $lRow['telegram_chat_id'];
+                }
+            }
+        }
+        if ($register) {
+            $tgMsg = "🌙 <b>[ ĐĂNG KÝ TRỰC ĐÊM ]</b>\n\n"
+                . "Tư vấn viên <b>$saleName</b> vừa <b>ĐĂNG KÝ</b> trực ca đêm:\n"
+                . "  • Ngày trực: <code>$formattedDate</code> (18h-6h)\n"
+                . "  • Ghi nhận lúc: <i>$timeStr</i>\n\n"
+                . "Hệ thống sẽ tự động điều phối lead mới phát sinh vào ca đêm cho TVV này.";
+        } else {
+            $tgMsg = "🌙 <b>[ HỦY ĐĂNG KÝ TRỰC ĐÊM ]</b>\n\n"
+                . "Tư vấn viên <b>$saleName</b> vừa <b>HỦY</b> đăng ký trực ca đêm:\n"
+                . "  • Ngày trực: <code>$formattedDate</code> (18h-6h)\n"
+                . "  • Thực hiện lúc: <i>$timeStr</i>";
+        }
+        $tgNotifyChatIds = array_unique($tgNotifyChatIds);
+        foreach ($tgNotifyChatIds as $chatId) {
+            try {
+                sendTelegramMessage($tgToken, $chatId, $tgMsg);
+            } catch (Exception $e) {
+                error_log("Error sending night shift Telegram notification: " . $e->getMessage());
+            }
+        }
+    }
 }
 
 function isManagerOfLead($conn, $managerUserId, $leadId) {
@@ -10301,6 +10352,56 @@ switch ($action) {
             echo json_encode(['success' => true]);
         } catch (Exception $e) {
             echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+        }
+        break;
+
+    case 'setup_telegram_webhook':
+        if (empty($decodedUser['role']) || ($decodedUser['role'] !== 'admin' && $decodedUser['role'] !== 'superadmin' && $decodedUser['role'] !== 'super_admin')) {
+            echo json_encode(['success' => false, 'message' => 'Quyền truy cập bị từ chối. Chỉ dành cho Admin.']);
+            break;
+        }
+        $stmtToken = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'telegram_bot_token' LIMIT 1");
+        $botToken = $stmtToken->fetch_assoc()['setting_value'] ?? '';
+        if (empty($botToken)) {
+            echo json_encode(['success' => false, 'message' => 'Chưa cấu hình Telegram Bot Token trong Cài đặt']);
+            break;
+        }
+        $stmtUrl = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'frontend_url' LIMIT 1");
+        $frontendUrl = $stmtUrl->fetch_assoc()['setting_value'] ?? '';
+        $domain = '';
+        if (!empty($frontendUrl)) {
+            $parsed = parse_url($frontendUrl);
+            $domain = ($parsed['scheme'] ?? 'https') . '://' . ($parsed['host'] ?? '') . (($parsed['port'] ?? '') ? (':' . $parsed['port']) : '');
+        }
+        if (empty($domain)) {
+            $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+            $domain = $scheme . '://' . $_SERVER['HTTP_HOST'];
+        }
+        $webhookUrl = rtrim($domain, '/') . '/backend/telegram_webhook.php';
+        $url = "https://api.telegram.org/bot" . $botToken . "/setWebhook?url=" . urlencode($webhookUrl);
+        $ch = curl_init($url);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 10);
+        $res = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+        if ($httpCode === 200) {
+            $resData = json_decode($res, true);
+            if (!empty($resData['ok'])) {
+                // Send welcome message to admin group if configured
+                $stmtAdminChat = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'telegram_admin_group_chat_id' LIMIT 1");
+                $adminChatId = $stmtAdminChat->fetch_assoc()['setting_value'] ?? '';
+                if (!empty($adminChatId)) {
+                    $msg = "🔔 <b>[Thông báo] Khởi tạo Bot thành công</b>\n\nWebhook của hệ thống RICH LAND đã được cấu hình và kích hoạt thành công trên Telegram Server!";
+                    $testUrl = "https://api.telegram.org/bot" . $botToken . "/sendMessage?chat_id=" . urlencode($adminChatId) . "&text=" . urlencode($msg) . "&parse_mode=HTML";
+                    @file_get_contents($testUrl);
+                }
+                echo json_encode(['success' => true, 'message' => 'Đăng ký Webhook thành công', 'data' => $resData]);
+            } else {
+                echo json_encode(['success' => false, 'message' => $resData['description'] ?? 'Telegram API error']);
+            }
+        } else {
+            echo json_encode(['success' => false, 'message' => 'Lỗi kết nối tới Telegram API (HTTP ' . $httpCode . ')']);
         }
         break;
 

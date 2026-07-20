@@ -38,6 +38,7 @@ CREATE TABLE IF NOT EXISTS `users` (
   `work_end_time` varchar(5) DEFAULT '17:30',
   `work_schedule` longtext DEFAULT NULL, -- JSON config
   `zalo_chat_id` varchar(255) DEFAULT NULL,
+  `telegram_chat_id` varchar(255) DEFAULT NULL,
   `is_confirmed` tinyint(1) DEFAULT 0,
   `confirm_token` varchar(64) DEFAULT NULL,
   `bio` text DEFAULT NULL,

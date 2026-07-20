@@ -54,6 +54,7 @@ const AccountsInner = () => {
     name: '',
     email: '',
     zalo_chat_id: '',
+    telegram_chat_id: '',
     role: 'viewer',
     avatar: '',
     phone: '',
@@ -449,6 +450,7 @@ const AccountsInner = () => {
         name: acc.name || '',
         email: acc.email || '',
         zalo_chat_id: acc.zalo_chat_id || '',
+        telegram_chat_id: acc.telegram_chat_id || '',
         role: acc.role || 'sale',
         avatar: acc.avatar || '',
         phone: acc.phone || '',
@@ -471,6 +473,7 @@ const AccountsInner = () => {
       name: '',
       email: '',
       zalo_chat_id: '',
+      telegram_chat_id: '',
       role: 'viewer',
       avatar: '',
       phone: '',
@@ -494,6 +497,7 @@ const AccountsInner = () => {
       name: acc.name,
       email: acc.email || '',
       zalo_chat_id: acc.zalo_chat_id || '',
+      telegram_chat_id: acc.telegram_chat_id || '',
       role: acc.role,
       avatar: acc.avatar || '',
       phone: acc.phone || '',
@@ -1126,6 +1130,7 @@ const AccountsInner = () => {
                       <th style={{ padding: '1rem 1.5rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>{t('Tên người dùng')}</th>
                       <th style={{ padding: '1rem 1.5rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>{t('Email đăng nhập')}</th>
                       <th style={{ padding: '1rem 1.5rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>{t('Zalo Chat ID')}</th>
+                      <th style={{ padding: '1rem 1.5rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>{t('Telegram Chat ID')}</th>
                       <th style={{ padding: '1rem 1.5rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>{t('Phân quyền')}</th>
                       <th style={{ padding: '1rem 1.5rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>{t('Hoạt động')}</th>
                       <th style={{ padding: '1rem 1.5rem', textAlign: 'right', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>{t('Thao tác')}</th>
@@ -1216,6 +1221,30 @@ const AccountsInner = () => {
                                   </button>
                                 )
                               )}
+                            </div>
+                          )}
+                        </td>
+                        <td data-label={t("Telegram Chat ID")} style={{ padding: '1rem 1.5rem', color: 'var(--color-text-light)', fontWeight: 500 }} onClick={e => e.stopPropagation()}>
+                          {acc.telegram_chat_id ? (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }} title={acc.telegram_chat_id}>
+                              <span style={{ 
+                                display: 'inline-flex', alignItems: 'center', gap: 6, 
+                                padding: '4px 10px', borderRadius: 20, 
+                                background: '#e8f4fd', color: '#0088cc', fontSize: '0.75rem', fontWeight: 600
+                              }}>
+                                <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/8/82/Telegram_logo.svg/3840px-Telegram_logo.svg.png" alt="Telegram" style={{ width: 14, height: 14, borderRadius: '50%' }} /> {t('Đã liên kết')}
+                              </span>
+                              <CopyButton text={acc.telegram_chat_id} />
+                            </div>
+                          ) : (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                              <span style={{ 
+                                display: 'inline-flex', alignItems: 'center', gap: 6, 
+                                padding: '4px 10px', borderRadius: 20, 
+                                background: 'var(--color-bg)', color: 'var(--color-text-muted)', fontSize: '0.75rem', fontWeight: 500
+                              }}>
+                                {t('Chưa liên kết')}
+                              </span>
                             </div>
                           )}
                         </td>

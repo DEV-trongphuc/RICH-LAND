@@ -220,6 +220,12 @@ function sendLeadAssignedZaloMessageToSale($consultantId, $consultantName, $lead
         . "Hệ thống vừa phân bổ cho bạn một khách hàng mới. Vui lòng đăng nhập CRM để tiếp nhận và chăm sóc.\n"
         . "━━━━━━━━━━━━━━━━━━━━━";
 
+    // Gửi song song qua Telegram Bot
+    if (file_exists(__DIR__ . '/telegram_bot.php')) {
+        require_once __DIR__ . '/telegram_bot.php';
+        sendLeadAssignedTelegramMessageToSale($consultantId, $consultantName, $leadName, $leadPhone, $leadNote, $leadSource, $roundName, $leadId, $roundId, $leadEmail, $leadType);
+    }
+
     return sendZaloMessage($botToken, $chatId, $text, $sync, $leadId);
 }
 
@@ -349,6 +355,12 @@ function sendLeadReminderZaloMessageToSale($consultantId, $consultantName, $lead
     $text .= "\n⚡ Vui lòng liên hệ lại với khách hàng sớm nhất có thể!";
     $text .= "\n━━━━━━━━━━━━━━━━━━━━━";
 
+    // Gửi song song qua Telegram Bot
+    if (file_exists(__DIR__ . '/telegram_bot.php')) {
+        require_once __DIR__ . '/telegram_bot.php';
+        sendLeadReminderTelegramMessageToSale($consultantId, $consultantName, $leadName, $leadPhone, $leadNote, $leadSource, $roundName, $timeline, $leadId, $leadEmail, $leadType);
+    }
+
     return sendZaloMessage($botToken, $chatId, $text, $sync, $leadId);
 }
 
@@ -408,6 +420,15 @@ function sendLeadAssignedZaloMessageToAdmin($adminChatId, $adminName, $leadName,
         . "💡 Data này không khớp với bất kỳ quy luật nào và được chuyển thẳng cho bạn.\n"
         . "━━━━━━━━━━━━━━━━━━━━━";
 
+    // Gửi song song qua Telegram Bot
+    if (file_exists(__DIR__ . '/telegram_bot.php')) {
+        require_once __DIR__ . '/telegram_bot.php';
+        $teleAdminGroupChatId = get_system_setting($conn, 'telegram_admin_group_chat_id');
+        if (!empty($teleAdminGroupChatId)) {
+            sendLeadAssignedTelegramMessageToAdmin($teleAdminGroupChatId, $adminName, $leadName, $leadPhone, $leadNote, $leadSource, $leadId, $leadEmail, $leadType);
+        }
+    }
+
     return sendZaloMessage($botToken, $adminChatId, $text, $sync);
 }
 
@@ -446,6 +467,12 @@ function sendCompensationAddedZaloMessageToSale($consultantId, $consultantName, 
         . "Trân trọng,\nHệ thống Quản lý Domation DATA\n"
         . "━━━━━━━━━━━━━━━━━━━━━";
 
+    // Gửi song song qua Telegram Bot
+    if (file_exists(__DIR__ . '/telegram_bot.php')) {
+        require_once __DIR__ . '/telegram_bot.php';
+        sendCompensationAddedTelegramMessageToSale($consultantId, $consultantName, $roundName, $amount, $adminName, $reason, $time);
+    }
+
     return sendZaloMessage($botToken, $chatId, $msg, $sync);
 }
 
@@ -472,6 +499,15 @@ function sendCompensationAddedZaloMessageToAdmin($adminChatId, $adminName, $cons
         . "  • Thời gian: $time\n"
         . $reasonStr
         . "\n━━━━━━━━━━━━━━━━━━━━━";
+
+    // Gửi song song qua Telegram Bot
+    if (file_exists(__DIR__ . '/telegram_bot.php')) {
+        require_once __DIR__ . '/telegram_bot.php';
+        $teleAdminGroupChatId = get_system_setting($conn, 'telegram_admin_group_chat_id');
+        if (!empty($teleAdminGroupChatId)) {
+            sendCompensationAddedTelegramMessageToAdmin($teleAdminGroupChatId, $adminName, $consultantName, $roundName, $amount, $operatorName, $reason, $time);
+        }
+    }
 
     return sendZaloMessage($botToken, $adminChatId, $msg, $sync);
 }
@@ -790,6 +826,12 @@ function sendZaloReleaseSummaryMessageToSale($consultantId, $consultantName, $mi
         . "Chào $consultantName, chúc bạn một ngày mới đầy năng lượng!\n\n"
         . "Tối qua từ $minTimeStr đến $maxTimeStr bạn có $count data chờ xử lý.\n"
         . "Hệ thống sẽ bàn giao chi tiết các data ngay sau đây...";
+
+    // Gửi song song qua Telegram Bot
+    if (file_exists(__DIR__ . '/telegram_bot.php')) {
+        require_once __DIR__ . '/telegram_bot.php';
+        sendTelegramReleaseSummaryMessageToSale($consultantId, $consultantName, $minTimeStr, $maxTimeStr, $count);
+    }
 
     return sendZaloMessage($botToken, $chatId, $text, $sync);
 }

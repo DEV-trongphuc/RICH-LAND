@@ -112,6 +112,7 @@ export const ProfilePage: React.FC = () => {
 
   // Zalo & Lead Config
   const [zaloChatId, setZaloChatId] = useState('');
+  const [telegramChatId, setTelegramChatId] = useState('');
   const [vacationMode, setVacationMode] = useState(false);
   const [overtimeMode, setOvertimeMode] = useState(false);
 
@@ -165,6 +166,7 @@ export const ProfilePage: React.FC = () => {
       if (res.success && res.data) {
         const d = res.data;
         setZaloChatId(d.zalo_chat_id || '');
+        setTelegramChatId(d.telegram_chat_id || '');
         setVacationMode(d.vacation_mode === 1);
         setOvertimeMode(d.overtime_mode === 1);
         setWorkStartTime(d.work_start_time || '08:00');
@@ -349,6 +351,7 @@ export const ProfilePage: React.FC = () => {
           bank_name: bankName || null,
           bank_account: bankAccount || null,
           zalo_chat_id: zaloChatId,
+          telegram_chat_id: telegramChatId,
           overtime_mode: overtimeMode ? 1 : 0,
           leave_start: leaveStart || null,
           leave_end: leaveEnd || null
@@ -766,7 +769,7 @@ export const ProfilePage: React.FC = () => {
                   </div>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '1rem' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr 1fr', gap: '1rem' }}>
                   <div className="form-group">
                     <label className="form-label" style={{ fontWeight: 600 }}>{t('Email cá nhân')}</label>
                     <input type="email" className="form-input" value={personalEmail} onChange={e => setPersonalEmail(e.target.value)} placeholder="VD: email@gmail.com..." />
@@ -774,6 +777,13 @@ export const ProfilePage: React.FC = () => {
                   <div className="form-group">
                     <label className="form-label" style={{ fontWeight: 600 }}>{t('Zalo Chat ID')}</label>
                     <input type="text" className="form-input" value={zaloChatId} onChange={e => setZaloChatId(e.target.value)} placeholder="Nhập Zalo Chat ID để nhận OTP/Thông báo..." />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 4, fontWeight: 600 }}>
+                      <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/8/82/Telegram_logo.svg/3840px-Telegram_logo.svg.png" alt="Telegram" style={{ width: 14, height: 14, borderRadius: '50%' }} />
+                      {t('Telegram Chat ID')}
+                    </label>
+                    <input type="text" className="form-input" value={telegramChatId} onChange={e => setTelegramChatId(e.target.value)} placeholder="Nhập Telegram Chat ID..." />
                   </div>
                 </div>
 
