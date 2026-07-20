@@ -1683,8 +1683,11 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
                                 background: badge.bg,
                                 color: badge.color,
                                 border: 'none',
-                                padding: '4px 8px',
-                                fontSize: '0.65rem',
+                                padding: isMobile ? '2px 6px' : '4px 8px',
+                                fontSize: isMobile ? '0.55rem' : '0.65rem',
+                                borderRadius: '20px',
+                                fontWeight: 700,
+                                whiteSpace: 'nowrap',
                                 cursor: (log.status === 'databank' || log.status === 'databank_claim' || log.status === 'released_to_kho') ? 'pointer' : 'default'
                               }}
                               onClick={(e) => {

@@ -857,7 +857,7 @@ const ConsultantsInner = () => {
   return (
     <div className="anim-fade-up">
       {/* Header */}
-      <div className="page-header" style={{ display: 'flex', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', width: '100%', gap: '16px', marginBottom: '1.5rem' }}>
+      <div className={isMobile ? "" : "page-header"} style={{ display: 'flex', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', width: '100%', gap: '16px', marginBottom: '1.5rem', position: 'relative', zIndex: 50 }}>
         <div style={{ flex: 1, minWidth: 0 }}>
           <h1 className="page-title" style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: isMobile ? '1.25rem' : '1.75rem', flexWrap: 'wrap' }}>
             {activeTab === 'teams' ? t('Quản lý Nhóm (Team)') : activeTab === 'branches' ? t('Chi nhánh Kinh doanh') : t('Quản lý Tư vấn viên')}

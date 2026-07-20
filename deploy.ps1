@@ -17,19 +17,13 @@ tar -czf frontend.tar.gz -C dist .
 tar -czf backend.tar.gz -C backend .
 
 Write-Host "1b. Uploading compressed archives via SCP..." -ForegroundColor Yellow
-scp -4 -P 2210 -o StrictHostKeyChecking=no frontend.tar.gz vhvxoigh@chiefaiofficer.vn:/home/vhvxoigh/open.domation.net/richland/
+scp -4 -P 2210 -o StrictHostKeyChecking=no frontend.tar.gz backend.tar.gz vhvxoigh@chiefaiofficer.vn:/home/vhvxoigh/open.domation.net/richland/
 if ($LASTEXITCODE -ne 0) {
     Remove-Item frontend.tar.gz, backend.tar.gz -ErrorAction SilentlyContinue
-    Write-Host "ERROR: Failed to upload frontend package." -ForegroundColor Red
+    Write-Host "ERROR: Failed to upload compressed archives." -ForegroundColor Red
     exit $LASTEXITCODE
 }
-
-scp -4 -P 2210 -o StrictHostKeyChecking=no backend.tar.gz vhvxoigh@chiefaiofficer.vn:/home/vhvxoigh/open.domation.net/richland/
-if ($LASTEXITCODE -ne 0) {
-    Remove-Item frontend.tar.gz, backend.tar.gz -ErrorAction SilentlyContinue
-    Write-Host "ERROR: Failed to upload backend package." -ForegroundColor Red
-    exit $LASTEXITCODE
-}
+Start-Sleep -Seconds 1
 
 Write-Host "1c. Extracting packages on remote server..." -ForegroundColor Yellow
 ssh -4 -p 2210 -o StrictHostKeyChecking=no vhvxoigh@chiefaiofficer.vn "tar -xzf /home/vhvxoigh/open.domation.net/richland/frontend.tar.gz -C /home/vhvxoigh/open.domation.net/richland/ && tar -xzf /home/vhvxoigh/open.domation.net/richland/backend.tar.gz -C /home/vhvxoigh/open.domation.net/richland/ && rm /home/vhvxoigh/open.domation.net/richland/frontend.tar.gz /home/vhvxoigh/open.domation.net/richland/backend.tar.gz"
