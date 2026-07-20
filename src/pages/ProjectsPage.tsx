@@ -16,7 +16,7 @@ import { CustomModal } from '../components/ui/CustomModal';
 import { Pagination } from '../components/ui/Pagination';
 import { Skeleton } from '../components/ui/Skeleton';
 import { Avatar } from '../components/ui/Avatar';
-import { Mail, Phone, Copy } from 'lucide-react';
+import { Mail, Phone, Copy, ChevronLeft } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MentionInput } from '../components/ui/MentionInput';
 import { WorkspaceTaskDrawer } from './WorkspaceTaskDrawer';
@@ -825,7 +825,15 @@ export default function ProjectsPage() {
     }
   }, [detailComments, isEditModalOpen, isCampaignModalOpen]);
 
-  const renderDrawer = (isOpen: boolean, onClose: () => void, title: string, content: React.ReactNode, width: string = '850px', headerActions?: React.ReactNode) => {
+  const renderDrawer = (
+    isOpen: boolean, 
+    onClose: () => void, 
+    title: string, 
+    content: React.ReactNode, 
+    width: string = '850px', 
+    headerActions?: React.ReactNode,
+    isCampaign?: boolean
+  ) => {
     if (!isOpen) return null;
     return createPortal(
       <>
@@ -872,16 +880,28 @@ export default function ProjectsPage() {
             top: 0,
             zIndex: 10
           }}>
-            <h3 style={{ margin: 0, fontSize: '1.125rem', fontWeight: 800, color: 'var(--color-text)' }}>{title}</h3>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1, minWidth: 0 }}>
+              {isCampaign && isMobile && (
+                <button
+                  onClick={onClose}
+                  style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--color-text)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '4px 8px 4px 0' }}
+                >
+                  <ChevronLeft size={24} />
+                </button>
+              )}
+              <h3 style={{ margin: 0, fontSize: (isCampaign && isMobile) ? '0.925rem' : '1.125rem', fontWeight: 800, color: 'var(--color-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{title}</h3>
+            </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
               {headerActions}
-              <button 
-                onClick={onClose} 
-                style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '4px', borderRadius: '50%' }}
-                className="hover-lift"
-              >
-                <X size={20} />
-              </button>
+              {(!isCampaign || !isMobile) && (
+                <button 
+                  onClick={onClose} 
+                  style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '4px', borderRadius: '50%' }}
+                  className="hover-lift"
+                >
+                  <X size={20} />
+                </button>
+              )}
             </div>
           </div>
           {/* Drawer Content */}
@@ -2594,9 +2614,6 @@ export default function ProjectsPage() {
                   </p>
                 </div>
 
-                {/* Discussions/Comments */}
-                {editingCampaign && renderEntityComments('campaign', editingCampaign.id)}
-
               </div>
 
               {/* Right Column (2/5) */}
@@ -2931,6 +2948,13 @@ export default function ProjectsPage() {
 
               </div>
             </div>
+
+            {/* Discussions/Comments at the very bottom */}
+            {editingCampaign && (
+              <div style={{ marginTop: '1.25rem' }}>
+                {renderEntityComments('campaign', editingCampaign.id)}
+              </div>
+            )}
           </>
         ) : (
           /* Changelog Tab View */
@@ -3755,7 +3779,7 @@ export default function ProjectsPage() {
               height: '38px',
               width: isMobile ? '100%' : 'auto'
             }}>
-              <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--color-text-muted)', whiteSpace: 'nowrap' }}>Dự án:</span>
+              {!isMobile && <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--color-text-muted)', whiteSpace: 'nowrap' }}>Dự án:</span>}
               <div style={{ width: isMobile ? '100%' : '180px' }}>
                 <CustomSelect
                   options={[
@@ -7136,7 +7160,8 @@ export default function ProjectsPage() {
             {isSaving ? 'Đang lưu...' : 'Lưu chiến dịch'}
           </button>
         </div>
-      )
+      ),
+      true
     )}
       {/* Explanation of Projects & Campaigns Modal */}
       <CustomModal

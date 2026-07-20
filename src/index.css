@@ -4704,8 +4704,8 @@ div[role="status"] {
   }
 
   /* Stack grid layouts vertically on mobile (restricted to inner settings card fields) */
-  .subtab-enter-active .card div[style*="grid-template-columns"],
-  .subtab-enter-active .card div[style*="gridTemplateColumns"] {
+  .subtab-enter-active .card:not(.calendar-card) div[style*="grid-template-columns"],
+  .subtab-enter-active .card:not(.calendar-card) div[style*="gridTemplateColumns"] {
     grid-template-columns: 1fr !important;
     gap: 12px !important;
   }

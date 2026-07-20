@@ -9,7 +9,7 @@ import { CustomModal } from '../components/ui/CustomModal';
 import { ConfirmModal } from '../components/ui/ConfirmModal';
 import { TableRowSkeleton } from '../components/ui/Skeleton';
 import { CustomSelect } from '../components/ui/CustomSelect';
-import { Clock, Calendar, Check, X, Trash2, Eye, ShieldAlert, AlertCircle, CheckCircle, Info, Download, Lightbulb, Upload, ChevronLeft, ChevronRight, Camera, Image, FileText, Zap, RefreshCw } from 'lucide-react';
+import { Clock, Calendar, Check, X, Trash2, Eye, ShieldAlert, AlertCircle, CheckCircle, Info, Download, Lightbulb, Upload, ChevronLeft, ChevronRight, Camera, Image, FileText, Zap, RefreshCw, Moon } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { PeriodFilter, getDateRange } from '../components/ui/PeriodFilter';
 import { useUIStore } from '../store/uiStore';
@@ -111,7 +111,7 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
   // Selected date for detail modal
   const [selectedDateForDetail, setSelectedDateForDetail] = useState<string | null>(null);
   const hasCheckIn = selectedDateForDetail ? calendarCheckIns.some(c => c.check_in_date === selectedDateForDetail) : false;
-  const [modalTab, setModalTab] = useState<'checkin' | 'fingerprint'>('checkin');
+  const [modalTab, setModalTab] = useState<'checkin' | 'fingerprint' | 'night_duty'>('checkin');
 
   // Shift registration approval states
   const [registrations, setRegistrations] = useState<any[]>([]);
@@ -1839,7 +1839,38 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
                 }}
               >
                 <FileText size={16} />
-                {isSales ? t('Trạng thái & Yêu cầu bổ sung') : t('File Chấm Công & Đồng bộ')}
+                {isSales ? t('Yêu cầu') : t('File Chấm Công & Đồng bộ')}
+              </button>
+
+              <button
+                onClick={() => setModalTab('night_duty')}
+                style={{
+                  padding: '8px 4px 12px 4px',
+                  fontSize: '0.875rem',
+                  fontWeight: 700,
+                  color: modalTab === 'night_duty' ? 'var(--color-primary)' : 'var(--color-text-light)',
+                  border: 'none',
+                  background: 'transparent',
+                  borderBottom: modalTab === 'night_duty' ? '2px solid var(--color-primary)' : '2px solid transparent',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px'
+                }}
+              >
+                <Moon size={16} />
+                {t('Log trực đêm')}
+                <span style={{
+                  fontSize: '0.7rem',
+                  padding: '2px 6px',
+                  borderRadius: '10px',
+                  background: modalTab === 'night_duty' ? 'var(--color-primary-light)' : 'var(--color-bg)',
+                  color: modalTab === 'night_duty' ? 'var(--color-primary)' : 'var(--color-text-muted)',
+                  fontWeight: 600
+                }}>
+                  {calendarShifts.filter(s => s.shift_date === selectedDateForDetail && s.shift_type === 'night').length}
+                </span>
               </button>
             </div>
 
@@ -1980,7 +2011,7 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
                     )}
                   </div>
                 </div>
-              ) : (
+              ) : modalTab === 'fingerprint' ? (
                 /* Sub-tab 2: Fingerprint Excel / Supplementary Form */
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
                   {isSales ? (
@@ -2179,6 +2210,53 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
                       </div>
                     </>
                   )}
+                </div>
+              ) : (
+                /* Sub-tab 3: Night Duty Log */
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', overflowY: 'auto', maxHeight: '420px', paddingRight: '4px' }}>
+                    {(() => {
+                      const nightShifts = calendarShifts.filter(s => s.shift_date === selectedDateForDetail && s.shift_type === 'night');
+                      if (nightShifts.length === 0) {
+                        return (
+                          <div style={{ textAlign: 'center', padding: '3rem 1rem', color: 'var(--color-text-muted)' }}>
+                            <Moon size={32} style={{ display: 'block', margin: '0 auto 8px', opacity: 0.4 }} />
+                            <p style={{ fontSize: '0.8125rem' }}>{t('Không có nhân sự nào được phân công trực đêm trong ngày này.')}</p>
+                          </div>
+                        );
+                      }
+                      return nightShifts.map((row) => (
+                        <div key={row.id} style={{
+                          padding: '12px',
+                          background: 'var(--color-bg-light)',
+                          border: '1px solid var(--color-border)',
+                          borderRadius: '10px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          gap: '8px'
+                        }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <Avatar src={row.user_avatar} name={row.user_name} size={28} />
+                            <div style={{ display: 'flex', flexDirection: 'column' }}>
+                              <span style={{ fontWeight: 600, fontSize: '0.8125rem', color: 'var(--color-text)' }}>{row.user_name}</span>
+                              <span style={{ fontSize: '0.6875rem', color: 'var(--color-text-light)' }}>{row.user_email || '—'}</span>
+                            </div>
+                          </div>
+                          <span style={{
+                            fontSize: '0.65rem',
+                            fontWeight: 600,
+                            padding: '2px 8px',
+                            borderRadius: '20px',
+                            backgroundColor: Number(row.approved) === 1 ? 'var(--color-success-light)' : 'var(--color-warning-light)',
+                            color: Number(row.approved) === 1 ? 'var(--color-success)' : 'var(--color-warning)'
+                          }}>
+                            {Number(row.approved) === 1 ? t('Đã duyệt') : t('Chờ duyệt')}
+                          </span>
+                        </div>
+                      ));
+                    })()}
+                  </div>
                 </div>
               )}
             </div>

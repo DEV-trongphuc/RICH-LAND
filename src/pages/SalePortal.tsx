@@ -3815,7 +3815,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
     ];
 
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', gap: wsViewMode === 'focus' ? '0' : '1.25rem' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: wsViewMode === 'focus' ? '0' : '1.25rem', paddingBottom: isMobile ? '100px' : '0' }}>
         {wsViewMode !== 'focus' && (
           <>
             {/* Workspace Header */}
@@ -7919,7 +7919,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
     const isAdmin = ['admin', 'superadmin', 'super_admin', 'director'].includes(String(user?.role || displayUser?.role || '').toLowerCase());
 
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', paddingBottom: isMobile ? '100px' : '0' }}>
         {/* Header Block */}
         <div style={{
           background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: '16px', padding: '1rem 1.5rem',
@@ -9125,7 +9125,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
 
         {/* Calendar Body */}
         <div className="responsive-table-wrap" style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-          <div className="card" style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: 0, minWidth: 700, overflow: 'hidden' }}>
+          <div className="card calendar-card" style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: 0, minWidth: 700, overflow: 'hidden' }}>
             {/* Calendar Grid Header */}
             <div style={{
               display: 'grid',
