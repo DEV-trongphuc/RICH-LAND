@@ -3767,6 +3767,54 @@ switch ($action) {
             
             if ($autoApprove === 1) {
                 notifyNightShiftChange($conn, $currentSaleConsultantId, $shiftDate, true);
+
+                // Gửi chuông báo cho Quản lý & Admins
+                $saleName = !empty($decodedUser['name']) ? $decodedUser['name'] : 'Nhân viên';
+                $formattedDate = date('d/m/Y', strtotime($shiftDate));
+                $title = "Đăng ký trực ca đêm tự động duyệt";
+                $body = "Sale {$saleName} đã đăng ký trực ca đêm ngày {$formattedDate} (được hệ thống tự động duyệt).";
+                $link = "/attendance";
+
+                $notifyUserIds = [];
+
+                // 1. Lấy admins/directors
+                $adminRes = $conn->query("SELECT id FROM accounts WHERE role IN ('admin', 'superadmin', 'director') AND status = 'active'");
+                if ($adminRes) {
+                    while ($adm = $adminRes->fetch_assoc()) {
+                        $notifyUserIds[] = (int)$adm['id'];
+                    }
+                }
+
+                // 2. Lấy team leader
+                $stmtC = $conn->prepare("
+                    SELECT t.leader_id 
+                    FROM consultants c 
+                    LEFT JOIN teams t ON c.team_id = t.id 
+                    WHERE c.id = ?
+                ");
+                if ($stmtC) {
+                    $stmtC->bind_param("i", $currentSaleConsultantId);
+                    $stmtC->execute();
+                    $cRow = $stmtC->get_result()->fetch_assoc();
+                    $stmtC->close();
+                    if ($cRow && !empty($cRow['leader_id'])) {
+                        $leaderId = (int)$cRow['leader_id'];
+                        if (!in_array($leaderId, $notifyUserIds)) {
+                            $notifyUserIds[] = $leaderId;
+                        }
+                    }
+                }
+
+                // 3. Gửi thông báo
+                foreach ($notifyUserIds as $uId) {
+                    $stmtNotif = $conn->prepare("INSERT INTO notifications (user_id, tenant_id, title, body, type, link) VALUES (?, 1, ?, ?, 'shift_approval', ?)");
+                    if ($stmtNotif) {
+                        $stmtNotif->bind_param("isss", $uId, $title, $body, $link);
+                        $stmtNotif->execute();
+                        $stmtNotif->close();
+                    }
+                }
+
                 echo json_encode(['success' => true, 'message' => 'Đăng ký trực đêm thành công.']);
             } else {
                 // Send notification to admins

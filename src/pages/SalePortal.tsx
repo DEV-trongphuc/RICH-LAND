@@ -4235,9 +4235,11 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                   {isMobile ? t('Liên hệ khách hàng mới') : t('Yêu cầu liên hệ khách hàng mới')}
                 </span>
                 <span style={{ fontSize: isMobile ? '0.72rem' : '0.85rem', color: 'var(--color-text-muted)', marginTop: isMobile ? 1 : 4, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {isMobile 
-                    ? `Có ${uncontactedCount} khách hàng chưa liên hệ.` 
-                    : `Bạn đang có ${uncontactedCount} data khách hàng chưa liên hệ. Vui lòng kiểm tra và liên hệ ngay.`}
+                  {isMobile ? (
+                    <>Có <strong style={{ color: '#ef4444', fontSize: '1.2em', fontWeight: 800 }}>{uncontactedCount}</strong> khách hàng chưa liên hệ.</>
+                  ) : (
+                    <>Bạn đang có <strong style={{ color: '#ef4444', fontSize: '1.2em', fontWeight: 800 }}>{uncontactedCount}</strong> data khách hàng chưa liên hệ. Vui lòng kiểm tra và liên hệ ngay.</>
+                  )}
                 </span>
               </div>
             </div>
@@ -6600,10 +6602,10 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                   <CheckCircle2 size={20} />
                 </div>
                 <div>
-                  <h3 style={{ fontSize: '0.9rem', fontWeight: 800, color: 'var(--color-text)', margin: 0, letterSpacing: '-0.01em' }}>
+                  <h3 style={{ fontSize: '0.9rem', fontWeight: 800, color: '#ffffff', margin: 0, letterSpacing: '-0.01em' }}>
                     {t("Tuyệt vời! Không có tồn đọng")}
                   </h3>
-                  <p style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)', margin: '4px 0 0', fontWeight: 500 }}>
+                  <p style={{ fontSize: '0.78rem', color: '#a1a1aa', margin: '4px 0 0', fontWeight: 500 }}>
                     {t("Chúc bạn một ngày chốt thật nhiều deal! 🚀")}
                   </p>
                 </div>
