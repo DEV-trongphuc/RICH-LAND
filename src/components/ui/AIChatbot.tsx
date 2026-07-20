@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useLanguage } from '../../contexts/LanguageContext';
-import { Send, X, Database, Sparkles, LayoutGrid } from 'lucide-react';
+import { Send, X, Database, Sparkles, LayoutGrid, Search, ChevronRight } from 'lucide-react';
 import { fetchAPI } from '../../utils/api';
 
 interface Message {
@@ -14,12 +14,11 @@ export const AIChatbot: React.FC = () => {
   const { t } = useLanguage();
   const [isOpen, setIsOpen] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
-  const [showSidebar, setShowSidebar] = useState(true);
   const [messages, setMessages] = useState<Message[]>([
     {
       id: 'welcome',
       sender: 'bot',
-      text: t('Xin chào! Tôi là Trợ lý AI hỗ trợ hệ thống quản trị Rich Land. 🤖\n\nTôi có thể trả lời các câu hỏi về chỉ số thống kê hôm nay, cách cấu hình Zalo Bot, thiết lập Blacklist, quy tắc chia số, hoặc Ticket báo lỗi đền bù.\n\nBạn cần tôi hỗ trợ gì hôm nay?'),
+      text: t('Xin chào! Tôi là Trợ lý AI hỗ trợ hệ thống quản trị Rich Land.\n\nTôi có thể trả lời các câu hỏi về chỉ số thống kê hôm nay, cách cấu hình Zalo Bot, thiết lập Blacklist, quy tắc chia số, hoặc Ticket báo lỗi đền bù.\n\nBạn cần tôi hỗ trợ gì hôm nay?'),
       timestamp: new Date()
     }
   ]);
@@ -29,7 +28,7 @@ export const AIChatbot: React.FC = () => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Chat modes: 'general' (chat thường), 'project_campaign' (chat chọn dự án/chiến dịch)
-  const [chatMode, setChatMode] = useState<'general' | 'project_campaign'>('general');
+  const [chatMode, setChatMode] = useState<'general' | 'project_campaign'>('project_campaign');
   const [projectsList, setProjectsList] = useState<any[]>([]);
   const [campaignsList, setCampaignsList] = useState<any[]>([]);
   const [loadingEntities, setLoadingEntities] = useState(false);
@@ -192,20 +191,6 @@ export const AIChatbot: React.FC = () => {
     { label: t('🛡️ Quản lý Blacklist'), text: t('Làm sao để cấu hình Blacklist?') },
     { label: t('🎫 Ticket báo lỗi đền bù'), text: t('Quy trình xử lý Ticket lỗi thế nào?') }
   ];
-
-  // Responsive sidebar toggle
-  useEffect(() => {
-    const handleResize = () => {
-      if (window.innerWidth < 768) {
-        setShowSidebar(false);
-      } else {
-        setShowSidebar(true);
-      }
-    };
-    handleResize();
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
 
   // Fetch stats when chat opens
   useEffect(() => {
@@ -485,7 +470,7 @@ Bạn có thể gõ rõ từ khóa hoặc click vào các gợi ý bên dưới 
           --chatbot-sidebar-border: oklch(0% 0 0 / 5%);
           --chatbot-bubble-bot-bg: oklch(54% 0.235 274 / 4%);
           --chatbot-bubble-bot-border: oklch(54% 0.235 274 / 8%);
-          --chatbot-bubble-user-bg: linear-gradient(135deg, oklch(54% 0.235 274) 0%, oklch(53% 0.25 285) 100%);
+          --chatbot-bubble-user-bg: linear-gradient(135deg, #c21a2c 0%, #a31422 100%);
           --chatbot-text: oklch(15.9% 0.034 254);
           --chatbot-text-muted: oklch(54.1% 0.038 248);
           --chatbot-card-bg: oklch(100% 0 0 / 85%);
@@ -503,7 +488,7 @@ Bạn có thể gõ rõ từ khóa hoặc click vào các gợi ý bên dưới 
           --chatbot-sidebar-border: oklch(100% 0 0 / 6%);
           --chatbot-bubble-bot-bg: oklch(100% 0 0 / 3%);
           --chatbot-bubble-bot-border: oklch(100% 0 0 / 6%);
-          --chatbot-bubble-user-bg: linear-gradient(135deg, oklch(54% 0.235 274) 0%, oklch(53% 0.25 285) 100%);
+          --chatbot-bubble-user-bg: linear-gradient(135deg, #c21a2c 0%, #a31422 100%);
           --chatbot-text: oklch(96.8% 0.009 246);
           --chatbot-text-muted: oklch(70% 0.034 247);
           --chatbot-card-bg: oklch(17.8% 0.022 264 / 60%);
@@ -751,7 +736,7 @@ Bạn có thể gõ rõ từ khóa hoặc click vào các gợi ý bên dưới 
           position: 'absolute',
           bottom: 0,
           right: 0,
-          width: showSidebar ? 'min(820px, 94vw)' : 'min(540px, 92vw)',
+          width: 'min(540px, 92vw)',
           height: 'min(720px, 85vh)',
           borderRadius: '24px',
           background: 'var(--chatbot-window-bg)',
@@ -769,100 +754,6 @@ Bạn có thể gõ rõ từ khóa hoặc click vào các gợi ý bên dưới 
           willChange: 'transform, opacity, width'
         }}
       >
-        {/* Sidebar - Dashboard Stats */}
-        {showSidebar && (
-          <div
-            className="chatbot-sidebar"
-            style={{
-              width: 260,
-              background: 'var(--chatbot-sidebar-bg)',
-              borderRight: '1px solid var(--chatbot-sidebar-border)',
-              display: 'flex',
-              flexDirection: 'column',
-              overflow: 'hidden',
-              flexShrink: 0
-            }}
-          >
-            {/* Sidebar Header */}
-            <div style={{
-              padding: '16px 20px',
-              borderBottom: '1px solid var(--chatbot-sidebar-border)',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 8,
-              background: 'rgba(163, 20, 34, 0.02)'
-            }}>
-              <Database size={15} style={{ color: '#a31422' }} />
-              <span style={{ fontSize: '0.78rem', fontWeight: 800, color: 'var(--chatbot-text)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                {t('Số liệu hôm nay')}
-              </span>
-            </div>
-
-            {/* Sidebar Content */}
-            <div 
-              style={{ 
-                flex: 1, 
-                overflowY: 'auto', 
-                padding: '16px', 
-                display: 'flex', 
-                flexDirection: 'column', 
-                gap: 12 
-              }} 
-              className="custom-scrollbar"
-            >
-              {stats ? (
-                statsConfig.map((item, idx) => {
-                  const value = stats[item.key] !== undefined ? stats[item.key] : 0;
-                  return (
-                    <div
-                      key={idx}
-                      onClick={() => handleSend(item.prompt)}
-                      style={{
-                        padding: '12px 14px',
-                        background: 'var(--chatbot-card-bg)',
-                        border: '1px solid var(--chatbot-card-border)',
-                        borderRadius: '12px',
-                        cursor: 'pointer',
-                        boxShadow: 'var(--chatbot-card-shadow)',
-                        animationDelay: `${idx * 0.05}s`
-                      }}
-                      className="chatbot-stats-card"
-                    >
-                      <div style={{ fontSize: '0.72rem', color: 'var(--chatbot-text-muted)', fontWeight: 600, marginBottom: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <span style={{ width: 8, height: 8, borderRadius: '50%', background: item.color, display: 'inline-block' }} />
-                        {item.label}
-                      </div>
-                      <div style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--chatbot-text)', display: 'flex', alignItems: 'baseline', gap: 4 }}>
-                        {value}
-                        <span style={{ fontSize: '0.6875rem', fontWeight: 500, color: 'var(--chatbot-text-muted)' }}>data</span>
-                      </div>
-                    </div>
-                  );
-                })
-              ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', gap: 10, opacity: 0.6 }}>
-                  <div className="dot-typing" style={{ color: 'var(--chatbot-text-muted)', fontSize: '0.8rem' }}>{t('Đang tải số liệu')}</div>
-                </div>
-              )}
-            </div>
-
-            {/* Sidebar Footer */}
-            <div style={{
-              padding: '12px 16px',
-              borderTop: '1px solid var(--chatbot-sidebar-border)',
-              fontSize: '0.6875rem',
-              color: 'var(--chatbot-text-muted)',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 6,
-              background: 'rgba(163, 20, 34, 0.01)'
-            }}>
-              <Sparkles size={12} style={{ color: '#a31422' }} />
-              <span>{t('Nhấp để hỏi AI tự động')}</span>
-            </div>
-          </div>
-        )}
-
         {/* Main Chat Panel */}
         <div style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }}>
           {/* Header */}
@@ -891,33 +782,7 @@ Bạn có thể gõ rõ từ khóa hoặc click vào các gợi ý bên dưới 
                 </div>
               </div>
             </div>
-            
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              {/* Sidebar toggle button */}
-              <button
-                className="chatbot-sidebar-toggle-btn"
-                onClick={() => setShowSidebar(!showSidebar)}
-                style={{
-                  background: 'rgba(255,255,255,0.15)',
-                  border: 'none',
-                  borderRadius: '50%',
-                  width: 30,
-                  height: 30,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: 'white',
-                  cursor: 'pointer',
-                  outline: 'none',
-                  transition: 'all 0.2s'
-                }}
-                onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.25)'}
-                onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.15)'}
-                title={showSidebar ? t("Ẩn chỉ số") : t("Hiện chỉ số")}
-              >
-                <LayoutGrid size={14} />
-              </button>
-
               <button
                 onClick={() => setIsOpen(false)}
                 style={{
@@ -973,7 +838,7 @@ Bạn có thể gõ rõ từ khóa hoặc click vào các gợi ý bên dưới 
                 gap: '6px'
               }}
             >
-              💬 {t('Chat thường')}
+              {t('Chat thường')}
             </button>
             <button
               type="button"
@@ -995,7 +860,7 @@ Bạn có thể gõ rõ từ khóa hoặc click vào các gợi ý bên dưới 
                 gap: '6px'
               }}
             >
-              🏢 {t('Hỏi Dự án / Chiến dịch')}
+              {t('Hỏi Dự án / Chiến dịch')}
             </button>
           </div>
 
@@ -1020,7 +885,7 @@ Bạn có thể gõ rõ từ khóa hoặc click vào các gợi ý bên dưới 
                     boxSizing: 'border-box'
                   }}
                 />
-                <span style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', opacity: 0.5, fontSize: '0.85rem' }}>🔍</span>
+                <Search size={14} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', opacity: 0.5, color: 'var(--chatbot-text)' }} />
               </div>
               
               <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '16px' }} className="custom-scrollbar">
@@ -1033,7 +898,7 @@ Bạn có thể gõ rõ từ khóa hoặc click vào các gợi ý bên dưới 
                     {/* Projects Section */}
                     <div>
                       <h5 style={{ fontSize: '0.72rem', color: '#a31422', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 8px 4px' }}>
-                        🏢 {t('Dự án')} ({filteredProjects.length})
+                        {t('Dự án')} ({filteredProjects.length})
                       </h5>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                         {filteredProjects.length === 0 ? (
@@ -1064,7 +929,7 @@ Bạn có thể gõ rõ từ khóa hoặc click vào các gợi ý bên dưới 
                                 <div style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--chatbot-text)', textAlign: 'left' }}>{p.name}</div>
                                 <div style={{ fontSize: '0.68rem', color: 'var(--chatbot-text-muted)', textAlign: 'left' }}>{p.code} | {p.location || t('Chưa có vị trí')}</div>
                               </div>
-                              <span style={{ fontSize: '0.7rem', color: '#a31422', fontWeight: 700 }}>➔</span>
+                              <ChevronRight size={14} style={{ color: '#a31422' }} />
                             </div>
                           ))
                         )}
@@ -1074,7 +939,7 @@ Bạn có thể gõ rõ từ khóa hoặc click vào các gợi ý bên dưới 
                     {/* Campaigns Section */}
                     <div>
                       <h5 style={{ fontSize: '0.72rem', color: '#a31422', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em', margin: '12px 0 8px 4px' }}>
-                        📣 {t('Chiến dịch')} ({filteredCampaigns.length})
+                        {t('Chiến dịch')} ({filteredCampaigns.length})
                       </h5>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                         {filteredCampaigns.length === 0 ? (
@@ -1105,7 +970,7 @@ Bạn có thể gõ rõ từ khóa hoặc click vào các gợi ý bên dưới 
                                 <div style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--chatbot-text)', textAlign: 'left' }}>{c.name}</div>
                                 <div style={{ fontSize: '0.68rem', color: 'var(--chatbot-text-muted)', textAlign: 'left' }}>{c.code} {c.project_name ? `(${c.project_name})` : ''}</div>
                               </div>
-                              <span style={{ fontSize: '0.7rem', color: '#a31422', fontWeight: 700 }}>➔</span>
+                              <ChevronRight size={14} style={{ color: '#a31422' }} />
                             </div>
                           ))
                         )}
@@ -1129,10 +994,10 @@ Bạn có thể gõ rõ từ khóa hoặc click vào các gợi ý bên dưới 
                   gap: '8px'
                 }}>
                   <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#a31422', display: 'flex', alignItems: 'center', gap: '6px', textAlign: 'left' }}>
-                    🏢 {t('Đang hỏi về')} {selectedEntity.type === 'project' ? t('Dự án') : t('Chiến dịch')}: 
+                    {t('Đang hỏi về')} {selectedEntity.type === 'project' ? t('Dự án') : t('Chiến dịch')}: 
                     <strong style={{ color: 'var(--chatbot-text)' }}>{selectedEntity.name}</strong>
                     {loadingContext && <span style={{ fontSize: '0.7rem', fontWeight: 'normal', color: 'var(--chatbot-text-muted)' }} className="dot-typing">({t('Đang nạp tài liệu')})</span>}
-                    {!loadingContext && <span style={{ fontSize: '0.7rem', color: '#10b981', background: 'rgba(16,185,129,0.1)', padding: '2px 6px', borderRadius: '10px' }}>✓ {t('Đã nạp tài liệu')}</span>}
+                    {!loadingContext && <span style={{ fontSize: '0.7rem', color: '#10b981', background: 'rgba(16,185,129,0.1)', padding: '2px 6px', borderRadius: '10px' }}>{t('Đã nạp tài liệu')}</span>}
                   </span>
                   <button
                     type="button"
@@ -1157,6 +1022,7 @@ Bạn có thể gõ rõ từ khóa hoặc click vào các gợi ý bên dưới 
                   </button>
                 </div>
               )}
+
               
               <div
                 style={{

@@ -11442,6 +11442,8 @@ switch ($action) {
                 "- Luôn xử lý khoảng thời gian dựa trên các hàm ngày tháng của SQL (ví dụ: `received_at >= CURDATE()` hoặc `received_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)`).\n" .
                 "- Giải thích câu trả lời của bạn một cách rõ ràng dựa trên kết quả thu thập được.";
 
+            $systemInstruction .= "\n\nQUY TẮC PHẢN HỒI QUAN TRỌNG: TUYỆT ĐỐI KHÔNG ĐƯỢC PHÉP SỬ DỤNG BẤT KỲ EMOJI (BIỂU TƯỢNG CẢM XÚC) NÀO TRONG PHẢN HỒI CỦA BẠN. Chỉ sử dụng chữ viết tiếng Việt chuẩn và định dạng markdown thông thường để trả lời.";
+
             $projectContext = trim($input['project_context'] ?? '');
             if (!empty($projectContext)) {
                 $systemInstruction .= "\n\n=== NGỮ CẢNH DỰ ÁN / CHIẾN DỊCH KHÁCH HÀNG ĐANG HỎI ===\n" .
