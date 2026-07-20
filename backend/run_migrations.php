@@ -1817,6 +1817,16 @@ try {
         $conn->query("ALTER TABLE cooperation_slips ADD COLUMN dieu_chinh_tu_id INT DEFAULT NULL");
     }
 
+    // Self-healing check: ensure approved_by and approved_at exist in cooperation_slips
+    $chkColCoopAppBy = $conn->query("SHOW COLUMNS FROM cooperation_slips LIKE 'approved_by'");
+    if ($chkColCoopAppBy && $chkColCoopAppBy->num_rows === 0) {
+        $conn->query("ALTER TABLE cooperation_slips ADD COLUMN approved_by INT DEFAULT NULL");
+    }
+    $chkColCoopAppAt = $conn->query("SHOW COLUMNS FROM cooperation_slips LIKE 'approved_at'");
+    if ($chkColCoopAppAt && $chkColCoopAppAt->num_rows === 0) {
+        $conn->query("ALTER TABLE cooperation_slips ADD COLUMN approved_at TIMESTAMP DEFAULT NULL");
+    }
+
     // Self-healing check: ensure attachment_url exists in notes
     $chkColNoteAttach = $conn->query("SHOW COLUMNS FROM notes LIKE 'attachment_url'");
     if ($chkColNoteAttach && $chkColNoteAttach->num_rows === 0) {

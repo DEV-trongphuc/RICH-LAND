@@ -175,6 +175,9 @@ class CooperationController {
             foreach (array_keys($shares) as $uid) {
                 $allUids[] = (int)$uid;
             }
+            if (!empty($s['approved_by'])) {
+                $allUids[] = (int)$s['approved_by'];
+            }
         }
         $allUids = array_unique($allUids);
 
@@ -210,7 +213,23 @@ class CooperationController {
                     ];
                 }
             }
+
+            $approverDetails = null;
+            if (!empty($s['approved_by'])) {
+                $u = $userMap[(int)$s['approved_by']] ?? null;
+                if ($u) {
+                    $approverDetails = [
+                        'user_id' => (int)$s['approved_by'],
+                        'name' => $u['full_name'],
+                        'email' => $u['email'],
+                        'avatar' => $u['avatar_url'] ?? null,
+                        'approved_at' => $s['approved_at']
+                    ];
+                }
+            }
+            
             $s['shareholders'] = $shareholdersDetails;
+            $s['approver'] = $approverDetails;
         }
 
         respond(200, $slips, 'Lấy danh sách phiếu hợp tác thành công');
@@ -634,8 +653,8 @@ class CooperationController {
             respond(400, null, 'Phiếu chưa được ký đủ chữ ký của các bên để phê duyệt', false);
         }
 
-        $stmt = $this->db->prepare("UPDATE cooperation_slips SET status = 'approved' WHERE id = ?");
-        $stmt->execute([$id]);
+        $stmt = $this->db->prepare("UPDATE cooperation_slips SET status = 'approved', approved_by = ?, approved_at = NOW() WHERE id = ?");
+        $stmt->execute([$auth['user_id'], $id]);
 
         // Email shareholders about approval
         $shares = json_decode($slip['shares_json'], true) ?: [];
