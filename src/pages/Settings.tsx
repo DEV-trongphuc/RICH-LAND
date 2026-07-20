@@ -194,7 +194,7 @@ const SettingsInner = () => {
     {
       title: t('Giao tiếp & Báo cáo'),
       items: [
-        { value: 'email_config', label: t('Cấu hình Gửi Email'), icon: <Mail size={15} /> },
+        { value: 'email_config', label: t('Cấu hình Gửi Email'), icon: <img src="/imgs/gmail-icon-free-png.webp" alt="Gmail" style={{ width: 15, height: 15 }} /> },
         { value: 'zalo_bot', label: t('Cấu hình Zalo Bot'), icon: <img src="https://stc-zpl.zdn.vn/favicon.ico" alt="Zalo" style={{ width: 15, height: 15, borderRadius: '50%' }} /> },
         { value: 'automated_reports', label: t('Báo cáo tự động'), icon: <BarChart2 size={15} /> }
       ]
@@ -3420,7 +3420,7 @@ const SettingsInner = () => {
             <div style={{ display: activeTab === 'email_config' ? 'block' : 'none' }} className="subtab-enter-active">
               <div className="card" style={{ padding: '1.5rem', marginTop: 0 }}>
                 <h3 style={{ fontSize: '1.125rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8, marginBottom: '1.25rem' }}>
-                  <Mail size={20} color="var(--color-primary)" /> {t('Phương thức Gửi Email')}
+                  <img src="/imgs/gmail-icon-free-png.webp" alt="Gmail" style={{ width: 20, height: 20 }} /> {t('Phương thức Gửi Email')}
                 </h3>
 
                 {renderHelpBanner('email_config', t('Giải thích cơ chế Gửi Email'), (
