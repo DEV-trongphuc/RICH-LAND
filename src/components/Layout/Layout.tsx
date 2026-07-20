@@ -2268,7 +2268,7 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
               </div>
 
               {/* Connecting icon */}
-              <div style={{ display: 'flex', alignItems: 'center', color: '#0088cc' }}>
+              <div style={{ display: 'flex', alignItems: 'center', color: '#BD1D2D' }}>
                 <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
                   <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
@@ -2314,7 +2314,7 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  background: '#0088cc',
+                  background: '#BD1D2D',
                   border: 'none',
                   color: '#fff',
                   padding: '12px',
@@ -2322,27 +2322,12 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
                   fontWeight: 700,
                   fontSize: '0.925rem',
                   textDecoration: 'none',
-                  boxShadow: '0 4px 12px rgba(0, 136, 204, 0.2)',
+                  boxShadow: '0 4px 12px rgba(189, 29, 45, 0.25)',
                   transition: 'all 0.2s'
                 }}
               >
                 LIÊN KẾT NHANH 1-CLICK
               </a>
-
-              <button
-                className="btn outline"
-                onClick={() => setIsTelegramModalOpen(false)}
-                style={{
-                  padding: '10px',
-                  borderRadius: '10px',
-                  fontSize: '0.9rem',
-                  borderColor: 'var(--color-border)',
-                  color: 'var(--color-text-muted)',
-                  cursor: 'pointer'
-                }}
-              >
-                {t('Đóng')}
-              </button>
             </div>
           </div>
         </CustomModal>
