@@ -8,7 +8,7 @@ import {
   Clock3, GitBranch, ArrowUpRight, ShieldAlert, Send, ArrowLeft,
   Sun, Moon, ChevronDown, ChevronUp, AlertTriangle, ChevronLeft, ChevronRight,
   LayoutDashboard, Database, Ticket, Calendar, RefreshCw, Menu, Tag, Server, Scale, Settings, Info, Cpu,
-  Camera, Video, Layers, Plus, Receipt, CreditCard, Building2, Users, User, UserCheck, UserPlus, Trash2, CheckSquare, X, Paperclip, LifeBuoy, Fingerprint, LayoutGrid, Monitor, Tv, Phone, Save, Award
+  Camera, Video, Layers, Plus, Receipt, CreditCard, Building2, Users, User, UserCheck, UserPlus, Trash2, CheckSquare, X, Paperclip, LifeBuoy, Fingerprint, LayoutGrid, Monitor, Tv, Phone, Save, Award, Ban, RotateCcw
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { createPortal } from 'react-dom';
@@ -823,6 +823,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
   }, [wsViewMode, filteredWsTasks, selectedTaskForDetails]);
 
   const [publicLeads, setPublicLeads] = useState<any[]>([]);
+  const [showDeletedFilter, setShowDeletedFilter] = useState<'none' | 'only' | 'all'>('none');
   const [publicLoading, setPublicLoading] = useState(false);
   const [isClaimingLeadId, setIsClaimingLeadId] = useState<number | null>(null);
   const [publicQuota, setPublicQuota] = useState<any>(null);
@@ -2306,7 +2307,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
     setDatabankPage(1);
     setSelectedPublicLeads([]);
     try {
-      const res = await fetchAPI('get_public_leads');
+      const res = await fetchAPI(`get_public_leads&show_deleted=${showDeletedFilter}`);
       if (res.success) {
         setPublicLeads(res.data || []);
         if (res.quota) {
@@ -2323,9 +2324,9 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
   const handleDeletePublicLeads = (personIds: number[]) => {
     if (personIds.length === 0) return;
     showConfirm({
-      title: t('Xóa dữ liệu Databank'),
-      message: t('Bạn có chắc chắn muốn xóa') + ' ' + personIds.length + ' ' + t('khách hàng đã chọn khỏi Kho chung (Databank)?'),
-      confirmText: t('Xóa ngay'),
+      title: t('Ẩn/Xóa khỏi Databank'),
+      message: t('Bạn có chắc chắn muốn ẩn/xóa') + ' ' + personIds.length + ' ' + t('khách hàng đã chọn khỏi Kho chung (Databank)? Quản trị viên có thể tìm lại ở bộ lọc Lịch sử ẩn/xóa.'),
+      confirmText: t('Ẩn/Xóa ngay'),
       isDanger: true,
       onConfirm: async () => {
         try {
@@ -2334,11 +2335,98 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
             body: JSON.stringify({ person_ids: personIds })
           });
           if (res && res.success) {
-            toast.success(res.message || t('Đã xóa dữ liệu thành công'));
+            toast.success(res.message || t('Đã ẩn dữ liệu thành công'));
             setSelectedPublicLeads([]);
             fetchPublicLeads();
           } else {
-            toast.error(res ? res.message : t('Xóa dữ liệu thất bại'));
+            toast.error(res ? res.message : t('Ẩn dữ liệu thất bại'));
+          }
+        } catch (e: any) {
+          toast.error(t('Lỗi: ') + e.message);
+        } finally {
+          closeConfirm();
+        }
+      }
+    });
+  };
+
+  const handleRestorePublicLeads = (personIds: number[]) => {
+    if (personIds.length === 0) return;
+    showConfirm({
+      title: t('Khôi phục hiển thị Databank'),
+      message: t('Bạn có chắc chắn muốn khôi phục hiển thị cho') + ' ' + personIds.length + ' ' + t('khách hàng đã chọn trong Kho chung (Databank)?'),
+      confirmText: t('Khôi phục'),
+      isDanger: false,
+      onConfirm: async () => {
+        try {
+          const res = await fetchAPI('restore_public_leads', {
+            method: 'POST',
+            body: JSON.stringify({ person_ids: personIds })
+          });
+          if (res && res.success) {
+            toast.success(res.message || t('Đã khôi phục dữ liệu thành công'));
+            setSelectedPublicLeads([]);
+            fetchPublicLeads();
+          } else {
+            toast.error(res ? res.message : t('Khôi phục thất bại'));
+          }
+        } catch (e: any) {
+          toast.error(t('Lỗi: ') + e.message);
+        } finally {
+          closeConfirm();
+        }
+      }
+    });
+  };
+
+  const handleBlockPublicLeads = (personIds: number[]) => {
+    if (personIds.length === 0) return;
+    showConfirm({
+      title: t('Chặn liên hệ vĩnh viễn'),
+      message: t('Bạn có chắc chắn muốn chặn vĩnh viễn') + ' ' + personIds.length + ' ' + t('khách hàng đã chọn? Hệ thống sẽ ẩn liên hệ khỏi Databank và ngăn chặn việc đẩy lại sau này dựa trên Số điện thoại/Email.'),
+      confirmText: t('Chặn vĩnh viễn'),
+      isDanger: true,
+      onConfirm: async () => {
+        try {
+          const res = await fetchAPI('block_public_leads', {
+            method: 'POST',
+            body: JSON.stringify({ person_ids: personIds })
+          });
+          if (res && res.success) {
+            toast.success(res.message || t('Đã chặn liên hệ thành công'));
+            setSelectedPublicLeads([]);
+            fetchPublicLeads();
+          } else {
+            toast.error(res ? res.message : t('Chặn liên hệ thất bại'));
+          }
+        } catch (e: any) {
+          toast.error(t('Lỗi: ') + e.message);
+        } finally {
+          closeConfirm();
+        }
+      }
+    });
+  };
+
+  const handleUnblockPublicLeads = (personIds: number[]) => {
+    if (personIds.length === 0) return;
+    showConfirm({
+      title: t('Hủy chặn liên hệ'),
+      message: t('Bạn có chắc chắn muốn bỏ chặn cho') + ' ' + personIds.length + ' ' + t('khách hàng đã chọn?'),
+      confirmText: t('Bỏ chặn'),
+      isDanger: false,
+      onConfirm: async () => {
+        try {
+          const res = await fetchAPI('unblock_public_leads', {
+            method: 'POST',
+            body: JSON.stringify({ person_ids: personIds })
+          });
+          if (res && res.success) {
+            toast.success(res.message || t('Đã bỏ chặn liên hệ thành công'));
+            setSelectedPublicLeads([]);
+            fetchPublicLeads();
+          } else {
+            toast.error(res ? res.message : t('Bỏ chặn thất bại'));
           }
         } catch (e: any) {
           toast.error(t('Lỗi: ') + e.message);
@@ -2418,7 +2506,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
     if (activeTab === 'databank') {
       fetchPublicLeads();
     }
-  }, [activeTab]);
+  }, [activeTab, showDeletedFilter]);
 
   const handleSubmitCheckIn = async (fileToUpload?: File) => {
     setCheckInSubmitting(true);
@@ -7879,31 +7967,128 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                   </span>
                 </div>
               ))}
+              {/* Status Filter for Admin */}
+              {isAdmin && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>{t('Bộ lọc:')}</span>
+                  <select
+                    value={showDeletedFilter}
+                    onChange={(e) => setShowDeletedFilter(e.target.value as any)}
+                    style={{
+                      height: '30px',
+                      padding: '0 8px',
+                      borderRadius: '8px',
+                      border: '1px solid var(--color-border-light)',
+                      background: 'var(--color-surface)',
+                      color: 'var(--color-text)',
+                      fontSize: '0.75rem',
+                      fontWeight: 600,
+                      outline: 'none',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    <option value="none">{t('Hoạt động')}</option>
+                    <option value="only">{t('Đã ẩn/xóa')}</option>
+                    <option value="all">{t('Tất cả')}</option>
+                  </select>
+                </div>
+              )}
 
-              {/* Delete button for Admin */}
+              {/* Action buttons for Admin */}
               {isAdmin && selectedPublicLeads.length > 0 && (
-                <button
-                  onClick={() => handleDeletePublicLeads(selectedPublicLeads)}
-                  className="btn danger sm"
-                  style={{
-                    height: '30px',
-                    padding: '0 12px',
-                    borderRadius: '8px',
-                    fontSize: '0.75rem',
-                    fontWeight: 600,
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                    backgroundColor: '#dc2626',
-                    color: 'white',
-                    border: 'none',
-                    boxShadow: '0 2px 8px rgba(220, 38, 38, 0.2)',
-                    cursor: 'pointer'
-                  }}
-                >
-                  <Trash2 size={12} />
-                  {t('Xóa đã chọn')} ({selectedPublicLeads.length})
-                </button>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  {showDeletedFilter !== 'only' && (
+                    <button
+                      onClick={() => handleDeletePublicLeads(selectedPublicLeads)}
+                      style={{
+                        height: '30px',
+                        padding: '0 10px',
+                        borderRadius: '8px',
+                        fontSize: '0.75rem',
+                        fontWeight: 600,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '4px',
+                        backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                        color: '#ef4444',
+                        border: '1px solid rgba(239, 68, 68, 0.2)',
+                        cursor: 'pointer'
+                      }}
+                      title={t('Ẩn/Xóa khỏi Databank')}
+                    >
+                      <Trash2 size={12} />
+                      {t('Ẩn/Xóa')} ({selectedPublicLeads.length})
+                    </button>
+                  )}
+
+                  {showDeletedFilter !== 'none' && (
+                    <button
+                      onClick={() => handleRestorePublicLeads(selectedPublicLeads)}
+                      style={{
+                        height: '30px',
+                        padding: '0 10px',
+                        borderRadius: '8px',
+                        fontSize: '0.75rem',
+                        fontWeight: 600,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '4px',
+                        backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                        color: '#10b981',
+                        border: '1px solid rgba(16, 185, 129, 0.2)',
+                        cursor: 'pointer'
+                      }}
+                      title={t('Khôi phục hiển thị Databank')}
+                    >
+                      <RotateCcw size={12} />
+                      {t('Khôi phục')} ({selectedPublicLeads.length})
+                    </button>
+                  )}
+
+                  <button
+                    onClick={() => handleBlockPublicLeads(selectedPublicLeads)}
+                    style={{
+                      height: '30px',
+                      padding: '0 10px',
+                      borderRadius: '8px',
+                      fontSize: '0.75rem',
+                      fontWeight: 600,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      backgroundColor: 'rgba(220, 38, 38, 0.15)',
+                      color: '#dc2626',
+                      border: '1px solid rgba(220, 38, 38, 0.2)',
+                      cursor: 'pointer'
+                    }}
+                    title={t('Chặn vĩnh viễn')}
+                  >
+                    <Ban size={12} />
+                    {t('Chặn')} ({selectedPublicLeads.length})
+                  </button>
+
+                  <button
+                    onClick={() => handleUnblockPublicLeads(selectedPublicLeads)}
+                    style={{
+                      height: '30px',
+                      padding: '0 10px',
+                      borderRadius: '8px',
+                      fontSize: '0.75rem',
+                      fontWeight: 600,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                      color: '#3b82f6',
+                      border: '1px solid rgba(59, 130, 246, 0.2)',
+                      cursor: 'pointer'
+                    }}
+                    title={t('Hủy chặn vĩnh viễn')}
+                  >
+                    <CheckSquare size={12} />
+                    {t('Bỏ chặn')} ({selectedPublicLeads.length})
+                  </button>
+                </div>
               )}
             </div>
           </div>
@@ -8128,7 +8313,19 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                         </td>
                         <td style={{ padding: '1rem' }}>
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'flex-start' }}>
-                            {getStatusBadge('databank', undefined, undefined, undefined, lead.takers)}
+                            <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
+                              {getStatusBadge('databank', undefined, undefined, undefined, lead.takers)}
+                              {Number(lead.deleted_from_databank) === 1 && (
+                                <span className="badge" style={{ background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', border: '1px solid rgba(239, 68, 68, 0.2)' }}>
+                                  {t('Đã ẩn/xóa')}
+                                </span>
+                              )}
+                              {Number(lead.is_blocked) === 1 && (
+                                <span className="badge" style={{ background: 'rgba(17, 24, 39, 0.1)', color: '#111827', border: '1px solid rgba(17, 24, 39, 0.2)' }}>
+                                  {t('Đã chặn')}
+                                </span>
+                              )}
+                            </div>
                             {(() => {
                               const currentUserRole = String(user?.role || displayUser?.role || '').toLowerCase();
                               const currentUserId = Number(user?.id || displayUser?.id || 0);
@@ -8192,29 +8389,107 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                         <td style={{ padding: '1rem', textAlign: 'right' }}>
                           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '8px' }}>
                             {isAdmin && (
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleDeletePublicLeads([lead.id]);
-                                }}
-                                className="btn sm outline danger-hover"
-                                style={{
-                                  height: 32,
-                                  width: 32,
-                                  padding: 0,
-                                  borderRadius: '50%',
-                                  display: 'inline-flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'center',
-                                  border: '1px solid var(--color-border)',
-                                  background: 'transparent',
-                                  color: 'var(--color-text-muted)',
-                                  cursor: 'pointer'
-                                }}
-                                title={t('Xóa khỏi Databank')}
-                              >
-                                <Trash2 size={14} />
-                              </button>
+                              <>
+                                {Number(lead.deleted_from_databank) === 1 ? (
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleRestorePublicLeads([lead.id]);
+                                    }}
+                                    className="btn sm outline success-hover"
+                                    style={{
+                                      height: 32,
+                                      width: 32,
+                                      padding: 0,
+                                      borderRadius: '50%',
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'center',
+                                      border: '1px solid var(--color-border)',
+                                      background: 'transparent',
+                                      color: 'var(--color-text-muted)',
+                                      cursor: 'pointer'
+                                    }}
+                                    title={t('Khôi phục hiển thị Databank')}
+                                  >
+                                    <RotateCcw size={14} />
+                                  </button>
+                                ) : (
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleDeletePublicLeads([lead.id]);
+                                    }}
+                                    className="btn sm outline danger-hover"
+                                    style={{
+                                      height: 32,
+                                      width: 32,
+                                      padding: 0,
+                                      borderRadius: '50%',
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'center',
+                                      border: '1px solid var(--color-border)',
+                                      background: 'transparent',
+                                      color: 'var(--color-text-muted)',
+                                      cursor: 'pointer'
+                                    }}
+                                    title={t('Ẩn/Xóa khỏi Databank')}
+                                  >
+                                    <Trash2 size={14} />
+                                  </button>
+                                )}
+
+                                {Number(lead.is_blocked) === 1 ? (
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleUnblockPublicLeads([lead.id]);
+                                    }}
+                                    className="btn sm outline info-hover"
+                                    style={{
+                                      height: 32,
+                                      width: 32,
+                                      padding: 0,
+                                      borderRadius: '50%',
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'center',
+                                      border: '1px solid var(--color-border)',
+                                      background: 'transparent',
+                                      color: 'var(--color-text-muted)',
+                                      cursor: 'pointer'
+                                    }}
+                                    title={t('Hủy chặn vĩnh viễn')}
+                                  >
+                                    <CheckSquare size={14} />
+                                  </button>
+                                ) : (
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleBlockPublicLeads([lead.id]);
+                                    }}
+                                    className="btn sm outline danger-hover"
+                                    style={{
+                                      height: 32,
+                                      width: 32,
+                                      padding: 0,
+                                      borderRadius: '50%',
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'center',
+                                      border: '1px solid var(--color-border)',
+                                      background: 'transparent',
+                                      color: 'var(--color-text-muted)',
+                                      cursor: 'pointer'
+                                    }}
+                                    title={t('Chặn vĩnh viễn liên hệ')}
+                                  >
+                                    <Ban size={14} />
+                                  </button>
+                                )}
+                              </>
                             )}
                             <button
                               onClick={(e) => {

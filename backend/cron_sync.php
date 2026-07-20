@@ -1523,6 +1523,15 @@ foreach ($connections as $connItem) {
                 }
             }
 
+            // Check Blocked Leads
+            if (isLeadBlocked($conn, $phone, $email)) {
+                logSync("Row rejected: Lead is blocked (phone: $phone, email: $email)");
+                $recordStmt->bind_param("is", $connItem['id'], $rowHash);
+                $recordStmt->execute();
+                $hashMap[$rowHash] = true;
+                continue;
+            }
+
             // --- 0. Check Global Blacklist / Exclusions ---
             if (checkGlobalExclusion($conn, $rowData, $phone, $email, true, $name, $source, $type, $note)) {
                 // Record hash so we don't process this blacklisted row again
@@ -2298,19 +2307,19 @@ function releaseExpiredLeadsToKho($conn) {
                     $publicCount = (int)($personData['public_count'] ?? 0);
                     if ($publicCount === 0) {
                         $newPublicCount = 1;
-                        $upd = $conn->prepare("UPDATE persons SET is_public = 1, released_to_kho_at = NOW(), public_count = ? WHERE id = ?");
+                        $upd = $conn->prepare("UPDATE persons SET is_public = 1, released_to_kho_at = NOW(), public_count = ?, deleted_from_databank = 0 WHERE id = ?");
                         $upd->bind_param("ii", $newPublicCount, $personId);
                         $upd->execute();
                         $upd->close();
                     } else {
-                        $upd = $conn->prepare("UPDATE persons SET is_public = 1, released_to_kho_at = NOW() WHERE id = ?");
+                        $upd = $conn->prepare("UPDATE persons SET is_public = 1, released_to_kho_at = NOW(), deleted_from_databank = 0 WHERE id = ?");
                         $upd->bind_param("i", $personId);
                         $upd->execute();
                         $upd->close();
                     }
                 } else {
                     // Slots available but some sales are still working, just set is_public = 1
-                    $upd = $conn->prepare("UPDATE persons SET is_public = 1, released_to_kho_at = NOW() WHERE id = ?");
+                    $upd = $conn->prepare("UPDATE persons SET is_public = 1, released_to_kho_at = NOW(), deleted_from_databank = 0 WHERE id = ?");
                     $upd->bind_param("i", $personId);
                     $upd->execute();
                     $upd->close();

@@ -1262,12 +1262,59 @@ function getNextConsultantInRound($conn, $roundId, $lead = null)
     return ['id' => $nextId, 'is_compensation' => false];
 }
 
+function isLeadBlocked($conn, $phone, $email) {
+    $phone = normalizePhone($phone);
+    $email = trim($email ?? '');
+    if (empty($phone) && empty($email)) {
+        return false;
+    }
+    
+    $query = "SELECT id FROM blocked_leads WHERE 1=2";
+    $params = [];
+    
+    if (!empty($phone)) {
+        $query .= " OR (phone IS NOT NULL AND phone != '' AND phone = ?)";
+        $params[] = $phone;
+    }
+    if (!empty($email)) {
+        $query .= " OR (email IS NOT NULL AND email != '' AND email = ?)";
+        $params[] = $email;
+    }
+    
+    if ($conn instanceof PDO) {
+        $stmt = $conn->prepare($query);
+        if ($stmt) {
+            $stmt->execute($params);
+            return (bool)$stmt->fetchColumn();
+        }
+    } else {
+        $stmt = $conn->prepare($query);
+        if ($stmt) {
+            if (!empty($params)) {
+                $types = str_repeat("s", count($params));
+                $stmt->bind_param($types, ...$params);
+            }
+            $stmt->execute();
+            $res = $stmt->get_result();
+            $isBlocked = ($res && $res->num_rows > 0);
+            $stmt->close();
+            return $isBlocked;
+        }
+    }
+    return false;
+}
+
 function insertLead($conn, $data, $assignedConsultantId, $phone, $email, $name, $source, $type, $note, $connectionId = null, $customDate = null, $preserveInteractionDate = false)
 {
     $phone = normalizePhone($phone);
     if ($phone === '')
         $phone = null;
-    $email = trim($email) === '' ? null : trim($email);
+    $email = trim($email ?? '') === '' ? null : trim($email);
+
+    if (isLeadBlocked($conn, $phone, $email)) {
+        error_log("Lead insertion rejected: Blocked lead (phone: " . ($phone ?? '') . ", email: " . ($email ?? '') . ")");
+        return null;
+    }
 
     // Check if duplicate to track original source if source changes
     $oldSource = null;
@@ -3346,9 +3393,11 @@ function ensurePersonAndContact($conn, $leadId) {
     if (!$lead) return;
 
     $phone = normalizePhone($lead['phone']);
-    if (empty($phone)) return;
-
     $email = $lead['email'] ?? '';
+    if (isLeadBlocked($conn, $phone, $email)) {
+        return;
+    }
+    if (empty($phone)) return;
     $name = $lead['name'] ?? '';
     $assigned_to = $lead['assigned_to'] ?? null;
     $is_accepted = (int)($lead['is_accepted'] ?? 0);

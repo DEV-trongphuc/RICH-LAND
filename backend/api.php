@@ -829,6 +829,10 @@ function processManualLead($conn, $leadData, $override_round_id, $override_consu
         return ['success' => false, 'message' => 'Vui lòng nhập SĐT hoặc Email'];
     }
 
+    if (isLeadBlocked($conn, $phone, $email)) {
+        return ['success' => false, 'message' => 'Liên hệ này đã bị chặn vĩnh viễn trong hệ thống (Blocked).'];
+    }
+
     if ($distribution_mode === 'direct_databank') {
         // Direct to Databank
         $conn->begin_transaction();
@@ -843,13 +847,14 @@ function processManualLead($conn, $leadData, $override_round_id, $override_consu
 
             // Ensure Person exists and is set to public (databank)
             $stmtPerson = $conn->prepare("
-                INSERT INTO persons (phone, email, full_name, is_public, released_to_kho_at, public_count) 
-                VALUES (?, ?, ?, 1, NOW(), 1) 
+                INSERT INTO persons (phone, email, full_name, is_public, released_to_kho_at, public_count, deleted_from_databank) 
+                VALUES (?, ?, ?, 1, NOW(), 1, 0) 
                 ON DUPLICATE KEY UPDATE 
                     email = IF(email IS NULL OR email = '', VALUES(email), email),
                     full_name = IF(full_name IS NULL OR full_name = '', VALUES(full_name), full_name),
                     is_public = 1,
                     released_to_kho_at = NOW(),
+                    deleted_from_databank = 0,
                     public_count = public_count + 1
             ");
             $stmtPerson->bind_param("sss", $phone, $email, $name);
@@ -17180,8 +17185,28 @@ switch ($action) {
 
         $isStaffAdmin = ($decodedUser['role'] === 'admin' || $decodedUser['role'] === 'superadmin' || $decodedUser['role'] === 'director');
 
+        $showDeleted = $_GET['show_deleted'] ?? 'none'; // 'none', 'only', 'all'
+
+        $deletedCond = "AND p.deleted_from_databank = 0";
         if ($isStaffAdmin) {
-            $sql = "SELECT p.id, p.full_name, p.phone, p.email, p.released_to_kho_at,
+            if ($showDeleted === 'only') {
+                $deletedCond = "AND p.deleted_from_databank = 1";
+            } else if ($showDeleted === 'all') {
+                $deletedCond = "";
+            }
+        }
+
+        $blockCond = "
+            AND p.is_blocked = 0 
+            AND NOT EXISTS (
+                SELECT 1 FROM persons p2 
+                WHERE p2.is_blocked = 1 
+                  AND (p2.phone = p.phone OR (p2.email = p.email AND p.email IS NOT NULL AND p.email != ''))
+            )
+        ";
+
+        if ($isStaffAdmin) {
+            $sql = "SELECT p.id, p.full_name, p.phone, p.email, p.released_to_kho_at, p.deleted_from_databank, p.is_blocked,
                            (SELECT project_id FROM contacts WHERE person_id = p.id ORDER BY id ASC LIMIT 1) as project_id,
                            (SELECT name FROM projects WHERE id = (SELECT project_id FROM contacts WHERE person_id = p.id ORDER BY id ASC LIMIT 1)) as project_name,
                            (SELECT source FROM contacts WHERE person_id = p.id ORDER BY id ASC LIMIT 1) as original_source
@@ -17190,6 +17215,8 @@ switch ($action) {
                       AND (p.is_public = 1 OR NOT EXISTS (
                           SELECT 1 FROM contacts WHERE person_id = p.id AND status = 'dat_coc' AND deleted_at IS NULL
                       ))
+                      $deletedCond
+                      $blockCond
                     ORDER BY p.released_to_kho_at DESC";
         } else {
             $sql = "SELECT p.id, p.full_name, p.phone, p.email, p.released_to_kho_at,
@@ -17198,6 +17225,8 @@ switch ($action) {
                            (SELECT source FROM contacts WHERE person_id = p.id ORDER BY id ASC LIMIT 1) as original_source
                     FROM persons p
                     WHERE p.is_public = 1
+                      $deletedCond
+                      $blockCond
                     ORDER BY p.released_to_kho_at DESC";
         }
 
@@ -17299,9 +17328,101 @@ switch ($action) {
         }
 
         $inClause = implode(',', $personIds);
-        $sql = "UPDATE persons SET is_public = 0, released_to_kho_at = NULL WHERE id IN ($inClause)";
+        $sql = "UPDATE persons SET deleted_from_databank = 1 WHERE id IN ($inClause)";
         if ($conn->query($sql)) {
-            echo json_encode(['success' => true, 'message' => 'Đã xóa dữ liệu khỏi Kho Databank thành công']);
+            echo json_encode(['success' => true, 'message' => 'Đã ẩn dữ liệu khỏi Kho Databank thành công']);
+        } else {
+            echo json_encode(['success' => false, 'message' => 'Lỗi cập nhật dữ liệu: ' . $conn->error]);
+        }
+        break;
+
+    case 'restore_public_leads':
+        if (!$decodedUser) {
+            respond(401, null, 'Unauthorized: Chưa đăng nhập', false);
+        }
+        $isStaffAdmin = ($decodedUser['role'] === 'admin' || $decodedUser['role'] === 'superadmin');
+        if (!$isStaffAdmin) {
+            respond(403, null, 'Forbidden: Chỉ Admin mới có quyền khôi phục dữ liệu Databank', false);
+        }
+        $input = json_decode(file_get_contents('php://input'), true);
+        $personIds = $input['person_ids'] ?? [];
+        if (!is_array($personIds)) {
+            $personIds = [$personIds];
+        }
+        $personIds = array_map('intval', $personIds);
+        $personIds = array_filter($personIds, function($id) { return $id > 0; });
+
+        if (empty($personIds)) {
+            echo json_encode(['success' => false, 'message' => 'Danh sách ID không hợp lệ']);
+            break;
+        }
+
+        $inClause = implode(',', $personIds);
+        $sql = "UPDATE persons SET deleted_from_databank = 0 WHERE id IN ($inClause)";
+        if ($conn->query($sql)) {
+            echo json_encode(['success' => true, 'message' => 'Đã khôi phục hiển thị dữ liệu thành công']);
+        } else {
+            echo json_encode(['success' => false, 'message' => 'Lỗi khôi phục dữ liệu: ' . $conn->error]);
+        }
+        break;
+
+    case 'block_public_leads':
+        if (!$decodedUser) {
+            respond(401, null, 'Unauthorized: Chưa đăng nhập', false);
+        }
+        $isStaffAdmin = ($decodedUser['role'] === 'admin' || $decodedUser['role'] === 'superadmin');
+        if (!$isStaffAdmin) {
+            respond(403, null, 'Forbidden: Chỉ Admin mới có quyền chặn dữ liệu Databank', false);
+        }
+        $input = json_decode(file_get_contents('php://input'), true);
+        $personIds = $input['person_ids'] ?? [];
+        if (!is_array($personIds)) {
+            $personIds = [$personIds];
+        }
+        $personIds = array_map('intval', $personIds);
+        $personIds = array_filter($personIds, function($id) { return $id > 0; });
+
+        if (empty($personIds)) {
+            echo json_encode(['success' => false, 'message' => 'Danh sách ID không hợp lệ']);
+            break;
+        }
+
+        $inClause = implode(',', $personIds);
+        $sql = "UPDATE persons SET is_blocked = 1 WHERE id IN ($inClause)";
+        if ($conn->query($sql)) {
+            logAdminAction($conn, $decodedUser['id'], 'BLOCK_PUBLIC_LEADS', ['person_ids' => $personIds]);
+            echo json_encode(['success' => true, 'message' => 'Đã chặn liên hệ vĩnh viễn thành công']);
+        } else {
+            echo json_encode(['success' => false, 'message' => 'Lỗi cập nhật dữ liệu: ' . $conn->error]);
+        }
+        break;
+
+    case 'unblock_public_leads':
+        if (!$decodedUser) {
+            respond(401, null, 'Unauthorized: Chưa đăng nhập', false);
+        }
+        $isStaffAdmin = ($decodedUser['role'] === 'admin' || $decodedUser['role'] === 'superadmin');
+        if (!$isStaffAdmin) {
+            respond(403, null, 'Forbidden: Chỉ Admin mới có quyền bỏ chặn dữ liệu Databank', false);
+        }
+        $input = json_decode(file_get_contents('php://input'), true);
+        $personIds = $input['person_ids'] ?? [];
+        if (!is_array($personIds)) {
+            $personIds = [$personIds];
+        }
+        $personIds = array_map('intval', $personIds);
+        $personIds = array_filter($personIds, function($id) { return $id > 0; });
+
+        if (empty($personIds)) {
+            echo json_encode(['success' => false, 'message' => 'Danh sách ID không hợp lệ']);
+            break;
+        }
+
+        $inClause = implode(',', $personIds);
+        $sql = "UPDATE persons SET is_blocked = 0 WHERE id IN ($inClause)";
+        if ($conn->query($sql)) {
+            logAdminAction($conn, $decodedUser['id'], 'UNBLOCK_PUBLIC_LEADS', ['person_ids' => $personIds]);
+            echo json_encode(['success' => true, 'message' => 'Đã bỏ chặn liên hệ thành công']);
         } else {
             echo json_encode(['success' => false, 'message' => 'Lỗi cập nhật dữ liệu: ' . $conn->error]);
         }
@@ -17418,7 +17539,7 @@ switch ($action) {
               }
 
              // Update person is_public = 1
-             $stmtU = $conn->prepare("UPDATE persons SET is_public = 1, released_to_kho_at = NOW() WHERE id = ?");
+             $stmtU = $conn->prepare("UPDATE persons SET is_public = 1, released_to_kho_at = NOW(), deleted_from_databank = 0 WHERE id = ?");
              $stmtU->bind_param("i", $personId);
              $stmtU->execute();
              $stmtU->close();

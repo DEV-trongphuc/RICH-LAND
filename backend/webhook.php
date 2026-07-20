@@ -193,6 +193,12 @@ function extractMappedValues($mappingsArray, $systemField, $data) {
     $name = extractMappedValues($mappings, 'name', $data);
 }
 
+if (isLeadBlocked($conn, $phone, $email)) {
+    http_response_code(400);
+    echo json_encode(["success" => false, "message" => "This contact is permanently blocked in the system."]);
+    exit();
+}
+
 if ($requirePhone == 1) {
     if (empty($phone)) {
         http_response_code(400);

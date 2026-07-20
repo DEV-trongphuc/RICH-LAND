@@ -252,8 +252,17 @@ class ContactController {
         $company_id = $this->resolveCompanyId($auth, $b);
         $tags = json_encode($b['tags'] ?? []);
         
-        // Duplicate Phone Check
+        // Blocked Lead Check
         $phone = $b['phone'] ?? $b['mobile'] ?? null;
+        $email = $b['email'] ?? null;
+        if ($phone || $email) {
+            require_once __DIR__ . '/../webhook_logic.php';
+            if (isLeadBlocked($this->db, $phone, $email)) {
+                respond(422, null, "Liên hệ này đã bị chặn vĩnh viễn trong hệ thống (Blocked).", false);
+            }
+        }
+
+        // Duplicate Phone Check
         $duplicateFlag = 0;
         $duplicateWithId = null;
         if ($phone) {
@@ -1200,7 +1209,7 @@ class ContactController {
             $stmtRelease->execute([$defaultStageId, $id, $tid]);
 
             // Also update persons to be public
-            $stmtPerson = $this->db->prepare("UPDATE persons SET is_public = 1, released_to_kho_at = NOW() WHERE id = ?");
+            $stmtPerson = $this->db->prepare("UPDATE persons SET is_public = 1, released_to_kho_at = NOW(), deleted_from_databank = 0 WHERE id = ?");
             $stmtPerson->execute([$personId]);
 
             // Also update leads to set assigned_to = NULL

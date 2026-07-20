@@ -1742,6 +1742,16 @@ try {
         $conn->query("ALTER TABLE persons ADD COLUMN public_count INT DEFAULT 0");
         $logMsg("Đã thêm public_count cho persons", "success");
     }
+    $chkDeletedFromDatabank = $conn->query("SHOW COLUMNS FROM persons LIKE 'deleted_from_databank'");
+    if ($chkDeletedFromDatabank && $chkDeletedFromDatabank->num_rows === 0) {
+        $conn->query("ALTER TABLE persons ADD COLUMN deleted_from_databank TINYINT(1) DEFAULT 0");
+        $logMsg("Đã thêm deleted_from_databank cho persons", "success");
+    }
+    $chkIsBlocked = $conn->query("SHOW COLUMNS FROM persons LIKE 'is_blocked'");
+    if ($chkIsBlocked && $chkIsBlocked->num_rows === 0) {
+        $conn->query("ALTER TABLE persons ADD COLUMN is_blocked TINYINT(1) DEFAULT 0");
+        $logMsg("Đã thêm is_blocked cho persons", "success");
+    }
     $chkSecExpires = $conn->query("SHOW COLUMNS FROM contacts LIKE 'security_expires_at'");
     if ($chkSecExpires && $chkSecExpires->num_rows === 0) {
         $conn->query("ALTER TABLE contacts ADD COLUMN security_expires_at DATETIME DEFAULT NULL");
@@ -2057,6 +2067,8 @@ try {
         $safeAddIndex($conn, 'contacts', 'idx_contacts_deleted_at', 'deleted_at');
         $safeAddIndex($conn, 'persons', 'idx_persons_is_public', 'is_public');
         $safeAddIndex($conn, 'persons', 'idx_persons_released_to_kho', 'released_to_kho_at');
+        $safeAddIndex($conn, 'persons', 'idx_persons_deleted_from_db', 'deleted_from_databank');
+        $safeAddIndex($conn, 'persons', 'idx_persons_is_blocked', 'is_blocked');
         $safeAddIndex($conn, 'distribution_logs', 'idx_dist_logs_lead_id', 'lead_id');
         $safeAddIndex($conn, 'distribution_logs', 'idx_dist_logs_assigned_to', 'assigned_to');
         $safeAddIndex($conn, 'distribution_logs', 'idx_dist_logs_status', 'status');
