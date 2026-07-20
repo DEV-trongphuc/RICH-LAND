@@ -524,6 +524,7 @@ switch ($resource) {
         elseif ($resourceId  && $method === 'GET')    $ctrl->show($auth, (int)$resourceId);
         elseif ($resourceId  && $subResource === 'stage' && $method === 'PATCH') $ctrl->moveStage($auth, (int)$resourceId);
         elseif ($resourceId  && $subResource === 'release-databank' && $method === 'POST') $ctrl->releaseDatabank($auth, (int)$resourceId);
+        elseif ($resourceId  && $subResource === 'collaborators' && $method === 'GET') $ctrl->getCollaborators($auth, (int)$resourceId);
         elseif ($resourceId  && $method === 'PUT')    $ctrl->update($auth, (int)$resourceId);
         elseif ($resourceId  && $method === 'DELETE') $ctrl->destroy($auth, (int)$resourceId);
         else respond(404, null, 'Route không tồn tại', false);
@@ -935,6 +936,7 @@ switch ($resource) {
         $auth = requireAuth();
         $ctrl = new CooperationController($db);
         if ($resourceId === 'suggestions' && $method === 'GET') $ctrl->getSuggestions($auth);
+        elseif ($resourceId && $subResource === 'adjustment' && $method === 'POST') $ctrl->createAdjustmentSlip($auth, (int)$resourceId);
         elseif ($resourceId && $subResource === 'shares' && $method === 'PUT') $ctrl->updateShares($auth, (int)$resourceId);
         elseif ($resourceId && $subResource === 'sign' && $method === 'POST') $ctrl->signSlip($auth, (int)$resourceId);
         elseif ($resourceId && $subResource === 'approve' && $method === 'POST') $ctrl->approveSlip($auth, (int)$resourceId);

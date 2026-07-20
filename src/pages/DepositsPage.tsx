@@ -116,7 +116,8 @@ export default function DepositsPage() {
   const [hasExistingCoop, setHasExistingCoop] = useState(false);
   const [existingCoopShares, setExistingCoopShares] = useState<any[]>([]);
   const [isCooperation, setIsCooperation] = useState(false);
-  const [collaborators, setCollaborators] = useState<{ user_id: string; percentage: number }[]>([]);
+  const [allowedCollaborators, setAllowedCollaborators] = useState<{ id: string; name: string; isOwner: boolean }[]>([]);
+  const [collaboratorShares, setCollaboratorShares] = useState<Record<string, number>>({});
 
   // Manage Milestones State
   const [showManageModal, setShowManageModal] = useState(false);
@@ -171,15 +172,60 @@ export default function DepositsPage() {
     loadData();
   }, []);
 
-  // Check for pre-existing cooperation slip when selectedContactId changes
+  // Check for pre-existing cooperation slip and load collaborators when selectedContactId changes
   useEffect(() => {
-    if (!selectedContactId || coopSlips.length === 0) {
+    if (!selectedContactId) {
       setHasExistingCoop(false);
       setExistingCoopShares([]);
+      setAllowedCollaborators([]);
+      setCollaboratorShares({});
+      setIsCooperation(false);
       return;
     }
 
     const cid = Number(selectedContactId);
+
+    // 1. Load Collaborators strictly from quyen_truy_cap (Luật 4.5)
+    fetchAPI(`contacts/${cid}/collaborators`)
+      .then((res: any) => {
+        if (res.success && res.data) {
+          const owner = res.data.owner;
+          const helpers = res.data.helpers || [];
+
+          const colList: any[] = [];
+          if (owner) {
+            colList.push({
+              id: String(owner.id),
+              name: `${owner.full_name || owner.name || owner.username} (Chủ sở hữu)`,
+              isOwner: true
+            });
+          }
+
+          helpers.forEach((h: any) => {
+            colList.push({
+              id: String(h.user_id),
+              name: h.full_name || h.name || h.username || `TVV ID: ${h.user_id}`,
+              isOwner: false
+            });
+          });
+
+          setAllowedCollaborators(colList);
+
+          // Default initial shares: Owner gets 100%, others get 0%
+          const initialShares: Record<string, number> = {};
+          colList.forEach(c => {
+            initialShares[c.id] = c.isOwner ? 100 : 0;
+          });
+          setCollaboratorShares(initialShares);
+          setIsCooperation(false);
+        }
+      })
+      .catch(() => {
+        setAllowedCollaborators([]);
+        setCollaboratorShares({});
+      });
+
+    // 2. Check for pre-existing cooperation slip
     const existing = coopSlips.find((s: any) => Number(s.contact_id) === cid);
     if (existing) {
       setHasExistingCoop(true);
@@ -233,17 +279,9 @@ export default function DepositsPage() {
 
     // Verify cooperation shares sum
     if (!hasExistingCoop && isCooperation) {
-      if (collaborators.length === 0) {
-        setError('Vui lòng thêm ít nhất một nhân viên hợp tác hoặc bỏ chọn Hợp tác chia sẻ.');
-        return;
-      }
-      const sum = collaborators.reduce((acc, c) => acc + (c.percentage || 0), 0);
+      const sum = Object.values(collaboratorShares).reduce((acc, c) => acc + (c || 0), 0);
       if (sum !== 100) {
         setError(`Tổng tỷ lệ chia sẻ hoa hồng phải bằng đúng 100% (Hiện tại là ${sum}%)`);
-        return;
-      }
-      if (collaborators.some(c => !c.user_id)) {
-        setError('Vui lòng chọn đầy đủ nhân viên hợp tác trên từng dòng.');
         return;
       }
     }
@@ -262,7 +300,12 @@ export default function DepositsPage() {
           expected_commission: parseFloat(expectedCommission) || 0,
           milestones: milestonesInput,
           is_cooperation: isCooperation,
-          collaborators: collaborators
+          collaborators: isCooperation
+            ? Object.entries(collaboratorShares).map(([uid, pct]) => ({
+                user_id: uid,
+                percentage: pct
+              }))
+            : []
         })
       });
 
@@ -277,7 +320,8 @@ export default function DepositsPage() {
         setExpectedCommission('');
         setMilestonesInput([{ name: 'Đợt 1 - Cọc giữ chỗ', amount: '' }]);
         setIsCooperation(false);
-        setCollaborators([]);
+        setAllowedCollaborators([]);
+        setCollaboratorShares({});
         loadData();
       } else {
         setError(res.message || 'Lỗi tạo phiếu cọc');
@@ -1165,126 +1209,86 @@ export default function DepositsPage() {
                 </div>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontSize: '0.8125rem', fontWeight: 600 }}>
-                    <input
-                      type="checkbox"
-                      checked={isCooperation}
-                      onChange={e => {
-                        setIsCooperation(e.target.checked);
-                        if (e.target.checked && collaborators.length === 0) {
-                          setCollaborators([{ user_id: '', percentage: 0 }]);
-                        }
-                      }}
-                      style={{ cursor: 'pointer' }}
-                    />
-                    <span>Có hợp tác chia sẻ hoa hồng (Cooperation Deal)</span>
-                  </label>
+                  {allowedCollaborators.length <= 1 ? (
+                    <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--color-text-muted)', fontStyle: 'italic' }}>
+                      KHTN này chưa phát sinh lịch sử mời hỗ trợ chăm sóc chung. Giao dịch sẽ mặc định là Bán độc lập (Chủ sở hữu hưởng 100% hoa hồng và tự động duyệt phiếu).
+                    </p>
+                  ) : (
+                    <>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontSize: '0.8125rem', fontWeight: 600 }}>
+                        <input
+                          type="checkbox"
+                          checked={isCooperation}
+                          onChange={e => setIsCooperation(e.target.checked)}
+                          style={{ cursor: 'pointer' }}
+                        />
+                        <span>Có hợp tác chia sẻ hoa hồng (Cooperation Deal)</span>
+                      </label>
 
-                  {isCooperation && (
-                    <div style={{
-                      padding: '12px',
-                      background: 'var(--color-surface-hover)',
-                      borderRadius: '8px',
-                      border: '1px solid var(--color-border-light)',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      gap: '8px'
-                    }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 }}>
-                        <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)' }}>Danh sách TVV hợp tác & Tỷ lệ %</span>
-                        <button
-                          type="button"
-                          onClick={() => setCollaborators(prev => [...prev, { user_id: '', percentage: 0 }])}
-                          style={{
-                            fontSize: '0.725rem',
-                            color: '#10b981',
-                            background: 'none',
-                            border: 'none',
-                            cursor: 'pointer',
-                            fontWeight: 700
-                          }}
-                        >
-                          + Thêm TVV
-                        </button>
-                      </div>
-
-                      {collaborators.map((col, idx) => (
-                        <div key={idx} style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                          <select
-                            value={col.user_id}
-                            required
-                            onChange={e => {
-                              const updated = [...collaborators];
-                              updated[idx].user_id = e.target.value;
-                              setCollaborators(updated);
-                            }}
-                            className="form-input"
-                            style={{ flex: 1, height: '32px', fontSize: '0.75rem', padding: '0 8px' }}
-                          >
-                            <option value="">-- Chọn TVV hợp tác --</option>
-                            {usersList.map(u => (
-                              <option key={u.id} value={String(u.id)}>
-                                {u.full_name || u.name || u.username}
-                              </option>
-                            ))}
-                          </select>
-                          
-                          <input
-                            type="number"
-                            placeholder="%"
-                            required
-                            min={0}
-                            max={100}
-                            value={col.percentage || ''}
-                            onChange={e => {
-                              const updated = [...collaborators];
-                              updated[idx].percentage = parseInt(e.target.value) || 0;
-                              setCollaborators(updated);
-                            }}
-                            className="form-input"
-                            style={{ width: '70px', height: '32px', fontSize: '0.75rem', padding: '0 8px', textAlign: 'center' }}
-                          />
-
-                          <button
-                            type="button"
-                            onClick={() => {
-                              const updated = [...collaborators];
-                              updated.splice(idx, 1);
-                              setCollaborators(updated);
-                            }}
-                            style={{
-                              background: 'none',
-                              border: 'none',
-                              color: 'var(--color-danger)',
-                              cursor: 'pointer',
-                              display: 'flex',
-                              padding: 4
-                            }}
-                          >
-                            <Trash2 size={13} />
-                          </button>
-                        </div>
-                      ))}
-
-                      {/* Total share sum indicator */}
-                      <div style={{
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
-                        borderTop: '1px solid var(--color-border-light)',
-                        paddingTop: '6px',
-                        marginTop: '4px',
-                        fontSize: '0.75rem',
-                        fontWeight: 700
-                      }}>
-                        <span>Tổng tỷ lệ chia sẻ:</span>
-                        <span style={{
-                          color: collaborators.reduce((acc, curr) => acc + Number(curr.percentage), 0) === 100 ? '#10b981' : '#ef4444'
+                      {isCooperation && (
+                        <div style={{
+                          padding: '12px',
+                          background: 'var(--color-surface-hover)',
+                          borderRadius: '8px',
+                          border: '1px solid var(--color-border-light)',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '8px'
                         }}>
-                          {collaborators.reduce((acc, curr) => acc + Number(curr.percentage), 0)}% / 100%
-                        </span>
-                      </div>
-                    </div>
+                          <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', marginBottom: 2 }}>
+                            Phân chia tỷ lệ hoa hồng cho thành viên (Luật 4.5):
+                          </span>
+
+                          {allowedCollaborators.map((col) => (
+                            <div key={col.id} style={{ display: 'flex', gap: '12px', alignItems: 'center', justifyContent: 'space-between' }}>
+                              <span style={{ fontSize: '0.8rem', fontWeight: col.isOwner ? 700 : 500, color: col.isOwner ? 'var(--color-primary)' : 'var(--color-text)' }}>
+                                {col.name}
+                              </span>
+                              
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                <input
+                                  type="number"
+                                  placeholder="%"
+                                  required
+                                  min={0}
+                                  max={100}
+                                  value={collaboratorShares[col.id] !== undefined ? collaboratorShares[col.id] : ''}
+                                  onChange={e => {
+                                    const val = Math.max(0, Math.min(100, parseInt(e.target.value) || 0));
+                                    setCollaboratorShares(prev => ({
+                                      ...prev,
+                                      [col.id]: val
+                                    }));
+                                  }}
+                                  className="form-input"
+                                  style={{ width: '70px', height: '32px', fontSize: '0.75rem', padding: '0 8px', textAlign: 'center' }}
+                                />
+                                <span style={{ fontSize: '0.8rem', fontWeight: 600 }}>%</span>
+                              </div>
+                            </div>
+                          ))}
+
+                          {/* Total share sum indicator */}
+                          <div style={{
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            borderTop: '1px solid var(--color-border-light)',
+                            paddingTop: '6px',
+                            marginTop: '4px',
+                            fontSize: '0.75rem',
+                            fontWeight: 700
+                          }}>
+                            <span>Tổng tỷ lệ chia sẻ:</span>
+                            <span style={{
+                              color: Object.values(collaboratorShares).reduce((acc, curr) => acc + Number(curr), 0) === 100 ? '#10b981' : '#ef4444'
+                            }}>
+                              {Object.values(collaboratorShares).reduce((acc, curr) => acc + Number(curr), 0)}% / 100%
+                            </span>
+                          </div>
+                        </div>
+                      )}
+                    </>
                   )}
                 </div>
               )}

@@ -1811,6 +1811,12 @@ try {
         $conn->query("ALTER TABLE cooperation_slips ADD COLUMN attachment_url VARCHAR(500) DEFAULT NULL");
     }
 
+    // Self-healing check: ensure dieu_chinh_tu_id exists in cooperation_slips (Luật 4.12)
+    $chkColCoopAdj = $conn->query("SHOW COLUMNS FROM cooperation_slips LIKE 'dieu_chinh_tu_id'");
+    if ($chkColCoopAdj && $chkColCoopAdj->num_rows === 0) {
+        $conn->query("ALTER TABLE cooperation_slips ADD COLUMN dieu_chinh_tu_id INT DEFAULT NULL");
+    }
+
     // Self-healing check: ensure attachment_url exists in notes
     $chkColNoteAttach = $conn->query("SHOW COLUMNS FROM notes LIKE 'attachment_url'");
     if ($chkColNoteAttach && $chkColNoteAttach->num_rows === 0) {

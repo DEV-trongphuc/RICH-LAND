@@ -1372,6 +1372,41 @@ class ContactController {
             }
         }
     }
+
+    public function getCollaborators(array $auth, int $contactId): void {
+        // Verify contact exists
+        $stmtCheck = $this->db->prepare("SELECT owner_id, tenant_id FROM contacts WHERE id = ? AND deleted_at IS NULL");
+        $stmtCheck->execute([$contactId]);
+        $contact = $stmtCheck->fetch(PDO::FETCH_ASSOC);
+        if (!$contact || $contact['tenant_id'] !== $auth['tenant_id']) {
+            respond(404, null, 'Không tìm thấy khách hàng', false);
+        }
+
+        $ownerId = (int)$contact['owner_id'];
+
+        // Get list of unique users in quyen_truy_cap for this contact
+        // including active and revoked helpers
+        $stmt = $this->db->prepare("
+            SELECT DISTINCT q.user_id, u.full_name, u.name, u.username, u.role
+            FROM quyen_truy_cap q
+            JOIN users u ON q.user_id = u.id
+            WHERE q.contact_id = ? AND q.user_id != ?
+        ");
+        $stmt->execute([$contactId, $ownerId]);
+        $helpers = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+
+        // Always include the owner at the top of the collaborators list
+        $stmtOwner = $this->db->prepare("SELECT id, full_name, name, username, role FROM users WHERE id = ?");
+        $stmtOwner->execute([$ownerId]);
+        $owner = $stmtOwner->fetch(PDO::FETCH_ASSOC);
+
+        $result = [
+            'owner' => $owner,
+            'helpers' => $helpers
+        ];
+
+        respond(200, $result, 'Lấy danh sách người hỗ trợ thành công');
+    }
 }
 
 

@@ -706,6 +706,33 @@ export default function CooperationSlipsPage() {
     });
   };
 
+  const handleCreateAdjustment = (slipId: number) => {
+    showConfirm({
+      title: 'Xác nhận tạo phiếu điều chỉnh',
+      message: 'Bạn có chắc chắn muốn tạo phiếu điều chỉnh cho phiếu hợp tác này không? Phiếu cũ sẽ vẫn có hiệu lực cho đến khi phiếu điều chỉnh mới được ký duyệt hoàn tất.',
+      confirmText: 'Tạo phiếu',
+      cancelText: 'Hủy',
+      onConfirm: async () => {
+        setLoading(true);
+        try {
+          const res = await fetchAPI(`cooperation-slips/${slipId}/adjustment`, {
+            method: 'POST'
+          });
+          if (res.success) {
+            addToast('Khởi tạo phiếu điều chỉnh thành công! Vui lòng ký duyệt phiếu mới.', 'success');
+            loadData();
+          } else {
+            addToast(res.message || 'Lỗi tạo phiếu điều chỉnh', 'error');
+          }
+        } catch (e: any) {
+          addToast(e.message || 'Lỗi kết nối', 'error');
+        } finally {
+          setLoading(false);
+        }
+      }
+    });
+  };
+
   return (
     <div className="page-container anim-fade-up" style={{ color: 'var(--color-text)' }}>
       {/* Notifications */}
@@ -1085,8 +1112,32 @@ export default function CooperationSlipsPage() {
                         </div>
                       )}
 
-                      {/* Request change if already approved or pending manager approval */}
-                      {(slip.status === 'approved' || slip.status === 'pending_manager_approval') && 
+                      {/* For approved slips, show Create Adjustment button (Luật 4.12) */}
+                      {slip.status === 'approved' && (isApprover || isShareholder || String(slip.created_by) === String(user?.id)) && (
+                        <button
+                          onClick={() => handleCreateAdjustment(slip.id)}
+                          style={{
+                            height: '38px',
+                            padding: '0 16px',
+                            fontSize: '0.85rem',
+                            borderRadius: '8px',
+                            fontWeight: 600,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            cursor: 'pointer',
+                            border: '1px solid var(--color-warning)',
+                            background: 'rgba(245, 158, 11, 0.08)',
+                            color: 'var(--color-warning)',
+                            transition: 'all 0.2s'
+                          }}
+                        >
+                          Tạo phiếu điều chỉnh (Adjustment)
+                        </button>
+                      )}
+
+                      {/* Request change if pending manager approval */}
+                      {slip.status === 'pending_manager_approval' && 
                        (isApprover || isShareholder || String(slip.created_by) === String(user?.id)) && (
                         <button
                           onClick={() => handleOpenUpdateShares(slip)}

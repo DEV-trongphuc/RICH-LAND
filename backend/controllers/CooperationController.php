@@ -226,7 +226,25 @@ class CooperationController {
 
         $shares = [];
         if ($customShares !== null && !empty($customShares)) {
-            $shares = $customShares;
+            // Get all valid helpers from quyen_truy_cap for this contact
+            $stmtQ = $this->db->prepare("SELECT DISTINCT user_id FROM quyen_truy_cap WHERE contact_id = ?");
+            $stmtQ->execute([$contactId]);
+            $validHelpers = $stmtQ->fetchAll(PDO::FETCH_COLUMN) ?: [];
+            $validHelpers = array_map('intval', $validHelpers);
+
+            foreach ($customShares as $uid => $pct) {
+                $uidInt = (int)$uid;
+                $pctInt = (int)$pct;
+                if ($uidInt === $ownerId || in_array($uidInt, $validHelpers, true)) {
+                    $shares[$uidInt] = $pctInt;
+                }
+            }
+
+            $totalPct = array_sum($shares);
+            if (empty($shares) || $totalPct !== 100) {
+                $targetOwner = $ownerId > 0 ? $ownerId : $creatorId;
+                $shares = [$targetOwner => 100];
+            }
         } else {
             // Default to single independent sale for contact owner or creator
             $targetOwner = $ownerId > 0 ? $ownerId : $creatorId;
@@ -1160,5 +1178,58 @@ class CooperationController {
         $collaboratorsStr = !empty($mergedIds) ? implode(',', $mergedIds) : null;
         $stmtUpd = $this->db->prepare("UPDATE contacts SET collaborator_ids = ? WHERE id = ?");
         $stmtUpd->execute([$collaboratorsStr, $contactId]);
+    }
+
+    public function createAdjustmentSlip(array $auth, int $id): void {
+        if ($auth['role'] === 'viewer') respond(403, null, 'Bạn không có quyền thực hiện thao tác này', false);
+
+        // 1. Fetch the approved slip to adjust
+        $stmt = $this->db->prepare("SELECT * FROM cooperation_slips WHERE id = ?");
+        $stmt->execute([$id]);
+        $slip = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$slip) {
+            respond(404, null, 'Không tìm thấy phiếu hợp tác', false);
+        }
+
+        if ($slip['status'] !== 'approved') {
+            respond(400, null, 'Chỉ có thể tạo phiếu điều chỉnh từ phiếu hợp tác đã được duyệt', false);
+        }
+
+        // Check if there is already a pending adjustment slip for this contact
+        $stmtPending = $this->db->prepare("SELECT id FROM cooperation_slips WHERE contact_id = ? AND status IN ('pending_signatures', 'pending_manager_approval', 'approved_pending_signatures') LIMIT 1");
+        $stmtPending->execute([$slip['contact_id']]);
+        if ($stmtPending->fetchColumn()) {
+            respond(400, null, 'Đang có một phiếu hợp tác hoặc phiếu điều chỉnh khác chờ ký duyệt cho khách hàng này', false);
+        }
+
+        // 2. Clone the slip
+        $sharesJson = $slip['shares_json'];
+        
+        $stmtIns = $this->db->prepare("
+            INSERT INTO cooperation_slips (contact_id, deposit_slip_id, version, total_percentage, shares_json, signatures_json, status, created_by, dieu_chinh_tu_id)
+            VALUES (?, ?, 1, 100, ?, '{}', 'pending_signatures', ?, ?)
+        ");
+        $stmtIns->execute([
+            $slip['contact_id'],
+            $slip['deposit_slip_id'],
+            $sharesJson,
+            $auth['user_id'],
+            $id
+        ]);
+        $newSlipId = (int)$this->db->lastInsertId();
+
+        logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'CREATE_ADJUSTMENT_SLIP', 'cooperation_slip', $newSlipId, "Tạo phiếu điều chỉnh ID: $newSlipId cho phiếu hợp tác ID: $id");
+
+        // Send email notifications to all shareholders of the new slip
+        $shares = json_decode($sharesJson, true) ?: [];
+        $emailSubject = "[RICH LAND] Yêu cầu ký xác nhận Phiếu điều chỉnh #" . $newSlipId;
+        $emailTitle = "KÝ XÁC NHẬN PHIẾU ĐIỀU CHỈNH HOA HỒNG";
+        $emailContent = "Chào các thành viên,<br/><br/>" .
+                        "Một phiếu điều chỉnh chia sẻ hoa hồng mới (#" . $newSlipId . ") đã được khởi tạo để thay thế cho phiếu #" . $id . ".<br/>" .
+                        "Vui lòng đăng nhập hệ thống RICH LAND CRM và truy cập mục <strong>Phiếu hợp tác</strong> để ký xác nhận.";
+        $this->notifyShareholders($newSlipId, $shares, $emailSubject, $emailTitle, $emailContent);
+
+        respond(200, ['new_slip_id' => $newSlipId], 'Tạo phiếu điều chỉnh thành công');
     }
 }
