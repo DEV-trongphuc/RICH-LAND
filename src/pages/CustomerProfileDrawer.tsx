@@ -3940,7 +3940,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
         className="drawer-backdrop"
         onClick={handleClose}
         style={{
-          zIndex: 1000,
+          zIndex: 1000005,
           opacity: animateIn ? 1 : 0,
           transition: 'opacity 0.42s cubic-bezier(0.16, 1, 0.3, 1)',
           pointerEvents: animateIn ? 'auto' : 'none'
@@ -3952,7 +3952,8 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
           transform: animateIn ? 'translateX(0)' : 'translateX(160px)',
           opacity: animateIn ? 1 : 0,
           transition: 'transform 0.42s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.42s cubic-bezier(0.16, 1, 0.3, 1)',
-          willChange: 'transform, opacity'
+          willChange: 'transform, opacity',
+          zIndex: 1000010
         }}
       >
               <AnimatePresence>

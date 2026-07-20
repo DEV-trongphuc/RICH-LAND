@@ -1534,7 +1534,7 @@ export default function DepositsPage() {
                 {/* Table Header */}
                 <div style={{
                   display: 'grid',
-                  gridTemplateColumns: '2fr 1.2fr 1fr 1fr 1.5fr',
+                  gridTemplateColumns: '2fr 1.2fr 1.2fr 1fr 1fr 1.5fr',
                   gap: '12px',
                   alignItems: 'center',
                   padding: '8px 12px',
@@ -1547,6 +1547,7 @@ export default function DepositsPage() {
                   letterSpacing: '0.5px'
                 }}>
                   <div>Tên đợt thanh toán</div>
+                  <div>Ngày tạo</div>
                   <div>Số tiền (VND)</div>
                   <div style={{ textAlign: 'center' }}>Trạng thái</div>
                   <div style={{ textAlign: 'center' }}>Minh chứng (UNC)</div>
@@ -1561,7 +1562,7 @@ export default function DepositsPage() {
                         key={m.tempId || m.id}
                         style={{
                           display: 'grid',
-                          gridTemplateColumns: '2fr 1.2fr 1fr 1fr 1.5fr',
+                          gridTemplateColumns: '2fr 1.2fr 1.2fr 1fr 1fr 1.5fr',
                           gap: '12px',
                           alignItems: 'center',
                           padding: '10px 12px',
@@ -1572,7 +1573,7 @@ export default function DepositsPage() {
                           boxShadow: '0 1px 2px rgba(0,0,0,0.02)'
                         }}
                       >
-                        {/* Name input & detail dates */}
+                        {/* Name input */}
                         <div>
                           <input
                             type="text"
@@ -1580,11 +1581,13 @@ export default function DepositsPage() {
                             value={m.milestone_name}
                             onChange={e => handleUpdateMilestoneField(idx, 'milestone_name', e.target.value)}
                             className="form-input"
-                            style={{ width: '100%', height: '34px', fontSize: '0.775rem', padding: '0 10px', borderRadius: '6px', marginBottom: '2px' }}
+                            style={{ width: '100%', height: '34px', fontSize: '0.775rem', padding: '0 10px', borderRadius: '6px' }}
                           />
-                          <div style={{ fontSize: '0.68rem', color: 'var(--color-text-muted)', paddingLeft: '4px', marginTop: '2px' }}>
-                            Ngày tạo: {new Date(m.created_at || selectedDepForManage.created_at).toLocaleDateString('vi-VN')}
-                          </div>
+                        </div>
+
+                        {/* Created Date */}
+                        <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', paddingLeft: '4px', fontWeight: 500 }}>
+                          {new Date(m.created_at || selectedDepForManage.created_at).toLocaleDateString('vi-VN')}
                         </div>
 
                         {/* Amount input */}
