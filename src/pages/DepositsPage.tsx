@@ -10,6 +10,7 @@ import { useLanguage } from '../contexts/LanguageContext';
 import { EmptyCard } from '../components/ui/EmptyCard';
 import { Avatar } from '../components/ui/Avatar';
 import { TableSkeleton } from '../components/ui/Skeleton';
+import { CustomerProfileDrawer } from './CustomerProfileDrawer';
 
 interface Deposit {
   id: number;
@@ -62,7 +63,7 @@ const formatMoney = (val: string | number) => {
 export default function DepositsPage() {
   const { user } = useAuth();
   const isViewer = user?.role === 'viewer';
-  const { showConfirm } = useUIStore();
+  const { showConfirm, addToast } = useUIStore();
   const { t } = useLanguage();
   const [showInfoModal, setShowInfoModal] = useState(false);
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
@@ -125,6 +126,40 @@ export default function DepositsPage() {
   const [selectedDepForManage, setSelectedDepForManage] = useState<Deposit | null>(null);
   const [tempMilestones, setTempMilestones] = useState<any[]>([]);
   const [isSavingMilestones, setIsSavingMilestones] = useState(false);
+
+  const [showContactDrawer, setShowContactDrawer] = useState(false);
+  const [selectedContact, setSelectedContact] = useState<any>(null);
+  const [sharesData, setSharesData] = useState<any[]>([]);
+
+  const handleOpenContactDrawer = async (contactId: number) => {
+    try {
+      const res = await fetchAPI(`contacts/${contactId}`);
+      const c = res.data || res;
+      if (c) {
+        setSelectedContact(c);
+        setShowContactDrawer(true);
+      }
+    } catch (err) {
+      addToast('Không thể tải thông tin khách hàng', 'error');
+    }
+  };
+
+  useEffect(() => {
+    if (selectedDepForManage) {
+      setSharesData([]);
+      fetchAPI(`cooperation-slips?contact_id=${selectedDepForManage.contact_id}`)
+        .then(res => {
+          const slips = res.data || res || [];
+          if (slips.length > 0) {
+            const matchedSlip = slips.find((s: any) => Number(s.deposit_slip_id) === Number(selectedDepForManage.id)) || slips[0];
+            if (matchedSlip && matchedSlip.shareholders) {
+              setSharesData(matchedSlip.shareholders);
+            }
+          }
+        })
+        .catch(err => console.error("Error loading cooperation shares:", err));
+    }
+  }, [selectedDepForManage]);
 
   // Cancel Deposit State
   const [isCancelOpen, setIsCancelOpen] = useState(false);
@@ -1350,36 +1385,126 @@ export default function DepositsPage() {
         isOpen={showManageModal}
         onClose={() => setShowManageModal(false)}
         title={`Chi tiết & Lịch trình thanh toán - Căn ${selectedDepForManage?.unit_code}`}
-        width="820px"
+        width="980px"
       >
         {selectedDepForManage && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-            {/* Brief Info */}
+            {/* Brief Info with Customer Details and Sales Team */}
             <div style={{
               display: 'grid',
-              gridTemplateColumns: '1fr 1fr',
-              gap: '0.75rem',
-              background: 'var(--color-surface-hover)',
-              padding: '1rem',
-              borderRadius: '8px',
-              fontSize: '0.8125rem',
-              border: '1px solid var(--color-border-light)'
+              gridTemplateColumns: '1.2fr 1fr',
+              gap: '1.5rem',
+              background: 'linear-gradient(135deg, var(--color-surface) 0%, var(--color-surface-hover) 100%)',
+              padding: '1.5rem',
+              borderRadius: '12px',
+              border: '1px solid var(--color-border-light)',
+              boxShadow: 'inset 0 1px 3px rgba(0,0,0,0.02)'
             }}>
-              <div>
-                <p style={{ color: 'var(--color-text-muted)', marginBottom: 2 }}>Dự án</p>
-                <p style={{ fontWeight: 700, fontSize: '0.9rem' }}>{selectedDepForManage.project_name}</p>
+              {/* Left Column: Customer details */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', borderRight: '1px solid var(--color-border-light)', paddingRight: '1.5rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <div
+                    onClick={() => handleOpenContactDrawer(selectedDepForManage.contact_id)}
+                    style={{ cursor: 'pointer', transition: 'transform 0.2s' }}
+                    onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.05)'}
+                    onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+                  >
+                    <Avatar
+                      src={selectedDepForManage.avatar_url}
+                      name={`${selectedDepForManage.last_name} ${selectedDepForManage.first_name}`}
+                      size="lg"
+                    />
+                  </div>
+                  <div>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', display: 'block', fontWeight: 600 }}>Khách hàng</span>
+                    <h4
+                      onClick={() => handleOpenContactDrawer(selectedDepForManage.contact_id)}
+                      style={{
+                        margin: 0,
+                        fontSize: '1.1rem',
+                        fontWeight: 800,
+                        color: 'var(--color-primary)',
+                        cursor: 'pointer',
+                        textDecoration: 'underline decoration-dotted',
+                        transition: 'opacity 0.2s'
+                      }}
+                      onMouseEnter={(e) => e.currentTarget.style.opacity = '0.8'}
+                      onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
+                    >
+                      {selectedDepForManage.last_name} {selectedDepForManage.first_name}
+                    </h4>
+                    <p style={{ margin: '2px 0 0 0', fontSize: '0.8rem', color: 'var(--color-text-muted)', fontWeight: 500 }}>
+                      SĐT: {selectedDepForManage.phone}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Sales team section */}
+                <div style={{ marginTop: '0.25rem' }}>
+                  <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 600, display: 'block', marginBottom: '6px' }}>
+                    Nhân sự chăm sóc & tỷ lệ chia hoa hồng:
+                  </span>
+                  {sharesData && sharesData.length > 0 ? (
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                      {sharesData.map((sh, sIdx) => (
+                        <div
+                          key={sIdx}
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            background: 'var(--color-surface)',
+                            border: '1px solid var(--color-border-light)',
+                            padding: '3px 8px',
+                            borderRadius: '16px',
+                            boxShadow: 'var(--shadow-sm)'
+                          }}
+                        >
+                          <Avatar src={sh.avatar} name={sh.name} size="sm" />
+                          <span style={{ fontSize: '0.75rem', fontWeight: 600 }}>{sh.name}</span>
+                          <span style={{
+                            fontSize: '0.7rem',
+                            fontWeight: 700,
+                            background: 'rgba(59, 130, 246, 0.1)',
+                            color: '#2563eb',
+                            padding: '1px 5px',
+                            borderRadius: '8px'
+                          }}>
+                            {sh.percentage}%
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontStyle: 'italic' }}>
+                      Bán độc lập (Chỉ có chủ sở hữu cọc)
+                    </span>
+                  )}
+                </div>
               </div>
-              <div>
-                <p style={{ color: 'var(--color-text-muted)', marginBottom: 2 }}>Khách hàng</p>
-                <p style={{ fontWeight: 700, fontSize: '0.9rem' }}>{selectedDepForManage.last_name} {selectedDepForManage.first_name} ({selectedDepForManage.phone})</p>
-              </div>
-              <div>
-                <p style={{ color: 'var(--color-text-muted)', marginBottom: 2 }}>Tổng giá trị căn hộ</p>
-                <p style={{ fontWeight: 700, color: 'var(--color-primary)', fontSize: '0.95rem' }}>{formatMoney(selectedDepForManage.price)}</p>
-              </div>
-              <div>
-                <p style={{ color: 'var(--color-text-muted)', marginBottom: 2 }}>Hoa hồng dự kiến</p>
-                <p style={{ fontWeight: 700, color: '#059669', fontSize: '0.95rem' }}>{formatMoney(selectedDepForManage.expected_commission)}</p>
+
+              {/* Right Column: Transaction details */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', justifyContent: 'center' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                  <div>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', display: 'block' }}>Dự án & Căn hộ</span>
+                    <span style={{ fontWeight: 700, fontSize: '0.875rem' }}>{selectedDepForManage.project_name} - Căn {selectedDepForManage.unit_code}</span>
+                  </div>
+                  <div>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', display: 'block' }}>Thời gian tạo phiếu</span>
+                    <span style={{ fontWeight: 700, fontSize: '0.85rem' }}>
+                      {new Date(selectedDepForManage.created_at).toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' })}
+                    </span>
+                  </div>
+                  <div>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', display: 'block' }}>Tổng giá trị căn hộ</span>
+                    <span style={{ fontWeight: 800, color: 'var(--color-primary)', fontSize: '1rem' }}>{formatMoney(selectedDepForManage.price)}</span>
+                  </div>
+                  <div>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', display: 'block' }}>Hoa hồng dự kiến</span>
+                    <span style={{ fontWeight: 800, color: '#059669', fontSize: '1rem' }}>{formatMoney(selectedDepForManage.expected_commission)}</span>
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -1447,7 +1572,7 @@ export default function DepositsPage() {
                           boxShadow: '0 1px 2px rgba(0,0,0,0.02)'
                         }}
                       >
-                        {/* Name input */}
+                        {/* Name input & detail dates */}
                         <div>
                           <input
                             type="text"
@@ -1455,8 +1580,11 @@ export default function DepositsPage() {
                             value={m.milestone_name}
                             onChange={e => handleUpdateMilestoneField(idx, 'milestone_name', e.target.value)}
                             className="form-input"
-                            style={{ width: '100%', height: '34px', fontSize: '0.775rem', padding: '0 10px', borderRadius: '6px' }}
+                            style={{ width: '100%', height: '34px', fontSize: '0.775rem', padding: '0 10px', borderRadius: '6px', marginBottom: '2px' }}
                           />
+                          <div style={{ fontSize: '0.68rem', color: 'var(--color-text-muted)', paddingLeft: '4px', marginTop: '2px' }}>
+                            Ngày tạo: {new Date(m.created_at || selectedDepForManage.created_at).toLocaleDateString('vi-VN')}
+                          </div>
                         </div>
 
                         {/* Amount input */}
@@ -1472,8 +1600,8 @@ export default function DepositsPage() {
                           />
                         </div>
 
-                        {/* Status */}
-                        <div style={{ display: 'flex', justifyContent: 'center' }}>
+                        {/* Status + dates */}
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px' }}>
                           <span style={{
                             fontSize: '0.7rem',
                             fontWeight: 700,
@@ -1487,6 +1615,11 @@ export default function DepositsPage() {
                           }}>
                             {m.status === 'approved' ? 'Đã duyệt' : m.status === 'paid' ? 'Chờ duyệt' : m.status === 'failed' ? 'Từ chối' : 'Chờ nộp'}
                           </span>
+                          {m.approval_date && m.status === 'approved' && (
+                            <span style={{ fontSize: '0.65rem', color: '#10b981', fontWeight: 500 }}>
+                              Duyệt: {new Date(m.approval_date).toLocaleDateString('vi-VN')}
+                            </span>
+                          )}
                         </div>
 
                         {/* UNC proof */}
@@ -1637,6 +1770,16 @@ export default function DepositsPage() {
         )}
       </CustomModal>
 
+      {showContactDrawer && selectedContact && (
+        <CustomerProfileDrawer
+          isOpen={showContactDrawer}
+          onClose={() => setShowContactDrawer(false)}
+          contact={selectedContact}
+          onUpdate={() => {
+            loadData();
+          }}
+        />
+      )}
     </div>
   );
 }

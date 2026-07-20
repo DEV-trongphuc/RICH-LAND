@@ -10111,7 +10111,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                     const targetLabel = pipelineModal.targetLabel;
                     const note = pipelineModal.note;
                     
-                    if (targetId === 'dat_coc') {
+                    if (coopEligibleStatuses.includes(targetId)) {
                       setPipelineModal({ isOpen: false, targetId: '', targetLabel: '', note: '' });
                       setPendingPipelineTransition({ targetId, targetLabel, note });
                       setShowDealModal(true);
