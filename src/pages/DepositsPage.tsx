@@ -37,6 +37,8 @@ interface Deposit {
   project_name: string;
   creator_name: string;
   milestones: Milestone[];
+  created_by?: number;
+  contact_owner_id?: number;
 }
 
 interface Milestone {
@@ -904,32 +906,41 @@ export default function DepositsPage() {
                           )}
 
                           {/* Cancellation Button */}
-                          {dep.status !== 'cancelled' && (
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleOpenCancel(dep.id);
-                              }}
-                              style={{
-                                padding: '6px 12px',
-                                height: '32px',
-                                background: 'rgba(239, 68, 68, 0.08)',
-                                border: '1px solid rgba(239, 68, 68, 0.2)',
-                                color: '#ef4444',
-                                borderRadius: '8px',
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: '4px',
-                                fontSize: '0.75rem',
-                                fontWeight: 700,
-                                cursor: 'pointer',
-                                transition: 'all 0.15s ease'
-                              }}
-                            >
-                              <Ban size={13} />
-                              <span>Bể cọc</span>
-                            </button>
-                          )}
+                          {dep.status !== 'cancelled' && (() => {
+                            const isCreator = String(dep.created_by) === String(user?.id);
+                            const isOwner = String(dep.contact_owner_id) === String(user?.id);
+                            const isStaff = user && ['admin', 'superadmin', 'super_admin', 'assistant', 'manager', 'director'].includes(user.role);
+                            
+                            if (isStaff || isCreator || isOwner) {
+                              return (
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleOpenCancel(dep.id);
+                                  }}
+                                  style={{
+                                    padding: '6px 12px',
+                                    height: '32px',
+                                    background: 'rgba(239, 68, 68, 0.08)',
+                                    border: '1px solid rgba(239, 68, 68, 0.2)',
+                                    color: '#ef4444',
+                                    borderRadius: '8px',
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '4px',
+                                    fontSize: '0.75rem',
+                                    fontWeight: 700,
+                                    cursor: 'pointer',
+                                    transition: 'all 0.15s ease'
+                                  }}
+                                >
+                                  <Ban size={13} />
+                                  <span>Bể cọc</span>
+                                </button>
+                              );
+                            }
+                            return null;
+                          })()}
                         </div>
                       </td>
                     </tr>
@@ -1269,7 +1280,7 @@ export default function DepositsPage() {
 
       {/* Cancel Modal */}
       {isCancelOpen && (
-        <div style={{ position: 'fixed', inset: 0, zIndex: 999, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0, 0, 0, 0.82)', backdropFilter: 'blur(4px)', padding: '1rem' }}>
+        <div style={{ position: 'fixed', inset: 0, zIndex: 12000, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0, 0, 0, 0.82)', backdropFilter: 'blur(4px)', padding: '1rem' }}>
           <div className="card" style={{ maxWidth: '400px', width: '100%', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem', animation: 'scaleUp 0.2s ease-out' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--color-border)', paddingBottom: '0.5rem' }}>
               <h2 style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--color-danger)' }}>Báo cáo bể cọc / Hủy mua</h2>
