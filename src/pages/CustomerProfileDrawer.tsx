@@ -926,6 +926,24 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
   const [selectedDepForManage, setSelectedDepForManage] = useState<any | null>(null);
   const [tempMilestones, setTempMilestones] = useState<any[]>([]);
   const [isSavingMilestones, setIsSavingMilestones] = useState(false);
+  const [sharesData, setSharesData] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (selectedDepForManage) {
+      setSharesData([]);
+      api.get(`/cooperation-slips?contact_id=${selectedDepForManage.contact_id}`)
+        .then(res => {
+          const slips = res.data?.data || res.data || [];
+          if (slips.length > 0) {
+            const matchedSlip = slips.find((s: any) => Number(s.deposit_slip_id) === Number(selectedDepForManage.id)) || slips[0];
+            if (matchedSlip && matchedSlip.shareholders) {
+              setSharesData(matchedSlip.shareholders);
+            }
+          }
+        })
+        .catch(err => console.error("Error loading cooperation shares in CustomerProfileDrawer:", err));
+    }
+  }, [selectedDepForManage]);
   const [prevContactId, setPrevContactId] = useState<number | null>(null);
   const [showMobilePipelineSelector, setShowMobilePipelineSelector] = useState(false);
   const [showFilterDropdown, setShowFilterDropdown] = useState(false);
@@ -2346,7 +2364,13 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
           expected_commission: d.expected_commission,
           project_name: d.project_name,
           project_id: d.project_id,
-          milestones: d.milestones || []
+          milestones: d.milestones || [],
+          contact_id: d.contact_id,
+          first_name: d.first_name,
+          last_name: d.last_name,
+          phone: d.phone,
+          avatar_url: d.avatar_url,
+          created_at: d.created_at
         }));
         setDeals(depositsList);
 
@@ -11591,41 +11615,120 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
         isOpen={showManageModal}
         onClose={() => setShowManageModal(false)}
         title={`Chi tiết & Lịch trình thanh toán - Căn ${selectedDepForManage?.unit_code}`}
-        width="820px"
+        width="980px"
         zIndex={1000020}
       >
         {selectedDepForManage && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-            {/* Brief Info */}
+            {/* Brief Info with Customer Details and Sales Team */}
             <div style={{
               display: 'grid',
-              gridTemplateColumns: '1fr 1fr',
-              gap: '0.75rem',
-              background: 'var(--color-surface-hover)',
-              padding: '1rem',
-              borderRadius: '8px',
-              fontSize: '0.8125rem',
-              border: '1px solid var(--color-border-light)'
+              gridTemplateColumns: '1.2fr 1fr',
+              gap: '1.5rem',
+              background: 'linear-gradient(135deg, var(--color-surface) 0%, var(--color-surface-hover) 100%)',
+              padding: '1.5rem',
+              borderRadius: '12px',
+              border: '1px solid var(--color-border-light)',
+              boxShadow: 'inset 0 1px 3px rgba(0,0,0,0.02)'
             }}>
-              <div>
-                <p style={{ color: 'var(--color-text-muted)', marginBottom: 2 }}>Dự án</p>
-                <p style={{ fontWeight: 700, fontSize: '0.9rem' }}>{selectedDepForManage.project_name}</p>
+              {/* Left Column: Customer details */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', borderRight: '1px solid var(--color-border-light)', paddingRight: '1.5rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <div>
+                    <Avatar
+                      src={selectedDepForManage.avatar_url}
+                      name={`${selectedDepForManage.last_name || ''} ${selectedDepForManage.first_name || ''}`}
+                      size="lg"
+                    />
+                  </div>
+                  <div>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', display: 'block', fontWeight: 600 }}>Khách hàng</span>
+                    <h4
+                      style={{
+                        margin: 0,
+                        fontSize: '1.1rem',
+                        fontWeight: 800,
+                        color: 'var(--color-primary)'
+                      }}
+                    >
+                      {selectedDepForManage.last_name} {selectedDepForManage.first_name}
+                    </h4>
+                    <p style={{ margin: '2px 0 0 0', fontSize: '0.8rem', color: 'var(--color-text-muted)', fontWeight: 500 }}>
+                      SĐT: {selectedDepForManage.phone}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Sales team section */}
+                <div style={{ marginTop: '0.25rem' }}>
+                  <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 600, display: 'block', marginBottom: '6px' }}>
+                    Nhân sự chăm sóc & tỷ lệ chia hoa hồng:
+                  </span>
+                  {sharesData && sharesData.length > 0 ? (
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                      {sharesData.map((sh, sIdx) => (
+                        <div
+                          key={sIdx}
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            background: 'var(--color-surface)',
+                            border: '1px solid var(--color-border-light)',
+                            padding: '3px 8px',
+                            borderRadius: '16px',
+                            boxShadow: 'var(--shadow-sm)'
+                          }}
+                        >
+                          <Avatar src={sh.avatar} name={sh.name} size="sm" />
+                          <span style={{ fontSize: '0.75rem', fontWeight: 600 }}>{sh.name}</span>
+                          <span style={{
+                            fontSize: '0.7rem',
+                            fontWeight: 700,
+                            background: 'rgba(59, 130, 246, 0.1)',
+                            color: '#2563eb',
+                            padding: '1px 5px',
+                            borderRadius: '8px'
+                          }}>
+                            {sh.percentage}%
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontStyle: 'italic' }}>
+                      Bán độc lập (Chỉ có chủ sở hữu cọc)
+                    </span>
+                  )}
+                </div>
               </div>
-              <div>
-                <p style={{ color: 'var(--color-text-muted)', marginBottom: 2 }}>Khách hàng</p>
-                <p style={{ fontWeight: 700, fontSize: '0.9rem' }}>{selectedDepForManage.last_name} {selectedDepForManage.first_name} ({selectedDepForManage.phone})</p>
-              </div>
-              <div>
-                <p style={{ color: 'var(--color-text-muted)', marginBottom: 2 }}>Tổng giá trị căn hộ</p>
-                <p style={{ fontWeight: 700, color: 'var(--color-primary)', fontSize: '0.95rem' }}>
-                  {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(selectedDepForManage.price)}
-                </p>
-              </div>
-              <div>
-                <p style={{ color: 'var(--color-text-muted)', marginBottom: 2 }}>Hoa hồng dự kiến</p>
-                <p style={{ fontWeight: 700, color: '#059669', fontSize: '0.95rem' }}>
-                  {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(selectedDepForManage.expected_commission)}
-                </p>
+
+              {/* Right Column: Transaction details */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', justifyContent: 'center' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                  <div>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', display: 'block' }}>Dự án & Căn hộ</span>
+                    <span style={{ fontWeight: 700, fontSize: '0.875rem' }}>{selectedDepForManage.project_name} - Căn {selectedDepForManage.unit_code}</span>
+                  </div>
+                  <div>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', display: 'block' }}>Thời gian tạo phiếu</span>
+                    <span style={{ fontWeight: 700, fontSize: '0.85rem' }}>
+                      {new Date(selectedDepForManage.created_at).toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' })}
+                    </span>
+                  </div>
+                  <div>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', display: 'block' }}>Tổng giá trị căn hộ</span>
+                    <span style={{ fontWeight: 800, color: 'var(--color-primary)', fontSize: '1rem' }}>
+                      {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(selectedDepForManage.price)}
+                    </span>
+                  </div>
+                  <div>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', display: 'block' }}>Hoa hồng dự kiến</span>
+                    <span style={{ fontWeight: 800, color: '#059669', fontSize: '1rem' }}>
+                      {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(selectedDepForManage.expected_commission)}
+                    </span>
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -11655,7 +11758,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                 {/* Table Header */}
                 <div style={{
                   display: 'grid',
-                  gridTemplateColumns: '2fr 1.2fr 1fr 1fr 1.5fr',
+                  gridTemplateColumns: '2fr 1.2fr 1.2fr 1fr 1fr 1.5fr',
                   gap: '12px',
                   alignItems: 'center',
                   padding: '8px 12px',
@@ -11668,6 +11771,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                   letterSpacing: '0.5px'
                 }}>
                   <div>Tên đợt thanh toán</div>
+                  <div>Ngày tạo</div>
                   <div>Số tiền (VND)</div>
                   <div style={{ textAlign: 'center' }}>Trạng thái</div>
                   <div style={{ textAlign: 'center' }}>Minh chứng (UNC)</div>
@@ -11682,7 +11786,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                         key={m.tempId || m.id}
                         style={{
                           display: 'grid',
-                          gridTemplateColumns: '2fr 1.2fr 1fr 1fr 1.5fr',
+                          gridTemplateColumns: '2fr 1.2fr 1.2fr 1fr 1fr 1.5fr',
                           gap: '12px',
                           alignItems: 'center',
                           padding: '10px 12px',
@@ -11705,6 +11809,11 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                           />
                         </div>
 
+                        {/* Created Date */}
+                        <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', paddingLeft: '4px', fontWeight: 500 }}>
+                          {new Date(m.created_at || selectedDepForManage.created_at).toLocaleDateString('vi-VN')}
+                        </div>
+
                         {/* Amount input */}
                         <div>
                           <input
@@ -11719,7 +11828,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                         </div>
 
                         {/* Status */}
-                        <div style={{ display: 'flex', justifyContent: 'center' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px' }}>
                           <span style={{
                             fontSize: '0.7rem',
                             fontWeight: 700,
@@ -11733,6 +11842,11 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                           }}>
                             {m.status === 'approved' ? 'Đã duyệt' : m.status === 'paid' ? 'Chờ duyệt' : m.status === 'failed' ? 'Từ chối' : 'Chờ nộp'}
                           </span>
+                          {m.approval_date && m.status === 'approved' && (
+                            <span style={{ fontSize: '0.65rem', color: '#10b981', fontWeight: 500 }}>
+                              Duyệt: {new Date(m.approval_date).toLocaleDateString('vi-VN')}
+                            </span>
+                          )}
                         </div>
 
                         {/* UNC proof */}
