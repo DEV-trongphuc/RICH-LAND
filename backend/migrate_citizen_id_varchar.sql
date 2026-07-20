@@ -1,1 +1,0 @@
-ALTER TABLE users MODIFY COLUMN citizen_id VARCHAR(50) NULL;
