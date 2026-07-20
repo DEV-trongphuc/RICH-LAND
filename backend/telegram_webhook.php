@@ -495,14 +495,27 @@ if (strpos($textLower, '/tools') === 0 || strpos($textLower, '/report') === 0 ||
     sendTelegramMessage($botToken, $chatId, "⚠️ <b>Xin chào!</b> Tôi là Bot thông báo RICH LAND.\n\n• Gõ <code>/id</code> để xem Chat ID của bạn.\n• Gõ <code>/tools</code> để xem danh sách câu lệnh dành cho quản trị.\n• Để liên kết tài khoản: Nhập <b>Mã ID nhân viên</b> hoặc <b>Email</b> của bạn.");
     echo json_encode(["status" => "ok"]);
 } catch (Throwable $e) {
+    $dbNameInfo = 'unknown';
+    try {
+        if (isset($conn) && $conn instanceof mysqli && !$conn->connect_error) {
+            $dbRes = $conn->query("SELECT DATABASE()");
+            if ($dbRes) {
+                $dbRow = $dbRes->fetch_row();
+                $dbNameInfo = $dbRow[0] ?? 'unknown';
+            }
+        }
+    } catch (Throwable $dbEx) {
+        $dbNameInfo = 'error: ' . $dbEx->getMessage();
+    }
+
     // Ghi nhận lỗi vào file log để chẩn đoán
-    $errLog = date('[Y-m-d H:i:s]') . " WEBHOOK ERROR: " . $e->getMessage() . " in " . $e->getFile() . " on line " . $e->getLine() . "\n" . $e->getTraceAsString() . "\n\n";
+    $errLog = date('[Y-m-d H:i:s]') . " WEBHOOK ERROR: " . $e->getMessage() . " in " . $e->getFile() . " on line " . $e->getLine() . " [DB: {$dbNameInfo}]\n" . $e->getTraceAsString() . "\n\n";
     @file_put_contents($logFile, $errLog, FILE_APPEND | LOCK_EX);
 
     // Gửi thông tin lỗi về chat để Admin/Người dùng biết
-    $errorMsg = "❌ <b>[ LỖI HỆ THỐNG ]</b>\nCó lỗi xảy ra khi xử lý yêu cầu của bạn:\n<i>" . htmlspecialchars($e->getMessage()) . "</i>";
+    $errorMsg = "❌ <b>[ LỖI HỆ THỐNG ]</b>\nCó lỗi xảy ra khi xử lý yêu cầu của bạn:\n<i>" . htmlspecialchars($e->getMessage()) . "</i>\n• DB: <code>" . htmlspecialchars($dbNameInfo) . "</code>";
     sendTelegramMessage($botToken, $chatId, $errorMsg);
 
     // Trả về HTTP 200 để Telegram không gửi lại gói tin bị lỗi liên tục
-    echo json_encode(["status" => "error", "message" => $e->getMessage()]);
+    echo json_encode(["status" => "error", "message" => $e->getMessage(), "db" => $dbNameInfo]);
 }
