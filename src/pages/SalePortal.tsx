@@ -6397,28 +6397,52 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
           .stat-card {
             position: relative;
             overflow: hidden;
+            background: linear-gradient(135deg, var(--color-surface) 0%, #f9fafb 100%) !important;
+            border: 1px solid var(--color-border) !important;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03), inset 0 1px 0 rgba(255, 255, 255, 0.8) !important;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+          }
+          [data-theme="dark"] .stat-card {
             background: linear-gradient(135deg, var(--color-surface) 0%, #151517 100%) !important;
             border: 1px solid var(--color-border-light) !important;
             box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.05) !important;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
           }
           .stat-card:hover {
             transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08) !important;
+          }
+          [data-theme="dark"] .stat-card:hover {
             box-shadow: 0 12px 30px rgba(0, 0, 0, 0.6), 0 0 20px rgba(255, 255, 255, 0.03) !important;
           }
           .stat-card.total-card:hover {
+            border-color: rgba(163, 20, 34, 0.4) !important;
+            box-shadow: 0 8px 24px rgba(163, 20, 34, 0.08), 0 0 15px rgba(163, 20, 34, 0.03) !important;
+          }
+          [data-theme="dark"] .stat-card.total-card:hover {
             border-color: rgba(163, 20, 34, 0.6) !important;
             box-shadow: 0 12px 30px rgba(0, 0, 0, 0.65), 0 0 20px rgba(163, 20, 34, 0.25) !important;
           }
           .stat-card.distributed-card:hover {
+            border-color: rgba(0, 122, 245, 0.4) !important;
+            box-shadow: 0 8px 24px rgba(0, 122, 245, 0.08), 0 0 15px rgba(0, 122, 245, 0.03) !important;
+          }
+          [data-theme="dark"] .stat-card.distributed-card:hover {
             border-color: rgba(0, 122, 245, 0.6) !important;
             box-shadow: 0 12px 30px rgba(0, 0, 0, 0.65), 0 0 20px rgba(0, 122, 245, 0.25) !important;
           }
           .stat-card.personal-card:hover {
+            border-color: rgba(16, 185, 129, 0.4) !important;
+            box-shadow: 0 8px 24px rgba(16, 185, 129, 0.08), 0 0 15px rgba(16, 185, 129, 0.03) !important;
+          }
+          [data-theme="dark"] .stat-card.personal-card:hover {
             border-color: rgba(16, 185, 129, 0.6) !important;
             box-shadow: 0 12px 30px rgba(0, 0, 0, 0.65), 0 0 20px rgba(16, 185, 129, 0.25) !important;
           }
           .stat-card.error_ticket-card:hover {
+            border-color: rgba(239, 68, 68, 0.4) !important;
+            box-shadow: 0 8px 24px rgba(239, 68, 68, 0.08), 0 0 15px rgba(239, 68, 68, 0.03) !important;
+          }
+          [data-theme="dark"] .stat-card.error_ticket-card:hover {
             border-color: rgba(239, 68, 68, 0.6) !important;
             box-shadow: 0 12px 30px rgba(0, 0, 0, 0.65), 0 0 20px rgba(239, 68, 68, 0.25) !important;
           }
