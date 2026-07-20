@@ -28,8 +28,21 @@ if (defined('PHP_BINARY') && !empty(PHP_BINARY)) {
     $phpBin = PHP_BINARY;
 }
 
-// Nếu phiên bản PHP hiện tại của CLI quá cũ (nhỏ hơn 7.0), tìm kiếm các PHP CLI hiện đại hơn
-if (version_compare(PHP_VERSION, '7.0.0', '<')) {
+// Kiểm tra xem lệnh phpBin hiện tại có tương thích với PHP >= 7.0 hay không
+$isModern = false;
+$testOutput = [];
+$testReturn = 0;
+@exec('"' . $phpBin . '" -v 2>&1', $testOutput, $testReturn);
+if ($testReturn === 0 && !empty($testOutput)) {
+    if (preg_match('/PHP\s+([5-9]\.[0-9]+\.[0-9]+)/i', $testOutput[0], $matches)) {
+        $ver = $matches[1];
+        if (version_compare($ver, '7.0.0', '>=')) {
+            $isModern = true;
+        }
+    }
+}
+
+if (!$isModern) {
     $candidates = [
         '/usr/local/bin/ea-php82',
         '/usr/local/bin/ea-php81',
