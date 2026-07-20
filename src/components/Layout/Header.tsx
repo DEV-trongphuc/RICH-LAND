@@ -972,47 +972,49 @@ export const Header = ({
 
 
         {/* Live Activity Feed Button */}
-        <button 
-          onClick={onActivityFeedClick}
-          className="responsive-hide-mobile"
-          style={{
-            width: 36,
-            height: 36,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            color: 'var(--color-text-light)',
-            borderRadius: 8,
-            border: 'none',
-            background: 'none',
-            cursor: 'pointer',
-            transition: 'all 0.2s',
-            position: 'relative',
-            outline: 'none'
-          }}
-          title={t("Bản tin hoạt động hệ thống")}
-          onMouseEnter={e => {
-            e.currentTarget.style.background = 'var(--color-bg)';
-            e.currentTarget.style.color = 'var(--color-primary)';
-          }}
-          onMouseLeave={e => {
-            e.currentTarget.style.background = 'none';
-            e.currentTarget.style.color = 'var(--color-text-light)';
-          }}
-        >
-          <Activity size={20} />
-          <span style={{
-            position: 'absolute',
-            top: 6,
-            right: 6,
-            width: 8,
-            height: 8,
-            borderRadius: '50%',
-            background: '#10b981',
-            boxShadow: '0 0 0 2px var(--color-surface)',
-            animation: 'pulse 2s infinite'
-          }} />
-        </button>
+        {user?.role !== 'sale' && (
+          <button 
+            onClick={onActivityFeedClick}
+            className="responsive-hide-mobile"
+            style={{
+              width: 36,
+              height: 36,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: 'var(--color-text-light)',
+              borderRadius: 8,
+              border: 'none',
+              background: 'none',
+              cursor: 'pointer',
+              transition: 'all 0.2s',
+              position: 'relative',
+              outline: 'none'
+            }}
+            title={t("Bản tin hoạt động hệ thống")}
+            onMouseEnter={e => {
+              e.currentTarget.style.background = 'var(--color-bg)';
+              e.currentTarget.style.color = 'var(--color-primary)';
+            }}
+            onMouseLeave={e => {
+              e.currentTarget.style.background = 'none';
+              e.currentTarget.style.color = 'var(--color-text-light)';
+            }}
+          >
+            <Activity size={20} />
+            <span style={{
+              position: 'absolute',
+              top: 6,
+              right: 6,
+              width: 8,
+              height: 8,
+              borderRadius: '50%',
+              background: '#10b981',
+              boxShadow: '0 0 0 2px var(--color-surface)',
+              animation: 'pulse 2s infinite'
+            }} />
+          </button>
+        )}
 
         {/* Unified Approvals/Issues Inbox Button */}
         {!['sale', 'sales'].includes(user?.role || '') && pendingInboxCount !== undefined && (
