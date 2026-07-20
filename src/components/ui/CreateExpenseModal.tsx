@@ -208,7 +208,7 @@ export const CreateExpenseModal: React.FC<Props> = ({ isOpen, onClose, initialEn
 
   return (
     <AnimatePresence>
-      <div className="overlay-backdrop" style={{ zIndex: 9999 }}>
+      <div className="overlay-backdrop" style={{ zIndex: 1000020 }}>
         <motion.div
           initial={{ opacity: 0, scale: 0.96, y: 20 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}

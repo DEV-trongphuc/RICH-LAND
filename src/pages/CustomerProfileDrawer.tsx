@@ -806,6 +806,13 @@ const DrawerSkeleton = () => {
   );
 };
 
+const formatNumberWithCommas = (val: any) => {
+  if (val === undefined || val === null || val === '') return '';
+  const cleanVal = String(val).replace(/[^0-9]/g, '');
+  if (!cleanVal) return '';
+  return cleanVal.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+};
+
 export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contact, onUpdate, initialTab }) => {
   const { addToast, showConfirm, showCall } = useUIStore();
   const navigate = useNavigate();
@@ -927,6 +934,18 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
   const [tempMilestones, setTempMilestones] = useState<any[]>([]);
   const [isSavingMilestones, setIsSavingMilestones] = useState(false);
   const [sharesData, setSharesData] = useState<any[]>([]);
+  const [showDealModal, setShowDealModal] = useState(false);
+  const [depositProjectId, setDepositProjectId] = useState('');
+  const [depositUnitCode, setDepositUnitCode] = useState('');
+  const [depositPrice, setDepositPrice] = useState('');
+  const [depositExpectedCommission, setDepositExpectedCommission] = useState('');
+  const [commissionType, setCommissionType] = useState<'percent' | 'amount'>('amount');
+  const [commissionPercent, setCommissionPercent] = useState('');
+  const [depositMilestones, setDepositMilestones] = useState<{ name: string; amount: string }[]>([
+    { name: 'Đợt 1 - Cọc giữ chỗ', amount: '' }
+  ]);
+  const [depositUncFile, setDepositUncFile] = useState<File | null>(null);
+  const [pendingPipelineTransition, setPendingPipelineTransition] = useState<{ targetId: string; targetLabel: string; note: string } | null>(null);
 
   useEffect(() => {
     if (selectedDepForManage) {
@@ -944,6 +963,16 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
         .catch(err => console.error("Error loading cooperation shares in CustomerProfileDrawer:", err));
     }
   }, [selectedDepForManage]);
+
+  useEffect(() => {
+    if (commissionType === 'percent' && depositPrice) {
+      const pct = parseFloat(commissionPercent) || 0;
+      const priceVal = parseFloat(depositPrice) || 0;
+      const computedAmt = Math.round(priceVal * pct / 100);
+      setDepositExpectedCommission(String(computedAmt));
+    }
+  }, [commissionType, commissionPercent, depositPrice]);
+
   const [prevContactId, setPrevContactId] = useState<number | null>(null);
   const [showMobilePipelineSelector, setShowMobilePipelineSelector] = useState(false);
   const [showFilterDropdown, setShowFilterDropdown] = useState(false);
@@ -1128,17 +1157,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
   const [showNoteModal, setShowNoteModal] = useState(false);
   const [editingNote, setEditingNote] = useState<any>(null);
   const [editingActivity, setEditingActivity] = useState<any>(null);
-  const [showDealModal, setShowDealModal] = useState(false);
   const [editingDealId, setEditingDealId] = useState<number | null>(null);
-  const [depositProjectId, setDepositProjectId] = useState('');
-  const [depositUnitCode, setDepositUnitCode] = useState('');
-  const [depositPrice, setDepositPrice] = useState('');
-  const [depositExpectedCommission, setDepositExpectedCommission] = useState('');
-  const [depositMilestones, setDepositMilestones] = useState<{ name: string; amount: string }[]>([
-    { name: 'Đợt 1 - Cọc giữ chỗ', amount: '' }
-  ]);
-  const [depositUncFile, setDepositUncFile] = useState<File | null>(null);
-  const [pendingPipelineTransition, setPendingPipelineTransition] = useState<{ targetId: string; targetLabel: string; note: string } | null>(null);
   const [projectsList, setProjectsList] = useState<any[]>([]);
   const [companiesList, setCompaniesList] = useState<any[]>([]);
   const [showTaskModal, setShowTaskModal] = useState(false);
@@ -3482,8 +3501,8 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
 
     // Verify milestones total sum
     const totalM = depositMilestones.reduce((acc, m) => acc + (parseFloat(m.amount) || 0), 0);
-    if (Math.abs(totalM - parseFloat(depositPrice)) > 1) {
-      addToast(`Tổng tiền các đợt (${totalM.toLocaleString()} VND) phải bằng đúng Giá bán (${parseFloat(depositPrice).toLocaleString()} VND)`, 'error');
+    if (totalM > parseFloat(depositPrice)) {
+      addToast(`Tổng tiền các đợt thanh toán (${totalM.toLocaleString()} VND) không được vượt quá Doanh thu dự kiến (${parseFloat(depositPrice).toLocaleString()} VND)`, 'error');
       return;
     }
 
@@ -3697,6 +3716,12 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
     const totalAmount = tempMilestones.reduce((sum, m) => sum + (Number(m.expected_amount) || 0), 0);
     if (Math.abs(totalAmount - selectedDepForManage.price) > 1) {
       addToast(`Tổng tiền các đợt (${totalAmount.toLocaleString()} VND) phải bằng đúng Giá bán căn hộ (${selectedDepForManage.price.toLocaleString()} VND)`, 'error');
+      return;
+    }
+
+    const hasProof = tempMilestones.some(m => m.unc_file_path && m.unc_file_path.trim() !== '');
+    if (!hasProof) {
+      addToast('Lịch trình thanh toán bắt buộc phải có ít nhất 1 minh chứng.', 'error');
       return;
     }
 
@@ -6545,7 +6570,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                   <div>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                       <span style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--color-text)' }}>{statusTitle}</span>
-                                      <span className={`badge ${badgeClass}`} style={{ fontSize: '0.7rem', padding: '2px 8px' }}>
+                                      <span className={`badge ${badgeClass}`} style={{ fontSize: '0.65rem', padding: '1px 6px', borderRadius: '4px' }}>
                                         {isPendingSignatures ? 'Chờ ký' : 
                                          status === 'approved' ? 'Hiệu lực' : 
                                          status === 'rejected' ? 'Bị từ chối' : 
@@ -6627,226 +6652,79 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                             );
                           })()}
 
-                          {coopSlip.dispute_details && (
+                          {coopSlip.status === 'rejected' && coopSlip.dispute_details && (
                             <div style={{ padding: '1rem', background: 'rgba(239, 68, 68, 0.1)', color: 'var(--color-danger)', borderRadius: '12px', fontSize: '0.875rem' }}>
                               <strong>Lý do từ chối:</strong> {coopSlip.dispute_details}
                             </div>
                           )}
 
-                          {/* Expected Revenue Input for Cooperation */}
-                          <div className="card-panel" style={{ padding: '1.5rem', marginBottom: '1.25rem' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
-                              <div style={{ flex: 1, minWidth: '200px' }}>
-                                <h4 style={{ fontWeight: 700, marginBottom: '6px', fontSize: '1rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                  <DollarSign size={18} /> Doanh thu dự kiến (Bắt buộc để ký)
-                                </h4>
-                                <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', margin: 0 }}>
-                                  Doanh thu dự kiến là thông tin bắt buộc phải nhập trước khi ký xác nhận tỷ lệ chia sẻ hoa hồng.
-                                </p>
+                          {/* Cooperation Project & Financial Details Summary Card */}
+                          <div style={{
+                            background: 'linear-gradient(135deg, rgba(163, 20, 34, 0.03) 0%, rgba(163, 20, 34, 0.01) 100%)',
+                            borderRadius: '12px',
+                            border: '1px solid var(--color-border-light)',
+                            padding: '1rem 1.25rem',
+                            marginBottom: '1.25rem',
+                            display: 'grid',
+                            gridTemplateColumns: '2fr 1.2fr 1.2fr',
+                            gap: '1.25rem',
+                            alignItems: 'center',
+                            boxShadow: '0 2px 10px rgba(0, 0, 0, 0.01)'
+                          }}>
+                            {/* Column 1: Project details */}
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.7rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                                <Briefcase size={13} style={{ color: 'var(--color-primary)' }} />
+                                <span>Dự án giao dịch</span>
                               </div>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', width: '320px', maxWidth: '100%', flexShrink: 0 }}>
-                                <div style={{ flex: 1 }}>
-                                  <CurrencyInput
-                                    value={formData.expected_revenue || 0}
-                                    onChange={val => setFormData((prev: any) => ({ ...prev, expected_revenue: val }))}
-                                    placeholder="VD: 1.500.000.000"
-                                  />
-                                </div>
-                                <button
-                                  className="btn primary"
-                                  style={{ padding: '8px 16px', fontSize: '0.825rem', height: '34px', flexShrink: 0 }}
-                                  disabled={isSubmitting}
-                                  onClick={async () => {
-                                    setIsSubmitting(true);
-                                    try {
-                                      await api.put(`/contacts/${contact.id}`, {
-                                        expected_revenue: formData.expected_revenue,
-                                        company_id: formData.company_id,
-                                        company_name: formData.company_name,
-                                        owner_id: formData.owner_id,
-                                        first_name: formData.first_name,
-                                        last_name: formData.last_name,
-                                        email: formData.email,
-                                        phone: formData.phone,
-                                        mobile: formData.mobile,
-                                        job_title: formData.job_title,
-                                        department: formData.department,
-                                        source: formData.source,
-                                        status: formData.status,
-                                        notes: formData.notes,
-                                        birthday: formData.birthday,
-                                        address: formData.address,
-                                        city: formData.city,
-                                        ward: formData.ward,
-                                        win_probability: formData.win_probability,
-                                        last_contact: formData.last_contact,
-                                        gender: formData.gender,
-                                        zalo_link: formData.zalo_link,
-                                        fb_link: formData.fb_link,
-                                        customer_type: formData.customer_type,
-                                        industry: formData.industry,
-                                        budget_range: formData.budget_range,
-                                        project_id: formData.project_id,
-                                        campaign_id: formData.campaign_id,
-                                        ttl1_completed: formData.ttl1_completed,
-                                        ttl1_data: formData.ttl1_data,
-                                        stage_id: formData.stage_id,
-                                        pipeline_status: formData.pipeline_status,
-                                        temperature: formData.temperature,
-                                        suggested_temperature: formData.suggested_temperature
-                                      });
-                                      setBaseData(prev => ({ ...prev, expected_revenue: formData.expected_revenue }));
-                                      addToast('Đã cập nhật doanh thu dự kiến thành công!', 'success');
-                                      window.dispatchEvent(new CustomEvent('contact-updated'));
-                                    } catch (err: any) {
-                                      addToast(err.response?.data?.message || 'Lỗi khi cập nhật doanh thu', 'error');
-                                    } finally {
-                                      setIsSubmitting(false);
-                                    }
-                                  }}
-                                >
-                                  Lưu
-                                </button>
+                              <h4 style={{ fontWeight: 800, fontSize: '0.95rem', margin: '2px 0 0 0', color: 'var(--color-text)' }}>
+                                {coopSlip.project_name || '— Chưa liên kết dự án —'}
+                              </h4>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginTop: '4px' }}>
+                                {coopSlip.unit_code && (
+                                  <span style={{ background: 'var(--color-primary-light)', color: 'var(--color-primary)', padding: '2px 8px', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 700 }}>
+                                    Căn/Lô: {coopSlip.unit_code}
+                                  </span>
+                                )}
+                                <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>
+                                  Cọc ngày: {coopSlip.created_at ? new Date(coopSlip.created_at).toLocaleDateString('vi-VN') : '—'}
+                                </span>
                               </div>
+                            </div>
+
+                            {/* Column 2: Expected Revenue */}
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', borderLeft: '1px solid var(--color-border-light)', paddingLeft: '1.25rem' }}>
+                              <span style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                                Doanh thu dự kiến
+                              </span>
+                              <span style={{ fontSize: '1.05rem', fontWeight: 800, color: 'var(--color-text)' }}>
+                                {FMT(coopSlip.expected_revenue)}
+                              </span>
+                            </div>
+
+                            {/* Column 3: Expected Commission */}
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', borderLeft: '1px solid var(--color-border-light)', paddingLeft: '1.25rem' }}>
+                              <span style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--color-primary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                                Hoa hồng dự kiến
+                              </span>
+                              <span style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--color-primary)' }}>
+                                {FMT(coopSlip.expected_commission)}
+                              </span>
                             </div>
                           </div>
 
-                          {/* Cooperation Slip Attachment */}
-                          <div className="card-panel" style={{ padding: '1.5rem' }}>
-                            <h4 style={{ fontWeight: 700, marginBottom: '1rem', fontSize: '1rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                              <Paperclip size={18} /> Tài liệu hợp tác đính kèm
-                            </h4>
-                            
-                            {coopDefaultFiles.length > 0 && (
-                              <div style={{ marginBottom: '1.25rem', padding: '12px 16px', background: 'rgba(59, 130, 246, 0.04)', borderRadius: '10px', border: '1px solid rgba(59, 130, 246, 0.12)' }}>
-                                <p style={{ fontSize: '0.825rem', fontWeight: 700, color: 'var(--color-primary)', margin: '0 0 8px 0', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                  Danh mục tài liệu bắt buộc:
-                                </p>
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                                  {coopDefaultFiles.map((file, fIdx) => {
-                                    const exists = checkFileExists(file);
-                                    return (
-                                      <div key={fIdx} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem', fontWeight: 550, color: exists ? 'var(--color-success)' : 'var(--color-text-muted)' }}>
-                                        {exists ? (
-                                          <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '16px', height: '16px', borderRadius: '50%', background: 'rgba(16, 185, 129, 0.1)', color: 'var(--color-success)' }}>✓</span>
-                                        ) : (
-                                          <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '16px', height: '16px', borderRadius: '50%', background: 'rgba(148, 163, 184, 0.1)', color: 'var(--color-text-muted)' }}>•</span>
-                                        )}
-                                        <span>{file} (tên file chứa <strong>{file.split('.')[0].toUpperCase()}</strong>)</span>
-                                      </div>
-                                    );
-                                  })}
-                                </div>
-                              </div>
-                            )}
-
-                            {coopSlip.attachment_url ? (
-                              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                                {coopSlip.attachment_url.split(',').map((s: string) => s.trim()).filter(Boolean).map((fileUrl, fIdx) => (
-                                  <div key={fIdx} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px', background: 'var(--color-bg-light)', borderRadius: '12px', border: '1px solid var(--color-border)' }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                      {fileUrl.toLowerCase().endsWith('.pdf') ? (
-                                        <FileText size={24} style={{ color: '#ef4444' }} />
-                                      ) : (fileUrl.toLowerCase().endsWith('.doc') || fileUrl.toLowerCase().endsWith('.docx')) ? (
-                                        <FileText size={24} style={{ color: '#3b82f6' }} />
-                                      ) : (
-                                        <Camera size={24} style={{ color: '#10b981' }} />
-                                      )}
-                                      <div>
-                                        <a href={resolveAttachmentUrl(fileUrl)} target="_blank" rel="noopener noreferrer" style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-primary)', textDecoration: 'underline' }}>
-                                          Xem tài liệu hợp tác
-                                        </a>
-                                        <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '2px' }}>
-                                          {fileUrl.split('/').pop()}
-                                        </p>
-                                      </div>
-                                    </div>
-                                    {canManageCoopAttachments && (
-                                      <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
-                                        <button className="btn-icon sm" title="Đổi tên" onClick={() => {
-                                          const filename = fileUrl.split('/').pop() || '';
-                                          const cleanName = filename.substring(0, filename.lastIndexOf('.')) || filename;
-                                          showConfirm({
-                                            title: 'Đổi tên tài liệu hợp tác',
-                                            message: 'Nhập tên mới cho tài liệu hợp tác:',
-                                            requirePromptInput: true,
-                                            promptPlaceholder: cleanName,
-                                            confirmText: 'Lưu',
-                                            cancelText: 'Hủy',
-                                            onConfirm: async (newName) => {
-                                              if (newName && newName.trim()) {
-                                                try {
-                                                  await api.post(`/cooperation-slips/${coopSlip.id}/rename-attachment`, { name: newName.trim(), file_url: fileUrl });
-                                                  await fetchCoopSlip();
-                                                  addToast('Đã đổi tên tài liệu hợp tác.', 'success');
-                                                } catch (err) {
-                                                  addToast('Lỗi khi đổi tên tài liệu.', 'error');
-                                                }
-                                              }
-                                            }
-                                          });
-                                        }}>
-                                          <Pencil size={14} />
-                                        </button>
-                                        <button className="btn-icon sm text-danger" title="Xóa" onClick={() => handleRemoveCoopAttachment(fileUrl)}>
-                                          <Trash2 size={14} />
-                                        </button>
-                                      </div>
-                                    )}
-                                  </div>
-                                ))}
-                                {canManageCoopAttachments && (
-                                  <div style={{ display: 'flex', gap: '10px', alignItems: 'center', marginTop: '4px' }}>
-                                    <input
-                                      type="file"
-                                      id="coop-attachment-upload-more"
-                                      style={{ display: 'none' }}
-                                      accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.webp,.gif"
-                                      onChange={handleCoopAttachmentUpload}
-                                    />
-                                    <label htmlFor="coop-attachment-upload-more" className="btn outline sm" style={{ cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
-                                      <Upload size={14} /> Tải thêm tài liệu đính kèm
-                                    </label>
-                                  </div>
-                                )}
-                              </div>
-                            ) : (
-                              <div>
-                                <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', marginBottom: '1rem' }}>
-                                  Chưa có tài liệu/hợp đồng đính kèm cho phiếu này.
-                                </p>
-                                {canManageCoopAttachments && (
-                                  <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-                                    <input
-                                      type="file"
-                                      id="coop-attachment-upload"
-                                      style={{ display: 'none' }}
-                                      accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.webp,.gif"
-                                      onChange={handleCoopAttachmentUpload}
-                                    />
-                                    <label htmlFor="coop-attachment-upload" className="btn outline sm" style={{ cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
-                                      <Upload size={14} /> Tải tài liệu đính kèm
-                                    </label>
-                                  </div>
-                                )}
-                              </div>
-                            )}
-                          </div>
-
-                          {/* Shareholder Management */}
-                          <div className="card-panel" style={{ padding: '1.5rem' }}>
-                            <h4 style={{ fontWeight: 700, marginBottom: '1.25rem', fontSize: '1rem' }}>Danh sách phân chia hoa hồng</h4>
-                            
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '1.5rem' }}>
-                              {coopShares.map((share, idx) => {
-                                const isSigned = coopSlip.shareholders?.find((s: any) => String(s.user_id) === share.user_id)?.signed;
-
-                                return (
+                          {/* Shareholder Management - Only shown in Edit / Request Change mode */}
+                          {canEditShares && (
+                            <div className="card-panel" style={{ padding: '1.5rem' }}>
+                              <h4 style={{ fontWeight: 700, marginBottom: '1.25rem', fontSize: '1rem' }}>Danh sách phân chia hoa hồng</h4>
+                              
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '1.5rem' }}>
+                                {coopShares.map((share, idx) => (
                                   <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                                     <div style={{
                                       flex: 1,
-                                      pointerEvents: (idx === 0 || !canEditShares) ? 'none' : 'auto',
-                                      opacity: (idx === 0 || !canEditShares) ? 0.6 : 1
+                                      pointerEvents: idx === 0 ? 'none' : 'auto',
+                                      opacity: idx === 0 ? 0.6 : 1
                                     }}>
                                       <CustomSelect
                                         value={share.user_id}
@@ -6863,7 +6741,6 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                               if (String(u.id) === String(share.user_id)) return true;
                                               return String(u.id) !== String(currentUser?.consultant_id) && String(u.id) !== String(currentUser?.id);
                                             })
-
                                             .filter(u => {
                                               if (String(u.id) === String(share.user_id)) return true;
                                               return !coopShares.some((other, otherIdx) => otherIdx !== idx && String(other.user_id) === String(u.id));
@@ -6874,68 +6751,62 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                         searchable
                                       />
                                     </div>
-                                    <div style={{ width: '120px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                      <input
-                                        type="number"
-                                        className="form-control"
-                                        value={share.percentage}
-                                        min="0"
-                                        max="100"
-                                        onChange={(e) => {
-                                          const newShares = [...coopShares];
-                                          newShares[idx].percentage = e.target.value;
-                                          setCoopShares(newShares);
-                                        }}
-                                        disabled={!canEditShares}
-                                        style={{ textAlign: 'right' }}
-                                      />
-                                      <span style={{ fontWeight: 600 }}>%</span>
-                                    </div>
-                                    {canEditShares ? (
-                                      (String(share.user_id) === String(contact?.owner_id || formData?.owner_id) || 
-                                       String(share.user_id) === String(currentUser?.id) || 
-                                       (currentUser?.consultant_id && String(share.user_id) === String(currentUser.consultant_id))) ? (
-                                        <div style={{ width: '32px' }} />
-                                      ) : (
-                                        <button 
-                                          type="button"
-                                          className="btn ghost text-danger sm" 
-                                          onClick={() => setCoopShares(prev => prev.filter((_, i) => i !== idx))}
-                                          style={{ padding: '8px' }}
-                                        >
-                                          <Trash2 size={16} />
-                                        </button>
-                                      )
-                                    ) : (
-                                      <div style={{ width: '40px', display: 'flex', justifyContent: 'center' }} title={isSigned ? "Đã ký xác nhận" : "Chờ ký"}>
-                                        {isSigned ? (
-                                          <CheckCircle2 size={18} color="#10b981" />
-                                        ) : (
-                                          <Clock size={18} color="#f59e0b" />
-                                        )}
+                                    <div style={{ width: '160px', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
+                                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                        <input
+                                          type="number"
+                                          className="form-control"
+                                          value={share.percentage}
+                                          min="0"
+                                          max="100"
+                                          onChange={(e) => {
+                                            const newShares = [...coopShares];
+                                            newShares[idx].percentage = e.target.value;
+                                            setCoopShares(newShares);
+                                          }}
+                                          style={{ textAlign: 'right', width: '80px', height: '34px', borderRadius: '6px' }}
+                                        />
+                                        <span style={{ fontWeight: 600 }}>%</span>
                                       </div>
+                                      {coopSlip?.expected_commission && Number(coopSlip.expected_commission) > 0 && (
+                                        <div style={{ fontSize: '0.72rem', color: 'var(--color-primary)', fontWeight: 600, whiteSpace: 'nowrap' }}>
+                                          ~ {Math.round((parseFloat(coopSlip.expected_commission) || 0) * (parseFloat(share.percentage) || 0) / 100).toLocaleString()} VND
+                                        </div>
+                                      )}
+                                    </div>
+                                    {String(share.user_id) === String(contact?.owner_id || formData?.owner_id) || 
+                                     String(share.user_id) === String(currentUser?.id) || 
+                                     (currentUser?.consultant_id && String(share.user_id) === String(currentUser.consultant_id)) ? (
+                                      <div style={{ width: '32px' }} />
+                                    ) : (
+                                      <button 
+                                        type="button"
+                                        className="btn ghost text-danger sm" 
+                                        onClick={() => setCoopShares(prev => prev.filter((_, i) => i !== idx))}
+                                        style={{ padding: '8px' }}
+                                      >
+                                        <Trash2 size={16} />
+                                      </button>
                                     )}
                                   </div>
-                                );
-                              })}
-                            </div>
-
-                            {/* Actions to Add New Shareholder or Save */}
-                            {isRequestingChange && (
-                              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginBottom: '1rem' }}>
-                                <label className="form-label" style={{ fontSize: '0.75rem', fontWeight: 700 }}>Lý do thay đổi / Yêu cầu điều chỉnh</label>
-                                <textarea
-                                  placeholder="VD: Bổ sung thêm sale tư vấn hoặc điều chỉnh lại tỷ lệ..."
-                                  value={changeReason}
-                                  onChange={e => setChangeReason(e.target.value)}
-                                  className="form-control"
-                                  style={{ fontSize: '0.8rem', padding: '8px 12px', height: '60px', resize: 'vertical' }}
-                                  required
-                                />
+                                ))}
                               </div>
-                            )}
 
-                            {canEditShares ? (
+                              {/* Actions to Add New Shareholder or Save */}
+                              {isRequestingChange && (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginBottom: '1rem' }}>
+                                  <label className="form-label" style={{ fontSize: '0.75rem', fontWeight: 700 }}>Lý do thay đổi / Yêu cầu điều chỉnh</label>
+                                  <textarea
+                                    placeholder="VD: Bổ sung thêm sale tư vấn hoặc điều chỉnh lại tỷ lệ..."
+                                    value={changeReason}
+                                    onChange={e => setChangeReason(e.target.value)}
+                                    className="form-control"
+                                    style={{ fontSize: '0.8rem', padding: '8px 12px', height: '60px', resize: 'vertical' }}
+                                    required
+                                  />
+                                </div>
+                              )}
+
                               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                                   <button 
@@ -6971,22 +6842,8 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                   </button>
                                 </div>
                               </div>
-                            ) : (
-                              (coopSlip.status === 'approved' || coopSlip.status === 'pending_manager_approval') && 
-                              (isCoopApprover || isCoopShareholder || isCoopCreator) && (
-                                <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-                                  <button 
-                                    type="button"
-                                    className="btn outline sm"
-                                    onClick={() => setIsRequestingChange(true)}
-                                    style={{ color: 'var(--color-primary)', borderColor: 'var(--color-primary)' }}
-                                  >
-                                    {isCoopApprover ? 'Cập nhật tỷ lệ' : 'Yêu cầu thay đổi tỷ lệ'}
-                                  </button>
-                                </div>
-                              )
-                            )}
-                          </div>
+                            </div>
+                          )}
 
                           {/* Signature section */}
                           {(coopSlip.status === 'pending_signatures' || coopSlip.status === 'approved_pending_signatures') && coopSlip.shareholders?.some((s: any) => String(s.user_id) === String(currentUser?.id) && !s.signed) && !isViewer && (
@@ -7015,13 +6872,27 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                     </div>
                                   </div>
                                   <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                                    <span style={{ fontWeight: 800, fontSize: '1.05rem', color: 'var(--color-text)' }}>{sh.percentage}%</span>
+                                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+                                      <span style={{ fontWeight: 800, fontSize: '1.05rem', color: 'var(--color-text)' }}>{sh.percentage}%</span>
+                                      {coopSlip.expected_commission && Number(coopSlip.expected_commission) > 0 && (
+                                        <span style={{ fontSize: '0.72rem', color: 'var(--color-primary)', fontWeight: 600 }}>
+                                          ~ {Math.round((parseFloat(coopSlip.expected_commission) || 0) * (sh.percentage || 0) / 100).toLocaleString()} VND
+                                        </span>
+                                      )}
+                                    </div>
                                     {sh.signed ? (
-                                      <div style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#10b981', fontSize: '0.8125rem', fontWeight: 600 }}>
-                                        <CheckCircle2 size={16} /> Đã ký ({new Date(sh.signature_time).toLocaleDateString('vi-VN')})
+                                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '6px', width: '180px' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#10b981', fontSize: '0.78rem', fontWeight: 600 }}>
+                                          <CheckCircle2 size={14} /> Đã ký ({new Date(sh.signature_time).toLocaleDateString('vi-VN')})
+                                        </div>
+                                        {sh.signature_img && (
+                                          <div style={{ background: '#f8fafc', padding: '4px 10px', borderRadius: '6px', border: '1px dashed var(--color-border-light)', display: 'inline-flex', justifyContent: 'center', alignItems: 'center', marginTop: '2px' }}>
+                                            <img src={sh.signature_img} style={{ height: '40px', maxWidth: '160px', objectFit: 'contain' }} alt="Chữ ký" />
+                                          </div>
+                                        )}
                                       </div>
                                     ) : (
-                                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--color-warning)', fontSize: '0.8125rem', fontWeight: 700 }}>
+                                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--color-warning)', fontSize: '0.8125rem', fontWeight: 700, width: '180px', justifyContent: 'flex-end' }}>
                                         <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: 'var(--color-warning)', display: 'inline-block' }} />
                                         Chờ ký
                                       </div>
@@ -7030,6 +6901,19 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                 </div>
                               ))}
                             </div>
+
+                            {!canEditShares && (coopSlip.status === 'approved' || coopSlip.status === 'pending_manager_approval') && (isCoopCreator || isCoopShareholder || isCoopApprover) && (
+                              <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1.25rem', paddingTop: '1rem', borderTop: '1px solid var(--color-border-light)' }}>
+                                <button 
+                                  type="button"
+                                  className="btn outline sm"
+                                  onClick={() => setIsRequestingChange(true)}
+                                  style={{ color: 'var(--color-primary)', borderColor: 'var(--color-primary)', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                                >
+                                  <Pencil size={13} /> {isCoopApprover ? 'Cập nhật tỷ lệ' : 'Yêu cầu thay đổi tỷ lệ'}
+                                </button>
+                              </div>
+                            )}
                           </div>
                         </div>
                       )}
@@ -7803,8 +7687,11 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                           <button className="btn primary sm" onClick={() => {
                             setDepositProjectId('');
                             setDepositUnitCode('');
-                            setDepositPrice('');
+                            const defaultPrice = String(formData.expected_revenue || contact?.expected_revenue || '');
+                            setDepositPrice(defaultPrice);
                             setDepositExpectedCommission('');
+                            setCommissionType('amount');
+                            setCommissionPercent('');
                             setDepositMilestones([{ name: 'Đợt 1 - Cọc giữ chỗ', amount: '' }]);
                             setShowDealModal(true);
                           }}><Plus size={14} /> Tạo phiếu đặt cọc</button>
@@ -10144,7 +10031,15 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                     const targetLabel = pipelineModal.targetLabel;
                     const note = pipelineModal.note;
                     
-                    if (coopEligibleStatuses.includes(targetId)) {
+                     if (coopEligibleStatuses.includes(targetId)) {
+                      setDepositProjectId('');
+                      setDepositUnitCode('');
+                      const defaultPrice = String(formData.expected_revenue || contact?.expected_revenue || '');
+                      setDepositPrice(defaultPrice);
+                      setDepositExpectedCommission('');
+                      setCommissionType('amount');
+                      setCommissionPercent('');
+                      setDepositMilestones([{ name: 'Đợt 1 - Cọc giữ chỗ', amount: '' }]);
                       setPipelineModal({ isOpen: false, targetId: '', targetLabel: '', note: '' });
                       setPendingPipelineTransition({ targetId, targetLabel, note });
                       setShowDealModal(true);
@@ -10368,7 +10263,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
           <div className="overlay-backdrop" style={{ zIndex: 1000020 }} onClick={() => setShowDealModal(false)}>
             <motion.div
               className="modal-sheet"
-              style={{ width: '100%', maxWidth: 540 }}
+              style={{ width: '100%', maxWidth: 820 }}
               initial={{ opacity: 0, scale: 0.95, y: 16 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 16 }}
               transition={{ type: 'tween', duration: 0.22, ease: 'easeOut' }}
               onClick={e => e.stopPropagation()}
@@ -10380,149 +10275,235 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                   </div>
                   <div>
                     <h3 style={{ fontWeight: 800 }}>Tạo phiếu đặt cọc mới</h3>
-                    <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2 }}>Khách hàng: <strong>{fullName}</strong></p>
+                    <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2 }}>Thiết lập thông tin giao dịch đặt cọc dự án</p>
                   </div>
                 </div>
                 <button className="btn-icon sm" onClick={() => setShowDealModal(false)}><X size={18} /></button>
               </div>
-              <div className="modal-body" style={{ maxHeight: '70vh', overflowY: 'auto' }}>
-                <div className="form-group">
-                  <label className="form-label">Dự án *</label>
-                  <CustomSelect
-                    searchable
-                    options={projectsList.map(p => ({
-                      value: String(p.id),
-                      label: p.name
-                    }))}
-                    value={depositProjectId}
-                    onChange={val => setDepositProjectId(val.toString())}
-                    placeholder="-- Chọn dự án --"
-                  />
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem' }}>
-                  <div className="form-group">
-                    <label className="form-label">Mã căn hộ *</label>
-                    <input
-                      type="text"
-                      placeholder="VD: A-12.05"
-                      value={depositUnitCode}
-                      onChange={e => setDepositUnitCode(e.target.value.toUpperCase())}
-                      className="form-input"
-                    />
-                  </div>
-                  <div className="form-group">
-                    <label className="form-label">Giá bán (VND) *</label>
-                    <CurrencyInput
-                      value={depositPrice}
-                      onChange={val => setDepositPrice(String(val))}
-                      placeholder="0"
-                      showTextHelper={false}
-                    />
-                  </div>
-                  <div className="form-group">
-                    <label className="form-label">Hoa hồng (VND)</label>
-                    <CurrencyInput
-                      value={depositExpectedCommission}
-                      onChange={val => setDepositExpectedCommission(String(val))}
-                      placeholder="0"
-                      showTextHelper={false}
-                    />
+              <div className="modal-body" style={{ maxHeight: '70vh', overflowY: 'auto', padding: '1.5rem' }}>
+                
+                {/* Client Banner */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 16px', background: 'linear-gradient(135deg, rgba(163, 20, 34, 0.05) 0%, rgba(163, 20, 34, 0.01) 100%)', borderRadius: '12px', border: '1px dashed var(--color-primary-light)', marginBottom: '1.5rem' }}>
+                  <Avatar name={fullName} size={40} />
+                  <div>
+                    <h4 style={{ fontWeight: 800, color: 'var(--color-primary)', fontSize: '0.925rem', margin: 0 }}>{fullName}</h4>
+                    <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', margin: '2px 0 0 0' }}>
+                      {contact?.phone} {contact?.email ? `• ${contact.email}` : ''}
+                    </p>
                   </div>
                 </div>
 
-                {depositPrice && Number(depositPrice) > 0 && (
-                  <div style={{ marginBottom: '1rem', fontSize: '0.75rem', color: 'var(--color-primary)', fontWeight: 600, fontStyle: 'italic' }}>
-                    Bằng chữ: {numberToText(Number(depositPrice))}
+                <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '1.75rem' }}>
+                  {/* Left Column: Project & Price */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                    <div className="form-group">
+                      <label className="form-label" style={{ fontWeight: 700 }}>Dự án giao dịch *</label>
+                      <CustomSelect
+                        searchable
+                        options={projectsList.map(p => ({
+                          value: String(p.id),
+                          label: p.name
+                        }))}
+                        value={depositProjectId}
+                        onChange={val => setDepositProjectId(val.toString())}
+                        placeholder="-- Chọn dự án --"
+                      />
+                    </div>
+
+                    <div className="form-group">
+                      <label className="form-label" style={{ fontWeight: 700 }}>Mã căn hộ/Lô đất *</label>
+                      <input
+                        type="text"
+                        placeholder="VD: A-12.05, LK-04..."
+                        value={depositUnitCode}
+                        onChange={e => setDepositUnitCode(e.target.value.toUpperCase())}
+                        className="form-input"
+                        style={{ fontWeight: 600 }}
+                      />
+                    </div>
+
+                    <div className="form-group">
+                      <label className="form-label" style={{ fontWeight: 700 }}>Doanh thu dự kiến (Giá bán) *</label>
+                      <CurrencyInput
+                        value={depositPrice}
+                        onChange={val => setDepositPrice(String(val))}
+                        placeholder="Nhập giá trị giao dịch..."
+                        showTextHelper={true}
+                      />
+                    </div>
                   </div>
-                )}
+
+                  {/* Right Column: Commission & Proof */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', paddingLeft: '1.5rem', borderLeft: '1px solid var(--color-border-light)' }}>
+                    <div className="form-group">
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                        <label className="form-label" style={{ margin: 0, fontWeight: 700 }}>Hoa hồng dự kiến</label>
+                        <div style={{ display: 'inline-flex', background: 'var(--color-bg)', padding: '2px', borderRadius: '6px', border: '1px solid var(--color-border-light)' }}>
+                          <button
+                            type="button"
+                            onClick={() => setCommissionType('percent')}
+                            style={{
+                              padding: '2px 8px',
+                              fontSize: '0.7rem',
+                              fontWeight: 700,
+                              borderRadius: '4px',
+                              border: 'none',
+                              background: commissionType === 'percent' ? 'var(--color-surface)' : 'transparent',
+                              color: commissionType === 'percent' ? 'var(--color-primary)' : 'var(--color-text-muted)',
+                              cursor: 'pointer',
+                              boxShadow: commissionType === 'percent' ? 'var(--shadow-sm)' : 'none'
+                            }}
+                          >
+                            % Phần trăm
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setCommissionType('amount')}
+                            style={{
+                              padding: '2px 8px',
+                              fontSize: '0.7rem',
+                              fontWeight: 700,
+                              borderRadius: '4px',
+                              border: 'none',
+                              background: commissionType === 'amount' ? 'var(--color-surface)' : 'transparent',
+                              color: commissionType === 'amount' ? 'var(--color-primary)' : 'var(--color-text-muted)',
+                              cursor: 'pointer',
+                              boxShadow: commissionType === 'amount' ? 'var(--shadow-sm)' : 'none'
+                            }}
+                          >
+                            Số tiền (VND)
+                          </button>
+                        </div>
+                      </div>
+
+                      {commissionType === 'percent' ? (
+                        <div>
+                          <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                            <input
+                              type="number"
+                              step="0.01"
+                              placeholder="Ví dụ: 2.5"
+                              value={commissionPercent}
+                              onChange={e => setCommissionPercent(e.target.value)}
+                              className="form-input"
+                              style={{ paddingRight: '35px', fontWeight: 600 }}
+                            />
+                            <span style={{ position: 'absolute', right: 12, fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)' }}>%</span>
+                          </div>
+                          {depositExpectedCommission && Number(depositExpectedCommission) > 0 && (
+                            <div style={{ marginTop: '6px', fontSize: '0.75rem', color: 'var(--color-primary)', fontWeight: 600 }}>
+                              = {Number(depositExpectedCommission).toLocaleString()} VND
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <CurrencyInput
+                          value={depositExpectedCommission}
+                          onChange={val => setDepositExpectedCommission(String(val))}
+                          placeholder="Nhập số tiền hoa hồng..."
+                          showTextHelper={true}
+                        />
+                      )}
+                    </div>
+
+                    {/* Phase 1 UNC upload */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', padding: '12px', background: 'rgba(59, 130, 246, 0.04)', border: '1px solid rgba(59, 130, 246, 0.12)', borderRadius: '10px', marginTop: 'auto' }}>
+                      <label className="form-label" style={{ fontWeight: 700, margin: 0, fontSize: '0.825rem', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        Minh chứng chuyển tiền Đợt 1 (UNC) <span style={{ color: 'var(--color-danger)' }}>*</span>
+                      </label>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '6px' }}>
+                        <label
+                          className="btn outline sm"
+                          style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', cursor: 'pointer', height: '32px', fontSize: '0.75rem', borderRadius: '8px' }}
+                        >
+                          <Upload size={13} /> {depositUncFile ? 'Chọn lại tệp' : 'Chọn ảnh UNC'}
+                          <input
+                            type="file"
+                            accept="image/*"
+                            style={{ display: 'none' }}
+                            onChange={e => {
+                              if (e.target.files && e.target.files.length > 0) {
+                                setDepositUncFile(e.target.files[0]);
+                              }
+                            }}
+                          />
+                        </label>
+                        {depositUncFile ? (
+                          <span style={{ fontSize: '0.75rem', color: '#10b981', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '140px' }}>
+                            ✓ {depositUncFile.name}
+                          </span>
+                        ) : (
+                          <span style={{ fontSize: '0.725rem', color: 'var(--color-text-muted)', fontStyle: 'italic' }}>
+                            Yêu cầu bắt buộc 1 UNC
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
 
                 {/* Milestones config */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', paddingTop: '1rem', borderTop: '1px solid var(--color-border)' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', paddingTop: '1.25rem', borderTop: '1px solid var(--color-border-light)', marginTop: '1.75rem' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <h4 style={{ fontSize: '0.875rem', fontWeight: 700 }}>Lịch trình thanh toán</h4>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <h4 style={{ fontSize: '0.875rem', fontWeight: 700 }}>Lịch trình thanh toán cọc</h4>
+                      <span style={{ fontSize: '0.725rem', color: 'var(--color-text-muted)', fontStyle: 'italic' }}>
+                        (Tổng tiền các đợt cọc có thể nhỏ hơn doanh thu dự kiến)
+                      </span>
+                    </div>
                     <button
                       type="button"
                       onClick={handleAddMilestoneInput}
-                      style={{ fontSize: '0.75rem', color: 'var(--color-primary)', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '2px' }}
+                      style={{ fontSize: '0.75rem', color: 'var(--color-primary)', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '2px', fontWeight: 700 }}
                     >
-                      <Plus size={14} /> Thêm đợt tiền
+                      <Plus size={14} /> Thêm đợt thanh toán
                     </button>
                   </div>
 
-                  {depositMilestones.map((m, idx) => (
-                    <div key={idx} style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                      <input
-                        type="text"
-                        required
-                        placeholder={`Tên đợt ${idx + 1}`}
-                        value={m.name}
-                        onChange={e =>
-                          setDepositMilestones(prev =>
-                            prev.map((item, i) => (i === idx ? { ...item, name: e.target.value } : item))
-                          )
-                        }
-                        className="form-input"
-                        style={{ flex: 1 }}
-                      />
-                      <div style={{ width: '140px', flexShrink: 0 }}>
-                        <CurrencyInput
-                          value={m.amount}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                    {depositMilestones.map((m, idx) => (
+                      <div key={idx} style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                        <input
+                          type="text"
                           required
-                          onChange={val =>
+                          placeholder={`Tên đợt ${idx + 1} (VD: Đợt 1 - Cọc giữ chỗ)`}
+                          value={m.name}
+                          onChange={e =>
                             setDepositMilestones(prev =>
-                              prev.map((item, i) => (i === idx ? { ...item, amount: String(val) } : item))
+                              prev.map((item, i) => (i === idx ? { ...item, name: e.target.value } : item))
                             )
                           }
-                          placeholder="Số tiền (VND)"
-                          showTextHelper={false}
+                          className="form-input"
+                          style={{ flex: 1 }}
                         />
-                      </div>
-                      {depositMilestones.length > 1 && (
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveMilestoneInput(idx)}
-                          style={{ padding: '6px', background: 'none', border: 'none', color: 'var(--color-danger)', cursor: 'pointer', display: 'flex' }}
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                      )}
-                    </div>
-                  ))}
-                  
-                  {/* Phase 1 UNC upload */}
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '0.75rem', padding: '0.75rem', background: 'rgba(59, 130, 246, 0.04)', border: '1px solid rgba(59, 130, 246, 0.12)', borderRadius: '8px' }}>
-                    <label className="form-label" style={{ fontWeight: 700, margin: 0, display: 'flex', alignItems: 'center', gap: '4px' }}>
-                      Minh chứng chuyển khoản Đợt 1 (UNC) <span style={{ color: 'var(--color-danger)' }}>*</span>
-                    </label>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '4px' }}>
-                      <label
-                        className="btn outline sm"
-                        style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', cursor: 'pointer', height: '30px', fontSize: '0.75rem' }}
-                      >
-                        <Upload size={13} /> {depositUncFile ? 'Chọn lại file' : 'Chọn tệp UNC (Ảnh)'}
-                        <input
-                          type="file"
-                          accept="image/*"
-                          style={{ display: 'none' }}
-                          onChange={e => {
-                            if (e.target.files && e.target.files.length > 0) {
-                              setDepositUncFile(e.target.files[0]);
+                        <div style={{ width: '220px', flexShrink: 0 }}>
+                          <CurrencyInput
+                            value={m.amount}
+                            required
+                            onChange={val =>
+                              setDepositMilestones(prev =>
+                                prev.map((item, i) => (i === idx ? { ...item, amount: String(val) } : item))
+                              )
                             }
-                          }}
-                        />
-                      </label>
-                      {depositUncFile ? (
-                        <span style={{ fontSize: '0.75rem', color: '#10b981', fontWeight: 600 }}>
-                          ✓ {depositUncFile.name}
-                        </span>
-                      ) : (
-                        <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontStyle: 'italic' }}>
-                          Yêu cầu bắt buộc 1 UNC
-                        </span>
-                      )}
-                    </div>
+                            placeholder="Số tiền (VND)"
+                            showTextHelper={false}
+                          />
+                        </div>
+                        {depositMilestones.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveMilestoneInput(idx)}
+                            style={{ padding: '8px', background: 'none', border: 'none', color: 'var(--color-danger)', cursor: 'pointer', display: 'flex', borderRadius: '50%' }}
+                            className="btn-icon sm"
+                          >
+                            <Trash2 size={15} />
+                          </button>
+                        )}
+                      </div>
+                    ))}
                   </div>
                 </div>
+
               </div>
               <div className="modal-footer">
                 <button className="btn outline" onClick={() => setShowDealModal(false)} disabled={isSubmitting}>Hủy</button>
@@ -10554,7 +10535,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
 {/* CREATE TICKET MODAL */}
       <AnimatePresence>
         {showTicketModal && (
-          <div className="overlay-backdrop" style={{ zIndex: 20000 }} onClick={() => setShowTicketModal(false)}>
+          <div className="overlay-backdrop" style={{ zIndex: 1000020 }} onClick={() => setShowTicketModal(false)}>
             <motion.div
               className="modal-sheet"
               style={{ width: '100%', maxWidth: 540 }}
@@ -11774,7 +11755,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                   <div>Ngày tạo</div>
                   <div>Số tiền (VND)</div>
                   <div style={{ textAlign: 'center' }}>Trạng thái</div>
-                  <div style={{ textAlign: 'center' }}>Minh chứng (UNC)</div>
+                  <div style={{ textAlign: 'center' }}>Minh chứng</div>
                   <div style={{ textAlign: 'right' }}>Thao tác</div>
                 </div>
 
@@ -11817,11 +11798,14 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                         {/* Amount input */}
                         <div>
                           <input
-                            type="number"
+                            type="text"
                             placeholder="Số tiền"
-                            value={m.expected_amount || ''}
+                            value={formatNumberWithCommas(m.expected_amount)}
                             disabled={isLocked}
-                            onChange={e => handleUpdateMilestoneField(idx, 'expected_amount', parseFloat(e.target.value) || 0)}
+                            onChange={e => {
+                              const rawVal = e.target.value.replace(/[^0-9]/g, '');
+                              handleUpdateMilestoneField(idx, 'expected_amount', rawVal ? parseInt(rawVal, 10) : 0);
+                            }}
                             className="form-input"
                             style={{ width: '100%', height: '34px', fontSize: '0.775rem', padding: '0 10px', borderRadius: '6px' }}
                           />

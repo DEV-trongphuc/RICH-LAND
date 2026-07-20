@@ -3778,7 +3778,7 @@ textarea, .form-textarea, textarea.form-input, textarea.form-control {
 
 /* Secure z-index hierarchy */
 .overlay-backdrop {
-  z-index: 11000 !important; /* Ensure dialogs are always on top */
+  z-index: 11000; /* Ensure dialogs are always on top */
 }
 
 .stats-modal-backdrop {

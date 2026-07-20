@@ -138,22 +138,59 @@ class DepositController {
             require_once __DIR__ . '/../config/ParallelHelper.php';
             ParallelHelper::lockPersonForWinningContact($this->db, (int)$contactId);
 
-            // Check if a cooperation slip already exists for this contact
-            $stmtCheckCoop = $this->db->prepare("SELECT id FROM cooperation_slips WHERE contact_id = ? ORDER BY created_at DESC LIMIT 1");
+            // Retrieve all caregivers from quyen_truy_cap to check for co-op sales
+            $stmtQ = $this->db->prepare("SELECT DISTINCT user_id FROM quyen_truy_cap WHERE contact_id = ?");
+            $stmtQ->execute([$contactId]);
+            $validHelpers = $stmtQ->fetchAll(PDO::FETCH_COLUMN) ?: [];
+            $validHelpers = array_map('intval', $validHelpers);
+
+            $ownerUid = (int)($contact['owner_id'] ?: $auth['user_id']);
+            $coopSales = array_values(array_filter($validHelpers, function($uid) use ($ownerUid) {
+                return $uid > 0 && $uid !== $ownerUid;
+            }));
+
+            // Build initial shares distribution
+            if (!empty($coopSales)) {
+                $totalCount = 1 + count($coopSales);
+                $basePercent = floor(100 / $totalCount);
+                $remainder = 100 - ($basePercent * $totalCount);
+
+                $customShares = [$ownerUid => (int)($basePercent + $remainder)];
+                foreach ($coopSales as $cid) {
+                    $customShares[$cid] = (int)$basePercent;
+                }
+            } else {
+                $customShares = [$ownerUid => 100];
+            }
+
+            // Check if there is an unlinked cooperation slip for this contact
+            $stmtCheckCoop = $this->db->prepare("SELECT id FROM cooperation_slips WHERE contact_id = ? AND deposit_slip_id IS NULL ORDER BY created_at DESC LIMIT 1");
             $stmtCheckCoop->execute([$contactId]);
             $existingCoop = $stmtCheckCoop->fetch();
 
-            if ($existingCoop) {
-                // Link pre-existing cooperation slip to this new deposit slip
-                $stmtLink = $this->db->prepare("UPDATE cooperation_slips SET deposit_slip_id = ? WHERE id = ?");
-                $stmtLink->execute([$depositId, (int)$existingCoop['id']]);
-            } else {
-                // Independent sale: Contact owner gets 100%
-                $ownerUid = (int)($contact['owner_id'] ?: $auth['user_id']);
-                $customShares = [$ownerUid => 100];
+            require_once __DIR__ . '/CooperationController.php';
+            $coopCtrl = new CooperationController($this->db);
 
-                require_once __DIR__ . '/CooperationController.php';
-                $coopCtrl = new CooperationController($this->db);
+            if ($existingCoop) {
+                // Link pre-existing cooperation slip and update its shares to current collaborators
+                $sharesJson = json_encode($customShares);
+                $stmtLink = $this->db->prepare("UPDATE cooperation_slips SET deposit_slip_id = ?, shares_json = ? WHERE id = ?");
+                $stmtLink->execute([$depositId, $sharesJson, (int)$existingCoop['id']]);
+
+                $isSingleShareholder = count($customShares) === 1;
+                $status = $isSingleShareholder ? 'approved' : 'pending_signatures';
+                $sigs = [];
+                if ($isSingleShareholder) {
+                    $sigs[$ownerUid] = true;
+                }
+                $signaturesJson = json_encode($sigs);
+
+                $stmtUpdateStatus = $this->db->prepare("UPDATE cooperation_slips SET status = ?, signatures_json = ? WHERE id = ?");
+                $stmtUpdateStatus->execute([$status, $signaturesJson, (int)$existingCoop['id']]);
+
+                $coopCtrl->syncCollaboratorsToContact((int)$contactId, $sharesJson);
+            } else {
+                // Auto-generate new cooperation slip
                 $coopCtrl->autoGenerateSlip($contactId, $depositId, $auth['user_id'], $customShares);
             }
 
@@ -522,7 +559,7 @@ class DepositController {
 
         // 1. Verify deposit ownership/permissions
         $stmtDep = $this->db->prepare("
-            SELECT d.id, d.owner_id 
+            SELECT d.id, d.created_by, c.owner_id, d.contact_id 
             FROM deposits d
             JOIN contacts c ON d.contact_id = c.id
             WHERE d.id = ? AND c.tenant_id = ?
@@ -532,7 +569,15 @@ class DepositController {
         if (!$dep) respond(404, null, 'Phiếu cọc không tồn tại', false);
 
         if ($auth['role'] === 'sales' || $auth['role'] === 'sale') {
-            if ($dep['owner_id'] != $auth['user_id']) {
+            $stmtCoop = $this->db->prepare("
+                SELECT COUNT(*) 
+                FROM quyen_truy_cap 
+                WHERE contact_id = ? AND user_id = ?
+            ");
+            $stmtCoop->execute([$dep['contact_id'], $auth['user_id']]);
+            $isCollaborator = ((int)$stmtCoop->fetchColumn()) > 0;
+
+            if ($dep['created_by'] != $auth['user_id'] && $dep['owner_id'] != $auth['user_id'] && !$isCollaborator) {
                 respond(403, null, 'Bạn không có quyền sửa đổi lịch trình thanh toán của phiếu cọc này', false);
             }
         }

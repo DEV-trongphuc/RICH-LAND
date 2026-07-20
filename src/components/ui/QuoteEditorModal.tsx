@@ -250,7 +250,7 @@ export const QuoteEditorModal: React.FC<QuoteEditorProps> = ({
   if (!isOpen) return null;
 
   return createPortal(
-    <div className="overlay-backdrop" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0, zIndex: 9999, overflow: 'hidden', position: 'fixed', top: 0, left: 0, right: 0, bottom: 0 }}>
+    <div className="overlay-backdrop" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0, zIndex: 1000020, overflow: 'hidden', position: 'fixed', top: 0, left: 0, right: 0, bottom: 0 }}>
       <AnimatePresence>
         <motion.div 
           initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 20 }}

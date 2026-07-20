@@ -11,6 +11,14 @@ import { EmptyCard } from '../components/ui/EmptyCard';
 import { Avatar } from '../components/ui/Avatar';
 import { TableSkeleton } from '../components/ui/Skeleton';
 import { CustomerProfileDrawer } from './CustomerProfileDrawer';
+import { CurrencyInput } from '../components/ui/CurrencyInput';
+
+const formatNumberWithCommas = (val: any) => {
+  if (val === undefined || val === null || val === '') return '';
+  const cleanVal = String(val).replace(/[^0-9]/g, '');
+  if (!cleanVal) return '';
+  return cleanVal.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+};
 
 interface Deposit {
   id: number;
@@ -46,6 +54,7 @@ interface Contact {
   first_name: string;
   last_name: string;
   phone: string;
+  expected_revenue?: number | string;
 }
 
 interface Project {
@@ -220,6 +229,13 @@ export default function DepositsPage() {
     }
 
     const cid = Number(selectedContactId);
+    
+    // Auto-fill price (expected revenue) from contact details if available
+    const matchedContact = contacts.find((c: any) => Number(c.id) === cid);
+    if (matchedContact) {
+      const defaultRevenue = matchedContact.expected_revenue || '';
+      setPrice(String(defaultRevenue));
+    }
 
     // 1. Load Collaborators strictly from quyen_truy_cap (Luật 4.5)
     fetchAPI(`contacts/${cid}/collaborators`)
@@ -602,6 +618,12 @@ export default function DepositsPage() {
         setError('Tên đợt không được để trống.');
         return;
       }
+    }
+
+    const hasProof = tempMilestones.some(m => m.unc_file_path && m.unc_file_path.trim() !== '');
+    if (!hasProof) {
+      setError('Lịch trình thanh toán bắt buộc phải có ít nhất 1 minh chứng.');
+      return;
     }
 
     try {
@@ -1031,23 +1053,20 @@ export default function DepositsPage() {
               </div>
               <div className="form-group" style={{ margin: 0 }}>
                 <label className="form-label">Giá bán (VND)</label>
-                <input
-                  type="number"
-                  required
+                <CurrencyInput
                   value={price}
-                  onChange={e => setPrice(e.target.value)}
-                  className="form-input"
-                  style={{ height: '38px', padding: '8px 12px', fontSize: '0.85rem' }}
+                  onChange={val => setPrice(String(val))}
+                  placeholder="0"
+                  showTextHelper={false}
                 />
               </div>
               <div className="form-group" style={{ margin: 0 }}>
                 <label className="form-label">Hoa hồng (VND)</label>
-                <input
-                  type="number"
+                <CurrencyInput
                   value={expectedCommission}
-                  onChange={e => setExpectedCommission(e.target.value)}
-                  className="form-input"
-                  style={{ height: '38px', padding: '8px 12px', fontSize: '0.85rem' }}
+                  onChange={val => setExpectedCommission(String(val))}
+                  placeholder="0"
+                  showTextHelper={false}
                 />
               </div>
             </div>
@@ -1081,19 +1100,19 @@ export default function DepositsPage() {
                     className="form-input"
                     style={{ height: '38px', padding: '8px 12px', fontSize: '0.85rem', flex: 1 }}
                   />
-                  <input
-                    type="number"
-                    required
-                    placeholder="Số tiền (VND)"
-                    value={m.amount}
-                    onChange={e =>
-                      setMilestonesInput(prev =>
-                        prev.map((item, i) => (i === idx ? { ...item, amount: e.target.value } : item))
-                      )
-                    }
-                    className="form-input"
-                    style={{ height: '38px', padding: '8px 12px', fontSize: '0.85rem', width: '150px' }}
-                  />
+                  <div style={{ width: '150px', flexShrink: 0 }}>
+                    <CurrencyInput
+                      value={m.amount}
+                      required
+                      onChange={val =>
+                        setMilestonesInput(prev =>
+                          prev.map((item, i) => (i === idx ? { ...item, amount: String(val) } : item))
+                        )
+                      }
+                      placeholder="Số tiền (VND)"
+                      showTextHelper={false}
+                    />
+                  </div>
                   {milestonesInput.length > 1 && (
                     <button
                       type="button"
@@ -1550,7 +1569,7 @@ export default function DepositsPage() {
                   <div>Ngày tạo</div>
                   <div>Số tiền (VND)</div>
                   <div style={{ textAlign: 'center' }}>Trạng thái</div>
-                  <div style={{ textAlign: 'center' }}>Minh chứng (UNC)</div>
+                  <div style={{ textAlign: 'center' }}>Minh chứng</div>
                   <div style={{ textAlign: 'right' }}>Thao tác</div>
                 </div>
 
@@ -1593,11 +1612,14 @@ export default function DepositsPage() {
                         {/* Amount input */}
                         <div>
                           <input
-                            type="number"
+                            type="text"
                             placeholder="Số tiền"
-                            value={m.expected_amount || ''}
+                            value={formatNumberWithCommas(m.expected_amount)}
                             disabled={isLocked}
-                            onChange={e => handleUpdateMilestoneField(idx, 'expected_amount', parseFloat(e.target.value) || 0)}
+                            onChange={e => {
+                              const rawVal = e.target.value.replace(/[^0-9]/g, '');
+                              handleUpdateMilestoneField(idx, 'expected_amount', rawVal ? parseInt(rawVal, 10) : 0);
+                            }}
                             className="form-input"
                             style={{ width: '100%', height: '34px', fontSize: '0.775rem', padding: '0 10px', borderRadius: '6px' }}
                           />
