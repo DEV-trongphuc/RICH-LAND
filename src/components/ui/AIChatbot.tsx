@@ -347,7 +347,7 @@ Bạn có thể gõ rõ từ khóa hoặc click vào các gợi ý bên dưới 
           --chatbot-card-shadow: 0 4px 12px oklch(0% 0 0 / 2%);
           --chatbot-input-bg: oklch(98.4% 0.007 247 / 70%);
           --chatbot-btn-bg: oklch(100% 0 0);
-          --chatbot-btn-border: oklch(54% 0.235 274);
+          --chatbot-btn-border: #BD1D2D;
         }
         [data-theme="dark"] {
           --chatbot-window-bg: oklch(12.7% 0.016 264 / 75%);
@@ -365,7 +365,7 @@ Bạn có thể gõ rõ từ khóa hoặc click vào các gợi ý bên dưới 
           --chatbot-card-shadow: 0 4px 12px oklch(0% 0 0 / 15%);
           --chatbot-input-bg: oklch(6.5% 0.008 264 / 50%);
           --chatbot-btn-bg: oklch(12.7% 0.024 254);
-          --chatbot-btn-border: oklch(60% 0.2 265);
+          --chatbot-btn-border: #ff4d5a;
         }
         
         .pulse-chatbot {

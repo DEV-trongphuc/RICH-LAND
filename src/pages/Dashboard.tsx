@@ -837,57 +837,63 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
 
             <div className="welcome-banner">
               {/* Left section: Welcome Info */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem', flex: '1 1 340px', minWidth: 0 }}>
+              <div style={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: isMobile ? '1.25rem' : '1.5rem', 
+                flex: isMobile ? '1 1 100%' : '1 1 340px', 
+                minWidth: 0,
+                borderBottom: isMobile ? '1px solid rgba(255, 255, 255, 0.08)' : 'none',
+                paddingBottom: isMobile ? '12px' : 0,
+                marginBottom: isMobile ? '12px' : 0
+              }}>
                 <div style={{ position: 'relative', flexShrink: 0 }}>
                   <Avatar 
                     name={user?.name || 'User'} 
                     src={user?.avatar} 
-                    size={60} 
-                    style={{ border: '2.5px solid rgba(189, 29, 45, 0.45)', boxShadow: '0 0 16px rgba(189, 29, 45, 0.3)' }}
+                    size={isMobile ? 58 : 68} 
+                    style={{ border: '2px solid rgba(189, 29, 45, 0.45)', boxShadow: '0 0 12px rgba(189, 29, 45, 0.25)' }}
                   />
                   <span className="animate-pulse" style={{
                     position: 'absolute',
-                    bottom: 2,
-                    right: 2,
-                    width: 14,
-                    height: 14,
+                    bottom: 1,
+                    right: 1,
+                    width: 12,
+                    height: 12,
                     borderRadius: '50%',
                     backgroundColor: '#10b981',
-                    border: '2.5px solid #181515',
-                    boxShadow: '0 0 10px #10b981'
+                    border: '2px solid #181515',
+                    boxShadow: '0 0 8px #10b981'
                   }} />
                 </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', minWidth: 0 }}>
-                  <h2 className="welcome-banner-title">
-                    {t('Xin chào')}, {user?.name || 'Ban điều hành'}
-                  </h2>
-                  
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', fontSize: '0.825rem', color: '#e4e4e7' }}>
-                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontWeight: 600 }}>
-                      <Clock size={13} style={{ color: '#ff4d5a' }} />
-                      {getCurrentDateVi()}
-                    </span>
-                  </div>
-
-                  <div style={{ display: 'flex' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', minWidth: 0, flex: 1 }}>
+                  <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', alignItems: isMobile ? 'flex-start' : 'center', gap: isMobile ? '4px' : '8px' }}>
+                    <h2 className="welcome-banner-title" style={{ fontSize: isMobile ? '1.05rem' : '1.25rem' }}>
+                      {t('Xin chào')}, {user?.name || 'Ban điều hành'}
+                    </h2>
                     <span style={{ 
-                      fontSize: '0.68rem', 
+                      fontSize: '0.625rem', 
                       fontWeight: 900, 
                       color: '#ffffff', 
-                      padding: '4px 12px', 
+                      padding: '2px 8px', 
                       borderRadius: '20px', 
                       textTransform: 'uppercase',
-                      letterSpacing: '0.6px',
+                      letterSpacing: '0.5px',
                       ...getRoleBadgeStyle(user?.role || '')
                     }}>
                       {getRoleLabel(user?.role || '')}
                     </span>
                   </div>
+                  
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '0.75rem', color: '#cbd5e1', fontWeight: 500 }}>
+                    <Clock size={12} style={{ color: '#ff4d5a' }} />
+                    {getCurrentDateVi()}
+                  </span>
                 </div>
               </div>
 
               {/* Middle section: Issues/Tasks */}
-              <div style={{ flex: '2 1 380px', display: 'flex', flexDirection: 'column', gap: '10px', minWidth: '280px' }}>
+              <div style={{ flex: isMobile ? '1 1 100%' : '2 1 380px', display: 'flex', flexDirection: 'column', gap: '10px', minWidth: isMobile ? '100%' : '280px' }}>
                 <h4 style={{ margin: 0, fontSize: '0.72rem', fontWeight: 800, color: '#f4f4f5', textTransform: 'uppercase', letterSpacing: '1px', opacity: 0.9 }}>
                   {t('Nhiệm vụ & Phê duyệt tồn đọng')}
                 </h4>
@@ -898,13 +904,14 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
                         key={index} 
                         onClick={issue.action}
                         className="welcome-task-row"
+                        style={{ padding: isMobile ? '8px 12px' : '10px 16px' }}
                       >
                         {issue.type === 'coop' && <Scale size={14} style={{ color: '#fbbf24' }} />}
                         {issue.type === 'ticket' && <TicketIcon size={14} style={{ color: '#60a5fa' }} />}
                         {issue.type === 'gatekeeper' && <Filter size={14} style={{ color: '#a78bfa' }} />}
                         {issue.type === 'checkin' && <Clock size={14} style={{ color: '#ff8a8a' }} />}
                         {issue.type === 'expense' && <DollarSign size={14} style={{ color: '#10b981' }} />}
-                        <span style={{ flex: 1 }}>{issue.text}</span>
+                        <span style={{ flex: 1, fontSize: '0.78rem' }}>{issue.text}</span>
                       </div>
                     ))}
                   </div>
@@ -913,15 +920,15 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
                     display: 'flex', 
                     alignItems: 'center', 
                     gap: '10px', 
-                    padding: '10px 16px', 
+                    padding: isMobile ? '8px 12px' : '10px 16px', 
                     background: 'rgba(255, 255, 255, 0.03)', 
                     border: '1px dashed rgba(255, 255, 255, 0.15)', 
                     borderRadius: '12px', 
-                    color: 'var(--color-text-muted)',
-                    boxShadow: '0 2px 6px rgba(0, 0, 0, 0.05)'
+                    color: '#cbd5e1',
+                    fontSize: '0.75rem'
                   }}>
                     <CheckCircle2 size={15} style={{ color: '#10b981', flexShrink: 0 }} />
-                    <span style={{ fontSize: '0.8rem', fontWeight: 650 }}>
+                    <span style={{ fontWeight: 650 }}>
                       {t('Không có yêu cầu phê duyệt nào đang chờ xử lý. Chúc bạn 1 ngày làm việc năng lượng.')}
                     </span>
                   </div>
