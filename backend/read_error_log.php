@@ -16,4 +16,7 @@ foreach ($paths as $path) {
         echo "\n\n";
     }
 }
+echo "=== DIR LIST ===\n";
+print_r(scandir(__DIR__));
+echo "\n";
 echo "Done checking all paths.";
