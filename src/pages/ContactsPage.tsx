@@ -281,6 +281,22 @@ export const ContactsPage: React.FC = () => {
     dataType: ''
   });
 
+  const activeFiltersCount = useMemo(() => {
+    return [
+      activeFilters.status,
+      activeFilters.source,
+      activeFilters.ownerId,
+      activeFilters.projectId,
+      activeFilters.campaignId,
+      activeFilters.tag,
+      activeFilters.dataType,
+      activeFilters.dateActive ? 'date' : ''
+    ].filter(val => {
+      if (typeof val === 'string') return val.trim() !== '';
+      return !!val;
+    }).length;
+  }, [activeFilters]);
+
   useEffect(() => {
     const statusParam = searchParams.get('status');
     if (statusParam === 'not_contacted') {
@@ -568,6 +584,7 @@ export const ContactsPage: React.FC = () => {
       dateActive: !!dateActive,
       dataType: filterDataType
     });
+    setShowAdvancedFilters(false);
   };
 
   const handleResetFilters = () => {
@@ -925,6 +942,27 @@ export const ContactsPage: React.FC = () => {
                       >
                         <Filter size={12} />
                         <span>Bộ lọc nâng cao</span>
+                        {activeFiltersCount > 0 && (
+                          <span
+                            style={{
+                              background: 'var(--color-danger, #ef4444)',
+                              color: '#ffffff',
+                              fontSize: '0.65rem',
+                              fontWeight: 700,
+                              borderRadius: '50%',
+                              minWidth: '16px',
+                              height: '16px',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              padding: '0 4px',
+                              marginLeft: 'auto',
+                              lineHeight: 1
+                            }}
+                          >
+                            {activeFiltersCount}
+                          </span>
+                        )}
                       </button>
  
 
@@ -1114,12 +1152,34 @@ export const ContactsPage: React.FC = () => {
                   fontSize: '0.85rem',
                   transition: 'all 0.2s',
                   boxShadow: 'var(--shadow-sm)',
-                  outline: 'none'
+                  outline: 'none',
+                  position: 'relative'
                 }}
                 title="Bộ lọc nâng cao"
               >
                 <Filter size={14} />
                 <span>Bộ lọc</span>
+                {activeFiltersCount > 0 && (
+                  <span
+                    style={{
+                      background: 'var(--color-danger, #ef4444)',
+                      color: '#ffffff',
+                      fontSize: '0.7rem',
+                      fontWeight: 700,
+                      borderRadius: '50%',
+                      minWidth: '18px',
+                      height: '18px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      padding: '0 4px',
+                      marginLeft: '2px',
+                      lineHeight: 1
+                    }}
+                  >
+                    {activeFiltersCount}
+                  </span>
+                )}
               </button>
             </div>
  
