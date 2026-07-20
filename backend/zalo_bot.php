@@ -258,13 +258,96 @@ function sendLeadReminderZaloMessageToSale($consultantId, $consultantName, $lead
     if (empty($chatId))
         return false;
 
+    // Lấy email và loại data (type) fallback từ DB nếu chưa được truyền vào
+    $email = $leadEmail;
+    $type = $leadType;
+    if (empty($email) || empty($type)) {
+        if ($leadId > 0) {
+            $stmt = $conn->prepare("SELECT email, type FROM leads WHERE id = ?");
+            if ($stmt) {
+                $stmt->bind_param("i", $leadId);
+                $stmt->execute();
+                $res = $stmt->get_result();
+                if ($res && $res->num_rows > 0) {
+                    $row = $res->fetch_assoc();
+                    if (empty($email))
+                        $email = $row['email'] ?? '';
+                    if (empty($type))
+                        $type = $row['type'] ?? '';
+                }
+                $stmt->close();
+            }
+        } else if (!empty($leadPhone)) {
+            $stmt = $conn->prepare("SELECT email, type FROM leads WHERE phone = ? ORDER BY id DESC LIMIT 1");
+            if ($stmt) {
+                $stmt->bind_param("s", $leadPhone);
+                $stmt->execute();
+                $res = $stmt->get_result();
+                if ($res && $res->num_rows > 0) {
+                    $row = $res->fetch_assoc();
+                    if (empty($email))
+                        $email = $row['email'] ?? '';
+                    if (empty($type))
+                        $type = $row['type'] ?? '';
+                }
+                $stmt->close();
+            }
+        }
+    }
+
+    $fName = !empty($leadName) ? $leadName : "Không có";
+    $fPhone = !empty($leadPhone) ? $leadPhone : "Không có";
+    $fSource = !empty($leadSource) ? $leadSource : "Không có";
+    $fNote = !empty($leadNote) ? $leadNote : "Không có";
+
+    $historyText = '';
+    if (!empty($timeline) && is_array($timeline)) {
+        $lines = [];
+        foreach ($timeline as $t) {
+            $parts = [];
+            if (!empty($t['round_name']))
+                $parts[] = "Vòng: " . $t['round_name'];
+            if (!empty($t['consultant_name']))
+                $parts[] = "Sale: " . $t['consultant_name'];
+            $extra = !empty($parts) ? " (" . implode(" | ", $parts) . ")" : "";
+            $line = "  • " . $t['received_at'] . " - " . $t['status'] . $extra;
+            if (!empty($t['message'])) {
+                $line .= "\n    └─ " . $t['message'];
+            }
+            $lines[] = $line;
+        }
+        $historyText = implode("\n", $lines);
+    }
+
+    $emailLine = !empty($email) ? "  • Email: $email\n" : "";
+    $typeLine = (!empty($type) && $type !== '-') ? "  • Loại Data: $type\n" : "";
+
     $roundTitle = !empty($roundName) ? " - " . mb_strtoupper($roundName, 'UTF-8') : "";
     $text = "🔄 [ KHÁCH HÀNG ĐĂNG KÝ LẠI$roundTitle ] 🔄\n"
         . "🕒 Đây là tin nhắn thông báo không tính vào vòng phân bổ\n"
         . "━━━━━━━━━━━━━━━━━━━━━\n"
-        . "Chào $consultantName,\n\n"
-        . "Khách hàng cũ của bạn vừa đăng ký lại trên hệ thống. Vui lòng đăng nhập CRM để kiểm tra và liên hệ lại.\n"
-        . "━━━━━━━━━━━━━━━━━━━━━";
+        . "Chào $consultantName, khách hàng cũ của bạn vừa đăng ký lại trên hệ thống:\n\n"
+        . "👤 THÔNG TIN KHÁCH HÀNG:\n"
+        . "  • Tên KH: $fName\n"
+        . "  • Số ĐT: $fPhone\n"
+        . $emailLine
+        . $typeLine
+        . "  • Nguồn: $fSource\n";
+
+    if (!empty($roundName)) {
+        $text .= "  • Vòng: $roundName\n";
+    }
+
+    $text .= "\n📝 GHI CHÚ MỚI:\n"
+        . "  $fNote\n";
+
+    if (!empty($historyText)) {
+        $text .= "\n📜 LỊCH SỬ PHÂN BỔ GẦN NHẤT:\n"
+            . $historyText . "\n";
+    }
+
+    $text .= "\n⚡ Vui lòng liên hệ lại với khách hàng sớm nhất có thể!";
+    $text .= "\n━━━━━━━━━━━━━━━━━━━━━";
 
     return sendZaloMessage($botToken, $chatId, $text, $sync, $leadId);
 }
