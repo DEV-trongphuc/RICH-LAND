@@ -1,18 +1,15 @@
 <?php
-header("Content-Type: text/plain; charset=utf-8");
-$paths = [
-    __DIR__ . '/error_log',
-    __DIR__ . '/../error_log',
-    '/home/vhvxoigh/open.domation.net/richland/error_log',
-];
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
 
-foreach ($paths as $path) {
-    if (file_exists($path)) {
-        echo "=== LOG: $path ===\n";
-        $lines = file($path);
-        $last_lines = array_slice($lines, -50);
-        echo implode("", $last_lines);
-        echo "\n\n";
-    }
+echo "=== CHECKING SYNTAX ===\n";
+$target = __DIR__ . '/telegram_webhook.php';
+echo "Target path: " . $target . "\n";
+echo "Exists: " . (file_exists($target) ? 'YES' : 'NO') . "\n";
+if (file_exists($target)) {
+    include $target;
 }
+echo "\n=== END SYNTAX CHECK ===\n";
+exit;
 echo "Done checking all paths.";
