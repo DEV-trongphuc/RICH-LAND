@@ -53,6 +53,23 @@ function sendEmailNotification($to, $subject, $title, $content, $ccEmailString =
         require __DIR__ . '/db_connect.php';
     }
 
+    // Tự động thêm thời gian [H:i d/m/Y] vào tiêu đề email để tránh bị gộp luồng
+    $timeStr = date('H:i d/m/Y');
+    $subject = trim($subject);
+    if (strpos($subject, $timeStr) === false) {
+        $subject .= " [{$timeStr}]";
+    }
+
+    // Tự động chèn nút link truy cập CRM lấy từ setting frontend_url
+    $frontendUrl = get_system_setting($conn, 'frontend_url') ?: 'https://rich-land.vercel.app';
+    if (strpos($content, 'Truy cập Hệ thống CRM') === false && strpos($content, 'href=') === false) {
+        $buttonHtml = '
+        <div style="margin-top: 25px; text-align: center;">
+            <a href="' . htmlspecialchars($frontendUrl) . '" target="_blank" style="display: inline-block; background: linear-gradient(135deg, #BD1D2D 0%, #8C111E 100%); color: #ffffff; text-decoration: none; padding: 12px 30px; font-size: 14px; font-weight: 700; border-radius: 8px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); border: 1px solid #BD1D2D;">Truy cập Hệ thống CRM</a>
+        </div>';
+        $content .= $buttonHtml;
+    }
+
     $htmlBody = _getBaseHtml($title, "", $content);
 
     if (!$sync) {

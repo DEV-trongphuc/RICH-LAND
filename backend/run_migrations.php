@@ -2791,6 +2791,27 @@ SQL;
             $currentVersion = 174;
         }
 
+        // --------------------------------------------------
+        // Step 41: Version 175 (Add telegram_notify_status & telegram_notify_sent_at)
+        // --------------------------------------------------
+        if ($currentVersion < 175) {
+            $logMsg("Đang chạy cập nhật phiên bản 175...", "info");
+            
+            $chkColTNS = $conn->query("SHOW COLUMNS FROM leads LIKE 'telegram_notify_status'");
+            if ($chkColTNS && $chkColTNS->num_rows === 0) {
+                $conn->query("ALTER TABLE leads ADD COLUMN telegram_notify_status VARCHAR(50) DEFAULT 'none'");
+            }
+            
+            $chkColTNST = $conn->query("SHOW COLUMNS FROM leads LIKE 'telegram_notify_sent_at'");
+            if ($chkColTNST && $chkColTNST->num_rows === 0) {
+                $conn->query("ALTER TABLE leads ADD COLUMN telegram_notify_sent_at DATETIME NULL COMMENT 'Thời gian gửi thông báo Telegram thành công'");
+            }
+            
+            $conn->query("INSERT INTO system_settings (setting_key, setting_value) VALUES ('db_version', '175') ON DUPLICATE KEY UPDATE setting_value = '175'");
+            $currentVersion = 175;
+            $logMsg("Hoàn thành cập nhật phiên bản 175.", "success");
+        }
+
     $logMsg("Tự sửa đổi cấu trúc hoàn thành thành công.", "success");
 
     $logMsg("Hệ thống đã cập nhật thành công lên phiên bản mới nhất: " . $currentVersion, "success");

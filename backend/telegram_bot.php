@@ -102,10 +102,23 @@ function sendLeadAssignedTelegramMessageToSale($consultantId, $consultantName, $
         $text .= " • <b>Ghi chú:</b> <i>" . htmlspecialchars($leadNote) . "</i>\n";
     }
     
-    $text .= "\n👉 <a href=\"" . htmlspecialchars($detailLink) . "\"><b>Click vào đây để xem chi tiết</b></a>\n"
-        . "━━━━━━━━━━━━━━━━━━━━━";
-
-    return sendTelegramMessage($botToken, $chatId, $text);
+    $res = sendTelegramMessage($botToken, $chatId, $text);
+    if ($res && $leadId > 0) {
+        $stmtUpdate = $conn->prepare("UPDATE leads SET telegram_notify_status = 'sent', telegram_notify_sent_at = NOW() WHERE id = ?");
+        if ($stmtUpdate) {
+            $stmtUpdate->bind_param("i", $leadId);
+            $stmtUpdate->execute();
+            $stmtUpdate->close();
+        }
+    } else if (!$res && $leadId > 0) {
+        $stmtUpdate = $conn->prepare("UPDATE leads SET telegram_notify_status = 'failed' WHERE id = ?");
+        if ($stmtUpdate) {
+            $stmtUpdate->bind_param("i", $leadId);
+            $stmtUpdate->execute();
+            $stmtUpdate->close();
+        }
+    }
+    return $res;
 }
 
 /**
@@ -151,10 +164,23 @@ function sendLeadReminderTelegramMessageToSale($consultantId, $consultantName, $
         $text .= " • <b>Ghi chú:</b> <i>" . htmlspecialchars($leadNote) . "</i>\n";
     }
 
-    $text .= "\n👉 <a href=\"" . htmlspecialchars($detailLink) . "\"><b>Đăng nhập CRM để xử lý ngay</b></a>\n"
-        . "━━━━━━━━━━━━━━━━━━━━━";
-
-    return sendTelegramMessage($botToken, $chatId, $text);
+    $res = sendTelegramMessage($botToken, $chatId, $text);
+    if ($res && $leadId > 0) {
+        $stmtUpdate = $conn->prepare("UPDATE leads SET telegram_notify_status = 'sent', telegram_notify_sent_at = NOW() WHERE id = ?");
+        if ($stmtUpdate) {
+            $stmtUpdate->bind_param("i", $leadId);
+            $stmtUpdate->execute();
+            $stmtUpdate->close();
+        }
+    } else if (!$res && $leadId > 0) {
+        $stmtUpdate = $conn->prepare("UPDATE leads SET telegram_notify_status = 'failed' WHERE id = ?");
+        if ($stmtUpdate) {
+            $stmtUpdate->bind_param("i", $leadId);
+            $stmtUpdate->execute();
+            $stmtUpdate->close();
+        }
+    }
+    return $res;
 }
 
 /**

@@ -6490,15 +6490,15 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                             display: 'inline-flex',
                             alignItems: 'center',
                             gap: '4px',
-                            background: 'rgba(16, 185, 129, 0.22)',
-                            color: '#5ef08f',
-                            border: '1px solid rgba(16, 185, 129, 0.35)',
-                            padding: '3px 10px',
+                            background: 'rgba(255, 255, 255, 0.08)',
+                            color: '#ffffff',
+                            border: '1px solid rgba(255, 255, 255, 0.18)',
+                            padding: '2px 8px',
                             borderRadius: '12px',
-                            fontWeight: 800,
-                            fontSize: '0.725rem'
+                            fontWeight: 600,
+                            fontSize: '0.675rem'
                           }}>
-                            <CheckCircle2 size={12} />
+                            <CheckCircle2 size={11} />
                             {t('Đã chấm công lúc ') + timeStr}
                           </span>
                         );
@@ -6572,14 +6572,15 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                               display: 'inline-flex',
                               alignItems: 'center',
                               gap: '4px',
-                              background: 'rgba(16, 185, 129, 0.22)',
-                              color: '#5ef08f',
-                              border: '1px solid rgba(16, 185, 129, 0.35)',
-                              padding: '3px 10px',
+                              background: 'rgba(255, 255, 255, 0.08)',
+                              color: '#ffffff',
+                              border: '1px solid rgba(255, 255, 255, 0.18)',
+                              padding: '2px 8px',
                               borderRadius: '12px',
-                              fontWeight: 800
+                              fontWeight: 600,
+                              fontSize: '0.675rem'
                             }}>
-                              <CheckCircle2 size={13} />
+                              <CheckCircle2 size={11} />
                               {t('Đã chấm công lúc ') + timeStr}
                             </span>
                           );

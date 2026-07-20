@@ -3094,7 +3094,7 @@ switch ($action) {
         }
 
         // Fetch lead details including direct notify status columns
-        $leadStmt = $conn->prepare("SELECT l.id, l.name, l.phone, l.email, l.assigned_to, l.created_at, l.zalo_notify_status, l.email_notify_status, l.zalo_notify_sent_at, l.email_notify_sent_at FROM leads l WHERE l.id = ? LIMIT 1");
+        $leadStmt = $conn->prepare("SELECT l.id, l.name, l.phone, l.email, l.assigned_to, l.created_at, l.zalo_notify_status, l.email_notify_status, l.telegram_notify_status, l.zalo_notify_sent_at, l.email_notify_sent_at, l.telegram_notify_sent_at FROM leads l WHERE l.id = ? LIMIT 1");
         $leadStmt->bind_param("i", $leadId);
         $leadStmt->execute();
         $lead = $leadStmt->get_result()->fetch_assoc();
@@ -3139,15 +3139,17 @@ switch ($action) {
         $assignedTo = $lead['assigned_to'];
         $saleZaloId = '';
         $saleEmail = '';
+        $saleTelegramId = '';
 
         if ($assignedTo) {
-            $saleStmt = $conn->prepare("SELECT email, zalo_chat_id FROM consultants WHERE id = ? LIMIT 1");
+            $saleStmt = $conn->prepare("SELECT email, zalo_chat_id, telegram_chat_id FROM consultants WHERE id = ? LIMIT 1");
             $saleStmt->bind_param("i", $assignedTo);
             $saleStmt->execute();
             $sRow = $saleStmt->get_result()->fetch_assoc();
             if ($sRow) {
                 $saleEmail = $sRow['email'] ?? '';
                 $saleZaloId = $sRow['zalo_chat_id'] ?? '';
+                $saleTelegramId = $sRow['telegram_chat_id'] ?? '';
             }
             $saleStmt->close();
         }
@@ -3155,6 +3157,7 @@ switch ($action) {
         // Extract statuses from lead
         $zaloNotifyStatus = $lead['zalo_notify_status'] ?? 'none';
         $emailNotifyStatus = $lead['email_notify_status'] ?? 'none';
+        $telegramNotifyStatus = $lead['telegram_notify_status'] ?? 'none';
 
         // Map Email
         $mailQueued = ($emailNotifyStatus !== 'none');
@@ -3168,6 +3171,16 @@ switch ($action) {
             $zaloFinalStatus = $zaloNotifyStatus;
         } else {
             $zaloFinalStatus = 'missed';
+        }
+
+        // Map Telegram
+        $telegramQueued = ($telegramNotifyStatus !== 'none');
+        if (!$telegramQueued && empty($saleTelegramId)) {
+            $telegramFinalStatus = 'no_telegram_config';
+        } else if ($telegramQueued) {
+            $telegramFinalStatus = $telegramNotifyStatus;
+        } else {
+            $telegramFinalStatus = 'missed';
         }
 
         echo json_encode([
@@ -3187,6 +3200,13 @@ switch ($action) {
                     'id' => null,
                     'target' => $saleZaloId,
                     'sent_at' => $lead['zalo_notify_sent_at'] ? date('Y-m-d H:i:s', strtotime($lead['zalo_notify_sent_at'])) : null
+                ],
+                'telegram' => [
+                    'queued' => $telegramQueued,
+                    'status' => $telegramFinalStatus,
+                    'id' => null,
+                    'target' => $saleTelegramId,
+                    'sent_at' => $lead['telegram_notify_sent_at'] ? date('Y-m-d H:i:s', strtotime($lead['telegram_notify_sent_at'])) : null
                 ]
             ]
         ]);
@@ -5654,6 +5674,109 @@ switch ($action) {
         } else {
             $summary = ['total' => 0, 'successful' => 0, 'reminder' => 0, 'error' => 0, 'system_total_successful' => 0];
         }
+
+        // Tải thêm thông số đồng bộ như card của bên sale từ bảng contacts
+        $saleUserId = 0;
+        $tid = 1;
+        $stmtUser = $conn->prepare("SELECT u.id, u.tenant_id FROM users u JOIN consultants cons ON u.email = cons.email WHERE cons.id = ?");
+        if ($stmtUser) {
+            $stmtUser->bind_param("i", $consultantId);
+            $stmtUser->execute();
+            $resUser = $stmtUser->get_result()->fetch_assoc();
+            if ($resUser) {
+                $saleUserId = (int)$resUser['id'];
+                $tid = (int)$resUser['tenant_id'];
+            }
+            $stmtUser->close();
+        }
+
+        $contactsCount = 0;
+        $distributedCount = 0;
+        $coopCount = 0;
+        $databankCount = 0;
+        $selfCount = 0;
+
+        if ($saleUserId > 0) {
+            $contactsDateCondition = "1=1";
+            if ($dateMode === 'today') {
+                $contactsDateCondition = "c.created_at >= '$today 00:00:00' AND c.created_at <= '$today 23:59:59'";
+            } elseif ($dateMode === 'yesterday') {
+                $yesterday = date('Y-m-d', strtotime('-1 day'));
+                $contactsDateCondition = "c.created_at >= '$yesterday 00:00:00' AND c.created_at <= '$yesterday 23:59:59'";
+            } elseif ($dateMode === '7_days') {
+                $dateLimit = date('Y-m-d', strtotime('-7 days'));
+                $contactsDateCondition = "c.created_at >= '$dateLimit 00:00:00'";
+            } elseif ($dateMode === '30_days') {
+                $dateLimit = date('Y-m-d', strtotime('-30 days'));
+                $contactsDateCondition = "c.created_at >= '$dateLimit 00:00:00'";
+            } elseif ($dateMode === 'this_month') {
+                $dateLimit = date('Y-m-01');
+                $contactsDateCondition = "c.created_at >= '$dateLimit 00:00:00'";
+            } elseif ($dateMode === 'last_month') {
+                $firstLastMonth = date('Y-m-01', strtotime('first day of last month'));
+                $firstThisMonth = date('Y-m-01');
+                $contactsDateCondition = "c.created_at >= '$firstLastMonth 00:00:00' AND c.created_at < '$firstThisMonth 00:00:00'";
+            } elseif ($dateMode === 'custom' && !empty($startDate) && !empty($endDate)) {
+                $startEsc = $conn->real_escape_string($startDate);
+                $endEsc = $conn->real_escape_string($endDate);
+                $contactsDateCondition = "c.created_at >= '$startEsc 00:00:00' AND c.created_at <= '$endEsc 23:59:59'";
+            }
+
+            $contactsWhereClause = "c.tenant_id = $tid AND c.deleted_at IS NULL AND (c.owner_id = $saleUserId OR FIND_IN_SET($saleUserId, c.collaborator_ids)) AND $contactsDateCondition";
+
+            $resTotal = $conn->query("SELECT COUNT(*) as cnt FROM contacts c WHERE $contactsWhereClause");
+            if ($resTotal) {
+                $contactsCount = (int) ($resTotal->fetch_assoc()['cnt'] ?? 0);
+            }
+
+            $resDb = $conn->query("
+                SELECT COUNT(DISTINCT c.id) as cnt 
+                FROM contacts c 
+                WHERE $contactsWhereClause 
+                  AND (c.source = 'databank' OR EXISTS (
+                      SELECT 1 FROM leads l2 
+                      JOIN distribution_logs dl2 ON dl2.lead_id = l2.id 
+                      WHERE l2.person_id = c.person_id AND dl2.assigned_to = $consultantId AND dl2.status = 'databank_claim'
+                  ))
+            ");
+            if ($resDb) {
+                $databankCount = (int) ($resDb->fetch_assoc()['cnt'] ?? 0);
+            }
+
+            $resDist = $conn->query("
+                SELECT COUNT(DISTINCT c.id) as cnt 
+                FROM contacts c 
+                WHERE $contactsWhereClause 
+                  AND c.source NOT IN ('databank', 'ca_nhan', 'gioi_thieu')
+                  AND (c.collaborator_ids IS NULL OR c.collaborator_ids = '')
+                  AND EXISTS (
+                      SELECT 1 FROM leads l2 
+                      JOIN distribution_logs dl2 ON dl2.lead_id = l2.id 
+                      WHERE l2.person_id = c.person_id AND dl2.assigned_to = $consultantId AND dl2.status IN ('assigned', 'compensation', 'rule_6_month', 'pending_work_hours', 'fallback', 'success')
+                  )
+            ");
+            if ($resDist) {
+                $distributedCount = (int) ($resDist->fetch_assoc()['cnt'] ?? 0);
+            }
+
+            $resCoop = $conn->query("
+                SELECT COUNT(DISTINCT c.id) as cnt 
+                FROM contacts c 
+                WHERE c.tenant_id = $tid AND c.deleted_at IS NULL AND $contactsDateCondition
+                  AND (FIND_IN_SET($saleUserId, c.collaborator_ids) OR (c.owner_id = $saleUserId AND c.collaborator_ids IS NOT NULL AND c.collaborator_ids != ''))
+            ");
+            if ($resCoop) {
+                $coopCount = (int) ($resCoop->fetch_assoc()['cnt'] ?? 0);
+            }
+
+            $selfCount = max(0, $contactsCount - $databankCount - $distributedCount - $coopCount);
+        }
+
+        $summary['total_received'] = $contactsCount;
+        $summary['distributed_count'] = $distributedCount;
+        $summary['coop_count'] = $coopCount;
+        $summary['databank_count'] = $databankCount;
+        $summary['self_count'] = $selfCount;
 
         // 2. Breakdown stats by round
         $sqlRoundStats = "
@@ -15497,6 +15620,7 @@ switch ($action) {
         $lead_id = isset($input['lead_id']) ? (int) $input['lead_id'] : 0;
         $send_zalo = isset($input['send_zalo']) ? (bool) $input['send_zalo'] : false;
         $send_email = isset($input['send_email']) ? (bool) $input['send_email'] : false;
+        $send_telegram = isset($input['send_telegram']) ? (bool) $input['send_telegram'] : false;
 
         if (!$lead_id) {
             echo json_encode(['success' => false, 'message' => 'Thiếu ID khách hàng']);
@@ -15511,8 +15635,8 @@ switch ($action) {
             }
         }
 
-        if (!$send_zalo && !$send_email) {
-            echo json_encode(['success' => false, 'message' => 'Vui lòng chọn ít nhất một kênh để gửi nhắc nhở (Zalo hoặc Email)']);
+        if (!$send_zalo && !$send_email && !$send_telegram) {
+            echo json_encode(['success' => false, 'message' => 'Vui lòng chọn ít nhất một kênh để gửi nhắc nhở (Zalo, Email hoặc Telegram)']);
             break;
         }
 
@@ -15555,12 +15679,14 @@ switch ($action) {
         require_once __DIR__ . '/webhook_logic.php';
         require_once __DIR__ . '/zalo_bot.php';
         require_once __DIR__ . '/mailer.php';
+        require_once __DIR__ . '/telegram_bot.php';
 
         $timeline = getLeadHistoryTimeline($conn, $lead_id, true);
         $roundNameStr = $row['round_name'] ?? '';
 
         $zaloSuccess = true;
         $emailSuccess = true;
+        $telegramSuccess = true;
         $channelsTried = [];
 
         if ($send_zalo) {
@@ -15615,6 +15741,31 @@ switch ($action) {
             }
         }
 
+        if ($send_telegram) {
+            $channelsTried[] = 'Telegram';
+            try {
+                $telegramResult = sendLeadReminderTelegramMessageToSale(
+                    $consultant_id,
+                    $consultant_name,
+                    $row['lead_name'] ?: 'Khách hàng ẩn danh',
+                    $row['phone'] ?: '',
+                    $row['note'] ?: '',
+                    $row['source'] ?: '',
+                    $roundNameStr,
+                    $timeline,
+                    $lead_id,
+                    $row['lead_email'] ?: '',
+                    $row['type'] ?: ''
+                );
+                if (!$telegramResult) {
+                    $telegramSuccess = false;
+                }
+            } catch (Exception $tEx) {
+                error_log("Error sending manual reminder Telegram to sale: " . $tEx->getMessage());
+                $telegramSuccess = false;
+            }
+        }
+
         // Log admin action
         $adminAccountId = isset($decodedUser['id']) ? (int) $decodedUser['id'] : 0;
         logAdminAction($conn, $adminAccountId, 'SEND_LEAD_REMINDER', [
@@ -15624,17 +15775,27 @@ switch ($action) {
             'consultant_name' => $consultant_name,
             'channels' => implode(', ', $channelsTried),
             'zalo_success' => $zaloSuccess,
-            'email_success' => $emailSuccess
+            'email_success' => $emailSuccess,
+            'telegram_success' => $telegramSuccess
         ]);
 
-        if ($send_zalo && !$zaloSuccess && $send_email && !$emailSuccess) {
-            echo json_encode(['success' => false, 'message' => 'Gửi nhắc nhở thất bại trên cả 2 kênh Zalo và Email. Vui lòng kiểm tra lại cấu hình Zalo Bot/SMTP.']);
-        } else if ($send_zalo && !$zaloSuccess) {
-            echo json_encode(['success' => true, 'message' => 'Đã gửi Email thành công nhưng gửi Zalo thất bại (có thể do TVV chưa liên kết Zalo hoặc lỗi Bot)']);
-        } else if ($send_email && !$emailSuccess) {
-            echo json_encode(['success' => true, 'message' => 'Đã gửi Zalo thành công nhưng gửi Email thất bại (có thể do TVV chưa cấu hình Email)']);
-        } else {
+        $msgParts = [];
+        if ($send_zalo) {
+            $msgParts[] = $zaloSuccess ? 'Zalo thành công' : 'Zalo thất bại';
+        }
+        if ($send_email) {
+            $msgParts[] = $emailSuccess ? 'Email thành công' : 'Email thất bại';
+        }
+        if ($send_telegram) {
+            $msgParts[] = $telegramSuccess ? 'Telegram thành công' : 'Telegram thất bại (chưa cấu hình/lỗi)';
+        }
+
+        $allSuccess = (!$send_zalo || $zaloSuccess) && (!$send_email || $emailSuccess) && (!$send_telegram || $telegramSuccess);
+
+        if ($allSuccess) {
             echo json_encode(['success' => true, 'message' => 'Đã gửi nhắc nhở thành công cho Tư vấn viên ' . $consultant_name]);
+        } else {
+            echo json_encode(['success' => true, 'message' => 'Kết quả gửi nhắc nhở: ' . implode(', ', $msgParts)]);
         }
         break;
 

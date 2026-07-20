@@ -3781,6 +3781,10 @@ textarea, .form-textarea, textarea.form-input, textarea.form-control {
   z-index: 11000 !important; /* Ensure dialogs are always on top */
 }
 
+.stats-modal-backdrop {
+  z-index: 999999999 !important; /* Force to be on top of everything, including drawer detail */
+}
+
 /* Drawer overlays */
 .drawer-backdrop {
   position: fixed;
