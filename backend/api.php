@@ -381,6 +381,68 @@ function parse_zalo_direct_logs($logFile) {
             ];
         }
     }
+}
+
+function parse_telegram_direct_logs($logFile) {
+    $logs = [];
+    if (!file_exists($logFile)) return $logs;
+    
+    $handle = fopen($logFile, 'r');
+    if (!$handle) return $logs;
+    
+    $fsize = filesize($logFile);
+    $readSize = min($fsize, 250000); // Read last 250KB for log feed
+    if ($fsize > $readSize) {
+        fseek($handle, $fsize - $readSize);
+    }
+    
+    $content = fread($handle, $readSize);
+    fclose($handle);
+    
+    if (empty($content)) return $logs;
+    
+    $lines = explode("\n", $content);
+    for ($i = count($lines) - 1; $i >= 0; $i--) {
+        $line = $lines[$i];
+        if (empty(trim($line))) continue;
+        
+        // Format: [Y-m-d H:i:s] Target ChatId: X, HTTP: Y, Request: Z, Response: W
+        if (preg_match('/^\[(\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2})\]\s+Target\s+ChatId:\s*([^,]+),\s*HTTP:\s*(\d+)/i', $line, $matches)) {
+            $time = $matches[1];
+            $chatId = trim($matches[2]);
+            $httpCode = $matches[3];
+            
+            $body = '';
+            $reqStart = strpos($line, 'Request: ');
+            if ($reqStart !== false) {
+                $reqEnd = strpos($line, ', Response:', $reqStart);
+                $reqJsonStr = ($reqEnd !== false) 
+                    ? substr($line, $reqStart + 9, $reqEnd - ($reqStart + 9))
+                    : substr($line, $reqStart + 9);
+                
+                $reqData = json_decode($reqJsonStr, true);
+                if (isset($reqData['text'])) {
+                    $body = $reqData['text'];
+                } else if (isset($reqData['body_text'])) {
+                    $body = $reqData['body_text'];
+                } else {
+                    $body = $reqJsonStr;
+                }
+            }
+            
+            $logs[] = [
+                'id' => 'tg_direct_' . md5($line),
+                'channel' => 'telegram',
+                'target' => $chatId,
+                'subject' => 'Telegram Message',
+                'body' => $body,
+                'status' => ($httpCode == 200) ? 'sent' : 'failed',
+                'created_at' => $time,
+                'sent_at' => $time,
+                'is_direct' => true
+            ];
+        }
+    }
     return $logs;
 }
 
@@ -11958,8 +12020,9 @@ switch ($action) {
 
         $saleEmail = '';
         $saleZaloChatId = '';
+        $saleTelegramChatId = '';
         if ($saleId > 0) {
-            $stmtC = $conn->prepare("SELECT email, zalo_chat_id FROM consultants WHERE id = ? LIMIT 1");
+            $stmtC = $conn->prepare("SELECT email, zalo_chat_id, telegram_chat_id FROM consultants WHERE id = ? LIMIT 1");
             if ($stmtC) {
                 $stmtC->bind_param("i", $saleId);
                 $stmtC->execute();
@@ -11967,6 +12030,7 @@ switch ($action) {
                 if ($cRow) {
                     $saleEmail = trim($cRow['email'] ?? '');
                     $saleZaloChatId = trim($cRow['zalo_chat_id'] ?? '');
+                    $saleTelegramChatId = trim($cRow['telegram_chat_id'] ?? '');
                 }
                 $stmtC->close();
             }
@@ -12101,7 +12165,13 @@ switch ($action) {
             $zaloDirectLogs = $dedupedDirectLogs;
         }
 
-        $rawLogs = array_merge($mailLogs, $zaloQueueLogs, $zaloDirectLogs);
+        $telegramDirectLogs = [];
+        if ($channel === 'all' || $channel === 'telegram') {
+            $telegramLogFile = __DIR__ . '/telegram_send_log.txt';
+            $telegramDirectLogs = parse_telegram_direct_logs($telegramLogFile);
+        }
+
+        $rawLogs = array_merge($mailLogs, $zaloQueueLogs, $zaloDirectLogs, $telegramDirectLogs);
 
         $filteredLogs = [];
         foreach ($rawLogs as $item) {
@@ -12141,6 +12211,9 @@ switch ($action) {
                         $isMatchSale = true;
                     }
                     if (!empty($saleZaloChatId) && strtolower($saleZaloChatId) === $cleanTarget) {
+                        $isMatchSale = true;
+                    }
+                    if (!empty($saleTelegramChatId) && strtolower($saleTelegramChatId) === $cleanTarget) {
                         $isMatchSale = true;
                     }
                     if (!$isMatchSale) {

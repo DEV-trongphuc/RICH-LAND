@@ -13,7 +13,7 @@ require_once __DIR__ . '/db_connect.php';
  */
 function sendZaloMessage($botToken, $chatId, $text, $sync = true, $leadId = 0)
 {
-    if (empty($botToken) || empty($chatId) || empty($text)) {
+    if (empty($botToken) || empty($chatId) || empty($text) || strtolower(trim($chatId)) === 'chưa liên kết') {
         return false;
     }
 
@@ -222,9 +222,14 @@ function sendLeadAssignedZaloMessageToSale($consultantId, $consultantName, $lead
 {
     global $conn;
 
+    // Gửi song song qua Telegram Bot trước (không phụ thuộc vào Zalo)
+    if (file_exists(__DIR__ . '/telegram_bot.php')) {
+        require_once __DIR__ . '/telegram_bot.php';
+        sendLeadAssignedTelegramMessageToSale($consultantId, $consultantName, $leadName, $leadPhone, $leadNote, $leadSource, $roundName, $leadId, $roundId, $leadEmail, $leadType);
+    }
+
     // Lấy config zalo_bot_token từ system_settings
     $botToken = get_system_setting($conn, 'zalo_bot_token');
-
     if (empty($botToken)) {
         return false; // Chưa cấu hình Zalo Bot
     }
@@ -244,13 +249,13 @@ function sendLeadAssignedZaloMessageToSale($consultantId, $consultantName, $lead
         $chatId = '';
         if ($res->num_rows > 0) {
             $row = $res->fetch_assoc();
-            $chatId = $row['zalo_chat_id'];
+            $chatId = trim($row['zalo_chat_id'] ?? '');
         }
         $stmtConsultant->close();
         $chatIdCache[$consultantId] = $chatId;
     }
 
-    if (empty($chatId)) {
+    if (empty($chatId) || strtolower($chatId) === 'chưa liên kết') {
         return false; // Sale chưa liên kết Zalo
     }
 
@@ -260,12 +265,6 @@ function sendLeadAssignedZaloMessageToSale($consultantId, $consultantName, $lead
         . "Chào $consultantName,\n\n"
         . "Hệ thống vừa phân bổ cho bạn một khách hàng mới. Vui lòng đăng nhập CRM để tiếp nhận và chăm sóc.\n"
         . "━━━━━━━━━━━━━━━━━━━━━";
-
-    // Gửi song song qua Telegram Bot
-    if (file_exists(__DIR__ . '/telegram_bot.php')) {
-        require_once __DIR__ . '/telegram_bot.php';
-        sendLeadAssignedTelegramMessageToSale($consultantId, $consultantName, $leadName, $leadPhone, $leadNote, $leadSource, $roundName, $leadId, $roundId, $leadEmail, $leadType);
-    }
 
     return sendZaloMessage($botToken, $chatId, $text, $sync, $leadId);
 }
@@ -277,10 +276,16 @@ function sendLeadReminderZaloMessageToSale($consultantId, $consultantName, $lead
 {
     global $conn;
 
-    $botToken = get_system_setting($conn, 'zalo_bot_token');
+    // Gửi song song qua Telegram Bot trước (không phụ thuộc vào Zalo)
+    if (file_exists(__DIR__ . '/telegram_bot.php')) {
+        require_once __DIR__ . '/telegram_bot.php';
+        sendLeadReminderTelegramMessageToSale($consultantId, $consultantName, $leadName, $leadPhone, $leadNote, $leadSource, $roundName, $timeline, $leadId, $leadEmail, $leadType);
+    }
 
-    if (empty($botToken))
+    $botToken = get_system_setting($conn, 'zalo_bot_token');
+    if (empty($botToken)) {
         return false;
+    }
 
     // Lấy zalo_chat_id của Sale có dùng cache
     static $chatIdCache = [];
@@ -296,14 +301,15 @@ function sendLeadReminderZaloMessageToSale($consultantId, $consultantName, $lead
         $res = $stmtConsultant->get_result();
         $chatId = '';
         if ($res->num_rows > 0) {
-            $chatId = $res->fetch_assoc()['zalo_chat_id'];
+            $chatId = trim($res->fetch_assoc()['zalo_chat_id'] ?? '');
         }
         $stmtConsultant->close();
         $chatIdCache[$consultantId] = $chatId;
     }
 
-    if (empty($chatId))
+    if (empty($chatId) || strtolower($chatId) === 'chưa liên kết') {
         return false;
+    }
 
     // Lấy email và loại data (type) fallback từ DB nếu chưa được truyền vào
     $email = $leadEmail;
@@ -396,12 +402,6 @@ function sendLeadReminderZaloMessageToSale($consultantId, $consultantName, $lead
     $text .= "\n⚡ Vui lòng liên hệ lại với khách hàng sớm nhất có thể!";
     $text .= "\n━━━━━━━━━━━━━━━━━━━━━";
 
-    // Gửi song song qua Telegram Bot
-    if (file_exists(__DIR__ . '/telegram_bot.php')) {
-        require_once __DIR__ . '/telegram_bot.php';
-        sendLeadReminderTelegramMessageToSale($consultantId, $consultantName, $leadName, $leadPhone, $leadNote, $leadSource, $roundName, $timeline, $leadId, $leadEmail, $leadType);
-    }
-
     return sendZaloMessage($botToken, $chatId, $text, $sync, $leadId);
 }
 
@@ -412,9 +412,17 @@ function sendLeadAssignedZaloMessageToAdmin($adminChatId, $adminName, $leadName,
 {
     global $conn;
 
-    $botToken = get_system_setting($conn, 'zalo_bot_token');
+    // Gửi song song qua Telegram Bot trước (không phụ thuộc vào Zalo)
+    if (file_exists(__DIR__ . '/telegram_bot.php')) {
+        require_once __DIR__ . '/telegram_bot.php';
+        $teleAdminGroupChatId = get_system_setting($conn, 'telegram_admin_group_chat_id');
+        if (!empty($teleAdminGroupChatId)) {
+            sendLeadAssignedTelegramMessageToAdmin($teleAdminGroupChatId, $adminName, $leadName, $leadPhone, $leadNote, $leadSource, $leadId, $leadEmail, $leadType);
+        }
+    }
 
-    if (empty($botToken) || empty($adminChatId)) {
+    $botToken = get_system_setting($conn, 'zalo_bot_token');
+    if (empty($botToken) || empty($adminChatId) || strtolower($adminChatId) === 'chưa liên kết') {
         return false;
     }
 
@@ -461,15 +469,6 @@ function sendLeadAssignedZaloMessageToAdmin($adminChatId, $adminName, $leadName,
         . "💡 Data này không khớp với bất kỳ quy luật nào và được chuyển thẳng cho bạn.\n"
         . "━━━━━━━━━━━━━━━━━━━━━";
 
-    // Gửi song song qua Telegram Bot
-    if (file_exists(__DIR__ . '/telegram_bot.php')) {
-        require_once __DIR__ . '/telegram_bot.php';
-        $teleAdminGroupChatId = get_system_setting($conn, 'telegram_admin_group_chat_id');
-        if (!empty($teleAdminGroupChatId)) {
-            sendLeadAssignedTelegramMessageToAdmin($teleAdminGroupChatId, $adminName, $leadName, $leadPhone, $leadNote, $leadSource, $leadId, $leadEmail, $leadType);
-        }
-    }
-
     return sendZaloMessage($botToken, $adminChatId, $text, $sync);
 }
 
@@ -478,6 +477,12 @@ function sendCompensationAddedZaloMessageToSale($consultantId, $consultantName, 
     global $conn;
     if (empty($time))
         $time = date('H:i:s d/m/Y');
+
+    // Gửi song song qua Telegram Bot trước (không phụ thuộc vào Zalo)
+    if (file_exists(__DIR__ . '/telegram_bot.php')) {
+        require_once __DIR__ . '/telegram_bot.php';
+        sendCompensationAddedTelegramMessageToSale($consultantId, $consultantName, $roundName, $amount, $adminName, $reason, $time);
+    }
 
     $stmtToken = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'zalo_bot_token' LIMIT 1");
     $botToken = $stmtToken->fetch_assoc()['setting_value'] ?? '';
@@ -490,10 +495,10 @@ function sendCompensationAddedZaloMessageToSale($consultantId, $consultantName, 
     $resC = $stmtC->get_result();
     $chatId = '';
     if ($resC->num_rows > 0) {
-        $chatId = $resC->fetch_assoc()['zalo_chat_id'];
+        $chatId = trim($resC->fetch_assoc()['zalo_chat_id'] ?? '');
     }
     $stmtC->close();
-    if (!$chatId)
+    if (empty($chatId) || strtolower($chatId) === 'chưa liên kết')
         return false;
 
     $reasonStr = !empty($reason) ? "  • Lý do: $reason\n" : "";
@@ -508,12 +513,6 @@ function sendCompensationAddedZaloMessageToSale($consultantId, $consultantName, 
         . "Trân trọng,\nHệ thống Quản lý Domation DATA\n"
         . "━━━━━━━━━━━━━━━━━━━━━";
 
-    // Gửi song song qua Telegram Bot
-    if (file_exists(__DIR__ . '/telegram_bot.php')) {
-        require_once __DIR__ . '/telegram_bot.php';
-        sendCompensationAddedTelegramMessageToSale($consultantId, $consultantName, $roundName, $amount, $adminName, $reason, $time);
-    }
-
     return sendZaloMessage($botToken, $chatId, $msg, $sync);
 }
 
@@ -523,9 +522,18 @@ function sendCompensationAddedZaloMessageToAdmin($adminChatId, $adminName, $cons
     if (empty($time))
         $time = date('H:i:s d/m/Y');
 
+    // Gửi song song qua Telegram Bot trước (không phụ thuộc vào Zalo)
+    if (file_exists(__DIR__ . '/telegram_bot.php')) {
+        require_once __DIR__ . '/telegram_bot.php';
+        $teleAdminGroupChatId = get_system_setting($conn, 'telegram_admin_group_chat_id');
+        if (!empty($teleAdminGroupChatId)) {
+            sendCompensationAddedTelegramMessageToAdmin($teleAdminGroupChatId, $adminName, $consultantName, $roundName, $amount, $operatorName, $reason, $time);
+        }
+    }
+
     $stmtToken = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'zalo_bot_token' LIMIT 1");
     $botToken = $stmtToken->fetch_assoc()['setting_value'] ?? '';
-    if (!$botToken || empty($adminChatId))
+    if (!$botToken || empty($adminChatId) || strtolower($adminChatId) === 'chưa liên kết')
         return false;
 
     $reasonStr = !empty($reason) ? "  • Lý do: $reason\n" : "";
@@ -540,15 +548,6 @@ function sendCompensationAddedZaloMessageToAdmin($adminChatId, $adminName, $cons
         . "  • Thời gian: $time\n"
         . $reasonStr
         . "\n━━━━━━━━━━━━━━━━━━━━━";
-
-    // Gửi song song qua Telegram Bot
-    if (file_exists(__DIR__ . '/telegram_bot.php')) {
-        require_once __DIR__ . '/telegram_bot.php';
-        $teleAdminGroupChatId = get_system_setting($conn, 'telegram_admin_group_chat_id');
-        if (!empty($teleAdminGroupChatId)) {
-            sendCompensationAddedTelegramMessageToAdmin($teleAdminGroupChatId, $adminName, $consultantName, $roundName, $amount, $operatorName, $reason, $time);
-        }
-    }
 
     return sendZaloMessage($botToken, $adminChatId, $msg, $sync);
 }

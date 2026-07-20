@@ -330,8 +330,19 @@ function runZaloMailerCron($conn) {
 
 // Nếu gọi trực tiếp từ CLI hoặc Cron
 if (php_sapi_name() === 'cli' || isset($_GET['run'])) {
-    runMailerCron($conn);
-    runZaloMailerCron($conn);
+    try {
+        runMailerCron($conn);
+    } catch (Throwable $e) {
+        error_log("Error running Mailer Cron: " . $e->getMessage());
+        echo "Error running Mailer Cron: " . $e->getMessage() . "\n";
+    }
+
+    try {
+        runZaloMailerCron($conn);
+    } catch (Throwable $e) {
+        error_log("Error running Zalo Mailer Cron: " . $e->getMessage());
+        echo "Error running Zalo Mailer Cron: " . $e->getMessage() . "\n";
+    }
     $conn->close();
 }
 ?>

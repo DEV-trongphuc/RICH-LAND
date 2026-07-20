@@ -1718,6 +1718,17 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
                           />
                         ) 
                       },
+                      { 
+                        value: 'telegram', 
+                        label: 'Telegram', 
+                        icon: (
+                          <img 
+                            src="https://upload.wikimedia.org/wikipedia/commons/thumb/8/82/Telegram_logo.svg/3840px-Telegram_logo.svg.png" 
+                            alt="Telegram" 
+                            style={{ width: 14, height: 14, objectFit: 'contain', borderRadius: '50%' }} 
+                          />
+                        ) 
+                      },
                       { value: 'email', label: 'Email', icon: <Mail size={12} style={{ color: 'var(--color-info)' }} /> }
                     ]}
                     value={notifFilterChannel}
@@ -1785,7 +1796,9 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
                       const formattedTime = new Date(log.created_at).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) + ' ' + new Date(log.created_at).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' });
                       
                       const getChannelText = (item: any) => {
-                        const channel = item.channel === 'email' ? 'Email' : 'Zalo';
+                        let channel = 'Zalo';
+                        if (item.channel === 'email') channel = 'Email';
+                        else if (item.channel === 'telegram') channel = 'Telegram';
                         const type = item.type === 'admin' ? t('Admin') : t('Sale');
                         const direct = item.is_direct ? ' (direct)' : '';
                         return `${channel}${direct} • ${type}`;
@@ -1839,10 +1852,16 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
                                 overflow: 'hidden',
                                 padding: '1px'
                               }}>
-                                {isEmail ? (
+                                {log.channel === 'email' ? (
                                   <img 
                                     src="/imgs/gmail-icon-free-png.webp" 
                                     alt="Gmail" 
+                                    style={{ width: '100%', height: '100%', objectFit: 'contain', borderRadius: '50%' }} 
+                                  />
+                                ) : log.channel === 'telegram' ? (
+                                  <img 
+                                    src="https://upload.wikimedia.org/wikipedia/commons/thumb/8/82/Telegram_logo.svg/3840px-Telegram_logo.svg.png" 
+                                    alt="Telegram" 
                                     style={{ width: '100%', height: '100%', objectFit: 'contain', borderRadius: '50%' }} 
                                   />
                                 ) : (

@@ -13,7 +13,7 @@ require_once __DIR__ . '/db_connect.php';
  */
 function sendTelegramMessage($botToken, $chatId, $text)
 {
-    if (empty($botToken) || empty($chatId) || empty($text)) {
+    if (empty($botToken) || empty($chatId) || empty($text) || strtolower(trim($chatId)) === 'chưa liên kết') {
         return false;
     }
 
@@ -37,6 +37,18 @@ function sendTelegramMessage($botToken, $chatId, $text)
     $response = curl_exec($ch);
     $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
     curl_close($ch);
+
+    // Ghi nhận log gửi tin nhắn Telegram để kiểm tra lỗi
+    $logMsg = date('[Y-m-d H:i:s]') . " Target ChatId: $chatId, HTTP: $httpCode, Request: $payload, Response: " . ($response ?: 'NO RESPONSE') . "\n";
+    $logFile = __DIR__ . '/telegram_send_log.txt';
+    if (file_exists($logFile) && @filesize($logFile) > 5 * 1024 * 1024) {
+        $bakFile = __DIR__ . '/telegram_send_log.bak.txt';
+        if (file_exists($bakFile)) {
+            @unlink($bakFile);
+        }
+        @rename($logFile, $bakFile);
+    }
+    @file_put_contents($logFile, $logMsg, FILE_APPEND | LOCK_EX);
 
     return ($httpCode === 200);
 }
