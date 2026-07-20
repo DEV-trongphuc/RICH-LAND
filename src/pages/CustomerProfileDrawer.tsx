@@ -6574,123 +6574,120 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                 iconBorder = '1px solid rgba(99, 102, 241, 0.25)';
                               }
 
-                              return (
+                                     return (
                                 <div style={{ 
                                   display: 'flex', 
-                                  justifyContent: 'space-between', 
                                   alignItems: 'center', 
-                                  padding: '1.25rem 1.5rem', 
+                                  padding: '10px 14px', 
                                   background: bg, 
                                   borderRadius: '12px', 
                                   border: border,
                                   borderLeft: leftBorder,
                                   boxShadow: '0 2px 8px rgba(0, 0, 0, 0.02)',
-                                  transition: 'all 0.3s ease'
+                                  transition: 'all 0.3s ease',
+                                  gap: '12px'
                                 }}>
-                                  <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: 1, minWidth: 0 }}>
                                     <div style={{
                                       display: 'flex',
                                       alignItems: 'center',
                                       justifyContent: 'center',
-                                      width: '36px',
-                                      height: '36px',
-                                      borderRadius: '10px',
+                                      width: '32px',
+                                      height: '32px',
+                                      borderRadius: '8px',
                                       background: iconBg,
                                       border: iconBorder,
-                                      boxShadow: '0 2px 6px rgba(0, 0, 0, 0.04)'
+                                      boxShadow: '0 2px 6px rgba(0, 0, 0, 0.04)',
+                                      flexShrink: 0
                                     }}>
                                       {statusIcon}
                                     </div>
-                                    <div>
-                                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                        <span style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--color-text)' }}>{statusTitle}</span>
-                                        <span className={`badge ${badgeClass}`} style={{ fontSize: '0.65rem', padding: '1px 6px', borderRadius: '4px' }}>
+                                    <div style={{ flex: 1, minWidth: 0 }}>
+                                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                                        <span style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--color-text)' }}>{statusTitle}</span>
+                                        <span className={`badge ${badgeClass}`} style={{ fontSize: '0.625rem', padding: '1px 6px', borderRadius: '20px', fontWeight: 700 }}>
                                           {isPendingSignatures ? 'Chờ ký' : 
                                            status === 'approved' ? 'Hiệu lực' : 
                                            status === 'rejected' ? 'Bị từ chối' : 
                                            status === 'pending_manager_approval' ? 'Chờ duyệt' : 'Chờ ký'}
                                         </span>
+                                        <span style={{ 
+                                          fontSize: '0.625rem', 
+                                          fontWeight: 700, 
+                                          color: 'var(--color-primary)', 
+                                          background: 'var(--color-primary-light)', 
+                                          padding: '1px 6px', 
+                                          borderRadius: '20px' 
+                                        }}>
+                                          v{coopSlip.version}
+                                        </span>
                                       </div>
-                                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '4px' }}>
-                                        <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', margin: 0 }}>
-                                          {statusDesc}
-                                        </p>
-                                        {status === 'approved' && coopSlip.approver && (
-                                          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '0.72rem', color: 'var(--color-text-muted)', marginTop: '2px', background: 'rgba(16, 185, 129, 0.05)', padding: '2px 8px', borderRadius: '4px', alignSelf: 'flex-start' }}>
-                                            <span style={{ fontWeight: 650, color: '#10b981' }}>Được duyệt bởi:</span>
-                                            <Avatar src={coopSlip.approver.avatar} name={coopSlip.approver.name} size={18} />
-                                            <span style={{ fontWeight: 700, color: 'var(--color-text)' }}>{coopSlip.approver.name}</span>
-                                            <span>lúc {new Date(coopSlip.approver.approved_at).toLocaleString('vi-VN')}</span>
-                                          </div>
-                                        )}
-                                      </div>
+                                      <p style={{ fontSize: '0.725rem', color: 'var(--color-text-muted)', margin: '2px 0 0 0', lineHeight: 1.3 }}>
+                                        {statusDesc}
+                                      </p>
+                                      {status === 'approved' && coopSlip.approver && (
+                                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '0.675rem', color: 'var(--color-text-muted)', marginTop: '4px', background: 'rgba(16, 185, 129, 0.05)', padding: '2px 8px', borderRadius: '4px' }}>
+                                          <span style={{ fontWeight: 650, color: '#10b981' }}>Duyệt bởi:</span>
+                                          <Avatar src={coopSlip.approver.avatar} name={coopSlip.approver.name} size={14} />
+                                          <span style={{ fontWeight: 700, color: 'var(--color-text)' }}>{coopSlip.approver.name}</span>
+                                          <span>lúc {new Date(coopSlip.approver.approved_at).toLocaleString('vi-VN')}</span>
+                                        </div>
+                                      )}
+                                      
+                                      {status === 'pending_manager_approval' && isCoopApprover && (
+                                        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginTop: '6px' }}>
+                                          <button 
+                                            className="btn primary sm" 
+                                            onClick={() => {
+                                              showConfirm({
+                                                title: 'Duyệt phiếu hợp tác',
+                                                message: 'Bạn có chắc chắn muốn duyệt phiếu hợp tác này không?',
+                                                confirmText: 'Phê duyệt',
+                                                cancelText: 'Hủy',
+                                                onConfirm: async () => {
+                                                  try {
+                                                    await api.post(`/cooperation-slips/${coopSlip.id}/approve`);
+                                                    addToast('Đã phê duyệt phiếu hợp tác thành công!', 'success');
+                                                    await fetchCoopSlip();
+                                                  } catch (err: any) {
+                                                    addToast(err.response?.data?.message || 'Lỗi khi duyệt phiếu', 'error');
+                                                  }
+                                                }
+                                              });
+                                            }}
+                                            style={{ padding: '3px 10px', fontSize: '0.7rem', display: 'inline-flex', alignItems: 'center', gap: '4px', borderRadius: '6px' }}
+                                          >
+                                            <Check size={12} /> Duyệt
+                                          </button>
+                                          <button 
+                                            className="btn outline sm text-danger" 
+                                            onClick={() => {
+                                              showConfirm({
+                                                title: 'Từ chối phiếu hợp tác',
+                                                message: 'Vui lòng nhập lý do từ chối phiếu hợp tác này:',
+                                                confirmText: 'Từ chối',
+                                                cancelText: 'Hủy',
+                                                isDanger: true,
+                                                requirePromptInput: true,
+                                                promptPlaceholder: 'Nhập lý do từ chối...',
+                                                onConfirm: async (reason) => {
+                                                  try {
+                                                    await api.post(`/cooperation-slips/${coopSlip.id}/reject`, { reason: reason || 'Từ chối' });
+                                                    addToast('Đã từ chối phiếu hợp tác thành công!', 'success');
+                                                    await fetchCoopSlip();
+                                                  } catch (err: any) {
+                                                    addToast(err.response?.data?.message || 'Lỗi khi từ chối phiếu', 'error');
+                                                  }
+                                                }
+                                              });
+                                            }}
+                                            style={{ padding: '3px 10px', fontSize: '0.7rem', display: 'inline-flex', alignItems: 'center', gap: '4px', borderColor: 'var(--color-danger)', borderRadius: '6px' }}
+                                          >
+                                            <X size={12} /> Từ chối
+                                          </button>
+                                        </div>
+                                      )}
                                     </div>
-
-                                    {status === 'pending_manager_approval' && isCoopApprover && (
-                                      <div style={{ display: 'flex', gap: '8px', marginLeft: '16px' }}>
-                                        <button 
-                                          className="btn primary sm" 
-                                          onClick={() => {
-                                            showConfirm({
-                                              title: 'Duyệt phiếu hợp tác',
-                                              message: 'Bạn có chắc chắn muốn duyệt phiếu hợp tác này không?',
-                                              confirmText: 'Phê duyệt',
-                                              cancelText: 'Hủy',
-                                              onConfirm: async () => {
-                                                try {
-                                                  await api.post(`/cooperation-slips/${coopSlip.id}/approve`);
-                                                  addToast('Đã phê duyệt phiếu hợp tác thành công!', 'success');
-                                                  await fetchCoopSlip();
-                                                } catch (err: any) {
-                                                  addToast(err.response?.data?.message || 'Lỗi khi duyệt phiếu', 'error');
-                                                }
-                                              }
-                                            });
-                                          }}
-                                          style={{ padding: '4px 12px', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '4px', borderRadius: '8px' }}
-                                        >
-                                          <Check size={12} /> Duyệt
-                                        </button>
-                                        <button 
-                                          className="btn outline sm text-danger" 
-                                          onClick={() => {
-                                            showConfirm({
-                                              title: 'Từ chối phiếu hợp tác',
-                                              message: 'Vui lòng nhập lý do từ chối phiếu hợp tác này:',
-                                              confirmText: 'Từ chối',
-                                              cancelText: 'Hủy',
-                                              isDanger: true,
-                                              requirePromptInput: true,
-                                              promptPlaceholder: 'Nhập lý do từ chối...',
-                                              onConfirm: async (reason) => {
-                                                try {
-                                                  await api.post(`/cooperation-slips/${coopSlip.id}/reject`, { reason: reason || 'Từ chối' });
-                                                  addToast('Đã từ chối phiếu hợp tác thành công!', 'success');
-                                                  await fetchCoopSlip();
-                                                } catch (err: any) {
-                                                  addToast(err.response?.data?.message || 'Lỗi khi từ chối phiếu', 'error');
-                                                }
-                                              }
-                                            });
-                                          }}
-                                          style={{ padding: '4px 12px', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '4px', borderColor: 'var(--color-danger)', borderRadius: '8px' }}
-                                        >
-                                          <X size={12} /> Từ chối
-                                        </button>
-                                      </div>
-                                    )}
-                                  </div>
-                                  <div style={{ textAlign: 'right' }}>
-                                    <span style={{ 
-                                      fontSize: '0.75rem', 
-                                      fontWeight: 700, 
-                                      color: 'var(--color-primary)', 
-                                      background: 'var(--color-primary-light)', 
-                                      padding: '4px 8px', 
-                                      borderRadius: '6px' 
-                                    }}>
-                                      Phiên bản: {coopSlip.version}
-                                    </span>
                                   </div>
                                 </div>
                               );
@@ -6703,11 +6700,14 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                             )}
 
                             {/* Cooperation Project & Financial Details Summary Card */}
-                            <div className="coop-slip-metrics-grid" style={{
+                            <div style={{
                               background: 'var(--color-bg-light)',
                               borderRadius: '12px',
                               border: '1px solid var(--color-border-light)',
-                              padding: '1.25rem 1.5rem'
+                              padding: '12px 16px',
+                              display: 'flex',
+                              flexDirection: 'column',
+                              gap: '12px'
                             }}>
                               {/* Column 1: Project details */}
                               <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
