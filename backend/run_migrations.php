@@ -1910,6 +1910,7 @@ try {
           `created_at`, 
           `email`, 
           `zalo_chat_id`, 
+          `telegram_chat_id`,
           `is_confirmed`, 
           `confirm_token`, 
           `last_login_at` AS `last_login`, 
