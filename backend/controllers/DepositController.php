@@ -129,17 +129,48 @@ class DepositController {
             }
 
             // Update contact pipeline stage to 'dat_coc' (Placed Deposit) and set temperature to 'hot' (Sôi = xuống tiền)
-            $stmtUpC = $this->db->prepare("UPDATE contacts SET pipeline_status = 'dat_coc', status = 'customer', temperature = 'hot', suggested_temperature = 'hot' WHERE id = ? AND tenant_id = ?");
-            $stmtUpC->execute([$contactId, $auth['tenant_id']]);
+            // Also sync the contact's expected_revenue with the actual deposit price
+            $stmtUpC = $this->db->prepare("UPDATE contacts SET pipeline_status = 'dat_coc', status = 'customer', temperature = 'hot', suggested_temperature = 'hot', expected_revenue = ? WHERE id = ? AND tenant_id = ?");
+            $stmtUpC->execute([$price, $contactId, $auth['tenant_id']]);
 
             // Withdraw from databank and terminate other parallel contacts
             require_once __DIR__ . '/../config/ParallelHelper.php';
             ParallelHelper::lockPersonForWinningContact($this->db, (int)$contactId);
 
-            // Side effect: Automatically generate cooperation slip for commissions
-            require_once __DIR__ . '/CooperationController.php';
-            $coopCtrl = new CooperationController($this->db);
-            $coopCtrl->autoGenerateSlip($contactId, $depositId, $auth['user_id']);
+            // Check if a cooperation slip already exists for this contact
+            $stmtCheckCoop = $this->db->prepare("SELECT id FROM cooperation_slips WHERE contact_id = ? ORDER BY created_at DESC LIMIT 1");
+            $stmtCheckCoop->execute([$contactId]);
+            $existingCoop = $stmtCheckCoop->fetch();
+
+            if ($existingCoop) {
+                // Link pre-existing cooperation slip to this new deposit slip
+                $stmtLink = $this->db->prepare("UPDATE cooperation_slips SET deposit_slip_id = ? WHERE id = ?");
+                $stmtLink->execute([$depositId, (int)$existingCoop['id']]);
+            } else {
+                // Parse custom shares from request body
+                $isCoop = (bool)($b['is_cooperation'] ?? false);
+                $collaborators = $b['collaborators'] ?? [];
+                
+                $customShares = null;
+                if ($isCoop && !empty($collaborators)) {
+                    $customShares = [];
+                    foreach ($collaborators as $collab) {
+                        $uid = (int)($collab['user_id'] ?? 0);
+                        $pct = (int)($collab['percentage'] ?? 0);
+                        if ($uid > 0) {
+                            $customShares[$uid] = $pct;
+                        }
+                    }
+                } else {
+                    // Independent sale: owner gets 100%
+                    $ownerUid = (int)($contact['owner_id'] ?: $auth['user_id']);
+                    $customShares = [$ownerUid => 100];
+                }
+
+                require_once __DIR__ . '/CooperationController.php';
+                $coopCtrl = new CooperationController($this->db);
+                $coopCtrl->autoGenerateSlip($contactId, $depositId, $auth['user_id'], $customShares);
+            }
 
             $this->db->commit();
             
@@ -488,6 +519,99 @@ class DepositController {
         } catch (Exception $e) {
             $this->db->rollBack();
             respond(500, null, 'Lỗi báo hủy cọc: ' . $e->getMessage(), false);
+        }
+    }
+
+    public function updateMilestones(array $auth, int $id): void {
+        $tid = $auth['tenant_id'];
+        $input = getBody();
+        $milestones = $input['milestones'] ?? [];
+
+        // 1. Verify deposit ownership/permissions
+        $stmtDep = $this->db->prepare("
+            SELECT d.id, d.owner_id 
+            FROM deposits d
+            JOIN contacts c ON d.contact_id = c.id
+            WHERE d.id = ? AND c.tenant_id = ?
+        ");
+        $stmtDep->execute([$id, $tid]);
+        $dep = $stmtDep->fetch();
+        if (!$dep) respond(404, null, 'Phiếu cọc không tồn tại', false);
+
+        if ($auth['role'] === 'sales' || $auth['role'] === 'sale') {
+            if ($dep['owner_id'] != $auth['user_id']) {
+                respond(403, null, 'Bạn không có quyền sửa đổi lịch trình thanh toán của phiếu cọc này', false);
+            }
+        }
+
+        $this->db->beginTransaction();
+        try {
+            // Get current milestones in database
+            $stmtM = $this->db->prepare("SELECT id, status FROM deposit_milestones WHERE deposit_id = ?");
+            $stmtM->execute([$id]);
+            $currentDbMilestones = $stmtM->fetchAll(PDO::FETCH_ASSOC);
+            $currentDbIds = array_column($currentDbMilestones, 'id');
+
+            $payloadIds = [];
+            foreach ($milestones as $m) {
+                if (isset($m['id']) && !empty($m['id'])) {
+                    $payloadIds[] = (int)$m['id'];
+                }
+            }
+
+            // Delete milestones not in payload (only if they are not approved or paid)
+            $toDeleteIds = array_diff($currentDbIds, $payloadIds);
+            foreach ($toDeleteIds as $delId) {
+                $dbMilestone = null;
+                foreach ($currentDbMilestones as $cdm) {
+                    if ((int)$cdm['id'] === $delId) {
+                        $dbMilestone = $cdm;
+                        break;
+                    }
+                }
+                if ($dbMilestone && ($dbMilestone['status'] === 'approved' || $dbMilestone['status'] === 'paid')) {
+                    throw new Exception("Không thể xóa đợt thanh toán đã đóng tiền hoặc đã được duyệt.");
+                }
+                $stmtDel = $this->db->prepare("DELETE FROM deposit_milestones WHERE id = ?");
+                $stmtDel->execute([$delId]);
+            }
+
+            // Update or Insert milestones
+            foreach ($milestones as $m) {
+                $mName = trim($m['milestone_name'] ?? '');
+                $mAmount = (float)($m['expected_amount'] ?? 0);
+                if (empty($mName)) continue;
+
+                if (isset($m['id']) && !empty($m['id'])) {
+                    $mId = (int)$m['id'];
+                    // Update existing
+                    $dbMilestone = null;
+                    foreach ($currentDbMilestones as $cdm) {
+                        if ((int)$cdm['id'] === $mId) {
+                            $dbMilestone = $cdm;
+                            break;
+                        }
+                    }
+                    if ($dbMilestone && ($dbMilestone['status'] === 'approved' || $dbMilestone['status'] === 'paid')) {
+                        // Allow updating name, but prevent changing amount
+                        $stmtUpd = $this->db->prepare("UPDATE deposit_milestones SET milestone_name = ? WHERE id = ?");
+                        $stmtUpd->execute([$mName, $mId]);
+                    } else {
+                        $stmtUpd = $this->db->prepare("UPDATE deposit_milestones SET milestone_name = ?, expected_amount = ? WHERE id = ?");
+                        $stmtUpd->execute([$mName, $mAmount, $mId]);
+                    }
+                } else {
+                    // Insert new
+                    $stmtIns = $this->db->prepare("INSERT INTO deposit_milestones (deposit_id, milestone_name, expected_amount, status) VALUES (?, ?, ?, 'pending')");
+                    $stmtIns->execute([$id, $mName, $mAmount]);
+                }
+            }
+
+            $this->db->commit();
+            respond(200, null, 'Cập nhật lịch trình thanh toán thành công');
+        } catch (Exception $e) {
+            $this->db->rollBack();
+            respond(500, null, $e->getMessage(), false);
         }
     }
 

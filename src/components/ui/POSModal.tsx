@@ -256,7 +256,7 @@ export const POSModal: React.FC<{ onClose: () => void; defaultContact?: Contact 
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                     <div className="avatar-placeholder md" style={{ background: 'var(--color-primary)', borderRadius: '14px', width: 40, height: 40 }}>{selectedContact.first_name?.[0] || '?'}</div>
                     <div>
-                      <p style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--color-text)' }}>{selectedContact.first_name || 'Khách'} {selectedContact.last_name || 'hàng'}</p>
+                      <p style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--color-text)' }}>{selectedContact.last_name || 'hàng'} {selectedContact.first_name || 'Khách'}</p>
                       <p style={{ fontSize: '0.75rem', color: 'var(--color-text-light)', fontWeight: 700 }}>{selectedContact.phone || '—'}</p>
                     </div>
                   </div>
@@ -302,7 +302,7 @@ export const POSModal: React.FC<{ onClose: () => void; defaultContact?: Contact 
                     <div className="card shadow-2xl" style={{ marginTop: '4px', padding: '4px', position: 'absolute', width: '100%', zIndex: 10, borderRadius: '16px', top: '48px' }}>
                       {filteredContacts.length > 0 ? filteredContacts.map(c => (
                         <div key={c.id} className="hover-bg cursor-pointer" style={{ padding: '0.75rem', borderRadius: '12px' }} onClick={() => { setSelectedContact(c); setSearchContact(''); }}>
-                          <p style={{ fontWeight: 700, fontSize: '0.875rem', color: 'var(--color-text)' }}>{c.first_name} {c.last_name}</p>
+                          <p style={{ fontWeight: 700, fontSize: '0.875rem', color: 'var(--color-text)' }}>{c.last_name} {c.first_name}</p>
                           <p style={{ fontSize: '0.75rem', color: 'var(--color-text-light)' }}>{c.phone}</p>
                         </div>
                       )) : <div style={{ padding: '0.75rem', textAlign: 'center', fontSize: '0.75rem', color: 'var(--color-text-light)' }}>Không tìm thấy khách hàng</div>}

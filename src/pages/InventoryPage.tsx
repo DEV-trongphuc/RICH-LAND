@@ -100,7 +100,7 @@ export default function InventoryPage() {
       const list = Array.isArray(raw) ? raw : (raw?.items || []);
       setReceivers(list.map((c: any) => ({
         value: String(c.id),
-        label: `${c.first_name} ${c.last_name || ''}`.trim(),
+        label: `${c.last_name || ''} ${c.first_name}`.trim(),
         sublabel: c.phone || c.email || '',
         avatar: c.avatar_url
       })));

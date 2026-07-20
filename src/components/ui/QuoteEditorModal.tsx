@@ -183,7 +183,7 @@ export const QuoteEditorModal: React.FC<QuoteEditorProps> = ({
   const filteredContacts = useMemo(() => {
     const contactList = Array.isArray(contacts) ? contacts : [];
     if (!searchContact) return [];
-    return contactList.filter(c => `${c.first_name} ${c.last_name} ${c.phone} ${c.email}`.toLowerCase().includes(searchContact.toLowerCase())).slice(0, 8);
+    return contactList.filter(c => `${c.last_name} ${c.first_name} ${c.phone} ${c.email}`.toLowerCase().includes(searchContact.toLowerCase())).slice(0, 8);
   }, [contacts, searchContact]);
 
   const addItem = (p: Product) => {
@@ -301,7 +301,7 @@ export const QuoteEditorModal: React.FC<QuoteEditorProps> = ({
                           <input 
                             style={{ border: 'none', outline: 'none', background: 'transparent', width: '100%', fontSize: '0.875rem', color: 'var(--color-text)', fontWeight: selectedContact ? 700 : 400 }}
                             placeholder="Tìm theo tên, SĐT hoặc Email..." 
-                            value={selectedContact ? `${selectedContact.first_name} ${selectedContact.last_name || ''}` : searchContact}
+                            value={selectedContact ? `${selectedContact.last_name || ''} ${selectedContact.first_name}` : searchContact}
                             onChange={e => { setSearchContact(e.target.value); setShowContactResults(true); if (selectedContact) setSelectedContact(null); }}
                             onFocus={() => setShowContactResults(true)}
                           />

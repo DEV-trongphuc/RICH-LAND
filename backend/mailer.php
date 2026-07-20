@@ -21,7 +21,7 @@ function _getBaseHtml($title, $subtitle, $contentHtml)
             <div style="background: linear-gradient(135deg, #BD1D2D 0%, #8C111E 100%); padding: 35px 24px; text-align: center; border-bottom: 3px solid #BD1D2D;">
                 <div style="margin-bottom: 12px; text-align: center;">
                     <div style="width: 70px; height: 70px; background-color: #ffffff; border-radius: 50%; display: inline-block; text-align: center; vertical-align: middle; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); padding: 5px; box-sizing: border-box;">
-                        <img src="https://rich-land.vercel.app/LOGO.jpg" alt="Rich Land Logo" style="width: 100%; height: 100%; object-fit: contain; border-radius: 50%; vertical-align: middle;" />
+                        <img src="https://rich-land.vercel.app/imgs/ICON.png" alt="Rich Land Logo" style="width: 100%; height: 100%; object-fit: contain; border-radius: 50%; vertical-align: middle;" />
                     </div>
                 </div>
                 <p style="color: rgba(255,255,255,0.9); font-size: 13px; margin: 6px 0 0; letter-spacing: 1.5px; text-transform: uppercase; font-weight: 700; text-align: center;">' . $headerSub . '</p>

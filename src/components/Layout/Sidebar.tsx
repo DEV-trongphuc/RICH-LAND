@@ -33,7 +33,7 @@ export const SIDEBAR_GROUPS: SidebarGroup[] = [
   {
     title: 'KHÁCH HÀNG',
     items: [
-      {name: 'Khách hàng tiềm năng', href: '/contacts', icon: Users },
+      {name: 'Khách hàng', href: '/contacts', icon: Users },
       { name: 'Pipeline', href: '/deals', icon: TrendingUp },
       { name: 'Lịch biểu', href: '/calendar', icon: Calendar },
       { name: 'Kho Data', href: '/data', icon: Database, hideForRoles: ['sale'] },
@@ -58,7 +58,7 @@ export const SIDEBAR_GROUPS: SidebarGroup[] = [
     title: 'TÀI CHÍNH',
     items: [
       { name: 'Báo giá', href: '/quotes', icon: FileText, hideForRoles: ['viewer'] },
-      { name: 'Phiếu đặt cọc', href: '/deposits', icon: Receipt, hideForRoles: ['viewer'] },
+      { name: 'Phiếu đặt cọc', href: '/deposits', icon: Receipt, hideForRoles: ['viewer'], badgeKey: 'pendingDeposits' },
       { name: 'Phiếu hợp tác', href: '/cooperation-slips', icon: Scale, hideForRoles: ['admin', 'superadmin', 'super_admin', 'manager', 'director'], badgeKey: 'coopSlips' },
       { name: 'Duyệt hợp tác', href: '/cooperation-slips', icon: Scale, hideForRoles: ['sale', 'viewer', 'sales'], badgeKey: 'coopSlips' },
       { name: 'Hóa đơn', href: '/invoices', icon: Receipt, hideForRoles: ['viewer'] },
@@ -100,6 +100,7 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileC
   const [pendingCoopCount, setPendingCoopCount] = useState(0);
   const [undoneTasksCount, setUndoneTasksCount] = useState(0);
   const [pendingLeadsCount, setPendingLeadsCount] = useState(0);
+  const [pendingDepositsCount, setPendingDepositsCount] = useState(0);
   const [isHovered, setIsHovered] = useState(false);
 
   // Poll pending counts every 60s
@@ -119,6 +120,29 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileC
             const count = rawTasks.filter((task: any) => task.type === 'task' || task.type === 'meeting').length;
             setUndoneTasksCount(count);
           }
+        }
+
+        // Fetch deposits count for all roles
+        try {
+          const resDep = await fetchAPI('deposits');
+          if (resDep && resDep.success && Array.isArray(resDep.data)) {
+            const deposits = resDep.data;
+            if (isAdminOrManager) {
+              const countPaid = deposits.filter((d: any) => 
+                d.status !== 'cancelled' && 
+                d.milestones?.some((m: any) => m.status === 'paid')
+              ).length;
+              setPendingDepositsCount(countPaid);
+            } else {
+              const countAction = deposits.filter((d: any) => 
+                d.status === 'pending' && 
+                d.milestones?.some((m: any) => m.status === 'pending' || m.status === 'failed')
+              ).length;
+              setPendingDepositsCount(countAction);
+            }
+          }
+        } catch {
+          setPendingDepositsCount(0);
         }
 
         if (isAdminOrManager) {
@@ -399,7 +423,7 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileC
                   </span>
                 )}
                  {group.items.map(({ name, href, icon: Icon, end, badgeKey }) => {
-                   const badgeCount = badgeKey === 'tickets' ? pendingTickets : badgeKey === 'supportTickets' ? supportTicketsCount : badgeKey === 'gatekeeper' ? heldLeadsCount : badgeKey === 'coopSlips' ? pendingCoopCount : badgeKey === 'pendingExpenses' ? pendingExpensesCount : badgeKey === 'workspaceTasks' ? (undoneTasksCount + pendingLeadsCount) : 0;
+                   const badgeCount = badgeKey === 'tickets' ? pendingTickets : badgeKey === 'supportTickets' ? supportTicketsCount : badgeKey === 'gatekeeper' ? heldLeadsCount : badgeKey === 'coopSlips' ? pendingCoopCount : badgeKey === 'pendingExpenses' ? pendingExpensesCount : badgeKey === 'pendingDeposits' ? pendingDepositsCount : badgeKey === 'workspaceTasks' ? (undoneTasksCount + pendingLeadsCount) : 0;
                    const checkIsActive = (locationPath: string, locationSearch: string, itemHref: string) => {
                      const qIdx = itemHref.indexOf('?');
                      if (qIdx !== -1) {

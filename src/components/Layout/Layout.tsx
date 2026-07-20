@@ -2116,7 +2116,7 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
           <div className="raised-button-circle">
             <Users size={24} />
           </div>
-          <span className="mobile-bottom-nav-item-label">{t('Khách hàng tiềm năng')}</span>
+          <span className="mobile-bottom-nav-item-label">{t('Khách hàng')}</span>
         </button>
 
         {/* 4. Kho data */}

@@ -5,7 +5,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useUIStore } from '../store/uiStore';
 import { CustomModal } from '../components/ui/CustomModal';
 import { CustomSelect } from '../components/ui/CustomSelect';
-import { CreditCard, Plus, Check, X, Upload, AlertCircle, Trash2, Calendar, FileText, Ban, ChevronLeft, ChevronRight, Info } from 'lucide-react';
+import { CreditCard, Plus, Check, X, Upload, AlertCircle, Trash2, Calendar, FileText, Ban, ChevronLeft, ChevronRight, Info, Eye, Edit } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { EmptyCard } from '../components/ui/EmptyCard';
 import { Avatar } from '../components/ui/Avatar';
@@ -110,6 +110,20 @@ export default function DepositsPage() {
     { name: 'Đợt 1 - Cọc giữ chỗ', amount: '' }
   ]);
 
+  // Co-op and Sales Method Selection States
+  const [coopSlips, setCoopSlips] = useState<any[]>([]);
+  const [usersList, setUsersList] = useState<any[]>([]);
+  const [hasExistingCoop, setHasExistingCoop] = useState(false);
+  const [existingCoopShares, setExistingCoopShares] = useState<any[]>([]);
+  const [isCooperation, setIsCooperation] = useState(false);
+  const [collaborators, setCollaborators] = useState<{ user_id: string; percentage: number }[]>([]);
+
+  // Manage Milestones State
+  const [showManageModal, setShowManageModal] = useState(false);
+  const [selectedDepForManage, setSelectedDepForManage] = useState<Deposit | null>(null);
+  const [tempMilestones, setTempMilestones] = useState<any[]>([]);
+  const [isSavingMilestones, setIsSavingMilestones] = useState(false);
+
   // Cancel Deposit State
   const [isCancelOpen, setIsCancelOpen] = useState(false);
   const [cancelDepositId, setCancelDepositId] = useState<number | null>(null);
@@ -121,10 +135,12 @@ export default function DepositsPage() {
   const loadData = async () => {
     setLoading(true);
     try {
-      const [resDep, resCont, resProj] = await Promise.all([
+      const [resDep, resCont, resProj, resCoop, resUsr] = await Promise.all([
         fetchAPI('deposits'),
         fetchAPI('contacts?limit=1000'),
-        fetchAPI('projects?bypass_roster=1')
+        fetchAPI('projects?bypass_roster=1'),
+        fetchAPI('cooperation-slips').catch(() => ({ success: false, data: [] })),
+        fetchAPI('users?all=1').catch(() => ({ success: false, data: [] }))
       ]);
 
       if (resDep.success) setDeposits(resDep.data || []);
@@ -138,6 +154,12 @@ export default function DepositsPage() {
       if (resProj.success) {
         setProjects(resProj.data || []);
       }
+      if (resCoop.success) {
+        setCoopSlips(resCoop.data || []);
+      }
+      if (resUsr.success) {
+        setUsersList(resUsr.data || []);
+      }
     } catch (e: any) {
       setError(e.message || 'Lỗi kết nối');
     } finally {
@@ -148,6 +170,44 @@ export default function DepositsPage() {
   useEffect(() => {
     loadData();
   }, []);
+
+  // Check for pre-existing cooperation slip when selectedContactId changes
+  useEffect(() => {
+    if (!selectedContactId || coopSlips.length === 0) {
+      setHasExistingCoop(false);
+      setExistingCoopShares([]);
+      return;
+    }
+
+    const cid = Number(selectedContactId);
+    const existing = coopSlips.find((s: any) => Number(s.contact_id) === cid);
+    if (existing) {
+      setHasExistingCoop(true);
+      
+      let parsedShares: Record<string, number> = {};
+      try {
+        parsedShares = typeof existing.shares_json === 'string' 
+          ? JSON.parse(existing.shares_json) 
+          : (existing.shares_json || {});
+      } catch {
+        parsedShares = {};
+      }
+
+      const sharesList = Object.entries(parsedShares).map(([uid, pct]) => {
+        const u = usersList.find((x: any) => String(x.id) === String(uid));
+        return {
+          user_id: uid,
+          name: u?.full_name || u?.name || u?.username || `ID: ${uid}`,
+          percentage: pct
+        };
+      });
+
+      setExistingCoopShares(sharesList);
+    } else {
+      setHasExistingCoop(false);
+      setExistingCoopShares([]);
+    }
+  }, [selectedContactId, coopSlips, usersList]);
 
   const handleAddMilestoneInput = () => {
     setMilestonesInput(prev => [...prev, { name: `Đợt ${prev.length + 1}`, amount: '' }]);
@@ -171,6 +231,23 @@ export default function DepositsPage() {
       return;
     }
 
+    // Verify cooperation shares sum
+    if (!hasExistingCoop && isCooperation) {
+      if (collaborators.length === 0) {
+        setError('Vui lòng thêm ít nhất một nhân viên hợp tác hoặc bỏ chọn Hợp tác chia sẻ.');
+        return;
+      }
+      const sum = collaborators.reduce((acc, c) => acc + (c.percentage || 0), 0);
+      if (sum !== 100) {
+        setError(`Tổng tỷ lệ chia sẻ hoa hồng phải bằng đúng 100% (Hiện tại là ${sum}%)`);
+        return;
+      }
+      if (collaborators.some(c => !c.user_id)) {
+        setError('Vui lòng chọn đầy đủ nhân viên hợp tác trên từng dòng.');
+        return;
+      }
+    }
+
     if (isSaving) return;
 
     try {
@@ -183,7 +260,9 @@ export default function DepositsPage() {
           unit_code: unitCode,
           price: parseFloat(price),
           expected_commission: parseFloat(expectedCommission) || 0,
-          milestones: milestonesInput
+          milestones: milestonesInput,
+          is_cooperation: isCooperation,
+          collaborators: collaborators
         })
       });
 
@@ -197,6 +276,8 @@ export default function DepositsPage() {
         setPrice('');
         setExpectedCommission('');
         setMilestonesInput([{ name: 'Đợt 1 - Cọc giữ chỗ', amount: '' }]);
+        setIsCooperation(false);
+        setCollaborators([]);
         loadData();
       } else {
         setError(res.message || 'Lỗi tạo phiếu cọc');
@@ -309,6 +390,159 @@ export default function DepositsPage() {
       setError(e.message || 'Lỗi kết nối');
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handleOpenManageMilestones = (dep: Deposit) => {
+    setSelectedDepForManage(dep);
+    setTempMilestones((dep.milestones || []).map(m => ({ ...m })));
+    setShowManageModal(true);
+  };
+
+  const handleAddMilestoneRow = () => {
+    setTempMilestones([
+      ...tempMilestones,
+      {
+        tempId: Date.now() + Math.random(),
+        milestone_name: `Đợt ${tempMilestones.length + 1}`,
+        expected_amount: 0,
+        status: 'pending'
+      }
+    ]);
+  };
+
+  const handleUpdateMilestoneField = (index: number, field: string, value: any) => {
+    const updated = [...tempMilestones];
+    updated[index] = { ...updated[index], [field]: value };
+    setTempMilestones(updated);
+  };
+
+  const handleRemoveMilestoneRow = (index: number) => {
+    const updated = [...tempMilestones];
+    updated.splice(index, 1);
+    setTempMilestones(updated);
+  };
+
+  const handleUploadUncFromModal = async (e: React.ChangeEvent<HTMLInputElement>, index: number) => {
+    const m = tempMilestones[index];
+    if (!m.id) {
+      setError('Vui lòng nhấn "Lưu lịch trình" trước khi tải UNC cho đợt thanh toán mới này.');
+      return;
+    }
+    if (!e.target.files || e.target.files.length === 0) return;
+    const file = e.target.files[0];
+
+    try {
+      const compressedFile = await compressToWebP(file);
+      const formData = new FormData();
+      formData.append('file', compressedFile);
+      const token = localStorage.getItem('access_token') || localStorage.getItem('richland_token') || '';
+      const url = `${import.meta.env.VITE_API_URL || '/backend'}/api.php?action=deposits/${selectedDepForManage?.id}/milestones/${m.id}/unc&token=${token}`;
+
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'X-Auth-Token': token
+        },
+        body: formData
+      });
+
+      const res = await response.json();
+      if (res.success) {
+        setSuccess('Tải ảnh UNC thành công, vui lòng chờ Admin duyệt');
+        const updated = [...tempMilestones];
+        updated[index] = { ...updated[index], status: 'paid', unc_file_path: res.data?.unc_file_path || 'temp_path' };
+        setTempMilestones(updated);
+        loadData();
+      } else {
+        setError(res.message || 'Lỗi tải UNC');
+      }
+    } catch (e: any) {
+      setError(e.message || 'Lỗi kết nối');
+    }
+  };
+
+  const handleApproveFromModal = async (index: number) => {
+    const m = tempMilestones[index];
+    if (!selectedDepForManage || !m.id) return;
+    try {
+      const res = await fetchAPI(`deposits/${selectedDepForManage.id}/milestones/${m.id}/approve`, { method: 'POST' });
+      if (res.success) {
+        setSuccess('Phê duyệt đợt tiền thành công!');
+        const updated = [...tempMilestones];
+        updated[index] = { ...updated[index], status: 'approved' };
+        setTempMilestones(updated);
+        loadData();
+      } else {
+        setError(res.message || 'Lỗi phê duyệt');
+      }
+    } catch (e: any) {
+      setError(e.message || 'Lỗi kết nối');
+    }
+  };
+
+  const handleRejectFromModal = async (index: number) => {
+    const m = tempMilestones[index];
+    if (!selectedDepForManage || !m.id) return;
+    showConfirm({
+      title: 'Từ chối UNC',
+      message: 'Vui lòng nhập lý do từ chối bản xác nhận thanh toán này:',
+      confirmText: 'Từ chối UNC',
+      cancelText: 'Hủy',
+      isDanger: true,
+      requirePromptInput: true,
+      promptPlaceholder: 'Nhập lý do từ chối (bắt buộc)...',
+      onConfirm: async (reason) => {
+        try {
+          const res = await fetchAPI(`deposits/${selectedDepForManage.id}/milestones/${m.id}/reject`, {
+            method: 'POST',
+            body: JSON.stringify({ reason: reason || 'UNC không hợp lệ' })
+          });
+          if (res.success) {
+            setSuccess('Đã từ chối UNC thành công');
+            const updated = [...tempMilestones];
+            updated[index] = { ...updated[index], status: 'failed' };
+            setTempMilestones(updated);
+            loadData();
+          } else {
+            setError(res.message || 'Lỗi xử lý');
+          }
+        } catch (e: any) {
+          setError(e.message || 'Lỗi kết nối');
+        }
+      }
+    });
+  };
+
+  const handleSaveMilestones = async () => {
+    if (!selectedDepForManage) return;
+    for (let m of tempMilestones) {
+      if (!m.milestone_name.trim()) {
+        setError('Tên đợt không được để trống.');
+        return;
+      }
+    }
+
+    try {
+      setIsSavingMilestones(true);
+      setError('');
+      setSuccess('');
+      const res = await fetchAPI(`deposits/${selectedDepForManage.id}/milestones`, {
+        method: 'PUT',
+        body: JSON.stringify({ milestones: tempMilestones })
+      });
+      if (res.success) {
+        setSuccess('Cập nhật lịch trình thanh toán thành công!');
+        setShowManageModal(false);
+        loadData();
+      } else {
+        setError(res.message || 'Lỗi khi lưu lịch trình');
+      }
+    } catch (e: any) {
+      setError(e.message || 'Lỗi kết nối');
+    } finally {
+      setIsSavingMilestones(false);
     }
   };
 
@@ -446,9 +680,9 @@ export default function DepositsPage() {
                       <td style={{ padding: '1rem', verticalAlign: 'middle' }}>
                         <div style={{ fontWeight: 600, color: 'var(--color-text)', fontSize: '0.875rem' }}>{dep.project_name}</div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px' }}>
-                          <Avatar name={`${dep.first_name || ''} ${dep.last_name || ''}`} size="sm" style={{ width: 18, height: 18, fontSize: 8 }} />
+                          <Avatar name={`${dep.last_name || ''} ${dep.first_name || ''}`} size="sm" style={{ width: 18, height: 18, fontSize: 8 }} />
                           <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
-                            Khách: <strong style={{ color: 'var(--color-text)' }}>{dep.first_name} {dep.last_name}</strong> ({dep.phone})
+                            Khách: <strong style={{ color: 'var(--color-text)' }}>{dep.last_name} {dep.first_name}</strong> ({dep.phone})
                           </span>
                         </div>
                       </td>
@@ -639,6 +873,31 @@ export default function DepositsPage() {
                             );
                           })}
 
+                          {/* Manage Milestones Button */}
+                          {dep.status !== 'cancelled' && (
+                            <button
+                              onClick={() => handleOpenManageMilestones(dep)}
+                              style={{
+                                padding: '2px 6px',
+                                height: '24px',
+                                color: 'var(--color-primary)',
+                                border: '1px solid rgba(189, 29, 45, 0.25)',
+                                borderRadius: '6px',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '3px',
+                                background: 'transparent',
+                                fontSize: '0.675rem',
+                                fontWeight: 600,
+                                cursor: 'pointer'
+                              }}
+                              title="Chi tiết & Lịch thanh toán"
+                            >
+                              <Edit size={11} />
+                              <span>Lịch đợt</span>
+                            </button>
+                          )}
+
                           {/* Cancellation Button */}
                           {dep.status !== 'cancelled' && (
                             <button
@@ -756,7 +1015,7 @@ export default function DepositsPage() {
                 <CustomSelect
                   options={contacts.map(c => ({
                     value: String(c.id),
-                    label: `${c.first_name} ${c.last_name} (${c.phone})`,
+                    label: `${c.last_name} ${c.first_name} (${c.phone})`,
                     avatar: (c as any).avatar_url || (c as any).avatar
                   }))}
                   value={selectedContactId}
@@ -870,6 +1129,165 @@ export default function DepositsPage() {
                   )}
                 </div>
               ))}
+            </div>
+
+            {/* Sales Method & Cooperation Config */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', paddingTop: '1rem', borderTop: '1px solid var(--color-border)' }}>
+              <h4 style={{ fontSize: '0.875rem', fontWeight: 700, margin: 0 }}>Phương thức bán hàng & Hoa hồng</h4>
+              
+              {hasExistingCoop ? (
+                <div style={{
+                  padding: '8px 12px',
+                  background: 'rgba(16, 185, 129, 0.08)',
+                  border: '1px solid rgba(16, 185, 129, 0.2)',
+                  borderRadius: '8px',
+                  fontSize: '0.8rem'
+                }}>
+                  <p style={{ color: '#10b981', fontWeight: 700, marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <Check size={14} /> Phát hiện có Phiếu hợp tác đã lập từ trước
+                  </p>
+                  <p style={{ color: 'var(--color-text-muted)', marginBottom: '8px', fontSize: '0.75rem' }}>
+                    Phiếu cọc này sẽ tự động liên kết với phiếu hợp tác sẵn có. Phân chia tỷ lệ hoa hồng:
+                  </p>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
+                    {existingCoopShares.map((sh: any) => (
+                      <span key={sh.user_id} style={{
+                        background: 'var(--color-surface)',
+                        padding: '2px 8px',
+                        borderRadius: '4px',
+                        border: '1px solid var(--color-border-light)',
+                        fontWeight: 600
+                      }}>
+                        {sh.name}: {sh.percentage}%
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontSize: '0.8125rem', fontWeight: 600 }}>
+                    <input
+                      type="checkbox"
+                      checked={isCooperation}
+                      onChange={e => {
+                        setIsCooperation(e.target.checked);
+                        if (e.target.checked && collaborators.length === 0) {
+                          setCollaborators([{ user_id: '', percentage: 0 }]);
+                        }
+                      }}
+                      style={{ cursor: 'pointer' }}
+                    />
+                    <span>Có hợp tác chia sẻ hoa hồng (Cooperation Deal)</span>
+                  </label>
+
+                  {isCooperation && (
+                    <div style={{
+                      padding: '12px',
+                      background: 'var(--color-surface-hover)',
+                      borderRadius: '8px',
+                      border: '1px solid var(--color-border-light)',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '8px'
+                    }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 }}>
+                        <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)' }}>Danh sách TVV hợp tác & Tỷ lệ %</span>
+                        <button
+                          type="button"
+                          onClick={() => setCollaborators(prev => [...prev, { user_id: '', percentage: 0 }])}
+                          style={{
+                            fontSize: '0.725rem',
+                            color: '#10b981',
+                            background: 'none',
+                            border: 'none',
+                            cursor: 'pointer',
+                            fontWeight: 700
+                          }}
+                        >
+                          + Thêm TVV
+                        </button>
+                      </div>
+
+                      {collaborators.map((col, idx) => (
+                        <div key={idx} style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                          <select
+                            value={col.user_id}
+                            required
+                            onChange={e => {
+                              const updated = [...collaborators];
+                              updated[idx].user_id = e.target.value;
+                              setCollaborators(updated);
+                            }}
+                            className="form-input"
+                            style={{ flex: 1, height: '32px', fontSize: '0.75rem', padding: '0 8px' }}
+                          >
+                            <option value="">-- Chọn TVV hợp tác --</option>
+                            {usersList.map(u => (
+                              <option key={u.id} value={String(u.id)}>
+                                {u.full_name || u.name || u.username}
+                              </option>
+                            ))}
+                          </select>
+                          
+                          <input
+                            type="number"
+                            placeholder="%"
+                            required
+                            min={0}
+                            max={100}
+                            value={col.percentage || ''}
+                            onChange={e => {
+                              const updated = [...collaborators];
+                              updated[idx].percentage = parseInt(e.target.value) || 0;
+                              setCollaborators(updated);
+                            }}
+                            className="form-input"
+                            style={{ width: '70px', height: '32px', fontSize: '0.75rem', padding: '0 8px', textAlign: 'center' }}
+                          />
+
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const updated = [...collaborators];
+                              updated.splice(idx, 1);
+                              setCollaborators(updated);
+                            }}
+                            style={{
+                              background: 'none',
+                              border: 'none',
+                              color: 'var(--color-danger)',
+                              cursor: 'pointer',
+                              display: 'flex',
+                              padding: 4
+                            }}
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                        </div>
+                      ))}
+
+                      {/* Total share sum indicator */}
+                      <div style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        borderTop: '1px solid var(--color-border-light)',
+                        paddingTop: '6px',
+                        marginTop: '4px',
+                        fontSize: '0.75rem',
+                        fontWeight: 700
+                      }}>
+                        <span>Tổng tỷ lệ chia sẻ:</span>
+                        <span style={{
+                          color: collaborators.reduce((acc, curr) => acc + Number(curr.percentage), 0) === 100 ? '#10b981' : '#ef4444'
+                        }}>
+                          {collaborators.reduce((acc, curr) => acc + Number(curr.percentage), 0)}% / 100%
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             <button
@@ -1024,6 +1442,221 @@ export default function DepositsPage() {
         <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1.5rem', gap: '0.75rem', borderTop: '1px solid var(--color-border-light)', paddingTop: '1rem' }}>
           <button className="btn primary" onClick={() => setShowInfoModal(false)} style={{ minWidth: 100 }}>{t("Đồng ý")}</button>
         </div>
+      </CustomModal>
+
+      {/* Manage Milestones Modal */}
+      <CustomModal
+        isOpen={showManageModal}
+        onClose={() => setShowManageModal(false)}
+        title={`Chi tiết & Lịch trình thanh toán - Căn ${selectedDepForManage?.unit_code}`}
+        width="650px"
+      >
+        {selectedDepForManage && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+            {/* Brief Info */}
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: '1fr 1fr',
+              gap: '0.75rem',
+              background: 'var(--color-surface-hover)',
+              padding: '0.75rem 1rem',
+              borderRadius: '8px',
+              fontSize: '0.8125rem'
+            }}>
+              <div>
+                <p style={{ color: 'var(--color-text-muted)', marginBottom: 2 }}>Dự án</p>
+                <p style={{ fontWeight: 700 }}>{selectedDepForManage.project_name}</p>
+              </div>
+              <div>
+                <p style={{ color: 'var(--color-text-muted)', marginBottom: 2 }}>Khách hàng</p>
+                <p style={{ fontWeight: 700 }}>{selectedDepForManage.last_name} {selectedDepForManage.first_name} ({selectedDepForManage.phone})</p>
+              </div>
+              <div>
+                <p style={{ color: 'var(--color-text-muted)', marginBottom: 2 }}>Tổng giá trị căn hộ</p>
+                <p style={{ fontWeight: 700, color: 'var(--color-primary)' }}>{formatMoney(selectedDepForManage.price)}</p>
+              </div>
+              <div>
+                <p style={{ color: 'var(--color-text-muted)', marginBottom: 2 }}>Hoa hồng dự kiến</p>
+                <p style={{ fontWeight: 700, color: '#059669' }}>{formatMoney(selectedDepForManage.expected_commission)}</p>
+              </div>
+            </div>
+
+            {/* Milestones List */}
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+                <h4 style={{ margin: 0, fontWeight: 700, fontSize: '0.875rem' }}>Các đợt thanh toán</h4>
+                <button
+                  className="btn sm"
+                  onClick={handleAddMilestoneRow}
+                  style={{
+                    padding: '2px 8px',
+                    fontSize: '0.75rem',
+                    background: 'rgba(16, 185, 129, 0.08)',
+                    color: '#10b981',
+                    border: 'none',
+                    fontWeight: 700,
+                    borderRadius: '6px'
+                  }}
+                >
+                  + Thêm đợt
+                </button>
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', maxHeight: '300px', overflowY: 'auto', paddingRight: 4 }}>
+                {tempMilestones.map((m, idx) => {
+                  const isLocked = m.status === 'approved' || m.status === 'paid';
+                  return (
+                    <div
+                      key={m.tempId || m.id}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        padding: '8px',
+                        background: 'var(--color-surface)',
+                        border: '1px solid var(--color-border-light)',
+                        borderRadius: '6px'
+                      }}
+                    >
+                      {/* Name input */}
+                      <input
+                        type="text"
+                        placeholder="Tên đợt (ví dụ: Đợt 1 - Cọc giữ chỗ)"
+                        value={m.milestone_name}
+                        onChange={e => handleUpdateMilestoneField(idx, 'milestone_name', e.target.value)}
+                        className="input"
+                        style={{ flex: 2, height: '28px', fontSize: '0.75rem', padding: '0 6px' }}
+                      />
+
+                      {/* Amount input */}
+                      <input
+                        type="number"
+                        placeholder="Số tiền"
+                        value={m.expected_amount || ''}
+                        disabled={isLocked}
+                        onChange={e => handleUpdateMilestoneField(idx, 'expected_amount', parseFloat(e.target.value) || 0)}
+                        className="input"
+                        style={{ width: '110px', height: '28px', fontSize: '0.75rem', padding: '0 6px' }}
+                      />
+
+                      {/* Status */}
+                      <span style={{
+                        fontSize: '0.675rem',
+                        fontWeight: 700,
+                        padding: '2px 6px',
+                        borderRadius: '4px',
+                        background: m.status === 'approved' ? '#10b98115' : m.status === 'paid' ? '#2563eb15' : m.status === 'failed' ? '#ef444415' : 'rgba(0,0,0,0.05)',
+                        color: m.status === 'approved' ? '#10b981' : m.status === 'paid' ? '#2563eb' : m.status === 'failed' ? '#ef4444' : '#6b7280',
+                        minWidth: '55px',
+                        textAlign: 'center'
+                      }}>
+                        {m.status === 'approved' ? 'Đã duyệt' : m.status === 'paid' ? 'Chờ duyệt' : m.status === 'failed' ? 'Từ chối' : 'Chờ nộp'}
+                      </span>
+
+                      {/* Actions */}
+                      <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+                        {/* Upload UNC */}
+                        {m.status !== 'approved' && (
+                          <label
+                            className="btn sm"
+                            style={{
+                              padding: '0 6px',
+                              height: '24px',
+                              cursor: 'pointer',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              borderRadius: '6px',
+                              border: '1px solid rgba(0,0,0,0.1)',
+                              fontSize: '0.675rem'
+                            }}
+                            title="Tải UNC"
+                          >
+                            <Upload size={11} />
+                            <input
+                              type="file"
+                              accept="image/*"
+                              style={{ display: 'none' }}
+                              onChange={e => handleUploadUncFromModal(e, idx)}
+                            />
+                          </label>
+                        )}
+
+                        {/* View UNC link */}
+                        {m.unc_file_path && (
+                          <a
+                            href={`${import.meta.env.VITE_API_URL || '/backend'}/uploads/${m.unc_file_path}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="btn sm"
+                            style={{
+                              padding: '0 6px',
+                              height: '24px',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              borderRadius: '6px',
+                              background: 'rgba(59, 130, 246, 0.08)',
+                              color: '#2563eb',
+                              fontSize: '0.675rem'
+                            }}
+                            title="Xem UNC"
+                          >
+                            <Eye size={11} />
+                          </a>
+                        )}
+
+                        {/* Admin ticks */}
+                        {isAdmin && m.status === 'paid' && (
+                          <>
+                            <button
+                              onClick={() => handleApproveFromModal(idx)}
+                              className="btn sm"
+                              style={{ padding: '0 6px', height: '24px', background: '#10b981', color: 'white', border: 'none', borderRadius: '6px' }}
+                              title="Duyệt đợt tiền"
+                            >
+                              <Check size={11} />
+                            </button>
+                            <button
+                              onClick={() => handleRejectFromModal(idx)}
+                              className="btn sm"
+                              style={{ padding: '0 6px', height: '24px', background: '#ef4444', color: 'white', border: 'none', borderRadius: '6px' }}
+                              title="Từ chối UNC"
+                            >
+                              <X size={11} />
+                            </button>
+                          </>
+                        )}
+
+                        {/* Delete row */}
+                        {!isLocked && (
+                          <button
+                            onClick={() => handleRemoveMilestoneRow(idx)}
+                            className="btn sm"
+                            style={{ padding: '0 6px', height: '24px', color: '#ef4444', border: '1px solid rgba(239, 68, 68, 0.15)', background: 'transparent', borderRadius: '6px' }}
+                            title="Xóa đợt"
+                          >
+                            <Trash2 size={11} />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', borderTop: '1px solid var(--color-border-light)', paddingTop: '0.75rem', marginTop: '0.25rem' }}>
+              <button className="btn" onClick={() => setShowManageModal(false)} style={{ minWidth: 80 }}>
+                Hủy
+              </button>
+              <button className="btn primary" onClick={handleSaveMilestones} style={{ minWidth: 100 }} disabled={isSavingMilestones}>
+                {isSavingMilestones ? 'Đang lưu...' : 'Lưu lịch trình'}
+              </button>
+            </div>
+          </div>
+        )}
       </CustomModal>
 
     </div>

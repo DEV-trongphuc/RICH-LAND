@@ -148,7 +148,7 @@ export const DealsPage: React.FC = () => {
         if (debouncedSearch) {
           const lowerSearch = debouncedSearch.toLowerCase();
           const nameMatch = pipelineView === 'contacts' 
-            ? `${item.first_name || ''} ${item.last_name || ''} ${item.email || ''}`.toLowerCase().includes(lowerSearch)
+            ? `${item.last_name || ''} ${item.first_name || ''} ${item.email || ''}`.toLowerCase().includes(lowerSearch)
             : (pipelineView === 'companies'
                 ? `${item.name || ''} ${item.email || ''}`.toLowerCase().includes(lowerSearch)
                 : `${item.title || ''} ${item.company_name || ''}`.toLowerCase().includes(lowerSearch));
@@ -1305,7 +1305,7 @@ export const DealsPage: React.FC = () => {
                 <div style={{ padding: '1rem', overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                   <AnimatePresence>
                     {stageItems.map(item => {
-                      const itemName = pipelineView === 'contacts' ? `${item.first_name} ${item.last_name || ''}`.trim() : (pipelineView === 'companies' ? item.name : item.title);
+                      const itemName = pipelineView === 'contacts' ? `${item.last_name || ''} ${item.first_name}`.trim() : (pipelineView === 'companies' ? item.name : item.title);
                       const isItemOwner = Number(currentUser?.id) === Number(item.owner_id || item.created_by);
                       const isPrivileged = currentUser?.role && ['admin', 'superadmin', 'super_admin', 'manager', 'director', 'assistant'].includes(currentUser.role);
                       const canDrag = (isItemOwner || isPrivileged) && currentUser?.role !== 'viewer';
@@ -1412,7 +1412,7 @@ export const DealsPage: React.FC = () => {
               </thead>
               <tbody>
                 {pagedItems.map(item => {
-                  const itemName = pipelineView === 'contacts' ? `${item.first_name || ''} ${item.last_name || ''}`.trim() : (pipelineView === 'companies' ? item.name : item.title);
+                  const itemName = pipelineView === 'contacts' ? `${item.last_name || ''} ${item.first_name || ''}`.trim() : (pipelineView === 'companies' ? item.name : item.title);
                   const itemValue = Number(item.expected_revenue) || Number(item.value) || 0;
                   const stage = stages.find(s => s.id === item.stage_id);
                   return (

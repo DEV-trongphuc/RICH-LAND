@@ -1701,7 +1701,7 @@ export const ContactsPage: React.FC = () => {
                 <tbody>
                   {paged.map(c => {
                     const days = AGO_DAYS(c.last_contact);
-                    const fullName = `${c.first_name} ${c.last_name}`;
+                    const fullName = `${c.last_name} ${c.first_name}`;
                     return (
                       <motion.tr key={c.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }}
                          style={{ transition: 'background 0.2s', cursor: 'pointer' }}
@@ -1980,7 +1980,7 @@ export const ContactsPage: React.FC = () => {
               <div className="grid-cards-responsive">
                 {paged.map(c => {
                   const days = AGO_DAYS(c.last_contact);
-                  const fullName = `${c.first_name} ${c.last_name}`;
+                  const fullName = `${c.last_name} ${c.first_name}`;
                   return (
                     <motion.div 
                       key={c.id} 

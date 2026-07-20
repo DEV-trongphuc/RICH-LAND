@@ -921,6 +921,9 @@ switch ($resource) {
             // Upload UNC standard POST
             $ctrl->uploadUnc($auth, (int)$resourceId, (int)$segments[3]);
         }
+        elseif ($resourceId && $subResource === 'milestones' && $method === 'PUT') {
+            $ctrl->updateMilestones($auth, (int)$resourceId);
+        }
         elseif ($resourceId && $subResource === 'cancel' && $method === 'POST') $ctrl->cancelDeposit($auth, (int)$resourceId);
         elseif (!$resourceId && $method === 'GET')    $ctrl->index($auth);
         elseif (!$resourceId && $method === 'POST')   $ctrl->store($auth);

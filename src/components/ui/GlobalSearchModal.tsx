@@ -121,7 +121,7 @@ export const GlobalSearchModal: React.FC<{ onClose: () => void }> = ({ onClose }
               {results.contacts.slice(0, 4).map((c: any) => (
                 <ResultItem 
                   key={c.id} 
-                  title={`${c.first_name} ${c.last_name}`} 
+                  title={`${c.last_name} ${c.first_name}`} 
                   subtitle={c.email || c.phone || ''} 
                   onClick={() => goTo(`/contacts`)} 
                   actions={[

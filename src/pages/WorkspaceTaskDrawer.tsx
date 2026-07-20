@@ -961,7 +961,7 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
   const isSale = currentUser && ['sales', 'sale'].includes(currentUser.role?.toLowerCase());
 
   const getContactFullName = (c: any) => {
-    return `${c.first_name || ''} ${c.last_name || ''}`.trim() || c.name || t('Khách hàng');
+    return `${c.last_name || ''} ${c.first_name || ''}`.trim() || c.name || t('Khách hàng');
   };
 
   const allowedContacts = contacts.filter(c => {

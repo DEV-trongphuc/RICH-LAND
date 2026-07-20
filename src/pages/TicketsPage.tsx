@@ -377,8 +377,8 @@ export const TicketsPage: React.FC = () => {
                     searchable 
                     showAvatars
                     options={contacts.map(c => ({ 
-                      value: `${c.first_name} ${c.last_name || ''}`.trim(), 
-                      label: `${c.first_name} ${c.last_name || ''}`.trim(),
+                      value: `${c.last_name || ''} ${c.first_name}`.trim(), 
+                      label: `${c.last_name || ''} ${c.first_name}`.trim(),
                       sublabel: c.phone || c.email,
                       avatar: c.avatar_url
                     }))}
@@ -420,8 +420,8 @@ export const TicketsPage: React.FC = () => {
                             borderRadius: '10px', fontSize: '0.8125rem', fontWeight: 600,
                             boxShadow: 'var(--shadow-xs)'
                           }}>
-                            <Avatar src={c?.avatar_url} name={c ? `${c.first_name} ${c.last_name || ''}` : cid} size={20} />
-                            <span>{c ? `${c.first_name} ${c.last_name || ''}` : cid}</span>
+                            <Avatar src={c?.avatar_url} name={c ? `${c.last_name || ''} ${c.first_name}` : cid} size={20} />
+                            <span>{c ? `${c.last_name || ''} ${c.first_name}` : cid}</span>
                             <button 
                               onClick={() => setCreateForm({...createForm, related_contacts: createForm.related_contacts.filter(id => id !== cid)})}
                               style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2px', borderRadius: '4px', color: 'var(--color-text-muted)' }}
@@ -440,7 +440,7 @@ export const TicketsPage: React.FC = () => {
                       placeholder="Chọn khách hàng để tag..."
                       options={contacts.filter(c => !createForm.related_contacts.includes(String(c.id))).map(c => ({ 
                         value: String(c.id), 
-                        label: `${c.first_name} ${c.last_name || ''}`.trim(),
+                        label: `${c.last_name || ''} ${c.first_name}`.trim(),
                         sublabel: c.phone || c.email,
                         avatar: c.avatar_url
                       }))}

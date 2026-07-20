@@ -927,7 +927,7 @@ export const ExpensesPage: React.FC = () => {
                   <CustomSelect
                     options={contacts.filter(c => !form.entities.find((e: any) => e.entity_id === c.id)).map(c => ({ 
                       value: String(c.id), 
-                      label: `${c.first_name} ${c.last_name || ''}`.trim(),
+                      label: `${c.last_name || ''} ${c.first_name}`.trim(),
                       avatar: c.avatar_url,
                       sublabel: c.company_name 
                     }))}
@@ -935,7 +935,7 @@ export const ExpensesPage: React.FC = () => {
                     onChange={(val) => {
                       const found = contacts.find(c => String(c.id) === val);
                       if (found) {
-                        setForm({ ...form, entities: [...form.entities, { entity_type: 'contact', entity_id: found.id, name: `${found.first_name} ${found.last_name || ''}`.trim(), avatar_url: found.avatar_url }] });
+                        setForm({ ...form, entities: [...form.entities, { entity_type: 'contact', entity_id: found.id, name: `${found.last_name || ''} ${found.first_name}`.trim(), avatar_url: found.avatar_url }] });
                       }
                     }}
                     placeholder="+ Thêm khách hàng chia tiền bill..."

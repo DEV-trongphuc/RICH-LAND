@@ -216,7 +216,7 @@ class CooperationController {
         respond(200, $slips, 'Lấy danh sách phiếu hợp tác thành công');
     }
 
-    public function autoGenerateSlip(int $contactId, int $depositId, int $creatorId): void {
+    public function autoGenerateSlip(int $contactId, int $depositId, int $creatorId, ?array $customShares = null): void {
         // Find owner of contact with safety check
         $stmtC = $this->db->prepare("SELECT owner_id, tenant_id FROM contacts WHERE id = ?");
         $stmtC->execute([$contactId]);
@@ -224,58 +224,47 @@ class CooperationController {
         if (!$contact) return;
         $ownerId = (int)$contact['owner_id'];
 
-        // Query all unique sales who had access to this contact (both active and revoked)
-        $stmtAct = $this->db->prepare("
-            SELECT DISTINCT user_id 
-            FROM quyen_truy_cap 
-            WHERE contact_id = ? AND user_id != ?
-        ");
-        $stmtAct->execute([$contactId, $ownerId]);
-        $supporters = $stmtAct->fetchAll(PDO::FETCH_COLUMN) ?: [];
-
-        if (empty($supporters)) {
-            // Fallback to activities for backward compatibility
-            $stmtFallback = $this->db->prepare("
-                SELECT DISTINCT user_id 
-                FROM activities 
-                WHERE related_type = 'contact' AND related_id = ? AND user_id IS NOT NULL AND user_id != ?
-            ");
-            $stmtFallback->execute([$contactId, $ownerId]);
-            $supporters = $stmtFallback->fetchAll(PDO::FETCH_COLUMN) ?: [];
-        }
-
-        // Build default shares: Owner gets 100% (Sales can update this later)
         $shares = [];
-        if ($ownerId > 0) {
-            $shares[$ownerId] = 100;
+        if ($customShares !== null && !empty($customShares)) {
+            $shares = $customShares;
         } else {
-            $shares[$creatorId] = 100;
-        }
-
-        // Supporters get 0% initially
-        foreach ($supporters as $suppId) {
-            $shares[$suppId] = 0;
+            // Default to single independent sale for contact owner or creator
+            $targetOwner = $ownerId > 0 ? $ownerId : $creatorId;
+            $shares = [$targetOwner => 100];
         }
 
         $sharesJson = json_encode($shares);
 
+        // If it's a single shareholder (no cooperation), auto-approve it!
+        $isSingleShareholder = count($shares) === 1;
+        $status = $isSingleShareholder ? 'approved' : 'pending_signatures';
+
+        $sigs = [];
+        if ($isSingleShareholder) {
+            $onlyKey = array_key_first($shares);
+            $sigs[$onlyKey] = true;
+        }
+        $signaturesJson = json_encode($sigs);
+
         $stmtIns = $this->db->prepare("
             INSERT INTO cooperation_slips (contact_id, deposit_slip_id, version, total_percentage, shares_json, signatures_json, status, created_by)
-            VALUES (?, ?, 1, 100, ?, '{}', 'pending_signatures', ?)
+            VALUES (?, ?, 1, 100, ?, ?, ?, ?)
         ");
-        $stmtIns->execute([$contactId, $depositId, $sharesJson, $creatorId]);
+        $stmtIns->execute([$contactId, $depositId, $sharesJson, $signaturesJson, $status, $creatorId]);
         $slipId = (int)$this->db->lastInsertId();
 
         // Sync collaborators to contacts table
         $this->syncCollaboratorsToContact((int)$contactId, $sharesJson);
 
-        // Email all shareholders that a slip requires their signature
-        $emailSubject = "[RICH LAND] Yêu cầu ký xác nhận Phiếu hợp tác #" . $slipId;
-        $emailTitle = "KÝ XÁC NHẬN PHIẾU HỢP TÁC";
-        $emailContent = "Chào các thành viên,<br/><br/>" .
-                        "Một phiếu hợp tác chia sẻ hoa hồng mới (#" . $slipId . ") đã được tự động khởi tạo trên hệ thống.<br/>" .
-                        "Vui lòng đăng nhập hệ thống RICH LAND CRM và truy cập mục <strong>Phiếu hợp tác</strong> để xem chi tiết và ký xác nhận.";
-        $this->notifyShareholders($slipId, $shares, $emailSubject, $emailTitle, $emailContent);
+        // Email all shareholders that a slip requires their signature (only if not auto-approved)
+        if (!$isSingleShareholder) {
+            $emailSubject = "[RICH LAND] Yêu cầu ký xác nhận Phiếu hợp tác #" . $slipId;
+            $emailTitle = "KÝ XÁC NHẬN PHIẾU HỢP TÁC";
+            $emailContent = "Chào các thành viên,<br/><br/>" .
+                            "Một phiếu hợp tác chia sẻ hoa hồng mới (#" . $slipId . ") đã được tự động khởi tạo trên hệ thống.<br/>" .
+                            "Vui lòng đăng nhập hệ thống RICH LAND CRM và truy cập mục <strong>Phiếu hợp tác</strong> để xem chi tiết và ký xác nhận.";
+            $this->notifyShareholders($slipId, $shares, $emailSubject, $emailTitle, $emailContent);
+        }
     }
 
     public function updateShares(array $auth, int $id): void {

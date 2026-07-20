@@ -317,7 +317,7 @@ export const CompanyDrawer: React.FC<CompanyDrawerProps> = ({ isOpen, onClose, e
         api.get('/contacts', { params: { company_id: entity.id, limit: 50 } })
           .then(r => setSubContacts((r.data.data?.items || r.data.data || []).map((c: any) => ({
             id: c.id,
-            name: `${c.first_name || ''} ${c.last_name || ''}`.trim() || 'Chưa có tên',
+            name: `${c.last_name || ''} ${c.first_name || ''}`.trim() || 'Chưa có tên',
             role: c.job_title || '',
             phone: c.phone || '',
             email: c.email || '',

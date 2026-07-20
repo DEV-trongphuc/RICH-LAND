@@ -473,9 +473,9 @@ export const TicketDrawer: React.FC<Props> = ({ isOpen, onClose, ticket, onUpdat
                         if (!c) return null;
                         return (
                           <div key={cid} style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                            <Avatar src={c.avatar_url} name={`${c.first_name} ${c.last_name}`} size={28} />
+                            <Avatar src={c.avatar_url} name={`${c.last_name} ${c.first_name}`} size={28} />
                             <div style={{ fontSize: '0.8125rem' }}>
-                              <p style={{ fontWeight: 600 }}>{c.first_name} {c.last_name}</p>
+                              <p style={{ fontWeight: 600 }}>{c.last_name} {c.first_name}</p>
                               <p style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>{c.phone}</p>
                             </div>
                           </div>

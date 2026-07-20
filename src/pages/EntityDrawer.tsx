@@ -98,10 +98,10 @@ export const EntityDrawer: React.FC<EntityDrawerProps> = ({ isOpen, onClose, ent
               <div className={styles.header}>
                 <div className={styles.headerProfile}>
                   <div className="avatar-placeholder lg" style={{ background: '#a31422', fontSize: '1.25rem', width: 56, height: 56 }}>
-                    {formData?.first_name?.[0]}{formData?.last_name?.[0]}
+                    {formData?.last_name?.[0]}{formData?.first_name?.[0]}
                   </div>
                   <div>
-                    <h2 className={styles.title}>{formData?.first_name} {formData?.last_name}</h2>
+                    <h2 className={styles.title}>{formData?.last_name} {formData?.first_name}</h2>
                     <p className={styles.subtitle} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                       <Briefcase size={14} /> {formData?.job_title || 'Chưa cập nhật chức vụ'} tại {formData?.company_name || 'Chưa cập nhật công ty'}
                     </p>

@@ -2745,7 +2745,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
       rawActivity: a
     })).sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime());
   }, [drawerActivities, contact?.id, timelineFilter]);
-  const fullName = `${formData.first_name || ''} ${formData.last_name || ''}`.trim() || 'Chưa cập nhật tên';
+  const fullName = `${formData.last_name || ''} ${formData.first_name || ''}`.trim() || 'Chưa cập nhật tên';
   const ownerUser = users.find(u => u.full_name === formData.owner_name || u.name === formData.owner_name || u.username === formData.owner_name);
   const ownerAvatarUrl = ownerUser?.avatar_url || ownerUser?.avatar || undefined;
 
@@ -7673,7 +7673,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                           {!isViewer && (
                             <button className="btn primary" style={{ padding: '8px 16px', fontSize: '0.875rem', height: '34px' }} onClick={() => {
                               const today = new Date().toISOString().slice(0, 10);
-                              const fullName = `${contact.first_name} ${contact.last_name}`.trim();
+                              const fullName = `${contact.last_name} ${contact.first_name}`.trim();
                               setSelectedTaskForDetails({
                                 id: 'new',
                                 subject: '',
@@ -10388,7 +10388,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
       <CreateExpenseModal
         isOpen={showExpenseModal}
         onClose={() => setShowExpenseModal(false)}
-        initialEntity={{ type: 'contact', id: contact?.id, name: `${contact?.first_name} ${contact?.last_name || ''}`.trim() }}
+        initialEntity={{ type: 'contact', id: contact?.id, name: `${contact?.last_name || ''} ${contact?.first_name}`.trim() }}
         onSuccess={fetchData}
       />
       <QuoteEditorModal
