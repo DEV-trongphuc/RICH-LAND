@@ -16,6 +16,7 @@ import styles from './EntityDrawer.module.css'; // Reusing the same drawer CSS
 import { numberToText } from '../utils/numberToText';
 import { useAuth } from '../contexts/AuthContext';
 import { CurrencyInput } from '../components/ui/CurrencyInput';
+import { CopyButton } from '../components/ui/CopyButton';
 
 interface CompanyDrawerProps {
   isOpen: boolean;
@@ -497,16 +498,31 @@ export const CompanyDrawer: React.FC<CompanyDrawerProps> = ({ isOpen, onClose, e
                       display: 'flex', 
                       flexDirection: 'row', 
                       gap: '1rem', 
-                      marginTop: '0.5rem' 
+                      marginTop: '0.5rem',
+                      alignItems: 'center'
                     }}>
                       <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: '4px' }}>
                         <Phone size={12} /> {formData?.phone || 'Chưa có SĐT'}
+                        {formData?.phone && <CopyButton text={formData.phone} />}
                       </span>
                       <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: '4px' }}>
                         <Mail size={12} /> {formData?.email || 'Chưa có Email'}
+                        {formData?.email && <CopyButton text={formData.email} />}
                       </span>
                       <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                        <Globe size={12} /> {formData?.website || 'Chưa có Website'}
+                        <Globe size={12} />
+                        {formData?.website ? (
+                          <a 
+                            href={formData.website.startsWith('http') ? formData.website : `http://${formData.website}`} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            style={{ color: 'var(--color-primary)', textDecoration: 'underline' }}
+                          >
+                            {formData.website}
+                          </a>
+                        ) : (
+                          'Chưa có Website'
+                        )}
                       </span>
                     </div>
                   </div>

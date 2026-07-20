@@ -620,7 +620,6 @@ export const ExpensesPage: React.FC = () => {
                   <label className="form-label" style={{ fontWeight: 600 }}>Đơn vị thụ hưởng <span style={{ color: 'var(--color-text-muted)', fontSize: '0.8rem', fontWeight: 400 }}>(Thanh toán cho ai?)</span></label>
                   <div style={{ position: 'relative' }} ref={vendorRef}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '0 1rem', height: '44px', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)', background: 'var(--color-surface)' }}>
-                      <Building2 size={15} style={{ color: 'var(--color-text-muted)', flexShrink: 0 }} />
                       <input
                         style={{ border: 'none', outline: 'none', background: 'transparent', width: '100%', fontSize: '0.875rem', color: 'var(--color-text)' }}
                         placeholder="Tìm NCC hoặc nhập tự do..."
@@ -629,6 +628,7 @@ export const ExpensesPage: React.FC = () => {
                         onFocus={() => setShowVendorDropdown(true)}
                       />
                       {vendorSearch && <button type="button" onClick={() => { setVendorSearch(''); setForm({ ...form, vendor_name: '' }); }} style={{ color: 'var(--color-text-muted)', display: 'flex' }}><X size={14} /></button>}
+                      <Building2 size={15} style={{ color: 'var(--color-text-muted)', flexShrink: 0 }} />
                       <ChevronDown size={13} style={{ color: 'var(--color-text-muted)', flexShrink: 0 }} />
                     </div>
 

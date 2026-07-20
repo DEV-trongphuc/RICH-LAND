@@ -619,6 +619,7 @@ class FinanceController
         $category = $_GET['category'] ?? '';
         $from = $_GET['from'] ?? '';
         $to = $_GET['to'] ?? '';
+        $companyId = $_GET['company_id'] ?? '';
         $where = ['e.tenant_id=?', 'e.deleted_at IS NULL'];
         $params = [$tid];
         $role = $auth['role'] ?? '';
@@ -658,6 +659,18 @@ class FinanceController
         if ($to) {
             $where[] = 'e.date <= ?';
             $params[] = $to;
+        }
+        if ($companyId) {
+            $where[] = "EXISTS (
+                SELECT 1 FROM expense_entities ee 
+                LEFT JOIN contacts c ON ee.entity_type = 'contact' AND ee.entity_id = c.id
+                WHERE ee.expense_id = e.id AND (
+                    (ee.entity_type = 'company' AND ee.entity_id = ?) 
+                    OR (ee.entity_type = 'contact' AND c.company_id = ?)
+                )
+            )";
+            $params[] = (int)$companyId;
+            $params[] = (int)$companyId;
         }
         $w = implode(' AND ', $where);
 

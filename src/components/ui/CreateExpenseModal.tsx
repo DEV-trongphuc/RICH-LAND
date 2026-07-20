@@ -186,6 +186,7 @@ export const CreateExpenseModal: React.FC<Props> = ({ isOpen, onClose, initialEn
         category: formData.category,
         notes: formData.notes,
         beneficiary: formData.beneficiary || beneficiarySearch,
+        vendor_name: formData.beneficiary || beneficiarySearch,
         has_vat_invoice: formData.has_vat_invoice ? 1 : 0,
         is_vat_inclusive: formData.is_vat_inclusive ? 1 : 0,
         vat_amount: formData.has_vat_invoice ? parseFloat(String(formData.vat_amount || 0).replace(/,/g, '')) : 0,
@@ -265,7 +266,6 @@ export const CreateExpenseModal: React.FC<Props> = ({ isOpen, onClose, initialEn
                 onFocus={() => setShowBeneficiaryResults(true)}
                 tabIndex={-1}
               >
-                <Building2 size={16} style={{ color: 'var(--color-text-muted)', flexShrink: 0 }} />
                 <input
                   style={{ border: 'none', outline: 'none', background: 'transparent', width: '100%', fontSize: '0.875rem', color: 'var(--color-text)' }}
                   placeholder="Tìm nhà cung cấp hoặc nhập tự do..."
@@ -282,6 +282,7 @@ export const CreateExpenseModal: React.FC<Props> = ({ isOpen, onClose, initialEn
                     <X size={14} />
                   </button>
                 )}
+                <Building2 size={16} style={{ color: 'var(--color-text-muted)', flexShrink: 0 }} />
                 <ChevronDown size={14} style={{ color: 'var(--color-text-muted)', flexShrink: 0 }} />
               </div>
 
