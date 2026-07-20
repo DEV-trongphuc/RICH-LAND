@@ -125,6 +125,7 @@ const SettingsInner = () => {
     workflow_templates: false,
     database_maintenance: false
   });
+  const [showChatIdGuide, setShowChatIdGuide] = useState(false);
 
   const renderHelpBanner = (tabKey: string, title: string, content: React.ReactNode) => {
     const isCollapsed = collapsedHelps[tabKey] ?? false;
@@ -3634,22 +3635,41 @@ function doPost(e) {
                   </p>
                   <div style={{
                     marginTop: '8px',
-                    padding: '12px',
                     background: 'var(--color-bg-dark)',
-                    borderLeft: '4px solid var(--color-primary)',
                     borderRadius: '8px',
                     fontSize: '0.8rem',
                     color: 'var(--color-text-muted)',
-                    lineHeight: '1.5'
+                    lineHeight: '1.5',
+                    border: '1px solid var(--color-border-light)'
                   }}>
-                    <strong style={{ color: 'var(--color-text)', display: 'block', marginBottom: '4px' }}>
-                      💡 {t('Hướng dẫn lấy Chat ID:')}
-                    </strong>
-                    <ol style={{ margin: 0, paddingLeft: '1.2rem', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                      <li>{t('Thêm Zalo Bot này vào Group Admin của bạn.')}</li>
-                      <li>{t('Gửi tin nhắn')} <code>/info</code> {t('vào Group.')}</li>
-                      <li>{t('Bot sẽ tự động phản hồi lại mã Chat ID của Group đó (ví dụ: group.123456...). Hãy copy mã này và dán vào ô cấu hình phía trên.')}</li>
-                    </ol>
+                    <div 
+                      onClick={() => setShowChatIdGuide(!showChatIdGuide)}
+                      style={{
+                        padding: '10px 12px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        cursor: 'pointer',
+                        userSelect: 'none',
+                        fontWeight: 600,
+                        color: 'var(--color-text)'
+                      }}
+                    >
+                      <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <span>💡</span> {t('Hướng dẫn lấy Chat ID:')}
+                      </span>
+                      {showChatIdGuide ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                    </div>
+
+                    {showChatIdGuide && (
+                      <div style={{ padding: '0 12px 12px 12px' }}>
+                        <ol style={{ margin: 0, paddingLeft: '1.2rem', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                          <li>{t('Thêm Zalo Bot này vào Group Admin của bạn.')}</li>
+                          <li>{t('Gửi tin nhắn')} <code>/info</code> {t('vào Group.')}</li>
+                          <li>{t('Bot sẽ tự động phản hồi lại mã Chat ID của Group đó (ví dụ: group.123456...). Hãy copy mã này và dán vào ô cấu hình phía trên.')}</li>
+                        </ol>
+                      </div>
+                    )}
                   </div>
                 </div>
 
