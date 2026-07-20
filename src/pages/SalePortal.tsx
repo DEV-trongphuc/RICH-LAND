@@ -2525,19 +2525,74 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
     window.addEventListener('new-notification-received', handleNewNotif);
     document.addEventListener('visibilitychange', handleVisibilityChange);
 
-    const intervalId = setInterval(() => {
-      if (document.visibilityState === 'visible') {
-        loadPortalData(true);
-      }
-    }, 30000);
+    // Initialize Server-Sent Events (SSE) for instant push updates
+    let eventSource: EventSource | null = null;
+    let reconnectTimeout: any = null;
+
+    if (token) {
+      const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+      const sseBase = isLocal ? '/backend' : (import.meta.env.VITE_API_URL || '/backend');
+      const url = `${sseBase}/api.php?action=get_sse_updates&token=${encodeURIComponent(token)}`;
+
+      const connectSSE = () => {
+        if (eventSource) {
+          eventSource.close();
+        }
+        eventSource = new EventSource(url);
+
+        eventSource.addEventListener('update', () => {
+          // Trigger silent refresh of portal data
+          loadPortalData(true);
+        });
+
+        eventSource.onerror = (err) => {
+          console.error("SSE connection error, retrying in 5s...", err);
+          if (eventSource) {
+            eventSource.close();
+          }
+          if (reconnectTimeout) {
+            clearTimeout(reconnectTimeout);
+          }
+          reconnectTimeout = setTimeout(() => {
+            if (document.visibilityState === 'visible') {
+              connectSSE();
+            }
+          }, 5000);
+        };
+      };
+
+      connectSSE();
+
+      // Reconnect when user returns to page if stream was closed/paused
+      const handleVisibilityReconnect = () => {
+        if (document.visibilityState === 'visible') {
+          if (!eventSource || eventSource.readyState === EventSource.CLOSED) {
+            connectSSE();
+          }
+        }
+      };
+      document.addEventListener('visibilitychange', handleVisibilityReconnect);
+
+      return () => {
+        window.removeEventListener('contact-updated', handleContactUpdated);
+        window.removeEventListener('new-notification-received', handleNewNotif);
+        document.removeEventListener('visibilitychange', handleVisibilityChange);
+        document.removeEventListener('visibilitychange', handleVisibilityReconnect);
+        if (eventSource) {
+          eventSource.close();
+        }
+        if (reconnectTimeout) {
+          clearTimeout(reconnectTimeout);
+        }
+      };
+    }
 
     return () => {
       window.removeEventListener('contact-updated', handleContactUpdated);
       window.removeEventListener('new-notification-received', handleNewNotif);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
-      clearInterval(intervalId);
     };
-  }, []);
+  }, [token]);
 
   useEffect(() => {
     if (activeTab === 'databank') {
