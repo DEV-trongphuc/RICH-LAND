@@ -46,71 +46,6 @@ require_once 'config.php';
 require_once 'db_connect.php';
 require_once 'permission_matrix_helper.php';
 
-try {
-    $conn->query("ALTER TABLE consultants ADD COLUMN dob DATE NULL");
-} catch (Exception $e) {}
-try {
-    $conn->query("ALTER TABLE activities ADD COLUMN deleted_at DATETIME NULL DEFAULT NULL AFTER updated_at");
-} catch (Exception $e) {}
-try { $conn->query("ALTER TABLE projects ADD COLUMN reference_url VARCHAR(500) NULL"); } catch (Exception $e) {}
-try { $conn->query("ALTER TABLE marketing_campaigns ADD COLUMN reference_url VARCHAR(500) NULL"); } catch (Exception $e) {}
-try { $conn->query("ALTER TABLE contacts ADD COLUMN gender VARCHAR(20) NULL"); } catch (Exception $e) {}
-try { $conn->query("ALTER TABLE contacts ADD COLUMN zalo_link VARCHAR(255) NULL"); } catch (Exception $e) {}
-try { $conn->query("ALTER TABLE contacts ADD COLUMN fb_link VARCHAR(255) NULL"); } catch (Exception $e) {}
-try { $conn->query("ALTER TABLE contacts ADD COLUMN customer_type VARCHAR(50) NULL"); } catch (Exception $e) {}
-try { $conn->query("ALTER TABLE contacts ADD COLUMN industry VARCHAR(100) NULL"); } catch (Exception $e) {}
-try { $conn->query("ALTER TABLE contacts ADD COLUMN budget_range VARCHAR(100) NULL"); } catch (Exception $e) {}
-try { $conn->query("ALTER TABLE contacts ADD COLUMN campaign_id INT(11) NULL"); } catch (Exception $e) {}
-try { $conn->query("ALTER TABLE companies ADD COLUMN logo_url VARCHAR(255) NULL"); } catch (Exception $e) {}
-
-
-
-
-try {
-    $conn->query("ALTER TABLE consultants ADD COLUMN gender VARCHAR(20) NULL");
-} catch (Exception $e) {}
-try {
-    $conn->query("ALTER TABLE consultants ADD COLUMN citizen_id VARCHAR(50) NULL");
-} catch (Exception $e) {}
-try {
-    $conn->query("ALTER TABLE consultants ADD COLUMN address TEXT NULL");
-} catch (Exception $e) {}
-try {
-    $conn->query("ALTER TABLE consultants ADD COLUMN bank_name VARCHAR(100) NULL");
-} catch (Exception $e) {}
-try {
-    $conn->query("ALTER TABLE consultants ADD COLUMN bank_account VARCHAR(100) NULL");
-} catch (Exception $e) {}
-try {
-    $conn->query("ALTER TABLE users ADD COLUMN overtime_mode TINYINT(1) DEFAULT 0");
-} catch (Exception $e) {}
-
-try {
-    $conn->query("ALTER TABLE users ADD COLUMN manager_behavior_mode VARCHAR(50) NOT NULL DEFAULT 'combined'");
-} catch (Exception $e) {}
-
-try {
-    $conn->query("CREATE OR REPLACE VIEW `consultants` AS 
-        SELECT 
-          `id`, 
-          `full_name` AS `name`, 
-          `email`, 
-          `status`, 
-          `leave_start`, 
-          `leave_end`, 
-          `created_at`, 
-          `zalo_chat_id`, 
-          `work_start_time`, 
-          `work_end_time`, 
-          `work_schedule`, 
-          `avatar_url` AS `avatar`, 
-          `vacation_mode`,
-          `team_id`
-        FROM `users` 
-        WHERE `role` = 'sales' 
-           OR (`role` = 'manager' AND `manager_behavior_mode` = 'combined')");
-} catch (Exception $e) {}
-
 // Safe CORS origin matching
 $httpOrigin = $_SERVER['HTTP_ORIGIN'] ?? '';
 $allowedOrigins = [
@@ -11331,16 +11266,16 @@ switch ($action) {
             $uStmt->close();
 
             if ($teamId) {
-                $stmt = $conn->prepare("SELECT id, username, name, email, role, created_at, zalo_chat_id, is_confirmed, last_login, avatar, dob, gender, citizen_id, address, bank_name, bank_account, phone, is_active, team_id FROM accounts WHERE team_id = ? OR id = ?");
+                $stmt = $conn->prepare("SELECT id, username, name, email, role, created_at, zalo_chat_id, telegram_chat_id, is_confirmed, last_login, avatar, dob, gender, citizen_id, address, bank_name, bank_account, phone, is_active, team_id FROM accounts WHERE team_id = ? OR id = ?");
                 $stmt->bind_param("ii", $teamId, $decodedUser['id']);
             } else {
-                $stmt = $conn->prepare("SELECT id, username, name, email, role, created_at, zalo_chat_id, is_confirmed, last_login, avatar, dob, gender, citizen_id, address, bank_name, bank_account, phone, is_active, team_id FROM accounts WHERE id = ?");
+                $stmt = $conn->prepare("SELECT id, username, name, email, role, created_at, zalo_chat_id, telegram_chat_id, is_confirmed, last_login, avatar, dob, gender, citizen_id, address, bank_name, bank_account, phone, is_active, team_id FROM accounts WHERE id = ?");
                 $stmt->bind_param("i", $decodedUser['id']);
             }
             $stmt->execute();
             $res = $stmt->get_result();
         } else {
-            $res = $conn->query("SELECT id, username, name, email, role, created_at, zalo_chat_id, is_confirmed, last_login, avatar, dob, gender, citizen_id, address, bank_name, bank_account, phone, is_active, team_id FROM accounts ORDER BY created_at DESC");
+            $res = $conn->query("SELECT id, username, name, email, role, created_at, zalo_chat_id, telegram_chat_id, is_confirmed, last_login, avatar, dob, gender, citizen_id, address, bank_name, bank_account, phone, is_active, team_id FROM accounts ORDER BY created_at DESC");
         }
         $data = [];
         while ($row = $res->fetch_assoc()) {
