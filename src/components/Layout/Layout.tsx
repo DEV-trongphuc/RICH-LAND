@@ -2242,29 +2242,58 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
         <CustomModal
           isOpen={isTelegramModalOpen}
           onClose={() => setIsTelegramModalOpen(false)}
-          title={t("LIÊN KẾT TELEGRAM BOT")}
-          width="400px"
+          title={t("Liên kết Telegram")}
+          width="380px"
         >
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1.25rem', padding: '1rem 0 0.5rem 0', textAlign: 'center' }}>
-            <div style={{
-              width: '64px',
-              height: '64px',
-              borderRadius: '50%',
-              background: 'linear-gradient(135deg, #0088cc 0%, #00a8ff 100%)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              boxShadow: '0 8px 16px rgba(0, 136, 204, 0.2)',
-              marginBottom: '0.25rem'
-            }}>
-              <img 
-                src="https://upload.wikimedia.org/wikipedia/commons/thumb/8/82/Telegram_logo.svg/3840px-Telegram_logo.svg.png" 
-                alt="Telegram" 
-                style={{ width: 36, height: 36, filter: 'brightness(0) invert(1)' }} 
-              />
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '20px', margin: '0.5rem 0 0.25rem 0' }}>
+              {/* Richland Logo */}
+              <div style={{
+                width: '64px',
+                height: '64px',
+                borderRadius: '50%',
+                backgroundColor: '#fff',
+                border: '2px solid var(--color-border)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                boxShadow: '0 4px 10px rgba(0, 0, 0, 0.05)',
+                overflow: 'hidden'
+              }}>
+                <img 
+                  src="/LOGO.jpg" 
+                  alt="Rich Land" 
+                  style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+                />
+              </div>
+
+              {/* Connecting icon */}
+              <div style={{ display: 'flex', alignItems: 'center', color: '#0088cc' }}>
+                <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+                  <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+                </svg>
+              </div>
+
+              {/* Telegram Logo */}
+              <div style={{
+                width: '64px',
+                height: '64px',
+                borderRadius: '50%',
+                background: '#0088cc',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                boxShadow: '0 8px 16px rgba(0, 136, 204, 0.25)',
+                color: '#fff'
+              }}>
+                <svg viewBox="0 0 24 24" width="32" height="32" fill="currentColor">
+                  <path d="M21.9 2.1c-.2-.1-.5-.1-.7 0L1.6 9.8c-.6.2-.7.6-.2.9l5.3 1.9 2 6.2c.2.5.5.6.8.3l3-2.6 5.3 3.9c.7.5 1.3.2 1.5-.6l3.9-18.3c.2-.7-.3-1.2-1.1-1.1zM8.9 11.9l8.6-5.4c.1-.1.3 0 .2.1l-7.2 6.5-.3 2.5c-.1.5-.4.6-.6.1l-1.7-4.4z"/>
+                </svg>
+              </div>
             </div>
 
-            <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--color-text)', lineHeight: '1.5', padding: '0 10px' }}>
+            <p style={{ margin: 0, fontSize: '0.925rem', color: 'var(--color-text)', lineHeight: '1.6', padding: '0 8px' }}>
               {t('Nhấp nút bên dưới để mở Telegram và kích hoạt nhận thông báo chia data khách hàng tức thời.')}
             </p>
 
@@ -2285,20 +2314,19 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  gap: '8px',
-                  background: 'linear-gradient(90deg, #0088cc 0%, #00a8ff 100%)',
+                  background: '#0088cc',
                   border: 'none',
                   color: '#fff',
                   padding: '12px',
                   borderRadius: '10px',
                   fontWeight: 700,
-                  fontSize: '0.95rem',
+                  fontSize: '0.925rem',
                   textDecoration: 'none',
                   boxShadow: '0 4px 12px rgba(0, 136, 204, 0.2)',
                   transition: 'all 0.2s'
                 }}
               >
-                ⚡ LIÊN KẾT NHANH 1-CLICK
+                LIÊN KẾT NHANH 1-CLICK
               </a>
 
               <button
@@ -2309,7 +2337,8 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
                   borderRadius: '10px',
                   fontSize: '0.9rem',
                   borderColor: 'var(--color-border)',
-                  color: 'var(--color-text-muted)'
+                  color: 'var(--color-text-muted)',
+                  cursor: 'pointer'
                 }}
               >
                 {t('Đóng')}
