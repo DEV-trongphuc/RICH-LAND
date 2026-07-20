@@ -4,17 +4,18 @@ interface ToggleSwitchProps {
   checked: boolean;
   onChange: (checked: boolean) => void;
   small?: boolean;
+  disabled?: boolean;
 }
 
-export const ToggleSwitch = ({ checked, onChange, small = false }: ToggleSwitchProps) => {
+export const ToggleSwitch = ({ checked, onChange, small = false, disabled = false }: ToggleSwitchProps) => {
   const width = small ? 32 : 44;
   const height = small ? 18 : 24;
   const knobSize = small ? 14 : 20;
 
   return (
     <motion.div
-      onClick={() => onChange(!checked)}
-      className="flex items-center cursor-pointer select-none shrink-0"
+      onClick={() => !disabled && onChange(!checked)}
+      className="flex items-center select-none shrink-0"
       animate={{
         backgroundColor: checked ? 'var(--color-success)' : 'var(--color-border)'
       }}
@@ -27,7 +28,8 @@ export const ToggleSwitch = ({ checked, onChange, small = false }: ToggleSwitchP
         display: 'flex',
         justifyContent: checked ? 'flex-end' : 'flex-start',
         border: '1px solid rgba(0,0,0,0.04)',
-        cursor: 'pointer'
+        cursor: disabled ? 'not-allowed' : 'pointer',
+        opacity: disabled ? 0.6 : 1
       }}
       transition={{ duration: 0.2 }}
     >

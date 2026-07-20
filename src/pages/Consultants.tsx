@@ -968,61 +968,69 @@ const ConsultantsInner = () => {
         {activeTab === 'consultants' && (
         <div className="responsive-grid-4" style={{ display: isMobile ? 'none' : 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginBottom: '1.5rem' }}>
           {/* Card 1: Tổng TVV */}
-          <div className="stat-card" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '1rem 1.25rem', background: 'var(--color-surface)', border: '1px solid var(--color-border-light)', borderRadius: '10px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '40px', height: '40px', borderRadius: '8px', background: 'rgba(73, 80, 87, 0.06)', color: 'var(--color-text-muted)' }}>
-              <Users size={18} />
+          <div className="stat-card hover-lift" style={{ display: 'flex', flexDirection: 'column', padding: '1rem 1.25rem', background: 'var(--color-surface)', border: '1px solid var(--color-border-light)', borderRadius: '12px', minHeight: '110px', boxShadow: '0 2px 8px rgba(0,0,0,0.02)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+              <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('Tổng TVV')}</span>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '32px', height: '32px', borderRadius: '8px', background: 'rgba(100, 116, 139, 0.08)', color: '#64748b', flexShrink: 0 }}>
+                <Users size={16} />
+              </div>
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column' }}>
-              <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.3px' }}>{t('Tổng TVV')}</span>
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
               {loading ? (
-                <div style={{ height: '22px', width: '36px', background: 'var(--color-border-light)', borderRadius: '4px', marginTop: '4px' }} className="animate-pulse" />
+                <div style={{ height: '28px', width: '48px', background: 'var(--color-border-light)', borderRadius: '4px' }} className="animate-pulse" />
               ) : (
-                <span style={{ fontSize: '1.375rem', fontWeight: 700, color: 'var(--color-text)', marginTop: '1px', lineHeight: 1.1 }}>{users.length}</span>
+                <span style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--color-text)', lineHeight: 1.1 }}>{users.length}</span>
               )}
             </div>
           </div>
 
           {/* Card 2: Đang nhận Data */}
-          <div className="stat-card" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '1rem 1.25rem', background: 'var(--color-surface)', border: '1px solid var(--color-border-light)', borderRadius: '10px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '40px', height: '40px', borderRadius: '8px', background: 'rgba(16, 185, 129, 0.08)', color: 'var(--color-success)' }}>
-              <CheckCircle size={18} />
+          <div className="stat-card hover-lift" style={{ display: 'flex', flexDirection: 'column', padding: '1rem 1.25rem', background: 'var(--color-surface)', border: '1px solid var(--color-border-light)', borderRadius: '12px', minHeight: '110px', boxShadow: '0 2px 8px rgba(0,0,0,0.02)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+              <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('Đang nhận Data')}</span>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '32px', height: '32px', borderRadius: '8px', background: 'rgba(16, 185, 129, 0.08)', color: 'var(--color-success)', flexShrink: 0 }}>
+                <CheckCircle size={16} />
+              </div>
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column' }}>
-              <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.3px' }}>{t('Đang nhận Data')}</span>
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
               {loading ? (
-                <div style={{ height: '22px', width: '36px', background: 'var(--color-border-light)', borderRadius: '4px', marginTop: '4px' }} className="animate-pulse" />
+                <div style={{ height: '28px', width: '48px', background: 'var(--color-border-light)', borderRadius: '4px' }} className="animate-pulse" />
               ) : (
-                <span style={{ fontSize: '1.375rem', fontWeight: 700, color: 'var(--color-success)', marginTop: '1px', lineHeight: 1.1 }}>{activeCount}</span>
+                <span style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--color-success)', lineHeight: 1.1 }}>{activeCount}</span>
               )}
             </div>
           </div>
 
           {/* Card 3: Đang nghỉ phép */}
-          <div className="stat-card" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '1rem 1.25rem', background: 'var(--color-surface)', border: '1px solid var(--color-border-light)', borderRadius: '10px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '40px', height: '40px', borderRadius: '8px', background: 'rgba(245, 158, 11, 0.08)', color: 'var(--color-warning)' }}>
-              <Calendar size={18} />
+          <div className="stat-card hover-lift" style={{ display: 'flex', flexDirection: 'column', padding: '1rem 1.25rem', background: 'var(--color-surface)', border: '1px solid var(--color-border-light)', borderRadius: '12px', minHeight: '110px', boxShadow: '0 2px 8px rgba(0,0,0,0.02)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+              <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('Đang nghỉ phép')}</span>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '32px', height: '32px', borderRadius: '8px', background: 'rgba(245, 158, 11, 0.08)', color: 'var(--color-warning)', flexShrink: 0 }}>
+                <Calendar size={16} />
+              </div>
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column' }}>
-              <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.3px' }}>{t('Đang nghỉ phép')}</span>
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
               {loading ? (
-                <div style={{ height: '22px', width: '36px', background: 'var(--color-border-light)', borderRadius: '4px', marginTop: '4px' }} className="animate-pulse" />
+                <div style={{ height: '28px', width: '48px', background: 'var(--color-border-light)', borderRadius: '4px' }} className="animate-pulse" />
               ) : (
-                <span style={{ fontSize: '1.375rem', fontWeight: 700, color: 'var(--color-warning)', marginTop: '1px', lineHeight: 1.1 }}>{leaveCount}</span>
+                <span style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--color-warning)', lineHeight: 1.1 }}>{leaveCount}</span>
               )}
             </div>
           </div>
 
           {/* Card 4: Ngừng hoạt động */}
-          <div className="stat-card" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '1rem 1.25rem', background: 'var(--color-surface)', border: '1px solid var(--color-border-light)', borderRadius: '10px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '40px', height: '40px', borderRadius: '8px', background: 'rgba(239, 68, 68, 0.08)', color: 'var(--color-danger)' }}>
-              <UserX size={18} />
+          <div className="stat-card hover-lift" style={{ display: 'flex', flexDirection: 'column', padding: '1rem 1.25rem', background: 'var(--color-surface)', border: '1px solid var(--color-border-light)', borderRadius: '12px', minHeight: '110px', boxShadow: '0 2px 8px rgba(0,0,0,0.02)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+              <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('Ngừng hoạt động')}</span>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '32px', height: '32px', borderRadius: '8px', background: 'rgba(239, 68, 68, 0.08)', color: 'var(--color-danger)', flexShrink: 0 }}>
+                <UserX size={16} />
+              </div>
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column' }}>
-              <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.3px' }}>{t('Ngừng hoạt động')}</span>
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
               {loading ? (
-                <div style={{ height: '22px', width: '36px', background: 'var(--color-border-light)', borderRadius: '4px', marginTop: '4px' }} className="animate-pulse" />
+                <div style={{ height: '28px', width: '48px', background: 'var(--color-border-light)', borderRadius: '4px' }} className="animate-pulse" />
               ) : (
-                <span style={{ fontSize: '1.375rem', fontWeight: 700, color: 'var(--color-danger)', marginTop: '1px', lineHeight: 1.1 }}>{inactiveCount}</span>
+                <span style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--color-danger)', lineHeight: 1.1 }}>{inactiveCount}</span>
               )}
             </div>
           </div>
@@ -1042,7 +1050,7 @@ const ConsultantsInner = () => {
             gap: '0.75rem',
             flexWrap: 'wrap'
           }}>
-            <div style={{ display: 'flex', gap: '8px', flex: 1, minWidth: isMobile ? '100%' : '360px', maxWidth: isMobile ? '100%' : '360px', alignItems: 'center' }}>
+            <div style={{ display: 'flex', gap: '8px', flex: 1, minWidth: isMobile ? '100%' : '480px', maxWidth: isMobile ? '100%' : '480px', alignItems: 'center' }}>
               <div style={{ position: 'relative', flex: 1, minWidth: 0 }}>
                 <input
                   type="text"
@@ -1175,14 +1183,14 @@ const ConsultantsInner = () => {
               {paginatedUsers.map(u => (
                 <div
                   key={u.id}
-                  onClick={() => isWriteAuthorized && openEditModal(u)}
+                  onClick={() => openEditModal(u)}
                   style={{
                     padding: '12px 16px',
                     background: 'var(--color-surface)',
                     border: '1px solid var(--color-border-light)',
                     borderRadius: '12px',
                     boxShadow: '0 4px 12px rgba(0, 0, 0, 0.03)',
-                    cursor: isWriteAuthorized ? 'pointer' : 'default',
+                    cursor: 'pointer',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'space-between',
@@ -1256,10 +1264,10 @@ const ConsultantsInner = () => {
                   return (
                     <tr
                       key={u.id}
-                      className={`group ${isWriteAuthorized ? 'table-row-hover' : ''}`}
-                      style={{ cursor: isWriteAuthorized ? 'pointer' : 'default' }}
-                      onClick={() => isWriteAuthorized && openEditModal(u)}
-                      title={isWriteAuthorized ? t("Nhấp để chỉnh sửa thông tin") : undefined}
+                      className="group table-row-hover"
+                      style={{ cursor: 'pointer' }}
+                      onClick={() => openEditModal(u)}
+                      title={t("Nhấp để xem chi tiết")}
                     >
                       <td data-label={t('Tên TVV')}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
@@ -2235,6 +2243,7 @@ const ConsultantsInner = () => {
         onClose={() => setModalOpen(false)}
         account={editingUser}
         onSaveSuccess={fetchUsers}
+        readOnly={!isWriteAuthorized}
       />
 
 

@@ -24,6 +24,7 @@ interface Props {
   onClose: () => void;
   account: any | null; // null for adding new
   onSaveSuccess: () => void;
+  readOnly?: boolean;
 }
 
 const DEFAULT_SCHEDULE = {
@@ -116,7 +117,7 @@ const resolveAttachmentUrl = (path: string) => {
   return `${baseUrl}/${path.replace(/^\/+/, '')}`;
 };
 
-export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account, onSaveSuccess }) => {
+export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account, onSaveSuccess, readOnly = false }) => {
   const { t } = useLanguage();
   const { user: currentUser } = useAuth();
   const isSuperAdmin = currentUser?.role === 'superadmin' || (currentUser?.role as string) === 'super_admin';
@@ -1097,7 +1098,7 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
           
           {/* Save Button with ONLY icon on the Right */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
-            {!loading && (
+            {!loading && !readOnly && (
               <button 
                 type="submit"
                 form="account-detail-form"
@@ -1149,24 +1150,26 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
                 >
                   {/* Profile Card inside Sidebar */}
                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', paddingBottom: '1.25rem', borderBottom: '1px solid var(--color-border-light)', marginBottom: '0.75rem' }}>
-                    <div style={{ position: 'relative', cursor: 'pointer' }} onClick={() => fileInputRef.current?.click()}>
+                    <div style={{ position: 'relative', cursor: readOnly ? 'default' : 'pointer' }} onClick={() => !readOnly && fileInputRef.current?.click()}>
                       <Avatar src={avatar} name={name || 'S'} size={72} />
-                      <div style={{
-                        position: 'absolute',
-                        bottom: 0,
-                        right: 0,
-                        backgroundColor: 'var(--color-primary)',
-                        color: 'white',
-                        borderRadius: '50%',
-                        padding: '4px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        border: '2px solid var(--color-surface)',
-                        boxShadow: 'var(--shadow-sm)'
-                      }}>
-                        <Camera size={12} />
-                      </div>
+                      {!readOnly && (
+                        <div style={{
+                          position: 'absolute',
+                          bottom: 0,
+                          right: 0,
+                          backgroundColor: 'var(--color-primary)',
+                          color: 'white',
+                          borderRadius: '50%',
+                          padding: '4px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          border: '2px solid var(--color-surface)',
+                          boxShadow: 'var(--shadow-sm)'
+                        }}>
+                          <Camera size={12} />
+                        </div>
+                      )}
                       {isUploadingAvatar && (
                         <div style={{
                           position: 'absolute',
@@ -1467,6 +1470,7 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
                     </button>
                   )}
                   <form id="account-detail-form" onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                    <fieldset disabled={readOnly} style={{ border: 'none', padding: 0, margin: 0, display: 'contents' }}>
 
               {/* CARD 1: THÔNG TIN CÁ NHÂN */}
               {activeTab === 'personal' && (
@@ -1524,6 +1528,7 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
                               value={address}
                               onChange={(val) => setAddress(val)}
                               placeholder={t('Chọn địa chỉ thường trú...')}
+                              disabled={readOnly}
                             />
                           </div>
                           <div className="form-group" style={{ margin: 0 }}>
@@ -1532,6 +1537,7 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
                               value={addressTemporary}
                               onChange={(val) => setAddressTemporary(val)}
                               placeholder={t('Chọn địa chỉ tạm trú...')}
+                              disabled={readOnly}
                             />
                           </div>
                         </div>
@@ -1679,6 +1685,7 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
                           value={workplace}
                           onChange={(val) => setWorkplace(val)}
                           placeholder={t('Chọn địa điểm làm việc...')}
+                          disabled={readOnly}
                         />
                       </div>
                       <div className="form-group">
@@ -1888,6 +1895,7 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
                                 setPermissionsJson(getDefaultPermissionsForRole(newRole));
                               }}
                               width="100%"
+                              disabled={readOnly}
                             />
                           </div>
                           {role === 'manager' && (
@@ -1901,6 +1909,7 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
                                 value={managerBehaviorMode}
                                 onChange={val => setManagerBehaviorMode(val.toString())}
                                 width="100%"
+                                disabled={readOnly}
                               />
                             </div>
                           )}
@@ -1950,6 +1959,7 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
                       <ToggleSwitch 
                         checked={isActive === '1'}
                         onChange={checked => setIsActive(checked ? '1' : '0')}
+                        disabled={readOnly}
                       />
                     </div>
 
@@ -2875,6 +2885,7 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
                                       setHrRecords(updated);
                                     }}
                                     placeholder={t('Chọn loại...')}
+                                    disabled={readOnly}
                                   />
                                 </div>
                                 <div className="form-group" style={{ margin: 0 }}>
@@ -3114,7 +3125,8 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
                   </div>
                 )}
 
-              </form>
+                    </fieldset>
+                  </form>
             </div>
           )}
           </>
