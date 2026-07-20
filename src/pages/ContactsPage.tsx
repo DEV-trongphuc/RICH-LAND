@@ -1385,10 +1385,9 @@ export const ContactsPage: React.FC = () => {
                       onChange={v => setFilterDataType(v)}
                       options={[
                         { value: '', label: 'Tất cả loại data' },
-                        { value: 'coop', label: 'Data Co-op' },
-                        { value: 'databank', label: 'Data Kho Databank' },
-                        { value: 'distributed', label: 'Data hệ thống chia' },
-                        { value: 'personal', label: 'Data cá nhân tự nhập' }
+                        { value: 'distributed', label: 'Data được chia' },
+                        { value: 'personal', label: 'Data cá nhân' },
+                        { value: 'error_ticket', label: 'Data lỗi & Ticket' }
                       ]}
                     />
                   </div>

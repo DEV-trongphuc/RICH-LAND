@@ -2549,11 +2549,47 @@ switch ($action) {
             $stmtContactsCount->close();
         }
 
+        // 1. DATA LỖI & TICKET
+        $stmtErrorTicket = $conn->prepare("
+            SELECT COUNT(DISTINCT c.id) as cnt 
+            FROM contacts c 
+            WHERE $contactsWhereClause 
+              AND (
+                (c.report_status IS NOT NULL AND c.report_status != '')
+                OR (c.ticket_status IS NOT NULL AND c.ticket_status != '')
+                OR EXISTS (
+                    SELECT 1 FROM leads l2 
+                    JOIN distribution_logs dl2 ON dl2.lead_id = l2.id 
+                    JOIN users u2 ON u2.id = c.owner_id
+                    JOIN consultants cons2 ON u2.email = cons2.email
+                    WHERE l2.person_id = c.person_id AND dl2.assigned_to = cons2.id AND dl2.status IN ('duplicate', 'error', 'blacklisted')
+                )
+              )
+        ");
+        $errorTicketCount = 0;
+        if ($stmtErrorTicket) {
+            $stmtErrorTicket->bind_param($contactsTypes, ...$contactsParams);
+            $stmtErrorTicket->execute();
+            $errorTicketCount = (int) ($stmtErrorTicket->get_result()->fetch_assoc()['cnt'] ?? 0);
+            $stmtErrorTicket->close();
+        }
+
         // TỪ DATABANK
         $stmtDatabank = $conn->prepare("
             SELECT COUNT(DISTINCT c.id) as cnt 
             FROM contacts c 
             WHERE $contactsWhereClause 
+              AND NOT (
+                (c.report_status IS NOT NULL AND c.report_status != '')
+                OR (c.ticket_status IS NOT NULL AND c.ticket_status != '')
+                OR EXISTS (
+                    SELECT 1 FROM leads l2 
+                    JOIN distribution_logs dl2 ON dl2.lead_id = l2.id 
+                    JOIN users u2 ON u2.id = c.owner_id
+                    JOIN consultants cons2 ON u2.email = cons2.email
+                    WHERE l2.person_id = c.person_id AND dl2.assigned_to = cons2.id AND dl2.status IN ('duplicate', 'error', 'blacklisted')
+                )
+              )
               AND (c.source = 'databank' OR EXISTS (
                   SELECT 1 FROM leads l2 
                   JOIN distribution_logs dl2 ON dl2.lead_id = l2.id 
@@ -2575,6 +2611,17 @@ switch ($action) {
             SELECT COUNT(DISTINCT c.id) as cnt 
             FROM contacts c 
             WHERE $contactsWhereClause 
+              AND NOT (
+                (c.report_status IS NOT NULL AND c.report_status != '')
+                OR (c.ticket_status IS NOT NULL AND c.ticket_status != '')
+                OR EXISTS (
+                    SELECT 1 FROM leads l2 
+                    JOIN distribution_logs dl2 ON dl2.lead_id = l2.id 
+                    JOIN users u2 ON u2.id = c.owner_id
+                    JOIN consultants cons2 ON u2.email = cons2.email
+                    WHERE l2.person_id = c.person_id AND dl2.assigned_to = cons2.id AND dl2.status IN ('duplicate', 'error', 'blacklisted')
+                )
+              )
               AND c.source NOT IN ('databank', 'ca_nhan', 'gioi_thieu')
               AND (c.collaborator_ids IS NULL OR c.collaborator_ids = '')
               AND EXISTS (
@@ -2582,7 +2629,7 @@ switch ($action) {
                   JOIN distribution_logs dl2 ON dl2.lead_id = l2.id 
                   JOIN users u2 ON u2.id = c.owner_id
                   JOIN consultants cons2 ON u2.email = cons2.email
-                  WHERE l2.person_id = c.person_id AND dl2.assigned_to = cons2.id AND dl2.status IN ('assigned', 'compensation', 'rule_6_month', 'pending_work_hours', 'fallback', 'success')
+                  WHERE l2.person_id = c.person_id AND dl2.assigned_to = cons2.id AND dl2.status IN ('assigned', 'compensation', 'rule_6_month', 'pending_work_hours', 'fallback', 'success', 'reminder')
               )
         ");
         $distributedCount = 0;
@@ -2598,6 +2645,17 @@ switch ($action) {
             SELECT COUNT(DISTINCT c.id) as cnt 
             FROM contacts c 
             WHERE $contactsWhereClause 
+              AND NOT (
+                (c.report_status IS NOT NULL AND c.report_status != '')
+                OR (c.ticket_status IS NOT NULL AND c.ticket_status != '')
+                OR EXISTS (
+                    SELECT 1 FROM leads l2 
+                    JOIN distribution_logs dl2 ON dl2.lead_id = l2.id 
+                    JOIN users u2 ON u2.id = c.owner_id
+                    JOIN consultants cons2 ON u2.email = cons2.email
+                    WHERE l2.person_id = c.person_id AND dl2.assigned_to = cons2.id AND dl2.status IN ('duplicate', 'error', 'blacklisted')
+                )
+              )
               AND (FIND_IN_SET(?, c.collaborator_ids) OR (c.owner_id = ? AND c.collaborator_ids IS NOT NULL AND c.collaborator_ids != ''))
         ");
         $coopCount = 0;
@@ -2613,7 +2671,7 @@ switch ($action) {
         }
 
         // TỰ NHẬP
-        $selfCount = max(0, $contactsCount - $databankCount - $distributedCount - $coopCount);
+        $selfCount = max(0, $contactsCount - $errorTicketCount - $databankCount - $distributedCount - $coopCount);
 
         // 4. Query distribution by round using contacts table
         $sqlByRound = "
@@ -2762,6 +2820,7 @@ switch ($action) {
                 'coop_count' => $coopCount,
                 'databank_count' => $databankCount,
                 'self_count' => $selfCount,
+                'error_ticket_count' => $errorTicketCount,
                 'tickets_total' => (int) ($ticketStats['total'] ?? 0),
                 'tickets_approved' => (int) ($ticketStats['approved'] ?? 0),
                 'tickets_rejected' => (int) ($ticketStats['rejected'] ?? 0),
@@ -5729,10 +5788,39 @@ switch ($action) {
                 $contactsCount = (int) ($resTotal->fetch_assoc()['cnt'] ?? 0);
             }
 
+            // DATA LỖI & TICKET
+            $resErrorTicket = $conn->query("
+                SELECT COUNT(DISTINCT c.id) as cnt 
+                FROM contacts c 
+                WHERE $contactsWhereClause 
+                  AND (
+                    (c.report_status IS NOT NULL AND c.report_status != '')
+                    OR (c.ticket_status IS NOT NULL AND c.ticket_status != '')
+                    OR EXISTS (
+                        SELECT 1 FROM leads l2 
+                        JOIN distribution_logs dl2 ON dl2.lead_id = l2.id 
+                        WHERE l2.person_id = c.person_id AND dl2.assigned_to = $consultantId AND dl2.status IN ('duplicate', 'error', 'blacklisted')
+                    )
+                  )
+            ");
+            $errorTicketCount = 0;
+            if ($resErrorTicket) {
+                $errorTicketCount = (int) ($resErrorTicket->fetch_assoc()['cnt'] ?? 0);
+            }
+
             $resDb = $conn->query("
                 SELECT COUNT(DISTINCT c.id) as cnt 
                 FROM contacts c 
                 WHERE $contactsWhereClause 
+                  AND NOT (
+                    (c.report_status IS NOT NULL AND c.report_status != '')
+                    OR (c.ticket_status IS NOT NULL AND c.ticket_status != '')
+                    OR EXISTS (
+                        SELECT 1 FROM leads l2 
+                        JOIN distribution_logs dl2 ON dl2.lead_id = l2.id 
+                        WHERE l2.person_id = c.person_id AND dl2.assigned_to = $consultantId AND dl2.status IN ('duplicate', 'error', 'blacklisted')
+                    )
+                  )
                   AND (c.source = 'databank' OR EXISTS (
                       SELECT 1 FROM leads l2 
                       JOIN distribution_logs dl2 ON dl2.lead_id = l2.id 
@@ -5747,12 +5835,21 @@ switch ($action) {
                 SELECT COUNT(DISTINCT c.id) as cnt 
                 FROM contacts c 
                 WHERE $contactsWhereClause 
+                  AND NOT (
+                    (c.report_status IS NOT NULL AND c.report_status != '')
+                    OR (c.ticket_status IS NOT NULL AND c.ticket_status != '')
+                    OR EXISTS (
+                        SELECT 1 FROM leads l2 
+                        JOIN distribution_logs dl2 ON dl2.lead_id = l2.id 
+                        WHERE l2.person_id = c.person_id AND dl2.assigned_to = $consultantId AND dl2.status IN ('duplicate', 'error', 'blacklisted')
+                    )
+                  )
                   AND c.source NOT IN ('databank', 'ca_nhan', 'gioi_thieu')
                   AND (c.collaborator_ids IS NULL OR c.collaborator_ids = '')
                   AND EXISTS (
                       SELECT 1 FROM leads l2 
                       JOIN distribution_logs dl2 ON dl2.lead_id = l2.id 
-                      WHERE l2.person_id = c.person_id AND dl2.assigned_to = $consultantId AND dl2.status IN ('assigned', 'compensation', 'rule_6_month', 'pending_work_hours', 'fallback', 'success')
+                      WHERE l2.person_id = c.person_id AND dl2.assigned_to = $consultantId AND dl2.status IN ('assigned', 'compensation', 'rule_6_month', 'pending_work_hours', 'fallback', 'success', 'reminder')
                   )
             ");
             if ($resDist) {
@@ -5763,13 +5860,22 @@ switch ($action) {
                 SELECT COUNT(DISTINCT c.id) as cnt 
                 FROM contacts c 
                 WHERE c.tenant_id = $tid AND c.deleted_at IS NULL AND $contactsDateCondition
+                  AND NOT (
+                    (c.report_status IS NOT NULL AND c.report_status != '')
+                    OR (c.ticket_status IS NOT NULL AND c.ticket_status != '')
+                    OR EXISTS (
+                        SELECT 1 FROM leads l2 
+                        JOIN distribution_logs dl2 ON dl2.lead_id = l2.id 
+                        WHERE l2.person_id = c.person_id AND dl2.assigned_to = $consultantId AND dl2.status IN ('duplicate', 'error', 'blacklisted')
+                    )
+                  )
                   AND (FIND_IN_SET($saleUserId, c.collaborator_ids) OR (c.owner_id = $saleUserId AND c.collaborator_ids IS NOT NULL AND c.collaborator_ids != ''))
             ");
             if ($resCoop) {
                 $coopCount = (int) ($resCoop->fetch_assoc()['cnt'] ?? 0);
             }
 
-            $selfCount = max(0, $contactsCount - $databankCount - $distributedCount - $coopCount);
+            $selfCount = max(0, $contactsCount - $errorTicketCount - $databankCount - $distributedCount - $coopCount);
         }
 
         $summary['total_received'] = $contactsCount;
@@ -5777,6 +5883,7 @@ switch ($action) {
         $summary['coop_count'] = $coopCount;
         $summary['databank_count'] = $databankCount;
         $summary['self_count'] = $selfCount;
+        $summary['error_ticket_count'] = $errorTicketCount;
 
         // 2. Breakdown stats by round
         $sqlRoundStats = "

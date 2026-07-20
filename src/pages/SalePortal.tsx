@@ -6180,7 +6180,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
         id: 'total',
         key: 'data', 
         status: 'all', 
-        label: t('TỔNG KHÁCH HÀNG'), 
+        label: t('TỔNG DATA'), 
         value: data.stats.total_received, 
         color: '#a31422', 
         bg: 'rgba(163, 20, 34, 0.08)', 
@@ -6225,17 +6225,18 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
         )
       },
       { 
-        id: 'databank',
+        id: 'personal',
         key: 'data', 
-        status: 'databank', 
-        label: t('TỪ DATABANK'), 
-        value: data.stats.databank_count, 
+        status: 'personal', 
+        label: t('DATA CÁ NHÂN'), 
+        value: (data.stats.self_count || 0) + (data.stats.databank_count || 0), 
         color: '#34c759', 
         bg: 'rgba(52, 199, 89, 0.08)', 
-        icon: Database,
+        icon: User,
         change: '+100%', 
         up: true,
         bullets: [
+          { text: t('Tự tạo hoặc giới thiệu') + ': ' + (data.stats.self_count || 0), color: '#f59e0b' },
           { text: t('Claim từ Kho Databank') + ': ' + (data.stats.databank_count || 0), color: '#34c759' }
         ],
         decor: (
@@ -6247,18 +6248,19 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
         )
       },
       { 
-        id: 'self',
+        id: 'error_ticket',
         key: 'data', 
-        status: 'self', 
-        label: t('TỰ NHẬP'), 
-        value: data.stats.self_count, 
-        color: '#f59e0b', 
-        bg: 'rgba(245, 158, 11, 0.08)', 
-        icon: UserPlus,
+        status: 'error_ticket', 
+        label: t('DATA LỖI & TICKET'), 
+        value: data.stats.error_ticket_count || 0, 
+        color: '#ef4444', 
+        bg: 'rgba(239, 68, 68, 0.08)', 
+        icon: AlertCircle,
         change: '+100%', 
         up: true,
         bullets: [
-          { text: t('Tự tạo hoặc giới thiệu') + ': ' + (data.stats.self_count || 0), color: '#f59e0b' }
+          { text: t('Data lỗi / trùng') + ': ' + (data.stats.error_ticket_count || 0), color: '#ef4444' },
+          { text: t('Số Ticket đã gửi') + ': ' + (data.stats.tickets_total || 0), color: '#ef4444' }
         ],
         decor: (
           <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: '100%', height: '100%' }}>
