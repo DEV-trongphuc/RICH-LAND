@@ -575,7 +575,9 @@ function getReportByTimeWindow($conn, $startTimestamp, $endTimestamp, $windowLab
         return $b['reminder_total'] <=> $a['reminder_total'];
     });
 
-    $saleStats = "";
+    $sumRoundTotal = 0;
+    $sumCompensation = 0;
+    $sumReminder = 0;
     $totalData = 0;
     $totalReminder = 0;
     foreach ($saleList as $saleItem) {
@@ -584,17 +586,11 @@ function getReportByTimeWindow($conn, $startTimestamp, $endTimestamp, $windowLab
         $compensation = $saleItem['compensation'];
         $roundTotal = max(0, $normalTotal - $compensation);
 
-        $saleStats .= "  👤 " . $saleItem['name'] . ": " . $normalTotal . " data\n";
-        $saleStats .= "    └─ " . $roundTotal . " chia vòng\n";
-        $saleStats .= "    └─ " . $compensation . " bù\n";
-        $saleStats .= "    └─ " . $reminderTotal . " 🕒 nhắc trùng\n";
-
+        $sumRoundTotal += $roundTotal;
+        $sumCompensation += $compensation;
+        $sumReminder += $reminderTotal;
         $totalData += $normalTotal;
         $totalReminder += $reminderTotal;
-    }
-
-    if (empty($saleStats)) {
-        $saleStats = "  Kỳ báo cáo này chưa chia data nào.\n";
     }
 
     $stmtTicket = $conn->prepare("
@@ -681,13 +677,10 @@ function getReportByTimeWindow($conn, $startTimestamp, $endTimestamp, $windowLab
     $msg .= "━━━━━━━━━━\n";
     $msg .= "⏱️ Kỳ báo cáo: " . ($windowLabel ?: "$startTimestamp → $endTimestamp") . "\n\n";
     $msg .= "📥 TỔNG QUAN CHIA SỐ:\n";
-    if ($totalReminder > 0) {
-        $msg .= "  • Tổng số data: " . $totalData . " data (Nhắc lại: " . $totalReminder . ")\n";
-    } else {
-        $msg .= "  • Tổng số data: $totalData data\n";
-    }
-    $msg .= "──────────\n";
-    $msg .= $saleStats . "\n";
+    $msg .= "  • Tổng số data: " . $totalData . " data\n";
+    $msg .= "    └─ " . $sumRoundTotal . " chia vòng\n";
+    $msg .= "    └─ " . $sumCompensation . " bù\n";
+    $msg .= "    └─ " . $sumReminder . " 🕒 nhắc trùng\n\n";
     $msg .= "🤖 AI PRE-SCREENER:\n";
     $msg .= "  • Số lead bị AI tạm giữ: $totalHeldByAI\n";
     $msg .= "  • Số lead dưới chuẩn: $totalBelowStandard\n";

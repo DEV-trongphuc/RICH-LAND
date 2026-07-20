@@ -118,8 +118,9 @@ function runDailyReportCron($conn)
             return $b['reminder_total'] <=> $a['reminder_total'];
         });
 
-        $saleStats = "";
-        $saleStatsHtml = "";
+        $sumRoundTotal = 0;
+        $sumCompensation = 0;
+        $sumReminder = 0;
         $totalData = 0;
         $totalReminder = 0;
         foreach ($saleList as $saleItem) {
@@ -128,20 +129,24 @@ function runDailyReportCron($conn)
             $compensation = $saleItem['compensation'];
             $roundTotal = max(0, $normalTotal - $compensation);
 
-            $saleStats .= "  👤 " . $saleItem['name'] . ": " . $normalTotal . " data\n";
-            $saleStats .= "    └─ " . $roundTotal . " chia vòng\n";
-            $saleStats .= "    └─ " . $compensation . " bù\n";
-            $saleStats .= "    └─ " . $reminderTotal . " nhắc lại\n";
-
-            $saleStatsHtml .= "<li><strong>👤 " . htmlspecialchars($saleItem['name']) . "</strong>: " . $normalTotal . " data<br>";
-            $saleStatsHtml .= " &nbsp;&nbsp;└─ " . $roundTotal . " chia vòng<br>";
-            $saleStatsHtml .= " &nbsp;&nbsp;└─ " . $compensation . " bù<br>";
-            $saleStatsHtml .= " &nbsp;&nbsp;└─ " . $reminderTotal . " nhắc lại</li>";
-
+            $sumRoundTotal += $roundTotal;
+            $sumCompensation += $compensation;
+            $sumReminder += $reminderTotal;
             $totalData += $normalTotal;
             $totalReminder += $reminderTotal;
         }
-        if (empty($saleStats)) {
+
+        $saleStats = "  • Tổng số data: " . $totalData . " data\n"
+            . "    └─ " . $sumRoundTotal . " chia vòng\n"
+            . "    └─ " . $sumCompensation . " bù\n"
+            . "    └─ " . $sumReminder . " nhắc lại\n";
+
+        $saleStatsHtml = "<li>Tổng số data: <strong>" . $totalData . "</strong> data</li>"
+            . "<li>Trong đó chia vòng: <strong>" . $sumRoundTotal . "</strong></li>"
+            . "<li>Trong đó bù: <strong>" . $sumCompensation . "</strong></li>"
+            . "<li>Trong đó nhắc lại: <strong>" . $sumReminder . "</strong></li>";
+
+        if ($totalData === 0) {
             $saleStats = "  Kỳ báo cáo này chưa chia data nào.\n";
             $saleStatsHtml = "<li>Kỳ báo cáo này chưa chia data nào.</li>";
         }
@@ -303,12 +308,6 @@ function runDailyReportCron($conn)
             $msg = "📊 [ BÁO CÁO TỔNG KẾT NGÀY ]\n";
             $msg .= "⏱️ Kỳ báo cáo: $windowStart → $windowEnd\n\n";
             $msg .= "📥 TỔNG QUAN CHIA SỐ:\n";
-            if ($totalReminder > 0) {
-                $msg .= "   (Tổng số data: " . $totalData . " data | Nhắc lại: " . $totalReminder . ")\n";
-            } else {
-                $msg .= "   ($totalData data)\n";
-            }
-            $msg .= "----------\n";
             $msg .= $saleStats . "\n";
             $msg .= "🤖 AI PRE-SCREENER:\n";
             $msg .= "  • Số lead bị AI tạm giữ: $totalHeldByAI\n";
