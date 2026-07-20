@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { AlertCircle, Users, User, CheckCircle, Ticket as TicketIcon, RefreshCw, Zap, Filter, Settings2, Save, Bell, ChevronLeft, ChevronRight, ExternalLink, AlertTriangle, Phone, Mail, Clock, Tag, CheckCircle2, XCircle, ShieldAlert, Database, Plus, Trash2, Edit2, Sparkles, Check, X, Edit, Copy, BarChart2, Scale, Calendar, Info, ArrowRight } from 'lucide-react';
+import { AlertCircle, Users, User, CheckCircle, Ticket as TicketIcon, RefreshCw, Zap, Filter, Settings2, Save, Bell, ChevronLeft, ChevronRight, ExternalLink, AlertTriangle, Phone, Mail, Clock, Tag, CheckCircle2, XCircle, ShieldAlert, Database, Plus, Trash2, Edit2, Sparkles, Check, X, Edit, Copy, BarChart2, Scale, Calendar, Info, ArrowRight, Ban } from 'lucide-react';
 import {
   Bar, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer,
@@ -2271,7 +2271,7 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
                           e.currentTarget.style.boxShadow = '0 2px 6px rgba(239, 68, 68, 0.05)';
                         }}
                       >
-                        <AlertTriangle size={14} />
+                        <Ban size={14} />
                         {t('Chặn')}
                       </button>
                     )}

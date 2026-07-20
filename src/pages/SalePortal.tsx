@@ -7970,27 +7970,17 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
               {/* Status Filter for Admin */}
               {isAdmin && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>{t('Bộ lọc:')}</span>
-                  <select
+                  <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', fontWeight: 600, whiteSpace: 'nowrap' }}>{t('Bộ lọc:')}</span>
+                  <CustomSelect
+                    options={[
+                      { value: 'none', label: t('Hoạt động') },
+                      { value: 'only', label: t('Đã ẩn/xóa') },
+                      { value: 'all', label: t('Tất cả') }
+                    ]}
                     value={showDeletedFilter}
-                    onChange={(e) => setShowDeletedFilter(e.target.value as any)}
-                    style={{
-                      height: '30px',
-                      padding: '0 8px',
-                      borderRadius: '8px',
-                      border: '1px solid var(--color-border-light)',
-                      background: 'var(--color-surface)',
-                      color: 'var(--color-text)',
-                      fontSize: '0.75rem',
-                      fontWeight: 600,
-                      outline: 'none',
-                      cursor: 'pointer'
-                    }}
-                  >
-                    <option value="none">{t('Hoạt động')}</option>
-                    <option value="only">{t('Đã ẩn/xóa')}</option>
-                    <option value="all">{t('Tất cả')}</option>
-                  </select>
+                    onChange={(val) => setShowDeletedFilter(val as any)}
+                    width={110}
+                  />
                 </div>
               )}
 

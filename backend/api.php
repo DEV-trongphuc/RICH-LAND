@@ -7738,8 +7738,8 @@ switch ($action) {
                 $updLead->execute();
                 $updLead->close();
 
-                // 3. Mark distribution_logs as error
-                $updLog = $conn->prepare("UPDATE distribution_logs SET status='error' WHERE lead_id=? AND assigned_to=? AND round_id=?");
+                // 3. Mark distribution_logs as error - chỉ áp dụng cho lượt đang hoạt động gần nhất
+                $updLog = $conn->prepare("UPDATE distribution_logs SET status='error' WHERE lead_id=? AND assigned_to=? AND round_id=? AND status IN ('assigned', 'compensation') ORDER BY id DESC LIMIT 1");
                 $updLog->bind_param("iii", $lead_id, $sale_id, $round_id);
                 $updLog->execute();
                 $updLog->close();
@@ -8402,8 +8402,8 @@ switch ($action) {
             $updLead->execute();
 
             if (!$no_compensation) {
-                // Mark distribution_logs as error
-                $updLog = $conn->prepare("UPDATE distribution_logs SET status='error' WHERE lead_id=? AND assigned_to=? AND round_id=?");
+                // Mark distribution_logs as error - chỉ áp dụng cho lượt đang hoạt động gần nhất
+                $updLog = $conn->prepare("UPDATE distribution_logs SET status='error' WHERE lead_id=? AND assigned_to=? AND round_id=? AND status IN ('assigned', 'compensation') ORDER BY id DESC LIMIT 1");
                 $updLog->bind_param("iii", $report['lead_id'], $report['consultant_id'], $report['round_id']);
                 $updLog->execute();
 
@@ -8680,8 +8680,8 @@ switch ($action) {
             $updLead->bind_param("si", $compMsg, $report['lead_id']);
             $updLead->execute();
 
-            // 3. Update distribution_logs status to 'error'
-            $updLog = $conn->prepare("UPDATE distribution_logs SET status='error' WHERE lead_id=? AND assigned_to=? AND round_id=?");
+            // 3. Update distribution_logs status to 'error' - chỉ áp dụng cho lượt đang hoạt động gần nhất
+            $updLog = $conn->prepare("UPDATE distribution_logs SET status='error' WHERE lead_id=? AND assigned_to=? AND round_id=? AND status IN ('assigned', 'compensation') ORDER BY id DESC LIMIT 1");
             $updLog->bind_param("iii", $report['lead_id'], $report['consultant_id'], $report['round_id']);
             $updLog->execute();
 

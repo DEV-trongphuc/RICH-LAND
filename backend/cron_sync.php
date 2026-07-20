@@ -674,7 +674,8 @@ if (!function_exists('releasePendingWorkHoursLeads')) {
                             $tempTime = date('H:i');
                             if (!isConsultantInWorkHours($tempTime, $whStart, $whEnd, $workSchedule)) {
                                 $newStatus = 'pending_work_hours';
-                                $logMsg .= "Gán cho Sale mới: {$whRow['name']} (Chờ ngoài giờ làm việc).";
+                                $compSuffix = ($assignResult && $assignResult['is_compensation']) ? ' (Bù lượt)' : '';
+                                $logMsg .= "Gán cho Sale mới: {$whRow['name']} (Chờ ngoài giờ làm việc){$compSuffix}.";
                             } else {
                                 $newStatus = ($assignResult && $assignResult['is_compensation']) ? 'compensation' : 'assigned';
                                 $logMsg .= "Tái phân bổ thành công cho Sale mới: {$whRow['name']}.";
@@ -1173,7 +1174,8 @@ if (!function_exists('recallInactiveLeads')) {
                 $upLead->close();
 
                 // 5. Log the new distribution
-                $logMsg = "Tái phân bổ tự động do Sale {$oldConsultantName} không tiếp nhận.";
+                $compSuffix = ($assignResult && $assignResult['is_compensation']) ? ' (Bù lượt)' : '';
+                $logMsg = "Tái phân bổ tự động do Sale {$oldConsultantName} không tiếp nhận.{$compSuffix}";
                 if ($isFallbackAdmin && $fallbackAdminData) {
                     $logMsg = "Thu hồi từ Sale {$oldConsultantName} và chuyển fallback về Admin: " . $fallbackAdminData['name'];
                 } else if (!$newConsultantId) {

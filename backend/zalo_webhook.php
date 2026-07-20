@@ -499,8 +499,8 @@ if ($eventName === 'user_send_text' || $eventName === 'message.text.received') {
                     $updLead->execute();
                     $updLead->close();
 
-                    // Đánh dấu distribution_logs là error
-                    $updLog = $conn->prepare("UPDATE distribution_logs SET status='error' WHERE lead_id=? AND assigned_to=? AND round_id=?");
+                    // Đánh dấu distribution_logs là error - chỉ áp dụng cho lượt đang hoạt động gần nhất
+                    $updLog = $conn->prepare("UPDATE distribution_logs SET status='error' WHERE lead_id=? AND assigned_to=? AND round_id=? AND status IN ('assigned', 'compensation') ORDER BY id DESC LIMIT 1");
                     if (!$updLog) {
                         throw new Exception("Lỗi cập nhật Distribution Logs.");
                     }

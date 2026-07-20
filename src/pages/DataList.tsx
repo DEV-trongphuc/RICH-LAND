@@ -1,7 +1,7 @@
 import { useState, useEffect, Fragment, useMemo } from 'react';
 import api from '../api/axios';
 import { createPortal } from 'react-dom';
-import { Database, Search, Filter, ChevronLeft, ChevronRight, Download, RefreshCw, User, Phone, Mail, Clock, Tag, ExternalLink, AlertTriangle, CheckCircle2, XCircle, ShieldAlert, Calendar, LayoutList, Sparkles, Check, X, Edit, Bell, Copy, CheckCircle, BarChart2, Scale, Info } from 'lucide-react';
+import { Database, Search, Filter, ChevronLeft, ChevronRight, Download, RefreshCw, User, Phone, Mail, Clock, Tag, ExternalLink, AlertTriangle, CheckCircle2, XCircle, ShieldAlert, Calendar, LayoutList, Sparkles, Check, X, Edit, Bell, Copy, CheckCircle, BarChart2, Scale, Info, Ban } from 'lucide-react';
 import {
   Bar, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer,
@@ -2791,7 +2791,7 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                           e.currentTarget.style.boxShadow = '0 2px 6px rgba(239, 68, 68, 0.05)';
                         }}
                       >
-                        <AlertTriangle size={14} />
+                        <Ban size={14} />
                         {t('Chặn')}
                       </button>
                     )}
