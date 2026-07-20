@@ -83,35 +83,27 @@ function runMonthlyReportCron($conn) {
 
                 // Send Zalo Bot message to this Sale if linked
                 if (!empty($botToken) && !empty($saleZaloId)) {
-                    try {
-                        sendZaloMessageToMultiple($botToken, [$saleZaloId], $report['msg'], false);
-                    } catch (Exception $zaloEx) {
-                        error_log("Failed to send Zalo monthly report to {$sale['name']}: " . $zaloEx->getMessage());
-                    }
+                    sendZaloMessageToMultiple($botToken, [$saleZaloId], $report['msg'], false);
                 }
 
                 // Send Email to this Sale if email exists
                 if (!empty($saleEmail)) {
-                    try {
-                        sendMonthlyReportEmailToSale(
-                            $saleEmail,
-                            $sale['name'],
-                            $report['totalData'],
-                            $report['roundTotal'],
-                            $report['compensation'],
-                            $report['reminderTotal'],
-                            $report['totalTickets'],
-                            $report['approvedTickets'],
-                            $report['rejectedTickets'],
-                            $report['pendingTickets'],
-                            $report['totalCompReceived'],
-                            $report['totalCompOwed'],
-                            $report['windowStart'],
-                            $report['windowEnd']
-                        );
-                    } catch (Exception $mailEx) {
-                        error_log("Failed to send monthly report email to {$saleEmail}: " . $mailEx->getMessage());
-                    }
+                    sendMonthlyReportEmailToSale(
+                        $saleEmail,
+                        $sale['name'],
+                        $report['totalData'],
+                        $report['roundTotal'],
+                        $report['compensation'],
+                        $report['reminderTotal'],
+                        $report['totalTickets'],
+                        $report['approvedTickets'],
+                        $report['rejectedTickets'],
+                        $report['pendingTickets'],
+                        $report['totalCompReceived'],
+                        $report['totalCompOwed'],
+                        $report['windowStart'],
+                        $report['windowEnd']
+                    );
                 }
             }
         }

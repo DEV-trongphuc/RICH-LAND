@@ -4693,3 +4693,12 @@ div[role="status"] {
   position: relative !important;
   z-index: 2 !important;
 }
+
+/* Focus Mode Right Column Background Styling */
+.focus-right-column {
+  background-color: #f3f4f6 !important;
+}
+[data-theme='dark'] .focus-right-column {
+  background-color: var(--color-bg) !important;
+}
+

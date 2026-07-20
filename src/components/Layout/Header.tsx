@@ -2415,7 +2415,11 @@ export const Header = ({
 
                   const parseActorName = (body: string) => {
                     if (!body) return null;
-                    const match = body.match(/^(\p{Lu}\p{Ll}*(?:\s+\p{Lu}\p{Ll}*){1,4})\s+(?:đã|có)\s+/u);
+                    let cleanBody = body;
+                    if (body.startsWith('Nhân viên ')) {
+                      cleanBody = body.substring(10);
+                    }
+                    const match = cleanBody.match(/^(\p{Lu}\p{Ll}*(?:\s+\p{Lu}\p{Ll}*){1,4})\s+(?:đã|có)\s+/u);
                     if (match) {
                       return match[1].trim();
                     }
@@ -2508,6 +2512,7 @@ export const Header = ({
                                         case 'project_roster': return '#10b981';
                                         case 'project_document': return '#f59e0b';
                                         case 'project_comment': return '#8b5cf6';
+                                        case 'attendance': return '#eab308';
                                         default: return '#6b7280';
                                       }
                                     })(),

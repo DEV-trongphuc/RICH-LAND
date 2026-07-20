@@ -808,6 +808,31 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
                 transform: translateX(4px);
                 box-shadow: 0 4px 12px rgba(189, 29, 45, 0.25) !important;
               }
+              .welcome-banner-title {
+                font-size: 1.15rem !important;
+                font-weight: 800 !important;
+                color: #ffffff !important;
+                margin: 0 !important;
+                letter-spacing: -0.3px !important;
+                text-shadow: 0 2px 4px rgba(0,0,0,0.3) !important;
+                line-height: 1.3 !important;
+              }
+              @media (max-width: 768px) {
+                .welcome-banner {
+                  padding: 0.875rem 1.125rem !important;
+                  gap: 0.875rem !important;
+                  border-radius: 16px !important;
+                }
+                .welcome-banner-title {
+                  font-size: 0.95rem !important;
+                }
+                .resource-btn {
+                  width: 38px !important;
+                  padding: 0 !important;
+                  justify-content: center !important;
+                  gap: 0 !important;
+                }
+              }
             `}</style>
 
             <div className="welcome-banner">
@@ -833,10 +858,18 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
                   }} />
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', minWidth: 0 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
-                    <h2 style={{ fontSize: '1.35rem', fontWeight: 800, color: '#ffffff', margin: 0, letterSpacing: '-0.3px', textShadow: '0 2px 4px rgba(0,0,0,0.3)' }}>
-                      {t('Xin chào')}, {user?.name || 'Ban điều hành'}
-                    </h2>
+                  <h2 className="welcome-banner-title">
+                    {t('Xin chào')}, {user?.name || 'Ban điều hành'}
+                  </h2>
+                  
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', fontSize: '0.825rem', color: '#e4e4e7' }}>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontWeight: 600 }}>
+                      <Clock size={13} style={{ color: '#ff4d5a' }} />
+                      {getCurrentDateVi()}
+                    </span>
+                  </div>
+
+                  <div style={{ display: 'flex' }}>
                     <span style={{ 
                       fontSize: '0.68rem', 
                       fontWeight: 900, 
@@ -848,13 +881,6 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
                       ...getRoleBadgeStyle(user?.role || '')
                     }}>
                       {getRoleLabel(user?.role || '')}
-                    </span>
-                  </div>
-                  
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', fontSize: '0.825rem', color: '#e4e4e7' }}>
-                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontWeight: 600 }}>
-                      <Clock size={13} style={{ color: '#ff4d5a' }} />
-                      {getCurrentDateVi()}
                     </span>
                   </div>
                 </div>
@@ -896,7 +922,7 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
                   }}>
                     <CheckCircle2 size={15} style={{ color: '#10b981', flexShrink: 0 }} />
                     <span style={{ fontSize: '0.8rem', fontWeight: 650 }}>
-                      {t('Không có yêu cầu phê duyệt nào đang chờ xử lý.')}
+                      {t('Không có yêu cầu phê duyệt nào đang chờ xử lý. Chúc bạn 1 ngày làm việc năng lượng.')}
                     </span>
                   </div>
                 )}
@@ -918,7 +944,7 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
           <p className="page-subtitle">{t("Phân tích hiệu suất giao data theo thời gian thực — Hệ thống đang hoạt động trơn tru.")}</p>
         </div>
         <div className="mobile-w-full" style={{ display: 'flex', gap: '8px', alignItems: 'center', width: 'auto' }}>
-          <div className="mobile-flex-1" style={{ position: 'relative', zIndex: 100, width: 200 }}>
+          <div className="mobile-flex-1" style={{ position: 'relative', zIndex: 100, flex: '1 1 auto', minWidth: '240px', maxWidth: '320px' }}>
             <CustomSelect
               options={dateOptions}
               value={dateFilter}
@@ -933,33 +959,28 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
             />
           </div>
 
-
           {/* Button to open Connection Health Modal styled purple as "Hệ thống" */}
           <button
             className="btn primary"
             onClick={() => setShowHealthModal(true)}
-            title={t("Kiểm tra kết nối hệ thống")}
+            title={t("Kiểm tra kết nối hệ thống / Tài nguyên sử dụng")}
             style={{
+              width: 38,
               height: 38,
-              padding: '0 16px',
+              padding: 0,
               display: 'flex',
               alignItems: 'center',
-              gap: '6px',
+              justifyContent: 'center',
               borderRadius: 'var(--radius-md)',
               background: 'linear-gradient(135deg, #BD1D2D 0%, #a31422 100%)',
               color: '#fff',
               border: 'none',
               boxShadow: '0 2px 6px rgba(189, 29, 45, 0.25)',
               cursor: 'pointer',
-              fontWeight: 600,
               flexShrink: 0
             }}
           >
-            <Server size={15} />
-            <span>
-              <span className="hide-on-mobile">{t("Tài nguyên sử dụng")}</span>
-              <span className="mobile-only">{t("Tài nguyên")}</span>
-            </span>
+            <Server size={15} style={{ flexShrink: 0 }} />
           </button>
         </div>
       </div>

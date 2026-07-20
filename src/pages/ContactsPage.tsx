@@ -336,7 +336,7 @@ export const ContactsPage: React.FC = () => {
   }, []);
 
 
-  const [sortBy, setSortBy] = useState<'newest' | 'score_desc' | 'deal_desc'>('newest');
+  const [sortBy, setSortBy] = useState<'newest' | 'score_desc' | 'deal_desc' | 'interaction_desc'>('newest');
   
   // Date filter
   const [datePeriod, setDatePeriod] = useState<Period>('this_month');
@@ -358,7 +358,6 @@ export const ContactsPage: React.FC = () => {
     { id: 'ticket_action', label: 'Vé đền bù (Ticket)', visible: false },
     { id: 'updated_at', label: 'Ngày cập nhật', visible: true },
     { id: 'created_at', label: 'Ngày tạo', visible: true },
-    { id: 'interaction', label: 'Tương tác', visible: true },
     { id: 'score', label: 'Lead Score', visible: false },
   ]);
   const [showColumns, setShowColumns] = useState(false);
@@ -420,7 +419,7 @@ export const ContactsPage: React.FC = () => {
         page, 
         limit: pageSize, 
         search: debouncedSearch, 
-        sort: sortBy === 'score_desc' ? 'lead_score' : (sortBy === 'deal_desc' ? 'open_deal_value' : 'created_at'),
+        sort: sortBy === 'score_desc' ? 'lead_score' : (sortBy === 'deal_desc' ? 'open_deal_value' : (sortBy === 'interaction_desc' ? 'last_contact' : 'created_at')),
         order: 'DESC'
       };
       
@@ -936,11 +935,11 @@ export const ContactsPage: React.FC = () => {
                       <div style={{ padding: '4px 12px', fontSize: '0.65rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>
                         Sắp xếp
                       </div>
-                      {(['newest', 'score_desc', 'deal_desc'] as const).map((mode) => (
+                      {(['newest', 'interaction_desc', 'score_desc', 'deal_desc'] as const).map((mode) => (
                         <button
                           key={mode}
                           onClick={() => {
-                            setSortBy(mode);
+                            setSortBy(mode as any);
                             setShowMobileActions(false);
                           }}
                           style={{
@@ -961,7 +960,7 @@ export const ContactsPage: React.FC = () => {
                         >
                           <span style={{ width: 4, height: 4, borderRadius: '50%', background: sortBy === mode ? 'var(--color-primary)' : 'transparent', display: 'inline-block' }} />
                           <span>
-                            {mode === 'newest' ? 'Mới nhất' : mode === 'score_desc' ? 'Theo Score' : 'Theo Deal'}
+                            {mode === 'newest' ? 'Mới nhất' : mode === 'interaction_desc' ? 'Tương tác gần nhất' : mode === 'score_desc' ? 'Theo Score' : 'Theo Deal'}
                           </span>
                         </button>
                       ))}
@@ -1135,6 +1134,7 @@ export const ContactsPage: React.FC = () => {
                   onChange={val => setSortBy(val as any)} 
                   options={[
                     { value: 'newest', label: 'Mới nhất', icon: <ArrowDownUp size={14} /> },
+                    { value: 'interaction_desc', label: 'Tương tác gần nhất', icon: <ArrowDownUp size={14} /> },
                     { value: 'score_desc', label: 'Score', icon: <ArrowDownUp size={14} /> },
                     { value: 'deal_desc', label: 'Deal', icon: <ArrowDownUp size={14} /> }
                   ]} 
@@ -1558,9 +1558,19 @@ export const ContactsPage: React.FC = () => {
 
             <div className="table-wrap" style={{ maxHeight: 'calc(100vh - 340px)', overflowY: 'auto' }}>
               <style>{`
-                .table-wrap th, .table-wrap td {
-                  padding: 0.5rem 0.75rem !important;
+                .table-wrap th {
+                  padding: 0.75rem 0.75rem !important;
                   vertical-align: middle !important;
+                }
+                .table-wrap td {
+                  padding: 0.95rem 0.75rem !important;
+                  vertical-align: middle !important;
+                }
+                .table-wrap .table-row-hover:hover {
+                  background: rgba(0, 0, 0, 0.012) !important;
+                }
+                [data-theme="dark"] .table-wrap .table-row-hover:hover {
+                  background: rgba(255, 255, 255, 0.02) !important;
                 }
                 .table-wrap th {
                   font-size: 0.7rem !important;
@@ -1624,7 +1634,6 @@ export const ContactsPage: React.FC = () => {
                       <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: 0.5, borderBottom: '1px solid var(--color-border)' }}>Cập nhật</th>
                     )}
                     {columns.find(c => c.id === 'created_at')?.visible && <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: 0.5, borderBottom: '1px solid var(--color-border)' }}>Ngày tạo</th>}
-                    {columns.find(c => c.id === 'interaction')?.visible && <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: 0.5, borderBottom: '1px solid var(--color-border)' }}>Tương tác</th>}
                     {columns.find(c => c.id === 'score')?.visible && <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: 0.5, borderBottom: '1px solid var(--color-border)' }}>Score</th>}
                     {/* Hiding actions column header */}
                   </tr>
@@ -1773,7 +1782,7 @@ export const ContactsPage: React.FC = () => {
                                         </span>
                                       </span>
                                       <span style={{ fontSize: '0.725rem', color: 'var(--color-text-muted)', fontWeight: 500, whiteSpace: 'nowrap' }}>
-                                        Cập nhật: {c.updated_at ? new Date(c.updated_at).toLocaleDateString('vi-VN') : '—'}
+                                        Tương tác: {formatTimeAgo(getInteractionTime(c.last_contact, c.updated_at, c.created_at))}
                                       </span>
                                     </div>
                                   </div>
@@ -1786,7 +1795,7 @@ export const ContactsPage: React.FC = () => {
                                   <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
                                     <span style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)', whiteSpace: 'nowrap' }}>{c.owner_name}</span>
                                     <span style={{ fontSize: '0.725rem', color: 'var(--color-text-muted)', fontWeight: 500, whiteSpace: 'nowrap' }}>
-                                      Cập nhật: {c.updated_at ? new Date(c.updated_at).toLocaleDateString('vi-VN') : '—'}
+                                      Tương tác: {formatTimeAgo(getInteractionTime(c.last_contact, c.updated_at, c.created_at))}
                                     </span>
                                   </div>
                                 </div>
@@ -1799,7 +1808,7 @@ export const ContactsPage: React.FC = () => {
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
                                   <span style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', fontStyle: 'italic' }}>Chưa giao</span>
                                   <span style={{ fontSize: '0.725rem', color: 'var(--color-text-muted)', whiteSpace: 'nowrap' }}>
-                                    Cập nhật: {c.updated_at ? new Date(c.updated_at).toLocaleDateString('vi-VN') : '—'}
+                                    Tương tác: {formatTimeAgo(getInteractionTime(c.last_contact, c.updated_at, c.created_at))}
                                   </span>
                                 </div>
                               </div>
@@ -1875,13 +1884,7 @@ export const ContactsPage: React.FC = () => {
                             </p>
                           </td>
                         )}
-                        {columns.find(col => col.id === 'interaction')?.visible && (
-                          <td style={{ padding: '1rem', borderBottom: '1px solid var(--color-border)' }}>
-                            <span style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', fontWeight: 500, whiteSpace: 'nowrap' }}>
-                              {formatTimeAgo(getInteractionTime(c.last_contact, c.updated_at, c.created_at))}
-                            </span>
-                          </td>
-                        )}
+                        {/* Removed interaction column */}
                         {columns.find(col => col.id === 'score')?.visible && (
                           <td style={{ padding: '1rem', borderBottom: '1px solid var(--color-border)' }}>
                             <span style={{ fontWeight: 700, fontSize: '0.875rem', color: c.score >= 80 ? 'var(--color-success)' : c.score >= 60 ? 'var(--color-warning)' : 'var(--color-text-muted)' }}>

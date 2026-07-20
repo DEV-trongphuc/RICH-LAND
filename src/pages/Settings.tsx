@@ -241,6 +241,8 @@ const SettingsInner = () => {
   const [nightShiftStartTime, setNightShiftStartTime] = useState<string>("18:00");
   const [nightShiftEndTime, setNightShiftEndTime] = useState<string>("06:00");
   const [allowLateNightShiftRegistration, setAllowLateNightShiftRegistration] = useState<boolean>(false);
+  const [allowPipelineBackward, setAllowPipelineBackward] = useState<boolean>(false);
+  const [allowPipelineSkip, setAllowPipelineSkip] = useState<boolean>(false);
   const [lateNightShiftRegistrationMinutes, setLateNightShiftRegistrationMinutes] = useState<number>(30);
   const [advanceNightShiftRegistrationMinutes, setAdvanceNightShiftRegistrationMinutes] = useState<number>(0);
   const [autoApproveNightShift, setAutoApproveNightShift] = useState<boolean>(true);
@@ -652,6 +654,12 @@ const SettingsInner = () => {
         }
         if (json.data.weekend_shift_registration_lead_hours !== undefined) {
           setWeekendShiftRegistrationLeadHours(Number(json.data.weekend_shift_registration_lead_hours));
+        }
+        if (json.data.allow_pipeline_backward !== undefined) {
+          setAllowPipelineBackward(json.data.allow_pipeline_backward === '1' || json.data.allow_pipeline_backward === 1);
+        }
+        if (json.data.allow_pipeline_skip !== undefined) {
+          setAllowPipelineSkip(json.data.allow_pipeline_skip === '1' || json.data.allow_pipeline_skip === 1);
         }
         if (json.data.holiday_schedules !== undefined && json.data.holiday_schedules !== null) {
           try {
@@ -1143,6 +1151,8 @@ const SettingsInner = () => {
       coop_eligible_statuses: coopEligibleStatuses,
       coop_default_files: coopDefaultFiles,
       databank_applicable_sources: databankApplicableSources,
+      allow_pipeline_backward: allowPipelineBackward ? 1 : 0,
+      allow_pipeline_skip: allowPipelineSkip ? 1 : 0,
       standard_commission_rate: standardCommissionRate,
       lockout_reason_count_threshold: lockoutReasonCountThreshold,
       max_parallel_sales_per_client: maxParallelSalesPerClient,
@@ -3639,7 +3649,7 @@ function doPost(e) {
                     </strong>
                     <ol style={{ margin: 0, paddingLeft: '1.2rem', display: 'flex', flexDirection: 'column', gap: '4px' }}>
                       <li>{t('Thêm Zalo Bot này vào Group Admin của bạn.')}</li>
-                      <li>{t('Gửi tin nhắn')} <code>/id</code>, <code>/chatid</code> {t('hoặc')} <code>/info</code> {t('vào Group.')}</li>
+                      <li>{t('Gửi tin nhắn')} <code>/info</code> {t('vào Group.')}</li>
                       <li>{t('Bot sẽ tự động phản hồi lại mã Chat ID của Group đó (ví dụ: group.123456...). Hãy copy mã này và dán vào ô cấu hình phía trên.')}</li>
                     </ol>
                   </div>
@@ -5650,6 +5660,7 @@ function doPost(e) {
                   </ul>
                 ))}
 
+
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                   {(() => {
                     const slugCounts: Record<string, number> = {};
@@ -6009,6 +6020,60 @@ function doPost(e) {
                     <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', lineHeight: 1.4 }}>
                       {t('Tên các loại tài liệu cần thiết để phê duyệt phiếu hợp tác (phân cách bằng dấu phẩy).')}
                     </span>
+                  </div>
+
+                  {/* Cấu hình Cho phép lùi pipeline & Cho phép nhảy giai đoạn */}
+                  <div style={{
+                    background: 'var(--color-bg-secondary)',
+                    border: '1px solid var(--color-border)',
+                    borderRadius: '12px',
+                    padding: '1.25rem',
+                    marginTop: '2rem',
+                    display: 'flex',
+                    flexDirection: isMobile ? 'column' : 'row',
+                    gap: '1.5rem',
+                    alignItems: 'stretch'
+                  }}>
+                    <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem' }}>
+                      <div>
+                        <h4 style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--color-text)', margin: '0 0 4px 0' }}>
+                          {t('Cho phép lùi pipeline')}
+                        </h4>
+                        <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', margin: 0 }}>
+                          {t('Cho phép di chuyển thẻ khách hàng về các trạng thái trước đó trên Pipeline.')}
+                        </p>
+                      </div>
+                      <div style={{ flexShrink: 0 }}>
+                        <ToggleSwitch
+                          checked={allowPipelineBackward}
+                          onChange={setAllowPipelineBackward}
+                        />
+                      </div>
+                    </div>
+
+                    <div style={{
+                      width: isMobile ? '100%' : '1px',
+                      height: isMobile ? '1px' : '36px',
+                      background: 'var(--color-border)',
+                      alignSelf: 'center'
+                    }} />
+
+                    <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem' }}>
+                      <div>
+                        <h4 style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--color-text)', margin: '0 0 4px 0' }}>
+                          {t('Cho phép nhảy giai đoạn')}
+                        </h4>
+                        <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', margin: 0 }}>
+                          {t('Cho phép nhảy cóc qua các giai đoạn trung gian nhưng vẫn phải tuân thủ điều kiện bắt buộc.')}
+                        </p>
+                      </div>
+                      <div style={{ flexShrink: 0 }}>
+                        <ToggleSwitch
+                          checked={allowPipelineSkip}
+                          onChange={setAllowPipelineSkip}
+                        />
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -6786,13 +6851,14 @@ function doPost(e) {
                   value={tagForm.color}
                   onChange={e => setTagForm({ ...tagForm, color: e.target.value })}
                   style={{
-                    width: '46px',
+                    width: '38px',
                     height: '38px',
-                    padding: '2px',
+                    padding: 0,
                     border: '1px solid var(--color-border)',
-                    borderRadius: '8px',
+                    borderRadius: '50%',
                     cursor: 'pointer',
-                    background: 'none'
+                    background: 'none',
+                    overflow: 'hidden'
                   }}
                 />
                 <input

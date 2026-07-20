@@ -26,63 +26,7 @@ function runDailyReportCron($conn)
         WHERE status = 'leave' AND leave_end IS NOT NULL AND leave_end < CURDATE()
     ");
 
-    // 0b. Lead Temperature Decay (Rule 3.6 in 04-Luong-3-Cham-Soc-Nhiet-Do.md)
-    $decayDays = 5;
-    $decayRes = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'temperature_decay_days'");
-    if ($decayRes && $row = $decayRes->fetch_assoc()) {
-        $decayDays = (int)$row['setting_value'];
-    }
-    if ($decayDays <= 0) $decayDays = 5;
-
-    $contactsToDecay = $conn->query("
-        SELECT id, tenant_id, temperature, pipeline_status 
-        FROM contacts 
-        WHERE deleted_at IS NULL
-          AND pipeline_status IN ('chua_xac_dinh', 'quan_tam', 'dong_y_gap', 'da_gap')
-          AND (
-              (last_contact IS NOT NULL AND last_contact < DATE_SUB(CURDATE(), INTERVAL $decayDays DAY))
-              OR (last_contact IS NULL AND created_at < DATE_SUB(NOW(), INTERVAL $decayDays DAY))
-          )
-          AND (temperature_updated_at IS NULL OR temperature_updated_at < DATE_SUB(NOW(), INTERVAL 23 HOUR))
-          AND temperature != 'cold'
-    ");
-
-    $tempDecayMap = [
-        'hot' => 'warm',
-        'warm' => 'neutral',
-        'neutral' => 'cool',
-        'cool' => 'cold'
-    ];
-
-    if ($contactsToDecay) {
-        $stmtUpdateDecay = $conn->prepare("
-            UPDATE contacts 
-            SET temperature = ?, 
-                temperature_updated_at = NOW() 
-            WHERE id = ?
-        ");
-        
-        $stmtLog = $conn->prepare("
-            INSERT INTO audit_logs (tenant_id, user_id, action, resource, resource_id, new_data, ip_address) 
-            VALUES (?, NULL, 'TEMPERATURE_DECAY', 'contact', ?, ?, '127.0.0.1')
-        ");
-
-        while ($c = $contactsToDecay->fetch_assoc()) {
-            $currTemp = $c['temperature'];
-            $nextTemp = $tempDecayMap[$currTemp] ?? 'cold';
-            
-            $stmtUpdateDecay->bind_param("si", $nextTemp, $c['id']);
-            $stmtUpdateDecay->execute();
-            
-            $logMsg = "Nhiệt độ khách hàng tự động giảm từ '$currTemp' về '$nextTemp' do quá $decayDays ngày không có tương tác.";
-            $stmtLog->bind_param("iis", $c['tenant_id'], $c['id'], $logMsg);
-            $stmtLog->execute();
-        }
-        $stmtUpdateDecay->close();
-        $stmtLog->close();
-    }
-
-    $settingRes = $conn->query("SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('zalo_daily_report_time', 'last_daily_report_date', 'zalo_bot_token', 'daily_report_admins', 'last_daily_report_timestamp')");
+    $settingRes = $conn->query("SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('zalo_daily_report_time', 'last_daily_report_date', 'zalo_bot_token', 'daily_report_admins', 'last_daily_report_timestamp', 'zalo_admin_group_chat_id', 'zalo_notify_only_group')");
     $settings = [];
     if ($settingRes) {
         while ($row = $settingRes->fetch_assoc()) {
@@ -96,7 +40,9 @@ function runDailyReportCron($conn)
     $lastRunDate = $settings['last_daily_report_date'] ?? '';
     $botToken = $settings['zalo_bot_token'] ?? '';
 
-
+    if (empty($botToken)) {
+        return;
+    }
 
     $today = date('Y-m-d');
     $currentTime = date('H:i');
@@ -291,26 +237,61 @@ function runDailyReportCron($conn)
             }
         }
 
-        if (!empty($adminIds)) {
-            $inPlaceholders = implode(',', array_fill(0, count($adminIds), '?'));
-            $types = str_repeat('i', count($adminIds));
-            $adminStmt = $conn->prepare("SELECT email, name, zalo_chat_id FROM accounts WHERE id IN ($inPlaceholders)");
-            $adminStmt->bind_param($types, ...$adminIds);
-            $adminStmt->execute();
-            $adminRes = $adminStmt->get_result();
-        } else {
-            // Fallback: gửi tất cả Admin như trước
-            $adminRes = $conn->query("SELECT email, name, zalo_chat_id FROM accounts WHERE role = 'admin' OR role = 'superadmin' OR id = 1");
-        }
+        $adminGroupChatId = $settings['zalo_admin_group_chat_id'] ?? '';
+        $onlyGroup = $settings['zalo_notify_only_group'] ?? '0';
 
-        $admins = [];
-        if ($adminRes) {
-            while ($row = $adminRes->fetch_assoc()) {
-                $admins[] = $row;
+        if ($onlyGroup === '1' && !empty($adminGroupChatId)) {
+            if (!empty($adminIds)) {
+                $inPlaceholders = implode(',', array_fill(0, count($adminIds), '?'));
+                $types = str_repeat('i', count($adminIds));
+                $adminStmt = $conn->prepare("SELECT email, name, zalo_chat_id FROM accounts WHERE id IN ($inPlaceholders)");
+                $adminStmt->bind_param($types, ...$adminIds);
+                $adminStmt->execute();
+                $adminRes = $adminStmt->get_result();
+            } else {
+                $adminRes = $conn->query("SELECT email, name, zalo_chat_id FROM accounts WHERE role = 'admin' OR role = 'superadmin' OR id = 1");
+            }
+            $admins = [];
+            if ($adminRes) {
+                while ($row = $adminRes->fetch_assoc()) {
+                    $row['zalo_chat_id'] = ''; // Không gửi Zalo cá nhân
+                    $admins[] = $row;
+                }
+            }
+            if (isset($adminStmt)) $adminStmt->close();
+            // Thêm Group Zalo
+            $admins[] = [
+                'name' => 'Zalo Admin Group',
+                'email' => '',
+                'zalo_chat_id' => $adminGroupChatId
+            ];
+        } else {
+            if (!empty($adminIds)) {
+                $inPlaceholders = implode(',', array_fill(0, count($adminIds), '?'));
+                $types = str_repeat('i', count($adminIds));
+                $adminStmt = $conn->prepare("SELECT email, name, zalo_chat_id FROM accounts WHERE id IN ($inPlaceholders)");
+                $adminStmt->bind_param($types, ...$adminIds);
+                $adminStmt->execute();
+                $adminRes = $adminStmt->get_result();
+            } else {
+                $adminRes = $conn->query("SELECT email, name, zalo_chat_id FROM accounts WHERE role = 'admin' OR role = 'superadmin' OR id = 1");
+            }
+            $admins = [];
+            if ($adminRes) {
+                while ($row = $adminRes->fetch_assoc()) {
+                    $admins[] = $row;
+                }
+            }
+            if (isset($adminStmt)) $adminStmt->close();
+            // Tích hợp Zalo Admin Group Chat ID nếu cấu hình
+            if (!empty($adminGroupChatId)) {
+                $admins[] = [
+                    'name' => 'Zalo Admin Group',
+                    'email' => '',
+                    'zalo_chat_id' => $adminGroupChatId
+                ];
             }
         }
-        if (isset($adminStmt))
-            $adminStmt->close();
 
         if (count($admins) > 0) {
             require_once 'mailer.php';
@@ -347,42 +328,34 @@ function runDailyReportCron($conn)
             $msg .= "💡 Gõ /report dd/mm hoặc /report dd/mm to dd/mm để xem báo cáo.\n";
             $msg .= "💡 Gõ /tools để xem thêm các câu lệnh nhanh.";
 
-            // Collect all Admin Zalo chat IDs for parallel batch execution
             $adminChatIds = [];
             foreach ($admins as $adm) {
                 if (!empty($adm['zalo_chat_id'])) {
                     $adminChatIds[] = $adm['zalo_chat_id'];
                 }
             }
+            $adminChatIds = array_unique($adminChatIds);
             if (!empty($botToken) && !empty($adminChatIds)) {
-                try {
-                    sendZaloMessageToMultiple($botToken, $adminChatIds, $msg);
-                } catch (Exception $zaloEx) {
-                    error_log("Failed to send Zalo daily report message: " . $zaloEx->getMessage());
-                }
+                sendZaloMessageToMultiple($botToken, $adminChatIds, $msg);
             }
 
             foreach ($admins as $adm) {
                 // Gửi Email
                 if (!empty($adm['email'])) {
-                    try {
-                        sendDailyReportEmailToAdmins(
-                            $adm['email'],
-                            $adm['name'] ?: 'Quản trị viên',
-                            $totalData,
-                            $saleStatsHtml,
-                            $totalTicket,
-                            $totalReminder,
-                            $approvedTicket,
-                            $rejectedTicket,
-                            $pendingTicket,
-                            $totalBlocked,
-                            $totalHeldByAI,
-                            $totalBelowStandard
-                        );
-                    } catch (Exception $mailEx) {
-                        error_log("Failed to send daily report email to {$adm['email']}: " . $mailEx->getMessage());
-                    }
+                    sendDailyReportEmailToAdmins(
+                        $adm['email'],
+                        $adm['name'] ?: 'Quản trị viên',
+                        $totalData,
+                        $saleStatsHtml,
+                        $totalTicket,
+                        $totalReminder,
+                        $approvedTicket,
+                        $rejectedTicket,
+                        $pendingTicket,
+                        $totalBlocked,
+                        $totalHeldByAI,
+                        $totalBelowStandard
+                    );
                 }
             }
         }

@@ -584,6 +584,7 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
             const pending = dayCheckIns ? dayCheckIns.filter(c => c.status === 'pending_approval') : [];
             const rejected = dayCheckIns ? dayCheckIns.filter(c => c.status === 'rejected') : [];
             const isToday = cell.dateStr && new Date().toDateString() === new Date(cell.dateStr).toDateString();
+            const hasPending = cell.dateStr && (pending.length > 0 || dayShifts.some(s => Number(s.approved) === 0));
 
             return (
               <div
@@ -606,7 +607,15 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
                   justifyContent: 'space-between',
                   cursor: cell.dateStr ? 'pointer' : 'default',
                   opacity: cell.isCurrentMonth ? 1 : 0.4,
-                  position: 'relative'
+                  position: 'relative',
+                  border: cell.dateStr
+                    ? hasPending
+                      ? '2px solid var(--color-warning, #f59e0b)'
+                      : isToday
+                        ? '2px solid var(--color-danger, #ef4444)'
+                        : '2px solid transparent'
+                    : 'none',
+                  boxSizing: 'border-box'
                 }}
                 className={cell.dateStr ? 'calendar-day-cell' : ''}
               >

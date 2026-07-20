@@ -1282,6 +1282,9 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
   });
   const [isSavingTTL1, setIsSavingTTL1] = useState(false);
 
+  const [allowPipelineBackward, setAllowPipelineBackward] = useState<boolean>(false);
+  const [allowPipelineSkip, setAllowPipelineSkip] = useState<boolean>(false);
+
   // Cooperation Slip States and Functions (Module 4)
   const [coopSlip, setCoopSlip] = useState<any>(null);
   const [coopLoading, setCoopLoading] = useState(false);
@@ -2577,6 +2580,12 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                 setTempSuggestionRequiredNotes(val);
               }
             }
+            if (res.data.allow_pipeline_backward !== undefined) {
+              setAllowPipelineBackward(res.data.allow_pipeline_backward === '1' || res.data.allow_pipeline_backward === 1);
+            }
+            if (res.data.allow_pipeline_skip !== undefined) {
+              setAllowPipelineSkip(res.data.allow_pipeline_skip === '1' || res.data.allow_pipeline_skip === 1);
+            }
             if (res.data.coop_eligible_statuses) {
               try {
                 setCoopEligibleStatuses(JSON.parse(res.data.coop_eligible_statuses));
@@ -3605,8 +3614,14 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
     const isToSuccess = targetStageObj?.name?.toLowerCase()?.includes('hợp đồng') || targetStageObj?.name?.toLowerCase()?.includes('won') || targetStageObj?.name?.toLowerCase()?.includes('thành công') || targetStageObj?.is_won;
     const isCancellation = isFromDeposit && !isToSuccess;
 
-    if (isBackward && !isCancellation) {
+    if (isBackward && !isCancellation && !allowPipelineBackward) {
       addToast("Không thể di chuyển ngược giai đoạn trên Pipeline.", "error");
+      return;
+    }
+
+    const isForwardSkip = (targetIdx !== -1 && targetIdx > safeIndex + 1);
+    if (isForwardSkip && !allowPipelineSkip) {
+      addToast("Không được phép nhảy cóc giai đoạn. Tiến trình chuyển giai đoạn phải đi tuần tự từng bước.", "error");
       return;
     }
 
@@ -4284,7 +4299,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                               alignItems: 'center', 
                               gap: '6px', 
                               padding: '2px 8px 2px 4px', 
-                              background: 'linear-gradient(135deg, rgba(163, 20, 34, 0.08) 0%, rgba(16, 185, 129, 0.08) 100%)', 
+                              background: 'linear-gradient(135deg, rgba(163, 20, 34, 0.08) 0%, rgba(163, 20, 34, 0.01) 100%)', 
                               border: '1px solid rgba(163, 20, 34, 0.15)', 
                               borderRadius: '20px',
                               boxShadow: 'var(--shadow-sm)'
@@ -4313,7 +4328,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                     cursor: 'pointer'
                                   }}
                                   onClick={(e) => showUserCard(e, sh.name)}
-                                  title={`${sh.name} (${sh.percentage}%) - ${sh.signed ? 'Đã ký' : 'Chờ ký'}`}
+                                  title={`${sh.name}\n- Trạng thái: ${sh.signed ? 'Đã ký' : 'Chờ ký'}\n- Tỷ lệ: ${sh.percentage}%\n- Hoa hồng dự kiến: ${FMT((Number(coopSlip.expected_commission || 0) * Number(sh.percentage || 0)) / 100)}`}
                                 >
                                   <Avatar 
                                     src={resolveAttachmentUrl(sh.avatar)}
@@ -4594,7 +4609,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                             cursor: 'pointer'
                                           }}
                                           onClick={(e) => showUserCard(e, sh.name)}
-                                          title={`${sh.name} (${sh.percentage}%) - ${sh.signed ? 'Đã ký' : 'Chờ ký'}`}
+                                          title={`${sh.name}\n- Trạng thái: ${sh.signed ? 'Đã ký' : 'Chờ ký'}\n- Tỷ lệ: ${sh.percentage}%\n- Hoa hồng dự kiến: ${FMT((Number(coopSlip.expected_commission || 0) * Number(sh.percentage || 0)) / 100)}`}
                                         >
                                           <Avatar 
                                             src={resolveAttachmentUrl(sh.avatar)}

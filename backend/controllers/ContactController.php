@@ -523,16 +523,26 @@ class ContactController {
                 $currIdx = $statusHierarchy[$currStatus] ?? 0;
                 $newIdx = $statusHierarchy[$newStatus] ?? 0;
 
-                // Enforce forward-only and no skipping stages
+                $allowBackward = (int)$this->getSetting('allow_pipeline_backward', '0') === 1;
+                $allowSkip = (int)$this->getSetting('allow_pipeline_skip', '0') === 1;
+
+                $isFromDeposit = strpos(strtolower($currStatus), 'coc') !== false || strpos(strtolower($currStatus), 'deposit') !== false || $currStatus === 'dat_coc';
+                $isToSuccess = strpos(strtolower($newStatus), 'success') !== false || strpos(strtolower($newStatus), 'thanh_cong') !== false || $newStatus === 'dong_deal' || $newStatus === 'thanh_cong';
+                $isCancellation = $isFromDeposit && !$isToSuccess;
+
+                // Enforce forward-only
                 if ($newIdx < $currIdx) {
-                    respond(400, null, "Không được phép chuyển lùi trạng thái từ '$currStatus' về '$newStatus'", false);
+                    if (!$isCancellation && !$allowBackward) {
+                        respond(400, null, "Không được phép chuyển lùi trạng thái từ '$currStatus' về '$newStatus'", false);
+                    }
                 }
-                if ($newIdx > $currIdx + 1) {
+                // Enforce no skipping stages
+                if ($newIdx > $currIdx + 1 && !$allowSkip) {
                     respond(400, null, "Không được phép nhảy cóc trạng thái từ '$currStatus' sang '$newStatus' (Phải đi tuần tự)", false);
                 }
 
-                // Check TTL1 completion before moving to dong_y_gap
-                if ($newStatus === 'dong_y_gap') {
+                // Check TTL1 completion before moving to dong_y_gap or later
+                if ($newIdx >= 2) {
                     $reqTtl1 = isset($b['ttl1_completed']) ? (int)$b['ttl1_completed'] : $currTtl1;
                     if ($reqTtl1 !== 1) {
                         respond(400, null, 'Trước khi sang giai đoạn Đồng ý gặp, bạn bắt buộc phải điền đầy đủ thông tin Form TTL1', false);
@@ -866,10 +876,58 @@ class ContactController {
         $newStatus = $this->getSlugFromStageId($stageId, $auth['tenant_id']);
 
         // Check current status for CAPI/Timer trigger
-        $stmtC = $this->db->prepare("SELECT pipeline_status, owner_id, first_name, last_name FROM contacts WHERE id = ? AND tenant_id = ?");
+        $stmtC = $this->db->prepare("SELECT pipeline_status, owner_id, first_name, last_name, ttl1_completed FROM contacts WHERE id = ? AND tenant_id = ?");
         $stmtC->execute([$id, $auth['tenant_id']]);
         $currentContact = $stmtC->fetch();
         $currStatus = $currentContact['pipeline_status'] ?? 'chua_xac_dinh';
+        $currTtl1 = (int)($currentContact['ttl1_completed'] ?? 0);
+
+        // Fetch pipeline status hierarchy dynamically from system_settings
+        $stmtHierarchy = $this->db->prepare("SELECT setting_value FROM system_settings WHERE setting_key = 'pipeline_status_hierarchy'");
+        $stmtHierarchy->execute();
+        $hierarchySetting = $stmtHierarchy->fetchColumn();
+
+        $hierarchyList = [];
+        if ($hierarchySetting) {
+            $hierarchyList = json_decode($hierarchySetting, true) ?: [];
+        }
+
+        if (empty($hierarchyList)) {
+            $hierarchyList = ['chua_xac_dinh', 'quan_tam', 'dong_y_gap', 'da_gap', 'booking', 'dat_coc', 'dong_deal'];
+        }
+
+        $statusHierarchy = [];
+        foreach ($hierarchyList as $idxVal => $statusName) {
+            $statusHierarchy[trim($statusName)] = $idxVal;
+        }
+
+        $currIdx = $statusHierarchy[$currStatus] ?? 0;
+        $newIdx = $statusHierarchy[$newStatus] ?? 0;
+
+        $allowBackward = (int)$this->getSetting('allow_pipeline_backward', '0') === 1;
+        $allowSkip = (int)$this->getSetting('allow_pipeline_skip', '0') === 1;
+
+        $isFromDeposit = strpos(strtolower($currStatus), 'coc') !== false || strpos(strtolower($currStatus), 'deposit') !== false || $currStatus === 'dat_coc';
+        $isToSuccess = strpos(strtolower($newStatus), 'success') !== false || strpos(strtolower($newStatus), 'thanh_cong') !== false || $newStatus === 'dong_deal' || $newStatus === 'thanh_cong';
+        $isCancellation = $isFromDeposit && !$isToSuccess;
+
+        // Enforce forward-only
+        if ($newIdx < $currIdx) {
+            if (!$isCancellation && !$allowBackward) {
+                respond(400, null, "Không được phép chuyển lùi trạng thái từ '$currStatus' về '$newStatus'", false);
+            }
+        }
+        // Enforce no skipping stages
+        if ($newIdx > $currIdx + 1 && !$allowSkip) {
+            respond(400, null, "Không được phép nhảy cóc trạng thái từ '$currStatus' sang '$newStatus' (Phải đi tuần tự)", false);
+        }
+
+        // Check TTL1 completion before moving to dong_y_gap or later
+        if ($newIdx >= 2) {
+            if ($currTtl1 !== 1) {
+                respond(400, null, 'Trước khi sang giai đoạn Đồng ý gặp, bạn bắt buộc phải điền đầy đủ thông tin Form TTL1', false);
+            }
+        }
 
         $sql = "UPDATE contacts SET stage_id=?, pipeline_status=? WHERE id=? AND tenant_id=?";
         $p = [$stageId, $newStatus, $id, $auth['tenant_id']];

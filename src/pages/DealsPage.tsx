@@ -136,6 +136,8 @@ export const DealsPage: React.FC = () => {
     return Number(localStorage.getItem('richland_deals_page_size')) || 20;
   });
   const [total, setTotal] = useState(0);
+  const [allowPipelineBackward, setAllowPipelineBackward] = useState<boolean>(false);
+  const [allowPipelineSkip, setAllowPipelineSkip] = useState<boolean>(false);
 
   const filteredItems = useMemo(() => {
     const result: Record<string, any[]> = {};
@@ -395,6 +397,22 @@ export const DealsPage: React.FC = () => {
   }, [pipelineView, teams]);
 
   useEffect(() => {
+    const fetchGlobalSettings = async () => {
+      try {
+        const res = await api.get('/api.php?action=get_settings');
+        if (res.data && res.data.success && res.data.data) {
+          const d = res.data.data;
+          setAllowPipelineBackward(d.allow_pipeline_backward === '1' || d.allow_pipeline_backward === 1);
+          setAllowPipelineSkip(d.allow_pipeline_skip === '1' || d.allow_pipeline_skip === 1);
+        }
+      } catch (err) {
+        console.error("Error fetching settings:", err);
+      }
+    };
+    fetchGlobalSettings();
+  }, []);
+
+  useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     const targetId = urlParams.get('id') || urlParams.get('deal_id');
     if (targetId) {
@@ -485,15 +503,23 @@ export const DealsPage: React.FC = () => {
     const toIdx = stages.findIndex(s => s.id === toStage);
     const isBackward = fromIdx !== -1 && toIdx !== -1 && toIdx < fromIdx;
 
-    if (isBackward && !isCancellation) {
+    if (isBackward && !isCancellation && !allowPipelineBackward) {
       addToast("Không thể di chuyển ngược giai đoạn trên Pipeline.", "error");
       return;
     }
 
     const isForwardSkip = (fromIdx !== -1 && toIdx !== -1 && toIdx > fromIdx + 1);
-    if (isForwardSkip) {
+    if (isForwardSkip && !allowPipelineSkip) {
       addToast("Không được phép nhảy cóc giai đoạn. Tiến trình chuyển giai đoạn phải đi tuần tự từng bước.", "error");
       return;
+    }
+
+    if (pipelineView === 'contacts' && toIdx >= 2) {
+      const item = items[fromStage]?.find(d => d.id === itemId);
+      if (item && Number(item.ttl1_completed) !== 1) {
+        addToast('Trước khi sang giai đoạn Đồng ý gặp, bạn bắt buộc phải điền đầy đủ thông tin Form TTL1', 'error');
+        return;
+      }
     }
 
     setTransitionModal({

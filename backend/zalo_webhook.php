@@ -81,6 +81,7 @@ if ($eventName === 'user_send_text' || $eventName === 'message.text.received') {
 
     $fromName = 'bạn'; // Zalo webhook user_send_text thường không kèm tên, dùng default
 
+    if (!empty($text) && !empty($chatId)) {
         // Hỗ trợ loại bỏ phần @mention bot trong group chat (ví dụ: "@Bot RICH LAND /report homqua")
         if (strpos(trim($text), '@') === 0 && strpos($text, '/') !== false) {
             $slashPos = strpos($text, '/');

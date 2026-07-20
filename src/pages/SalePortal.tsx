@@ -472,6 +472,60 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
     };
   };
 
+  const handleSelectTask = (task: any) => {
+    if (!task) {
+      setSelectedTaskForDetails(null);
+      setChecklist([]);
+      return;
+    }
+    const link = task.body && !task.body.startsWith('{"erp_task":') 
+      ? (task.body.match(/Tài liệu\/Link đính kèm:\s*(.*)$/m)?.[1]?.trim() || '') 
+      : '';
+    
+    let description = '';
+    if (task.body) {
+      if (task.body.startsWith('{"erp_task":')) {
+        try {
+          const parsed = JSON.parse(task.body);
+          description = parsed.erp_task?.description || '';
+        } catch (e) {
+          description = task.body;
+        }
+      } else {
+        description = task.body.replace(/Tài liệu\/Link đính kèm:\s*.*$/m, '').trim();
+      }
+    }
+    const parsed = parseDescriptionAndChecklist(description);
+    const parsedTask = {
+      id: task.id,
+      title: task.subject,
+      done: task.status === 'done',
+      priority: task.priority,
+      due_date: task.due_date ? task.due_date.slice(0, 10) : '',
+      link,
+      description: parsed.pureDescription,
+      user_id: task.user_id,
+      user_name: task.user_name || 'Hệ thống',
+      tags: task.tags || '',
+      participant_ids: task.participant_ids || '',
+      progress: task.progress || 0,
+      require_approval: task.require_approval || 0,
+      approver_id: task.approver_id,
+      approval_status: task.approval_status,
+      contact_id: task.contact_id,
+      contact_name: task.contact_name,
+      contact_avatar: task.contact_avatar,
+      related_type: task.related_type,
+      related_id: task.related_id,
+      body: task.body,
+      created_by: task.created_by,
+      created_by_name: task.created_by_name,
+      created_by_avatar: task.created_by_avatar
+    };
+    setChecklist(parsed.checklist);
+    setSelectedTaskForDetails(parsedTask);
+  };
+
   const serializeDescriptionAndChecklist = (pureDesc: string, items: Array<{ text: string; checked: boolean }>) => {
     let result = pureDesc.trim();
     if (items.length > 0) {
@@ -743,6 +797,30 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
       setActiveTab(activeTabProp);
     }
   }, [activeTabProp]);
+
+  const prevFilteredIdsRef = useRef<string>('');
+
+  // Auto-select first task in Focus Mode when entering or when list changes
+  useEffect(() => {
+    if (wsViewMode === 'focus') {
+      const currentIds = filteredWsTasks.map(t => t.id).join(',');
+      const prevIds = prevFilteredIdsRef.current;
+      
+      if (currentIds !== prevIds) {
+        const isStillInList = selectedTaskForDetails && filteredWsTasks.some(t => t.id === selectedTaskForDetails.id);
+        if (!selectedTaskForDetails || !isStillInList) {
+          if (filteredWsTasks.length > 0) {
+            handleSelectTask(filteredWsTasks[0]);
+          } else {
+            handleSelectTask(null);
+          }
+        }
+        prevFilteredIdsRef.current = currentIds;
+      }
+    } else {
+      prevFilteredIdsRef.current = '';
+    }
+  }, [wsViewMode, filteredWsTasks, selectedTaskForDetails]);
 
   const [publicLeads, setPublicLeads] = useState<any[]>([]);
   const [publicLoading, setPublicLoading] = useState(false);
@@ -4117,15 +4195,16 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
             style={{
               background: 'rgba(239, 68, 68, 0.05)',
               border: '1px solid rgba(239, 68, 68, 0.25)',
-              borderRadius: '16px',
-              padding: '1.25rem 1.5rem',
+              borderRadius: isMobile ? '10px' : '16px',
+              padding: isMobile ? '8px 12px' : '1.25rem 1.5rem',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
-              gap: '1rem',
+              gap: isMobile ? '8px' : '1rem',
               cursor: 'pointer',
               boxShadow: '0 4px 20px -6px rgba(239, 68, 68, 0.08)',
-              transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)'
+              transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+              marginBottom: '0.75rem'
             }}
             whileHover={{ 
               scale: 1.005, 
@@ -4136,12 +4215,12 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
               navigate('/contacts?status=not_contacted');
             }}
           >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? '8px' : '1rem', flex: 1, minWidth: 0 }}>
               <div style={{
                 background: 'rgba(239, 68, 68, 0.12)',
                 color: '#ef4444',
-                width: 44,
-                height: 44,
+                width: isMobile ? 32 : 44,
+                height: isMobile ? 32 : 44,
                 borderRadius: '50%',
                 display: 'flex',
                 alignItems: 'center',
@@ -4149,31 +4228,37 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                 flexShrink: 0,
                 boxShadow: 'inset 0 2px 4px rgba(239, 68, 68, 0.06)'
               }}>
-                <AlertCircle size={24} className="animate-pulse" />
+                <AlertCircle size={isMobile ? 16 : 24} className="animate-pulse" />
               </div>
-              <div>
-                <span style={{ fontWeight: 800, fontSize: '1rem', color: 'var(--color-text)', display: 'block', letterSpacing: '-0.01em' }}>
-                  Yêu cầu liên hệ khách hàng mới
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <span style={{ fontWeight: 800, fontSize: isMobile ? '0.8rem' : '1rem', color: 'var(--color-text)', display: 'block', letterSpacing: '-0.01em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {isMobile ? t('Liên hệ khách hàng mới') : t('Yêu cầu liên hệ khách hàng mới')}
                 </span>
-                <span style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', marginTop: 4, display: 'block' }}>
-                  Bạn đang có <strong style={{ color: '#ef4444', fontSize: '0.95rem', fontWeight: 800 }}>{uncontactedCount}</strong> data khách hàng chưa liên hệ. Vui lòng kiểm tra và liên hệ ngay.
+                <span style={{ fontSize: isMobile ? '0.72rem' : '0.85rem', color: 'var(--color-text-muted)', marginTop: isMobile ? 1 : 4, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {isMobile 
+                    ? `Có ${uncontactedCount} khách hàng chưa liên hệ.` 
+                    : `Bạn đang có ${uncontactedCount} data khách hàng chưa liên hệ. Vui lòng kiểm tra và liên hệ ngay.`}
                 </span>
               </div>
             </div>
             <div style={{ 
               display: 'flex', 
               alignItems: 'center', 
-              gap: '6px', 
+              justifyContent: 'center',
+              width: isMobile ? '26px' : undefined,
+              height: isMobile ? '26px' : undefined,
+              gap: isMobile ? '0' : '6px', 
               color: '#ef4444', 
               fontWeight: 800, 
               fontSize: '0.875rem',
               background: 'rgba(239, 68, 68, 0.08)',
-              padding: '8px 16px',
-              borderRadius: '10px',
-              transition: 'background 0.2s'
+              padding: isMobile ? '0' : '8px 16px',
+              borderRadius: isMobile ? '50%' : '10px',
+              transition: 'background 0.2s',
+              flexShrink: 0
             }}>
-              <span>Xem ngay</span>
-              <ChevronRight size={16} />
+              {!isMobile && <span>Xem ngay</span>}
+              <ChevronRight size={isMobile ? 12 : 16} />
             </div>
           </motion.div>
         )}
@@ -4185,12 +4270,12 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
             style={{
               background: 'rgba(16, 185, 129, 0.05)',
               border: '1px solid rgba(16, 185, 129, 0.25)',
-              borderRadius: '16px',
-              padding: '1.25rem 1.5rem',
+              borderRadius: isMobile ? '10px' : '16px',
+              padding: isMobile ? '8px 12px' : '1.25rem 1.5rem',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
-              gap: '1rem',
+              gap: isMobile ? '8px' : '1rem',
               cursor: 'pointer',
               boxShadow: '0 4px 20px -6px rgba(16, 185, 129, 0.08)',
               transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
@@ -4205,12 +4290,12 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
               navigate('/cooperation-slips');
             }}
           >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? '8px' : '1rem', flex: 1, minWidth: 0 }}>
               <div style={{
                 background: 'rgba(16, 185, 129, 0.12)',
                 color: '#10b981',
-                width: 44,
-                height: 44,
+                width: isMobile ? 32 : 44,
+                height: isMobile ? 32 : 44,
                 borderRadius: '50%',
                 display: 'flex',
                 alignItems: 'center',
@@ -4218,31 +4303,37 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                 flexShrink: 0,
                 boxShadow: 'inset 0 2px 4px rgba(16, 185, 129, 0.06)'
               }}>
-                <Scale size={24} className="animate-pulse" />
+                <Scale size={isMobile ? 16 : 24} className="animate-pulse" />
               </div>
-              <div>
-                <span style={{ fontWeight: 800, fontSize: '1rem', color: 'var(--color-text)', display: 'block', letterSpacing: '-0.01em' }}>
-                  Yêu cầu ký phiếu hợp tác chia hoa hồng
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <span style={{ fontWeight: 800, fontSize: isMobile ? '0.8rem' : '1rem', color: 'var(--color-text)', display: 'block', letterSpacing: '-0.01em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {isMobile ? t('Ký phiếu hợp tác') : t('Yêu cầu ký phiếu hợp tác chia hoa hồng')}
                 </span>
-                <span style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', marginTop: 4, display: 'block' }}>
-                  Bạn đang có <strong style={{ color: '#10b981', fontSize: '0.95rem', fontWeight: 800 }}>{pendingCoopsCount}</strong> phiếu hợp tác hoa hồng đang chờ ký xác nhận. Vui lòng ký ngay.
+                <span style={{ fontSize: isMobile ? '0.72rem' : '0.85rem', color: 'var(--color-text-muted)', marginTop: isMobile ? 1 : 4, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {isMobile 
+                    ? `Có ${pendingCoopsCount} phiếu chờ ký xác nhận.` 
+                    : `Bạn đang có ${pendingCoopsCount} phiếu hợp tác hoa hồng đang chờ ký xác nhận. Vui lòng ký ngay.`}
                 </span>
               </div>
             </div>
             <div style={{ 
               display: 'flex', 
               alignItems: 'center', 
-              gap: '6px', 
+              justifyContent: 'center',
+              width: isMobile ? '26px' : undefined,
+              height: isMobile ? '26px' : undefined,
+              gap: isMobile ? '0' : '6px', 
               color: '#10b981', 
               fontWeight: 800, 
               fontSize: '0.875rem',
               background: 'rgba(16, 185, 129, 0.08)',
-              padding: '8px 16px',
-              borderRadius: '10px',
-              transition: 'background 0.2s'
+              padding: isMobile ? '0' : '8px 16px',
+              borderRadius: isMobile ? '50%' : '10px',
+              transition: 'background 0.2s',
+              flexShrink: 0
             }}>
-              <span>Ký ngay</span>
-              <ChevronRight size={16} />
+              {!isMobile && <span>Ký ngay</span>}
+              <ChevronRight size={isMobile ? 12 : 16} />
             </div>
           </motion.div>
         )}
@@ -4607,7 +4698,12 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                     <Layers size={16} />
                   </button>
                   <button
-                    onClick={() => setWsViewMode('focus')}
+                    onClick={() => {
+                      setWsViewMode('focus');
+                      if (filteredWsTasks.length > 0) {
+                        handleSelectTask(filteredWsTasks[0]);
+                      }
+                    }}
                     title={t('Chế độ Focus')}
                     style={{
                       width: '32px',
@@ -4990,11 +5086,17 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
           </div>
         ) : (
           <>
-            {/* Back button when inside a team view */}
-            {isAdminOrManager && wsTeamId && wsSubTab !== 'personal' && (
+            {/* Back button when inside a team view or focus mode */}
+            {((isAdminOrManager && wsTeamId && wsSubTab !== 'personal') || wsViewMode === 'focus') && (
               <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '1.5rem', background: 'var(--color-surface)', padding: '1rem 1.25rem', borderRadius: '16px', border: '1px solid var(--color-border-light)', boxShadow: 'var(--shadow-sm)' }}>
                 <button
-                  onClick={() => setWsTeamId('')}
+                  onClick={() => {
+                    if (wsViewMode === 'focus') {
+                      setWsViewMode('grid');
+                    } else {
+                      setWsTeamId('');
+                    }
+                  }}
                   style={{
                     height: 38,
                     borderRadius: '10px',
@@ -5017,23 +5119,27 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                   <ArrowLeft size={15} /> {!isMobile && t('Quay lại')}
                 </button>
 
-                <div style={{ width: '1px', height: '24px', background: 'var(--color-border)', flexShrink: 0 }} />
+                {wsTeamId && (
+                  <>
+                    <div style={{ width: '1px', height: '24px', background: 'var(--color-border)', flexShrink: 0 }} />
 
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <div style={{ width: '40px', height: '40px', borderRadius: '12px', background: 'rgba(189, 29, 45, 0.08)', color: 'var(--color-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid rgba(189, 29, 45, 0.12)', flexShrink: 0 }}>
-                    <Users size={20} />
-                  </div>
-                  <div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <span style={{ fontSize: '0.725rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{t('Đang xem nhóm')}</span>
-                      <span style={{ width: '4px', height: '4px', borderRadius: '50%', background: 'var(--color-primary)' }} />
-                      <span style={{ fontSize: '0.725rem', fontWeight: 700, color: 'var(--color-primary)' }}>{t('Nội bộ')}</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      <div style={{ width: '40px', height: '40px', borderRadius: '12px', background: 'rgba(189, 29, 45, 0.08)', color: 'var(--color-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid rgba(189, 29, 45, 0.12)', flexShrink: 0 }}>
+                        <Users size={20} />
+                      </div>
+                      <div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <span style={{ fontSize: '0.725rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{t('Đang xem nhóm')}</span>
+                          <span style={{ width: '4px', height: '4px', borderRadius: '50%', background: 'var(--color-primary)' }} />
+                          <span style={{ fontSize: '0.725rem', fontWeight: 700, color: 'var(--color-primary)' }}>{t('Nội bộ')}</span>
+                        </div>
+                        <h4 style={{ fontSize: '1.05rem', fontWeight: 800, color: 'var(--color-text)', margin: '2px 0 0 0' }}>
+                          {wsTeamId === 'all_teams_bypass' ? t('Tất cả các Nhóm') : (teamsList.find(t => String(t.id) === wsTeamId)?.name || wsTeamId)}
+                        </h4>
+                      </div>
                     </div>
-                    <h4 style={{ fontSize: '1.05rem', fontWeight: 800, color: 'var(--color-text)', margin: '2px 0 0 0' }}>
-                      {wsTeamId === 'all_teams_bypass' ? t('Tất cả các Nhóm') : (teamsList.find(t => String(t.id) === wsTeamId)?.name || wsTeamId)}
-                    </h4>
-                  </div>
-                </div>
+                  </>
+                )}
               </div>
             )}
 
@@ -5715,7 +5821,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
             border: '1px solid var(--color-border-light)',
             borderRadius: '16px',
             display: 'grid',
-            gridTemplateColumns: isMobile ? '1fr' : '360px 1fr',
+            gridTemplateColumns: isMobile ? '1fr' : '360px minmax(0, 1fr)',
             overflow: 'hidden',
             height: isMobile ? 'auto' : 'calc(100vh - 120px)',
             minHeight: '600px',
@@ -5834,54 +5940,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                   return (
                     <div
                       key={task.id}
-                      onClick={() => {
-                        const link = task.body && !task.body.startsWith('{"erp_task":') 
-                          ? (task.body.match(/Tài liệu\/Link đính kèm:\s*(.*)$/m)?.[1]?.trim() || '') 
-                          : '';
-                        
-                        let description = '';
-                        if (task.body) {
-                          if (task.body.startsWith('{"erp_task":')) {
-                            try {
-                              const parsed = JSON.parse(task.body);
-                              description = parsed.erp_task?.description || '';
-                            } catch (e) {
-                              description = task.body;
-                            }
-                          } else {
-                            description = task.body.replace(/Tài liệu\/Link đính kèm:\s*.*$/m, '').trim();
-                          }
-                        }
-                        const parsed = parseDescriptionAndChecklist(description);
-                        const parsedTask = {
-                          id: task.id,
-                          title: task.subject,
-                          done: task.status === 'done',
-                          priority: task.priority,
-                          due_date: task.due_date ? task.due_date.slice(0, 10) : '',
-                          link,
-                          description: parsed.pureDescription,
-                          user_id: task.user_id,
-                          user_name: task.user_name || 'Hệ thống',
-                          tags: task.tags || '',
-                          participant_ids: task.participant_ids || '',
-                          progress: task.progress || 0,
-                          require_approval: task.require_approval || 0,
-                          approver_id: task.approver_id,
-                          approval_status: task.approval_status,
-                          contact_id: task.contact_id,
-                          contact_name: task.contact_name,
-                          contact_avatar: task.contact_avatar,
-                          related_type: task.related_type,
-                          related_id: task.related_id,
-                          body: task.body,
-                          created_by: task.created_by,
-                          created_by_name: task.created_by_name,
-                          created_by_avatar: task.created_by_avatar
-                        };
-                        setChecklist(parsed.checklist);
-                        setSelectedTaskForDetails(parsedTask);
-                      }}
+                      onClick={() => handleSelectTask(task)}
                       style={{
                         padding: '0.75rem 1rem',
                         borderRadius: '10px',
@@ -5931,7 +5990,10 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
             </div>
 
             {/* Right Column: Task Detail Embed */}
-            <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: 'var(--color-bg)', flex: 1, overflow: 'hidden' }}>
+            <div 
+              className="focus-right-column"
+              style={{ display: 'flex', flexDirection: 'column', height: '100%', flex: 1, overflow: 'hidden', minWidth: 0 }}
+            >
               {selectedTaskForDetails ? (
                 <div style={{ height: '100%', overflowY: 'auto' }}>
                   <WorkspaceTaskDrawer
@@ -5952,7 +6014,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                 </div>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--color-text-muted)', gap: '1rem', padding: '2rem', flex: 1 }}>
-                  <div style={{ width: '64px', height: '64px', borderRadius: '50%', background: 'var(--color-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-primary)' }}>
+                  <div style={{ width: '64px', height: '64px', borderRadius: '50%', background: 'var(--color-surface)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-primary)', border: '1px solid var(--color-border-light)' }}>
                     <CheckSquare size={32} />
                   </div>
                   <div style={{ textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
@@ -6257,7 +6319,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
               border-radius: 16px !important;
             }
             .welcome-banner h2 {
-              font-size: 1.05rem !important;
+              font-size: 0.95rem !important;
               font-weight: 700 !important;
             }
             .welcome-task-row {
@@ -6307,7 +6369,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                   <Clock size={12} style={{ color: '#ff4d5a' }} />
                   {getCurrentDateVi()}
                 </span>
-                <h2 style={{ fontSize: '1.05rem', fontWeight: 800, color: '#ffffff', margin: 0, letterSpacing: '-0.3px', textShadow: '0 2px 4px rgba(0,0,0,0.3)', whiteSpace: 'normal', wordBreak: 'break-word' }}>
+                <h2 style={{ fontSize: '0.95rem', fontWeight: 800, color: '#ffffff', margin: 0, letterSpacing: '-0.3px', textShadow: '0 2px 4px rgba(0,0,0,0.3)', whiteSpace: 'normal', wordBreak: 'break-word' }}>
                   {t('Xin chào')}, {displayUser?.name || 'Thành viên'}
                 </h2>
                 <div style={{ display: 'flex' }}>
@@ -6397,24 +6459,9 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
             ) : (
               /* Desktop Layout */
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', minWidth: 0 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
-                  <h2 style={{ fontSize: '1.35rem', fontWeight: 800, color: '#ffffff', margin: 0, letterSpacing: '-0.3px', textShadow: '0 2px 4px rgba(0,0,0,0.3)' }}>
-                    {t('Xin chào')}, {displayUser?.name || 'Thành viên'}
-                  </h2>
-                  <span style={{ 
-                    fontSize: '0.68rem', 
-                    fontWeight: 900, 
-                    color: '#ffffff', 
-                    background: 'linear-gradient(135deg, #BD1D2D 0%, #a31422 100%)', 
-                    padding: '4px 12px', 
-                    borderRadius: '20px', 
-                    textTransform: 'uppercase',
-                    boxShadow: '0 2px 8px rgba(189, 29, 45, 0.5)',
-                    letterSpacing: '0.6px'
-                  }}>
-                    {displayUser?.role === 'sale' ? t('Tư vấn viên') : displayUser?.role === 'sales' ? t('Tư vấn viên') : displayUser?.role}
-                  </span>
-                </div>
+                <h2 style={{ fontSize: '1.15rem', fontWeight: 800, color: '#ffffff', margin: 0, letterSpacing: '-0.3px', textShadow: '0 2px 4px rgba(0,0,0,0.3)' }}>
+                  {t('Xin chào')}, {displayUser?.name || 'Thành viên'}
+                </h2>
                 
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', fontSize: '0.825rem', color: '#e4e4e7' }}>
                   <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontWeight: 600 }}>
@@ -6487,6 +6534,22 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                       })()}
                     </>
                   )}
+                </div>
+
+                <div style={{ display: 'flex' }}>
+                  <span style={{ 
+                    fontSize: '0.68rem', 
+                    fontWeight: 900, 
+                    color: '#ffffff', 
+                    background: 'linear-gradient(135deg, #BD1D2D 0%, #a31422 100%)', 
+                    padding: '4px 12px', 
+                    borderRadius: '20px', 
+                    textTransform: 'uppercase',
+                    boxShadow: '0 2px 8px rgba(189, 29, 45, 0.5)',
+                    letterSpacing: '0.6px'
+                  }}>
+                    {displayUser?.role === 'sale' ? t('Tư vấn viên') : displayUser?.role === 'sales' ? t('Tư vấn viên') : displayUser?.role}
+                  </span>
                 </div>
               </div>
             )}
@@ -6576,7 +6639,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
               <p className="page-subtitle" style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', margin: '4px 0 0' }}>{t("Phân tích hiệu suất giao data theo thời gian thực — Hệ thống đang hoạt động trơn tru.")}</p>
             </div>
             <div className="mobile-w-full" style={{ display: 'flex', gap: '8px', alignItems: 'center', width: isMobile ? '100%' : 'auto', flexWrap: 'nowrap' }}>
-              <div style={{ position: 'relative', zIndex: 100, flex: 1, minWidth: isMobile ? '0' : '200px' }}>
+              <div style={{ position: 'relative', zIndex: 100, flex: '1 1 auto', minWidth: isMobile ? '0' : '240px', maxWidth: '320px' }}>
                 <CustomSelect
                   options={[
                     { value: 'all', label: t('Tất cả thời gian'), icon: <Clock size={16} /> },
