@@ -2393,19 +2393,27 @@ export default function CooperationSlipsPage() {
                             { value: '', label: '-- Chọn nhân viên --' },
                             ...salesAccounts
                               .filter(s => {
+                                // Always allow the currently selected user for this slot
+                                if (String(s.id) === String(item.user_id)) return true;
+                                
                                 if (idx === 0) return true;
-                                return String(s.id) !== String(user?.id);
-                              })
-                              .filter(s => {
-                                if (idx === 0) return true;
+                                
+                                // 1. Cannot be the current user (if not slot 0)
+                                if (String(s.id) === String(user?.id)) return false;
+                                
+                                // 2. Cannot be from the same team as the creator (idx 0)
                                 const creatorId = sharesInput[0]?.user_id;
                                 const creatorObj = salesAccounts.find(u => String(u.id) === String(creatorId));
-                                if (!creatorObj || !creatorObj.team_id) return true;
-                                return String(s.team_id) !== String(creatorObj.team_id);
-                              })
-                              .filter(s => {
-                                if (String(s.id) === String(item.user_id)) return true;
-                                return !sharesInput.some((other, otherIdx) => otherIdx !== idx && String(other.user_id) === String(s.id));
+                                if (creatorObj && creatorObj.team_id && String(s.team_id) === String(creatorObj.team_id)) {
+                                  return false;
+                                }
+                                
+                                // 3. Cannot be already selected in another slot
+                                if (sharesInput.some((other, otherIdx) => otherIdx !== idx && String(other.user_id) === String(s.id))) {
+                                  return false;
+                                }
+                                
+                                return true;
                               })
                               .map(s => ({ value: String(s.id), label: s.full_name, avatar: (s as any).avatar }))
                           ]}
