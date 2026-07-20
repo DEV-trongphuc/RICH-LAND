@@ -594,6 +594,9 @@ try {
                 'idx_data_reports_consultant_status' => ['consultant_id', 'status'],
                 'idx_data_reports_consultant_created' => ['consultant_id', 'created_at'],
             ],
+            'distribution_logs' => [
+                'idx_dist_logs_max_id_lookup' => ['status', 'lead_id', 'assigned_to', 'id'],
+            ],
         ];
 
         foreach ($indices_to_create as $table => $indexes) {

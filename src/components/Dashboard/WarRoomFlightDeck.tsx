@@ -2699,6 +2699,7 @@ export const WarRoomFlightDeck: React.FC<WarRoomProps> = ({
     if (!isOpen || isPlaying) return;
 
     const pollData = () => {
+      if (document.visibilityState !== 'visible') return;
       Promise.all([
         fetchAPI('get_dashboard_stats&date=Hôm nay'),
         fetchAPI('get_logs&date=Hôm nay&exclude_status=silent&page=1&pageSize=100'),
@@ -2740,7 +2741,18 @@ export const WarRoomFlightDeck: React.FC<WarRoomProps> = ({
     pollData();
 
     const interval = setInterval(pollData, 5000);
-    return () => clearInterval(interval);
+
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        pollData();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', handleVisibility);
+    };
   }, [isOpen, isPlaying]);
 
   const [isDateModalOpen, setIsDateModalOpen] = useState(false);

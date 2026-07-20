@@ -1155,6 +1155,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
       document.body.style.overflow = 'hidden';
     } else {
       document.body.style.overflow = '';
+      lastLoadedContactIdRef.current = null;
     }
     return () => {
       document.body.style.overflow = '';
@@ -1368,6 +1369,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
   }, [isOpen, activeTab]);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const lastLoadedContactIdRef = React.useRef<number | null>(null);
   const [formData, setFormData] = useState<any>({});
   const [showScoringSystemModal, setShowScoringSystemModal] = useState(false);
   const [tags, setTags] = useState<string[]>([]);
@@ -2520,21 +2522,27 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
     });
   };
 
-  const fetchData = useCallback(async (targetTab?: string) => {
+  const fetchData = useCallback(async (targetTab?: string, forceFreshContact = false) => {
     if (!contact?.id) return;
     const tabToLoad = targetTab || activeTab;
 
     setLoadingRelated(true);
     try {
       // 1. Fetch fresh Contact details
-      try {
-        const contactRes = await api.get(`/contacts/${contact.id}`);
-        const freshContact = contactRes.data.data || contactRes.data;
-        if (freshContact && freshContact.id) {
-          setFormData(prev => ({ ...prev, ...freshContact }));
-          setBaseData(freshContact);
+      const shouldFetchContact = forceFreshContact || !targetTab || contact.id !== lastLoadedContactIdRef.current;
+      if (shouldFetchContact) {
+        try {
+          const contactRes = await api.get(`/contacts/${contact.id}`);
+          const freshContact = contactRes.data.data || contactRes.data;
+          if (freshContact && freshContact.id) {
+            setFormData(prev => ({ ...prev, ...freshContact }));
+            setBaseData(freshContact);
+            lastLoadedContactIdRef.current = freshContact.id;
+          }
+        } catch (err) {} finally {
+          setLoadingContactDetails(false);
         }
-      } catch (err) {} finally {
+      } else {
         setLoadingContactDetails(false);
       }
 
