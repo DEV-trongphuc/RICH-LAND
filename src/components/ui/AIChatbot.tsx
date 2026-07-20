@@ -28,6 +28,152 @@ export const AIChatbot: React.FC = () => {
   const [isTyping, setIsTyping] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  // Chat modes: 'general' (chat thường), 'project_campaign' (chat chọn dự án/chiến dịch)
+  const [chatMode, setChatMode] = useState<'general' | 'project_campaign'>('general');
+  const [projectsList, setProjectsList] = useState<any[]>([]);
+  const [campaignsList, setCampaignsList] = useState<any[]>([]);
+  const [loadingEntities, setLoadingEntities] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedEntity, setSelectedEntity] = useState<any | null>(null);
+  const [entityContext, setEntityContext] = useState<string>('');
+  const [loadingContext, setLoadingContext] = useState(false);
+
+  const loadEntities = async () => {
+    setLoadingEntities(true);
+    try {
+      const [projRes, campRes] = await Promise.all([
+        fetchAPI('projects').catch(() => null),
+        fetchAPI('campaigns').catch(() => null)
+      ]);
+      const projs = Array.isArray(projRes) ? projRes : (projRes?.data || []);
+      const camps = Array.isArray(campRes) ? campRes : (campRes?.data || []);
+      setProjectsList(projs);
+      setCampaignsList(camps);
+    } catch (err) {
+      console.error("Lỗi khi tải danh sách dự án/chiến dịch:", err);
+    } finally {
+      setLoadingEntities(false);
+    }
+  };
+
+  useEffect(() => {
+    if (chatMode === 'project_campaign' && projectsList.length === 0 && campaignsList.length === 0) {
+      loadEntities();
+    }
+  }, [chatMode]);
+
+  const formatProjectContext = (proj: any, docs: any[]) => {
+    if (!proj) return '';
+    let refUrls: any[] = [];
+    if (proj.reference_url) {
+      try {
+        const parsed = JSON.parse(proj.reference_url);
+        refUrls = Array.isArray(parsed) ? parsed : [{ title: 'Website / Link tham khảo', url: proj.reference_url }];
+      } catch (e) {
+        refUrls = [{ title: 'Website / Link tham khảo', url: proj.reference_url }];
+      }
+    }
+    let folderPaths: any[] = [];
+    if (proj.folder_path) {
+      try {
+        const parsed = JSON.parse(proj.folder_path);
+        folderPaths = Array.isArray(parsed) ? parsed : [{ type: 'link', path: proj.folder_path }];
+      } catch (e) {
+        folderPaths = [{ type: 'link', path: proj.folder_path }];
+      }
+    }
+    let text = `TÊN DỰ ÁN: ${proj.name || '—'}\n`;
+    text += `MÃ DỰ ÁN: ${proj.code || '—'}\n`;
+    text += `MÔ TẢ: ${proj.description || '—'}\n`;
+    text += `CHỦ ĐẦU TƯ: ${proj.developer || '—'}\n`;
+    text += `VỊ TRÍ: ${proj.location || '—'}\n`;
+    text += `TIẾN ĐỘ THI CÔNG: ${proj.construction_status || '—'}\n`;
+    text += `TÌNH TRẠNG PHÁP LÝ: ${proj.legal_status || '—'}\n`;
+    text += `QUY MÔ BLOCK: ${proj.scale_block_count || '—'}\n`;
+    text += `QUY MÔ CĂN HỘ: ${proj.scale_unit_count || '—'}\n`;
+    text += `NĂM BÀN GIAO: ${proj.handover_year || '—'}\n`;
+    if (refUrls.length > 0) {
+      text += `LINKS THAM KHẢO / WEBSITE:\n`;
+      refUrls.forEach(link => {
+        if (link.url) text += `- [${link.title || 'Link'}](${link.url})\n`;
+      });
+    }
+    if (folderPaths.length > 0) {
+      text += `ĐƯỜNG DẪN THƯ MỤC / DRIVE:\n`;
+      folderPaths.forEach(f => {
+        if (f.path) text += `- Thư mục ${f.type === 'link' ? 'Drive' : 'Hệ thống'}: [Link Drive/Thư mục](${f.path})\n`;
+      });
+    }
+    if (docs.length > 0) {
+      text += `DANH SÁCH TÀI LIỆU DỰ ÁN:\n`;
+      docs.forEach(d => {
+        const absoluteUrl = d.file_path ? (d.file_path.startsWith('http') ? d.file_path : `${window.location.origin}${d.file_path}`) : '';
+        if (absoluteUrl) text += `- Tên tài liệu: ${d.name} | Loại: ${d.mime_type || '—'} | Tải về: [Tải tài liệu](${absoluteUrl})\n`;
+      });
+    }
+    return text;
+  };
+
+  const formatCampaignContext = (camp: any, parentProj: any, docs: any[]) => {
+    if (!camp) return '';
+    let text = `CHIẾN DỊCH MARKETING: ${camp.name || '—'}\n`;
+    text += `MÃ CHIẾN DỊCH: ${camp.code || '—'}\n`;
+    text += `MÔ TẢ CHIẾN DỊCH: ${camp.description || '—'}\n`;
+    text += `NGÂN SÁCH CHIẾN DỊCH: ${camp.budget ? Number(camp.budget).toLocaleString('vi-VN') + ' VND' : '—'}\n`;
+    text += `NGÀY BẮT ĐẦU: ${camp.start_date || '—'}\n`;
+    text += `NGÀY KẾT THÚC: ${camp.end_date || '—'}\n`;
+    text += `MỤC TIÊU CHIẾN DỊCH: ${camp.target_leads ? camp.target_leads + ' Leads' : '—'}\n`;
+    if (parentProj) {
+      text += `\nDỰ ÁN CHA CỦA CHIẾN DỊCH:\n`;
+      text += formatProjectContext(parentProj, docs);
+    }
+    return text;
+  };
+
+  const handleSelectEntity = async (entity: { id: number; name: string; type: 'project' | 'campaign'; project_id?: number }) => {
+    setSelectedEntity(entity);
+    setLoadingContext(true);
+    setEntityContext('');
+    try {
+      let contextText = '';
+      if (entity.type === 'project') {
+        const detailsRes = await fetchAPI(`projects/${entity.id}`).catch(() => null);
+        const details = detailsRes?.data || detailsRes;
+        const docsRes = await fetchAPI(`projects/${entity.id}/documents`).catch(() => null);
+        const docs = Array.isArray(docsRes) ? docsRes : (docsRes?.data || []);
+        contextText = formatProjectContext(details, docs);
+      } else {
+        const detailsRes = await fetchAPI(`campaigns/${entity.id}`).catch(() => null);
+        const details = detailsRes?.data || detailsRes;
+        let parentProject = null;
+        let parentDocs = [];
+        if (details && details.project_id) {
+          const parentProjRes = await fetchAPI(`projects/${details.project_id}`).catch(() => null);
+          parentProject = parentProjRes?.data || parentProjRes;
+          const parentDocsRes = await fetchAPI(`projects/${details.project_id}/documents`).catch(() => null);
+          parentDocs = Array.isArray(parentDocsRes) ? parentDocsRes : (parentDocsRes?.data || []);
+        }
+        contextText = formatCampaignContext(details, parentProject, parentDocs);
+      }
+      setEntityContext(contextText);
+    } catch (err) {
+      console.error("Lỗi khi tải ngữ cảnh dự án/chiến dịch:", err);
+      setEntityContext(`Lỗi tải dữ liệu cho thực thể ${entity.name}`);
+    } finally {
+      setLoadingContext(false);
+    }
+  };
+
+  const filteredProjects = projectsList.filter(p => 
+    p.name?.toLowerCase().includes(searchQuery.toLowerCase()) || 
+    p.code?.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+  
+  const filteredCampaigns = campaignsList.filter(c => 
+    c.name?.toLowerCase().includes(searchQuery.toLowerCase()) || 
+    c.code?.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
   const botAvatarUrl = "/LOGO.jpg";
 
   // Sidebar stats card config
@@ -106,7 +252,8 @@ export const AIChatbot: React.FC = () => {
         method: 'POST',
         body: JSON.stringify({
           message: textToSend,
-          history: historyPayload
+          history: historyPayload,
+          project_context: chatMode === 'project_campaign' ? entityContext : ''
         })
       });
 
@@ -795,120 +942,299 @@ Bạn có thể gõ rõ từ khóa hoặc click vào các gợi ý bên dưới 
             </div>
           </div>
 
-          {/* Messages Container */}
-          <div
-            style={{
-              flex: 1,
-              overflowY: 'auto',
-              padding: '20px',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '16px',
-              background: 'transparent'
-            }}
-            className="custom-scrollbar"
-          >
-            {messages.map(msg => (
-              <div
-                key={msg.id}
-                style={{
-                  display: 'flex',
-                  justifyContent: msg.sender === 'user' ? 'flex-end' : 'flex-start',
-                  alignItems: 'flex-start',
-                  gap: 10
-                }}
-                className="message-appear"
-              >
-                {msg.sender === 'bot' && renderBotAvatar(30, false)}
-                
-                <div
-                  style={{
-                    maxWidth: '82%',
-                    padding: '12px 18px',
-                    borderRadius: msg.sender === 'user' ? '18px 18px 2px 18px' : '18px 18px 18px 2px',
-                    background: msg.sender === 'user' 
-                      ? 'var(--chatbot-bubble-user-bg)' 
-                      : 'var(--chatbot-bubble-bot-bg)',
-                    color: msg.sender === 'user' ? 'white' : 'var(--chatbot-text)',
-                    fontSize: '0.875rem',
-                    lineHeight: '1.6',
-                    boxShadow: msg.sender === 'user' 
-                      ? '0 4px 15px rgba(163, 20, 34, 0.2)' 
-                      : '0 4px 15px rgba(0,0,0,0.02)',
-                    border: msg.sender === 'user' ? 'none' : '1px solid var(--chatbot-bubble-bot-border)'
-                  }}
-                >
-                  {renderText(msg.text)}
-                </div>
-              </div>
-            ))}
-            
-            {isTyping && (
-              <div 
-                style={{ 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  gap: 10, 
-                  paddingLeft: 40,
-                  animation: 'slide-up-fade 0.3s ease forwards'
-                }}
-              >
-                <div style={{ display: 'flex', gap: 4 }}>
-                  {renderBotAvatar(24, false)}
-                  <div style={{
-                    padding: '8px 12px',
-                    borderRadius: '12px 12px 12px 2px',
-                    background: 'var(--chatbot-bubble-bot-bg)',
-                    border: '1px solid var(--chatbot-bubble-bot-border)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 6
-                  }}>
-                    <span style={{ fontSize: '0.78rem', color: 'var(--chatbot-text-muted)' }} className="dot-typing">{t('AI đang trả lời')}</span>
-                  </div>
-                </div>
-              </div>
-            )}
-            <div ref={messagesEndRef} />
+          {/* Mode Switcher Tabs */}
+          <div style={{
+            display: 'flex',
+            borderBottom: '1px solid var(--chatbot-window-border)',
+            background: 'var(--chatbot-sidebar-bg)',
+            padding: '2px'
+          }}>
+            <button
+              type="button"
+              onClick={() => {
+                setChatMode('general');
+                setSelectedEntity(null);
+                setEntityContext('');
+              }}
+              style={{
+                flex: 1,
+                padding: '10px 12px',
+                border: 'none',
+                background: chatMode === 'general' ? 'var(--chatbot-card-bg)' : 'transparent',
+                color: chatMode === 'general' ? '#a31422' : 'var(--chatbot-text-muted)',
+                fontWeight: 700,
+                fontSize: '0.8rem',
+                cursor: 'pointer',
+                borderRadius: '8px',
+                transition: 'all 0.2s',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '6px'
+              }}
+            >
+              💬 {t('Chat thường')}
+            </button>
+            <button
+              type="button"
+              onClick={() => setChatMode('project_campaign')}
+              style={{
+                flex: 1,
+                padding: '10px 12px',
+                border: 'none',
+                background: chatMode === 'project_campaign' ? 'var(--chatbot-card-bg)' : 'transparent',
+                color: chatMode === 'project_campaign' ? '#a31422' : 'var(--chatbot-text-muted)',
+                fontWeight: 700,
+                fontSize: '0.8rem',
+                cursor: 'pointer',
+                borderRadius: '8px',
+                transition: 'all 0.2s',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '6px'
+              }}
+            >
+              🏢 {t('Hỏi Dự án / Chiến dịch')}
+            </button>
           </div>
 
-          {/* Quick suggestions */}
-          <div
-            style={{
-              padding: '10px 20px 12px 20px',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: 8,
-              borderTop: '1px solid var(--chatbot-window-border)',
-              background: 'rgba(163, 20, 34, 0.01)'
-            }}
-          >
-            <div style={{ fontSize: '0.72rem', color: 'var(--chatbot-text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{t('Gợi ý hỏi nhanh:')}</div>
-            <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 4 }} className="hide-scrollbar">
-              {quickPrompts.map((p, idx) => (
-                <button
-                  key={idx}
-                  onClick={() => handleSend(p.text)}
+          {chatMode === 'project_campaign' && !selectedEntity ? (
+            /* Selector Panel */
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', padding: '16px', background: 'var(--chatbot-window-bg)' }}>
+              <div style={{ position: 'relative', marginBottom: '12px' }}>
+                <input
+                  type="text"
+                  placeholder={t('Tìm kiếm dự án, chiến dịch...')}
+                  value={searchQuery}
+                  onChange={e => setSearchQuery(e.target.value)}
                   style={{
-                    flexShrink: 0,
-                    background: 'var(--chatbot-card-bg)',
-                    border: '1px solid var(--chatbot-card-border)',
+                    width: '100%',
+                    padding: '8px 12px 8px 32px',
                     borderRadius: '20px',
-                    padding: '6px 14px',
-                    fontSize: '0.75rem',
-                    fontWeight: 600,
+                    border: '1px solid var(--chatbot-window-border)',
+                    fontSize: '0.8rem',
+                    background: 'var(--chatbot-card-bg)',
                     color: 'var(--chatbot-text)',
-                    cursor: 'pointer',
                     outline: 'none',
-                    boxShadow: 'var(--chatbot-card-shadow)',
+                    boxSizing: 'border-box'
                   }}
-                  className="quick-prompt-chip"
-                >
-                  {p.label}
-                </button>
-              ))}
+                />
+                <span style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', opacity: 0.5, fontSize: '0.85rem' }}>🔍</span>
+              </div>
+              
+              <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '16px' }} className="custom-scrollbar">
+                {loadingEntities ? (
+                  <div style={{ textAlign: 'center', padding: '2rem 0', color: 'var(--chatbot-text-muted)', fontSize: '0.8rem' }}>
+                    <span className="dot-typing">{t('Đang tải danh sách')}</span>
+                  </div>
+                ) : (
+                  <>
+                    {/* Projects Section */}
+                    <div>
+                      <h5 style={{ fontSize: '0.72rem', color: '#a31422', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 8px 4px' }}>
+                        🏢 {t('Dự án')} ({filteredProjects.length})
+                      </h5>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                        {filteredProjects.length === 0 ? (
+                          <div style={{ padding: '8px', color: 'var(--chatbot-text-muted)', fontSize: '0.75rem', fontStyle: 'italic' }}>
+                            {t('Không có dự án nào')}
+                          </div>
+                        ) : (
+                          filteredProjects.map(p => (
+                            <div
+                              key={'proj_' + p.id}
+                              onClick={() => handleSelectEntity({ id: p.id, name: p.name, type: 'project' })}
+                              style={{
+                                padding: '10px 14px',
+                                background: 'var(--chatbot-card-bg)',
+                                border: '1px solid var(--chatbot-window-border)',
+                                borderRadius: '12px',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                transition: 'all 0.2s'
+                              }}
+                              className="entity-select-item"
+                              onMouseEnter={e => e.currentTarget.style.borderColor = '#a31422'}
+                              onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--chatbot-window-border)'}
+                            >
+                              <div>
+                                <div style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--chatbot-text)', textAlign: 'left' }}>{p.name}</div>
+                                <div style={{ fontSize: '0.68rem', color: 'var(--chatbot-text-muted)', textAlign: 'left' }}>{p.code} | {p.location || t('Chưa có vị trí')}</div>
+                              </div>
+                              <span style={{ fontSize: '0.7rem', color: '#a31422', fontWeight: 700 }}>➔</span>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Campaigns Section */}
+                    <div>
+                      <h5 style={{ fontSize: '0.72rem', color: '#a31422', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em', margin: '12px 0 8px 4px' }}>
+                        📣 {t('Chiến dịch')} ({filteredCampaigns.length})
+                      </h5>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                        {filteredCampaigns.length === 0 ? (
+                          <div style={{ padding: '8px', color: 'var(--chatbot-text-muted)', fontSize: '0.75rem', fontStyle: 'italic' }}>
+                            {t('Không có chiến dịch nào')}
+                          </div>
+                        ) : (
+                          filteredCampaigns.map(c => (
+                            <div
+                              key={'camp_' + c.id}
+                              onClick={() => handleSelectEntity({ id: c.id, name: c.name, type: 'campaign', project_id: c.project_id })}
+                              style={{
+                                padding: '10px 14px',
+                                background: 'var(--chatbot-card-bg)',
+                                border: '1px solid var(--chatbot-window-border)',
+                                borderRadius: '12px',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                transition: 'all 0.2s'
+                              }}
+                              className="entity-select-item"
+                              onMouseEnter={e => e.currentTarget.style.borderColor = '#a31422'}
+                              onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--chatbot-window-border)'}
+                            >
+                              <div>
+                                <div style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--chatbot-text)', textAlign: 'left' }}>{c.name}</div>
+                                <div style={{ fontSize: '0.68rem', color: 'var(--chatbot-text-muted)', textAlign: 'left' }}>{c.code} {c.project_name ? `(${c.project_name})` : ''}</div>
+                              </div>
+                              <span style={{ fontSize: '0.7rem', color: '#a31422', fontWeight: 700 }}>➔</span>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
             </div>
-          </div>
+          ) : (
+            /* Message Viewport */
+            <>
+              {chatMode === 'project_campaign' && selectedEntity && (
+                <div style={{
+                  padding: '8px 16px',
+                  background: 'rgba(163, 20, 34, 0.05)',
+                  borderBottom: '1px solid var(--chatbot-window-border)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: '8px'
+                }}>
+                  <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#a31422', display: 'flex', alignItems: 'center', gap: '6px', textAlign: 'left' }}>
+                    🏢 {t('Đang hỏi về')} {selectedEntity.type === 'project' ? t('Dự án') : t('Chiến dịch')}: 
+                    <strong style={{ color: 'var(--chatbot-text)' }}>{selectedEntity.name}</strong>
+                    {loadingContext && <span style={{ fontSize: '0.7rem', fontWeight: 'normal', color: 'var(--chatbot-text-muted)' }} className="dot-typing">({t('Đang nạp tài liệu')})</span>}
+                    {!loadingContext && <span style={{ fontSize: '0.7rem', color: '#10b981', background: 'rgba(16,185,129,0.1)', padding: '2px 6px', borderRadius: '10px' }}>✓ {t('Đã nạp tài liệu')}</span>}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedEntity(null);
+                      setEntityContext('');
+                    }}
+                    style={{
+                      background: 'transparent',
+                      border: 'none',
+                      color: 'var(--chatbot-text-muted)',
+                      fontSize: '0.75rem',
+                      cursor: 'pointer',
+                      fontWeight: 700,
+                      padding: '2px 6px',
+                      borderRadius: '4px'
+                    }}
+                    onMouseEnter={e => e.currentTarget.style.background = 'rgba(0,0,0,0.05)'}
+                    onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                  >
+                    {t('Thay đổi')}
+                  </button>
+                </div>
+              )}
+              
+              <div
+                style={{
+                  flex: 1,
+                  overflowY: 'auto',
+                  padding: '20px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '16px',
+                  background: 'transparent'
+                }}
+                className="custom-scrollbar"
+              >
+                {messages.map(msg => (
+                  <div
+                    key={msg.id}
+                    style={{
+                      display: 'flex',
+                      justifyContent: msg.sender === 'user' ? 'flex-end' : 'flex-start',
+                      alignItems: 'flex-start',
+                      gap: 10
+                    }}
+                    className="message-appear"
+                  >
+                    {msg.sender === 'bot' && renderBotAvatar(30, false)}
+                    
+                    <div
+                      style={{
+                        maxWidth: '82%',
+                        padding: '12px 18px',
+                        borderRadius: msg.sender === 'user' ? '18px 18px 2px 18px' : '18px 18px 18px 2px',
+                        background: msg.sender === 'user' 
+                          ? 'var(--chatbot-bubble-user-bg)' 
+                          : 'var(--chatbot-bubble-bot-bg)',
+                        color: msg.sender === 'user' ? 'white' : 'var(--chatbot-text)',
+                        fontSize: '0.875rem',
+                        lineHeight: '1.6',
+                        boxShadow: msg.sender === 'user' 
+                          ? '0 4px 15px rgba(163, 20, 34, 0.2)' 
+                          : '0 4px 15px rgba(0,0,0,0.02)',
+                        border: msg.sender === 'user' ? 'none' : '1px solid var(--chatbot-bubble-bot-border)'
+                      }}
+                    >
+                      {renderText(msg.text)}
+                    </div>
+                  </div>
+                ))}
+                
+                {isTyping && (
+                  <div 
+                    style={{ 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      gap: 10, 
+                      paddingLeft: 40,
+                      animation: 'slide-up-fade 0.3s ease forwards'
+                    }}
+                  >
+                    <div style={{ display: 'flex', gap: 4 }}>
+                      {renderBotAvatar(24, false)}
+                      <div style={{
+                        padding: '8px 12px',
+                        borderRadius: '12px 12px 12px 2px',
+                        background: 'var(--chatbot-bubble-bot-bg)',
+                        border: '1px solid var(--chatbot-bubble-bot-border)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 6
+                      }}>
+                        <span style={{ fontSize: '0.78rem', color: 'var(--chatbot-text-muted)' }} className="dot-typing">{t('AI đang trả lời')}</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                <div ref={messagesEndRef} />
+              </div>
+            </>
+          )}
 
           {/* Input Bar */}
           <form

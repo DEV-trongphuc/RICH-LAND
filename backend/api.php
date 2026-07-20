@@ -11442,6 +11442,16 @@ switch ($action) {
                 "- Luôn xử lý khoảng thời gian dựa trên các hàm ngày tháng của SQL (ví dụ: `received_at >= CURDATE()` hoặc `received_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)`).\n" .
                 "- Giải thích câu trả lời của bạn một cách rõ ràng dựa trên kết quả thu thập được.";
 
+            $projectContext = trim($input['project_context'] ?? '');
+            if (!empty($projectContext)) {
+                $systemInstruction .= "\n\n=== NGỮ CẢNH DỰ ÁN / CHIẾN DỊCH KHÁCH HÀNG ĐANG HỎI ===\n" .
+                    "Dưới đây là toàn bộ thông tin mô tả chi tiết và các liên kết tài liệu liên quan. " .
+                    "Hãy ưu tiên sử dụng thông tin và liên kết này để trả lời người dùng một cách chính xác nhất. " .
+                    "Tuyệt đối không tự ý bịa đặt liên kết/link tài liệu không có trong phần này. " .
+                    "Nếu người dùng hỏi về tài liệu, dự án, hoặc drive link, hãy trích xuất chính xác URL tương ứng bên dưới:\n" .
+                    $projectContext;
+            }
+
             // Format history for Gemini API
             $contents = [];
             foreach ($history as $h) {
@@ -11487,7 +11497,11 @@ switch ($action) {
                     'systemInstruction' => [
                         'parts' => [['text' => $systemInstruction]]
                     ],
-                    'tools' => $tools
+                    'tools' => $tools,
+                    'generationConfig' => [
+                        'maxOutputTokens' => 8192,
+                        'temperature' => 0.15
+                    ]
                 ];
 
                 $url = "https://generativelanguage.googleapis.com/v1beta/models/" . $model . ":generateContent?key=" . $apiKey;
