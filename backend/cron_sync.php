@@ -2718,6 +2718,177 @@ function checkCapiStuckAlert($conn) {
                 }
             }
         }
+}
+
+function sendShiftRemindersAndCheckInAlerts($conn) {
+    // 1. Create tracking table if not exists to prevent duplicate messages
+    $conn->query("
+        CREATE TABLE IF NOT EXISTS `sent_notifications` (
+            `id` INT AUTO_INCREMENT PRIMARY KEY,
+            `user_id` INT NOT NULL,
+            `notify_type` VARCHAR(50) NOT NULL,
+            `notify_date` DATE NOT NULL,
+            `sent_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE KEY `uniq_user_type_date` (`user_id`, `notify_type`, `notify_date`)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    ");
+
+    // 2. Load system configurations
+    $settings = [];
+    $res = $conn->query("SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN (
+        'attendance_notification_enabled',
+        'attendance_notification_lead_minutes',
+        'night_duty_notification_enabled',
+        'night_duty_notification_lead_minutes',
+        'zalo_bot_token',
+        'night_shift_start_time',
+        'night_shift_end_time'
+    )");
+    if ($res) {
+        while ($row = $res->fetch_assoc()) {
+            $settings[$row['setting_key']] = $row['setting_value'];
+        }
+    }
+
+    $zaloBotToken = $settings['zalo_bot_token'] ?? '';
+    if (empty($zaloBotToken)) {
+        return; // Cannot send Zalo notifications without bot token configured
+    }
+
+    $attendanceEnabled = isset($settings['attendance_notification_enabled']) ? (int)$settings['attendance_notification_enabled'] : 1;
+    $attendanceLeadMinutes = isset($settings['attendance_notification_lead_minutes']) ? (int)$settings['attendance_notification_lead_minutes'] : 10;
+    $nightDutyEnabled = isset($settings['night_duty_notification_enabled']) ? (int)$settings['night_duty_notification_enabled'] : 1;
+    $nightDutyLeadMinutes = isset($settings['night_duty_notification_lead_minutes']) ? (int)$settings['night_duty_notification_lead_minutes'] : 10;
+
+    $now = new DateTime();
+    $todayStr = $now->format('Y-m-d');
+
+    // Include zalo_bot.php so we can queue Zalo messages and replicate to Telegram
+    require_once __DIR__ . '/zalo_bot.php';
+
+    // A. Check-in reminders
+    if ($attendanceEnabled === 1) {
+        // Query users who have not checked in today and are active
+        $userQuery = "
+            SELECT u.id, u.full_name, u.zalo_chat_id, 
+                   IF(u.use_custom_work_hours = 1, u.work_start_time, (SELECT setting_value FROM system_settings WHERE setting_key = 'global_work_start_time' LIMIT 1)) AS work_start_time
+            FROM users u
+            WHERE u.status = 'active' 
+              AND u.zalo_chat_id IS NOT NULL 
+              AND u.zalo_chat_id != ''
+        ";
+        $userRes = $conn->query($userQuery);
+        if ($userRes) {
+            while ($user = $userRes->fetch_assoc()) {
+                $userId = (int)$user['id'];
+                $workStart = $user['work_start_time'] ?: '08:00';
+                
+                // Parse work start time to determine target reminder time
+                $workStartParts = explode(':', $workStart);
+                if (count($workStartParts) >= 2) {
+                    try {
+                        $reminderTime = new DateTime($todayStr . ' ' . $workStart);
+                        $reminderTime->modify("-$attendanceLeadMinutes minutes");
+                        
+                        $nowTimestamp = $now->getTimestamp();
+                        $reminderTimestamp = $reminderTime->getTimestamp();
+                        $workStartTimestamp = (new DateTime($todayStr . ' ' . $workStart))->getTimestamp();
+                        
+                        // If current time is past/equal to reminder time, and before work start time
+                        if ($nowTimestamp >= $reminderTimestamp && $nowTimestamp < $workStartTimestamp) {
+                            // Check if already sent
+                            $chk = $conn->prepare("SELECT id FROM sent_notifications WHERE user_id = ? AND notify_type = 'checkin_reminder' AND notify_date = ?");
+                            $chk->bind_param("is", $userId, $todayStr);
+                            $chk->execute();
+                            $hasSent = (bool)$chk->get_result()->fetch_assoc();
+                            $chk->close();
+                            
+                            if (!$hasSent) {
+                                // Double check if already checked in today
+                                $chkCheckin = $conn->prepare("SELECT id FROM check_ins WHERE user_id = ? AND check_in_date = ?");
+                                $chkCheckin->bind_param("is", $userId, $todayStr);
+                                $chkCheckin->execute();
+                                $alreadyCheckedIn = (bool)$chkCheckin->get_result()->fetch_assoc();
+                                $chkCheckin->close();
+                                
+                                if (!$alreadyCheckedIn) {
+                                    $msg = "⏰ Đã đến giờ chấm công! Vui lòng thực hiện chấm công đi làm đúng giờ quy định. Chúc bạn một ngày làm việc hiệu quả!";
+                                    sendZaloMessage($zaloBotToken, $user['zalo_chat_id'], $msg, false);
+                                    
+                                    $ins = $conn->prepare("INSERT IGNORE INTO sent_notifications (user_id, notify_type, notify_date) VALUES (?, 'checkin_reminder', ?)");
+                                    $ins->bind_param("is", $userId, $todayStr);
+                                    $ins->execute();
+                                    $ins->close();
+                                    
+                                    logSync("Sent check-in reminder to Sale: {$user['full_name']} (Zalo chat id: {$user['zalo_chat_id']})");
+                                }
+                            }
+                        }
+                    } catch (Exception $remEx) {
+                        error_log("Error calculating check-in reminder: " . $remEx->getMessage());
+                    }
+                }
+            }
+        }
+    }
+
+    // B. Night shift reminders
+    if ($nightDutyEnabled === 1) {
+        $nightShiftStart = $settings['night_shift_start_time'] ?? '18:00';
+        $nightShiftEnd = $settings['night_shift_end_time'] ?? '06:00';
+        
+        $nightStartParts = explode(':', $nightShiftStart);
+        if (count($nightStartParts) >= 2) {
+            try {
+                $reminderTime = new DateTime($todayStr . ' ' . $nightShiftStart);
+                $reminderTime->modify("-$nightDutyLeadMinutes minutes");
+                
+                $nowTimestamp = $now->getTimestamp();
+                $reminderTimestamp = $reminderTime->getTimestamp();
+                $nightStartTimestamp = (new DateTime($todayStr . ' ' . $nightShiftStart))->getTimestamp();
+                
+                if ($nowTimestamp >= $reminderTimestamp && $nowTimestamp < $nightStartTimestamp) {
+                    // Get all active approved night shift registrations for today
+                    $nightRegsQuery = "
+                        SELECT n.user_id, u.full_name, u.zalo_chat_id
+                        FROM night_shift_registrations n
+                        JOIN users u ON n.user_id = u.id
+                        WHERE n.shift_date = ? AND n.approved = 1 
+                          AND u.zalo_chat_id IS NOT NULL 
+                          AND u.zalo_chat_id != ''
+                    ";
+                    $stmtRegs = $conn->prepare($nightRegsQuery);
+                    $stmtRegs->bind_param("s", $todayStr);
+                    $stmtRegs->execute();
+                    $regsRes = $stmtRegs->get_result();
+                    while ($reg = $regsRes->fetch_assoc()) {
+                        $userId = (int)$reg['user_id'];
+                        
+                        // Check if already sent
+                        $chk = $conn->prepare("SELECT id FROM sent_notifications WHERE user_id = ? AND notify_type = 'night_duty_reminder' AND notify_date = ?");
+                        $chk->bind_param("is", $userId, $todayStr);
+                        $chk->execute();
+                        $hasSent = (bool)$chk->get_result()->fetch_assoc();
+                        $chk->close();
+                        
+                        if (!$hasSent) {
+                            $msg = "🌙 Hôm nay bạn có đăng ký trực đêm thời gian từ {$nightShiftStart} đến {$nightShiftEnd}. Chúc bạn buổi tối vui vẻ và trực ca hiệu quả!";
+                            sendZaloMessage($zaloBotToken, $reg['zalo_chat_id'], $msg, false);
+                            
+                            $ins = $conn->prepare("INSERT IGNORE INTO sent_notifications (user_id, notify_type, notify_date) VALUES (?, 'night_duty_reminder', ?)");
+                            $ins->bind_param("is", $userId, $todayStr);
+                            $ins->execute();
+                            $ins->close();
+                            
+                            logSync("Sent night shift reminder to Sale: {$reg['full_name']} (Zalo chat id: {$reg['zalo_chat_id']})");
+                        }
+                    }
+                    $stmtRegs->close();
+                }
+            } catch (Exception $nsEx) {
+                error_log("Error calculating night shift reminder: " . $nsEx->getMessage());
+            }
+        }
     }
 }
 
@@ -2729,6 +2900,13 @@ if (!defined('DIAG_TOKEN')) {
         releaseExpiredLeadsToKho($conn);
     } catch (Exception $e) {
         logSync("Error running releaseExpiredLeadsToKho: " . $e->getMessage());
+    }
+
+    // --- Chạy kiểm tra gửi nhắc nhở chấm công & ca trực đêm ---
+    try {
+        sendShiftRemindersAndCheckInAlerts($conn);
+    } catch (Exception $e) {
+        logSync("Error running sendShiftRemindersAndCheckInAlerts: " . $e->getMessage());
     }
 
     // --- Chạy kiểm tra cảnh báo SLA duyệt đi trễ ---

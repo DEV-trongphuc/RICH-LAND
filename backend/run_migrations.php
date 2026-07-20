@@ -2882,6 +2882,18 @@ SQL;
             $logMsg("Hoàn thành cập nhật phiên bản 176.", "success");
         }
 
+        // Version 177 (Add attendance and night shift notification settings)
+        if ($currentVersion < 177) {
+            $logMsg("Đang chạy cập nhật phiên bản 177 (Cài đặt thông báo nhắc nhở chấm công & trực đêm)...", "info");
+            $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('attendance_notification_enabled', '1')");
+            $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('attendance_notification_lead_minutes', '10')");
+            $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('night_duty_notification_enabled', '1')");
+            $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('night_duty_notification_lead_minutes', '10')");
+            $conn->query("INSERT INTO system_settings (setting_key, setting_value) VALUES ('db_version', '177') ON DUPLICATE KEY UPDATE setting_value = '177'");
+            $currentVersion = 177;
+            $logMsg("Hoàn thành cập nhật phiên bản 177.", "success");
+        }
+
     $logMsg("Tự sửa đổi cấu trúc hoàn thành thành công.", "success");
 
     $logMsg("Hệ thống đã cập nhật thành công lên phiên bản mới nhất: " . $currentVersion, "success");

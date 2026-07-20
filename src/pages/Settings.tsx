@@ -276,6 +276,10 @@ const SettingsInner = () => {
   const [checkinApprovalSlaMinutes, setCheckinApprovalSlaMinutes] = useState<number>(15);
   const [lateCheckinCompensationEnabled, setLateCheckinCompensationEnabled] = useState<number>(0);
   const [leaveCompensationEnabled, setLeaveCompensationEnabled] = useState<number>(0);
+  const [attendanceNotificationEnabled, setAttendanceNotificationEnabled] = useState<boolean>(true);
+  const [attendanceNotificationLeadMinutes, setAttendanceNotificationLeadMinutes] = useState<number>(10);
+  const [nightDutyNotificationEnabled, setNightDutyNotificationEnabled] = useState<boolean>(true);
+  const [nightDutyNotificationLeadMinutes, setNightDutyNotificationLeadMinutes] = useState<number>(10);
   const [broadcastExclusionRules, setBroadcastExclusionRules] = useState<string>("not_lead,opt_out,active_khtn");
   const [coopEligibleStatuses, setCoopEligibleStatuses] = useState<string>("booking,da_gap,dat_coc");
   const [coopDefaultFiles, setCoopDefaultFiles] = useState<string>("UNC.png,CMND.png");
@@ -671,6 +675,26 @@ const SettingsInner = () => {
         }
         if (json.data.allow_pipeline_skip !== undefined) {
           setAllowPipelineSkip(json.data.allow_pipeline_skip === '1' || json.data.allow_pipeline_skip === 1);
+        }
+        if (json.data.attendance_notification_enabled !== undefined) {
+          setAttendanceNotificationEnabled(json.data.attendance_notification_enabled === '1' || json.data.attendance_notification_enabled === 1 || json.data.attendance_notification_enabled === true);
+        } else {
+          setAttendanceNotificationEnabled(true);
+        }
+        if (json.data.attendance_notification_lead_minutes !== undefined) {
+          setAttendanceNotificationLeadMinutes(Number(json.data.attendance_notification_lead_minutes));
+        } else {
+          setAttendanceNotificationLeadMinutes(10);
+        }
+        if (json.data.night_duty_notification_enabled !== undefined) {
+          setNightDutyNotificationEnabled(json.data.night_duty_notification_enabled === '1' || json.data.night_duty_notification_enabled === 1 || json.data.night_duty_notification_enabled === true);
+        } else {
+          setNightDutyNotificationEnabled(true);
+        }
+        if (json.data.night_duty_notification_lead_minutes !== undefined) {
+          setNightDutyNotificationLeadMinutes(Number(json.data.night_duty_notification_lead_minutes));
+        } else {
+          setNightDutyNotificationLeadMinutes(10);
         }
         if (json.data.holiday_schedules !== undefined && json.data.holiday_schedules !== null) {
           try {
@@ -1134,6 +1158,10 @@ const SettingsInner = () => {
       advance_night_shift_registration_minutes: allowLateNightShiftRegistration ? 0 : advanceNightShiftRegistrationMinutes,
       auto_approve_night_shift: autoApproveNightShift ? 1 : 0,
       allow_lead_distribution_on_pending_checkin: allowLeadDistributionOnPendingCheckin ? 1 : 0,
+      attendance_notification_enabled: attendanceNotificationEnabled ? 1 : 0,
+      attendance_notification_lead_minutes: attendanceNotificationLeadMinutes,
+      night_duty_notification_enabled: nightDutyNotificationEnabled ? 1 : 0,
+      night_duty_notification_lead_minutes: nightDutyNotificationLeadMinutes,
       allow_weekend_shift_registration: allowWeekendShiftRegistration ? 1 : 0,
       auto_approve_weekend_shift: autoApproveWeekendShift ? 1 : 0,
       weekend_shift_registration_lead_hours: weekendShiftRegistrationLeadHours,
@@ -5153,6 +5181,70 @@ function doPost(e) {
                               checked={allowLeadDistributionOnPendingCheckin}
                               onChange={setAllowLeadDistributionOnPendingCheckin}
                             />
+                          </div>
+                        </div>
+
+                        <div style={{ borderTop: '1px solid var(--color-border-light)', paddingTop: '1rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '1.5rem' }}>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text)' }}>
+                                {t('Thông báo trước giờ chấm công')}
+                              </div>
+                              <div style={{ fontSize: '0.725rem', color: 'var(--color-text-muted)', marginTop: 4, lineHeight: 1.4 }}>
+                                {t('Bật thông báo nhắc nhở Sale check-in điểm danh trước giờ quy định.')}
+                              </div>
+                              {attendanceNotificationEnabled && (
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '8px' }}>
+                                  <span style={{ fontSize: '0.725rem', color: 'var(--color-text)' }}>{t('Báo trước:')}</span>
+                                  <input
+                                    type="number"
+                                    className="form-input"
+                                    style={{ width: '70px', height: '26px', padding: '2px 6px', fontSize: '0.75rem', borderRadius: '4px' }}
+                                    value={attendanceNotificationLeadMinutes}
+                                    onChange={e => setAttendanceNotificationLeadMinutes(Math.max(1, Number(e.target.value)))}
+                                    min={1}
+                                  />
+                                  <span style={{ fontSize: '0.725rem', color: 'var(--color-text-muted)' }}>{t('phút')}</span>
+                                </div>
+                              )}
+                            </div>
+                            <div style={{ flexShrink: 0, marginTop: '2px' }}>
+                              <ToggleSwitch
+                                checked={attendanceNotificationEnabled}
+                                onChange={setAttendanceNotificationEnabled}
+                              />
+                            </div>
+                          </div>
+
+                          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '1.5rem', borderTop: '1px dashed var(--color-border-light)', paddingTop: '0.75rem' }}>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text)' }}>
+                                {t('Thông báo nhắc lịch trực đêm')}
+                              </div>
+                              <div style={{ fontSize: '0.725rem', color: 'var(--color-text-muted)', marginTop: 4, lineHeight: 1.4 }}>
+                                {t('Nếu hôm đó Sale có lịch đăng ký trực đêm, gửi thông báo nhắc nhở kèm lời chúc trước giờ trực.')}
+                              </div>
+                              {nightDutyNotificationEnabled && (
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '8px' }}>
+                                  <span style={{ fontSize: '0.725rem', color: 'var(--color-text)' }}>{t('Báo trước:')}</span>
+                                  <input
+                                    type="number"
+                                    className="form-input"
+                                    style={{ width: '70px', height: '26px', padding: '2px 6px', fontSize: '0.75rem', borderRadius: '4px' }}
+                                    value={nightDutyNotificationLeadMinutes}
+                                    onChange={e => setNightDutyNotificationLeadMinutes(Math.max(1, Number(e.target.value)))}
+                                    min={1}
+                                  />
+                                  <span style={{ fontSize: '0.725rem', color: 'var(--color-text-muted)' }}>{t('phút')}</span>
+                                </div>
+                              )}
+                            </div>
+                            <div style={{ flexShrink: 0, marginTop: '2px' }}>
+                              <ToggleSwitch
+                                checked={nightDutyNotificationEnabled}
+                                onChange={setNightDutyNotificationEnabled}
+                              />
+                            </div>
                           </div>
                         </div>
                       </div>
