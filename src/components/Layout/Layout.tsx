@@ -907,6 +907,18 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
               transform: translateX(4px);
               color: var(--hover-color) !important;
             }
+            @media (max-width: 768px) {
+              .unified-inbox-card {
+                flex-direction: column !important;
+                align-items: flex-start !important;
+                gap: 12px !important;
+                padding: 14px 16px !important;
+              }
+              .unified-inbox-card > div:last-child {
+                width: 100% !important;
+                justify-content: space-between !important;
+              }
+            }
           `}</style>
 
           {/* Header & List Container */}
