@@ -531,6 +531,34 @@ class CooperationController {
                             sendEmailNotification($mgr['email'], $emailSubject, $emailTitle, $emailContent, '', false);
                         }
                     }
+                    // Send Zalo/Telegram notification to managers/admins
+                    try {
+                        require_once __DIR__ . '/../zalo_bot.php';
+                        $stmtBotToken = $this->db->prepare("SELECT setting_value FROM system_settings WHERE setting_key = 'zalo_bot_token' LIMIT 1");
+                        $stmtBotToken->execute();
+                        $botToken = $stmtBotToken->fetchColumn();
+                        if ($botToken) {
+                            $zaloChatIds = [];
+                            foreach ($mgrs as $mgr) {
+                                $stmtZalo = $this->db->prepare("SELECT zalo_chat_id FROM users WHERE id = ? LIMIT 1");
+                                $stmtZalo->execute([$mgr['id']]);
+                                $zId = $stmtZalo->fetchColumn();
+                                if ($zId) {
+                                    $zaloChatIds[] = $zId;
+                                }
+                            }
+                            if (!empty($zaloChatIds)) {
+                                $zaloMsg = "✍️ [ YÊU CẦU PHÊ DUYỆT PHIẾU HỢP TÁC ]\n\n"
+                                    . "Phiếu hợp tác chia sẻ hoa hồng #$id đã thu thập đầy đủ chữ ký của các thành viên.\n"
+                                    . "  • Mã phiếu: #$id\n"
+                                    . "  • Trạng thái: Chờ phê duyệt\n\n"
+                                    . "Vui lòng truy cập hệ thống CRM để phê duyệt.";
+                                sendZaloMessageToMultiple($botToken, $zaloChatIds, $zaloMsg, false);
+                            }
+                        }
+                    } catch (Exception $zEx) {
+                        error_log("Error sending coop slip Zalo notification: " . $zEx->getMessage());
+                    }
                 }
             }
         } else {

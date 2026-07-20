@@ -19,6 +19,47 @@ function sendZaloMessage($botToken, $chatId, $text, $sync = true, $leadId = 0)
 
     global $conn;
 
+    // Automatically replicate matching messages to Telegram
+    if ($conn) {
+        try {
+            $tgTokenRes = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'telegram_bot_token' LIMIT 1");
+            $tgToken = $tgTokenRes ? ($tgTokenRes->fetch_assoc()['setting_value'] ?? '') : '';
+            if (!empty($tgToken)) {
+                $tgChatId = null;
+                // Check if it's the admin group chat ID
+                $zaloGroupRes = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'zalo_admin_group_chat_id' LIMIT 1");
+                $zaloGroup = $zaloGroupRes ? ($zaloGroupRes->fetch_assoc()['setting_value'] ?? '') : '';
+                if (!empty($zaloGroup) && $zaloGroup === $chatId) {
+                    $tgGroupRes = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'telegram_admin_group_chat_id' LIMIT 1");
+                    $tgChatId = $tgGroupRes ? ($tgGroupRes->fetch_assoc()['setting_value'] ?? '') : null;
+                } else {
+                    // Look up users table for individual user match
+                    $stmtUser = $conn->prepare("SELECT telegram_chat_id FROM users WHERE zalo_chat_id = ? LIMIT 1");
+                    if ($stmtUser) {
+                        $stmtUser->bind_param("s", $chatId);
+                        $stmtUser->execute();
+                        $uRow = $stmtUser->get_result()->fetch_assoc();
+                        $stmtUser->close();
+                        if ($uRow && !empty($uRow['telegram_chat_id'])) {
+                            $tgChatId = $uRow['telegram_chat_id'];
+                        }
+                    }
+                }
+
+                if (!empty($tgChatId)) {
+                    // Send to Telegram
+                    require_once __DIR__ . '/telegram_bot.php';
+                    $tgText = $text;
+                    $tgText = preg_replace('/\[\s*([^\]]+?)\s*\]/', '<b>[$1]</b>', $tgText);
+                    $tgText = preg_replace('/❖\s*([^:]+?)\s*:/', '❖ <b>$1</b>:', $tgText);
+                    sendTelegramMessage($tgToken, $tgChatId, $tgText);
+                }
+            }
+        } catch (Throwable $tgEx) {
+            error_log("Error auto-replicating Zalo message to Telegram: " . $tgEx->getMessage());
+        }
+    }
+
     if (!$sync) {
         $stmt = $conn->prepare("INSERT INTO zalo_queue (bot_token, chat_id, body_text, status, lead_id) VALUES (?, ?, ?, 'pending', ?)");
         if ($stmt) {

@@ -306,6 +306,54 @@ class CheckInController {
                 foreach ($admins as $adminId) {
                     $insertNotif->execute([$adminId, $auth['tenant_id'], $title, $body, $type, $link]);
                 }
+
+                // Fetch details for Zalo, Telegram and Email notifications
+                try {
+                    $zaloChatIds = [];
+                    $emails = [];
+                    $inPlaceholders = implode(',', array_fill(0, count($admins), '?'));
+                    $stmtDetails = $this->db->prepare("SELECT email, zalo_chat_id, full_name FROM users WHERE id IN ($inPlaceholders)");
+                    $stmtDetails->execute($admins);
+                    $adminDetails = $stmtDetails->fetchAll(PDO::FETCH_ASSOC);
+
+                    foreach ($adminDetails as $adm) {
+                        if (!empty($adm['zalo_chat_id'])) {
+                            $zaloChatIds[] = $adm['zalo_chat_id'];
+                        }
+                        if (!empty($adm['email'])) {
+                            $emails[] = $adm;
+                        }
+                    }
+
+                    // Send Zalo / Telegram
+                    require_once __DIR__ . '/../zalo_bot.php';
+                    $stmtBotToken = $this->db->prepare("SELECT setting_value FROM system_settings WHERE setting_key = 'zalo_bot_token' LIMIT 1");
+                    $stmtBotToken->execute();
+                    $botToken = $stmtBotToken->fetchColumn();
+                    if ($botToken && !empty($zaloChatIds)) {
+                        $zaloMsg = "⏰ [ YÊU CẦU DUYỆT ĐI TRỄ ]\n\n"
+                            . "Nhân viên $userName vừa báo cáo đi trễ ngày $today:\n"
+                            . "  • Tên NV: $userName\n"
+                            . "  • Thời gian: " . substr($currentTime, 0, 5) . "\n"
+                            . "  • Lý do: \"$reason\"\n\n"
+                            . "Vui lòng truy cập hệ thống CRM để phê duyệt.";
+                        sendZaloMessageToMultiple($botToken, $zaloChatIds, $zaloMsg, false);
+                    }
+
+                    // Send Email
+                    require_once __DIR__ . '/../mailer.php';
+                    foreach ($emails as $adm) {
+                        $emailSubject = "[RICH LAND] Yêu cầu phê duyệt đi trễ - NV $userName";
+                        $emailTitle = "DUYỆT YÊU CẦU ĐI TRỄ";
+                        $emailContent = "Chào " . htmlspecialchars($adm['full_name']) . ",<br/><br/>" .
+                                        "Nhân viên <strong>$userName</strong> vừa check-in trễ giờ quy định lúc " . substr($currentTime, 0, 5) . " ngày $today.<br/>" .
+                                        "Lý do đi trễ: <em>\"$reason\"</em>.<br/>" .
+                                        "Vui lòng truy cập hệ thống CRM để phê duyệt.";
+                        sendEmailNotification($adm['email'], $emailSubject, $emailTitle, $emailContent, '', false);
+                    }
+                } catch (Exception $nEx) {
+                    error_log("Error sending late check-in notifications: " . $nEx->getMessage());
+                }
             }
         }
 

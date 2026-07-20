@@ -259,12 +259,50 @@ class TicketController {
         ]);
         $id = $this->db->lastInsertId();
 
-        // Send notifications to all admins & directors
+        // Send notifications to all admins & directors (Zalo, Telegram and Email)
         try {
-            $stmtAdmins = $this->db->prepare("SELECT id FROM users WHERE role IN ('admin', 'superadmin', 'super_admin', 'director') AND id != ?");
-            $stmtAdmins->execute([$auth['user_id']]);
-            $adminIds = $stmtAdmins->fetchAll(PDO::FETCH_COLUMN) ?: [];
+            $stmtAdmins = $this->db->prepare("SELECT id, email, zalo_chat_id, full_name FROM users WHERE role IN ('admin', 'superadmin', 'super_admin', 'director')");
+            $stmtAdmins->execute();
+            $adminsDetails = $stmtAdmins->fetchAll(PDO::FETCH_ASSOC) ?: [];
+
+            $adminIds = [];
+            $zaloChatIds = [];
             
+            require_once __DIR__ . '/../zalo_bot.php';
+            $stmtBotToken = $this->db->prepare("SELECT setting_value FROM system_settings WHERE setting_key = 'zalo_bot_token' LIMIT 1");
+            $stmtBotToken->execute();
+            $botToken = $stmtBotToken->fetchColumn();
+
+            foreach ($adminsDetails as $adm) {
+                if ((int)$adm['id'] !== (int)$auth['user_id']) {
+                    $adminIds[] = (int)$adm['id'];
+                }
+                if (!empty($adm['zalo_chat_id'])) {
+                    $zaloChatIds[] = $adm['zalo_chat_id'];
+                }
+                // Send email
+                if (!empty($adm['email'])) {
+                    $emailSubject = "[RICH LAND] Yêu cầu hỗ trợ mới (Ticket #" . $id . ")";
+                    $emailTitle = "TICKET HỖ TRỢ MỚI";
+                    $emailContent = "Chào " . htmlspecialchars($adm['full_name']) . ",<br/><br/>" .
+                                    "Có yêu cầu hỗ trợ mới từ <strong>" . htmlspecialchars($auth['full_name']) . "</strong>:<br/>" .
+                                    "Tiêu đề: <strong>" . htmlspecialchars($data['subject']) . "</strong>.<br/>" .
+                                    "Mô tả: <em>\"" . htmlspecialchars($data['description'] ?? 'Không có') . "\"</em>.<br/>" .
+                                    "Vui lòng truy cập hệ thống CRM để xử lý.";
+                    sendEmailNotification($adm['email'], $emailSubject, $emailTitle, $emailContent, '', false);
+                }
+            }
+
+            if ($botToken && !empty($zaloChatIds)) {
+                $zaloMsg = "🎫 [ TICKET HỖ TRỢ MỚI ]\n\n"
+                    . "Có yêu cầu hỗ trợ mới từ " . $auth['full_name'] . ":\n"
+                    . "  • Ticket: #" . $id . "\n"
+                    . "  • Tiêu đề: " . $data['subject'] . "\n"
+                    . "  • Độ ưu tiên: " . ($data['priority'] ?? 'medium') . "\n\n"
+                    . "Vui lòng truy cập CRM để xử lý.";
+                sendZaloMessageToMultiple($botToken, $zaloChatIds, $zaloMsg, false);
+            }
+
             $stmtNotif = $this->db->prepare("INSERT INTO notifications (user_id, tenant_id, title, body, type, link) VALUES (?, ?, ?, ?, 'ticket_assignment', ?)");
             foreach ($adminIds as $adminId) {
                 $stmtNotif->execute([
@@ -275,7 +313,9 @@ class TicketController {
                     "/support-tickets"
                 ]);
             }
-        } catch (Exception $e) {}
+        } catch (Exception $e) {
+            error_log("Error in ticket admin notifications: " . $e->getMessage());
+        }
 
         // Email notifications for Assignee & Related Users
         require_once __DIR__ . '/../mailer.php';

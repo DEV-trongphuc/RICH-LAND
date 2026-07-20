@@ -922,6 +922,35 @@ class FinanceController
                         sendEmailNotification($mgr['email'], $emailSubject, $emailTitle, $emailContent, '', false);
                     }
                 }
+                // Send Zalo/Telegram notification to managers/admins
+                try {
+                    require_once __DIR__ . '/../zalo_bot.php';
+                    $stmtBotToken = $this->db->prepare("SELECT setting_value FROM system_settings WHERE setting_key = 'zalo_bot_token' LIMIT 1");
+                    $stmtBotToken->execute();
+                    $botToken = $stmtBotToken->fetchColumn();
+                    if ($botToken) {
+                        $zaloChatIds = [];
+                        foreach ($mgrs as $mgr) {
+                            $stmtZalo = $this->db->prepare("SELECT zalo_chat_id FROM users WHERE id = ? LIMIT 1");
+                            $stmtZalo->execute([$mgr['id']]);
+                            $zId = $stmtZalo->fetchColumn();
+                            if ($zId) {
+                                $zaloChatIds[] = $zId;
+                            }
+                        }
+                        if (!empty($zaloChatIds)) {
+                            $zaloMsg = "💸 [ YÊU CẦU PHÊ DUYỆT CHI PHÍ ]\n\n"
+                                . "Nhân viên " . $auth['full_name'] . " vừa tạo yêu cầu chi phí mới:\n"
+                                . "  • Tiêu đề: " . $data['title'] . "\n"
+                                . "  • Số tiền: " . number_format($totalAmount, 0, ',', '.') . "đ\n"
+                                . "  • Ghi chú: \"" . ($data['notes'] ?? 'Không có') . "\"\n\n"
+                                . "Vui lòng truy cập hệ thống CRM để phê duyệt.";
+                            sendZaloMessageToMultiple($botToken, $zaloChatIds, $zaloMsg, false);
+                        }
+                    }
+                } catch (Exception $zEx) {
+                    error_log("Error sending expense Zalo notification: " . $zEx->getMessage());
+                }
             }
 
             $this->showExpense($auth, $expId);
