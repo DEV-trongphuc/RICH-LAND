@@ -1827,6 +1827,28 @@ try {
         $conn->query("ALTER TABLE cooperation_slips ADD COLUMN approved_at TIMESTAMP DEFAULT NULL");
     }
 
+    // Self-healing check: ensure adjustment request fields exist in cooperation_slips
+    $chkColAdjUser = $conn->query("SHOW COLUMNS FROM cooperation_slips LIKE 'adjustment_request_user_id'");
+    if ($chkColAdjUser && $chkColAdjUser->num_rows === 0) {
+        $conn->query("ALTER TABLE cooperation_slips ADD COLUMN adjustment_request_user_id INT DEFAULT NULL");
+    }
+    $chkColAdjReason = $conn->query("SHOW COLUMNS FROM cooperation_slips LIKE 'adjustment_request_reason'");
+    if ($chkColAdjReason && $chkColAdjReason->num_rows === 0) {
+        $conn->query("ALTER TABLE cooperation_slips ADD COLUMN adjustment_request_reason TEXT DEFAULT NULL");
+    }
+    $chkColAdjAt = $conn->query("SHOW COLUMNS FROM cooperation_slips LIKE 'adjustment_request_at'");
+    if ($chkColAdjAt && $chkColAdjAt->num_rows === 0) {
+        $conn->query("ALTER TABLE cooperation_slips ADD COLUMN adjustment_request_at TIMESTAMP DEFAULT NULL");
+    }
+    $chkColAdjShares = $conn->query("SHOW COLUMNS FROM cooperation_slips LIKE 'adjustment_request_shares_json'");
+    if ($chkColAdjShares && $chkColAdjShares->num_rows === 0) {
+        $conn->query("ALTER TABLE cooperation_slips ADD COLUMN adjustment_request_shares_json TEXT DEFAULT NULL");
+    }
+    $chkColAdjComm = $conn->query("SHOW COLUMNS FROM cooperation_slips LIKE 'adjustment_request_commission'");
+    if ($chkColAdjComm && $chkColAdjComm->num_rows === 0) {
+        $conn->query("ALTER TABLE cooperation_slips ADD COLUMN adjustment_request_commission BIGINT DEFAULT NULL");
+    }
+
     // Self-healing check: ensure attachment_url exists in notes
     $chkColNoteAttach = $conn->query("SHOW COLUMNS FROM notes LIKE 'attachment_url'");
     if ($chkColNoteAttach && $chkColNoteAttach->num_rows === 0) {

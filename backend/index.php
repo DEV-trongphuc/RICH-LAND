@@ -945,6 +945,7 @@ switch ($resource) {
         elseif ($resourceId && $subResource === 'delete-attachment' && $method === 'POST') $ctrl->deleteAttachment($auth, (int)$resourceId);
         elseif ($resourceId && $subResource === 'rename-attachment' && $method === 'POST') $ctrl->renameAttachment($auth, (int)$resourceId);
         elseif ($resourceId && $subResource === 'request-adjustment' && $method === 'POST') $ctrl->requestAdjustment($auth, (int)$resourceId);
+        elseif ($resourceId && $subResource === 'handle-adjustment' && $method === 'POST') $ctrl->handleAdjustment($auth, (int)$resourceId);
         elseif ($resourceId && $method === 'DELETE') $ctrl->destroy($auth, (int)$resourceId);
         elseif (!$resourceId && $method === 'GET')    $ctrl->index($auth);
         elseif (!$resourceId && $method === 'POST')   $ctrl->createSlip($auth);

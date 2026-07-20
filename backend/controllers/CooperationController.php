@@ -178,6 +178,9 @@ class CooperationController {
             if (!empty($s['approved_by'])) {
                 $allUids[] = (int)$s['approved_by'];
             }
+            if (!empty($s['adjustment_request_user_id'])) {
+                $allUids[] = (int)$s['adjustment_request_user_id'];
+            }
         }
         $allUids = array_unique($allUids);
 
@@ -227,9 +230,34 @@ class CooperationController {
                     ];
                 }
             }
+            $adjustmentRequestDetails = null;
+            if (!empty($s['adjustment_request_user_id'])) {
+                $u = $userMap[(int)$s['adjustment_request_user_id']] ?? null;
+                if ($u) {
+                    $sharesList = [];
+                    $reqShares = json_decode($s['adjustment_request_shares_json'] ?? '[]', true) ?: [];
+                    foreach ($reqShares as $uid => $percent) {
+                        $sharesList[] = [
+                            'user_id' => (int)$uid,
+                            'percentage' => (int)$percent
+                        ];
+                    }
+                    $adjustmentRequestDetails = [
+                        'user_id' => (int)$s['adjustment_request_user_id'],
+                        'name' => $u['full_name'],
+                        'email' => $u['email'],
+                        'avatar' => $u['avatar_url'] ?? null,
+                        'reason' => $s['adjustment_request_reason'],
+                        'requested_at' => $s['adjustment_request_at'],
+                        'expected_commission' => $s['adjustment_request_commission'] ? (int)$s['adjustment_request_commission'] : null,
+                        'shares' => $sharesList
+                    ];
+                }
+            }
             
             $s['shareholders'] = $shareholdersDetails;
             $s['approver'] = $approverDetails;
+            $s['adjustment_request'] = $adjustmentRequestDetails;
         }
 
         respond(200, $slips, 'Lấy danh sách phiếu hợp tác thành công');
@@ -344,22 +372,40 @@ class CooperationController {
             respond(403, null, 'Bạn không có quyền cập nhật tỷ lệ cho phiếu hợp tác này', false);
         }
 
+        $isManagerOrAdmin = in_array($auth['role'], ['admin', 'superadmin', 'super_admin', 'manager', 'director'], true);
+
         $allowedStatuses = ['pending_signatures', 'pending_manager_approval', 'approved_pending_signatures'];
-        if (!in_array($slip['status'], $allowedStatuses)) {
+        if (!$isManagerOrAdmin && !in_array($slip['status'], $allowedStatuses)) {
             respond(400, null, 'Không thể cập nhật tỷ lệ cho phiếu hợp tác đã được phê duyệt hoặc khóa', false);
         }
 
-        $isManagerOrAdmin = in_array($auth['role'], ['admin', 'superadmin', 'super_admin', 'manager', 'director'], true);
+        // Admin updates expected_commission in deposits if present in the body
+        $expectedCommission = isset($b['expected_commission']) ? (int)$b['expected_commission'] : null;
+        if ($expectedCommission !== null && $slip['deposit_slip_id']) {
+            $stmtDep = $this->db->prepare("UPDATE deposits SET expected_commission = ? WHERE id = ?");
+            $stmtDep->execute([$expectedCommission, $slip['deposit_slip_id']]);
+        }
 
         $sharesJson = json_encode($shares);
         $reason = trim($b['reason'] ?? '');
 
-        // If updated by admin/manager, reset signatures but change status to 'approved_pending_signatures' (which bypasses manager approval).
+        // If updated by admin/manager directly, keep their existing status (e.g. approved) and preserve existing signatures.
         // Otherwise, reset signatures and request change/approval.
-        $signaturesVal = '{}';
         if ($isManagerOrAdmin) {
-            $newStatus = 'approved_pending_signatures';
+            $newStatus = $slip['status'];
+            $signaturesVal = $slip['signatures_json'];
+            
+            // Clear any pending adjustment request because it has been addressed/applied directly.
+            $stmtClearReq = $this->db->prepare("
+                UPDATE cooperation_slips 
+                SET adjustment_request_user_id = NULL, 
+                    adjustment_request_reason = NULL, 
+                    adjustment_request_at = NULL 
+                WHERE id = ?
+            ");
+            $stmtClearReq->execute([$id]);
         } else {
+            $signaturesVal = '{}';
             $newStatus = 'pending_signatures';
             if ($slip['status'] === 'approved' || $slip['status'] === 'pending_manager_approval' || $slip['status'] === 'approved_pending_signatures') {
                 $newStatus = 'pending_manager_approval';
@@ -376,7 +422,16 @@ class CooperationController {
         // Sync collaborators to contacts table
         $this->syncCollaboratorsToContact((int)$slip['contact_id'], $sharesJson);
 
-        if ($newStatus === 'pending_manager_approval') {
+        if ($isManagerOrAdmin) {
+            // Notify all shareholders about direct update
+            $emailSubject = "[RICH LAND] Cập nhật tỷ lệ hoa hồng Phiếu hợp tác #" . $id;
+            $emailTitle = "TỶ LỆ HOA HỒNG ĐÃ ĐƯỢC CẬP NHẬT";
+            $emailContent = "Chào các thành viên,<br/><br/>" .
+                            "Tỷ lệ hoa hồng hoặc số tiền hoa hồng trong Phiếu hợp tác #" . $id . " đã được điều chỉnh trực tiếp bởi Quản trị viên <strong>" . htmlspecialchars($auth['full_name']) . "</strong>.<br/>" .
+                            (!empty($reason) ? "<strong>Ghi chú:</strong> <em>" . htmlspecialchars($reason) . "</em>.<br/>" : "") .
+                            "Vui lòng truy cập hệ thống để kiểm tra tỷ lệ phân chia mới.";
+            $this->notifyShareholders($id, $shares, $emailSubject, $emailTitle, $emailContent);
+        } elseif ($newStatus === 'pending_manager_approval') {
             $stmtUser = $this->db->prepare("SELECT full_name FROM users WHERE id = ?");
             $stmtUser->execute([$auth['user_id']]);
             $userRow = $stmtUser->fetch();
@@ -418,7 +473,7 @@ class CooperationController {
                     }
                 }
             }
-        } elseif ($newStatus === 'pending_signatures' || $newStatus === 'approved_pending_signatures') {
+        } else {
             // Email all shareholders about the change and sign request
             $emailSubject = "[RICH LAND] Yêu cầu ký xác nhận lại Phiếu hợp tác #" . $id;
             $emailTitle = "KÝ XÁC NHẬN LẠI PHIẾU HỢP TÁC";
@@ -430,7 +485,7 @@ class CooperationController {
         }
 
         logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'UPDATE_COOPERATION_SHARES', 'cooperation_slip', $id, "Cập nhật/Yêu cầu thay đổi tỷ lệ hoa hồng phiên bản " . ($slip['version'] + 1) . ". Lý do: $reason");
-        respond(200, null, 'Cập nhật tỷ lệ chia sẻ thành công. Đã gửi yêu cầu phê duyệt.');
+        respond(200, null, $isManagerOrAdmin ? 'Cập nhật thông tin phiếu hợp tác thành công' : 'Cập nhật tỷ lệ chia sẻ hoa hồng thành công. Đã gửi yêu cầu phê duyệt.');
     }
 
     public function signSlip(array $auth, int $id): void {
@@ -1279,6 +1334,22 @@ class CooperationController {
             respond(400, null, 'Chỉ có thể gửi yêu cầu chỉnh sửa tỷ lệ từ phiếu hợp tác đã được duyệt', false);
         }
 
+        $shares = $input['shares'] ?? [];
+        $expectedCommission = isset($input['expected_commission']) ? (int)$input['expected_commission'] : null;
+        $sharesJson = !empty($shares) ? json_encode($shares) : null;
+
+        // Update adjustment request details in the database
+        $stmtUpd = $this->db->prepare("
+            UPDATE cooperation_slips 
+            SET adjustment_request_user_id = ?, 
+                adjustment_request_reason = ?, 
+                adjustment_request_at = NOW(),
+                adjustment_request_shares_json = ?,
+                adjustment_request_commission = ?
+            WHERE id = ?
+        ");
+        $stmtUpd->execute([$auth['user_id'], $reason, $sharesJson, $expectedCommission, $id]);
+
         // Notify admins, directors, and the owner
         $stmtUsers = $this->db->prepare("
             SELECT id, email, full_name 
@@ -1322,5 +1393,148 @@ class CooperationController {
         logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'REQUEST_COOP_ADJUSTMENT', 'cooperation_slip', $id, "Gửi yêu cầu chỉnh sửa tỷ lệ hoa hồng cho phiếu cọc. Lý do: $reason");
 
         respond(200, null, 'Gửi yêu cầu chỉnh sửa tỷ lệ hoa hồng thành công');
+    }
+
+    public function handleAdjustment(array $auth, int $id): void {
+        requireRole($auth, ['admin', 'superadmin', 'super_admin', 'manager', 'director']);
+        
+        $input = getBody();
+        $action = trim($input['action'] ?? ''); // 'approve' or 'reject'
+        $note = trim($input['note'] ?? '');
+
+        if (!in_array($action, ['approve', 'reject'], true)) {
+            respond(400, null, 'Hành động không hợp lệ', false);
+        }
+
+        $this->db->beginTransaction();
+        try {
+            // Fetch slip details
+            $stmt = $this->db->prepare("
+                SELECT cs.*, CONCAT(c.first_name, ' ', COALESCE(c.last_name,'')) as customer_name, c.tenant_id
+                FROM cooperation_slips cs
+                JOIN contacts c ON cs.contact_id = c.id
+                WHERE cs.id = ?
+            ");
+            $stmt->execute([$id]);
+            $slip = $stmt->fetch(PDO::FETCH_ASSOC);
+
+            if (!$slip) {
+                respond(404, null, 'Không tìm thấy phiếu hợp tác', false);
+            }
+
+            if (empty($slip['adjustment_request_user_id'])) {
+                respond(400, null, 'Không có yêu cầu chỉnh sửa nào cần xử lý cho phiếu này', false);
+            }
+
+            $requesterId = (int)$slip['adjustment_request_user_id'];
+
+            if ($action === 'approve') {
+                // 1. Check if there is already a pending adjustment slip for this contact
+                $stmtPending = $this->db->prepare("SELECT id FROM cooperation_slips WHERE contact_id = ? AND status IN ('pending_signatures', 'pending_manager_approval', 'approved_pending_signatures') LIMIT 1");
+                $stmtPending->execute([$slip['contact_id']]);
+                if ($stmtPending->fetchColumn()) {
+                    respond(400, null, 'Đang có một phiếu hợp tác hoặc phiếu điều chỉnh khác chờ ký duyệt cho khách hàng này', false);
+                }
+
+                // 2. Clone the slip (similar to createAdjustmentSlip)
+                $sharesJson = $slip['shares_json'];
+                
+                $stmtIns = $this->db->prepare("
+                    INSERT INTO cooperation_slips (contact_id, deposit_slip_id, version, total_percentage, shares_json, signatures_json, status, created_by, dieu_chinh_tu_id)
+                    VALUES (?, ?, 1, 100, ?, '{}', 'pending_signatures', ?, ?)
+                ");
+                $stmtIns->execute([
+                    $slip['contact_id'],
+                    $slip['deposit_slip_id'],
+                    $sharesJson,
+                    $auth['user_id'],
+                    $id
+                ]);
+                $newSlipId = (int)$this->db->lastInsertId();
+
+                // 3. Clear/resolve the request on the old slip
+                $stmtUpdate = $this->db->prepare("
+                    UPDATE cooperation_slips 
+                    SET adjustment_request_user_id = NULL, 
+                        adjustment_request_reason = NULL, 
+                        adjustment_request_at = NULL 
+                    WHERE id = ?
+                ");
+                $stmtUpdate->execute([$id]);
+
+                $this->db->commit();
+
+                logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'APPROVE_COOP_ADJUSTMENT_REQUEST', 'cooperation_slip', $id, "Đã duyệt yêu cầu chỉnh sửa tỷ lệ của phiếu #$id. Tạo phiếu điều chỉnh mới #$newSlipId. Note: $note");
+
+                // Notify all shareholders of the new slip
+                $shares = json_decode($sharesJson, true) ?: [];
+                $emailSubject = "[RICH LAND] Duyệt yêu cầu chỉnh sửa & Yêu cầu ký xác nhận Phiếu điều chỉnh #" . $newSlipId;
+                $emailTitle = "KÝ XÁC NHẬN PHIẾU ĐIỀU CHỈNH HOA HỒNG";
+                $emailContent = "Chào các thành viên,<br/><br/>" .
+                                "Ban quản lý đã <strong>phê duyệt</strong> yêu cầu chỉnh sửa tỷ lệ hoa hồng cho khách hàng <strong>" . htmlspecialchars($slip['customer_name']) . "</strong>.<br/>" .
+                                (!empty($note) ? "<strong>Ghi chú từ quản lý:</strong> <em>" . htmlspecialchars($note) . "</em><br/><br/>" : "") .
+                                "Hệ thống đã tự động tạo Phiếu điều chỉnh mới với mã số <strong>#" . $newSlipId . "</strong>.<br/>" .
+                                "Vui lòng truy cập hệ thống để ký xác nhận lại tỷ lệ phân chia mới.";
+                $this->notifyShareholders($newSlipId, $shares, $emailSubject, $emailTitle, $emailContent);
+
+                respond(200, ['new_slip_id' => $newSlipId], 'Phê duyệt yêu cầu và tạo phiếu điều chỉnh mới thành công');
+
+            } else {
+                // Reject action
+                // Clear the request fields on the old slip
+                $stmtUpdate = $this->db->prepare("
+                    UPDATE cooperation_slips 
+                    SET adjustment_request_user_id = NULL, 
+                        adjustment_request_reason = NULL, 
+                        adjustment_request_at = NULL 
+                    WHERE id = ?
+                ");
+                $stmtUpdate->execute([$id]);
+
+                $this->db->commit();
+
+                logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'REJECT_COOP_ADJUSTMENT_REQUEST', 'cooperation_slip', $id, "Từ chối yêu cầu chỉnh sửa tỷ lệ của phiếu #$id. Note: $note");
+
+                // Notify requester
+                $stmtReq = $this->db->prepare("SELECT email, full_name FROM users WHERE id = ?");
+                $stmtReq->execute([$requesterId]);
+                $requester = $stmtReq->fetch(PDO::FETCH_ASSOC);
+
+                if ($requester) {
+                    $notifySubject = "[RICH LAND] Từ chối yêu cầu chỉnh sửa tỷ lệ hoa hồng - Khách: " . $slip['customer_name'];
+                    $notifyTitle = "TỪ CHỐI YÊU CẦU CHỈNH SỬA TỶ LỆ";
+                    $notifyContent = "Chào <strong>" . htmlspecialchars($requester['full_name']) . "</strong>,<br/><br/>" .
+                                     "Yêu cầu chỉnh sửa tỷ lệ hoa hồng của bạn cho khách hàng <strong>" . htmlspecialchars($slip['customer_name']) . "</strong> (Phiếu hợp tác #" . $id . ") đã bị ban quản lý <strong>từ chối</strong>.<br/>" .
+                                     (!empty($note) ? "<strong>Lý do/Ghi chú từ quản lý:</strong> <em>" . htmlspecialchars($note) . "</em><br/><br/>" : "") .
+                                     "Vui lòng liên hệ ban quản lý để biết thêm chi tiết.";
+                    
+                    // In-app
+                    $stmtNotif = $this->db->prepare("
+                        INSERT INTO notifications (user_id, tenant_id, title, body, type, link) 
+                        VALUES (?, ?, ?, ?, 'cooperation_status', ?)
+                    ");
+                    $cleanBody = strip_tags(str_replace(['<br/>', '<br>', '<strong>', '</strong>', '<em>', '</em>'], [' ', ' ', '', '', '', ''], $notifyContent));
+                    $stmtNotif->execute([
+                        $requesterId,
+                        $auth['tenant_id'],
+                        $notifySubject,
+                        $cleanBody,
+                        '/cooperation-slips'
+                    ]);
+
+                    // Email
+                    if (!empty($requester['email'])) {
+                        require_once __DIR__ . '/../mailer.php';
+                        sendEmailNotification($requester['email'], $notifySubject, $notifyTitle, $notifyContent, '', false);
+                    }
+                }
+
+                respond(200, null, 'Từ chối yêu cầu chỉnh sửa tỷ lệ thành công');
+            }
+
+        } catch (Exception $e) {
+            $this->db->rollBack();
+            respond(500, null, 'Lỗi xử lý yêu cầu chỉnh sửa: ' . $e->getMessage(), false);
+        }
     }
 }

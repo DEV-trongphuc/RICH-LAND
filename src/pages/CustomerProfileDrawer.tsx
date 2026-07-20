@@ -8028,15 +8028,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                 className="card-panel table-row-hover" 
                                 style={{ padding: 0, overflow: 'hidden', border: `1px solid var(--color-border)`, transition: 'transform 0.2s, box-shadow 0.2s', borderRadius: '16px', cursor: 'pointer' }}
                                 onClick={() => {
-                                  const isCreator = String(d.created_by) === String(currentUser?.id);
-                                  const isOwner = String(d.contact_owner_id) === String(currentUser?.id);
-                                  const isStaff = currentUser && ['admin', 'superadmin', 'super_admin', 'assistant', 'manager', 'director'].includes(currentUser.role);
-                                  
-                                  if (isStaff || isCreator || isOwner) {
-                                    handleOpenManageMilestones(d);
-                                  } else {
-                                    addToast('Chỉ chủ sở hữu hoặc người tạo phiếu cọc mới có quyền cập nhật lịch trình.', 'error');
-                                  }
+                                  handleOpenManageMilestones(d);
                                 }}
                               >
                                 <div style={{ padding: '1.25rem 1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', background: 'var(--color-surface)' }}>

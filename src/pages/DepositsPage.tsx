@@ -189,6 +189,10 @@ export default function DepositsPage() {
   const [isSaving, setIsSaving] = useState(false);
 
   const isAdmin = user && ['admin', 'superadmin', 'super_admin', 'assistant', 'manager', 'director'].includes(user.role);
+  const canEditMilestones = isAdmin || (selectedDepForManage && (
+    String(selectedDepForManage.created_by) === String(user?.id) ||
+    String(selectedDepForManage.contact_owner_id) === String(user?.id)
+  ));
 
   const loadData = async () => {
     setLoading(true);
@@ -1607,22 +1611,24 @@ export default function DepositsPage() {
             <div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
                 <h4 style={{ margin: 0, fontWeight: 700, fontSize: '0.875rem' }}>Các đợt thanh toán</h4>
-                <button
-                  className="btn sm"
-                  onClick={handleAddMilestoneRow}
-                  style={{
-                    padding: '4px 10px',
-                    fontSize: '0.75rem',
-                    background: 'rgba(16, 185, 129, 0.08)',
-                    color: '#10b981',
-                    border: '1px solid rgba(16, 185, 129, 0.2)',
-                    fontWeight: 700,
-                    borderRadius: '6px',
-                    cursor: 'pointer'
-                  }}
-                >
-                  + Thêm đợt
-                </button>
+                {canEditMilestones && (
+                  <button
+                    className="btn sm"
+                    onClick={handleAddMilestoneRow}
+                    style={{
+                      padding: '4px 10px',
+                      fontSize: '0.75rem',
+                      background: 'rgba(16, 185, 129, 0.08)',
+                      color: '#10b981',
+                      border: '1px solid rgba(16, 185, 129, 0.2)',
+                      fontWeight: 700,
+                      borderRadius: '6px',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    + Thêm đợt
+                  </button>
+                )}
               </div>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
@@ -1674,6 +1680,7 @@ export default function DepositsPage() {
                             type="text"
                             placeholder="Tên đợt (ví dụ: Đợt 1 - Cọc giữ chỗ)"
                             value={m.milestone_name}
+                            disabled={!canEditMilestones}
                             onChange={e => handleUpdateMilestoneField(idx, 'milestone_name', e.target.value)}
                             className="form-input"
                             style={{ width: '100%', height: '34px', fontSize: '0.775rem', padding: '0 10px', borderRadius: '6px' }}
@@ -1691,7 +1698,7 @@ export default function DepositsPage() {
                             type="text"
                             placeholder="Số tiền"
                             value={formatNumberWithCommas(m.expected_amount)}
-                            disabled={isLocked}
+                            disabled={isLocked || !canEditMilestones}
                             onChange={e => {
                               const rawVal = e.target.value.replace(/[^0-9]/g, '');
                               handleUpdateMilestoneField(idx, 'expected_amount', rawVal ? parseInt(rawVal, 10) : 0);
@@ -1717,8 +1724,8 @@ export default function DepositsPage() {
                             {m.status === 'approved' ? 'Đã duyệt' : m.status === 'paid' ? 'Chờ duyệt' : m.status === 'failed' ? 'Từ chối' : 'Chờ nộp'}
                           </span>
                           {m.approval_date && m.status === 'approved' && (
-                            <span style={{ fontSize: '0.65rem', color: '#10b981', fontWeight: 500 }}>
-                              Duyệt: {new Date(m.approval_date).toLocaleDateString('vi-VN')}
+                            <span style={{ fontSize: '0.65rem', color: '#10b981', fontWeight: 500, textAlign: 'center', whiteSpace: 'nowrap' }}>
+                              Duyệt: {new Date(m.approval_date).toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' }).replace(',', '')}
                             </span>
                           )}
                         </div>
@@ -1726,7 +1733,7 @@ export default function DepositsPage() {
                         {/* UNC proof */}
                         <div style={{ display: 'flex', justifyContent: 'center', gap: '4px' }}>
                           {/* Upload UNC */}
-                          {m.status !== 'approved' && (
+                          {m.status !== 'approved' && canEditMilestones && (
                             <label
                               className="btn sm"
                               style={{
@@ -1829,7 +1836,7 @@ export default function DepositsPage() {
                           )}
 
                           {/* Delete row */}
-                          {!isLocked && (
+                          {!isLocked && canEditMilestones && (
                             <button
                               onClick={() => handleRemoveMilestoneRow(idx)}
                               style={{
@@ -1863,9 +1870,11 @@ export default function DepositsPage() {
               <button className="btn" onClick={() => setShowManageModal(false)} style={{ minWidth: 80 }}>
                 Hủy
               </button>
-              <button className="btn primary" onClick={handleSaveMilestones} style={{ minWidth: 100 }} disabled={isSavingMilestones}>
-                {isSavingMilestones ? 'Đang lưu...' : 'Lưu lịch trình'}
-              </button>
+              {canEditMilestones && (
+                <button className="btn primary" onClick={handleSaveMilestones} style={{ minWidth: 100 }} disabled={isSavingMilestones}>
+                  {isSavingMilestones ? 'Đang lưu...' : 'Lưu lịch trình'}
+                </button>
+              )}
             </div>
           </div>
         )}

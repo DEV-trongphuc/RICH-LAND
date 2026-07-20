@@ -1,0 +1,461 @@
+﻿diff --git a/src/pages/CooperationSlipsPage.tsx b/src/pages/CooperationSlipsPage.tsx
+index 0bbbbc5..32c5942 100644
+--- a/src/pages/CooperationSlipsPage.tsx
++++ b/src/pages/CooperationSlipsPage.tsx
+@@ -13,6 +13,7 @@ import { Pagination } from '../components/ui/Pagination';
+ import { CopyButton } from '../components/ui/CopyButton';
+ import { CardSkeleton } from '../components/ui/Skeleton';
+ import { getModulePermissionScope } from '../store/authStore';
++import { CurrencyInput } from '../components/ui/CurrencyInput';
+ 
+ interface CooperationSlip {
+   id: number;
+@@ -176,6 +177,12 @@ export default function CooperationSlipsPage() {
+   const [requestAdjustmentSlip, setRequestAdjustmentSlip] = useState<any>(null);
+   const [requestAdjustmentReason, setRequestAdjustmentReason] = useState('');
+   const [isSubmittingReq, setIsSubmittingReq] = useState(false);
++  const [reqShares, setReqShares] = useState<{ user_id: string; percentage: string }[]>([]);
++  const [reqExpectedCommission, setReqExpectedCommission] = useState<number>(0);
++  const [selectedSlipForHandleRequest, setSelectedSlipForHandleRequest] = useState<any | null>(null);
++  const [showHandleRequestModal, setShowHandleRequestModal] = useState(false);
++  const [handleRequestNote, setHandleRequestNote] = useState('');
++  const [isHandlingRequest, setIsHandlingRequest] = useState(false);
+ 
+   const getInitials = (name: string) => {
+     if (!name) return 'U';
+@@ -720,6 +727,13 @@ export default function CooperationSlipsPage() {
+   const handleOpenRequestAdjustmentModal = (slip: any) => {
+     setRequestAdjustmentSlip(slip);
+     setRequestAdjustmentReason('');
++    const baseComm = Number(slip.expected_commission) || Number(slip.expected_revenue) || 0;
++    setReqExpectedCommission(baseComm);
++    const sharesList = (slip.shareholders || []).map((sh: any) => ({
++      user_id: String(sh.user_id),
++      percentage: String(sh.percentage)
++    }));
++    setReqShares(sharesList.length > 0 ? sharesList : [{ user_id: String(user?.id), percentage: '100' }]);
+   };
+ 
+   const handleConfirmRequestAdjustment = async () => {
+@@ -728,11 +742,29 @@ export default function CooperationSlipsPage() {
+       addToast('Vui l├▓ng nhß║¡p l├╜ do y├¬u cß║ºu chß╗ënh sß╗¡a', 'error');
+       return;
+     }
++
++    const totalPct = reqShares.reduce((sum, s) => sum + (Number(s.percentage) || 0), 0);
++    if (totalPct !== 100) {
++      addToast('Tß╗òng tß╗╖ lß╗ç ph├ón chia ─æß╗ü xuß║Ñt phß║úi bß║▒ng 100%', 'error');
++      return;
++    }
++
++    // Format a beautiful summary of the request
++    let formattedReason = `─Éß╗ü xuß║Ñt ─æiß╗üu chß╗ënh hoa hß╗ông:\n`;
++    formattedReason += `- Hoa hß╗ông dß╗▒ kiß║┐n mß╗¢i: ${reqExpectedCommission.toLocaleString('vi-VN')} VND\n`;
++    formattedReason += `- Tß╗╖ lß╗ç ph├ón chia mß╗¢i ─æß╗ü xuß║Ñt:\n`;
++    reqShares.forEach(sh => {
++      const uObj = salesAccounts.find(u => String(u.id) === String(sh.user_id));
++      const uName = uObj ? uObj.full_name : `Sale ID ${sh.user_id}`;
++      formattedReason += `  + ${uName}: ${sh.percentage}%\n`;
++    });
++    formattedReason += `\nL├╜ do y├¬u cß║ºu: ${requestAdjustmentReason.trim()}`;
++
+     try {
+       setIsSubmittingReq(true);
+       const res = await fetchAPI(`cooperation-slips/${requestAdjustmentSlip.id}/request-adjustment`, {
+         method: 'POST',
+-        body: JSON.stringify({ reason: requestAdjustmentReason })
++        body: JSON.stringify({ reason: formattedReason })
+       });
+       if (res.success) {
+         addToast('Gß╗¡i y├¬u cß║ºu chß╗ënh sß╗¡a tß╗╖ lß╗ç th├ánh c├┤ng!', 'success');
+@@ -748,6 +780,33 @@ export default function CooperationSlipsPage() {
+     }
+   };
+ 
++  const handleOpenHandleRequestModal = (slip: any) => {
++    setSelectedSlipForHandleRequest(slip);
++    setHandleRequestNote('');
++    setShowHandleRequestModal(true);
++  };
++
++  const handleResolveRequest = async (action: 'approve' | 'reject') => {
++    if (!selectedSlipForHandleRequest) return;
++    try {
++      setIsHandlingRequest(true);
++      const res = await fetchAPI(`cooperation-slips/${selectedSlipForHandleRequest.id}/handle-adjustment`, {
++        method: 'POST',
++        body: JSON.stringify({ action, note: handleRequestNote })
++      });
++      if (res.success) {
++        addToast(action === 'approve' ? '─É├ú duyß╗çt y├¬u cß║ºu chß╗ënh sß╗¡a v├á tß║ío phiß║┐u ─æiß╗üu chß╗ënh mß╗¢i!' : '─É├ú tß╗½ chß╗æi y├¬u cß║ºu chß╗ënh sß╗¡a!', 'success');
++        setShowHandleRequestModal(false);
++        loadData();
++      } else {
++        addToast(res.message || 'Lß╗ùi xß╗¡ l├╜ y├¬u cß║ºu', 'error');
++      }
++    } catch (e: any) {
++      addToast(e.message || 'Lß╗ùi kß║┐t nß╗æi', 'error');
++    } finally {
++      setIsHandlingRequest(false);
++  };
++
+   const handleCreateAdjustment = (slipId: number) => {
+     showConfirm({
+       title: 'X├íc nhß║¡n tß║ío phiß║┐u ─æiß╗üu chß╗ënh',
+@@ -1167,49 +1226,98 @@ export default function CooperationSlipsPage() {
+ 
+                       {/* For approved slips, show Create Adjustment button (Luß║¡t 4.12) or Request Adjustment button */}
+                       {slip.status === 'approved' && (isApprover || isShareholder || String(slip.created_by) === String(user?.id)) && (
+-                        isApprover ? (
+-                          <button
+-                            onClick={() => handleCreateAdjustment(slip.id)}
+-                            style={{
+-                              height: '38px',
+-                              padding: '0 16px',
+-                              fontSize: '0.85rem',
+-                              borderRadius: '8px',
+-                              fontWeight: 600,
+-                              display: 'flex',
+-                              alignItems: 'center',
+-                              justifyContent: 'center',
+-                              cursor: 'pointer',
+-                              border: '1px solid var(--color-warning)',
+-                              background: 'rgba(245, 158, 11, 0.08)',
+-                              color: 'var(--color-warning)',
+-                              transition: 'all 0.2s'
+-                            }}
+-                          >
+-                            Tß║ío phiß║┐u ─æiß╗üu chß╗ënh (Adjustment)
+-                          </button>
+-                        ) : (
+-                          <button
+-                            onClick={() => handleOpenRequestAdjustmentModal(slip)}
+-                            style={{
+-                              height: '38px',
+-                              padding: '0 16px',
+-                              fontSize: '0.85rem',
+-                              borderRadius: '8px',
+-                              fontWeight: 600,
+-                              display: 'flex',
+-                              alignItems: 'center',
+-                              justifyContent: 'center',
+-                              cursor: 'pointer',
+-                              border: '1px solid var(--color-primary)',
+-                              background: 'rgba(163, 20, 34, 0.04)',
+-                              color: 'var(--color-primary)',
+-                              transition: 'all 0.2s'
+-                            }}
+-                          >
+-                            Y├¬u cß║ºu chß╗ënh sß╗¡a tß╗╖ lß╗ç
+-                          </button>
+-                        )
++                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
++                          {isApprover ? (
++                            <>
++                              {slip.adjustment_request && (
++                                <button
++                                  onClick={() => handleOpenHandleRequestModal(slip)}
++                                  style={{
++                                    height: '38px',
++                                    padding: '0 12px',
++                                    fontSize: '0.85rem',
++                                    borderRadius: '8px',
++                                    fontWeight: 600,
++                                    display: 'flex',
++                                    alignItems: 'center',
++                                    gap: '8px',
++                                    cursor: 'pointer',
++                                    border: '1px solid var(--color-danger)',
++                                    background: 'rgba(239, 68, 68, 0.04)',
++                                    color: 'var(--color-danger)',
++                                    transition: 'all 0.2s'
++                                  }}
++                                >
++                                  <Avatar src={slip.adjustment_request.avatar} name={slip.adjustment_request.name} size="xs" />
++                                  Y├¬u cß║ºu chß╗ënh sß╗¡a tß╗½ {slip.adjustment_request.name}
++                                </button>
++                              )}
++                              <button
++                                onClick={() => handleCreateAdjustment(slip.id)}
++                                style={{
++                                  height: '38px',
++                                  padding: '0 16px',
++                                  fontSize: '0.85rem',
++                                  borderRadius: '8px',
++                                  fontWeight: 600,
++                                  display: 'flex',
++                                  alignItems: 'center',
++                                  justifyContent: 'center',
++                                  cursor: 'pointer',
++                                  border: '1px solid var(--color-warning)',
++                                  background: 'rgba(245, 158, 11, 0.08)',
++                                  color: 'var(--color-warning)',
++                                  transition: 'all 0.2s'
++                                }}
++                              >
++                                Tß║ío phiß║┐u ─æiß╗üu chß╗ënh (Adjustment)
++                              </button>
++                            </>
++                          ) : (
++                            slip.adjustment_request ? (
++                              <button
++                                disabled
++                                style={{
++                                  height: '38px',
++                                  padding: '0 16px',
++                                  fontSize: '0.85rem',
++                                  borderRadius: '8px',
++                                  fontWeight: 600,
++                                  display: 'flex',
++                                  alignItems: 'center',
++                                  justifyContent: 'center',
++                                  border: '1px dashed var(--color-border)',
++                                  background: 'var(--color-surface)',
++                                  color: 'var(--color-text-muted)',
++                                  opacity: 0.8
++                                }}
++                              >
++                                ─Éang chß╗¥ duyß╗çt y├¬u cß║ºu chß╗ënh sß╗¡a...
++                              </button>
++                            ) : (
++                              <button
++                                onClick={() => handleOpenRequestAdjustmentModal(slip)}
++                                style={{
++                                  height: '38px',
++                                  padding: '0 16px',
++                                  fontSize: '0.85rem',
++                                  borderRadius: '8px',
++                                  fontWeight: 600,
++                                  display: 'flex',
++                                  alignItems: 'center',
++                                  justifyContent: 'center',
++                                  cursor: 'pointer',
++                                  border: '1px solid var(--color-primary)',
++                                  background: 'rgba(163, 20, 34, 0.04)',
++                                  color: 'var(--color-primary)',
++                                  transition: 'all 0.2s'
++                                }}
++                              >
++                                Y├¬u cß║ºu chß╗ënh sß╗¡a tß╗╖ lß╗ç
++                              </button>
++                            )
++                          )}
++                        </div>
+                       )}
+ 
+                       {/* Request change if pending manager approval */}
+@@ -1929,23 +2037,116 @@ export default function CooperationSlipsPage() {
+         document.body
+       )}
+ 
++      {/* Y├¬u cß║ºu chß╗ënh sß╗¡a tß╗╖ lß╗ç hoa hß╗ông Modal */}
+       {/* Y├¬u cß║ºu chß╗ënh sß╗¡a tß╗╖ lß╗ç hoa hß╗ông Modal */}
+       {requestAdjustmentSlip && createPortal(
+         <div style={{ position: 'fixed', inset: 0, zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0, 0, 0, 0.6)', backdropFilter: 'blur(4px)', padding: '1rem' }}>
+-          <div className="card animate-fade" style={{ maxWidth: '500px', width: '100%', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+-            <h3 style={{ fontSize: '1.125rem', fontWeight: 700, color: 'var(--color-text)' }}>Y├¬u cß║ºu chß╗ënh sß╗¡a tß╗╖ lß╗ç hoa hß╗ông</h3>
++          <div className="card animate-fade" style={{ maxWidth: '520px', width: '100%', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem', maxHeight: '90vh', overflowY: 'auto' }}>
++            <h3 style={{ fontSize: '1.125rem', fontWeight: 700, color: 'var(--color-text)', margin: 0 }}>Y├¬u cß║ºu chß╗ënh sß╗¡a tß╗╖ lß╗ç hoa hß╗ông</h3>
+             <p style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', margin: 0 }}>
+-              Nhß║¡p l├╜ do chi tiß║┐t v├¼ sao bß║ín cß║ºn thay ─æß╗òi tß╗╖ lß╗ç hoß║╖c sß╗æ tiß╗ün hoa hß╗ông cß╗ºa giao dß╗ïch n├áy. Ban quß║ún l├╜ (Admin/Manager) sß║╜ xem x├⌐t v├á cß║¡p nhß║¡t trß╗▒c tiß║┐p tr├¬n hß╗ç thß╗æng.
++              ─Éß╗ü xuß║Ñt c├íc thay ─æß╗òi vß╗ü sß╗æ tiß╗ün hoa hß╗ông hoß║╖c tß╗╖ lß╗ç ph├ón chia. Ban quß║ún l├╜ (Admin/Manager) sß║╜ xem x├⌐t v├á cß║¡p nhß║¡t.
+             </p>
++
++            {/* Proposed Commission */}
++            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
++              <label style={{ fontSize: '0.8rem', fontWeight: 600 }}>Hoa hß╗ông dß╗▒ kiß║┐n ─æß╗ü xuß║Ñt (VND)</label>
++              <CurrencyInput
++                value={reqExpectedCommission}
++                onChange={(val) => setReqExpectedCommission(val || 0)}
++                className="form-input"
++                style={{ width: '100%', height: '34px', fontSize: '0.875rem' }}
++              />
++            </div>
++
++            {/* Proposed Sales Distribution */}
++            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
++              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
++                <label style={{ fontSize: '0.8rem', fontWeight: 600 }}>Tß╗╖ lß╗ç ph├ón chia ─æß╗ü xuß║Ñt</label>
++                <button
++                  type="button"
++                  onClick={() => setReqShares(prev => [...prev, { user_id: '', percentage: '0' }])}
++                  style={{
++                    background: 'none',
++                    border: 'none',
++                    color: 'var(--color-primary)',
++                    cursor: 'pointer',
++                    fontSize: '0.75rem',
++                    fontWeight: 700,
++                    display: 'flex',
++                    alignItems: 'center',
++                    gap: '4px'
++                  }}
++                >
++                  <UserPlus size={14} /> Th├¬m Sale
++                </button>
++              </div>
++
++              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', maxHeight: '180px', overflowY: 'auto', paddingRight: '4px' }}>
++                {reqShares.map((item, idx) => (
++                  <div key={idx} style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
++                    <div style={{ flex: 1 }}>
++                      <CustomSelect
++                        value={item.user_id}
++                        onChange={val =>
++                          setReqShares(prev =>
++                            prev.map((valObj, i) => (i === idx ? { ...valObj, user_id: val } : valObj))
++                          )
++                        }
++                        options={salesAccounts.map(u => ({ value: String(u.id), label: u.full_name, avatar: (u as any).avatar }))}
++                        placeholder="Chß╗ìn Sale..."
++                      />
++                    </div>
++                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
++                      <input
++                        type="number"
++                        min="0"
++                        max="100"
++                        value={item.percentage}
++                        onChange={e =>
++                          setReqShares(prev =>
++                            prev.map((valObj, i) => (i === idx ? { ...valObj, percentage: e.target.value } : valObj))
++                          )
++                        }
++                        className="form-input"
++                        style={{ width: '70px', height: '38px', textAlign: 'center' }}
++                      />
++                      <span style={{ fontWeight: 'bold' }}>%</span>
++                    </div>
++                    {idx > 0 && (
++                      <button
++                        type="button"
++                        onClick={() => setReqShares(prev => prev.filter((_, i) => i !== idx))}
++                        style={{ background: 'none', border: 'none', color: 'var(--color-danger)', cursor: 'pointer', padding: '4px' }}
++                      >
++                        <Trash2 size={18} />
++                      </button>
++                    )}
++                  </div>
++                ))}
++              </div>
++              {(() => {
++                const totalPct = reqShares.reduce((sum, s) => sum + (Number(s.percentage) || 0), 0);
++                if (totalPct !== 100) {
++                  return (
++                    <span style={{ fontSize: '0.725rem', color: 'var(--color-danger)', fontWeight: 600 }}>
++                      * Tß╗òng tß╗╖ lß╗ç phß║úi bß║▒ng 100% (Hiß╗çn tß║íi: {totalPct}%)
++                    </span>
++                  );
++                }
++                return null;
++              })()}
++            </div>
++
++            {/* Custom Reason Note */}
+             <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+               <label style={{ fontSize: '0.8rem', fontWeight: 600 }}>L├╜ do chß╗ënh sß╗¡a *</label>
+               <textarea
+                 className="form-input"
+-                rows={4}
++                rows={3}
+                 placeholder="V├¡ dß╗Ñ: Bß╗ò sung th├¬m Sale Nguyß╗àn V─ân A v├áo ch─âm s├│c chung v├á chia lß║íi tß╗╖ lß╗ç..."
+                 value={requestAdjustmentReason}
+                 onChange={(e) => setRequestAdjustmentReason(e.target.value)}
+-                style={{ width: '100%', padding: '8px 12px', fontSize: '0.875rem' }}
++                style={{ width: '100%', padding: '8px 12px', fontSize: '0.875rem', resize: 'none' }}
+               />
+             </div>
+             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '0.5rem' }}>
+@@ -1959,6 +2160,92 @@ export default function CooperationSlipsPage() {
+         document.body
+       )}
+ 
++      {/* Xß╗¡ l├╜ y├¬u cß║ºu chß╗ënh sß╗¡a tß╗½ Sale Modal (d├ánh cho Admin/Manager) */}
++      {showHandleRequestModal && selectedSlipForHandleRequest && createPortal(
++        <div style={{ position: 'fixed', inset: 0, zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0, 0, 0, 0.6)', backdropFilter: 'blur(4px)', padding: '1rem' }}>
++          <div className="card animate-fade" style={{ maxWidth: '500px', width: '100%', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
++            <h3 style={{ fontSize: '1.125rem', fontWeight: 700, color: 'var(--color-text)', margin: 0 }}>Xß╗¡ l├╜ y├¬u cß║ºu chß╗ënh sß╗¡a tß╗╖ lß╗ç</h3>
++            
++            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', background: 'var(--color-bg-light)', padding: '12px', borderRadius: '8px', border: '1px solid var(--color-border)' }}>
++              <Avatar
++                src={selectedSlipForHandleRequest.adjustment_request.avatar}
++                name={selectedSlipForHandleRequest.adjustment_request.name}
++                size="md"
++              />
++              <div>
++                <h5 style={{ margin: 0, fontWeight: 700, fontSize: '0.9rem', color: 'var(--color-text)' }}>
++                  {selectedSlipForHandleRequest.adjustment_request.name}
++                </h5>
++                <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
++                  Gß╗¡i l├║c: {new Date(selectedSlipForHandleRequest.adjustment_request.requested_at).toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' })}
++                </span>
++              </div>
++            </div>
++
++            <div>
++              <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 600, display: 'block', marginBottom: '4px' }}>
++                Nß╗Öi dung ─æß╗ü xuß║Ñt &amp; L├╜ do:
++              </span>
++              <div style={{ 
++                margin: 0, 
++                fontSize: '0.85rem', 
++                padding: '12px', 
++                background: 'rgba(239, 68, 68, 0.03)', 
++                border: '1px dashed rgba(239, 68, 68, 0.2)', 
++                borderRadius: '8px', 
++                color: 'var(--color-text)',
++                whiteSpace: 'pre-wrap',
++                maxHeight: '180px',
++                overflowY: 'auto'
++              }}>
++                {selectedSlipForHandleRequest.adjustment_request.reason}
++              </div>
++            </div>
++
++            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
++              <label style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>
++                Ghi ch├║ / L├╜ do phß║ún hß╗ôi tß╗½ quß║ún l├╜ (Kh├┤ng bß║»t buß╗Öc)
++              </label>
++              <textarea
++                value={handleRequestNote}
++                onChange={e => setHandleRequestNote(e.target.value)}
++                placeholder="Nhß║¡p ghi ch├║ phß║ún hß╗ôi..."
++                className="form-input"
++                rows={3}
++                style={{ resize: 'none', fontSize: '0.85rem', width: '100%', padding: '8px 12px' }}
++              />
++            </div>
++
++            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', borderTop: '1px solid var(--color-border-light)', paddingTop: '1rem', marginTop: '0.5rem' }}>
++              <button
++                className="btn outline"
++                onClick={() => setShowHandleRequestModal(false)}
++                disabled={isHandlingRequest}
++              >
++                Hß╗ºy
++              </button>
++              <button
++                className="btn danger"
++                onClick={() => handleResolveRequest('reject')}
++                disabled={isHandlingRequest}
++                style={{ background: 'var(--color-danger)', color: 'white', border: 'none' }}
++              >
++                {isHandlingRequest ? '─Éang xß╗¡ l├╜...' : 'Tß╗½ chß╗æi'}
++              </button>
++              <button
++                className="btn primary"
++                onClick={() => handleResolveRequest('approve')}
++                disabled={isHandlingRequest}
++                style={{ background: '#10b981', color: 'white', border: 'none' }}
++              >
++                {isHandlingRequest ? '─Éang xß╗¡ l├╜...' : 'Duyß╗çt y├¬u cß║ºu'}
++              </button>
++            </div>
++          </div>
++        </div>,
++        document.body
++      )}
++
+       {/* Configuration Modal */}
+       {isUpdateOpen && createPortal(
+         <div style={{ position: 'fixed', inset: 0, zIndex: 999, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0, 0, 0, 0.82)', backdropFilter: 'blur(4px)', padding: '1rem' }}>
