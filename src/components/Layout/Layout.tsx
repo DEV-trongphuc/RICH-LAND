@@ -820,7 +820,7 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/8/82/Telegram_logo.svg/3840px-Telegram_logo.svg.png" alt="Telegram" style={{ width: 18, height: 18, borderRadius: '50%', background: '#fff', padding: 1 }} />
               <span>
-                Bạn chưa liên kết tài khoản với <b>Telegram Bot</b> để nhận thông báo chia số tự động. 
+                Bạn chưa liên kết tài khoản với <b>Telegram Bot</b> để nhận các thông báo, cảnh báo quan trọng từ hệ thống. 
                 <span 
                   style={{ marginLeft: 8, textDecoration: 'underline', cursor: 'pointer', fontWeight: 700, color: '#fff' }} 
                   onClick={() => setIsTelegramModalOpen(true)}
