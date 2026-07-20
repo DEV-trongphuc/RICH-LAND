@@ -329,7 +329,7 @@ if (strpos($textLower, '/tools') === 0 || strpos($textLower, '/report') === 0 ||
         $email = strtolower(trim($matches[2]));
     } else if (preg_match('/^\d+$/', $cleanText)) {
         $userId = (int) $cleanText;
-        $targetType = 'sale';
+        $targetType = '';
     } else if (filter_var($cleanText, FILTER_VALIDATE_EMAIL)) {
         $email = strtolower($cleanText);
     }
