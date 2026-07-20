@@ -4878,53 +4878,95 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                         )}
                                       </button>
                                     ))}
+
                                     {group.title === 'Nghiệp vụ & Hỗ trợ' && 
                                      !['ca_nhan', 'cold_call', 'gioi_thieu'].includes(formData.source || contact?.source) && 
                                      (formData.dl_status || contact?.dl_status) !== 'databank_claim' && 
                                      Number(formData.dl_round_id || contact?.dl_round_id) > 0 && (
-                                      <button
-                                        className={styles.sidebarTabBtn}
-                                        onClick={async () => {
-                                          if (reportReasons.length === 0) {
-                                            try {
-                                              const res = await api.get('/api.php?action=get_report_context');
-                                              if (res.data && res.data.success && res.data.data.report_error_reasons) {
-                                                setReportReasons(res.data.data.report_error_reasons);
-                                                setReportReasonType(res.data.data.report_error_reasons[0]?.reason || 'Sai số điện thoại / Số ảo');
-                                              } else {
-                                                setReportReasonType('Sai số điện thoại / Số ảo');
-                                              }
-                                            } catch (e) {
-                                              console.error(e);
-                                              setReportReasonType('Sai số điện thoại / Số ảo');
-                                            }
-                                          } else {
-                                            setReportReasonType(reportReasons[0]?.reason || 'Sai số điện thoại / Số ảo');
-                                          }
-                                          setReportDetails('');
-                                          setShowReportModal(true);
-                                        }}
-                                        style={{
-                                          padding: '11px 0.875rem',
-                                          fontSize: '0.85rem',
-                                          display: 'flex',
-                                          alignItems: 'center',
-                                          gap: '8px',
-                                          width: '100%',
-                                          border: 'none',
-                                          background: 'transparent',
-                                          borderRadius: '6px',
-                                          textAlign: 'left',
-                                          cursor: 'pointer',
-                                          fontWeight: 600,
-                                          transition: 'all 0.15s ease',
-                                          marginTop: '0.15rem'
-                                        }}
-                                      >
-                                        <ShieldAlert size={16} style={{ color: '#ef4444' }} />
-                                        <span>Báo lỗi data</span>
-                                      </button>
-                                    )}
+                                       (formData.ticket_status || contact?.ticket_status || contact?.report_status) ? (
+                                         <div
+                                           style={{
+                                             padding: '11px 0.875rem',
+                                             fontSize: '0.85rem',
+                                             display: 'flex',
+                                             alignItems: 'center',
+                                             gap: '8px',
+                                             width: '100%',
+                                             borderRadius: '6px',
+                                             fontWeight: 600,
+                                             marginTop: '0.15rem',
+                                             color: 
+                                               (formData.ticket_status || contact?.ticket_status || contact?.report_status) === 'approved' || (formData.ticket_status || contact?.ticket_status || contact?.report_status) === 'resolved' || (formData.ticket_status || contact?.ticket_status || contact?.report_status) === 'approved_no_comp' ? '#10b981' :
+                                               (formData.ticket_status || contact?.ticket_status || contact?.report_status) === 'rejected' ? '#ef4444' : '#f59e0b',
+                                             background: 
+                                               (formData.ticket_status || contact?.ticket_status || contact?.report_status) === 'approved' || (formData.ticket_status || contact?.ticket_status || contact?.report_status) === 'resolved' || (formData.ticket_status || contact?.ticket_status || contact?.report_status) === 'approved_no_comp' ? 'rgba(16, 185, 129, 0.08)' :
+                                               (formData.ticket_status || contact?.ticket_status || contact?.report_status) === 'rejected' ? 'rgba(239, 68, 68, 0.08)' : 'rgba(245, 158, 11, 0.08)',
+                                             border: '1px solid currentColor'
+                                           }}
+                                         >
+                                           {(formData.ticket_status || contact?.ticket_status || contact?.report_status) === 'approved' || (formData.ticket_status || contact?.ticket_status || contact?.report_status) === 'resolved' || (formData.ticket_status || contact?.ticket_status || contact?.report_status) === 'approved_no_comp' ? (
+                                             <>
+                                               <CheckCircle2 size={16} style={{ color: '#10b981' }} />
+                                               <span>Báo lỗi: Đã duyệt</span>
+                                             </>
+                                           ) : (formData.ticket_status || contact?.ticket_status || contact?.report_status) === 'rejected' ? (
+                                             <>
+                                               <XCircle size={16} style={{ color: '#ef4444' }} />
+                                               <span>Báo lỗi: Bị từ chối</span>
+                                             </>
+                                           ) : (
+                                             <>
+                                               <Clock size={16} style={{ color: '#f59e0b' }} />
+                                               <span>Báo lỗi: Chờ duyệt</span>
+                                             </>
+                                           )}
+                                         </div>
+                                       ) : (
+                                         <button
+                                           className={styles.sidebarTabBtn}
+                                           onClick={async () => {
+                                             if (reportReasons.length === 0) {
+                                               try {
+                                                 const res = await api.get('/api.php?action=get_report_context');
+                                                 if (res.data && res.data.success && res.data.data.report_error_reasons) {
+                                                   setReportReasons(res.data.data.report_error_reasons);
+                                                   setReportReasonType(res.data.data.report_error_reasons[0]?.reason || 'Sai số điện thoại / Số ảo');
+                                                 } else {
+                                                   setReportReasonType('Sai số điện thoại / Số ảo');
+                                                 }
+                                               } catch (e) {
+                                                 console.error(e);
+                                                 setReportReasonType('Sai số điện thoại / Số ảo');
+                                               }
+                                             } else {
+                                               setReportReasonType(reportReasons[0]?.reason || 'Sai số điện thoại / Số ảo');
+                                             }
+                                             setReportDetails('');
+                                             setShowReportModal(true);
+                                           }}
+                                           style={{
+                                             padding: '11px 0.875rem',
+                                             fontSize: '0.85rem',
+                                             display: 'flex',
+                                             alignItems: 'center',
+                                             gap: '8px',
+                                             width: '100%',
+                                             border: 'none',
+                                             background: 'transparent',
+                                             borderRadius: '6px',
+                                             textAlign: 'left',
+                                             cursor: 'pointer',
+                                             fontWeight: 600,
+                                             transition: 'all 0.15s ease',
+                                             marginTop: '0.15rem'
+                                           }}
+                                         >
+                                           <ShieldAlert size={16} style={{ color: '#ef4444' }} />
+                                           <span>Báo lỗi data</span>
+                                         </button>
+                                       )
+                                     )}
+
                                     {group.title === 'Nghiệp vụ & Hỗ trợ' && isOwnerOrAdmin && (
                                       <button
                                         className={styles.sidebarTabBtn}

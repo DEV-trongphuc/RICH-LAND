@@ -727,7 +727,7 @@ export const ContactsPage: React.FC = () => {
         <div style={{ width: '100%' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', width: '100%', justifyContent: 'space-between' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-              <h1 className="page-title" style={{ margin: 0 }}>Liên hệ & Khách hàng</h1>
+              <h1 className="page-title" style={{ margin: 0 }}>Khách hàng tiềm năng</h1>
               <span style={{ fontSize: '0.85rem', color: 'var(--color-text-light)', fontWeight: 600, marginTop: '2px' }}>
                 {loading ? '(...)' : `(${total} liên hệ)`}
               </span>
@@ -1718,10 +1718,20 @@ export const ContactsPage: React.FC = () => {
                               )}
                             </div>
                           </td>
-                        )} */}
-                        {columns.find(col => col.id === 'status')?.visible && (
+                        )} */}                        {columns.find(col => col.id === 'status')?.visible && (
                           <td style={{ padding: '1rem', borderBottom: '1px solid var(--color-border)' }}>
-                            {c.stage_name ? (
+                            {c.report_status === 'approved' || c.report_status === 'approved_no_comp' ? (
+                              <span 
+                                className="badge" 
+                                style={{ 
+                                  backgroundColor: 'rgba(239, 68, 68, 0.1)', 
+                                  color: 'var(--color-danger)', 
+                                  border: '1px solid rgba(239, 68, 68, 0.2)'
+                                }}
+                              >
+                                Ticket lỗi
+                              </span>
+                            ) : c.stage_name ? (
                               <span 
                                 className="badge" 
                                 style={{ 
@@ -1737,6 +1747,7 @@ export const ContactsPage: React.FC = () => {
                             )}
                           </td>
                         )}
+
                         {columns.find(col => col.id === 'contact')?.visible && !columns.find(col => col.id === 'owner')?.visible && (
                           <td style={{ padding: '1rem', borderBottom: '1px solid var(--color-border)' }}>
                             <span style={{ fontSize: '0.8125rem', color: days > 30 ? 'var(--color-danger)' : days > 14 ? 'var(--color-warning)' : 'var(--color-text-muted)', fontWeight: days > 30 ? 700 : 400 }}>
@@ -2040,7 +2051,22 @@ export const ContactsPage: React.FC = () => {
                           {/* Status Badges & Score */}
                           <div>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                              {c.stage_name ? (
+                              {c.report_status === 'approved' || c.report_status === 'approved_no_comp' ? (
+                                <span 
+                                  className="badge" 
+                                  style={{ 
+                                    borderRadius: '8px', 
+                                    padding: '4px 8px', 
+                                    fontSize: '0.72rem', 
+                                    fontWeight: 700,
+                                    backgroundColor: 'rgba(239, 68, 68, 0.1)', 
+                                    color: 'var(--color-danger)', 
+                                    border: '1px solid rgba(239, 68, 68, 0.2)'
+                                  }}
+                                >
+                                  Ticket lỗi
+                                </span>
+                              ) : c.stage_name ? (
                                 <span 
                                   className="badge" 
                                   style={{ 

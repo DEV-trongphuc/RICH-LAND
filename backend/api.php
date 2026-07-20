@@ -11816,7 +11816,7 @@ switch ($action) {
                     LEFT JOIN consultants c ON dl.assigned_to = c.id
                     LEFT JOIN distribution_rounds r ON dl.round_id = r.id
                     WHERE dl.status != 'silent'
-                    ORDER BY dl.id DESC LIMIT 40";
+                    ORDER BY dl.id DESC LIMIT 1000";
         $resDist = $conn->query($sqlDist);
         if ($resDist) {
             while ($row = $resDist->fetch_assoc()) {
@@ -11915,7 +11915,7 @@ switch ($action) {
                             a.name as admin_name, a.avatar as admin_avatar
                      FROM admin_logs al
                      LEFT JOIN accounts a ON al.account_id = a.id
-                     ORDER BY al.id DESC LIMIT 40";
+                     ORDER BY al.id DESC LIMIT 1000";
         $resAdmin = $conn->query($sqlAdmin);
         if ($resAdmin) {
             while ($row = $resAdmin->fetch_assoc()) {
@@ -11975,6 +11975,7 @@ switch ($action) {
                         $tagColor = "success";
                         break;
                     case 'APPROVE_REPORT_ZALO':
+                    case 'APPROVE_REPORT_NO_COMP':
                     case 'APPROVE_REPORT':
                         $leadId = $detailsObj['lead_id'] ?? 0;
                         $title = "Duyệt báo cáo lỗi";
@@ -12061,7 +12062,7 @@ switch ($action) {
                       FROM data_reports dr
                       LEFT JOIN consultants c ON dr.consultant_id = c.id
                       LEFT JOIN leads l ON dr.lead_id = l.id
-                      ORDER BY dr.id DESC LIMIT 40";
+                      ORDER BY dr.id DESC LIMIT 1000";
         $resTicket = $conn->query($sqlTicket);
         if ($resTicket) {
             while ($row = $resTicket->fetch_assoc()) {
@@ -12119,8 +12120,8 @@ switch ($action) {
             return strcmp($b['timestamp'], $a['timestamp']);
         });
 
-        // Limit to 50 items
-        $merged = array_slice($merged, 0, 50);
+        // Limit to 1000 items
+        $merged = array_slice($merged, 0, 1000);
 
         echo json_encode(['success' => true, 'data' => $merged]);
         break;

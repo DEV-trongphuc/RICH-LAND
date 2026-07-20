@@ -914,14 +914,14 @@ class ProjectController {
         $stmtLeads->execute([$projectId]);
         $totalLeads = (int)$stmtLeads->fetchColumn();
         
-        // Audit changelog trail: last 15 actions
+        // Audit changelog trail: last 100 actions
         $stmtLogs = $this->db->prepare("
             SELECT a.id, a.action, a.new_data, a.created_at, u.full_name as user_name
             FROM audit_logs a
             LEFT JOIN users u ON a.user_id = u.id
             WHERE a.resource = 'project' AND a.resource_id = ? AND a.tenant_id = ?
             ORDER BY a.created_at DESC
-            LIMIT 15
+            LIMIT 100
         ");
         $stmtLogs->execute([$projectId, $auth['tenant_id']]);
         $logs = $stmtLogs->fetchAll(PDO::FETCH_ASSOC) ?: [];

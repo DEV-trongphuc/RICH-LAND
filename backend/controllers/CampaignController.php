@@ -602,14 +602,14 @@ class CampaignController {
         $stmtRev->execute([$campaignIdStr, $campName, $campaignId]);
         $actualRevenue = (float)$stmtRev->fetchColumn();
         
-        // Audit changelog trail: last 15 actions
+        // Audit changelog trail: last 100 actions
         $stmtLogs = $this->db->prepare("
             SELECT a.id, a.action, a.new_data, a.created_at, u.full_name as user_name
             FROM audit_logs a
             LEFT JOIN users u ON a.user_id = u.id
             WHERE a.resource = 'marketing_campaigns' AND a.resource_id = ? AND a.tenant_id = ?
             ORDER BY a.created_at DESC
-            LIMIT 15
+            LIMIT 100
         ");
         $stmtLogs->execute([$campaignId, $auth['tenant_id']]);
         $logs = $stmtLogs->fetchAll(PDO::FETCH_ASSOC) ?: [];

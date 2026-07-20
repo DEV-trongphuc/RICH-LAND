@@ -411,7 +411,9 @@ class ContactController {
                     ) as last_order_at,
                     l.id as lead_id,
                     dl.round_id as dl_round_id,
-                    dl.status as dl_status
+                    dl.status as dl_status,
+                    dr.status as ticket_status,
+                    dr.reason as ticket_reason
             FROM contacts c
             LEFT JOIN companies comp ON c.company_id = comp.id
             LEFT JOIN users u ON c.owner_id = u.id
@@ -422,6 +424,10 @@ class ContactController {
             LEFT JOIN distribution_logs dl ON dl.id = (
                 SELECT MAX(id) FROM distribution_logs 
                 WHERE lead_id = l.id AND assigned_to = c.owner_id
+            )
+            LEFT JOIN data_reports dr ON dr.id = (
+                SELECT MAX(id) FROM data_reports
+                WHERE lead_id = l.id AND consultant_id = c.owner_id
             )
             WHERE c.id=? AND c.tenant_id=? AND c.deleted_at IS NULL";
         

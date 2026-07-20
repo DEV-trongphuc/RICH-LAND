@@ -1403,7 +1403,7 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
                 outline: 'none'
               }}
             >
-              {t("Check Log Zalo & Email")}
+              {t("Check Log Notify")}
             </button>
           </div>
 
@@ -1764,7 +1764,7 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
                         value: String(c.id),
                         label: c.name,
                         avatar: c.avatar,
-                        sublabel: c.email || c.zalo_chat_id ? (c.email || c.zalo_chat_id).substring(0, 15) : undefined
+                        sublabel: c.email || c.zalo_chat_id || undefined
                       }))
                     ]}
                     value={notifFilterSale}
@@ -2109,7 +2109,7 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
           <div className="raised-button-circle">
             <Users size={24} />
           </div>
-          <span className="mobile-bottom-nav-item-label">{t('Khách hàng')}</span>
+          <span className="mobile-bottom-nav-item-label">{t('Khách hàng tiềm năng')}</span>
         </button>
 
         {/* 4. Kho data */}
