@@ -821,7 +821,7 @@ export const Header = ({
           className="mobile-menu-btn"
           title={t("Menu")}
         >
-          <Menu size={24} />
+          <LayoutGrid size={24} />
         </button>
 
         {/* App Launcher Button (4-frame icon) */}
