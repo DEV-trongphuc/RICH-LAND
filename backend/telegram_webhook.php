@@ -33,6 +33,9 @@ if (!$data || !isset($data['message'])) {
 $message = $data['message'];
 $chatId = $message['chat']['id'] ?? '';
 $text = isset($message['text']) ? trim($message['text']) : '';
+if (strpos($text, '/start ') === 0) {
+    $text = trim(substr($text, 7));
+}
 $fromName = $message['from']['first_name'] ?? 'bạn';
 
 if (empty($text) || empty($chatId)) {
