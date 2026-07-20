@@ -1937,6 +1937,11 @@ try {
         $conn->query("ALTER TABLE `users` ADD COLUMN `extra_fields_json` LONGTEXT DEFAULT NULL");
     } catch (Throwable $e) {}
 
+    // Self-healing: Ensure telegram_chat_id column exists before view recreation
+    try {
+        $conn->query("ALTER TABLE `users` ADD COLUMN `telegram_chat_id` VARCHAR(255) NULL DEFAULT NULL AFTER `zalo_chat_id`");
+    } catch (Throwable $e) {}
+
     // Recreate the consultants VIEW to support extended profile fields (dob, gender, etc.)
     $conn->query("DROP VIEW IF EXISTS `consultants`");
     $conn->query("
@@ -1951,6 +1956,7 @@ try {
           `leave_end`, 
           `created_at`, 
           `zalo_chat_id`, 
+          `telegram_chat_id`,
           `work_start_time`, 
           `work_end_time`, 
           `work_schedule`, 
@@ -2281,6 +2287,7 @@ try {
               `leave_end`, 
               `created_at`, 
               `zalo_chat_id`, 
+              `telegram_chat_id`,
               `work_start_time`, 
               `work_end_time`, 
               `work_schedule`, 
@@ -2293,7 +2300,9 @@ try {
               `citizen_id`,
               `address`,
               `bank_name`,
-              `bank_account`
+              `bank_account`,
+              `extra_fields_json`,
+              `use_custom_work_hours`
             FROM `users` 
             WHERE `role` = 'sales' 
                OR (`role` = 'manager' AND COALESCE((SELECT setting_value FROM system_settings WHERE setting_key = 'manager_behavior_mode' LIMIT 1), 'combined') = 'combined')");
