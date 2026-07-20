@@ -2189,11 +2189,24 @@ export default function CooperationSlipsPage() {
                           min="0"
                           max="100"
                           value={item.percentage}
-                          onChange={e =>
-                            setReqShares(prev =>
-                              prev.map((valObj, i) => (i === idx ? { ...valObj, percentage: e.target.value } : valObj))
-                            )
-                          }
+                          onChange={e => {
+                            const val = e.target.value;
+                            const numVal = Math.min(100, Math.max(0, parseInt(val) || 0));
+                            const oppositeVal = String(100 - numVal);
+                            
+                            setReqShares(prev => {
+                              if (prev.length === 2) {
+                                return prev.map((valObj, i) => {
+                                  if (i === idx) {
+                                    return { ...valObj, percentage: val === '' ? '' : String(numVal) };
+                                  } else {
+                                    return { ...valObj, percentage: oppositeVal };
+                                  }
+                                });
+                              }
+                              return prev.map((valObj, i) => (i === idx ? { ...valObj, percentage: val } : valObj));
+                            });
+                          }}
                           className="form-input"
                           style={{ width: '70px', height: '36px', textAlign: 'center', fontWeight: 800, fontSize: '0.9rem', borderRadius: '8px' }}
                         />
@@ -2431,6 +2444,22 @@ export default function CooperationSlipsPage() {
                         value={item.percentage}
                         onChange={e => {
                           const parsed = parseInt(e.target.value) || 0;
+                          
+                          if (sharesInput.length === 2) {
+                            const numVal = Math.min(100, Math.max(0, parsed));
+                            const oppositeVal = String(100 - numVal);
+                            setSharesInput(prev =>
+                              prev.map((valObj, i) => {
+                                if (i === idx) {
+                                  return { ...valObj, percentage: e.target.value === '' ? '' : String(numVal) };
+                                } else {
+                                  return { ...valObj, percentage: oppositeVal };
+                                }
+                              })
+                            );
+                            return;
+                          }
+
                           const otherSum = sharesInput.reduce((acc, val, i) => {
                             if (i === idx) return acc;
                             return acc + (parseInt(val.percentage) || 0);
