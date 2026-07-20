@@ -1065,8 +1065,8 @@ export default function CooperationSlipsPage() {
                             fontWeight: 700, 
                             color: 'var(--color-text)', 
                             background: 'var(--color-border-light)', 
-                            padding: '2px 6px', 
-                            borderRadius: '4px',
+                            padding: '2px 8px', 
+                            borderRadius: '20px',
                             letterSpacing: '0.5px',
                             border: '1px solid var(--color-border)'
                           }}>
@@ -1121,7 +1121,7 @@ export default function CooperationSlipsPage() {
                             color: isPendingSignatures ? 'var(--color-warning)' : slip.status === 'approved' ? 'var(--color-success)' : slip.status === 'pending_manager_approval' ? 'var(--color-warning)' : slip.status === 'rejected' ? 'var(--color-danger)' : 'var(--color-text)',
                             border: '1px solid var(--color-border)',
                             padding: '4px 10px',
-                            borderRadius: '20px',
+                            borderRadius: '30px',
                             fontSize: '0.7rem',
                             fontWeight: 700,
                             display: 'inline-flex',
@@ -1170,7 +1170,7 @@ export default function CooperationSlipsPage() {
                               color: '#d97706',
                               border: '1px solid rgba(245, 158, 11, 0.3)',
                               padding: '4px 10px',
-                              borderRadius: '20px',
+                              borderRadius: '30px',
                               fontSize: '0.725rem',
                               fontWeight: 700,
                               cursor: 'pointer',
@@ -1219,7 +1219,7 @@ export default function CooperationSlipsPage() {
                       <span style={{ fontSize: '0.725rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>Tỷ lệ chia:</span>
                       <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center' }}>
                         {slip.shareholders?.map((sh) => (
-                          <div key={sh.user_id} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', background: 'var(--color-bg-light)', padding: '3px 8px', borderRadius: '12px', border: '1px solid var(--color-border-light)' }}>
+                          <div key={sh.user_id} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', background: 'var(--color-bg-light)', padding: '3px 10px', borderRadius: '20px', border: '1px solid var(--color-border-light)' }}>
                             <Avatar src={(sh as any).avatar} name={sh.name} size={16} />
                             <span style={{ fontSize: '0.725rem', fontWeight: 700, color: 'var(--color-text)' }}>{sh.name}</span>
                             <span style={{ fontSize: '0.725rem', fontWeight: 800, color: 'var(--color-text)' }}>{sh.percentage}%</span>

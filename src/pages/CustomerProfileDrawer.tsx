@@ -6815,43 +6815,95 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                               <h4 style={{ fontWeight: 700, marginBottom: '1.25rem', fontSize: '0.95rem', color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: '6px' }}>
                                 <Users size={16} style={{ color: 'var(--color-primary)' }} /> Bảng chữ ký và tỷ lệ
                               </h4>
-                              <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                                 {coopSlip.shareholders?.map((sh: any) => (
-                                  <div className="coop-shareholder-row" key={sh.user_id}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                      <Avatar src={sh.avatar} name={sh.name} size="md" />
-                                      <div>
-                                        <p style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--color-text)' }}>{sh.name}</p>
-                                        <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{sh.email}</p>
+                                  <div 
+                                    key={sh.user_id} 
+                                    className="card"
+                                    style={{ 
+                                      padding: '1rem', 
+                                      borderRadius: '16px', 
+                                      background: 'var(--color-surface)', 
+                                      border: '1px solid var(--color-border-light)',
+                                      boxShadow: '0 2px 8px -2px rgba(0,0,0,0.03)',
+                                      display: 'flex',
+                                      flexDirection: 'column',
+                                      gap: '12px'
+                                    }}
+                                  >
+                                    {/* Card Header: Avatar + Info (Left) & Status (Right) */}
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px' }}>
+                                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                        <Avatar src={sh.avatar} name={sh.name} size="md" />
+                                        <div>
+                                          <h5 style={{ margin: 0, fontWeight: 800, fontSize: '0.9rem', color: 'var(--color-text)' }}>
+                                            {sh.name}
+                                          </h5>
+                                          <span style={{ fontSize: '0.725rem', color: 'var(--color-text-muted)', display: 'block', wordBreak: 'break-all' }}>
+                                            {sh.email}
+                                          </span>
+                                        </div>
+                                      </div>
+                                      
+                                      {/* Status Badge */}
+                                      {sh.signed ? (
+                                        <span className="badge" style={{ background: 'rgba(16, 185, 129, 0.08)', color: 'var(--color-success)', border: '1px solid rgba(16, 185, 129, 0.2)', padding: '4px 10px', borderRadius: '30px', fontSize: '0.7rem', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '4px', whiteSpace: 'nowrap' }}>
+                                          <CheckCircle2 size={12} /> Đã ký
+                                        </span>
+                                      ) : (
+                                        <span className="badge" style={{ background: 'rgba(245, 158, 11, 0.08)', color: 'var(--color-warning)', border: '1px solid rgba(245, 158, 11, 0.2)', padding: '4px 10px', borderRadius: '30px', fontSize: '0.7rem', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '4px', whiteSpace: 'nowrap' }}>
+                                          <span style={{ width: '5px', height: '5px', borderRadius: '50%', backgroundColor: 'var(--color-warning)' }} /> Chờ ký
+                                        </span>
+                                      )}
+                                    </div>
+
+                                    {/* Card Body: Split Percent & Expected Commission */}
+                                    <div style={{ 
+                                      display: 'grid', 
+                                      gridTemplateColumns: '1fr 1fr', 
+                                      background: 'var(--color-bg-light)', 
+                                      borderRadius: '10px', 
+                                      padding: '10px 12px',
+                                      gap: '8px'
+                                    }}>
+                                      <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                                        <span style={{ fontSize: '0.625rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                                          Tỷ lệ đóng góp
+                                        </span>
+                                        <span style={{ fontSize: '1rem', fontWeight: 850, color: 'var(--color-text)' }}>
+                                          {sh.percentage}%
+                                        </span>
+                                      </div>
+                                      
+                                      <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', borderLeft: '1px solid var(--color-border-light)', paddingLeft: '12px' }}>
+                                        <span style={{ fontSize: '0.625rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                                          Hoa hồng dự kiến
+                                        </span>
+                                        <span style={{ fontSize: '0.9rem', fontWeight: 800, color: 'var(--color-primary)' }}>
+                                          {coopSlip.expected_commission && Number(coopSlip.expected_commission) > 0 ? (
+                                            `~ ${Math.round((parseFloat(coopSlip.expected_commission) || 0) * (sh.percentage || 0) / 100).toLocaleString()} đ`
+                                          ) : (
+                                            '0 đ'
+                                          )}
+                                        </span>
                                       </div>
                                     </div>
-                                    <div className="coop-shareholder-row-right">
-                                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
-                                        <span style={{ fontWeight: 800, fontSize: '1.1rem', color: 'var(--color-text)' }}>{sh.percentage}%</span>
-                                        {coopSlip.expected_commission && Number(coopSlip.expected_commission) > 0 && (
-                                          <span style={{ fontSize: '0.72rem', color: 'var(--color-primary)', fontWeight: 600 }}>
-                                            ~ {Math.round((parseFloat(coopSlip.expected_commission) || 0) * (sh.percentage || 0) / 100).toLocaleString()} VND
+
+                                    {/* Card Footer: Signature Details (if signed) */}
+                                    {sh.signed && (
+                                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', borderTop: '1px dashed var(--color-border-light)', paddingTop: '8px' }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '6px' }}>
+                                          <span style={{ fontSize: '0.725rem', color: 'var(--color-text-muted)' }}>
+                                            Ký lúc: <strong style={{ color: 'var(--color-text)' }}>{new Date(sh.signature_time).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })} - {new Date(sh.signature_time).toLocaleDateString('vi-VN')}</strong>
                                           </span>
-                                        )}
-                                      </div>
-                                      {sh.signed ? (
-                                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '6px', width: '180px' }}>
-                                          <div style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#10b981', fontSize: '0.78rem', fontWeight: 600 }}>
-                                            <CheckCircle2 size={14} /> Đã ký ({new Date(sh.signature_time).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })} - {new Date(sh.signature_time).toLocaleDateString('vi-VN')})
-                                          </div>
                                           {sh.signature_img && (
-                                            <div style={{ background: '#f8fafc', padding: '4px 10px', borderRadius: '6px', border: '1px dashed var(--color-border-light)', display: 'inline-flex', justifyContent: 'center', alignItems: 'center', marginTop: '2px' }}>
-                                              <img src={sh.signature_img} style={{ height: '40px', maxWidth: '160px', objectFit: 'contain' }} alt="Chữ ký" />
+                                            <div style={{ background: '#f8fafc', padding: '3px 8px', borderRadius: '6px', border: '1px dashed var(--color-border-light)', display: 'inline-flex', justifyContent: 'center', alignItems: 'center' }}>
+                                              <img src={sh.signature_img} style={{ height: '36px', maxWidth: '120px', objectFit: 'contain' }} alt="Chữ ký" />
                                             </div>
                                           )}
                                         </div>
-                                      ) : (
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--color-warning)', fontSize: '0.8125rem', fontWeight: 700, width: '180px', justifyContent: 'flex-end' }}>
-                                          <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: 'var(--color-warning)', display: 'inline-block' }} />
-                                          Chờ ký
-                                        </div>
-                                      )}
-                                    </div>
+                                      </div>
+                                    )}
                                   </div>
                                 ))}
                               </div>
