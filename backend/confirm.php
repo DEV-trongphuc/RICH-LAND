@@ -240,7 +240,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <body>
     <div class="card">
         <div class="header">
-            <img src="https://rich-land.vercel.app/imgs/logo-rich-land-viet-nam-trang.webp" alt="Rich Land Logo">
+            <img src="https://rich-land.vercel.app/imgs/ICON.png" alt="Rich Land Logo" style="max-height: 48px; border-radius: 50%;">
             <h2>Hệ Thống CRM</h2>
         </div>
         <div class="content">

@@ -831,7 +831,15 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
               <span>
                 Bạn chưa liên kết tài khoản với <b>Telegram Bot</b> để nhận các thông báo, cảnh báo quan trọng từ hệ thống. 
                 <span 
-                  style={{ marginLeft: 8, textDecoration: 'underline', cursor: 'pointer', fontWeight: 700, color: '#fff' }} 
+                  style={{ 
+                    display: isMobile ? 'block' : 'inline-block',
+                    marginLeft: isMobile ? 0 : 8,
+                    marginTop: isMobile ? '4px' : 0,
+                    textDecoration: 'underline', 
+                    cursor: 'pointer', 
+                    fontWeight: 700, 
+                    color: '#fff' 
+                  }} 
                   onClick={() => setIsTelegramModalOpen(true)}
                 >
                   Liên kết ngay →

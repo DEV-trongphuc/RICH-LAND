@@ -857,9 +857,9 @@ const ConsultantsInner = () => {
   return (
     <div className="anim-fade-up">
       {/* Header */}
-      <div className="page-header" style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', justifyContent: 'space-between', alignItems: isMobile ? 'flex-start' : 'center', width: '100%', gap: '16px', marginBottom: '1.5rem' }}>
-        <div>
-          <h1 className="page-title" style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: isMobile ? '1.45rem' : '1.75rem' }}>
+      <div className="page-header" style={{ display: 'flex', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', width: '100%', gap: '16px', marginBottom: '1.5rem' }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <h1 className="page-title" style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: isMobile ? '1.25rem' : '1.75rem', flexWrap: 'wrap' }}>
             {activeTab === 'teams' ? t('Quản lý Nhóm (Team)') : activeTab === 'branches' ? t('Chi nhánh Kinh doanh') : t('Quản lý Tư vấn viên')}
             <button
               onClick={() => setShowInfoModal(true)}
@@ -901,98 +901,122 @@ const ConsultantsInner = () => {
           </p>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap', width: isMobile ? '100%' : 'auto', justifyContent: isMobile ? 'flex-start' : 'flex-end' }}>
-          {/* Tab bar (desktop only) */}
-          {showAllTabs && !isMobile && (
-            <div className="segmented-control-wrapper" style={{ margin: 0 }}>
-              <div style={{
-                display: 'flex',
-                background: 'var(--color-border-light)',
-                border: '1px solid var(--color-border)',
-                padding: '2px',
-                borderRadius: '8px',
-                gap: '2px',
-                width: 'fit-content',
-                position: 'relative'
-              }}>
-                {/* Sliding Pill Background Indicator */}
+        {isMobile ? (
+          /* Mobile Plus Button on the right of title row */
+          <div style={{ flexShrink: 0 }}>
+            {isWriteAuthorized && activeTab === 'teams' ? (
+              <button 
+                onClick={openAddTeamModal} 
+                className="btn primary"
+                style={{ padding: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '8px', height: '36px', width: '36px', minWidth: '36px' }}
+              >
+                <Plus size={18} />
+              </button>
+            ) : activeTab === 'branches' ? null : isWriteAuthorized ? (
+              <button 
+                onClick={openAddModal} 
+                className="btn primary"
+                style={{ padding: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '8px', height: '36px', width: '36px', minWidth: '36px' }}
+              >
+                <Plus size={18} />
+              </button>
+            ) : null}
+          </div>
+        ) : (
+          /* Desktop layout: Subtabs and Add Button side by side */
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap', width: 'auto', justifyContent: 'flex-end' }}>
+            {/* Tab bar (desktop only) */}
+            {showAllTabs && (
+              <div className="segmented-control-wrapper" style={{ margin: 0 }}>
                 <div style={{
-                  position: 'absolute',
-                  top: '2px',
-                  bottom: '2px',
-                  width: '120px',
-                  borderRadius: '6px',
-                  background: 'var(--color-surface)',
-                  boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
-                  transition: 'transform 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
-                  transform: `translateX(${
-                    activeTab === 'consultants' ? '0px' : 
-                    activeTab === 'teams' ? '122px' : '244px'
-                  })`,
-                  zIndex: 1
-                }} />
+                  display: 'flex',
+                  background: 'var(--color-border-light)',
+                  border: '1px solid var(--color-border)',
+                  padding: '2px',
+                  borderRadius: '8px',
+                  gap: '2px',
+                  width: 'fit-content',
+                  position: 'relative'
+                }}>
+                  {/* Sliding Pill Background Indicator */}
+                  <div style={{
+                    position: 'absolute',
+                    top: '2px',
+                    bottom: '2px',
+                    width: '120px',
+                    borderRadius: '6px',
+                    background: 'var(--color-surface)',
+                    boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
+                    transition: 'transform 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+                    transform: `translateX(${
+                      activeTab === 'consultants' ? '0px' : 
+                      activeTab === 'teams' ? '122px' : '244px'
+                    })`,
+                    zIndex: 1
+                  }} />
 
-                {[
-                  { id: 'consultants', label: t('Tư vấn viên'), icon: <User size={14} /> },
-                  { id: 'teams', label: t('Nhóm (Team)'), icon: <Users size={14} /> },
-                  { id: 'branches', label: t('Chi nhánh'), icon: <Building2 size={14} /> }
-                ].map(tab => {
-                  const isSelected = activeTab === tab.id;
-                  return (
-                    <button
-                      key={tab.id}
-                      onClick={() => navigate(`/consultants?tab=${tab.id}`)}
-                      style={{
-                        width: '120px',
-                        height: '32px',
-                        borderRadius: '6px',
-                        border: 'none',
-                        fontSize: '0.8125rem',
-                        fontWeight: 700,
-                        cursor: 'pointer',
-                        background: 'transparent',
-                        color: isSelected ? 'var(--color-text)' : 'var(--color-text-light)',
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: '6px',
-                        position: 'relative',
-                        outline: 'none',
-                        boxShadow: 'none',
-                        zIndex: 2,
-                        transition: 'color 0.2s ease'
-                      }}
-                    >
-                      {tab.icon}
-                      <span>{tab.label}</span>
-                    </button>
-                  );
-                })}
+                  {[
+                    { id: 'consultants', label: t('Tư vấn viên'), icon: <User size={14} /> },
+                    { id: 'teams', label: t('Nhóm (Team)'), icon: <Users size={14} /> },
+                    { id: 'branches', label: t('Chi nhánh'), icon: <Building2 size={14} /> }
+                  ].map(tab => {
+                    const isSelected = activeTab === tab.id;
+                    return (
+                      <button
+                        key={tab.id}
+                        onClick={() => navigate(`/consultants?tab=${tab.id}`)}
+                        style={{
+                          width: '120px',
+                          height: '32px',
+                          borderRadius: '6px',
+                          border: 'none',
+                          fontSize: '0.8125rem',
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                          background: 'transparent',
+                          color: isSelected ? 'var(--color-text)' : 'var(--color-text-light)',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: '6px',
+                          position: 'relative',
+                          outline: 'none',
+                          boxShadow: 'none',
+                          zIndex: 2,
+                          transition: 'color 0.2s ease'
+                        }}
+                      >
+                        {tab.icon}
+                        <span>{tab.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
-            </div>
-          )}
+            )}
 
-          {/* Action Button */}
-          {isWriteAuthorized && activeTab === 'teams' ? (
-            <button 
-              onClick={openAddTeamModal} 
-              className="btn primary"
-              style={{ padding: isMobile ? '8px' : '8px 16px', display: 'flex', alignItems: 'center', gap: '4px', borderRadius: '8px', height: '36px', flexShrink: 0 }}
-            >
-              <Plus size={16} />
-              {!isMobile && <span>{t('Thêm Nhóm')}</span>}
-            </button>
-          ) : activeTab === 'branches' ? null : isWriteAuthorized ? (
-            <button 
-              onClick={openAddModal} 
-              className="btn primary"
-              style={{ padding: isMobile ? '8px' : '8px 16px', display: 'flex', alignItems: 'center', gap: '4px', borderRadius: '8px', height: '36px', flexShrink: 0 }}
-            >
-              <Plus size={16} />
-              {!isMobile && <span>{t('Thêm TVV')}</span>}
-            </button>
-          ) : null}
-        </div>
+            {/* Action Button */}
+            {isWriteAuthorized && activeTab === 'teams' ? (
+              <button 
+                onClick={openAddTeamModal} 
+                className="btn primary"
+                style={{ padding: '8px 16px', display: 'flex', alignItems: 'center', gap: '4px', borderRadius: '8px', height: '36px', flexShrink: 0 }}
+              >
+                <Plus size={16} />
+                <span>{t('Thêm Nhóm')}</span>
+              </button>
+            ) : activeTab === 'branches' ? null : isWriteAuthorized ? (
+              <button 
+                onClick={openAddModal} 
+                className="btn primary"
+                style={{ padding: '8px 16px', display: 'flex', alignItems: 'center', gap: '4px', borderRadius: '8px', height: '36px', flexShrink: 0 }}
+              >
+                <Plus size={16} />
+                <span>{t('Thêm TVV')}</span>
+              </button>
+            ) : null}
+          </div>
+        )}
       </div>
 
       {/* Tab Panels with Enter Animation */}
