@@ -6809,7 +6809,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                       {sh.signed ? (
                                         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '6px', width: '180px' }}>
                                           <div style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#10b981', fontSize: '0.78rem', fontWeight: 600 }}>
-                                            <CheckCircle2 size={14} /> Đã ký ({new Date(sh.signature_time).toLocaleDateString('vi-VN')})
+                                            <CheckCircle2 size={14} /> Đã ký ({new Date(sh.signature_time).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })} - {new Date(sh.signature_time).toLocaleDateString('vi-VN')})
                                           </div>
                                           {sh.signature_img && (
                                             <div style={{ background: '#f8fafc', padding: '4px 10px', borderRadius: '6px', border: '1px dashed var(--color-border-light)', display: 'inline-flex', justifyContent: 'center', alignItems: 'center', marginTop: '2px' }}>
