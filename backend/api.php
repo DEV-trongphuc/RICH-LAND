@@ -2555,8 +2555,11 @@ switch ($action) {
             FROM contacts c 
             WHERE $contactsWhereClause 
               AND (
-                (c.report_status IS NOT NULL AND c.report_status != '')
-                OR (c.ticket_status IS NOT NULL AND c.ticket_status != '')
+                EXISTS (
+                    SELECT 1 FROM data_reports dr 
+                    JOIN leads l2 ON dr.lead_id = l2.id 
+                    WHERE l2.person_id = c.person_id
+                )
                 OR EXISTS (
                     SELECT 1 FROM leads l2 
                     JOIN distribution_logs dl2 ON dl2.lead_id = l2.id 
@@ -2580,8 +2583,11 @@ switch ($action) {
             FROM contacts c 
             WHERE $contactsWhereClause 
               AND NOT (
-                (c.report_status IS NOT NULL AND c.report_status != '')
-                OR (c.ticket_status IS NOT NULL AND c.ticket_status != '')
+                EXISTS (
+                    SELECT 1 FROM data_reports dr 
+                    JOIN leads l2 ON dr.lead_id = l2.id 
+                    WHERE l2.person_id = c.person_id
+                )
                 OR EXISTS (
                     SELECT 1 FROM leads l2 
                     JOIN distribution_logs dl2 ON dl2.lead_id = l2.id 
@@ -2612,8 +2618,11 @@ switch ($action) {
             FROM contacts c 
             WHERE $contactsWhereClause 
               AND NOT (
-                (c.report_status IS NOT NULL AND c.report_status != '')
-                OR (c.ticket_status IS NOT NULL AND c.ticket_status != '')
+                EXISTS (
+                    SELECT 1 FROM data_reports dr 
+                    JOIN leads l2 ON dr.lead_id = l2.id 
+                    WHERE l2.person_id = c.person_id
+                )
                 OR EXISTS (
                     SELECT 1 FROM leads l2 
                     JOIN distribution_logs dl2 ON dl2.lead_id = l2.id 
@@ -2646,8 +2655,11 @@ switch ($action) {
             FROM contacts c 
             WHERE $contactsWhereClause 
               AND NOT (
-                (c.report_status IS NOT NULL AND c.report_status != '')
-                OR (c.ticket_status IS NOT NULL AND c.ticket_status != '')
+                EXISTS (
+                    SELECT 1 FROM data_reports dr 
+                    JOIN leads l2 ON dr.lead_id = l2.id 
+                    WHERE l2.person_id = c.person_id
+                )
                 OR EXISTS (
                     SELECT 1 FROM leads l2 
                     JOIN distribution_logs dl2 ON dl2.lead_id = l2.id 
@@ -5794,8 +5806,11 @@ switch ($action) {
                 FROM contacts c 
                 WHERE $contactsWhereClause 
                   AND (
-                    (c.report_status IS NOT NULL AND c.report_status != '')
-                    OR (c.ticket_status IS NOT NULL AND c.ticket_status != '')
+                    EXISTS (
+                        SELECT 1 FROM data_reports dr 
+                        JOIN leads l2 ON dr.lead_id = l2.id 
+                        WHERE l2.person_id = c.person_id
+                    )
                     OR EXISTS (
                         SELECT 1 FROM leads l2 
                         JOIN distribution_logs dl2 ON dl2.lead_id = l2.id 
@@ -5813,8 +5828,11 @@ switch ($action) {
                 FROM contacts c 
                 WHERE $contactsWhereClause 
                   AND NOT (
-                    (c.report_status IS NOT NULL AND c.report_status != '')
-                    OR (c.ticket_status IS NOT NULL AND c.ticket_status != '')
+                    EXISTS (
+                        SELECT 1 FROM data_reports dr 
+                        JOIN leads l2 ON dr.lead_id = l2.id 
+                        WHERE l2.person_id = c.person_id
+                    )
                     OR EXISTS (
                         SELECT 1 FROM leads l2 
                         JOIN distribution_logs dl2 ON dl2.lead_id = l2.id 
@@ -5836,8 +5854,11 @@ switch ($action) {
                 FROM contacts c 
                 WHERE $contactsWhereClause 
                   AND NOT (
-                    (c.report_status IS NOT NULL AND c.report_status != '')
-                    OR (c.ticket_status IS NOT NULL AND c.ticket_status != '')
+                    EXISTS (
+                        SELECT 1 FROM data_reports dr 
+                        JOIN leads l2 ON dr.lead_id = l2.id 
+                        WHERE l2.person_id = c.person_id
+                    )
                     OR EXISTS (
                         SELECT 1 FROM leads l2 
                         JOIN distribution_logs dl2 ON dl2.lead_id = l2.id 
@@ -5861,8 +5882,11 @@ switch ($action) {
                 FROM contacts c 
                 WHERE c.tenant_id = $tid AND c.deleted_at IS NULL AND $contactsDateCondition
                   AND NOT (
-                    (c.report_status IS NOT NULL AND c.report_status != '')
-                    OR (c.ticket_status IS NOT NULL AND c.ticket_status != '')
+                    EXISTS (
+                        SELECT 1 FROM data_reports dr 
+                        JOIN leads l2 ON dr.lead_id = l2.id 
+                        WHERE l2.person_id = c.person_id
+                    )
                     OR EXISTS (
                         SELECT 1 FROM leads l2 
                         JOIN distribution_logs dl2 ON dl2.lead_id = l2.id 
