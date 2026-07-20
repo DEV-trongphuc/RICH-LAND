@@ -236,12 +236,19 @@ export const DealDrawer: React.FC<DealDrawerProps> = ({ isOpen, onClose, deal, o
     }
   };
 
+  const [prevDealId, setPrevDealId] = useState<number | null>(null);
+
+  if (isOpen && deal?.id && deal.id !== prevDealId && !loadingNotes) {
+    setLoadingNotes(true);
+  }
+
   useEffect(() => {
     if (deal) {
       setFormData({
         ...deal,
         tags: Array.isArray(deal.tags) ? deal.tags : (typeof deal.tags === 'string' ? JSON.parse(deal.tags) : [])
       });
+      setPrevDealId(deal.id);
       fetchDealDetails(deal.id);
       fetchNotes();
     }

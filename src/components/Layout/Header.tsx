@@ -306,11 +306,21 @@ export const Header = ({
 
   useEffect(() => {
     fetchNotifications();
-    const interval = setInterval(fetchNotifications, 30000); // Polling every 30s
+    const interval = setInterval(fetchNotifications, 30000); // Polling fallback every 30s
+    
+    const handleRealtimeUpdate = () => {
+      fetchNotifications();
+    };
+
     window.addEventListener('notification-trigger', fetchNotifications);
+    window.addEventListener('realtime-update-received', handleRealtimeUpdate);
+    window.addEventListener('new-notification-received', handleRealtimeUpdate);
+    
     return () => {
       clearInterval(interval);
       window.removeEventListener('notification-trigger', fetchNotifications);
+      window.removeEventListener('realtime-update-received', handleRealtimeUpdate);
+      window.removeEventListener('new-notification-received', handleRealtimeUpdate);
     };
   }, []);
 

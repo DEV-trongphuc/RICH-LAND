@@ -103,6 +103,11 @@ export const TicketDrawer: React.FC<Props> = ({ isOpen, onClose, ticket, onUpdat
 
   const [loading, setLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [prevTicketId, setPrevTicketId] = useState<number | null>(null);
+
+  if (isOpen && ticket?.id && ticket.id !== prevTicketId && !loading) {
+    setLoading(true);
+  }
 
   const fetchComments = async () => {
     if (!ticket?.id) return;
@@ -120,6 +125,7 @@ export const TicketDrawer: React.FC<Props> = ({ isOpen, onClose, ticket, onUpdat
   useEffect(() => {
     if (ticket?.id) {
       setFormData(ticket);
+      setPrevTicketId(ticket.id);
       fetchComments();
     }
   }, [ticket]);

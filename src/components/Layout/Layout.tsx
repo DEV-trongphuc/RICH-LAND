@@ -299,6 +299,73 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
     };
   }, [user, isSales]);
 
+  // Global Real-time SSE connection for instant updates (notifications, sidebar counts, portal refresh)
+  useEffect(() => {
+    let eventSource: EventSource | null = null;
+    let reconnectTimeout: any = null;
+
+    if (token) {
+      const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+      const sseBase = isLocal ? '/backend' : (import.meta.env.VITE_API_URL || '/backend');
+      const url = `${sseBase}/api.php?action=get_sse_updates&token=${encodeURIComponent(token)}`;
+
+      const connectSSE = () => {
+        if (eventSource) {
+          eventSource.close();
+        }
+        eventSource = new EventSource(url);
+
+        eventSource.addEventListener('update', (e: any) => {
+          let detail = {};
+          try {
+            if (e.data) detail = JSON.parse(e.data);
+          } catch (err) {}
+
+          // Dispatch custom window events to trigger instant updates across components
+          window.dispatchEvent(new CustomEvent('realtime-update-received', { detail }));
+          window.dispatchEvent(new Event('contact-updated'));
+          window.dispatchEvent(new CustomEvent('new-notification-received', { detail }));
+        });
+
+        eventSource.onerror = (err) => {
+          console.error("Global SSE connection error, retrying in 5s...", err);
+          if (eventSource) {
+            eventSource.close();
+          }
+          if (reconnectTimeout) {
+            clearTimeout(reconnectTimeout);
+          }
+          reconnectTimeout = setTimeout(() => {
+            if (document.visibilityState === 'visible') {
+              connectSSE();
+            }
+          }, 5000);
+        };
+      };
+
+      connectSSE();
+
+      const handleVisibilityReconnect = () => {
+        if (document.visibilityState === 'visible') {
+          if (!eventSource || eventSource.readyState === EventSource.CLOSED) {
+            connectSSE();
+          }
+        }
+      };
+      document.addEventListener('visibilitychange', handleVisibilityReconnect);
+
+      return () => {
+        document.removeEventListener('visibilitychange', handleVisibilityReconnect);
+        if (eventSource) {
+          eventSource.close();
+        }
+        if (reconnectTimeout) {
+          clearTimeout(reconnectTimeout);
+        }
+      };
+    }
+  }, [token]);
+
   useEffect(() => {
     if (checkInModalOpen) {
       startCamera();
