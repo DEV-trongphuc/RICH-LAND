@@ -508,15 +508,21 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
             {/* User Select */}
             {canSelectUser && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', flex: isMobile ? '1 1 0%' : 'none', minWidth: isMobile ? '0' : '180px' }}>
-                <label style={{ fontSize: isMobile ? '0.625rem' : '0.7rem', fontWeight: 600, color: 'var(--color-text-muted)', marginBottom: isMobile ? '2px' : 0 }}>{t('Tư vấn viên')}</label>
+                <label style={{ fontSize: isMobile ? '0.625rem' : '0.7rem', fontWeight: 600, color: 'var(--color-text-muted)', marginBottom: isMobile ? '2px' : 0 }}>{t('Nhân viên')}</label>
                 <CustomSelect
                   options={[
                     { value: 'all', label: t('Tất cả nhân viên') },
-                    ...consultants.map(c => ({ value: String(c.id), label: c.name }))
+                    ...consultants.map(c => ({ 
+                      value: String(c.id), 
+                      label: c.name,
+                      avatar: resolveAttachmentUrl(c.avatar_url || c.avatar)
+                    }))
                   ]}
                   value={filterUser}
                   onChange={(val) => setFilterUser(String(val))}
                   width="100%"
+                  searchable={true}
+                  showAvatars={true}
                 />
               </div>
             )}
@@ -662,7 +668,7 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
                       {dayCheckIns && dayCheckIns.length > 0 && (
                         filterUser === 'all' ? (
                           <div style={{ display: 'flex', alignItems: 'center', paddingLeft: '4px', marginTop: '2px' }}>
-                            {dayCheckIns.slice(0, 4).map((c: any, index: number) => {
+                            {dayCheckIns.slice(0, 5).map((c: any, index: number) => {
                               const statusColor = 
                                 c.status === 'approved' ? 'var(--color-success)' :
                                 c.status === 'pending_approval' ? 'var(--color-warning)' :
@@ -698,7 +704,7 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
                                 </div>
                               );
                             })}
-                            {dayCheckIns.length > 4 && (
+                            {dayCheckIns.length > 5 && (
                               <div style={{
                                 width: '24px',
                                 height: '24px',
@@ -715,7 +721,7 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
                                 zIndex: 1,
                                 boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
                               }}>
-                                +{dayCheckIns.length - 4}
+                                {dayCheckIns.length}
                               </div>
                             )}
                           </div>
@@ -1152,7 +1158,7 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
               </button>
             </h1>
             <p className="page-subtitle" style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', margin: '4px 0 0' }}>
-              {t('Kiểm duyệt ảnh selfie chấm công hàng ngày và phê duyệt đi trễ của tư vấn viên.')}
+              {t('Kiểm duyệt ảnh selfie chấm công hàng ngày và phê duyệt đi trễ của nhân viên.')}
             </p>
           </div>
 
@@ -1440,15 +1446,21 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
             {/* User Select */}
             {canSelectUser && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', flex: isMobile ? '1 1 0%' : 'none', minWidth: isMobile ? '0' : '200px' }}>
-                <label style={{ fontSize: isMobile ? '0.625rem' : '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)', marginBottom: isMobile ? '2px' : 0 }}>{t('Tư vấn viên')}</label>
+                <label style={{ fontSize: isMobile ? '0.625rem' : '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)', marginBottom: isMobile ? '2px' : 0 }}>{t('Nhân viên')}</label>
                 <CustomSelect
                   options={[
                     { value: 'all', label: t('Tất cả nhân viên') },
-                    ...consultants.map(c => ({ value: String(c.id), label: c.name }))
+                    ...consultants.map(c => ({ 
+                      value: String(c.id), 
+                      label: c.name,
+                      avatar: resolveAttachmentUrl(c.avatar_url || c.avatar)
+                    }))
                   ]}
                   value={filterUser}
                   onChange={(val) => setFilterUser(String(val))}
                   width="100%"
+                  searchable={true}
+                  showAvatars={true}
                 />
               </div>
             )}
@@ -1504,7 +1516,7 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
               <table className="mobile-table-compact" style={{ width: '100%', borderCollapse: 'collapse' }}>
                 <thead style={{ position: 'sticky', top: 0, zIndex: 10, background: 'var(--color-bg)' }}>
                   <tr style={{ borderBottom: '1px solid var(--color-border)', textAlign: 'left', background: 'var(--color-bg)' }}>
-                    <th style={{ padding: '12px 16px', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)' }}>{t('TƯ VẤN VIÊN')}</th>
+                    <th style={{ padding: '12px 16px', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)' }}>{t('NHÂN VIÊN')}</th>
                     <th style={{ padding: '12px 16px', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)' }}>{t('GIỜ CHECK-IN')}</th>
                     <th style={{ padding: '12px 16px', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textAlign: 'center' }}>{t('ẢNH SELFIE')}</th>
                     <th style={{ padding: '12px 16px', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)' }}>{t('LÝ DO TRỄ / GHI CHÚ')}</th>
@@ -2259,26 +2271,27 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
                         }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                             <Avatar src={resolveAttachmentUrl(row.user_avatar)} name={row.user_name} size={28} />
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                            <div style={{ display: 'flex', flexDirection: 'column' }}>
                               <span style={{ fontWeight: 600, fontSize: '0.8125rem', color: 'var(--color-text)' }}>{row.user_name}</span>
-                              <span style={{ fontSize: '0.6875rem', color: 'var(--color-text-light)', display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                                <span>{row.user_email || '—'}</span>
-                                <span style={{ fontSize: '0.65rem', color: 'var(--color-primary)', fontWeight: 650 }}>
-                                  🌙 {t('Giờ trực:')} {sysSettings?.night_shift_start_time || '18:00'} - {sysSettings?.night_shift_end_time || '06:00'}
-                                </span>
-                              </span>
+                              <span style={{ fontSize: '0.6875rem', color: 'var(--color-text-light)' }}>{row.user_email || '—'}</span>
                             </div>
                           </div>
-                          <span style={{
-                            fontSize: '0.65rem',
-                            fontWeight: 600,
-                            padding: '2px 8px',
-                            borderRadius: '20px',
-                            backgroundColor: Number(row.approved) === 1 ? 'var(--color-success-light)' : 'var(--color-warning-light)',
-                            color: Number(row.approved) === 1 ? 'var(--color-success)' : 'var(--color-warning)'
-                          }}>
-                            {Number(row.approved) === 1 ? t('Đã duyệt') : t('Chờ duyệt')}
-                          </span>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                            <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>
+                              🌙 {row.shift_date ? row.shift_date.split('-').reverse().join('/') : ''} ({sysSettings?.night_shift_start_time || '18:00'} - {sysSettings?.night_shift_end_time || '06:00'})
+                            </span>
+                            <span style={{
+                              fontSize: '0.65rem',
+                              fontWeight: 600,
+                              padding: '2px 8px',
+                              borderRadius: '20px',
+                              backgroundColor: Number(row.approved) === 1 ? 'var(--color-success-light)' : 'var(--color-warning-light)',
+                              color: Number(row.approved) === 1 ? 'var(--color-success)' : 'var(--color-warning)',
+                              whiteSpace: 'nowrap'
+                            }}>
+                              {Number(row.approved) === 1 ? t('Đã duyệt') : t('Chờ duyệt')}
+                            </span>
+                          </div>
                         </div>
                       ));
                     })()}
