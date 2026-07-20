@@ -82,6 +82,7 @@ if (!$isModern) {
         }
     }
 }
+echo "[" . date('Y-m-d H:i:s') . "] Using PHP binary: " . $phpBin . "\n";
 
 // Danh sách các tiến trình con chạy tuần tự
 // cron_sync.php sẽ xử lý đồng bộ Google Sheets, chia số, báo cáo Ngày/Tuần/Tháng, và gọi AI/Sync Queue
@@ -124,7 +125,7 @@ for ($iter = 0; $iter < $iterations; $iter++) {
             $returnVar = 0;
             
             // Thực thi lệnh php chạy độc lập để tránh tràn bộ nhớ hoặc xung đột tài nguyên
-            exec('"' . $phpBin . '" "' . $taskPath . '"', $output, $returnVar);
+            exec('"' . $phpBin . '" "' . $taskPath . '" 2>&1', $output, $returnVar);
             
             foreach ($output as $line) {
                 echo "    $line\n";
