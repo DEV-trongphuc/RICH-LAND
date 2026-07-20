@@ -9,7 +9,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 999999 !important; /* Extremely high z-index to cover bottom nav bar and everything */
+  z-index: 999999; /* Extremely high z-index to cover bottom nav bar and everything */
   padding: 1rem;
 }
 

@@ -13,6 +13,7 @@ interface CustomModalProps {
   showCloseIcon?: boolean;
   disableAnimation?: boolean;
   headerAction?: React.ReactNode;
+  zIndex?: number;
 }
 
 export const CustomModal: React.FC<CustomModalProps> = ({
@@ -23,7 +24,8 @@ export const CustomModal: React.FC<CustomModalProps> = ({
   children,
   showCloseIcon = true,
   disableAnimation = false,
-  headerAction
+  headerAction,
+  zIndex
 }) => {
   // Prevent body scroll when modal is open
   useEffect(() => {
@@ -79,7 +81,7 @@ export const CustomModal: React.FC<CustomModalProps> = ({
     <AnimatePresence>
       {isOpen && (
         disableAnimation ? (
-          <div className={styles.overlay}>
+          <div className={styles.overlay} style={zIndex ? { zIndex } : undefined}>
             <div
               className={styles.backdrop}
               onClick={onClose}
@@ -115,7 +117,7 @@ export const CustomModal: React.FC<CustomModalProps> = ({
             </div>
           </div>
         ) : (
-          <div className={styles.overlay}>
+          <div className={styles.overlay} style={zIndex ? { zIndex } : undefined}>
             <motion.div
               className={styles.backdrop}
               initial={{ opacity: 0 }}

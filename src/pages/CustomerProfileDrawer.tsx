@@ -2326,7 +2326,15 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
           id: d.id,
           title: `${d.project_name} - Căn ${d.unit_code}`,
           value: d.price,
-          stage: d.status === 'pending_admin' ? 'Chờ duyệt cọc' : d.status === 'approved' ? 'Đặt cọc thành công' : d.status === 'cancelled' ? 'Bể cọc / Hủy' : d.status,
+          stage: (() => {
+            if (d.status === 'pending_admin') {
+              const hasPaidMilestone = d.milestones && Array.isArray(d.milestones) && d.milestones.some((m: any) => m.status === 'paid');
+              return hasPaidMilestone ? 'Chờ duyệt cọc' : 'Đang giao dịch';
+            }
+            if (d.status === 'approved') return 'Hoàn tất cọc';
+            if (d.status === 'cancelled') return 'Đã bể cọc';
+            return d.status;
+          })(),
           stage_id: d.status,
           prob: 100,
           close: d.created_at,
@@ -9563,7 +9571,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
       {/* PROOF UPLOAD MODAL FOR MEETING COMPLETION */}
       <AnimatePresence>
         {meetingToComplete && (
-          <div className="overlay-backdrop" style={{ zIndex: 12000, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => setMeetingToComplete(null)}>
+          <div className="overlay-backdrop" style={{ zIndex: 1000020, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => setMeetingToComplete(null)}>
             <motion.div 
               className="modal-sheet" 
               style={{ width: '100%', maxWidth: 500, padding: '1.5rem', borderRadius: '16px', overflow: 'hidden', background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}
@@ -9706,7 +9714,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
       {/* ADD/EDIT NOTE MODAL */}
       <AnimatePresence>
         {showNoteModal && (
-          <div className="overlay-backdrop" style={{ zIndex: 11000, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => { setShowNoteModal(false); setEditingNote(null); }}>
+          <div className="overlay-backdrop" style={{ zIndex: 1000020, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => { setShowNoteModal(false); setEditingNote(null); }}>
             <motion.div 
               className="modal-sheet" 
               style={{ width: '100%', maxWidth: 780, padding: 0, borderRadius: '12px', overflow: 'hidden' }}
@@ -10073,7 +10081,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
 
       <AnimatePresence>
         {pipelineModal.isOpen && (
-          <div style={{ position: 'fixed', inset: 0, zIndex: 20000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ position: 'fixed', inset: 0, zIndex: 1000020, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <motion.div
               initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
               style={{ position: 'absolute', inset: 0, background: 'rgba(0, 0, 0, 0.82)', backdropFilter: 'blur(4px)' }}
@@ -10245,7 +10253,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
 
       <AnimatePresence>
         {requiredDocsUploadModal.isOpen && (
-          <div style={{ position: 'fixed', inset: 0, zIndex: 20005, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ position: 'fixed', inset: 0, zIndex: 1000020, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <motion.div
               initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
               style={{ position: 'absolute', inset: 0, background: 'rgba(0, 0, 0, 0.82)', backdropFilter: 'blur(4px)' }}
@@ -10333,7 +10341,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
       {/* CREATE DEPOSIT MODAL */}
       <AnimatePresence>
         {showDealModal && (
-          <div className="overlay-backdrop" style={{ zIndex: 20000 }} onClick={() => setShowDealModal(false)}>
+          <div className="overlay-backdrop" style={{ zIndex: 1000020 }} onClick={() => setShowDealModal(false)}>
             <motion.div
               className="modal-sheet"
               style={{ width: '100%', maxWidth: 540 }}
@@ -10581,6 +10589,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
         isOpen={showReportModal}
         onClose={() => setShowReportModal(false)}
         title="Báo cáo dữ liệu lỗi / Trùng lặp"
+        zIndex={1000020}
       >
         <div style={{ padding: '0.5rem 0' }}>
           <div className="form-group" style={{ marginBottom: '1.25rem' }}>
@@ -10861,6 +10870,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
           isOpen={true}
           onClose={() => setReschedulingMeeting(null)}
           title="Dời lịch gặp gỡ"
+          zIndex={1000020}
         >
           <div style={{ padding: '1rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
             <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)' }}>
@@ -10912,6 +10922,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
           isOpen={true}
           onClose={() => setCancellingMeeting(null)}
           title="Hủy lịch gặp gỡ"
+          zIndex={1000020}
         >
           <div style={{ padding: '1rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
             <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)' }}>
@@ -10964,6 +10975,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
         isOpen={isCreateCoopModalOpen}
         onClose={() => setIsCreateCoopModalOpen(false)}
         title="Thiết lập hợp tác hoa hồng"
+        zIndex={1000020}
       >
         <div style={{ padding: '0.5rem 0' }}>
           <p style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', marginBottom: '1.25rem' }}>
@@ -11127,7 +11139,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
 
       {/* Quick View Expense Modal */}
       {viewExpense && createPortal(
-        <div className="overlay-backdrop" onClick={() => setViewExpense(null)} style={{ zIndex: 20000, position: 'fixed', inset: 0, background: 'rgba(0, 0, 0, 0.6)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
+        <div className="overlay-backdrop" onClick={() => setViewExpense(null)} style={{ zIndex: 1000020, position: 'fixed', inset: 0, background: 'rgba(0, 0, 0, 0.6)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
           <motion.div 
             className="modal-sheet shadow-2xl"
             initial={{ opacity: 0, scale: 0.96, y: 20 }} 
@@ -11435,7 +11447,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
       )}
 
       {rejectingExpense && createPortal(
-        <div style={{ position: 'fixed', inset: 0, zIndex: 30000, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', padding: '1rem' }} onClick={() => setRejectingExpense(null)}>
+          <div style={{ position: 'fixed', inset: 0, zIndex: 1000030, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', padding: '1rem' }} onClick={() => setRejectingExpense(null)}>
           <motion.div 
             initial={{ opacity: 0, scale: 0.96 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -11580,6 +11592,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
         onClose={() => setShowManageModal(false)}
         title={`Chi tiết & Lịch trình thanh toán - Căn ${selectedDepForManage?.unit_code}`}
         width="820px"
+        zIndex={1000020}
       >
         {selectedDepForManage && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>

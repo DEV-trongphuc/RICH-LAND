@@ -22,7 +22,8 @@ class DepositController {
         $params = [$tid];
 
         if ($auth['role'] === 'sales' || $auth['role'] === 'sale') {
-            $sql .= " AND (d.created_by = ? OR c.owner_id = ?)";
+            $sql .= " AND (d.created_by = ? OR c.owner_id = ? OR d.contact_id IN (SELECT contact_id FROM quyen_truy_cap WHERE user_id = ?))";
+            $params[] = $auth['user_id'];
             $params[] = $auth['user_id'];
             $params[] = $auth['user_id'];
         } else if ($auth['role'] === 'manager') {
