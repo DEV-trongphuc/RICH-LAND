@@ -1307,29 +1307,6 @@ export default function CooperationSlipsPage() {
                         <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                           {isApprover ? (
                             <>
-                              {slip.adjustment_request && (
-                                <button
-                                  onClick={() => handleOpenHandleRequestModal(slip)}
-                                  style={{
-                                    height: '38px',
-                                    padding: '0 12px',
-                                    fontSize: '0.85rem',
-                                    borderRadius: '8px',
-                                    fontWeight: 600,
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '8px',
-                                    cursor: 'pointer',
-                                    border: '1px solid var(--color-danger)',
-                                    background: 'rgba(239, 68, 68, 0.04)',
-                                    color: 'var(--color-danger)',
-                                    transition: 'all 0.2s'
-                                  }}
-                                >
-                                  <Avatar src={slip.adjustment_request.avatar} name={slip.adjustment_request.name} size="sm" />
-                                  Yêu cầu chỉnh sửa từ {slip.adjustment_request.name}
-                                </button>
-                              )}
                               <button
                                 onClick={() => handleOpenUpdateShares(slip)}
                                 style={{
@@ -2291,25 +2268,78 @@ export default function CooperationSlipsPage() {
               </div>
             </div>
 
-            <div>
-              <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 600, display: 'block', marginBottom: '4px' }}>
-                Nội dung đề xuất &amp; Lý do:
-              </span>
-              <div style={{ 
-                margin: 0, 
-                fontSize: '0.85rem', 
-                padding: '12px', 
-                background: 'rgba(239, 68, 68, 0.03)', 
-                border: '1px dashed rgba(239, 68, 68, 0.2)', 
-                borderRadius: '8px', 
-                color: 'var(--color-text)',
-                whiteSpace: 'pre-wrap',
-                maxHeight: '180px',
-                overflowY: 'auto'
-              }}>
-                {selectedSlipForHandleRequest.adjustment_request.reason}
+            {selectedSlipForHandleRequest.adjustment_request?.shares && selectedSlipForHandleRequest.adjustment_request.shares.length > 0 ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                {/* Proposed Commission */}
+                {selectedSlipForHandleRequest.adjustment_request.expected_commission !== null && selectedSlipForHandleRequest.adjustment_request.expected_commission !== undefined && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <span style={{ fontSize: '0.725rem', color: 'var(--color-text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                      Hoa hồng đề xuất mới:
+                    </span>
+                    <div style={{ fontSize: '1.05rem', fontWeight: 800, color: 'var(--color-primary)' }}>
+                      {Number(selectedSlipForHandleRequest.adjustment_request.expected_commission).toLocaleString('vi-VN')} VND
+                    </div>
+                  </div>
+                )}
+
+                {/* Proposed Shares Distribution */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <span style={{ fontSize: '0.725rem', color: 'var(--color-text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                    Tỷ lệ phân chia đề xuất:
+                  </span>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', background: 'var(--color-bg-light)', padding: '12px', borderRadius: '12px', border: '1px solid var(--color-border-light)' }}>
+                    {selectedSlipForHandleRequest.adjustment_request.shares.map((sh: any, idx: number) => {
+                      const uObj = salesAccounts.find(u => String(u.id) === String(sh.user_id));
+                      const uName = uObj ? uObj.full_name : `Sale ID ${sh.user_id}`;
+                      const uAvatar = uObj ? (uObj as any).avatar : null;
+                      return (
+                        <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', background: 'var(--color-surface)', borderRadius: '10px', border: '1px solid var(--color-border-light)' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                            <Avatar src={uAvatar} name={uName} size="sm" />
+                            <span style={{ fontWeight: 700, fontSize: '0.85rem', color: 'var(--color-text)' }}>{uName}</span>
+                          </div>
+                          <span style={{ fontWeight: 800, fontSize: '0.875rem', color: 'var(--color-primary)' }}>{sh.percentage}%</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Proposed Reason Message */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  <span style={{ fontSize: '0.725rem', color: 'var(--color-text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                    Lý do yêu cầu từ Sale:
+                  </span>
+                  <div style={{ padding: '10px 14px', background: 'rgba(239, 68, 68, 0.03)', border: '1px dashed rgba(239, 68, 68, 0.2)', borderRadius: '10px', fontSize: '0.85rem', color: 'var(--color-text)', whiteSpace: 'pre-wrap', lineHeight: 1.4 }}>
+                    {(() => {
+                      const rawReason = selectedSlipForHandleRequest.adjustment_request.reason || '';
+                      const parts = rawReason.split('Lý do yêu cầu:');
+                      return parts.length > 1 ? parts[1].trim() : rawReason;
+                    })()}
+                  </div>
+                </div>
               </div>
-            </div>
+            ) : (
+              <div>
+                <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 600, display: 'block', marginBottom: '4px' }}>
+                  Nội dung đề xuất &amp; Lý do:
+                </span>
+                <div style={{ 
+                  margin: 0, 
+                  fontSize: '0.85rem', 
+                  padding: '12px', 
+                  background: 'rgba(239, 68, 68, 0.03)', 
+                  border: '1px dashed rgba(239, 68, 68, 0.2)', 
+                  borderRadius: '8px', 
+                  color: 'var(--color-text)',
+                  whiteSpace: 'pre-wrap',
+                  maxHeight: '180px',
+                  overflowY: 'auto'
+                }}>
+                  {selectedSlipForHandleRequest.adjustment_request.reason}
+                </div>
+              </div>
+            )}
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
               <label style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>
