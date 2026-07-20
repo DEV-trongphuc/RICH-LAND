@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -57,6 +57,7 @@ export const SuppliersPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState('info');
   const [isVisible, setIsVisible] = useState(showModal);
   const [animateIn, setAnimateIn] = useState(showModal);
+  const isFirstRender = useRef(true);
 
   useEffect(() => {
     if (showModal) {
@@ -120,6 +121,10 @@ export const SuppliersPage: React.FC = () => {
 
   // Handle search with debounce effect if needed, but for now simple trigger
   useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      return;
+    }
     const timer = setTimeout(() => {
       if (page === 1) fetchSuppliers();
       else setPage(1);
