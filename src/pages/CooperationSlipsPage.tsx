@@ -1039,10 +1039,11 @@ export default function CooperationSlipsPage() {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                   
                   {/* Top Row: Basic Info & Badges */}
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', borderBottom: '1px solid var(--color-border-light)', paddingBottom: '0.75rem' }}>
+                  {/* Top Row: Basic Info & Badges */}
+                  <div className="coop-slip-header-container">
                     
                     {/* Left: Icon, ID, Unit, Project, Customer */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+                    <div className="coop-slip-header-left">
                       <div className="coop-slip-card-icon" style={{ 
                         padding: '10px', 
                         background: 'var(--color-border-light)', 
@@ -1056,143 +1057,157 @@ export default function CooperationSlipsPage() {
                         <FileText size={18} />
                       </div>
                       
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                        <span style={{ 
-                          fontSize: '0.7rem', 
-                          fontWeight: 700, 
-                          color: 'var(--color-text)', 
-                          background: 'var(--color-border-light)', 
-                          padding: '2px 6px', 
-                          borderRadius: '4px',
-                          letterSpacing: '0.5px',
-                          border: '1px solid var(--color-border)'
-                        }}>
-                          ID: #{slip.id}
-                        </span>
-                        <h3 style={{ fontSize: '0.95rem', fontWeight: 800, color: 'var(--color-text)', margin: 0, display: 'inline-flex', alignItems: 'center' }}>
-                          Căn: <span style={{ color: 'var(--color-text)' }}>{slip.unit_code || '—'}</span>
-                          {slip.unit_code && <CopyButton text={slip.unit_code} />}
-                        </h3>
-                        <span style={{ color: 'var(--color-text-muted)', fontSize: '0.8rem' }}>•</span>
-                        <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--color-text-light)' }}>
-                          {slip.project_name || 'Dự án khác'}
-                        </span>
-                        <span style={{ color: 'var(--color-text-muted)', fontSize: '0.8rem' }}>•</span>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                          <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>Khách:</span>
-                          <Avatar 
-                            name={`${slip.last_name} ${slip.first_name}`} 
-                            size={18}
-                          />
-                          <span style={{ fontWeight: 700, fontSize: '0.75rem', color: 'var(--color-text)' }}>
-                            {slip.last_name} {slip.first_name}
+                      <div className="coop-slip-header-info">
+                        
+                        <div className="coop-slip-header-info-row1">
+                          <span style={{ 
+                            fontSize: '0.7rem', 
+                            fontWeight: 700, 
+                            color: 'var(--color-text)', 
+                            background: 'var(--color-border-light)', 
+                            padding: '2px 6px', 
+                            borderRadius: '4px',
+                            letterSpacing: '0.5px',
+                            border: '1px solid var(--color-border)'
+                          }}>
+                            ID: #{slip.id}
+                          </span>
+                          <h3 style={{ fontSize: '0.95rem', fontWeight: 800, color: 'var(--color-text)', margin: 0, display: 'inline-flex', alignItems: 'center' }}>
+                            Căn: <span style={{ color: 'var(--color-text)' }}>{slip.unit_code || '—'}</span>
+                            {slip.unit_code && <CopyButton text={slip.unit_code} />}
+                          </h3>
+                          <span className="coop-dot" style={{ color: 'var(--color-text-muted)', fontSize: '0.8rem' }}>•</span>
+                          <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--color-text-light)' }}>
+                            {slip.project_name || 'Dự án khác'}
                           </span>
                         </div>
-                        {slip.status === 'approved' && slip.approver && (
-                          <>
-                            <span style={{ color: 'var(--color-text-muted)', fontSize: '0.8rem' }}>•</span>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.75rem', color: 'var(--color-text-muted)', background: 'rgba(16, 185, 129, 0.05)', padding: '2px 8px', borderRadius: '4px', border: '1px solid rgba(16, 185, 129, 0.15)' }}>
-                              <span style={{ fontWeight: 600, color: 'var(--color-success)' }}>Duyệt bởi:</span>
-                              <Avatar name={slip.approver.name} src={slip.approver.avatar} size={14} />
-                              <span style={{ fontWeight: 700, color: 'var(--color-text)' }}>{slip.approver.name}</span>
-                              <span>lúc {new Date(slip.approver.approved_at).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })} - {new Date(slip.approver.approved_at).toLocaleDateString('vi-VN')}</span>
-                            </div>
-                          </>
-                        )}
+
+                        <div className="coop-slip-header-info-row2">
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>Khách:</span>
+                            <Avatar 
+                              name={`${slip.last_name} ${slip.first_name}`} 
+                              size={18}
+                            />
+                            <span style={{ fontWeight: 700, fontSize: '0.75rem', color: 'var(--color-text)' }}>
+                              {slip.last_name} {slip.first_name}
+                            </span>
+                          </div>
+                          {slip.status === 'approved' && slip.approver && (
+                            <>
+                              <span className="coop-dot" style={{ color: 'var(--color-text-muted)', fontSize: '0.8rem' }}>•</span>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.75rem', color: 'var(--color-text-muted)', background: 'rgba(16, 185, 129, 0.05)', padding: '2px 8px', borderRadius: '4px', border: '1px solid rgba(16, 185, 129, 0.15)' }}>
+                                <span style={{ fontWeight: 600, color: 'var(--color-success)' }}>Duyệt bởi:</span>
+                                <Avatar name={slip.approver.name} src={slip.approver.avatar} size={14} />
+                                <span style={{ fontWeight: 700, color: 'var(--color-text)' }}>{slip.approver.name}</span>
+                                <span className="coop-approver-time">lúc {new Date(slip.approver.approved_at).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })} - {new Date(slip.approver.approved_at).toLocaleDateString('vi-VN')}</span>
+                              </div>
+                            </>
+                          )}
+                        </div>
+
                       </div>
                     </div>
 
                     {/* Right: Badge Status & Header Controls */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }} onClick={e => e.stopPropagation()}>
-                      <span
-                        className="badge"
-                        style={{
-                          background: 'var(--color-surface)',
-                          color: isPendingSignatures ? 'var(--color-warning)' : slip.status === 'approved' ? 'var(--color-success)' : slip.status === 'pending_manager_approval' ? 'var(--color-warning)' : slip.status === 'rejected' ? 'var(--color-danger)' : 'var(--color-text)',
-                          border: '1px solid var(--color-border)',
-                          padding: '4px 10px',
-                          borderRadius: '20px',
-                          fontSize: '0.7rem',
-                          fontWeight: 700,
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '6px'
-                        }}
-                      >
-                        {isPendingSignatures ? (
-                          <>
-                            <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--color-warning)' }} />
-                            Chờ ký
-                          </>
-                        ) : slip.status === 'approved' ? (
-                          <>
-                            <Check size={12} style={{ color: 'var(--color-success)' }} />
-                            Đã duyệt
-                          </>
-                        ) : slip.status === 'pending_manager_approval' ? (
-                          <>
-                            <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--color-warning)' }} />
-                            Chờ sếp duyệt
-                          </>
-                        ) : slip.status === 'rejected' ? (
-                          <>
-                            <X size={12} style={{ color: 'var(--color-danger)' }} />
-                            Bị bác bỏ
-                          </>
-                        ) : (
-                          slip.status
-                        )}
-                      </span>
-
-                      {/* Yellow indicator for admin next to approved status badge */}
-                      {slip.status === 'approved' && isApprover && slip.adjustment_request && (
-                        <div
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleOpenHandleRequestModal(slip);
-                          }}
-                          className="animate-pulse"
+                    <div className="coop-slip-header-right" onClick={e => e.stopPropagation()}>
+                      
+                      {/* Group 1: Status badges */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                        <span
+                          className="badge"
                           style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '6px',
-                            background: 'rgba(245, 158, 11, 0.08)',
-                            color: '#d97706',
-                            border: '1px solid rgba(245, 158, 11, 0.3)',
+                            background: 'var(--color-surface)',
+                            color: isPendingSignatures ? 'var(--color-warning)' : slip.status === 'approved' ? 'var(--color-success)' : slip.status === 'pending_manager_approval' ? 'var(--color-warning)' : slip.status === 'rejected' ? 'var(--color-danger)' : 'var(--color-text)',
+                            border: '1px solid var(--color-border)',
                             padding: '4px 10px',
                             borderRadius: '20px',
-                            fontSize: '0.725rem',
+                            fontSize: '0.7rem',
                             fontWeight: 700,
-                            cursor: 'pointer',
-                            transition: 'all 0.2s',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '6px'
                           }}
-                          title="Click để xem chi tiết và xử lý yêu cầu chỉnh sửa"
-                          onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(245, 158, 11, 0.15)'; }}
-                          onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(245, 158, 11, 0.08)'; }}
                         >
-                          <Avatar src={slip.adjustment_request.avatar} name={slip.adjustment_request.name} size="sm" />
-                          <span style={{ whiteSpace: 'nowrap' }}>
-                            Yêu cầu chỉnh sửa của {slip.adjustment_request.name} ({new Date(slip.adjustment_request.requested_at).toLocaleDateString('vi-VN')} {new Date(slip.adjustment_request.requested_at).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })})
-                          </span>
-                        </div>
-                      )}
-                      
-                      {/* Delete icon */}
-                      {(isApprover || (String(slip.created_by) === String(user?.id) && (slip.status === 'pending_signatures' || slip.status === 'approved_pending_signatures'))) && (
-                        <button
-                          onClick={(e) => { e.stopPropagation(); handleDeleteSlip(slip.id); }}
-                          className="btn sm outline text-danger"
-                          style={{ height: '28px', width: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0, borderColor: 'transparent', background: 'transparent' }}
-                          title="Xóa phiếu hợp tác"
-                        >
-                          <Trash2 size={13} />
-                        </button>
-                      )}
+                          {isPendingSignatures ? (
+                            <>
+                              <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--color-warning)' }} />
+                              Chờ ký
+                            </>
+                          ) : slip.status === 'approved' ? (
+                            <>
+                              <Check size={12} style={{ color: 'var(--color-success)' }} />
+                              Đã duyệt
+                            </>
+                          ) : slip.status === 'pending_manager_approval' ? (
+                            <>
+                              <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--color-warning)' }} />
+                              Chờ sếp duyệt
+                            </>
+                          ) : slip.status === 'rejected' ? (
+                            <>
+                              <X size={12} style={{ color: 'var(--color-danger)' }} />
+                              Bị bác bỏ
+                            </>
+                          ) : (
+                            slip.status
+                          )}
+                        </span>
 
-                      {/* Expand indicator */}
-                      <div style={{ color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center' }}>
-                        {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                        {/* Yellow indicator for admin next to approved status badge */}
+                        {slip.status === 'approved' && isApprover && slip.adjustment_request && (
+                          <div
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleOpenHandleRequestModal(slip);
+                            }}
+                            className="animate-pulse"
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '6px',
+                              background: 'rgba(245, 158, 11, 0.08)',
+                              color: '#d97706',
+                              border: '1px solid rgba(245, 158, 11, 0.3)',
+                              padding: '4px 10px',
+                              borderRadius: '20px',
+                              fontSize: '0.725rem',
+                              fontWeight: 700,
+                              cursor: 'pointer',
+                              transition: 'all 0.2s',
+                            }}
+                            title="Click để xem chi tiết và xử lý yêu cầu chỉnh sửa"
+                            onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(245, 158, 11, 0.15)'; }}
+                            onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(245, 158, 11, 0.08)'; }}
+                          >
+                            <Avatar src={slip.adjustment_request.avatar} name={slip.adjustment_request.name} size="sm" />
+                            <span style={{ whiteSpace: 'nowrap' }}>
+                              Yêu cầu chỉnh sửa của {slip.adjustment_request.name} ({new Date(slip.adjustment_request.requested_at).toLocaleDateString('vi-VN')} {new Date(slip.adjustment_request.requested_at).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })})
+                            </span>
+                          </div>
+                        )}
                       </div>
+
+                      {/* Group 2: Action buttons */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        {/* Delete icon */}
+                        {(isApprover || (String(slip.created_by) === String(user?.id) && (slip.status === 'pending_signatures' || slip.status === 'approved_pending_signatures'))) && (
+                          <button
+                            onClick={(e) => { e.stopPropagation(); handleDeleteSlip(slip.id); }}
+                            className="btn sm outline text-danger"
+                            style={{ height: '28px', width: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0, borderColor: 'transparent', background: 'transparent' }}
+                            title="Xóa phiếu hợp tác"
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                        )}
+
+                        {/* Expand indicator */}
+                        <div style={{ color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center' }}>
+                          {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                        </div>
+                      </div>
+
                     </div>
                   </div>
 
