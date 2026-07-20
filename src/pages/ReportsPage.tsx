@@ -41,6 +41,13 @@ const FMT_VND = (n: any) => {
 export const ReportsPage: React.FC = () => {
   const { addToast } = useUIStore();
   const { user } = useAuth();
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth <= 768);
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
   const [tab, setTab] = useState<'sales' | 'pipeline' | 'customers' | 'companies' | 'expenses' | 'activities'>('sales');
   const [period, setPeriod] = useState<Period>('this_quarter');
   const [dateRange, setDateRange] = useState<DateRange>(getDateRange('this_quarter'));
@@ -194,21 +201,46 @@ export const ReportsPage: React.FC = () => {
             <p className="page-subtitle">Dữ liệu tổng hợp toàn hệ thống</p>
           )}
         </div>
-        <div className="flex gap-2">
-          <PeriodFilter value={period} onChange={(p, r) => { 
-            setPeriod(p); 
-            setDateRange(r);
-            setSalesData(null);
-            setPipelineData([]);
-            setCustomerData(null);
-            setCompanyData(null);
-            setExpenseData(null);
-            setActivityData(null);
-          }} />
-          <button className="btn secondary" onClick={() => {
-            addToast('Đang tạo báo cáo PDF...', 'info');
-            setTimeout(() => window.print(), 1000);
-          }}><Download size={16} /> Xuất PDF</button>
+        <div className="flex gap-2" style={isMobile ? { width: '100%', display: 'flex', gap: '8px', alignItems: 'center' } : undefined}>
+          <PeriodFilter 
+            value={period} 
+            onChange={(p, r) => { 
+              setPeriod(p); 
+              setDateRange(r);
+              setSalesData(null);
+              setPipelineData([]);
+              setCustomerData(null);
+              setCompanyData(null);
+              setExpenseData(null);
+              setActivityData(null);
+            }} 
+            style={isMobile ? { flex: 1, width: '100%' } : undefined}
+            buttonStyle={isMobile ? { width: '100%', minWidth: '0px' } : undefined}
+          />
+          <button 
+            className="btn" 
+            onClick={() => {
+              addToast('Đang tạo báo cáo PDF...', 'info');
+              setTimeout(() => window.print(), 1000);
+            }}
+            style={{
+              height: 38,
+              minWidth: isMobile ? '38px' : 'auto',
+              width: isMobile ? '38px' : 'auto',
+              padding: isMobile ? '0' : '0 1rem',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              backgroundColor: 'var(--color-primary)',
+              color: '#fff',
+              border: 'none',
+              borderRadius: 'var(--radius-md)',
+              flexShrink: 0
+            }}
+          >
+            <Download size={16} style={{ color: '#fff' }} />
+            {!isMobile && <span style={{ marginLeft: '6px', color: '#fff', fontWeight: 600 }}>Xuất PDF</span>}
+          </button>
         </div>
       </div>
 
@@ -279,7 +311,11 @@ export const ReportsPage: React.FC = () => {
       {tab === 'sales' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
           {/* KPI Cards */}
-          <div className="grid grid-4">
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)',
+            gap: isMobile ? '10px' : '1.25rem'
+          }}>
             {[
               { label: 'Tổng doanh thu', value: FMT_VND(salesData?.summary?.total_revenue || 0), change: salesData?.summary?.revenue_change, up: (salesData?.summary?.revenue_change || '').startsWith('+'), icon: TrendingUp, color: '#a31422' },
               { label: 'Cơ hội bán hàng', value: String(salesData?.summary?.deals || 0), change: salesData?.summary?.deals_change, up: (salesData?.summary?.deals_change || '').startsWith('+'), icon: Briefcase, color: '#10b981' },

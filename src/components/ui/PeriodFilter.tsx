@@ -14,6 +14,8 @@ export interface PeriodFilterProps {
   onChange: (period: Period, range: DateRange) => void;
   customRange?: DateRange;
   onCustomRange?: (range: DateRange) => void;
+  style?: React.CSSProperties;
+  buttonStyle?: React.CSSProperties;
 }
 
 const PERIODS: { key: Period; label: string }[] = [
@@ -77,7 +79,7 @@ export function getDateRange(period: Period, custom?: DateRange): DateRange {
   }
 }
 
-export const PeriodFilter: React.FC<PeriodFilterProps> = ({ value, onChange, customRange, onCustomRange }) => {
+export const PeriodFilter: React.FC<PeriodFilterProps> = ({ value, onChange, customRange, onCustomRange, style, buttonStyle }) => {
   const currentLabel = PERIODS.find(p => p.key === value)?.label || 'Chọn kỳ';
   const [isOpen, setIsOpen] = useState(false);
   const [showCustom, setShowCustom] = useState(false);
@@ -113,7 +115,7 @@ export const PeriodFilter: React.FC<PeriodFilterProps> = ({ value, onChange, cus
   };
 
   return (
-    <div style={{ position: 'relative' }} ref={ref}>
+    <div style={{ position: 'relative', ...style }} ref={ref}>
       <button 
         className="btn secondary"
         onClick={() => setIsOpen(!isOpen)}
@@ -122,7 +124,8 @@ export const PeriodFilter: React.FC<PeriodFilterProps> = ({ value, onChange, cus
           padding: '0 1rem', height: 38, fontSize: '0.875rem', borderRadius: 'var(--radius-md)',
           background: isOpen ? 'var(--color-bg)' : 'white',
           boxShadow: 'var(--shadow-sm)',
-          transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)'
+          transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+          ...buttonStyle
         }}
       >
         <span style={{ display: 'flex', alignItems: 'center', gap: '10px', fontWeight: 600 }}>
