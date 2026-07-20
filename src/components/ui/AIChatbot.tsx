@@ -464,40 +464,40 @@ Bạn có thể gõ rõ từ khóa hoặc click vào các gợi ý bên dưới 
       {/* CSS Styles injection */}
       <style>{`
         :root {
-          --chatbot-window-bg: oklch(100% 0 0 / 75%);
-          --chatbot-window-border: oklch(100% 0 0 / 60%);
-          --chatbot-sidebar-bg: oklch(98.4% 0.007 247 / 35%);
-          --chatbot-sidebar-border: oklch(0% 0 0 / 5%);
-          --chatbot-bubble-bot-bg: oklch(54% 0.235 274 / 4%);
-          --chatbot-bubble-bot-border: oklch(54% 0.235 274 / 8%);
-          --chatbot-bubble-user-bg: linear-gradient(135deg, #c21a2c 0%, #a31422 100%);
-          --chatbot-text: oklch(15.9% 0.034 254);
-          --chatbot-text-muted: oklch(54.1% 0.038 248);
-          --chatbot-card-bg: oklch(100% 0 0 / 85%);
-          --chatbot-card-hover-bg: oklch(100% 0 0);
-          --chatbot-card-border: oklch(0% 0 0 / 4%);
-          --chatbot-card-shadow: 0 4px 12px oklch(0% 0 0 / 2%);
-          --chatbot-input-bg: oklch(98.4% 0.007 247 / 70%);
-          --chatbot-btn-bg: oklch(100% 0 0);
-          --chatbot-btn-border: #BD1D2D;
+          --chatbot-window-bg: #ffffff;
+          --chatbot-window-border: #e5e7eb;
+          --chatbot-sidebar-bg: #f3f4f6;
+          --chatbot-sidebar-border: #e5e7eb;
+          --chatbot-bubble-bot-bg: #f9fafb;
+          --chatbot-bubble-bot-border: #e5e7eb;
+          --chatbot-bubble-user-bg: #a31422;
+          --chatbot-text: #111827;
+          --chatbot-text-muted: #6b7280;
+          --chatbot-card-bg: #ffffff;
+          --chatbot-card-hover-bg: #f9fafb;
+          --chatbot-card-border: #e5e7eb;
+          --chatbot-card-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+          --chatbot-input-bg: #f9fafb;
+          --chatbot-btn-bg: #a31422;
+          --chatbot-btn-border: #a31422;
         }
         [data-theme="dark"] {
-          --chatbot-window-bg: oklch(12.7% 0.016 264 / 75%);
-          --chatbot-window-border: oklch(100% 0 0 / 8%);
-          --chatbot-sidebar-bg: oklch(6.5% 0.008 264 / 40%);
-          --chatbot-sidebar-border: oklch(100% 0 0 / 6%);
-          --chatbot-bubble-bot-bg: oklch(100% 0 0 / 3%);
-          --chatbot-bubble-bot-border: oklch(100% 0 0 / 6%);
-          --chatbot-bubble-user-bg: linear-gradient(135deg, #c21a2c 0%, #a31422 100%);
-          --chatbot-text: oklch(96.8% 0.009 246);
-          --chatbot-text-muted: oklch(70% 0.034 247);
-          --chatbot-card-bg: oklch(17.8% 0.022 264 / 60%);
-          --chatbot-card-hover-bg: oklch(17.8% 0.022 264 / 80%);
-          --chatbot-card-border: oklch(100% 0 0 / 4%);
-          --chatbot-card-shadow: 0 4px 12px oklch(0% 0 0 / 15%);
-          --chatbot-input-bg: oklch(6.5% 0.008 264 / 50%);
-          --chatbot-btn-bg: oklch(12.7% 0.024 254);
-          --chatbot-btn-border: #ff4d5a;
+          --chatbot-window-bg: #111827;
+          --chatbot-window-border: #374151;
+          --chatbot-sidebar-bg: #1f2937;
+          --chatbot-sidebar-border: #374151;
+          --chatbot-bubble-bot-bg: #1f2937;
+          --chatbot-bubble-bot-border: #374151;
+          --chatbot-bubble-user-bg: #a31422;
+          --chatbot-text: #f9fafb;
+          --chatbot-text-muted: #9ca3af;
+          --chatbot-card-bg: #1f2937;
+          --chatbot-card-hover-bg: #374151;
+          --chatbot-card-border: #374151;
+          --chatbot-card-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+          --chatbot-input-bg: #1f2937;
+          --chatbot-btn-bg: #a31422;
+          --chatbot-btn-border: #a31422;
         }
         
         .pulse-chatbot {
@@ -630,11 +630,12 @@ Bạn có thể gõ rõ từ khóa hoặc click vào các gợi ý bên dưới 
         
         @media (max-width: 768px) {
           .chatbot-parent.is-open {
-            left: 16px !important;
-            right: 16px !important;
-            bottom: 16px !important;
-            width: auto !important;
-            height: auto !important;
+            left: 0 !important;
+            right: 0 !important;
+            top: 0 !important;
+            bottom: 0 !important;
+            width: 100vw !important;
+            height: 100vh !important;
             transform: none !important;
           }
           .chatbot-parent.is-closed {
@@ -645,15 +646,22 @@ Bạn có thể gõ rõ từ khóa hoặc click vào các gợi ý bên dưới 
             height: 52px !important;
           }
           .chatbot-window {
-            width: auto !important;
+            width: 100% !important;
+            height: 100% !important;
+            max-height: 100vh !important;
+            border-radius: 0 !important;
             left: 0 !important;
             right: 0 !important;
-            height: calc(100vh - 80px) !important;
-            max-height: 80vh !important;
+            bottom: 0 !important;
+            top: 0 !important;
             transform-origin: bottom center !important;
           }
           .chatbot-sidebar {
             display: none !important;
+          }
+          .chatbot-input-bar {
+            padding: 10px 10px 30px 10px !important;
+            gap: 8px !important;
           }
         }
       `}</style>
@@ -875,7 +883,7 @@ Bạn có thể gõ rõ từ khóa hoặc click vào các gợi ý bên dưới 
                   onChange={e => setSearchQuery(e.target.value)}
                   style={{
                     width: '100%',
-                    padding: '8px 12px 8px 32px',
+                    padding: '8px 32px 8px 12px',
                     borderRadius: '20px',
                     border: '1px solid var(--chatbot-window-border)',
                     fontSize: '0.8rem',
@@ -885,7 +893,7 @@ Bạn có thể gõ rõ từ khóa hoặc click vào các gợi ý bên dưới 
                     boxSizing: 'border-box'
                   }}
                 />
-                <Search size={14} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', opacity: 0.5, color: 'var(--chatbot-text)' }} />
+                <Search size={14} style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', opacity: 0.5, color: 'var(--chatbot-text)' }} />
               </div>
               
               <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '16px' }} className="custom-scrollbar">
@@ -1108,6 +1116,7 @@ Bạn có thể gõ rõ từ khóa hoặc click vào các gợi ý bên dưới 
               e.preventDefault();
               handleSend(inputValue);
             }}
+            className="chatbot-input-bar"
             style={{
               padding: '12px 20px 20px 20px',
               display: 'flex',
