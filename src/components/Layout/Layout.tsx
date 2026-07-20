@@ -2086,6 +2086,7 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
           className={`mobile-bottom-nav-center-item ${location.pathname === '/contacts' ? 'active' : ''}`}
           onClick={() => navigate('/contacts')}
         >
+          <div className="raised-button-bg-hump" />
           <div className="raised-button-circle">
             <Users size={24} />
           </div>
