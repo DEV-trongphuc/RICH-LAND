@@ -424,8 +424,8 @@ Bạn có thể gõ rõ từ khóa hoặc click vào các gợi ý bên dưới 
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        background: isHeader ? 'white' : 'var(--color-surface)',
-        border: isHeader ? '1.5px solid rgba(255,255,255,0.6)' : '1px solid var(--color-border-light)',
+        background: 'white',
+        border: isHeader ? '1.5px solid rgba(255,255,255,0.6)' : '1px solid var(--chatbot-window-border)',
         flexShrink: 0,
         position: 'relative'
       }}>
@@ -478,7 +478,7 @@ Bạn có thể gõ rõ từ khóa hoặc click vào các gợi ý bên dưới 
           --chatbot-card-border: #e5e7eb;
           --chatbot-card-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
           --chatbot-input-bg: #f9fafb;
-          --chatbot-btn-bg: #a31422;
+          --chatbot-btn-bg: #ffffff;
           --chatbot-btn-border: #a31422;
         }
         [data-theme="dark"] {
@@ -496,7 +496,7 @@ Bạn có thể gõ rõ từ khóa hoặc click vào các gợi ý bên dưới 
           --chatbot-card-border: #374151;
           --chatbot-card-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
           --chatbot-input-bg: #1f2937;
-          --chatbot-btn-bg: #a31422;
+          --chatbot-btn-bg: #ffffff;
           --chatbot-btn-border: #a31422;
         }
         
