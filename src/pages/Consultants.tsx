@@ -1391,7 +1391,7 @@ const ConsultantsInner = () => {
                         </div>
                       </td>
 
-                      <td data-label={t('Zalo Bot')}>
+                      <td data-label={t('Zalo Bot')} onClick={e => e.stopPropagation()}>
                         {u.zalo_chat_id ? (
                           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                             <span style={{
@@ -1401,6 +1401,7 @@ const ConsultantsInner = () => {
                             }}>
                               <img src="https://stc-zpl.zdn.vn/favicon.ico" alt="Zalo" style={{ width: 14, height: 14, borderRadius: '2px' }} /> {t('Đã liên kết')}
                             </span>
+                            <CopyButton text={u.zalo_chat_id} />
                           </div>
                         ) : (
                           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
