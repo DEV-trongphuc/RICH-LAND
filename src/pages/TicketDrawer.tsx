@@ -235,7 +235,7 @@ export const TicketDrawer: React.FC<Props> = ({ isOpen, onClose, ticket, onUpdat
               
               {/* Left: Activity Thread */}
               <div style={{ flex: 1, display: 'flex', flexDirection: 'column', borderRight: isMobile ? 'none' : '1px solid var(--color-border)', borderBottom: isMobile ? '1px dashed var(--color-border)' : 'none' }}>
-                <div style={{ flex: 1, overflow: 'auto', padding: isMobile ? '1.5rem 1.5rem 100px 1.5rem' : '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                <div style={{ flex: 1, overflow: 'auto', padding: isMobile ? '0.75rem 0.5rem 100px 0.5rem' : '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
                   {loading ? (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                       <StatRowSkeleton />
@@ -384,7 +384,7 @@ export const TicketDrawer: React.FC<Props> = ({ isOpen, onClose, ticket, onUpdat
               </div>
 
               {/* Right: Info Panel */}
-              <div style={{ width: isMobile ? '100%' : '320px', background: 'var(--color-surface)', padding: isMobile ? '1.5rem 1.5rem 100px 1.5rem' : '1.5rem', overflow: 'auto' }}>
+              <div style={{ width: isMobile ? '100%' : '320px', background: 'var(--color-surface)', padding: isMobile ? '0.75rem 0.5rem 100px 0.5rem' : '1.5rem', overflow: 'auto' }}>
                 <h4 style={{ fontSize: '0.875rem', fontWeight: 800, textTransform: 'uppercase', color: 'var(--color-text-light)', marginBottom: '1rem' }}>Thông tin Ticket</h4>
                 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '2rem' }}>

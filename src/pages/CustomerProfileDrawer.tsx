@@ -5119,7 +5119,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                           exit={isMobileOrTablet ? { opacity: 0, x: -30 } : undefined}
                           transition={{ type: 'spring', damping: 28, stiffness: 300 }}
                           className={styles.sidebarTabs}
-                          style={isMobileOrTablet ? { width: '100%', gap: '0.25rem', padding: '16px', overflowY: 'auto' } : { gap: '0.25rem', overflowY: 'auto' }}
+                          style={isMobileOrTablet ? { width: '100%', gap: '0.25rem', padding: '12px 12px 100px 12px', overflowY: 'auto' } : { gap: '0.25rem', overflowY: 'auto' }}
                         >
                         {isMobileOrTablet ? (
                           <div style={{ display: 'flex', flexDirection: 'column', width: '100%' }}>
@@ -5707,7 +5707,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                       </div>
                     )}
 
-                    <div style={isMobileOrTablet ? { padding: '16px', flex: 1, width: '100%', minWidth: 0, boxSizing: 'border-box', overflowX: 'hidden' } : undefined}>
+                    <div style={isMobileOrTablet ? { padding: '12px 12px 100px 12px', flex: 1, width: '100%', minWidth: 0, boxSizing: 'border-box', overflowX: 'hidden' } : undefined}>
 
                   {/* INFO TAB */}
                   {activeTab === 'info' && (

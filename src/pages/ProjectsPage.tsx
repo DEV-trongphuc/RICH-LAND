@@ -862,7 +862,7 @@ export default function ProjectsPage() {
         >
           {/* Drawer Header */}
           <div style={{
-            padding: '1.25rem 1.5rem',
+            padding: isMobile ? '0.75rem 1rem' : '1.25rem 1.5rem',
             borderBottom: '1px solid var(--color-border-light)',
             display: 'flex',
             justifyContent: 'space-between',
@@ -885,7 +885,7 @@ export default function ProjectsPage() {
             </div>
           </div>
           {/* Drawer Content */}
-          <div style={{ padding: '1.5rem', overflowY: 'auto', flex: 1 }} className="custom-scrollbar">
+          <div style={{ padding: isMobile ? '0.5rem 0.5rem 100px 0.5rem' : '1.5rem', overflowY: 'auto', flex: 1 }} className="custom-scrollbar">
             {content}
           </div>
         </div>
@@ -5981,6 +5981,7 @@ export default function ProjectsPage() {
                   }
                   .explorer-layout {
                     grid-template-columns: 1fr;
+                    gap: 0.75rem;
                   }
                   .category-sidebar {
                     flex-direction: row;
@@ -6025,6 +6026,12 @@ export default function ProjectsPage() {
                   .doc-table th:nth-child(4),
                   .doc-table td:nth-child(4) {
                     display: none;
+                  }
+                  .doc-table th {
+                    padding: 0.625rem 0.5rem !important;
+                  }
+                  .doc-table td {
+                    padding: 0.5rem 0.5rem !important;
                   }
                 }
               `}</style>
