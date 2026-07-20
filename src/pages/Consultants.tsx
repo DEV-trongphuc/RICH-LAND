@@ -995,12 +995,18 @@ const ConsultantsInner = () => {
       <div key={activeTab} className="subtab-enter-active" style={{ display: 'flex', flexDirection: 'column', width: '100%' }}>
         {/* Summary Cards */}
         {activeTab === 'consultants' && (
-        <div className="responsive-grid-4" style={{ display: isMobile ? 'none' : 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginBottom: '1.5rem' }}>
+        <div className="responsive-grid-4" style={{ display: isMobile ? 'none' : 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.25rem', marginBottom: '1.5rem' }}>
           {/* Card 1: Tổng TVV */}
-          <div className="stat-card hover-lift" style={{ display: 'flex', flexDirection: 'column', padding: '1rem 1.25rem', background: 'var(--color-surface)', border: '1px solid var(--color-border-light)', borderRadius: '12px', minHeight: '110px', boxShadow: '0 2px 8px rgba(0,0,0,0.02)' }}>
+          <div className="stat-card hover-lift total-card" style={{ display: 'flex', flexDirection: 'column', padding: '1.25rem', background: 'var(--color-surface)', border: '1px solid var(--color-border-light)', borderRadius: '16px', minHeight: '130px', boxShadow: '0 4px 12px rgba(0,0,0,0.015)', position: 'relative', overflow: 'hidden' }}>
+            <div className="decor-svg" style={{ color: '#64748b' }}>
+              <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: '100%', height: '100%' }}>
+                <circle cx="50" cy="35" r="15" stroke="currentColor" strokeWidth="2" />
+                <path d="M15 80 C 15 60, 31 48, 50 48 C 69 48, 85 60, 85 80" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+              </svg>
+            </div>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
-              <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('Tổng TVV')}</span>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '32px', height: '32px', borderRadius: '8px', background: 'rgba(100, 116, 139, 0.08)', color: '#64748b', flexShrink: 0 }}>
+              <span className="stat-label" style={{ fontSize: '0.725rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('Tổng TVV')}</span>
+              <div className="stat-icon" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '32px', height: '32px', borderRadius: '8px', background: 'rgba(100, 116, 139, 0.08)', color: '#64748b', flexShrink: 0 }}>
                 <Users size={16} />
               </div>
             </div>
@@ -1008,16 +1014,22 @@ const ConsultantsInner = () => {
               {loading ? (
                 <div style={{ height: '28px', width: '48px', background: 'var(--color-border-light)', borderRadius: '4px' }} className="animate-pulse" />
               ) : (
-                <span style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--color-text)', lineHeight: 1.1 }}>{users.length}</span>
+                <span className="stat-value" style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--color-text)', lineHeight: 1.1 }}>{users.length}</span>
               )}
             </div>
           </div>
 
           {/* Card 2: Đang nhận Data */}
-          <div className="stat-card hover-lift" style={{ display: 'flex', flexDirection: 'column', padding: '1rem 1.25rem', background: 'var(--color-surface)', border: '1px solid var(--color-border-light)', borderRadius: '12px', minHeight: '110px', boxShadow: '0 2px 8px rgba(0,0,0,0.02)' }}>
+          <div className="stat-card hover-lift distributed-card" style={{ display: 'flex', flexDirection: 'column', padding: '1.25rem', background: 'var(--color-surface)', border: '1px solid var(--color-border-light)', borderRadius: '16px', minHeight: '130px', boxShadow: '0 4px 12px rgba(0,0,0,0.015)', position: 'relative', overflow: 'hidden' }}>
+            <div className="decor-svg" style={{ color: 'var(--color-success)' }}>
+              <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: '100%', height: '100%' }}>
+                <circle cx="50" cy="50" r="35" stroke="currentColor" strokeWidth="2" />
+                <path d="M35 50 L 45 60 L 65 40" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </div>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
-              <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('Đang nhận Data')}</span>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '32px', height: '32px', borderRadius: '8px', background: 'rgba(16, 185, 129, 0.08)', color: 'var(--color-success)', flexShrink: 0 }}>
+              <span className="stat-label" style={{ fontSize: '0.725rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('Đang nhận Data')}</span>
+              <div className="stat-icon" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '32px', height: '32px', borderRadius: '8px', background: 'rgba(16, 185, 129, 0.08)', color: 'var(--color-success)', flexShrink: 0 }}>
                 <CheckCircle size={16} />
               </div>
             </div>
@@ -1025,16 +1037,22 @@ const ConsultantsInner = () => {
               {loading ? (
                 <div style={{ height: '28px', width: '48px', background: 'var(--color-border-light)', borderRadius: '4px' }} className="animate-pulse" />
               ) : (
-                <span style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--color-success)', lineHeight: 1.1 }}>{activeCount}</span>
+                <span className="stat-value" style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--color-success)', lineHeight: 1.1 }}>{activeCount}</span>
               )}
             </div>
           </div>
 
           {/* Card 3: Đang nghỉ phép */}
-          <div className="stat-card hover-lift" style={{ display: 'flex', flexDirection: 'column', padding: '1rem 1.25rem', background: 'var(--color-surface)', border: '1px solid var(--color-border-light)', borderRadius: '12px', minHeight: '110px', boxShadow: '0 2px 8px rgba(0,0,0,0.02)' }}>
+          <div className="stat-card hover-lift duplicates-card" style={{ display: 'flex', flexDirection: 'column', padding: '1.25rem', background: 'var(--color-surface)', border: '1px solid var(--color-border-light)', borderRadius: '16px', minHeight: '130px', boxShadow: '0 4px 12px rgba(0,0,0,0.015)', position: 'relative', overflow: 'hidden' }}>
+            <div className="decor-svg" style={{ color: 'var(--color-warning)' }}>
+              <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: '100%', height: '100%' }}>
+                <rect x="20" y="25" width="60" height="55" rx="5" stroke="currentColor" strokeWidth="2" />
+                <path d="M20 40 H 80 M 35 15 V 25 M 65 15 V 25" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+              </svg>
+            </div>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
-              <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('Đang nghỉ phép')}</span>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '32px', height: '32px', borderRadius: '8px', background: 'rgba(245, 158, 11, 0.08)', color: 'var(--color-warning)', flexShrink: 0 }}>
+              <span className="stat-label" style={{ fontSize: '0.725rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('Đang nghỉ phép')}</span>
+              <div className="stat-icon" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '32px', height: '32px', borderRadius: '8px', background: 'rgba(245, 158, 11, 0.08)', color: 'var(--color-warning)', flexShrink: 0 }}>
                 <Calendar size={16} />
               </div>
             </div>
@@ -1042,16 +1060,23 @@ const ConsultantsInner = () => {
               {loading ? (
                 <div style={{ height: '28px', width: '48px', background: 'var(--color-border-light)', borderRadius: '4px' }} className="animate-pulse" />
               ) : (
-                <span style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--color-warning)', lineHeight: 1.1 }}>{leaveCount}</span>
+                <span className="stat-value" style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--color-warning)', lineHeight: 1.1 }}>{leaveCount}</span>
               )}
             </div>
           </div>
 
           {/* Card 4: Ngừng hoạt động */}
-          <div className="stat-card hover-lift" style={{ display: 'flex', flexDirection: 'column', padding: '1rem 1.25rem', background: 'var(--color-surface)', border: '1px solid var(--color-border-light)', borderRadius: '12px', minHeight: '110px', boxShadow: '0 2px 8px rgba(0,0,0,0.02)' }}>
+          <div className="stat-card hover-lift errors-card" style={{ display: 'flex', flexDirection: 'column', padding: '1.25rem', background: 'var(--color-surface)', border: '1px solid var(--color-border-light)', borderRadius: '16px', minHeight: '130px', boxShadow: '0 4px 12px rgba(0,0,0,0.015)', position: 'relative', overflow: 'hidden' }}>
+            <div className="decor-svg" style={{ color: 'var(--color-danger)' }}>
+              <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: '100%', height: '100%' }}>
+                <circle cx="45" cy="35" r="15" stroke="currentColor" strokeWidth="2" />
+                <path d="M15 75 C 15 60, 27 50, 45 50 C 53 50, 60 54, 65 60" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                <path d="M75 55 L 90 70 M 90 55 L 75 70" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+              </svg>
+            </div>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
-              <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('Ngừng hoạt động')}</span>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '32px', height: '32px', borderRadius: '8px', background: 'rgba(239, 68, 68, 0.08)', color: 'var(--color-danger)', flexShrink: 0 }}>
+              <span className="stat-label" style={{ fontSize: '0.725rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('Ngừng hoạt động')}</span>
+              <div className="stat-icon" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '32px', height: '32px', borderRadius: '8px', background: 'rgba(239, 68, 68, 0.08)', color: 'var(--color-danger)', flexShrink: 0 }}>
                 <UserX size={16} />
               </div>
             </div>
@@ -1059,7 +1084,7 @@ const ConsultantsInner = () => {
               {loading ? (
                 <div style={{ height: '28px', width: '48px', background: 'var(--color-border-light)', borderRadius: '4px' }} className="animate-pulse" />
               ) : (
-                <span style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--color-danger)', lineHeight: 1.1 }}>{inactiveCount}</span>
+                <span className="stat-value" style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--color-danger)', lineHeight: 1.1 }}>{inactiveCount}</span>
               )}
             </div>
           </div>
