@@ -881,6 +881,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
   const [publicQuota, setPublicQuota] = useState<any>(null);
   const [claimLeadConfirmOpen, setClaimLeadConfirmOpen] = useState(false);
   const [claimLeadPerson, setClaimLeadPerson] = useState<{ id: number; name: string } | null>(null);
+  const [adminActionLead, setAdminActionLead] = useState<any | null>(null);
 
   // Check-in state variables
   const [checkInModalOpen, setCheckInModalOpen] = useState(false);
@@ -8223,7 +8224,9 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                 <div 
                   key={lead.id}
                   onClick={() => {
-                    if (canClaim) {
+                    if (isAdmin) {
+                      setAdminActionLead(lead);
+                    } else if (canClaim) {
                       handleClaimLead(lead.id, lead.full_name || lead.name);
                     }
                   }}
@@ -8237,7 +8240,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                     alignItems: 'center',
                     justifyContent: 'space-between',
                     gap: '12px',
-                    cursor: canClaim ? 'pointer' : 'default'
+                    cursor: (canClaim || isAdmin) ? 'pointer' : 'default'
                   }}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1, minWidth: 0 }}>
@@ -8341,7 +8344,9 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                         key={lead.id} 
                         className="table-row-hover" 
                         onClick={() => {
-                          if (canClaim) {
+                          if (isAdmin) {
+                            setAdminActionLead(lead);
+                          } else if (canClaim) {
                             handleClaimLead(lead.id, lead.full_name || lead.name);
                           }
                         }}
@@ -8349,7 +8354,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                           borderBottom: '1px solid var(--color-border-light)', 
                           color: 'var(--color-text)', 
                           transition: 'background 0.2s',
-                          cursor: canClaim ? 'pointer' : 'default'
+                          cursor: (canClaim || isAdmin) ? 'pointer' : 'default'
                         }}
                       >
                         {isAdmin && (
@@ -8641,6 +8646,92 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
               </div>
             )}
           </div>
+        )}
+        {adminActionLead && (
+          <CustomModal
+            isOpen={!!adminActionLead}
+            onClose={() => setAdminActionLead(null)}
+            title={t('Thao tác dữ liệu Kho chung')}
+            width="420px"
+          >
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', alignItems: 'center', textAlign: 'center', padding: '0.5rem 0' }}>
+              <Avatar name={adminActionLead.full_name || t('Khách hàng')} size={64} />
+              <div>
+                <h4 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--color-text)', margin: '0 0 4px' }}>
+                  {adminActionLead.full_name || t('Khách hàng')}
+                </h4>
+                <p style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', margin: 0 }}>
+                  {t('SĐT:')} <strong>{adminActionLead.phone || '—'}</strong> | {t('Email:')} <strong>{adminActionLead.email || '—'}</strong>
+                </p>
+                {adminActionLead.released_to_kho_at && (
+                  <p style={{ fontSize: '0.75rem', color: 'var(--color-text-light)', margin: '4px 0 0' }}>
+                    {t('Thời gian ra kho:')} {new Date(adminActionLead.released_to_kho_at).toLocaleString('vi-VN')}
+                  </p>
+                )}
+              </div>
+
+              <div style={{ 
+                width: '100%', 
+                borderTop: '1px solid var(--color-border-light)', 
+                paddingTop: '1.25rem', 
+                display: 'flex', 
+                flexDirection: 'column', 
+                gap: '10px' 
+              }}>
+                {Number(adminActionLead.deleted_from_databank) === 1 ? (
+                  <button
+                    onClick={() => {
+                      handleRestorePublicLeads([adminActionLead.id]);
+                      setAdminActionLead(null);
+                    }}
+                    className="btn primary"
+                    style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', background: '#10b981' }}
+                  >
+                    <RotateCcw size={16} />
+                    {t('Khôi phục hiển thị Databank')}
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => {
+                      handleDeletePublicLeads([adminActionLead.id]);
+                      setAdminActionLead(null);
+                    }}
+                    className="btn danger"
+                    style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+                  >
+                    <Trash2 size={16} />
+                    {t('Ẩn/Xóa khỏi Databank')}
+                  </button>
+                )}
+
+                {Number(adminActionLead.is_blocked) === 1 ? (
+                  <button
+                    onClick={() => {
+                      handleUnblockPublicLeads([adminActionLead.id]);
+                      setAdminActionLead(null);
+                    }}
+                    className="btn outline"
+                    style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', borderColor: 'var(--color-border)' }}
+                  >
+                    <CheckSquare size={16} />
+                    {t('Hủy chặn vĩnh viễn')}
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => {
+                      handleBlockPublicLeads([adminActionLead.id]);
+                      setAdminActionLead(null);
+                    }}
+                    className="btn secondary"
+                    style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', backgroundColor: '#374151', color: '#fff' }}
+                  >
+                    <Ban size={16} />
+                    {t('Chặn vĩnh viễn liên hệ')}
+                  </button>
+                )}
+              </div>
+            </div>
+          </CustomModal>
         )}
       </div>
     );
