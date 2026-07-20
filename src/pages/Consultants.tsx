@@ -1267,7 +1267,6 @@ const ConsultantsInner = () => {
                   <tr>
                     <th style={{ position: 'sticky', top: 0, background: 'var(--color-bg)', zIndex: 10, borderBottom: '1px solid var(--color-border)' }}>{t('Tên TVV')}</th>
                     <th style={{ position: 'sticky', top: 0, background: 'var(--color-bg)', zIndex: 10, borderBottom: '1px solid var(--color-border)' }}>{t('Thông tin liên hệ')}</th>
-                    <th style={{ position: 'sticky', top: 0, background: 'var(--color-bg)', zIndex: 10, borderBottom: '1px solid var(--color-border)' }}>{t('Nhóm (Team)')}</th>
                     <th style={{ position: 'sticky', top: 0, background: 'var(--color-bg)', zIndex: 10, borderBottom: '1px solid var(--color-border)' }}>{t('Zalo Bot')}</th>
                     <th style={{ position: 'sticky', top: 0, background: 'var(--color-bg)', zIndex: 10, borderBottom: '1px solid var(--color-border)' }}>{t('Telegram Bot')}</th>
                     <th style={{ position: 'sticky', top: 0, background: 'var(--color-bg)', zIndex: 10, borderBottom: '1px solid var(--color-border)' }}>{t('Trạng thái')}</th>
@@ -1276,10 +1275,10 @@ const ConsultantsInner = () => {
                 </thead>
                 <tbody>
                   {loading ? (
-                    [...Array(5)].map((_, i) => <TableRowSkeleton key={i} cols={isWriteAuthorized ? 7 : 6} />)
+                    [...Array(5)].map((_, i) => <TableRowSkeleton key={i} cols={isWriteAuthorized ? 6 : 5} />)
                   ) : users.length === 0 ? (
                     <tr className="empty-state-row">
-                      <td colSpan={isWriteAuthorized ? 7 : 6}>
+                      <td colSpan={isWriteAuthorized ? 6 : 5}>
                       <div style={{ padding: '3rem 2rem', textAlign: 'center' }}>
                         <div style={{ width: 64, height: 64, borderRadius: '50%', background: 'var(--color-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.5rem', boxShadow: 'var(--shadow-sm)' }}>
                           <Users size={32} color="var(--color-text-muted)" />
@@ -1366,18 +1365,7 @@ const ConsultantsInner = () => {
                           )}
                         </div>
                       </td>
-                      <td data-label={t('Nhóm (Team)')} style={{ fontWeight: 500, fontSize: '0.8125rem', color: 'var(--color-text)' }}>
-                        {u.team_name ? (
-                          <div>
-                            <div style={{ fontWeight: 600 }}>{u.team_name}</div>
-                            {u.team_branch && (
-                              <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', marginTop: 2 }}>{u.team_branch}</div>
-                            )}
-                          </div>
-                        ) : (
-                          <span style={{ color: 'var(--color-text-muted)' }}>—</span>
-                        )}
-                      </td>
+
                       <td data-label={t('Zalo Bot')}>
                         {u.zalo_chat_id ? (
                           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
