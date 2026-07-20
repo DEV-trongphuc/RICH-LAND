@@ -58,6 +58,58 @@ const languagesList = [
   { code: 'zh', name: '简体中文', flag: cnFlag }
 ] as const;
 
+const LeadRecallTimer: React.FC<{
+  lastInteractionDate: string;
+  receivedAt?: string;
+  leadRecallMinutes: number;
+  defaultTimeoutMinutes?: number;
+  onTimeout?: () => void;
+  t: (key: string) => string;
+}> = ({ lastInteractionDate, receivedAt, leadRecallMinutes, defaultTimeoutMinutes = 2, onTimeout, t }) => {
+  const targetDate = React.useMemo(() => new Date(receivedAt || lastInteractionDate).getTime(), [lastInteractionDate, receivedAt]);
+  const leadRecallMins = leadRecallMinutes || defaultTimeoutMinutes;
+  const limitMs = leadRecallMins * 60 * 1000;
+
+  const [remainingMs, setRemainingMs] = React.useState(() => {
+    const elapsed = Date.now() - targetDate;
+    return limitMs - elapsed;
+  });
+
+  React.useEffect(() => {
+    if (leadRecallMins <= 0) return;
+
+    const timer = setInterval(() => {
+      const elapsed = Date.now() - targetDate;
+      const remaining = limitMs - elapsed;
+      setRemainingMs(remaining);
+
+      if (remaining <= 0) {
+        clearInterval(timer);
+        if (onTimeout) onTimeout();
+      }
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [targetDate, limitMs, leadRecallMins, onTimeout]);
+
+  if (leadRecallMins <= 0) return null;
+
+  if (remainingMs <= 0) {
+    return <span style={{ fontSize: '0.75rem', color: 'var(--color-danger)', fontWeight: 600 }}>{t('Quá hạn')}</span>;
+  }
+
+  const totalSecs = Math.max(0, Math.floor(remainingMs / 1000));
+  const mins = Math.floor(totalSecs / 60);
+  const secs = totalSecs % 60;
+  const formatted = `${mins}:${String(secs).padStart(2, '0')}`;
+
+  return (
+    <span style={{ fontSize: '0.75rem', color: '#f59e0b', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+      <Clock size={12} /> {formatted}
+    </span>
+  );
+};
+
 const DAY_LABELS: { [key: string]: string } = {
   "1": "Thứ 2",
   "2": "Thứ 3",
@@ -321,7 +373,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
   }, []);
 
   useEffect(() => {
-    const timer = setInterval(() => setNow(Date.now()), 1000);
+    const timer = setInterval(() => setNow(Date.now()), 10000);
     return () => clearInterval(timer);
   }, []);
 
@@ -1205,16 +1257,13 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
     if (!token) return;
     setLoadingCoops(true);
     try {
-      const res = await fetchAPI('cooperation-slips');
+      const res = await fetchAPI('cooperation-slips?pending_sign=1');
       if (res.success) {
         const slips = res.data || [];
-        const filtered = slips.filter((s: any) => {
-          const sh = s.shareholders?.find((x: any) => String(x.user_id) === String(displayUser?.id));
-          return s.status !== 'rejected' && sh && !sh.signed;
-        });
-        setPendingCoopSlips(filtered);
-        if (filtered.length > 0 && ['sale', 'sales'].includes(effectiveRole) && ['/', '/workspace'].includes(loc.pathname)) {
-          navigate(`/cooperation-slips?sign_id=${filtered[0].id}`);
+        setPendingCoopSlips(slips);
+        setPendingCoopsCount(slips.length);
+        if (slips.length > 0 && ['sale', 'sales'].includes(effectiveRole) && ['/', '/workspace'].includes(loc.pathname)) {
+          navigate(`/cooperation-slips?sign_id=${slips[0].id}`);
         }
       }
     } catch (e) {
@@ -1919,21 +1968,6 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
     }
   };
 
-  const loadCoopsPendingSign = async () => {
-    if (!token) return;
-    try {
-      const res = await fetchAPI('cooperation-slips');
-      if (res.success && Array.isArray(res.data)) {
-        const pending = res.data.filter((c: any) => 
-          (c.status === 'pending_signatures' || c.status === 'approved_pending_signatures') &&
-          c.shareholders?.some((sh: any) => sh.user_id === user?.id && !sh.signed)
-        );
-        setPendingCoopsCount(pending.length);
-      }
-    } catch (e) {
-      console.error("Error loading pending coops for signing:", e);
-    }
-  };
 
   const handleReleaseToDatabank = (leadId: number, contactId?: number) => {
     showConfirm({
@@ -1984,14 +2018,14 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
     if (!isSilent) setLoading(true);
     fetchPortalTasks();
     fetchPortalCoops();
-    loadCoopsPendingSign();
 
-
-    loadCheckInStatus();
-    loadNightShiftStatus();
-    loadWeekendShiftStatus();
-    loadHolidayShiftStatus();
-    loadWeeklyRegistrations();
+    if (!isSilent) {
+      loadCheckInStatus();
+      loadNightShiftStatus();
+      loadWeekendShiftStatus();
+      loadHolidayShiftStatus();
+      loadWeeklyRegistrations();
+    }
     try {
       let query = `get_sale_portal_data&search=${encodeURIComponent(search)}&round_id=${roundId}&date_mode=${dateMode}&sale_id=${saleIdFilter}`;
       if (dateMode === 'custom') {
@@ -3928,16 +3962,14 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
               `}</style>
               <h3 style={{ fontSize: '0.95rem', fontWeight: 800, color: 'var(--color-primary)', display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '1rem' }}>
                 <span className="pulsing-dot-red" />
-                {t('DATA MỚI ĐANG CHỜ TIẾP NHẬN')} ({pendingLeads.length})
+                {t('DATA MỚI ĐANG CHỜ TIẾN NHẬN')} ({pendingLeads.length})
               </h3>
               
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1rem' }}>
                 {pendingLeads.map((lead: any) => {
                   const leadRecallMins = Number(lead.lead_recall_minutes) || Number(sysSettings?.lead_response_timeout_minutes) || 2;
                   const limitMs = leadRecallMins * 60 * 1000;
-                  const elapsedMs = now - new Date(lead.received_at || lead.last_interaction_date).getTime();
-                  const remainingMs = limitMs - elapsedMs;
-                  const isOverdue = leadRecallMins > 0 && remainingMs <= 0;
+                  const isOverdue = leadRecallMins > 0 && (Date.now() - new Date(lead.received_at || lead.last_interaction_date).getTime()) >= limitMs;
 
                   return (
                     <div 
@@ -3987,7 +4019,14 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                           </span>
                           {leadRecallMins > 0 && (
                             <span style={{ fontSize: '0.72rem', color: isOverdue ? 'var(--color-danger)' : '#f59e0b', fontWeight: 700, marginTop: '2px' }}>
-                              {isOverdue ? t('Quá hạn tiếp nhận') : `${t('Còn lại:')} ${Math.floor(Math.max(0, remainingMs) / 60000)}m ${Math.floor((Math.max(0, remainingMs) % 60000) / 1000)}s`}
+                              {isOverdue ? t('Quá hạn tiếp nhận') : (
+                                <LeadRecallTimer
+                                  lastInteractionDate={lead.last_interaction_date}
+                                  receivedAt={lead.received_at}
+                                  leadRecallMinutes={leadRecallMins}
+                                  t={t}
+                                />
+                              )}
                             </span>
                           )}
                         </div>
@@ -7604,36 +7643,14 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                           <div onClick={e => e.stopPropagation()} style={{ borderTop: '1px solid var(--color-border-light)', paddingTop: '0.5rem', display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '12px' }}>
                             {effectiveRole === 'sale' && !Number(lead.is_accepted) && (
                               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                {(() => {
-                                  const leadRecallMins = Number(lead.lead_recall_minutes) || 0;
-                                  const limitMs = leadRecallMins * 60 * 1000;
-                                  const elapsedMs = now - new Date(lead.last_interaction_date).getTime();
-                                  const remainingMs = limitMs - elapsedMs;
-
-                                  if (leadRecallMins > 0 && remainingMs <= 0) {
-                                    return <span style={{ fontSize: '0.75rem', color: 'var(--color-danger)', fontWeight: 600 }}>{t('Quá hạn')}</span>;
-                                  }
-
-                                  const formatTime = (ms: number) => {
-                                    const totalSecs = Math.max(0, Math.floor(ms / 1000));
-                                    const mins = Math.floor(totalSecs / 60);
-                                    const secs = totalSecs % 60;
-                                    return `${mins}:${String(secs).padStart(2, '0')}`;
-                                  };
-
-                                  return (
-                                    <>
-                                      {leadRecallMins > 0 && (
-                                        <span style={{ fontSize: '0.75rem', color: '#f59e0b', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 4 }}>
-                                          <Clock size={12} /> {formatTime(remainingMs)}
-                                        </span>
-                                      )}
-                                      <button onClick={() => handleAcceptLead(lead.lead_id)} className="btn sm primary" style={{ height: 30, padding: '0 10px' }}>
-                                        {t('Tiếp nhận')}
-                                      </button>
-                                    </>
-                                  );
-                                })()}
+                                <LeadRecallTimer
+                                  lastInteractionDate={lead.last_interaction_date}
+                                  leadRecallMinutes={Number(lead.lead_recall_minutes) || 0}
+                                  t={t}
+                                />
+                                <button onClick={() => handleAcceptLead(lead.lead_id)} className="btn sm primary" style={{ height: 30, padding: '0 10px' }}>
+                                  {t('Tiếp nhận')}
+                                </button>
                               </div>
                             )}
 
@@ -7713,36 +7730,14 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
 
                             {effectiveRole === 'sale' && !Number(lead.is_accepted) && (
                               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }} onClick={e => e.stopPropagation()}>
-                                {(() => {
-                                  const leadRecallMins = Number(lead.lead_recall_minutes) || 0;
-                                  const limitMs = leadRecallMins * 60 * 1000;
-                                  const elapsedMs = now - new Date(lead.last_interaction_date).getTime();
-                                  const remainingMs = limitMs - elapsedMs;
-
-                                  if (leadRecallMins > 0 && remainingMs <= 0) {
-                                    return <span style={{ fontSize: '0.75rem', color: 'var(--color-danger)', fontWeight: 600 }}>{t('Quá hạn')}</span>;
-                                  }
-
-                                  const formatTime = (ms: number) => {
-                                    const totalSecs = Math.max(0, Math.floor(ms / 1000));
-                                    const mins = Math.floor(totalSecs / 60);
-                                    const secs = totalSecs % 60;
-                                    return `${mins}:${String(secs).padStart(2, '0')}`;
-                                  };
-
-                                  return (
-                                    <>
-                                      {leadRecallMins > 0 && (
-                                        <span style={{ fontSize: '0.75rem', color: '#f59e0b', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 4 }}>
-                                          <Clock size={12} /> {formatTime(remainingMs)}
-                                        </span>
-                                      )}
-                                      <button onClick={() => handleAcceptLead(lead.lead_id)} className="btn sm primary" style={{ height: 30 }}>
-                                        {t('Tiếp nhận')}
-                                      </button>
-                                    </>
-                                  );
-                                })()}
+                                <LeadRecallTimer
+                                  lastInteractionDate={lead.last_interaction_date}
+                                  leadRecallMinutes={Number(lead.lead_recall_minutes) || 0}
+                                  t={t}
+                                />
+                                <button onClick={() => handleAcceptLead(lead.lead_id)} className="btn sm primary" style={{ height: 30 }}>
+                                  {t('Tiếp nhận')}
+                                </button>
                               </div>
                             )}
 

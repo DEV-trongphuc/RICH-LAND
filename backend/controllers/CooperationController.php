@@ -162,6 +162,14 @@ class CooperationController {
             $sql .= ' AND 1=0';
         }
 
+        if (isset($_GET['pending_sign']) && $_GET['pending_sign'] === '1') {
+            $sql .= ' AND cs.status != "rejected" 
+                      AND JSON_CONTAINS(JSON_KEYS(CASE WHEN (cs.shares_json IS NOT NULL AND JSON_VALID(cs.shares_json)) THEN cs.shares_json ELSE "{}" END), JSON_QUOTE(CAST(? AS CHAR)))
+                      AND NOT JSON_CONTAINS(JSON_KEYS(CASE WHEN (cs.signatures_json IS NOT NULL AND JSON_VALID(cs.signatures_json)) THEN cs.signatures_json ELSE "{}" END), JSON_QUOTE(CAST(? AS CHAR)))';
+            $params[] = $auth['user_id'];
+            $params[] = $auth['user_id'];
+        }
+
         $sql .= " ORDER BY cs.created_at DESC";
 
         $stmt = $this->db->prepare($sql);
