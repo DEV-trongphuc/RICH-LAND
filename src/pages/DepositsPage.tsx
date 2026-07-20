@@ -82,8 +82,6 @@ export default function DepositsPage() {
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const ITEMS_PER_PAGE = 8;
 
@@ -219,7 +217,7 @@ export default function DepositsPage() {
         setUsersList(resUsr.data || []);
       }
     } catch (e: any) {
-      setError(e.message || 'Lỗi kết nối');
+      addToast(e.message || 'Lỗi kết nối', 'error');
     } finally {
       setLoading(false);
     }
@@ -330,14 +328,14 @@ export default function DepositsPage() {
   const handleCreateDeposit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedContactId || !selectedProjectId || !unitCode || !price) {
-      setError('Vui lòng điền đầy đủ thông tin khách hàng, dự án, căn hộ, giá bán');
+      addToast('Vui lòng điền đầy đủ thông tin khách hàng, dự án, căn hộ, giá bán', 'error');
       return;
     }
 
     // Verify milestones total sum
     const totalM = milestonesInput.reduce((acc, m) => acc + (parseFloat(m.amount) || 0), 0);
     if (Math.abs(totalM - parseFloat(price)) > 1) {
-      setError(`Tổng tiền các đợt (${totalM.toLocaleString()} VND) phải bằng đúng Giá bán (${parseFloat(price).toLocaleString()} VND)`);
+      addToast(`Tổng tiền các đợt (${totalM.toLocaleString()} VND) phải bằng đúng Giá bán (${parseFloat(price).toLocaleString()} VND)`, 'error');
       return;
     }
 
@@ -345,7 +343,7 @@ export default function DepositsPage() {
     if (!hasExistingCoop && isCooperation) {
       const sum = Object.values(collaboratorShares).reduce((acc, c) => acc + (c || 0), 0);
       if (sum !== 100) {
-        setError(`Tổng tỷ lệ chia sẻ hoa hồng phải bằng đúng 100% (Hiện tại là ${sum}%)`);
+        addToast(`Tổng tỷ lệ chia sẻ hoa hồng phải bằng đúng 100% (Hiện tại là ${sum}%)`, 'error');
         return;
       }
     }
@@ -374,7 +372,7 @@ export default function DepositsPage() {
       });
 
       if (res.success) {
-        setSuccess('Tạo phiếu cọc và lịch thanh toán thành công!');
+        addToast('Tạo phiếu cọc và lịch thanh toán thành công!', 'success');
         setIsCreateOpen(false);
         // Reset Form
         setSelectedContactId('');
@@ -388,10 +386,10 @@ export default function DepositsPage() {
         setCollaboratorShares({});
         loadData();
       } else {
-        setError(res.message || 'Lỗi tạo phiếu cọc');
+        addToast(res.message || 'Lỗi tạo phiếu cọc', 'error');
       }
     } catch (e: any) {
-      setError(e.message || 'Lỗi kết nối');
+      addToast(e.message || 'Lỗi kết nối', 'error');
     } finally {
       setIsSaving(false);
     }
@@ -419,13 +417,13 @@ export default function DepositsPage() {
 
       const res = await response.json();
       if (res.success) {
-        setSuccess('Tải ảnh UNC thành công, vui lòng chờ Admin duyệt');
+        addToast('Tải ảnh UNC thành công, vui lòng chờ Admin duyệt', 'success');
         loadData();
       } else {
-        setError(res.message || 'Lỗi tải UNC');
+        addToast(res.message || 'Lỗi tải UNC', 'error');
       }
     } catch (e: any) {
-      setError(e.message || 'Lỗi kết nối');
+      addToast(e.message || 'Lỗi kết nối', 'error');
     }
   };
 
@@ -433,13 +431,13 @@ export default function DepositsPage() {
     try {
       const res = await fetchAPI(`deposits/${depositId}/milestones/${milestoneId}/approve`, { method: 'POST' });
       if (res.success) {
-        setSuccess('Phê duyệt đợt tiền thành công!');
+        addToast('Phê duyệt đợt tiền thành công!', 'success');
         loadData();
       } else {
-        setError(res.message || 'Lỗi phê duyệt');
+        addToast(res.message || 'Lỗi phê duyệt', 'error');
       }
     } catch (e: any) {
-      setError(e.message || 'Lỗi kết nối');
+      addToast(e.message || 'Lỗi kết nối', 'error');
     }
   };
 
@@ -459,13 +457,13 @@ export default function DepositsPage() {
             body: JSON.stringify({ reason: reason || 'UNC không hợp lệ' })
           });
           if (res.success) {
-            setSuccess('Đã từ chối UNC thành công');
+            addToast('Đã từ chối UNC thành công', 'success');
             loadData();
           } else {
-            setError(res.message || 'Lỗi xử lý');
+            addToast(res.message || 'Lỗi xử lý', 'error');
           }
         } catch (e: any) {
-          setError(e.message || 'Lỗi kết nối');
+          addToast(e.message || 'Lỗi kết nối', 'error');
         }
       }
     });
@@ -488,14 +486,14 @@ export default function DepositsPage() {
       });
 
       if (res.success) {
-        setSuccess('Đã báo cáo bể cọc thành công');
+        addToast('Đã báo cáo bể cọc thành công', 'success');
         setIsCancelOpen(false);
         loadData();
       } else {
-        setError(res.message || 'Lỗi báo hủy');
+        addToast(res.message || 'Lỗi báo hủy', 'error');
       }
     } catch (e: any) {
-      setError(e.message || 'Lỗi kết nối');
+      addToast(e.message || 'Lỗi kết nối', 'error');
     } finally {
       setIsSaving(false);
     }
@@ -534,7 +532,7 @@ export default function DepositsPage() {
   const handleUploadUncFromModal = async (e: React.ChangeEvent<HTMLInputElement>, index: number) => {
     const m = tempMilestones[index];
     if (!m.id) {
-      setError('Vui lòng nhấn "Lưu lịch trình" trước khi tải UNC cho đợt thanh toán mới này.');
+      addToast('Vui lòng nhấn "Lưu lịch trình" trước khi tải UNC cho đợt thanh toán mới này.', 'error');
       return;
     }
     if (!e.target.files || e.target.files.length === 0) return;
@@ -558,16 +556,16 @@ export default function DepositsPage() {
 
       const res = await response.json();
       if (res.success) {
-        setSuccess('Tải ảnh UNC thành công, vui lòng chờ Admin duyệt');
+        addToast('Tải ảnh UNC thành công, vui lòng chờ Admin duyệt', 'success');
         const updated = [...tempMilestones];
         updated[index] = { ...updated[index], status: 'paid', unc_file_path: res.data?.unc_file_path || 'temp_path' };
         setTempMilestones(updated);
         loadData();
       } else {
-        setError(res.message || 'Lỗi tải UNC');
+        addToast(res.message || 'Lỗi tải UNC', 'error');
       }
     } catch (e: any) {
-      setError(e.message || 'Lỗi kết nối');
+      addToast(e.message || 'Lỗi kết nối', 'error');
     }
   };
 
@@ -577,16 +575,16 @@ export default function DepositsPage() {
     try {
       const res = await fetchAPI(`deposits/${selectedDepForManage.id}/milestones/${m.id}/approve`, { method: 'POST' });
       if (res.success) {
-        setSuccess('Phê duyệt đợt tiền thành công!');
+        addToast('Phê duyệt đợt tiền thành công!', 'success');
         const updated = [...tempMilestones];
         updated[index] = { ...updated[index], status: 'approved' };
         setTempMilestones(updated);
         loadData();
       } else {
-        setError(res.message || 'Lỗi phê duyệt');
+        addToast(res.message || 'Lỗi phê duyệt', 'error');
       }
     } catch (e: any) {
-      setError(e.message || 'Lỗi kết nối');
+      addToast(e.message || 'Lỗi kết nối', 'error');
     }
   };
 
@@ -608,16 +606,16 @@ export default function DepositsPage() {
             body: JSON.stringify({ reason: reason || 'UNC không hợp lệ' })
           });
           if (res.success) {
-            setSuccess('Đã từ chối UNC thành công');
+            addToast('Đã từ chối UNC thành công', 'success');
             const updated = [...tempMilestones];
             updated[index] = { ...updated[index], status: 'failed' };
             setTempMilestones(updated);
             loadData();
           } else {
-            setError(res.message || 'Lỗi xử lý');
+            addToast(res.message || 'Lỗi xử lý', 'error');
           }
         } catch (e: any) {
-          setError(e.message || 'Lỗi kết nối');
+          addToast(e.message || 'Lỗi kết nối', 'error');
         }
       }
     });
@@ -627,29 +625,27 @@ export default function DepositsPage() {
     if (!selectedDepForManage) return;
     for (let m of tempMilestones) {
       if (!m.milestone_name.trim()) {
-        setError('Tên đợt không được để trống.');
+        addToast('Tên đợt không được để trống.', 'error');
         return;
       }
     }
 
     const hasProof = tempMilestones.some(m => m.unc_file_path && m.unc_file_path.trim() !== '');
     if (!hasProof) {
-      setError('Lịch trình thanh toán bắt buộc phải có ít nhất 1 minh chứng.');
+      addToast('Lịch trình thanh toán bắt buộc phải có ít nhất 1 minh chứng.', 'error');
       return;
     }
 
     if (isAdmin && tempSharesData && tempSharesData.length > 0) {
       const totalPct = tempSharesData.reduce((sum, s) => sum + (Number(s.percentage) || 0), 0);
       if (totalPct !== 100) {
-        setError('Tổng tỷ lệ chia sẻ hoa hồng phải bằng 100%.');
+        addToast('Tổng tỷ lệ chia sẻ hoa hồng phải bằng 100%.', 'error');
         return;
       }
     }
 
     try {
       setIsSavingMilestones(true);
-      setError('');
-      setSuccess('');
       const payload: any = { milestones: tempMilestones };
       if (isAdmin) {
         payload.expected_commission = tempExpectedCommission;
@@ -663,14 +659,14 @@ export default function DepositsPage() {
         body: JSON.stringify(payload)
       });
       if (res.success) {
-        setSuccess('Cập nhật lịch trình thanh toán thành công!');
+        addToast('Cập nhật lịch trình thanh toán thành công!', 'success');
         setShowManageModal(false);
         loadData();
       } else {
-        setError(res.message || 'Lỗi khi lưu lịch trình');
+        addToast(res.message || 'Lỗi khi lưu lịch trình', 'error');
       }
     } catch (e: any) {
-      setError(e.message || 'Lỗi kết nối');
+      addToast(e.message || 'Lỗi kết nối', 'error');
     } finally {
       setIsSavingMilestones(false);
     }
@@ -679,20 +675,6 @@ export default function DepositsPage() {
   return (
     <div className="page-container anim-fade-up" style={{ color: 'var(--color-text)' }}>
       {/* Notifications */}
-      {error && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '1rem', background: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239, 68, 68, 0.2)', color: 'var(--color-danger)', borderRadius: '8px' }}>
-          <AlertCircle size={20} />
-          <span>{error}</span>
-          <button style={{ marginLeft: 'auto', background: 'none', border: 'none', color: 'inherit', cursor: 'pointer' }} onClick={() => setError('')}><X size={16} /></button>
-        </div>
-      )}
-      {success && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '1rem', background: 'rgba(16, 185, 129, 0.08)', border: '1px solid rgba(16, 185, 129, 0.2)', color: 'var(--color-success)', borderRadius: '8px' }}>
-          <Check size={20} />
-          <span>{success}</span>
-          <button style={{ marginLeft: 'auto', background: 'none', border: 'none', color: 'inherit', cursor: 'pointer' }} onClick={() => setSuccess('')}><X size={16} /></button>
-        </div>
-      )}
 
       {/* Header */}
       <div className="page-header">
