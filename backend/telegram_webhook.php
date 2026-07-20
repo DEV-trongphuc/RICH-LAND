@@ -306,6 +306,7 @@ if (strpos($textLower, '/tools') === 0 || strpos($textLower, '/report') === 0 ||
         }
         exit;
     }
+}
     // --- XỬ LÝ LIÊN KẾT TÀI KHOẢN TỰ ĐỘNG ---
     $cleanText = trim($text);
     $userId = 0;
