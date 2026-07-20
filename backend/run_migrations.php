@@ -18,7 +18,7 @@ $apply = (isset($_GET['apply']) && $_GET['apply'] === 'true')
       || (isset($_POST['execute_migration']) && $_POST['execute_migration'] === '1')
       || ($isCli && in_array('--apply', $argv));
 
-$targetVersion = 174;
+$targetVersion = 178;
 $currentVersion = 0;
 
 // Query current DB version
@@ -2892,6 +2892,50 @@ SQL;
             $conn->query("INSERT INTO system_settings (setting_key, setting_value) VALUES ('db_version', '177') ON DUPLICATE KEY UPDATE setting_value = '177'");
             $currentVersion = 177;
             $logMsg("Hoàn thành cập nhật phiên bản 177.", "success");
+        }
+
+        // Version 178 (Add performance composite indexes for scaling)
+        if ($currentVersion < 178) {
+            $logMsg("Đang chạy cập nhật phiên bản 178 (Tối ưu hóa chỉ mục liên hợp cho hệ thống lớn)...", "info");
+            
+            // 1. idx_contacts_owner_pipeline
+            $chkIdx1 = $conn->query("SHOW INDEX FROM contacts WHERE Key_name = 'idx_contacts_owner_pipeline'");
+            if ($chkIdx1 && $chkIdx1->num_rows === 0) {
+                $conn->query("ALTER TABLE contacts ADD INDEX idx_contacts_owner_pipeline (owner_id, pipeline_status, deleted_at)");
+                $logMsg("Đã tạo INDEX idx_contacts_owner_pipeline cho bảng contacts.", "success");
+            }
+            
+            // 2. idx_contacts_temp_created
+            $chkIdx2 = $conn->query("SHOW INDEX FROM contacts WHERE Key_name = 'idx_contacts_temp_created'");
+            if ($chkIdx2 && $chkIdx2->num_rows === 0) {
+                $conn->query("ALTER TABLE contacts ADD INDEX idx_contacts_temp_created (temperature, created_at)");
+                $logMsg("Đã tạo INDEX idx_contacts_temp_created cho bảng contacts.", "success");
+            }
+
+            // 3. idx_contacts_person_id
+            $chkIdx3 = $conn->query("SHOW INDEX FROM contacts WHERE Key_name = 'idx_contacts_person_id'");
+            if ($chkIdx3 && $chkIdx3->num_rows === 0) {
+                $conn->query("ALTER TABLE contacts ADD INDEX idx_contacts_person_id (person_id)");
+                $logMsg("Đã tạo INDEX idx_contacts_person_id cho bảng contacts.", "success");
+            }
+            
+            // 4. idx_audit_resource_date
+            $chkIdx4 = $conn->query("SHOW INDEX FROM audit_logs WHERE Key_name = 'idx_audit_resource_date'");
+            if ($chkIdx4 && $chkIdx4->num_rows === 0) {
+                $conn->query("ALTER TABLE audit_logs ADD INDEX idx_audit_resource_date (resource, resource_id, created_at)");
+                $logMsg("Đã tạo INDEX idx_audit_resource_date cho bảng audit_logs.", "success");
+            }
+
+            // 5. idx_leads_assign_status
+            $chkIdx5 = $conn->query("SHOW INDEX FROM leads WHERE Key_name = 'idx_leads_assign_status'");
+            if ($chkIdx5 && $chkIdx5->num_rows === 0) {
+                $conn->query("ALTER TABLE leads ADD INDEX idx_leads_assign_status (assigned_to, status)");
+                $logMsg("Đã tạo INDEX idx_leads_assign_status cho bảng leads.", "success");
+            }
+
+            $conn->query("INSERT INTO system_settings (setting_key, setting_value) VALUES ('db_version', '178') ON DUPLICATE KEY UPDATE setting_value = '178'");
+            $currentVersion = 178;
+            $logMsg("Hoàn thành cập nhật phiên bản 178.", "success");
         }
 
     $logMsg("Tự sửa đổi cấu trúc hoàn thành thành công.", "success");
