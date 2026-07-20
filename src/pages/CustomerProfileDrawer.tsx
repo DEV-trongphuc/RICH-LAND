@@ -2426,6 +2426,36 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
           });
         }
 
+        // Fetch and include deposit milestone payment proofs (UNC) dynamically
+        try {
+          const resDep = await fetchAPI('deposits');
+          if (resDep.success) {
+            const customerDeposits = (resDep.data || []).filter((d: any) => Number(d.contact_id) === Number(contact.id));
+            customerDeposits.forEach((dep: any) => {
+              const milestones = dep.milestones || [];
+              milestones.forEach((m: any) => {
+                if (m.attachment_url) {
+                  const fileUrl = m.attachment_url;
+                  const filename = fileUrl.split('/').pop() || `${m.name}_UNC`;
+                  const fileExt = filename.split('.').pop() || 'png';
+                  mappedDocs.push({
+                    id: `milestone_attachment_${m.id}`,
+                    name: `${m.name} - UNC.${fileExt}`,
+                    date: m.updated_at ? new Date(m.updated_at).toLocaleDateString('vi-VN') : new Date().toLocaleDateString('vi-VN'),
+                    size: '—',
+                    type: fileExt,
+                    path: fileUrl,
+                    category: 'UNC & Đợt thanh toán',
+                    isMilestoneAttachment: true
+                  });
+                }
+              });
+            });
+          }
+        } catch (depErr) {
+          console.error("Lỗi khi tải thông tin cọc cho tài liệu:", depErr);
+        }
+
         setDocs(mappedDocs);
       }
     } catch (e: any) {

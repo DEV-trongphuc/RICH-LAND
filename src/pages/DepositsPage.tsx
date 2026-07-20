@@ -24,6 +24,7 @@ interface Deposit {
   first_name: string;
   last_name: string;
   phone: string;
+  avatar_url?: string;
   project_name: string;
   creator_name: string;
   milestones: Milestone[];
@@ -702,8 +703,9 @@ export default function DepositsPage() {
                   return (
                     <tr 
                       key={dep.id} 
-                      style={{ borderBottom: '1px solid var(--color-border)', transition: 'background 0.2s' }}
+                      style={{ borderBottom: '1px solid var(--color-border)', transition: 'background 0.2s', cursor: 'pointer' }}
                       className="table-row-hover"
+                      onClick={() => handleOpenManageMilestones(dep)}
                     >
                       {/* Unit code */}
                       <td style={{ padding: '1rem', verticalAlign: 'middle' }}>
@@ -724,7 +726,7 @@ export default function DepositsPage() {
                       <td style={{ padding: '1rem', verticalAlign: 'middle' }}>
                         <div style={{ fontWeight: 600, color: 'var(--color-text)', fontSize: '0.875rem' }}>{dep.project_name}</div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px' }}>
-                          <Avatar name={`${dep.last_name || ''} ${dep.first_name || ''}`} size="sm" style={{ width: 18, height: 18, fontSize: 8 }} />
+                          <Avatar src={dep.avatar_url} name={`${dep.last_name || ''} ${dep.first_name || ''}`} size="sm" style={{ width: 24, height: 24, fontSize: 10 }} />
                           <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
                             Khách: <strong style={{ color: 'var(--color-text)' }}>{dep.last_name} {dep.first_name}</strong> ({dep.phone})
                           </span>
@@ -804,165 +806,60 @@ export default function DepositsPage() {
                       </td>
 
                       {/* Actions */}
-                      <td style={{ padding: '1rem', verticalAlign: 'middle', textAlign: 'right' }}>
-                        <div style={{ display: 'inline-flex', gap: '8px', alignItems: 'center', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
-                          {dep.milestones.map((m, idx) => {
-                            if (m.status === 'approved') return null;
-
-                            return (
-                              <div key={m.id} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                                {/* Upload button */}
-                                {dep.status !== 'cancelled' && (
-                                  <label
-                                    className="btn sm"
-                                    style={{
-                                      padding: '2px 6px',
-                                      height: '24px',
-                                      cursor: 'pointer',
-                                      display: 'inline-flex',
-                                      alignItems: 'center',
-                                      gap: '3px',
-                                      fontSize: '0.675rem',
-                                      fontWeight: 600,
-                                      borderRadius: '6px',
-                                      background: 'transparent',
-                                      border: '1px solid rgba(189, 29, 45, 0.25)',
-                                      color: 'var(--color-primary)'
-                                    }}
-                                    title={`Tải UNC Đợt ${idx + 1}`}
-                                  >
-                                    <Upload size={11} />
-                                    <span>Tải UNC Đ{idx + 1}</span>
-                                    <input
-                                      type="file"
-                                      accept="image/*"
-                                      style={{ display: 'none' }}
-                                      onChange={e => handleUploadUnc(e, dep.id, m.id)}
-                                    />
-                                  </label>
-                                )}
-
-                                {/* View UNC link if uploaded */}
-                                {m.unc_file_path && (
-                                  <a
-                                    href={`${import.meta.env.VITE_API_URL || '/backend'}/uploads/${m.unc_file_path}`}
-                                    target="_blank"
-                                    rel="noreferrer"
-                                    className="btn sm"
-                                    style={{
-                                      padding: '2px 6px',
-                                      height: '24px',
-                                      display: 'inline-flex',
-                                      alignItems: 'center',
-                                      gap: '3px',
-                                      fontSize: '0.675rem',
-                                      borderRadius: '6px',
-                                      background: 'rgba(59, 130, 246, 0.08)',
-                                      color: '#2563eb',
-                                      border: 'none',
-                                      fontWeight: 600
-                                    }}
-                                  >
-                                    <FileText size={11} />
-                                    <span>Xem UNC Đ{idx + 1}</span>
-                                  </a>
-                                )}
-
-                                {/* Admin approval / reject buttons */}
-                                {isAdmin && m.status === 'paid' && (
-                                  <div style={{ display: 'inline-flex', gap: '3px' }}>
-                                    <button
-                                      onClick={() => handleApproveMilestone(dep.id, m.id)}
-                                      style={{
-                                        padding: '0 6px',
-                                        height: '24px',
-                                        background: '#10b981',
-                                        color: 'white',
-                                        border: 'none',
-                                        display: 'inline-flex',
-                                        alignItems: 'center',
-                                        gap: '2px',
-                                        fontSize: '0.675rem',
-                                        fontWeight: 600,
-                                        borderRadius: '6px',
-                                        cursor: 'pointer'
-                                      }}
-                                    >
-                                      <Check size={11} />
-                                      Duyệt Đ{idx + 1}
-                                    </button>
-                                    <button
-                                      onClick={() => handleRejectMilestone(dep.id, m.id)}
-                                      style={{
-                                        padding: '0 6px',
-                                        height: '24px',
-                                        background: '#ef4444',
-                                        color: 'white',
-                                        border: 'none',
-                                        display: 'inline-flex',
-                                        alignItems: 'center',
-                                        gap: '2px',
-                                        fontSize: '0.675rem',
-                                        fontWeight: 600,
-                                        borderRadius: '6px',
-                                        cursor: 'pointer'
-                                      }}
-                                    >
-                                      <X size={11} />
-                                      Hủy Đ{idx + 1}
-                                    </button>
-                                  </div>
-                                )}
-                              </div>
-                            );
-                          })}
-
-                          {/* Manage Milestones Button */}
+                      <td style={{ padding: '1rem', verticalAlign: 'middle', textAlign: 'right' }} onClick={e => e.stopPropagation()}>
+                        <div style={{ display: 'inline-flex', gap: '8px', alignItems: 'center', justifyContent: 'flex-end' }}>
+                          {/* Update Button */}
                           {dep.status !== 'cancelled' && (
                             <button
-                              onClick={() => handleOpenManageMilestones(dep)}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleOpenManageMilestones(dep);
+                              }}
                               style={{
-                                padding: '2px 6px',
-                                height: '24px',
-                                color: 'var(--color-primary)',
-                                border: '1px solid rgba(189, 29, 45, 0.25)',
-                                borderRadius: '6px',
+                                padding: '6px 12px',
+                                height: '32px',
+                                background: 'rgba(59, 130, 246, 0.08)',
+                                border: '1px solid rgba(59, 130, 246, 0.2)',
+                                color: '#2563eb',
+                                borderRadius: '8px',
                                 display: 'inline-flex',
                                 alignItems: 'center',
-                                gap: '3px',
-                                background: 'transparent',
-                                fontSize: '0.675rem',
-                                fontWeight: 600,
-                                cursor: 'pointer'
+                                gap: '4px',
+                                fontSize: '0.75rem',
+                                fontWeight: 700,
+                                cursor: 'pointer',
+                                transition: 'all 0.15s ease'
                               }}
-                              title="Chi tiết & Lịch thanh toán"
                             >
-                              <Edit size={11} />
-                              <span>Lịch đợt</span>
+                              <Edit size={13} />
+                              <span>Cập nhật</span>
                             </button>
                           )}
 
                           {/* Cancellation Button */}
                           {dep.status !== 'cancelled' && (
                             <button
-                              onClick={() => handleOpenCancel(dep.id)}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleOpenCancel(dep.id);
+                              }}
                               style={{
-                                padding: '2px 6px',
-                                height: '24px',
+                                padding: '6px 12px',
+                                height: '32px',
+                                background: 'rgba(239, 68, 68, 0.08)',
+                                border: '1px solid rgba(239, 68, 68, 0.2)',
                                 color: '#ef4444',
-                                border: '1px solid rgba(239, 68, 68, 0.25)',
-                                borderRadius: '6px',
+                                borderRadius: '8px',
                                 display: 'inline-flex',
                                 alignItems: 'center',
-                                gap: '3px',
-                                background: 'transparent',
-                                fontSize: '0.675rem',
-                                fontWeight: 600,
-                                cursor: 'pointer'
+                                gap: '4px',
+                                fontSize: '0.75rem',
+                                fontWeight: 700,
+                                cursor: 'pointer',
+                                transition: 'all 0.15s ease'
                               }}
-                              title="Báo bể cọc"
                             >
-                              <Ban size={11} />
+                              <Ban size={13} />
                               <span>Bể cọc</span>
                             </button>
                           )}
@@ -1453,7 +1350,7 @@ export default function DepositsPage() {
         isOpen={showManageModal}
         onClose={() => setShowManageModal(false)}
         title={`Chi tiết & Lịch trình thanh toán - Căn ${selectedDepForManage?.unit_code}`}
-        width="650px"
+        width="820px"
       >
         {selectedDepForManage && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
@@ -1463,25 +1360,26 @@ export default function DepositsPage() {
               gridTemplateColumns: '1fr 1fr',
               gap: '0.75rem',
               background: 'var(--color-surface-hover)',
-              padding: '0.75rem 1rem',
+              padding: '1rem',
               borderRadius: '8px',
-              fontSize: '0.8125rem'
+              fontSize: '0.8125rem',
+              border: '1px solid var(--color-border-light)'
             }}>
               <div>
                 <p style={{ color: 'var(--color-text-muted)', marginBottom: 2 }}>Dự án</p>
-                <p style={{ fontWeight: 700 }}>{selectedDepForManage.project_name}</p>
+                <p style={{ fontWeight: 700, fontSize: '0.9rem' }}>{selectedDepForManage.project_name}</p>
               </div>
               <div>
                 <p style={{ color: 'var(--color-text-muted)', marginBottom: 2 }}>Khách hàng</p>
-                <p style={{ fontWeight: 700 }}>{selectedDepForManage.last_name} {selectedDepForManage.first_name} ({selectedDepForManage.phone})</p>
+                <p style={{ fontWeight: 700, fontSize: '0.9rem' }}>{selectedDepForManage.last_name} {selectedDepForManage.first_name} ({selectedDepForManage.phone})</p>
               </div>
               <div>
                 <p style={{ color: 'var(--color-text-muted)', marginBottom: 2 }}>Tổng giá trị căn hộ</p>
-                <p style={{ fontWeight: 700, color: 'var(--color-primary)' }}>{formatMoney(selectedDepForManage.price)}</p>
+                <p style={{ fontWeight: 700, color: 'var(--color-primary)', fontSize: '0.95rem' }}>{formatMoney(selectedDepForManage.price)}</p>
               </div>
               <div>
                 <p style={{ color: 'var(--color-text-muted)', marginBottom: 2 }}>Hoa hồng dự kiến</p>
-                <p style={{ fontWeight: 700, color: '#059669' }}>{formatMoney(selectedDepForManage.expected_commission)}</p>
+                <p style={{ fontWeight: 700, color: '#059669', fontSize: '0.95rem' }}>{formatMoney(selectedDepForManage.expected_commission)}</p>
               </div>
             </div>
 
@@ -1493,160 +1391,236 @@ export default function DepositsPage() {
                   className="btn sm"
                   onClick={handleAddMilestoneRow}
                   style={{
-                    padding: '2px 8px',
+                    padding: '4px 10px',
                     fontSize: '0.75rem',
                     background: 'rgba(16, 185, 129, 0.08)',
                     color: '#10b981',
-                    border: 'none',
+                    border: '1px solid rgba(16, 185, 129, 0.2)',
                     fontWeight: 700,
-                    borderRadius: '6px'
+                    borderRadius: '6px',
+                    cursor: 'pointer'
                   }}
                 >
                   + Thêm đợt
                 </button>
               </div>
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', maxHeight: '300px', overflowY: 'auto', paddingRight: 4 }}>
-                {tempMilestones.map((m, idx) => {
-                  const isLocked = m.status === 'approved' || m.status === 'paid';
-                  return (
-                    <div
-                      key={m.tempId || m.id}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '8px',
-                        padding: '8px',
-                        background: 'var(--color-surface)',
-                        border: '1px solid var(--color-border-light)',
-                        borderRadius: '6px'
-                      }}
-                    >
-                      {/* Name input */}
-                      <input
-                        type="text"
-                        placeholder="Tên đợt (ví dụ: Đợt 1 - Cọc giữ chỗ)"
-                        value={m.milestone_name}
-                        onChange={e => handleUpdateMilestoneField(idx, 'milestone_name', e.target.value)}
-                        className="input"
-                        style={{ flex: 2, height: '28px', fontSize: '0.75rem', padding: '0 6px' }}
-                      />
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                {/* Table Header */}
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: '2fr 1.2fr 1fr 1fr 1.5fr',
+                  gap: '12px',
+                  alignItems: 'center',
+                  padding: '8px 12px',
+                  background: 'var(--color-surface-hover)',
+                  borderBottom: '2px solid var(--color-border)',
+                  fontSize: '0.75rem',
+                  fontWeight: 700,
+                  color: 'var(--color-text-muted)',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.5px'
+                }}>
+                  <div>Tên đợt thanh toán</div>
+                  <div>Số tiền (VND)</div>
+                  <div style={{ textAlign: 'center' }}>Trạng thái</div>
+                  <div style={{ textAlign: 'center' }}>Minh chứng (UNC)</div>
+                  <div style={{ textAlign: 'right' }}>Thao tác</div>
+                </div>
 
-                      {/* Amount input */}
-                      <input
-                        type="number"
-                        placeholder="Số tiền"
-                        value={m.expected_amount || ''}
-                        disabled={isLocked}
-                        onChange={e => handleUpdateMilestoneField(idx, 'expected_amount', parseFloat(e.target.value) || 0)}
-                        className="input"
-                        style={{ width: '110px', height: '28px', fontSize: '0.75rem', padding: '0 6px' }}
-                      />
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', maxHeight: '350px', overflowY: 'auto', paddingRight: 4 }}>
+                  {tempMilestones.map((m, idx) => {
+                    const isLocked = m.status === 'approved' || m.status === 'paid';
+                    return (
+                      <div
+                        key={m.tempId || m.id}
+                        style={{
+                          display: 'grid',
+                          gridTemplateColumns: '2fr 1.2fr 1fr 1fr 1.5fr',
+                          gap: '12px',
+                          alignItems: 'center',
+                          padding: '10px 12px',
+                          background: 'var(--color-surface)',
+                          border: '1px solid var(--color-border-light)',
+                          borderRadius: '8px',
+                          transition: 'all 0.2s',
+                          boxShadow: '0 1px 2px rgba(0,0,0,0.02)'
+                        }}
+                      >
+                        {/* Name input */}
+                        <div>
+                          <input
+                            type="text"
+                            placeholder="Tên đợt (ví dụ: Đợt 1 - Cọc giữ chỗ)"
+                            value={m.milestone_name}
+                            onChange={e => handleUpdateMilestoneField(idx, 'milestone_name', e.target.value)}
+                            className="form-input"
+                            style={{ width: '100%', height: '34px', fontSize: '0.775rem', padding: '0 10px', borderRadius: '6px' }}
+                          />
+                        </div>
 
-                      {/* Status */}
-                      <span style={{
-                        fontSize: '0.675rem',
-                        fontWeight: 700,
-                        padding: '2px 6px',
-                        borderRadius: '4px',
-                        background: m.status === 'approved' ? '#10b98115' : m.status === 'paid' ? '#2563eb15' : m.status === 'failed' ? '#ef444415' : 'rgba(0,0,0,0.05)',
-                        color: m.status === 'approved' ? '#10b981' : m.status === 'paid' ? '#2563eb' : m.status === 'failed' ? '#ef4444' : '#6b7280',
-                        minWidth: '55px',
-                        textAlign: 'center'
-                      }}>
-                        {m.status === 'approved' ? 'Đã duyệt' : m.status === 'paid' ? 'Chờ duyệt' : m.status === 'failed' ? 'Từ chối' : 'Chờ nộp'}
-                      </span>
+                        {/* Amount input */}
+                        <div>
+                          <input
+                            type="number"
+                            placeholder="Số tiền"
+                            value={m.expected_amount || ''}
+                            disabled={isLocked}
+                            onChange={e => handleUpdateMilestoneField(idx, 'expected_amount', parseFloat(e.target.value) || 0)}
+                            className="form-input"
+                            style={{ width: '100%', height: '34px', fontSize: '0.775rem', padding: '0 10px', borderRadius: '6px' }}
+                          />
+                        </div>
 
-                      {/* Actions */}
-                      <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
-                        {/* Upload UNC */}
-                        {m.status !== 'approved' && (
-                          <label
-                            className="btn sm"
-                            style={{
-                              padding: '0 6px',
-                              height: '24px',
-                              cursor: 'pointer',
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              borderRadius: '6px',
-                              border: '1px solid rgba(0,0,0,0.1)',
-                              fontSize: '0.675rem'
-                            }}
-                            title="Tải UNC"
-                          >
-                            <Upload size={11} />
-                            <input
-                              type="file"
-                              accept="image/*"
-                              style={{ display: 'none' }}
-                              onChange={e => handleUploadUncFromModal(e, idx)}
-                            />
-                          </label>
-                        )}
+                        {/* Status */}
+                        <div style={{ display: 'flex', justifyContent: 'center' }}>
+                          <span style={{
+                            fontSize: '0.7rem',
+                            fontWeight: 700,
+                            padding: '4px 8px',
+                            borderRadius: '9999px',
+                            background: m.status === 'approved' ? 'rgba(16, 185, 129, 0.12)' : m.status === 'paid' ? 'rgba(37, 99, 235, 0.12)' : m.status === 'failed' ? 'rgba(239, 68, 68, 0.12)' : 'rgba(107, 114, 128, 0.12)',
+                            color: m.status === 'approved' ? '#10b981' : m.status === 'paid' ? '#2563eb' : m.status === 'failed' ? '#ef4444' : '#6b7280',
+                            textAlign: 'center',
+                            display: 'inline-block',
+                            whiteSpace: 'nowrap'
+                          }}>
+                            {m.status === 'approved' ? 'Đã duyệt' : m.status === 'paid' ? 'Chờ duyệt' : m.status === 'failed' ? 'Từ chối' : 'Chờ nộp'}
+                          </span>
+                        </div>
 
-                        {/* View UNC link */}
-                        {m.unc_file_path && (
-                          <a
-                            href={`${import.meta.env.VITE_API_URL || '/backend'}/uploads/${m.unc_file_path}`}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="btn sm"
-                            style={{
-                              padding: '0 6px',
-                              height: '24px',
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              borderRadius: '6px',
-                              background: 'rgba(59, 130, 246, 0.08)',
-                              color: '#2563eb',
-                              fontSize: '0.675rem'
-                            }}
-                            title="Xem UNC"
-                          >
-                            <Eye size={11} />
-                          </a>
-                        )}
-
-                        {/* Admin ticks */}
-                        {isAdmin && m.status === 'paid' && (
-                          <>
-                            <button
-                              onClick={() => handleApproveFromModal(idx)}
+                        {/* UNC proof */}
+                        <div style={{ display: 'flex', justifyContent: 'center', gap: '4px' }}>
+                          {/* Upload UNC */}
+                          {m.status !== 'approved' && (
+                            <label
                               className="btn sm"
-                              style={{ padding: '0 6px', height: '24px', background: '#10b981', color: 'white', border: 'none', borderRadius: '6px' }}
-                              title="Duyệt đợt tiền"
+                              style={{
+                                padding: '0 8px',
+                                height: '30px',
+                                cursor: 'pointer',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                borderRadius: '6px',
+                                border: '1px solid var(--color-border)',
+                                background: 'var(--color-surface)',
+                                color: 'var(--color-text-muted)',
+                                transition: 'all 0.15s'
+                              }}
+                              title="Tải ảnh chuyển khoản (UNC)"
                             >
-                              <Check size={11} />
-                            </button>
-                            <button
-                              onClick={() => handleRejectFromModal(idx)}
-                              className="btn sm"
-                              style={{ padding: '0 6px', height: '24px', background: '#ef4444', color: 'white', border: 'none', borderRadius: '6px' }}
-                              title="Từ chối UNC"
-                            >
-                              <X size={11} />
-                            </button>
-                          </>
-                        )}
+                              <Upload size={13} />
+                              <input
+                                type="file"
+                                accept="image/*"
+                                style={{ display: 'none' }}
+                                onChange={e => handleUploadUncFromModal(e, idx)}
+                              />
+                            </label>
+                          )}
 
-                        {/* Delete row */}
-                        {!isLocked && (
-                          <button
-                            onClick={() => handleRemoveMilestoneRow(idx)}
-                            className="btn sm"
-                            style={{ padding: '0 6px', height: '24px', color: '#ef4444', border: '1px solid rgba(239, 68, 68, 0.15)', background: 'transparent', borderRadius: '6px' }}
-                            title="Xóa đợt"
-                          >
-                            <Trash2 size={11} />
-                          </button>
-                        )}
+                          {/* View UNC link */}
+                          {m.unc_file_path && (
+                            <a
+                              href={`${import.meta.env.VITE_API_URL || '/backend'}/uploads/${m.unc_file_path}`}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="btn sm"
+                              style={{
+                                padding: '0 8px',
+                                height: '30px',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                borderRadius: '6px',
+                                background: 'rgba(59, 130, 246, 0.1)',
+                                color: '#2563eb',
+                                border: 'none',
+                                transition: 'all 0.15s'
+                              }}
+                              title="Xem UNC đã tải lên"
+                            >
+                              <Eye size={13} />
+                            </a>
+                          )}
+                        </div>
+
+                        {/* Actions (Approve/Reject or Delete) */}
+                        <div style={{ display: 'flex', gap: '4px', alignItems: 'center', justifyContent: 'flex-end' }}>
+                          {/* Admin approval/rejection */}
+                          {isAdmin && m.status === 'paid' && (
+                            <>
+                              <button
+                                onClick={() => handleApproveFromModal(idx)}
+                                style={{
+                                  padding: '0 8px',
+                                  height: '30px',
+                                  background: '#10b981',
+                                  color: 'white',
+                                  border: 'none',
+                                  borderRadius: '6px',
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  cursor: 'pointer',
+                                  fontSize: '0.7rem',
+                                  fontWeight: 700
+                                }}
+                                title="Phê duyệt đợt tiền này"
+                              >
+                                <Check size={13} style={{ marginRight: 2 }} /> Duyệt
+                              </button>
+                              <button
+                                onClick={() => handleRejectFromModal(idx)}
+                                style={{
+                                  padding: '0 8px',
+                                  height: '30px',
+                                  background: '#ef4444',
+                                  color: 'white',
+                                  border: 'none',
+                                  borderRadius: '6px',
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  cursor: 'pointer',
+                                  fontSize: '0.7rem',
+                                  fontWeight: 700
+                                }}
+                                title="Bác bỏ minh chứng"
+                              >
+                                <X size={13} style={{ marginRight: 2 }} /> Bác bỏ
+                              </button>
+                            </>
+                          )}
+
+                          {/* Delete row */}
+                          {!isLocked && (
+                            <button
+                              onClick={() => handleRemoveMilestoneRow(idx)}
+                              style={{
+                                padding: '0 8px',
+                                height: '30px',
+                                color: '#ef4444',
+                                border: '1px solid rgba(239, 68, 68, 0.2)',
+                                background: 'transparent',
+                                borderRadius: '6px',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                cursor: 'pointer',
+                                transition: 'all 0.15s'
+                              }}
+                              title="Xóa đợt thanh toán"
+                            >
+                              <Trash2 size={13} />
+                            </button>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  );
-                })}
+                    );
+                  })}
+                </div>
               </div>
             </div>
 
