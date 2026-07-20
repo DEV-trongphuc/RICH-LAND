@@ -124,6 +124,7 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
   const [dismissTelegramReminder, setDismissTelegramReminder] = useState(() => {
     return sessionStorage.getItem('dismiss_telegram_reminder') === '1';
   });
+  const [isTelegramModalOpen, setIsTelegramModalOpen] = useState(false);
 
   const [sysSettings, setSysSettings] = useState<any>(null);
   const managerBehaviorMode = user?.manager_behavior_mode || 'combined';
@@ -822,7 +823,7 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
                 Bạn chưa liên kết tài khoản với <b>Telegram Bot</b> để nhận thông báo chia số tự động. 
                 <span 
                   style={{ marginLeft: 8, textDecoration: 'underline', cursor: 'pointer', fontWeight: 700, color: '#fff' }} 
-                  onClick={() => navigate('/profile')}
+                  onClick={() => setIsTelegramModalOpen(true)}
                 >
                   Liên kết ngay →
                 </span>
@@ -2233,6 +2234,181 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
             <button className="btn primary" onClick={handleGlobalCheckIn} disabled={checkInSubmitting} style={{ backgroundColor: '#BD1D2D', border: 'none' }}>
               {checkInSubmitting ? t('Đang gửi...') : t('Xác nhận Chấm công')}
             </button>
+          </div>
+        </CustomModal>
+      )}
+
+      {isTelegramModalOpen && (
+        <CustomModal
+          isOpen={isTelegramModalOpen}
+          onClose={() => setIsTelegramModalOpen(false)}
+          title={t("LIÊN KẾT TELEGRAM BOT")}
+          width="480px"
+        >
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', padding: '0.25rem 0' }}>
+            <div style={{ display: 'flex', justifyContent: 'center', margin: '0.5rem 0' }}>
+              <div style={{
+                width: '64px',
+                height: '64px',
+                borderRadius: '50%',
+                background: 'linear-gradient(135deg, #0088cc 0%, #00a8ff 100%)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                boxShadow: '0 8px 16px rgba(0, 136, 204, 0.2)'
+              }}>
+                <img 
+                  src="https://upload.wikimedia.org/wikipedia/commons/thumb/8/82/Telegram_logo.svg/3840px-Telegram_logo.svg.png" 
+                  alt="Telegram" 
+                  style={{ width: 36, height: 36, filter: 'brightness(0) invert(1)' }} 
+                />
+              </div>
+            </div>
+
+            <div style={{ textAlign: 'center', marginBottom: '0.5rem' }}>
+              <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.9rem', color: 'var(--color-text-muted)' }}>
+                {t('Sử dụng mã liên kết dưới đây để nhận thông báo chia data khách hàng tức thời.')}
+              </p>
+              <div style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '8px',
+                backgroundColor: 'var(--color-bg-light)',
+                border: '1px solid var(--color-border)',
+                padding: '8px 16px',
+                borderRadius: '12px',
+                margin: '8px 0'
+              }}>
+                <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', fontWeight: 500 }}>MÃ LIÊN KẾT CỦA BẠN:</span>
+                <span style={{ fontSize: '1.15rem', fontWeight: 800, color: '#0088cc', letterSpacing: '1px' }}>
+                  {consultantProfile?.id || user?.id || ''}
+                </span>
+                <button
+                  onClick={() => {
+                    const idStr = String(consultantProfile?.id || user?.id || '');
+                    navigator.clipboard.writeText(idStr);
+                    toast.success(t('Đã sao chép mã liên kết!'));
+                  }}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    color: 'var(--color-text-muted)',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    padding: '2px',
+                    borderRadius: '4px',
+                    transition: 'all 0.2s'
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.color = '#0088cc'}
+                  onMouseLeave={(e) => e.currentTarget.style.color = 'var(--color-text-muted)'}
+                  title={t('Sao chép mã')}
+                >
+                  <Copy size={16} />
+                </button>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+              <div style={{
+                border: '1px solid rgba(0, 136, 204, 0.15)',
+                backgroundColor: 'rgba(0, 136, 204, 0.03)',
+                padding: '12px 16px',
+                borderRadius: '12px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '6px'
+              }}>
+                <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#0088cc', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  ⚡ CÁCH 1: LIÊN KẾT NHANH 1-CLICK (Khuyên dùng)
+                </span>
+                <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', lineHeight: '1.4' }}>
+                  Nhấp nút <b>"Liên kết nhanh 1-Click"</b> bên dưới để mở Telegram. Chỉ cần nhấn nút <b>"Bắt đầu" (Start)</b> là hoàn tất!
+                </span>
+              </div>
+
+              <div style={{
+                border: '1px solid var(--color-border)',
+                padding: '12px 16px',
+                borderRadius: '12px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '6px'
+              }}>
+                <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  💬 CÁCH 2: NHẬP THỦ CÔNG
+                </span>
+                <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', lineHeight: '1.4' }}>
+                  Mở Telegram Bot, gửi tin nhắn chứa mã ID <b>{consultantProfile?.id || user?.id || ''}</b> của bạn vào khung chat.
+                </span>
+              </div>
+            </div>
+
+            <div style={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '8px',
+              marginTop: '1rem',
+              borderTop: '1px solid var(--color-border-light)',
+              paddingTop: '1rem'
+            }}>
+              <a
+                href={`https://t.me/${sysSettings?.telegram_bot_username || 'richlandvietnam_bot'}?start=${consultantProfile?.id || user?.id || ''}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={() => setIsTelegramModalOpen(false)}
+                className="btn primary"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px',
+                  background: 'linear-gradient(90deg, #0088cc 0%, #00a8ff 100%)',
+                  border: 'none',
+                  color: '#fff',
+                  padding: '10px',
+                  borderRadius: '8px',
+                  fontWeight: 700,
+                  fontSize: '0.9rem',
+                  textDecoration: 'none',
+                  textAlign: 'center',
+                  boxShadow: '0 4px 12px rgba(0, 136, 204, 0.15)',
+                  transition: 'transform 0.2s'
+                }}
+              >
+                ⚡ LIÊN KẾT NHANH 1-CLICK
+              </a>
+
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <a
+                  href={`https://t.me/${sysSettings?.telegram_bot_username || 'richlandvietnam_bot'}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={() => setIsTelegramModalOpen(false)}
+                  className="btn outline"
+                  style={{
+                    flex: 1,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '6px',
+                    textDecoration: 'none',
+                    fontSize: '0.85rem',
+                    textAlign: 'center',
+                    padding: '8px'
+                  }}
+                >
+                  Mở Telegram Bot
+                </a>
+                <button
+                  className="btn outline"
+                  onClick={() => setIsTelegramModalOpen(false)}
+                  style={{ flex: 1, fontSize: '0.85rem', padding: '8px' }}
+                >
+                  {t('Đóng')}
+                </button>
+              </div>
+            </div>
           </div>
         </CustomModal>
       )}
