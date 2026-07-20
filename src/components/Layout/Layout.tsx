@@ -20,6 +20,7 @@ import {
   Ticket as TicketIcon, 
   Activity, 
   UserCheck, 
+  User,
   Clock, 
   ShieldAlert, 
   AlertTriangle, 
@@ -2062,13 +2063,16 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
       
       {/* Mobile Bottom Navigation Bar */}
       <div className="mobile-bottom-nav">
+        {/* 1. Dashboard */}
         <button 
-          className={`mobile-bottom-nav-item ${location.pathname === '/contacts' ? 'active' : ''}`}
-          onClick={() => navigate('/contacts')}
+          className={`mobile-bottom-nav-item ${(location.pathname === '/' || location.pathname === '/sale-portal') ? 'active' : ''}`}
+          onClick={() => navigate(isSales ? '/sale-portal' : '/')}
         >
-          <Users size={20} />
-          <span className="mobile-bottom-nav-item-label">{t('Khách hàng')}</span>
+          <Home size={20} />
+          <span className="mobile-bottom-nav-item-label">{t('Dashboard')}</span>
         </button>
+
+        {/* 2. Bàn làm việc */}
         <button 
           className={`mobile-bottom-nav-item ${location.pathname === '/workspace' ? 'active' : ''}`}
           onClick={() => navigate('/workspace')}
@@ -2076,19 +2080,34 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
           <CheckSquare size={20} />
           <span className="mobile-bottom-nav-item-label">{t('Bàn làm việc')}</span>
         </button>
+
+        {/* 3. Khách hàng (MoMo raised center button) */}
+        <button 
+          className={`mobile-bottom-nav-center-item ${location.pathname === '/contacts' ? 'active' : ''}`}
+          onClick={() => navigate('/contacts')}
+        >
+          <div className="raised-button-circle">
+            <Users size={24} />
+          </div>
+          <span className="mobile-bottom-nav-item-label">{t('Khách hàng')}</span>
+        </button>
+
+        {/* 4. Kho data */}
         <button 
           className={`mobile-bottom-nav-item ${location.pathname === '/databank' ? 'active' : ''}`}
           onClick={() => navigate('/databank')}
         >
           <Database size={20} />
-          <span className="mobile-bottom-nav-item-label">{t('Kho Data')}</span>
+          <span className="mobile-bottom-nav-item-label">{t('Kho databank')}</span>
         </button>
+
+        {/* 5. Tôi */}
         <button 
           className={`mobile-bottom-nav-item ${location.pathname === '/account' ? 'active' : ''}`}
           onClick={() => navigate('/account')}
         >
-          <UserCheck size={20} />
-          <span className="mobile-bottom-nav-item-label">{t('Tài khoản')}</span>
+          <User size={20} />
+          <span className="mobile-bottom-nav-item-label">{t('Tôi')}</span>
         </button>
       </div>
 
