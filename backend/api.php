@@ -2221,22 +2221,37 @@ switch ($action) {
 
             // 1. Count unaccepted leads
             $leadCount = 0;
-            $sqlLead = "
-                SELECT COUNT(*) as cnt
-                FROM distribution_logs dl
-                INNER JOIN (
-                    SELECT lead_id, MAX(id) as max_id 
-                    FROM distribution_logs 
-                    WHERE status != 'silent'
-                    GROUP BY lead_id, assigned_to
-                ) dl_max ON dl.id = dl_max.max_id
-                JOIN leads l ON dl.lead_id = l.id
-                WHERE " . ($isSale ? "dl.assigned_to = ?" : "1=1") . " AND l.is_accepted = 0
-            ";
+            if ($isSale) {
+                $sqlLead = "
+                    SELECT COUNT(*) as cnt
+                    FROM distribution_logs dl
+                    INNER JOIN (
+                        SELECT lead_id, MAX(id) as max_id 
+                        FROM distribution_logs 
+                        WHERE status != 'silent' AND assigned_to = ?
+                        GROUP BY lead_id
+                    ) dl_max ON dl.id = dl_max.max_id
+                    JOIN leads l ON dl.lead_id = l.id
+                    WHERE dl.assigned_to = ? AND l.is_accepted = 0
+                ";
+            } else {
+                $sqlLead = "
+                    SELECT COUNT(*) as cnt
+                    FROM distribution_logs dl
+                    INNER JOIN (
+                        SELECT lead_id, MAX(id) as max_id 
+                        FROM distribution_logs 
+                        WHERE status != 'silent'
+                        GROUP BY lead_id, assigned_to
+                    ) dl_max ON dl.id = dl_max.max_id
+                    JOIN leads l ON dl.lead_id = l.id
+                    WHERE l.is_accepted = 0
+                ";
+            }
             $stmt = $conn->prepare($sqlLead);
             if ($stmt) {
                 if ($isSale) {
-                    $stmt->bind_param("i", $saleId);
+                    $stmt->bind_param("ii", $saleId, $saleId);
                 }
                 $stmt->execute();
                 $leadCount = (int)($stmt->get_result()->fetch_assoc()['cnt'] ?? 0);

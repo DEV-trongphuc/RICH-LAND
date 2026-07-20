@@ -596,6 +596,7 @@ try {
             ],
             'distribution_logs' => [
                 'idx_dist_logs_max_id_lookup' => ['status', 'lead_id', 'assigned_to', 'id'],
+                'idx_dist_logs_assigned_status_lookup' => ['assigned_to', 'status', 'lead_id', 'id'],
             ],
         ];
 
