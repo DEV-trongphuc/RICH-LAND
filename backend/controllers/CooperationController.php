@@ -1251,4 +1251,76 @@ class CooperationController {
 
         respond(200, ['new_slip_id' => $newSlipId], 'Tạo phiếu điều chỉnh thành công');
     }
+
+    public function requestAdjustment(array $auth, int $id): void {
+        if ($auth['role'] === 'viewer') respond(403, null, 'Bạn không có quyền thực hiện thao tác này', false);
+        
+        $input = getBody();
+        $reason = trim($input['reason'] ?? '');
+        if (empty($reason)) {
+            respond(422, null, 'Vui lòng cung cấp lý do yêu cầu chỉnh sửa tỷ lệ', false);
+        }
+
+        // Fetch slip and client details
+        $stmt = $this->db->prepare("
+            SELECT cs.*, CONCAT(c.first_name, ' ', COALESCE(c.last_name,'')) as customer_name, c.owner_id
+            FROM cooperation_slips cs
+            JOIN contacts c ON cs.contact_id = c.id
+            WHERE cs.id = ?
+        ");
+        $stmt->execute([$id]);
+        $slip = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$slip) {
+            respond(404, null, 'Không tìm thấy phiếu hợp tác', false);
+        }
+
+        if ($slip['status'] !== 'approved') {
+            respond(400, null, 'Chỉ có thể gửi yêu cầu chỉnh sửa tỷ lệ từ phiếu hợp tác đã được duyệt', false);
+        }
+
+        // Notify admins, directors, and the owner
+        $stmtUsers = $this->db->prepare("
+            SELECT id, email, full_name 
+            FROM users 
+            WHERE tenant_id = ? AND role IN ('admin', 'superadmin', 'super_admin', 'manager', 'director')
+        ");
+        $stmtUsers->execute([$auth['tenant_id']]);
+        $usersToNotify = $stmtUsers->fetchAll(PDO::FETCH_ASSOC);
+
+        $creatorName = $auth['full_name'] ?? 'Nhân viên';
+        $emailSubject = "[RICH LAND] Yêu cầu chỉnh sửa tỷ lệ hoa hồng - Khách: " . $slip['customer_name'];
+        $emailTitle = "YÊU CẦU CHỈNH SỬA TỶ LỆ HOA HỒNG";
+        $emailContent = "Chào ban quản lý,<br/><br/>" .
+                        "Nhân viên <strong>" . htmlspecialchars($creatorName) . "</strong> đã gửi yêu cầu chỉnh sửa tỷ lệ chia sẻ hoa hồng cho Phiếu hợp tác #" . $id . " (Khách hàng: " . htmlspecialchars($slip['customer_name']) . ").<br/>" .
+                        "<strong>Lý do yêu cầu:</strong> <em>" . htmlspecialchars($reason) . "</em>.<br/><br/>" .
+                        "Vui lòng đăng nhập RICH LAND CRM để xem xét và cập nhật trực tiếp trên Phiếu cọc.";
+
+        $stmtNotif = $this->db->prepare("
+            INSERT INTO notifications (user_id, tenant_id, title, body, type, link) 
+            VALUES (?, ?, ?, ?, 'cooperation_status', ?)
+        ");
+
+        $cleanBody = strip_tags(str_replace(['<br/>', '<br>', '<strong>', '</strong>', '<em>', '</em>'], [' ', ' ', '', '', '', ''], $emailContent));
+
+        require_once __DIR__ . '/../mailer.php';
+        foreach ($usersToNotify as $u) {
+            // In-app
+            $stmtNotif->execute([
+                (int)$u['id'],
+                $auth['tenant_id'],
+                $emailSubject,
+                $cleanBody,
+                '/cooperation-slips'
+            ]);
+            // Email
+            if (!empty($u['email'])) {
+                sendEmailNotification($u['email'], $emailSubject, $emailTitle, $emailContent, '', false);
+            }
+        }
+
+        logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'REQUEST_COOP_ADJUSTMENT', 'cooperation_slip', $id, "Gửi yêu cầu chỉnh sửa tỷ lệ hoa hồng cho phiếu cọc. Lý do: $reason");
+
+        respond(200, null, 'Gửi yêu cầu chỉnh sửa tỷ lệ hoa hồng thành công');
+    }
 }

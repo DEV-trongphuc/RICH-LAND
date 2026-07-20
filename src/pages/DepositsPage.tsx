@@ -140,6 +140,15 @@ export default function DepositsPage() {
   const [selectedContact, setSelectedContact] = useState<any>(null);
   const [sharesData, setSharesData] = useState<any[]>([]);
 
+  const [tempExpectedCommission, setTempExpectedCommission] = useState<number>(0);
+  const [tempSharesData, setTempSharesData] = useState<any[]>([]);
+
+  const handleTempSharePercentChange = (sIdx: number, val: string) => {
+    const updated = [...tempSharesData];
+    updated[sIdx].percentage = parseInt(val) || 0;
+    setTempSharesData(updated);
+  };
+
   const handleOpenContactDrawer = async (contactId: number) => {
     try {
       const res = await fetchAPI(`contacts/${contactId}`);
@@ -156,6 +165,8 @@ export default function DepositsPage() {
   useEffect(() => {
     if (selectedDepForManage) {
       setSharesData([]);
+      setTempExpectedCommission(Number(selectedDepForManage.expected_commission) || 0);
+      setTempSharesData([]);
       fetchAPI(`cooperation-slips?contact_id=${selectedDepForManage.contact_id}`)
         .then(res => {
           const slips = res.data || res || [];
@@ -163,6 +174,7 @@ export default function DepositsPage() {
             const matchedSlip = slips.find((s: any) => Number(s.deposit_slip_id) === Number(selectedDepForManage.id)) || slips[0];
             if (matchedSlip && matchedSlip.shareholders) {
               setSharesData(matchedSlip.shareholders);
+              setTempSharesData(matchedSlip.shareholders.map((sh: any) => ({ ...sh })));
             }
           }
         })
@@ -626,13 +638,29 @@ export default function DepositsPage() {
       return;
     }
 
+    if (isAdmin && tempSharesData && tempSharesData.length > 0) {
+      const totalPct = tempSharesData.reduce((sum, s) => sum + (Number(s.percentage) || 0), 0);
+      if (totalPct !== 100) {
+        setError('Tổng tỷ lệ chia sẻ hoa hồng phải bằng 100%.');
+        return;
+      }
+    }
+
     try {
       setIsSavingMilestones(true);
       setError('');
       setSuccess('');
+      const payload: any = { milestones: tempMilestones };
+      if (isAdmin) {
+        payload.expected_commission = tempExpectedCommission;
+        payload.shares = tempSharesData.map(sh => ({
+          user_id: sh.user_id,
+          percentage: sh.percentage
+        }));
+      }
       const res = await fetchAPI(`deposits/${selectedDepForManage.id}/milestones`, {
         method: 'PUT',
-        body: JSON.stringify({ milestones: tempMilestones })
+        body: JSON.stringify(payload)
       });
       if (res.success) {
         setSuccess('Cập nhật lịch trình thanh toán thành công!');
@@ -1463,7 +1491,53 @@ export default function DepositsPage() {
                   <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 600, display: 'block', marginBottom: '6px' }}>
                     Nhân sự chăm sóc & tỷ lệ chia hoa hồng:
                   </span>
-                  {sharesData && sharesData.length > 0 ? (
+                  {isAdmin && tempSharesData && tempSharesData.length > 0 ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      {tempSharesData.map((sh, sIdx) => (
+                        <div
+                          key={sIdx}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            background: 'var(--color-surface)',
+                            border: '1px solid var(--color-border-light)',
+                            padding: '6px 12px',
+                            borderRadius: '8px',
+                            maxWidth: '360px'
+                          }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <Avatar src={sh.avatar} name={sh.name} size="sm" />
+                            <span style={{ fontSize: '0.8rem', fontWeight: 600 }}>{sh.name}</span>
+                          </div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                            <input
+                              type="number"
+                              min="0"
+                              max="100"
+                              value={sh.percentage}
+                              onChange={(e) => handleTempSharePercentChange(sIdx, e.target.value)}
+                              className="form-input"
+                              style={{ width: '60px', height: '28px', textAlign: 'center', padding: '2px', fontSize: '0.8rem' }}
+                            />
+                            <span style={{ fontSize: '0.8rem', fontWeight: 'bold' }}>%</span>
+                          </div>
+                        </div>
+                      ))}
+                      {(() => {
+                        const totalPct = tempSharesData.reduce((sum, s) => sum + (Number(s.percentage) || 0), 0);
+                        if (totalPct !== 100) {
+                          return (
+                            <span style={{ fontSize: '0.725rem', color: 'var(--color-danger)', fontWeight: 600 }}>
+                              * Tổng tỷ lệ phải bằng 100% (Hiện tại: {totalPct}%)
+                            </span>
+                          );
+                        }
+                        return null;
+                      })()}
+                    </div>
+                  ) : sharesData && sharesData.length > 0 ? (
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
                       {sharesData.map((sh, sIdx) => (
                         <div
@@ -1520,8 +1594,17 @@ export default function DepositsPage() {
                     <span style={{ fontWeight: 800, color: 'var(--color-primary)', fontSize: '1rem' }}>{formatMoney(selectedDepForManage.price)}</span>
                   </div>
                   <div>
-                    <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', display: 'block' }}>Hoa hồng dự kiến</span>
-                    <span style={{ fontWeight: 800, color: '#059669', fontSize: '1rem' }}>{formatMoney(selectedDepForManage.expected_commission)}</span>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', display: 'block', marginBottom: '4px' }}>Hoa hồng dự kiến</span>
+                    {isAdmin ? (
+                      <CurrencyInput
+                        value={tempExpectedCommission}
+                        onChange={(val) => setTempExpectedCommission(val || 0)}
+                        className="form-input"
+                        style={{ height: '32px', fontSize: '0.9rem', fontWeight: 800, color: '#059669', width: '100%', maxWidth: '160px' }}
+                      />
+                    ) : (
+                      <span style={{ fontWeight: 800, color: '#059669', fontSize: '1rem' }}>{formatMoney(selectedDepForManage.expected_commission)}</span>
+                    )}
                   </div>
                 </div>
               </div>

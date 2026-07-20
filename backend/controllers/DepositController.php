@@ -12,7 +12,8 @@ class DepositController {
         $tid = $auth['tenant_id'];
 
         $sql = "
-            SELECT d.*, c.first_name, c.last_name, c.phone, c.avatar_url, p.name as project_name, u.full_name as creator_name
+            SELECT d.*, c.first_name, c.last_name, c.phone, c.avatar_url, p.name as project_name, u.full_name as creator_name,
+                   c.owner_id as contact_owner_id
             FROM deposits d
             JOIN contacts c ON d.contact_id = c.id
             JOIN projects p ON d.project_id = p.id
@@ -43,7 +44,7 @@ class DepositController {
         
         $stmt = $this->db->prepare($sql);
         $stmt->execute($params);
-        $deposits = $stmt->fetchAll();
+        $deposits = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
         // Attach milestones using Eager Loading (prevent N+1 queries)
         if (!empty($deposits)) {
@@ -51,15 +52,62 @@ class DepositController {
             $inClause = implode(',', array_fill(0, count($depositIds), '?'));
             $stmtM = $this->db->prepare("SELECT * FROM deposit_milestones WHERE deposit_id IN ($inClause) ORDER BY id ASC");
             $stmtM->execute($depositIds);
-            $allMilestones = $stmtM->fetchAll();
+            $allMilestones = $stmtM->fetchAll(PDO::FETCH_ASSOC);
             
             // Map milestones to deposits
             $milestonesMap = [];
             foreach ($allMilestones as $m) {
                 $milestonesMap[$m['deposit_id']][] = $m;
             }
+
+            // Fetch cooperation slips for these contacts to resolve shareholders
+            $contactIds = array_column($deposits, 'contact_id');
+            $inContacts = implode(',', array_fill(0, count($contactIds), '?'));
+            $stmtCslips = $this->db->prepare("SELECT * FROM cooperation_slips WHERE contact_id IN ($inContacts)");
+            $stmtCslips->execute($contactIds);
+            $cSlips = $stmtCslips->fetchAll(PDO::FETCH_ASSOC);
+
+            // Load users map for details
+            $allUids = [];
+            foreach ($cSlips as $cs) {
+                $shares = json_decode($cs['shares_json'] ?? '[]', true) ?: [];
+                foreach (array_keys($shares) as $uid) {
+                    $allUids[] = (int)$uid;
+                }
+            }
+            $userMap = [];
+            if (!empty($allUids)) {
+                $inUsers = implode(',', array_fill(0, count($allUids), '?'));
+                $stmtU = $this->db->prepare("SELECT id, full_name, email, avatar_url FROM users WHERE id IN ($inUsers)");
+                $stmtU->execute(array_values(array_unique($allUids)));
+                $users = $stmtU->fetchAll(PDO::FETCH_ASSOC);
+                foreach ($users as $u) {
+                    $userMap[(int)$u['id']] = $u;
+                }
+            }
+
+            $slipsMap = [];
+            foreach ($cSlips as $cs) {
+                $shares = json_decode($cs['shares_json'] ?? '[]', true) ?: [];
+                $shareholdersDetails = [];
+                foreach ($shares as $uid => $percent) {
+                    $u = $userMap[(int)$uid] ?? null;
+                    if ($u) {
+                        $shareholdersDetails[] = [
+                            'user_id' => (int)$uid,
+                            'name' => $u['full_name'],
+                            'email' => $u['email'],
+                            'avatar' => $u['avatar_url'] ?? null,
+                            'percentage' => (int)$percent
+                        ];
+                    }
+                }
+                $slipsMap[(int)$cs['contact_id']] = $shareholdersDetails;
+            }
+
             foreach ($deposits as &$d) {
                 $d['milestones'] = $milestonesMap[$d['id']] ?? [];
+                $d['shareholders'] = $slipsMap[(int)$d['contact_id']] ?? [];
             }
         }
 
@@ -584,6 +632,93 @@ class DepositController {
 
         $this->db->beginTransaction();
         try {
+            $isAdmin = in_array(strtolower($auth['role'] ?? ''), ['admin', 'superadmin', 'super_admin', 'manager', 'director', 'assistant'], true);
+            if ($isAdmin) {
+                if (isset($input['expected_commission'])) {
+                    $expComm = (float)$input['expected_commission'];
+                    $stmtComm = $this->db->prepare("UPDATE deposits SET expected_commission = ? WHERE id = ?");
+                    $stmtComm->execute([$expComm, $id]);
+                }
+                
+                if (isset($input['shares'])) {
+                    $newSharesInput = $input['shares'];
+                    $sharesMap = [];
+                    $totalPercent = 0;
+                    foreach ($newSharesInput as $sInput) {
+                        $uId = (int)$sInput['user_id'];
+                        $pct = (int)$sInput['percentage'];
+                        if ($uId > 0 && $pct > 0) {
+                            $sharesMap[$uId] = $pct;
+                            $totalPercent += $pct;
+                        }
+                    }
+                    
+                    if ($totalPercent === 100 && !empty($sharesMap)) {
+                        $newSharesJson = json_encode($sharesMap);
+                        
+                        $stmtCs = $this->db->prepare("SELECT id, shares_json, contact_id FROM cooperation_slips WHERE deposit_slip_id = ? OR (deposit_slip_id IS NULL AND contact_id = ?) LIMIT 1");
+                        $stmtCs->execute([$id, $dep['contact_id']]);
+                        $coopRow = $stmtCs->fetch();
+                        
+                        if ($coopRow) {
+                            $coopId = (int)$coopRow['id'];
+                            
+                            $stmtUpdCs = $this->db->prepare("UPDATE cooperation_slips SET shares_json = ?, deposit_slip_id = ? WHERE id = ?");
+                            $stmtUpdCs->execute([$newSharesJson, $id, $coopId]);
+                            
+                            logActivity($this->db, $tid, $auth['user_id'], 'ADMIN_UPDATE_COOP_SHARES', 'cooperation_slip', $coopId, "Admin đã cập nhật lại tỷ lệ hoa hồng cho phiếu cọc #$id");
+
+                            $stmtCust = $this->db->prepare("SELECT CONCAT(first_name, ' ', COALESCE(last_name,'')) FROM contacts WHERE id = ?");
+                            $stmtCust->execute([$dep['contact_id']]);
+                            $custName = $stmtCust->fetchColumn() ?: "Khách hàng";
+
+                            $notifySubject = "[RICH LAND] Admin cập nhật tỷ lệ phân chia hoa hồng";
+                            $notifyTitle = "CẬP NHẬT TỶ LỆ PHÂN CHIA HOA HỒNG";
+                            
+                            $notifyContent = "Chào bạn,<br/><br/>" .
+                                             "Admin đã cập nhật tỷ lệ phân chia hoa hồng cho giao dịch đặt cọc của khách hàng <strong>" . htmlspecialchars($custName) . "</strong>.<br/>" .
+                                             "Hoa hồng giao dịch dự kiến: <strong>" . number_format(isset($expComm) ? $expComm : ($dep['expected_commission'] ?? 0)) . " VND</strong>.<br/><br/>" .
+                                             "<strong>Tỷ lệ phân chia mới:</strong><br/>";
+                                             
+                            $uIdsToNotify = array_keys($sharesMap);
+                            if (!empty($uIdsToNotify)) {
+                                $inUsers = implode(',', array_fill(0, count($uIdsToNotify), '?'));
+                                $stmtUsers = $this->db->prepare("SELECT id, full_name, email FROM users WHERE id IN ($inUsers)");
+                                $stmtUsers->execute($uIdsToNotify);
+                                $usersList = $stmtUsers->fetchAll();
+                                
+                                foreach ($usersList as $u) {
+                                    $uPercent = $sharesMap[$u['id']] ?? 0;
+                                    $uAmt = ((isset($expComm) ? $expComm : ($dep['expected_commission'] ?? 0)) * $uPercent) / 100;
+                                    $notifyContent .= "- " . htmlspecialchars($u['full_name']) . ": <strong>" . $uPercent . "%</strong> (~ " . number_format($uAmt) . " VND)<br/>";
+                                }
+                                
+                                $stmtNotif = $this->db->prepare("
+                                    INSERT INTO notifications (user_id, tenant_id, title, body, type, link) 
+                                    VALUES (?, ?, ?, ?, 'cooperation_status', ?)
+                                ");
+                                
+                                require_once __DIR__ . '/../mailer.php';
+                                foreach ($usersList as $u) {
+                                    $cleanBody = strip_tags(str_replace(['<br/>', '<br>', '<strong>', '</strong>', '<em>', '</em>'], [' ', ' ', '', '', '', ''], $notifyContent));
+                                    $stmtNotif->execute([
+                                        (int)$u['id'],
+                                        $tid,
+                                        $notifySubject,
+                                        $cleanBody,
+                                        '/cooperation-slips'
+                                    ]);
+                                    
+                                    if (!empty($u['email'])) {
+                                        sendEmailNotification($u['email'], $notifySubject, $notifyTitle, $notifyContent, '', false);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
             // Get current milestones in database
             $stmtM = $this->db->prepare("SELECT id, status FROM deposit_milestones WHERE deposit_id = ?");
             $stmtM->execute([$id]);

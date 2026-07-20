@@ -36,6 +36,13 @@ interface CooperationSlip {
   expected_revenue?: number;
   actual_revenue?: number;
   shareholders: Shareholder[];
+  approver?: {
+    user_id: number;
+    name: string;
+    email: string;
+    avatar?: string | null;
+    approved_at: string;
+  } | null;
 }
 
 interface Shareholder {
@@ -165,6 +172,10 @@ export default function CooperationSlipsPage() {
     value: '',
     onConfirm: () => {}
   });
+
+  const [requestAdjustmentSlip, setRequestAdjustmentSlip] = useState<any>(null);
+  const [requestAdjustmentReason, setRequestAdjustmentReason] = useState('');
+  const [isSubmittingReq, setIsSubmittingReq] = useState(false);
 
   const getInitials = (name: string) => {
     if (!name) return 'U';
@@ -706,6 +717,37 @@ export default function CooperationSlipsPage() {
     });
   };
 
+  const handleOpenRequestAdjustmentModal = (slip: any) => {
+    setRequestAdjustmentSlip(slip);
+    setRequestAdjustmentReason('');
+  };
+
+  const handleConfirmRequestAdjustment = async () => {
+    if (!requestAdjustmentSlip) return;
+    if (!requestAdjustmentReason.trim()) {
+      addToast('Vui lòng nhập lý do yêu cầu chỉnh sửa', 'error');
+      return;
+    }
+    try {
+      setIsSubmittingReq(true);
+      const res = await fetchAPI(`cooperation-slips/${requestAdjustmentSlip.id}/request-adjustment`, {
+        method: 'POST',
+        body: JSON.stringify({ reason: requestAdjustmentReason })
+      });
+      if (res.success) {
+        addToast('Gửi yêu cầu chỉnh sửa tỷ lệ thành công!', 'success');
+        setRequestAdjustmentSlip(null);
+        loadData();
+      } else {
+        addToast(res.message || 'Lỗi gửi yêu cầu', 'error');
+      }
+    } catch (e: any) {
+      addToast(e.message || 'Lỗi kết nối', 'error');
+    } finally {
+      setIsSubmittingReq(false);
+    }
+  };
+
   const handleCreateAdjustment = (slipId: number) => {
     showConfirm({
       title: 'Xác nhận tạo phiếu điều chỉnh',
@@ -942,6 +984,17 @@ export default function CooperationSlipsPage() {
                             {slip.last_name} {slip.first_name}
                           </span>
                         </div>
+                        {slip.status === 'approved' && slip.approver && (
+                          <>
+                            <span style={{ color: 'var(--color-text-muted)', fontSize: '0.8rem' }}>•</span>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.75rem', color: 'var(--color-text-muted)', background: 'rgba(16, 185, 129, 0.05)', padding: '2px 8px', borderRadius: '4px', border: '1px solid rgba(16, 185, 129, 0.15)' }}>
+                              <span style={{ fontWeight: 600, color: 'var(--color-success)' }}>Duyệt bởi:</span>
+                              <Avatar name={slip.approver.name} src={slip.approver.avatar} size={14} />
+                              <span style={{ fontWeight: 700, color: 'var(--color-text)' }}>{slip.approver.name}</span>
+                              <span>lúc {new Date(slip.approver.approved_at).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })} - {new Date(slip.approver.approved_at).toLocaleDateString('vi-VN')}</span>
+                            </div>
+                          </>
+                        )}
                       </div>
                     </div>
 
@@ -1112,28 +1165,51 @@ export default function CooperationSlipsPage() {
                         </div>
                       )}
 
-                      {/* For approved slips, show Create Adjustment button (Luật 4.12) */}
+                      {/* For approved slips, show Create Adjustment button (Luật 4.12) or Request Adjustment button */}
                       {slip.status === 'approved' && (isApprover || isShareholder || String(slip.created_by) === String(user?.id)) && (
-                        <button
-                          onClick={() => handleCreateAdjustment(slip.id)}
-                          style={{
-                            height: '38px',
-                            padding: '0 16px',
-                            fontSize: '0.85rem',
-                            borderRadius: '8px',
-                            fontWeight: 600,
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            cursor: 'pointer',
-                            border: '1px solid var(--color-warning)',
-                            background: 'rgba(245, 158, 11, 0.08)',
-                            color: 'var(--color-warning)',
-                            transition: 'all 0.2s'
-                          }}
-                        >
-                          Tạo phiếu điều chỉnh (Adjustment)
-                        </button>
+                        isApprover ? (
+                          <button
+                            onClick={() => handleCreateAdjustment(slip.id)}
+                            style={{
+                              height: '38px',
+                              padding: '0 16px',
+                              fontSize: '0.85rem',
+                              borderRadius: '8px',
+                              fontWeight: 600,
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              cursor: 'pointer',
+                              border: '1px solid var(--color-warning)',
+                              background: 'rgba(245, 158, 11, 0.08)',
+                              color: 'var(--color-warning)',
+                              transition: 'all 0.2s'
+                            }}
+                          >
+                            Tạo phiếu điều chỉnh (Adjustment)
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => handleOpenRequestAdjustmentModal(slip)}
+                            style={{
+                              height: '38px',
+                              padding: '0 16px',
+                              fontSize: '0.85rem',
+                              borderRadius: '8px',
+                              fontWeight: 600,
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              cursor: 'pointer',
+                              border: '1px solid var(--color-primary)',
+                              background: 'rgba(163, 20, 34, 0.04)',
+                              color: 'var(--color-primary)',
+                              transition: 'all 0.2s'
+                            }}
+                          >
+                            Yêu cầu chỉnh sửa tỷ lệ
+                          </button>
+                        )
                       )}
 
                       {/* Request change if pending manager approval */}
@@ -1846,6 +1922,36 @@ export default function CooperationSlipsPage() {
                 style={{ height: '36px', padding: '0 16px', background: 'var(--color-danger)', border: 'none', color: 'white' }}
               >
                 Xác nhận từ chối
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* Yêu cầu chỉnh sửa tỷ lệ hoa hồng Modal */}
+      {requestAdjustmentSlip && createPortal(
+        <div style={{ position: 'fixed', inset: 0, zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0, 0, 0, 0.6)', backdropFilter: 'blur(4px)', padding: '1rem' }}>
+          <div className="card animate-fade" style={{ maxWidth: '500px', width: '100%', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+            <h3 style={{ fontSize: '1.125rem', fontWeight: 700, color: 'var(--color-text)' }}>Yêu cầu chỉnh sửa tỷ lệ hoa hồng</h3>
+            <p style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', margin: 0 }}>
+              Nhập lý do chi tiết vì sao bạn cần thay đổi tỷ lệ hoặc số tiền hoa hồng của giao dịch này. Ban quản lý (Admin/Manager) sẽ xem xét và cập nhật trực tiếp trên hệ thống.
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              <label style={{ fontSize: '0.8rem', fontWeight: 600 }}>Lý do chỉnh sửa *</label>
+              <textarea
+                className="form-input"
+                rows={4}
+                placeholder="Ví dụ: Bổ sung thêm Sale Nguyễn Văn A vào chăm sóc chung và chia lại tỷ lệ..."
+                value={requestAdjustmentReason}
+                onChange={(e) => setRequestAdjustmentReason(e.target.value)}
+                style={{ width: '100%', padding: '8px 12px', fontSize: '0.875rem' }}
+              />
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '0.5rem' }}>
+              <button className="btn outline" onClick={() => setRequestAdjustmentSlip(null)} disabled={isSubmittingReq}>Hủy</button>
+              <button className="btn primary" onClick={handleConfirmRequestAdjustment} disabled={isSubmittingReq} style={{ background: 'var(--color-primary)', color: 'white', border: 'none' }}>
+                {isSubmittingReq ? 'Đang gửi...' : 'Gửi yêu cầu'}
               </button>
             </div>
           </div>

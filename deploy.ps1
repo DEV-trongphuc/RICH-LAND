@@ -17,10 +17,17 @@ tar -czf frontend.tar.gz -C dist .
 tar -czf backend.tar.gz -C backend .
 
 Write-Host "1b. Uploading compressed archives via SCP..." -ForegroundColor Yellow
-scp -4 -P 2210 -o StrictHostKeyChecking=no frontend.tar.gz backend.tar.gz vhvxoigh@chiefaiofficer.vn:/home/vhvxoigh/open.domation.net/richland/
+scp -4 -P 2210 -o StrictHostKeyChecking=no frontend.tar.gz vhvxoigh@chiefaiofficer.vn:/home/vhvxoigh/open.domation.net/richland/
 if ($LASTEXITCODE -ne 0) {
     Remove-Item frontend.tar.gz, backend.tar.gz -ErrorAction SilentlyContinue
-    Write-Host "ERROR: Failed to upload compressed deployment packages." -ForegroundColor Red
+    Write-Host "ERROR: Failed to upload frontend package." -ForegroundColor Red
+    exit $LASTEXITCODE
+}
+
+scp -4 -P 2210 -o StrictHostKeyChecking=no backend.tar.gz vhvxoigh@chiefaiofficer.vn:/home/vhvxoigh/open.domation.net/richland/
+if ($LASTEXITCODE -ne 0) {
+    Remove-Item frontend.tar.gz, backend.tar.gz -ErrorAction SilentlyContinue
+    Write-Host "ERROR: Failed to upload backend package." -ForegroundColor Red
     exit $LASTEXITCODE
 }
 

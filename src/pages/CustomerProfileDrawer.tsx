@@ -934,6 +934,15 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
   const [tempMilestones, setTempMilestones] = useState<any[]>([]);
   const [isSavingMilestones, setIsSavingMilestones] = useState(false);
   const [sharesData, setSharesData] = useState<any[]>([]);
+  
+  const [tempExpectedCommission, setTempExpectedCommission] = useState<number>(0);
+  const [tempSharesData, setTempSharesData] = useState<any[]>([]);
+
+  const handleTempSharePercentChange = (sIdx: number, val: string) => {
+    const updated = [...tempSharesData];
+    updated[sIdx].percentage = parseInt(val) || 0;
+    setTempSharesData(updated);
+  };
   const [showDealModal, setShowDealModal] = useState(false);
   const [depositProjectId, setDepositProjectId] = useState('');
   const [depositUnitCode, setDepositUnitCode] = useState('');
@@ -950,6 +959,8 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
   useEffect(() => {
     if (selectedDepForManage) {
       setSharesData([]);
+      setTempExpectedCommission(Number(selectedDepForManage.expected_commission) || 0);
+      setTempSharesData([]);
       api.get(`/cooperation-slips?contact_id=${selectedDepForManage.contact_id}`)
         .then(res => {
           const slips = res.data?.data || res.data || [];
@@ -957,6 +968,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
             const matchedSlip = slips.find((s: any) => Number(s.deposit_slip_id) === Number(selectedDepForManage.id)) || slips[0];
             if (matchedSlip && matchedSlip.shareholders) {
               setSharesData(matchedSlip.shareholders);
+              setTempSharesData(matchedSlip.shareholders.map((sh: any) => ({ ...sh })));
             }
           }
         })
@@ -3725,16 +3737,33 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
       return;
     }
 
+    const isAdmin = currentUser && ['admin', 'superadmin', 'super_admin', 'assistant', 'manager', 'director'].includes(currentUser.role);
+    if (isAdmin && tempSharesData && tempSharesData.length > 0) {
+      const totalPct = tempSharesData.reduce((sum, s) => sum + (Number(s.percentage) || 0), 0);
+      if (totalPct !== 100) {
+        addToast('Tổng tỷ lệ chia sẻ hoa hồng phải bằng 100%.', 'error');
+        return;
+      }
+    }
+
     try {
       setIsSavingMilestones(true);
-      const res = await api.put(`/deposits/${selectedDepForManage.id}/milestones`, {
+      const payload: any = {
         milestones: tempMilestones.map(m => ({
           id: m.id || null,
           milestone_name: m.milestone_name,
           expected_amount: m.expected_amount,
           status: m.status
         }))
-      });
+      };
+      if (isAdmin) {
+        payload.expected_commission = tempExpectedCommission;
+        payload.shares = tempSharesData.map(sh => ({
+          user_id: sh.user_id,
+          percentage: sh.percentage
+        }));
+      }
+      const res = await api.put(`/deposits/${selectedDepForManage.id}/milestones`, payload);
 
       if (res.data?.success || res.data) {
         addToast('Lưu lịch trình thanh toán thành công!', 'success');
@@ -11923,42 +11952,97 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                   <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 600, display: 'block', marginBottom: '6px' }}>
                     Nhân sự chăm sóc & tỷ lệ chia hoa hồng:
                   </span>
-                  {sharesData && sharesData.length > 0 ? (
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                      {sharesData.map((sh, sIdx) => (
-                        <div
-                          key={sIdx}
-                          style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '6px',
-                            background: 'var(--color-surface)',
-                            border: '1px solid var(--color-border-light)',
-                            padding: '3px 8px',
-                            borderRadius: '16px',
-                            boxShadow: 'var(--shadow-sm)'
-                          }}
-                        >
-                          <Avatar src={sh.avatar} name={sh.name} size="sm" />
-                          <span style={{ fontSize: '0.75rem', fontWeight: 600 }}>{sh.name}</span>
-                          <span style={{
-                            fontSize: '0.7rem',
-                            fontWeight: 700,
-                            background: 'rgba(59, 130, 246, 0.1)',
-                            color: '#2563eb',
-                            padding: '1px 5px',
-                            borderRadius: '8px'
-                          }}>
-                            {sh.percentage}%
-                          </span>
+                  {(() => {
+                    const isAdmin = currentUser && ['admin', 'superadmin', 'super_admin', 'assistant', 'manager', 'director'].includes(currentUser.role);
+                    if (isAdmin && tempSharesData && tempSharesData.length > 0) {
+                      return (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                          {tempSharesData.map((sh, sIdx) => (
+                            <div
+                              key={sIdx}
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                background: 'var(--color-surface)',
+                                border: '1px solid var(--color-border-light)',
+                                padding: '6px 12px',
+                                borderRadius: '8px',
+                                maxWidth: '360px'
+                              }}
+                            >
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <Avatar src={sh.avatar} name={sh.name} size="sm" />
+                                <span style={{ fontSize: '0.8rem', fontWeight: 600 }}>{sh.name}</span>
+                              </div>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                <input
+                                  type="number"
+                                  min="0"
+                                  max="100"
+                                  value={sh.percentage}
+                                  onChange={(e) => handleTempSharePercentChange(sIdx, e.target.value)}
+                                  className="form-input"
+                                  style={{ width: '60px', height: '28px', textAlign: 'center', padding: '2px', fontSize: '0.8rem' }}
+                                />
+                                <span style={{ fontSize: '0.8rem', fontWeight: 'bold' }}>%</span>
+                              </div>
+                            </div>
+                          ))}
+                          {(() => {
+                            const totalPct = tempSharesData.reduce((sum, s) => sum + (Number(s.percentage) || 0), 0);
+                            if (totalPct !== 100) {
+                              return (
+                                <span style={{ fontSize: '0.725rem', color: 'var(--color-danger)', fontWeight: 600 }}>
+                                  * Tổng tỷ lệ phải bằng 100% (Hiện tại: {totalPct}%)
+                                </span>
+                              );
+                            }
+                            return null;
+                          })()}
                         </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontStyle: 'italic' }}>
-                      Bán độc lập (Chỉ có chủ sở hữu cọc)
-                    </span>
-                  )}
+                      );
+                    }
+                    if (sharesData && sharesData.length > 0) {
+                      return (
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                          {sharesData.map((sh, sIdx) => (
+                            <div
+                              key={sIdx}
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '6px',
+                                background: 'var(--color-surface)',
+                                border: '1px solid var(--color-border-light)',
+                                padding: '3px 8px',
+                                borderRadius: '16px',
+                                boxShadow: 'var(--shadow-sm)'
+                              }}
+                            >
+                              <Avatar src={sh.avatar} name={sh.name} size="sm" />
+                              <span style={{ fontSize: '0.75rem', fontWeight: 600 }}>{sh.name}</span>
+                              <span style={{
+                                fontSize: '0.7rem',
+                                fontWeight: 700,
+                                background: 'rgba(59, 130, 246, 0.1)',
+                                color: '#2563eb',
+                                padding: '1px 5px',
+                                borderRadius: '8px'
+                              }}>
+                                {sh.percentage}%
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      );
+                    }
+                    return (
+                      <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontStyle: 'italic' }}>
+                        Bán độc lập (Chỉ có chủ sở hữu cọc)
+                      </span>
+                    );
+                  })()}
                 </div>
               </div>
 
@@ -11982,10 +12066,25 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                     </span>
                   </div>
                   <div>
-                    <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', display: 'block' }}>Hoa hồng dự kiến</span>
-                    <span style={{ fontWeight: 800, color: '#059669', fontSize: '1rem' }}>
-                      {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(selectedDepForManage.expected_commission)}
-                    </span>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', display: 'block', marginBottom: '4px' }}>Hoa hồng dự kiến</span>
+                    {(() => {
+                      const isAdmin = currentUser && ['admin', 'superadmin', 'super_admin', 'assistant', 'manager', 'director'].includes(currentUser.role);
+                      if (isAdmin) {
+                        return (
+                          <CurrencyInput
+                            value={tempExpectedCommission}
+                            onChange={(val) => setTempExpectedCommission(val || 0)}
+                            className="form-input"
+                            style={{ height: '32px', fontSize: '0.9rem', fontWeight: 800, color: '#059669', width: '100%', maxWidth: '160px' }}
+                          />
+                        );
+                      }
+                      return (
+                        <span style={{ fontWeight: 800, color: '#059669', fontSize: '1rem' }}>
+                          {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(selectedDepForManage.expected_commission)}
+                        </span>
+                      );
+                    })()}
                   </div>
                 </div>
               </div>
