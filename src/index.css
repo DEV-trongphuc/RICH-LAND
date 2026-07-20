@@ -4832,3 +4832,61 @@ div[role="status"] {
   border-color: #f59e0b !important;
 }
 
+/* Responsive mobile layouts for cooperation slips detail drawer & list items */
+.coop-slip-metrics-grid {
+  display: grid;
+  grid-template-columns: 2fr 1.2fr 1.2fr;
+  gap: 1.25rem;
+  align-items: center;
+}
+
+.coop-shareholder-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--color-border-light);
+}
+
+.coop-shareholder-row-right {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+@media (max-width: 768px) {
+  .coop-slip-metrics-grid {
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
+  }
+  .coop-slip-metrics-grid > div {
+    border-left: none !important;
+    padding-left: 0 !important;
+    border-bottom: 1px dashed var(--color-border-light);
+    padding-bottom: 0.5rem;
+  }
+  .coop-slip-metrics-grid > div:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+  }
+
+  .coop-shareholder-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;
+  }
+
+  .coop-shareholder-row-right {
+    width: 100%;
+    justify-content: space-between !important;
+    gap: 10px;
+  }
+  .coop-shareholder-row-right > div:last-child {
+    width: auto !important;
+  }
+
+  .coop-slip-card-icon {
+    display: none !important;
+  }
+}
+

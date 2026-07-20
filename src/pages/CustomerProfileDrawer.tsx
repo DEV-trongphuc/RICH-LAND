@@ -6703,15 +6703,11 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                             )}
 
                             {/* Cooperation Project & Financial Details Summary Card */}
-                            <div style={{
+                            <div className="coop-slip-metrics-grid" style={{
                               background: 'var(--color-bg-light)',
                               borderRadius: '12px',
                               border: '1px solid var(--color-border-light)',
-                              padding: '1.25rem 1.5rem',
-                              display: 'grid',
-                              gridTemplateColumns: '2fr 1.2fr 1.2fr',
-                              gap: '1.25rem',
-                              alignItems: 'center'
+                              padding: '1.25rem 1.5rem'
                             }}>
                               {/* Column 1: Project details */}
                               <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
@@ -6821,7 +6817,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                               </h4>
                               <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
                                 {coopSlip.shareholders?.map((sh: any) => (
-                                  <div key={sh.user_id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: '10px', borderBottom: '1px solid var(--color-border-light)' }}>
+                                  <div className="coop-shareholder-row" key={sh.user_id}>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                                       <Avatar src={sh.avatar} name={sh.name} size="md" />
                                       <div>
@@ -6829,7 +6825,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                         <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{sh.email}</p>
                                       </div>
                                     </div>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+                                    <div className="coop-shareholder-row-right">
                                       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
                                         <span style={{ fontWeight: 800, fontSize: '1.1rem', color: 'var(--color-text)' }}>{sh.percentage}%</span>
                                         {coopSlip.expected_commission && Number(coopSlip.expected_commission) > 0 && (

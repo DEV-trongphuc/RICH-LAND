@@ -1043,7 +1043,7 @@ export default function CooperationSlipsPage() {
                     
                     {/* Left: Icon, ID, Unit, Project, Customer */}
                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
-                      <div style={{ 
+                      <div className="coop-slip-card-icon" style={{ 
                         padding: '10px', 
                         background: 'var(--color-border-light)', 
                         borderRadius: '8px', 
@@ -1197,7 +1197,7 @@ export default function CooperationSlipsPage() {
                   </div>
 
                   {/* Bottom Row: Cooperation details & financials & Actions */}
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+                  <div className="coop-slip-bottom-row">
                     
                     {/* Left: Shareholders & percentages */}
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', flex: 1, minWidth: '280px' }}>
