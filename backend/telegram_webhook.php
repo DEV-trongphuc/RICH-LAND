@@ -335,6 +335,19 @@ if (strpos($textLower, '/tools') === 0 || strpos($textLower, '/report') === 0 ||
     if ($userId > 0 || !empty($email)) {
         // Lấy thông tin Telegram hiện tại xem đã liên kết với ai chưa
         $existingSaleOwner = null;
+        try {
+            $descRes = $conn->query("DESCRIBE consultants");
+            $cols = [];
+            if ($descRes) {
+                while ($row = $descRes->fetch_assoc()) {
+                    $cols[] = $row['Field'];
+                }
+            }
+            @file_put_contents($logFile, date('[Y-m-d H:i:s]') . " Columns in consultants view: " . implode(", ", $cols) . "\n", FILE_APPEND | LOCK_EX);
+        } catch (Throwable $descEx) {
+            @file_put_contents($logFile, date('[Y-m-d H:i:s]') . " DESCRIBE ERROR: " . $descEx->getMessage() . "\n", FILE_APPEND | LOCK_EX);
+        }
+
         $stmt = $conn->prepare("SELECT id, name, email FROM consultants WHERE telegram_chat_id = ? LIMIT 1");
         if ($stmt) {
             $stmt->bind_param("s", $chatId);
