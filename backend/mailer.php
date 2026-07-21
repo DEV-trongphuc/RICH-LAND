@@ -46,7 +46,7 @@ function _getBaseHtml($title, $subtitle, $contentHtml)
     ';
 }
 
-function sendEmailNotification($to, $subject, $title, $content, $ccEmailString = '', $sync = false, $leadId = 0)
+function sendEmailNotification($to, $subject, $title, $content, $ccEmailString = '', $sync = true, $leadId = 0)
 {
     global $conn;
     if (!isset($conn) || $conn === null) {
