@@ -9956,6 +9956,34 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                           </button>
                         </div>
                       </div>
+
+                    {/* Mobile Log Out Button */}
+                    <div style={{ marginTop: '1rem', marginBottom: '2rem' }}>
+                      <button
+                        type="button"
+                        onClick={handleLogout}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: '10px',
+                          padding: '14px 16px',
+                          background: 'rgba(239, 68, 68, 0.08)',
+                          border: '1px solid rgba(239, 68, 68, 0.25)',
+                          borderRadius: '12px',
+                          width: '100%',
+                          cursor: 'pointer',
+                          color: '#ef4444',
+                          fontWeight: 700,
+                          fontSize: '0.9375rem',
+                          boxShadow: '0 2px 8px rgba(239, 68, 68, 0.08)',
+                          transition: 'all 0.2s ease'
+                        }}
+                      >
+                        <LogOut size={18} />
+                        <span>{t('Đăng xuất tài khoản')}</span>
+                      </button>
+                    </div>
                   </div>
                 ) : (
                   /* ── Desktop Tab Menu ── */
