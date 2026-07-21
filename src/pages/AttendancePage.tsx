@@ -580,27 +580,7 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
               />
             </div>
 
-            <button
-              onClick={() => {
-                setPeriod('7d');
-                setCustomRange({ from: '2026-06-25', to: '2026-07-01' });
-                setCurrentMonth(7);
-                setCurrentYear(2026);
-                setFilterUser(isSales ? String(user?.id) : 'all');
-                setFilterStatus('all');
-              }}
-              className="btn outline"
-              style={{ 
-                height: isMobile ? '34px' : '38px', 
-                borderRadius: 'var(--radius-md)', 
-                fontSize: isMobile ? '0.7rem' : '0.8125rem', 
-                padding: isMobile ? '0 10px' : '0 16px',
-                alignSelf: 'flex-end',
-                flexShrink: 0
-              }}
-            >
-              {isMobile ? t('Đặt lại') : t('Đặt lại bộ lọc')}
-            </button>
+
           </div>
         </div>
 
@@ -652,11 +632,9 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
                 }}
                 style={{
                   backgroundColor: cell.isCurrentMonth
-                    ? isHoliday
+                    ? (isHoliday
                       ? 'rgba(239, 68, 68, 0.07)'
-                      : isWeekend
-                        ? 'rgba(142, 142, 147, 0.02)'
-                        : 'var(--color-surface)'
+                      : 'var(--color-surface)')
                     : 'rgba(142, 142, 147, 0.05)',
                   minHeight: '96px',
                   padding: '8px 10px',
@@ -1558,27 +1536,7 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
               />
             </div>
 
-            <button
-              onClick={() => {
-                setPeriod('7d');
-                setCustomRange({ from: '2026-06-25', to: '2026-07-01' });
-                setCurrentMonth(7);
-                setCurrentYear(2026);
-                setFilterUser(isSales ? String(user?.id) : 'all');
-                setFilterStatus('all');
-              }}
-              className="btn outline"
-              style={{ 
-                height: isMobile ? '34px' : '38px', 
-                borderRadius: 'var(--radius-md)', 
-                fontSize: isMobile ? '0.7rem' : '0.8125rem', 
-                padding: isMobile ? '0 10px' : '0 16px',
-                alignSelf: 'flex-end',
-                flexShrink: 0
-              }}
-            >
-              {isMobile ? t('Đặt lại') : t('Đặt lại bộ lọc')}
-            </button>
+
           </div>
         </div>
       )}

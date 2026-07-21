@@ -5197,17 +5197,27 @@ switch ($action) {
         $res = $conn->query("
             SELECT c.*, u.role, t.name as team_name, t.branch as team_branch 
             FROM consultants c 
-            LEFT JOIN accounts u ON c.email = u.email
+            LEFT JOIN accounts u ON c.email = u.email AND c.email != '' AND c.email IS NOT NULL
             LEFT JOIN teams t ON c.team_id = t.id 
             $where
-            ORDER BY c.created_at DESC
+            ORDER BY c.name ASC
         ");
         $data = [];
-        while ($row = $res->fetch_assoc()) {
-            if (isset($row['work_schedule']) && $row['work_schedule'] !== null) {
-                $row['work_schedule'] = json_decode($row['work_schedule'], true);
+        if ($res && $res->num_rows > 0) {
+            while ($row = $res->fetch_assoc()) {
+                if (isset($row['work_schedule']) && $row['work_schedule'] !== null) {
+                    $row['work_schedule'] = json_decode($row['work_schedule'], true);
+                }
+                $data[] = $row;
             }
-            $data[] = $row;
+        }
+        if (empty($data)) {
+            $uRes = $conn->query("SELECT id, full_name AS name, email, role, avatar_url AS avatar FROM users WHERE is_active = 1 ORDER BY full_name ASC");
+            if ($uRes) {
+                while ($uRow = $uRes->fetch_assoc()) {
+                    $data[] = $uRow;
+                }
+            }
         }
         echo json_encode(['success' => true, 'data' => $data]);
         break;

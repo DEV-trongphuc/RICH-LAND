@@ -3133,11 +3133,11 @@ SQL;
                       `bank_name`,
                       `bank_account`,
                       `extra_fields_json`,
-                      `use_custom_work_hours`
+                      `use_custom_work_hours`,
+                      `created_at`
                     FROM `users`
-                    WHERE `role` = 'sales' OR `role` = 'sale'
                 ");
-                $logMsg("Đã cập nhật VIEW accounts & consultants bao gồm signature_url.", "success");
+                $logMsg("Đã cập nhật VIEW accounts & consultants bao gồm signature_url và created_at.", "success");
             } catch (Throwable $t) {
                 $logMsg("Lỗi khi cập nhật VIEW accounts/consultants: " . $t->getMessage(), "error");
             }
