@@ -5193,58 +5193,14 @@ function doPost(e) {
                     </div>
                   </div>
 
-                  {/* Nhóm 1: Section riêng - Quy tắc Đền bù Lead & Data */}
-                  <div style={{ background: 'var(--color-bg-secondary)', padding: '1.25rem', borderRadius: 'var(--radius-xl)', border: '1px solid var(--color-border)', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <RefreshCw size={15} style={{ color: 'var(--color-primary)' }} />
-                      <h4 style={{ fontSize: '0.9375rem', fontWeight: 700, color: 'var(--color-text)' }}>{t('Quy tắc Đền bù Lead & Data')}</h4>
-                    </div>
-
-                    <div style={{ background: 'var(--color-surface)', padding: '1.25rem', borderRadius: '12px', border: '1px solid var(--color-border-light)', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-                      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '1rem', borderBottom: '1px solid var(--color-border-light)', paddingBottom: '1rem' }}>
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text)' }}>
-                            {t('Tự động đền bù khi bị thu hồi do trễ check-in')}
-                          </div>
-                          <div style={{ fontSize: '0.725rem', color: 'var(--color-text-muted)', marginTop: 4, lineHeight: 1.4 }}>
-                            {t('Nếu bật, Sales bị thu hồi lead do chưa check-in đúng giờ sẽ được tự động cộng bù lại lượt khi làm bù.')}
-                          </div>
-                        </div>
-                        <div style={{ flexShrink: 0, marginTop: '2px' }}>
-                          <ToggleSwitch
-                            checked={lateCheckinCompensationEnabled === 1}
-                            onChange={val => setLateCheckinCompensationEnabled(val ? 1 : 0)}
-                          />
-                        </div>
-                      </div>
-
-                      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '1rem' }}>
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text)' }}>
-                            {t('Tự động đền bù khi bị thu hồi do nghỉ phép')}
-                          </div>
-                          <div style={{ fontSize: '0.725rem', color: 'var(--color-text-muted)', marginTop: 4, lineHeight: 1.4 }}>
-                            {t('Nếu bật, Sales xin nghỉ phép/ngưng hoạt động bị thu hồi lead sẽ được hệ thống tính điểm đền bù.')}
-                          </div>
-                        </div>
-                        <div style={{ flexShrink: 0, marginTop: '2px' }}>
-                          <ToggleSwitch
-                            checked={leaveCompensationEnabled === 1}
-                            onChange={val => setLeaveCompensationEnabled(val ? 1 : 0)}
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Nhóm 2: Quy tắc Chấm công, SLA & Báo cáo */}
+                  {/* Quy tắc Chấm công, SLA & Báo cáo */}
                   <div style={{ background: 'var(--color-bg-secondary)', padding: '1.25rem', borderRadius: 'var(--radius-xl)', border: '1px solid var(--color-border)', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                       <Clock size={15} style={{ color: 'var(--color-primary)' }} />
                       <h4 style={{ fontSize: '0.9375rem', fontWeight: 700, color: 'var(--color-text)' }}>{t('Quy tắc Chấm công, SLA & Báo cáo')}</h4>
                     </div>
 
-                    <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '1.5rem', alignItems: 'stretch' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
                       {/* Cột Trái: Phân phối Lead & Tự động duyệt */}
                       <div style={{ background: 'var(--color-surface)', padding: '1.25rem', borderRadius: '12px', border: '1px solid var(--color-border-light)', display: 'flex', flexDirection: 'column', gap: '1.25rem', height: '100%' }}>
                         <div style={{ fontWeight: 700, fontSize: '0.875rem', color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -6104,22 +6060,58 @@ function doPost(e) {
                   </div>
 
                   {starvationPreventionEnabled && (
-                    <div style={{ borderTop: '1px solid var(--color-border)', paddingTop: '1.25rem', animation: 'fadeIn 0.3s' }}>
-                      <label className="form-label">{t('Số lượt bù tối đa mỗi giờ (Để tránh dồn dập)')}</label>
-                      <div style={{ position: 'relative', width: 200 }}>
-                        <input
-                          type="number"
-                          min={1}
-                          className="form-input"
-                          value={starvationMaxLeadsPerHour}
-                          onChange={e => setStarvationMaxLeadsPerHour(Math.max(1, Number(e.target.value)))}
-                          style={{ paddingRight: 90 }}
-                        />
-                        <span style={{ position: 'absolute', right: 12, top: 10, color: 'var(--color-text-muted)', fontSize: '0.875rem', fontWeight: 600 }}>{t('Lead/giờ')}</span>
+                    <div style={{ borderTop: '1px solid var(--color-border)', paddingTop: '1.25rem', animation: 'fadeIn 0.3s', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                      <div>
+                        <label className="form-label">{t('Số lượt bù tối đa mỗi giờ (Để tránh dồn dập)')}</label>
+                        <div style={{ position: 'relative', width: 200 }}>
+                          <input
+                            type="number"
+                            min={1}
+                            className="form-input"
+                            value={starvationMaxLeadsPerHour}
+                            onChange={e => setStarvationMaxLeadsPerHour(Math.max(1, Number(e.target.value)))}
+                            style={{ paddingRight: 90 }}
+                          />
+                          <span style={{ position: 'absolute', right: 12, top: 10, color: 'var(--color-text-muted)', fontSize: '0.875rem', fontWeight: 600 }}>{t('Lead/giờ')}</span>
+                        </div>
+                        <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 6 }}>
+                          {t('Giới hạn tối đa số lượng leads bù cho mỗi Sale trong vòng 1 giờ để tránh dồn dập quá tải')}
+                        </p>
                       </div>
-                      <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 6 }}>
-                        {t('Giới hạn tối đa số lượng leads bù cho mỗi Sale trong vòng 1 giờ để tránh dồn dập quá tải')}
-                      </p>
+
+                      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '1.5rem', borderTop: '1px dotted var(--color-border-light)', paddingTop: '1rem' }}>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)' }}>
+                            {t('Tự động đền bù khi bị thu hồi do trễ check-in')}
+                          </div>
+                          <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 4, lineHeight: 1.4 }}>
+                            {t('Nếu bật, Sales bị thu hồi lead do chưa check-in đúng giờ sẽ được tự động cộng bù lại lượt khi làm bù.')}
+                          </div>
+                        </div>
+                        <div style={{ flexShrink: 0, marginTop: '2px' }}>
+                          <ToggleSwitch
+                            checked={lateCheckinCompensationEnabled === 1}
+                            onChange={val => setLateCheckinCompensationEnabled(val ? 1 : 0)}
+                          />
+                        </div>
+                      </div>
+
+                      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '1.5rem', borderTop: '1px dotted var(--color-border-light)', paddingTop: '1rem' }}>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)' }}>
+                            {t('Tự động đền bù khi bị thu hồi do nghỉ phép')}
+                          </div>
+                          <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 4, lineHeight: 1.4 }}>
+                            {t('Nếu bật, Sales xin nghỉ phép/ngưng hoạt động bị thu hồi lead sẽ được hệ thống tính điểm đền bù.')}
+                          </div>
+                        </div>
+                        <div style={{ flexShrink: 0, marginTop: '2px' }}>
+                          <ToggleSwitch
+                            checked={leaveCompensationEnabled === 1}
+                            onChange={val => setLeaveCompensationEnabled(val ? 1 : 0)}
+                          />
+                        </div>
+                      </div>
                     </div>
                   )}
                 </div>
