@@ -165,12 +165,8 @@ try {
     $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('attendance_report_trigger_day', '1')");
     $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('attendance_report_date_mode', 'previous_month')");
     $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('require_checkout', '0')");
-    // 5. Cleanup orphaned pending check-ins / reports where logs were deleted by user
-    $conn->query("UPDATE check_ins SET status = 'rejected', admin_note = 'Tự động hủy do người dùng xóa log' WHERE status IN ('pending', 'pending_approval')");
-    $conn->query("UPDATE data_reports SET status = 'rejected' WHERE status = 'pending'");
-    $logMsg("Đã dọn dẹp các bản ghi chấm công chờ duyệt bị mồ côi thành công.", "success");
 
-    // 6. Update DB version in system_settings
+    // 5. Update DB version in system_settings
     $conn->query("INSERT INTO system_settings (setting_key, setting_value) VALUES ('db_version', '186') ON DUPLICATE KEY UPDATE setting_value = '186'");
     
     $logMsg("Hệ thống đã duy trì cấu trúc Cơ sở dữ liệu ở phiên bản mới nhất: " . $targetVersion, "success");
