@@ -34,6 +34,30 @@ const EVENT_CATEGORIES = [
         icon: '🎯'
       },
       {
+        key: 'CUSTOMER_UPDATE',
+        name: 'Cập nhật Khách hàng & Tương tác',
+        desc: 'Khi thông tin khách hàng của bạn có ghi chú mới, cập nhật nhãn hoặc chuyển giai đoạn',
+        icon: '👤'
+      },
+      {
+        key: 'SECURITY_DEADLINE_WARNING',
+        name: 'Cảnh báo Hạn bảo mật Lead / Data',
+        desc: 'Nhắc nhở trước khi khách hàng tiềm năng bị giải phóng ra Kho Data chung do hết hạn chăm sóc',
+        icon: '⏳'
+      },
+      {
+        key: 'MENTION_TAGGED',
+        name: 'Tag tên & Nhắc đến (@Mention)',
+        desc: 'Khi đồng nghiệp nhắc tên bạn (@bạn) trong bình luận dự án, ghi chú, công việc hoặc ticket',
+        icon: '🏷️'
+      },
+      {
+        key: 'WORKFLOW_TASK_ASSIGNED',
+        name: 'Gán Công việc & Nhiệm vụ CRM',
+        desc: 'Khi bạn được giao nhiệm vụ/công việc mới thuộc quy trình làm việc hoặc dự án',
+        icon: '📋'
+      },
+      {
         key: 'ATTENDANCE_APPROVAL_RESULT',
         name: 'Kết quả Phê duyệt Chấm công',
         desc: 'Khi yêu cầu đi trễ hoặc bổ sung công của bạn được Admin/Quản lý duyệt hoặc từ chối',
@@ -50,6 +74,12 @@ const EVENT_CATEGORIES = [
         name: 'Lịch Trực ca & Trực đêm Cá nhân',
         desc: 'Thông báo xác nhận lịch trực đêm hoặc thay đổi ca trực của bạn',
         icon: '🌙'
+      },
+      {
+        key: 'PROFILE_ACCOUNT_UPDATE',
+        name: 'Cập nhật Hồ sơ & Mật khẩu Tài khoản',
+        desc: 'Cảnh báo bảo mật khi thông tin cá nhân, hồ sơ hoặc mật khẩu tài khoản được cập nhật',
+        icon: '🔒'
       }
     ]
   },
@@ -95,6 +125,12 @@ const EVENT_CATEGORIES = [
         name: 'Đơn xin Nghỉ phép từ Nhân viên',
         desc: 'Khi có đơn xin nghỉ phép từ nhân viên thuộc nhóm/phòng ban phụ trách',
         icon: '🏖️'
+      },
+      {
+        key: 'PROJECT_ROSTER_UPDATE',
+        name: 'Dự án & Phân công Lịch Roster',
+        desc: 'Khi có cập nhật danh sách phân công dự án hoặc thay đổi lịch trực Roster nhóm',
+        icon: '🏢'
       }
     ]
   }

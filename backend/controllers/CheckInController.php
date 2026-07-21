@@ -11,23 +11,42 @@ class CheckInController {
     public function index(array $auth): void {
         // Option to check only today's check-in for the logged-in user (useful for dashboard/buttons)
         if (isset($_GET['today_only']) && $_GET['today_only'] == '1') {
-            $stmt = $this->db->prepare("
-                SELECT c.*, IF(u.use_custom_work_hours = 1, u.work_start_time, (SELECT setting_value FROM system_settings WHERE setting_key = 'global_work_start_time' LIMIT 1)) AS work_start_time, u.full_name as user_name
-                FROM check_ins c
-                JOIN users u ON c.user_id = u.id
-                WHERE c.user_id = ? AND c.check_in_date = ?
-            ");
-            $stmt->execute([$auth['user_id'], date('Y-m-d')]);
-            $row = $stmt->fetch();
-            respond(200, $row ?: null, 'Lấy thông tin check-in hôm nay thành công');
+            try {
+                $stmt = $this->db->prepare("
+                    SELECT c.*, IF(COALESCE(u.use_custom_work_hours, 0) = 1, u.work_start_time, (SELECT setting_value FROM system_settings WHERE setting_key = 'global_work_start_time' LIMIT 1)) AS work_start_time, u.full_name as user_name
+                    FROM check_ins c
+                    JOIN users u ON c.user_id = u.id
+                    WHERE c.user_id = ? AND c.check_in_date = ?
+                ");
+                $stmt->execute([$auth['user_id'], date('Y-m-d')]);
+                $row = $stmt->fetch();
+                respond(200, $row ?: null, 'Lấy thông tin check-in hôm nay thành công');
+            } catch (\Throwable $e) {
+                $stmt = $this->db->prepare("
+                    SELECT c.*, (SELECT setting_value FROM system_settings WHERE setting_key = 'global_work_start_time' LIMIT 1) AS work_start_time, u.full_name as user_name
+                    FROM check_ins c
+                    JOIN users u ON c.user_id = u.id
+                    WHERE c.user_id = ? AND c.check_in_date = ?
+                ");
+                $stmt->execute([$auth['user_id'], date('Y-m-d')]);
+                $row = $stmt->fetch();
+                respond(200, $row ?: null, 'Lấy thông tin check-in hôm nay thành công');
+            }
         }
 
         $isManager = in_array($auth['role'], ['admin', 'superadmin', 'super_admin', 'assistant', 'manager', 'director'], true);
         
-        $sql = "SELECT c.*, u.full_name as user_name, u.email as user_email, u.avatar_url as user_avatar, IF(u.use_custom_work_hours = 1, u.work_start_time, (SELECT setting_value FROM system_settings WHERE setting_key = 'global_work_start_time' LIMIT 1)) AS work_start_time
-                FROM check_ins c
-                JOIN users u ON c.user_id = u.id
-                WHERE u.tenant_id = ?";
+        try {
+            $sql = "SELECT c.*, u.full_name as user_name, u.email as user_email, u.avatar_url as user_avatar, IF(COALESCE(u.use_custom_work_hours, 0) = 1, u.work_start_time, (SELECT setting_value FROM system_settings WHERE setting_key = 'global_work_start_time' LIMIT 1)) AS work_start_time
+                    FROM check_ins c
+                    JOIN users u ON c.user_id = u.id
+                    WHERE u.tenant_id = ?";
+        } catch (\Throwable $e) {
+            $sql = "SELECT c.*, u.full_name as user_name, u.email as user_email, u.avatar_url as user_avatar, (SELECT setting_value FROM system_settings WHERE setting_key = 'global_work_start_time' LIMIT 1) AS work_start_time
+                    FROM check_ins c
+                    JOIN users u ON c.user_id = u.id
+                    WHERE u.tenant_id = ?";
+        }
         
         $params = [$auth['tenant_id']];
 
