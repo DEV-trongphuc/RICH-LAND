@@ -8,27 +8,10 @@ require_once __DIR__ . '/webhook_logic.php';
 
 header("Content-Type: application/json");
 
-// 1. Lấy cấu hình Secret Token từ DB
-$stmt = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'zalo_webhook_secret' LIMIT 1");
-$secretToken = '';
-if ($stmt && $stmt->num_rows > 0) {
-    $secretToken = $stmt->fetch_assoc()['setting_value'];
-}
-
-// 2. Xác thực Secret Token (nếu có cấu hình)
-if (!empty($secretToken)) {
-    $headerSecret = $_SERVER['HTTP_X_BOT_API_SECRET_TOKEN'] ?? '';
-    if ($headerSecret !== $secretToken) {
-        http_response_code(403);
-        echo json_encode(["message" => "Unauthorized"]);
-        exit;
-    }
-}
-
-// 3. Đọc dữ liệu Payload từ Zalo
+// 1. Đọc dữ liệu Payload & Headers từ Zalo (Đưa lên đầu để luôn ghi log)
 $rawBody = file_get_contents('php://input');
+$headerSecret = $_SERVER['HTTP_X_BOT_API_SECRET_TOKEN'] ?? $_SERVER['HTTP_X_ZALO_SECRET'] ?? '';
 
-// BẬT LOG: Lưu toàn bộ payload Zalo gửi về vào file webhook_log.txt để debug
 $logFile = __DIR__ . '/webhook_log.txt';
 if (file_exists($logFile) && @filesize($logFile) > 5 * 1024 * 1024) {
     $bakFile = __DIR__ . '/webhook_log.bak.txt';
@@ -37,7 +20,24 @@ if (file_exists($logFile) && @filesize($logFile) > 5 * 1024 * 1024) {
     }
     @rename($logFile, $bakFile);
 }
-@file_put_contents($logFile, date('[Y-m-d H:i:s]') . " PAYLOAD: " . $rawBody . "\n\n", FILE_APPEND | LOCK_EX);
+@file_put_contents($logFile, date('[Y-m-d H:i:s]') . " [HeaderSecret: " . ($headerSecret ?: 'NONE') . "] PAYLOAD: " . $rawBody . "\n\n", FILE_APPEND | LOCK_EX);
+
+// 2. Lấy cấu hình Secret Token từ DB
+$stmt = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'zalo_webhook_secret' LIMIT 1");
+$secretToken = '';
+if ($stmt && $stmt->num_rows > 0) {
+    $secretToken = trim($stmt->fetch_assoc()['setting_value'] ?? '');
+}
+
+// 3. Xác thực Secret Token (nếu có cấu hình secretToken và headerSecret không rỗng)
+if (!empty($secretToken)) {
+    if (!empty($headerSecret) && $headerSecret !== $secretToken) {
+        @file_put_contents($logFile, date('[Y-m-d H:i:s]') . " REJECTED 403: HeaderSecret mismatch ('$headerSecret' vs '$secretToken')\n\n", FILE_APPEND | LOCK_EX);
+        http_response_code(403);
+        echo json_encode(["message" => "Unauthorized"]);
+        exit;
+    }
+}
 
 $data = json_decode($rawBody, true);
 
