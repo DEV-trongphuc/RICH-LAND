@@ -63,6 +63,9 @@ flush();
 if (function_exists('fastcgi_finish_request')) {
     fastcgi_finish_request();
 }
+// Đảm bảo background processing có đủ thời gian chạy sau khi đã close connection
+set_time_limit(60);
+@session_write_close();
 
 $eventName = $data['event_name'] ?? '';
 
@@ -70,14 +73,54 @@ if ($eventName === 'user_send_text' || $eventName === 'message.text.received') {
     // Hỗ trợ cả 2 định dạng (Zalo OA chuẩn và Zalo Mini App)
     $text = '';
     $chatId = '';
+    $msgId = '';
+    $isOAMessage = false; // Phân biệt OA 1-on-1 vs Group Bot
 
     if (isset($data['message']['text'])) {
         $text = trim($data['message']['text']);
         $chatId = $data['sender']['id'] ?? $data['message']['chat']['id'] ?? $data['message']['from']['id'] ?? '';
+        $msgId = $data['message']['msg_id'] ?? $data['message']['id'] ?? '';
+        // OA message: có sender.id (Zalo user ID) và event là user_send_text
+        $isOAMessage = isset($data['sender']['id']) && $eventName === 'user_send_text';
     } else if (isset($data['result']['message']['text'])) {
         $text = trim($data['result']['message']['text']);
         $chatId = $data['result']['message']['chat']['id'] ?? $data['result']['message']['from']['id'] ?? '';
+        $msgId = $data['result']['message']['msg_id'] ?? '';
+        $isOAMessage = false;
     }
+
+    // Hàm gửi tin nhắn đúng API theo context
+    $sendReply = function(string $message) use ($botToken, $chatId, $isOAMessage, $conn) {
+        if ($isOAMessage) {
+            // Zalo OA 1-on-1: dùng OA API với access token
+            $oaAccessToken = '';
+            try {
+                $stmtOA = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'zalo_oa_access_token' LIMIT 1");
+                if ($stmtOA) $oaAccessToken = $stmtOA->fetch_assoc()['setting_value'] ?? '';
+            } catch (\Throwable $e) {}
+
+            if (!empty($oaAccessToken)) {
+                $oaPayload = json_encode([
+                    'recipient' => ['user_id' => $chatId],
+                    'message'   => ['text' => $message]
+                ], JSON_UNESCAPED_UNICODE);
+                $ch = curl_init('https://openapi.zalo.me/v3.0/oa/message/cs');
+                curl_setopt($ch, CURLOPT_POST, true);
+                curl_setopt($ch, CURLOPT_POSTFIELDS, $oaPayload);
+                curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json', 'access_token: ' . $oaAccessToken]);
+                curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+                curl_setopt($ch, CURLOPT_TIMEOUT, 5);
+                $res = curl_exec($ch);
+                $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+                curl_close($ch);
+                error_log("Zalo OA Reply HTTP: $httpCode, Response: $res");
+                return;
+            }
+            // Fallback: nếu chưa có OA token, dùng Group Bot API
+        }
+        // Group Bot API
+        sendZaloMessage($botToken, $chatId, $message);
+    };
 
     $fromName = 'bạn'; // Zalo webhook user_send_text thường không kèm tên, dùng default
 
