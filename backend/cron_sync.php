@@ -2763,11 +2763,11 @@ function sendShiftRemindersAndCheckInAlerts($conn) {
     $now = new DateTime();
     $todayStr = $now->format('Y-m-d');
 
-    // Include zalo_bot.php & telegram_bot.php if available
-    if (!empty($zaloBotToken)) {
+    // Include helper notification libraries safely if present
+    if (file_exists(__DIR__ . '/zalo_bot.php')) {
         @require_once __DIR__ . '/zalo_bot.php';
     }
-    if (!empty($telegramBotToken) && file_exists(__DIR__ . '/telegram_bot.php')) {
+    if (file_exists(__DIR__ . '/telegram_bot.php')) {
         @require_once __DIR__ . '/telegram_bot.php';
     }
     if (file_exists(__DIR__ . '/mailer.php')) {
