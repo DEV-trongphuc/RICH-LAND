@@ -1365,21 +1365,7 @@ export default function CooperationSlipsPage() {
                             ) : (
                               <button
                                 onClick={() => handleOpenRequestAdjustmentModal(slip)}
-                                style={{
-                                  height: '38px',
-                                  padding: '0 16px',
-                                  fontSize: '0.85rem',
-                                  borderRadius: '8px',
-                                  fontWeight: 600,
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'center',
-                                  cursor: 'pointer',
-                                  border: '1px solid var(--color-primary)',
-                                  background: 'rgba(163, 20, 34, 0.04)',
-                                  color: 'var(--color-primary)',
-                                  transition: 'all 0.2s'
-                                }}
+                                className="coop-btn-request-edit"
                               >
                                 Yêu cầu chỉnh sửa tỷ lệ
                               </button>
