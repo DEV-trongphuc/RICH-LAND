@@ -72,18 +72,28 @@ export const DigitPinInput: React.FC<DigitPinInputProps> = ({
           onKeyDown={(e) => handleKeyDown(idx, e)}
           onPaste={handlePaste}
           style={{
-            width: '44px',
-            height: '50px',
+            width: '42px',
+            height: '46px',
             textAlign: 'center',
-            fontSize: '1.25rem',
-            fontWeight: '800',
-            borderRadius: '10px',
-            border: digit ? '2px solid var(--color-primary)' : '1.5px solid var(--color-border)',
+            fontSize: '1.15rem',
+            fontWeight: '700',
+            borderRadius: '8px',
+            border: digit ? '1px solid var(--color-primary)' : '1px solid var(--color-border-light)',
             background: 'var(--color-bg-alt)',
             color: 'var(--color-text)',
             outline: 'none',
-            boxShadow: digit ? '0 0 0 3px rgba(189, 29, 45, 0.12)' : 'none',
+            boxShadow: digit ? '0 0 0 2px rgba(189, 29, 45, 0.06)' : 'none',
             transition: 'all 0.15s ease'
+          }}
+          onFocus={(e) => {
+            e.target.style.borderColor = 'var(--color-primary)';
+            e.target.style.boxShadow = '0 0 0 2px rgba(189, 29, 45, 0.06)';
+          }}
+          onBlur={(e) => {
+            if (!e.target.value) {
+              e.target.style.borderColor = 'var(--color-border-light)';
+              e.target.style.boxShadow = 'none';
+            }
           }}
         />
       ))}

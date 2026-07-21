@@ -6,6 +6,7 @@ import { LogIn, Lock, Mail, Share2, Bell, BarChart3, Sparkles, ShieldCheck, Zap,
 import { fetchAPI } from '../utils/api';
 import toast from 'react-hot-toast';
 import { CustomModal } from '../components/ui/CustomModal';
+import { DigitPinInput } from '../components/ui/DigitPinInput';
 
 export const Login = () => {
   const { t } = useLanguage();
@@ -534,16 +535,10 @@ export const Login = () => {
               </div>
 
               <div className="form-group" style={{ margin: 0 }}>
-                <label className="form-label">{t("Nhập mã 6 chữ số")}</label>
-                <input
-                  type="text"
-                  className="form-input"
+                <label className="form-label" style={{ textAlign: 'center', display: 'block', fontWeight: 600 }}>{t("Nhập mã 6 chữ số")}</label>
+                <DigitPinInput
                   value={otpCode}
-                  onChange={e => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 8))}
-                  placeholder="123456"
-                  style={{ textAlign: 'center', fontSize: '1.25rem', letterSpacing: '6px', fontWeight: 800 }}
-                  autoFocus
-                  required
+                  onChange={setOtpCode}
                 />
               </div>
 
@@ -621,15 +616,10 @@ export const Login = () => {
                 </div>
 
                 <div className="form-group" style={{ margin: 0 }}>
-                  <label className="form-label">{t("Mã OTP 6 chữ số")}</label>
-                  <input
-                    type="text"
-                    className="form-input"
+                  <label className="form-label" style={{ textAlign: 'center', display: 'block', fontWeight: 600 }}>{t("Mã OTP 6 chữ số")}</label>
+                  <DigitPinInput
                     value={forgotOtp}
-                    onChange={e => setForgotOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                    placeholder="123456"
-                    style={{ textAlign: 'center', fontSize: '1.1rem', letterSpacing: '4px', fontWeight: 700 }}
-                    required
+                    onChange={setForgotOtp}
                   />
                 </div>
 

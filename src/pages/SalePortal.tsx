@@ -18,6 +18,7 @@ import { WarRoomFlightDeck } from '../components/Dashboard/WarRoomFlightDeck';
 import { QuickAddLeadModal } from '../components/QuickAddLeadModal';
 import { AddressSelect } from '../components/ui/AddressSelect';
 import { ToggleSwitch } from '../components/ui/ToggleSwitch';
+import { DigitPinInput } from '../components/ui/DigitPinInput';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer, ComposedChart,
@@ -15742,15 +15743,10 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                 </div>
 
                 <div>
-                  <h5 style={{ margin: '0 0 6px 0', fontSize: '0.875rem', fontWeight: 700 }}>{t("Bước 2: Nhập mã 6 chữ số để xác nhận")}</h5>
-                  <input
-                    type="text"
-                    className="form-input"
+                  <h5 style={{ margin: '0 0 6px 0', fontSize: '0.875rem', fontWeight: 700, textAlign: 'center' }}>{t("Bước 2: Nhập mã 6 chữ số để xác nhận")}</h5>
+                  <DigitPinInput
                     value={test2FACode}
-                    onChange={e => setTest2FACode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                    placeholder="123456"
-                    style={{ textAlign: 'center', fontSize: '1.1rem', letterSpacing: '4px', fontWeight: 700 }}
-                    required
+                    onChange={setTest2FACode}
                   />
                 </div>
               </div>
