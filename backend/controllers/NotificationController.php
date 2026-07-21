@@ -124,6 +124,17 @@ class NotificationController {
         ];
         $settings = array_merge($defaultPrefs, $row ?: []);
 
+        $zaloBotLink = '';
+        $tgBotUsername = '';
+        try {
+            $stmtSys = $this->db->query("SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('zalo_bot_link', 'telegram_bot_username')");
+            if ($stmtSys) {
+                $sysData = $stmtSys->fetchAll(PDO::FETCH_KEY_PAIR);
+                $zaloBotLink = trim((string)($sysData['zalo_bot_link'] ?? ''));
+                $tgBotUsername = trim((string)($sysData['telegram_bot_username'] ?? ''));
+            }
+        } catch (\Throwable $sysEx) {}
+
         $matrixConfig = null;
         if (!empty($row['matrix_config'])) {
             $matrixConfig = json_decode($row['matrix_config'], true);
@@ -133,12 +144,15 @@ class NotificationController {
             'settings' => $settings,
             'matrix_config' => $matrixConfig,
             'user_info' => [
+                'user_id' => (int)$auth['user_id'],
                 'email' => $userInfo['email'] ?? '',
                 'zalo_chat_id' => $userInfo['zalo_chat_id'] ?? '',
                 'telegram_chat_id' => $userInfo['telegram_chat_id'] ?? '',
                 'has_zalo' => !empty(trim((string)($userInfo['zalo_chat_id'] ?? ''))),
                 'has_telegram' => !empty(trim((string)($userInfo['telegram_chat_id'] ?? ''))),
-                'has_email' => !empty(trim((string)($userInfo['email'] ?? '')))
+                'has_email' => !empty(trim((string)($userInfo['email'] ?? ''))),
+                'zalo_bot_link' => $zaloBotLink,
+                'telegram_bot_username' => $tgBotUsername
             ]
         ]);
     }

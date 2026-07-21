@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { CustomModal } from './CustomModal';
-import { Power, CheckCircle, AlertTriangle, ShieldCheck, ExternalLink, RotateCcw, ArrowLeft, Check } from 'lucide-react';
+import { Power, CheckCircle, AlertTriangle, ShieldCheck, ExternalLink, RotateCcw, ArrowLeft, Check, Copy } from 'lucide-react';
 import { fetchAPI } from '../../utils/api';
 import { useAuthStore } from '../../store/authStore';
 import toast from 'react-hot-toast';
@@ -181,20 +181,29 @@ export const NotificationSettingsModal: React.FC<NotificationSettingsModalProps>
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [userInfo, setUserInfo] = useState<{
+    user_id?: number;
     email: string;
     zalo_chat_id: string;
     telegram_chat_id: string;
     has_zalo: boolean;
     has_telegram: boolean;
     has_email: boolean;
+    zalo_bot_link?: string;
+    telegram_bot_username?: string;
   }>({
+    user_id: undefined,
     email: '',
     zalo_chat_id: '',
     telegram_chat_id: '',
     has_zalo: false,
     has_telegram: false,
     has_email: false,
+    zalo_bot_link: '',
+    telegram_bot_username: '',
   });
+
+  const [isZaloModalOpen, setIsZaloModalOpen] = useState(false);
+  const [copiedCode, setCopiedCode] = useState(false);
 
   const [eventSettings, setEventSettings] = useState<EventSettingsState>({});
   const [toastMessage, setToastMessage] = useState<{ text: string; type: 'success' | 'warning' | 'error' } | null>(null);
@@ -202,6 +211,26 @@ export const NotificationSettingsModal: React.FC<NotificationSettingsModalProps>
   const showToast = (text: string, type: 'success' | 'warning' | 'error' = 'warning') => {
     setToastMessage({ text, type });
     setTimeout(() => setToastMessage(null), 4000);
+  };
+
+  const handleConnectZalo = () => {
+    const link = userInfo.zalo_bot_link?.trim();
+    if (!link) {
+      showToast('Chưa cấu hình Zalo Bot Link trong hệ thống. Vui lòng liên hệ Admin!', 'warning');
+      return;
+    }
+    setIsZaloModalOpen(true);
+  };
+
+  const handleConnectTelegram = () => {
+    const username = userInfo.telegram_bot_username?.trim();
+    if (!username) {
+      showToast('Chưa cấu hình Telegram Bot Username trong hệ thống. Vui lòng liên hệ Admin!', 'warning');
+      return;
+    }
+    const connectUserId = userInfo.user_id || currentUser?.id;
+    const telegramUrl = `https://t.me/${username}?start=connect_${connectUserId}`;
+    window.open(telegramUrl, '_blank');
   };
 
 // Default Matrix Configurations:
@@ -350,6 +379,7 @@ const getDefaultConfig = (key: string): EventConfig => {
   };
 
   return (
+    <>
     <CustomModal
       isOpen={isOpen}
       onClose={onClose}
@@ -440,25 +470,25 @@ const getDefaultConfig = (key: string): EventConfig => {
                 </div>
               </div>
               {!userInfo.has_zalo && (
-                <a
-                  href="/settings?tab=integrations"
-                  target="_blank"
-                  rel="noreferrer"
+                <button
+                  type="button"
+                  onClick={handleConnectZalo}
                   style={{
                     padding: '4px 10px',
                     background: '#0068ff',
                     color: 'white',
+                    border: 'none',
                     borderRadius: '8px',
                     fontSize: '0.75rem',
                     fontWeight: 700,
-                    textDecoration: 'none',
+                    cursor: 'pointer',
                     display: 'flex',
                     alignItems: 'center',
                     gap: '4px'
                   }}
                 >
                   Liên kết <ExternalLink size={12} />
-                </a>
+                </button>
               )}
             </div>
 
@@ -484,25 +514,25 @@ const getDefaultConfig = (key: string): EventConfig => {
                 </div>
               </div>
               {!userInfo.has_telegram && (
-                <a
-                  href="/settings?tab=integrations"
-                  target="_blank"
-                  rel="noreferrer"
+                <button
+                  type="button"
+                  onClick={handleConnectTelegram}
                   style={{
                     padding: '4px 10px',
                     background: '#0284c7',
                     color: 'white',
+                    border: 'none',
                     borderRadius: '8px',
                     fontSize: '0.75rem',
                     fontWeight: 700,
-                    textDecoration: 'none',
+                    cursor: 'pointer',
                     display: 'flex',
                     alignItems: 'center',
                     gap: '4px'
                   }}
                 >
                   Liên kết <ExternalLink size={12} />
-                </a>
+                </button>
               )}
             </div>
 
@@ -873,6 +903,129 @@ const getDefaultConfig = (key: string): EventConfig => {
 
       </div>
     </CustomModal>
+
+    {/* Zalo Bot Connect Modal */}
+    {isZaloModalOpen && (
+      <CustomModal
+        isOpen={isZaloModalOpen}
+        onClose={() => setIsZaloModalOpen(false)}
+        title="Kết Nối Zalo Bot Nhận Thông Báo"
+        maxWidth="480px"
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', padding: '6px 2px' }}>
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '12px',
+            background: '#eff6ff',
+            border: '1px solid #bfdbfe',
+            padding: '14px 16px',
+            borderRadius: '12px'
+          }}>
+            <div style={{ width: 36, height: 36, borderRadius: '50%', background: '#0068ff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <img src="https://stc-zpl.zdn.vn/favicon.ico" style={{ width: 22, height: 22 }} alt="Zalo" />
+            </div>
+            <div>
+              <div style={{ fontWeight: 700, fontSize: '0.875rem', color: '#1e3a8a' }}>
+                Xác Thực Tài Khoản Zalo Cá Nhân
+              </div>
+              <div style={{ fontSize: '0.75rem', color: '#3b82f6', marginTop: 2 }}>
+                Gửi mã kết nối bên dưới đến Zalo Bot để hoàn tất liên kết
+              </div>
+            </div>
+          </div>
+
+          {/* Bước 1 */}
+          <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '14px 16px' }}>
+            <div style={{ fontSize: '0.8125rem', fontWeight: 700, color: '#0f172a', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ width: 22, height: 22, borderRadius: '50%', background: '#0068ff', color: 'white', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', fontWeight: 800 }}>1</span>
+              Nhấn liên kết mở Zalo Bot / OA:
+            </div>
+            <a
+              href={userInfo.zalo_bot_link}
+              target="_blank"
+              rel="noreferrer"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 8,
+                padding: '10px 18px',
+                background: '#0068ff',
+                color: 'white',
+                borderRadius: '8px',
+                fontWeight: 700,
+                fontSize: '0.8125rem',
+                textDecoration: 'none',
+                boxShadow: '0 3px 8px rgba(0,104,255,0.25)'
+              }}
+            >
+              Mở Zalo Bot Trực Tiếp <ExternalLink size={14} />
+            </a>
+          </div>
+
+          {/* Bước 2 */}
+          <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '14px 16px' }}>
+            <div style={{ fontSize: '0.8125rem', fontWeight: 700, color: '#0f172a', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ width: 22, height: 22, borderRadius: '50%', background: '#0068ff', color: 'white', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', fontWeight: 800 }}>2</span>
+              Gửi mã kết nối này cho Zalo Bot:
+            </div>
+            
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 8 }}>
+              <div style={{
+                flex: 1,
+                background: '#0f172a',
+                color: '#38bdf8',
+                padding: '10px 14px',
+                borderRadius: '8px',
+                fontFamily: 'monospace',
+                fontWeight: 800,
+                fontSize: '1.05rem',
+                letterSpacing: '1px',
+                textAlign: 'center',
+                boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.2)'
+              }}>
+                CONNECT {userInfo.user_id || currentUser?.id}
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  const code = `CONNECT ${userInfo.user_id || currentUser?.id || ''}`;
+                  navigator.clipboard.writeText(code);
+                  setCopiedCode(true);
+                  toast.success('Đã sao chép mã kết nối Zalo Bot!');
+                  setTimeout(() => setCopiedCode(false), 2000);
+                }}
+                style={{
+                  padding: '10px 16px',
+                  background: copiedCode ? '#16a34a' : '#0068ff',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '8px',
+                  fontWeight: 700,
+                  fontSize: '0.8125rem',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  transition: 'all 0.2s'
+                }}
+              >
+                {copiedCode ? <Check size={14} /> : <Copy size={14} />}
+                {copiedCode ? 'Đã sao chép' : 'Sao chép mã'}
+              </button>
+            </div>
+            <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: 10, lineHeight: 1.4 }}>
+              💡 Mẹo: Bạn có thể nhắn mã số <strong style={{ color: '#0f172a' }}>{userInfo.user_id || currentUser?.id}</strong> hoặc <strong style={{ color: '#0f172a' }}>CONNECT {userInfo.user_id || currentUser?.id}</strong> vào Zalo Bot.
+            </div>
+          </div>
+
+          <div style={{ fontSize: '0.75rem', color: '#64748b', fontStyle: 'italic', textAlign: 'center', marginTop: 2 }}>
+            ✨ Ngay khi nhắn mã thành công, Zalo Bot sẽ tự động phản hồi xác nhận liên kết tài khoản của bạn!
+          </div>
+        </div>
+      </CustomModal>
+    )}
+    </>
   );
 };
 
