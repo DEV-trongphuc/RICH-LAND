@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { useLocation } from 'react-router-dom';
 import { withRouterFreezer } from '../components/RouterFreezer';
 import { fetchAPI } from '../utils/api';
@@ -384,6 +384,43 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
   const approvedCount = checkIns.filter(c => c.status === 'approved').length;
   const pendingCount = checkIns.filter(c => c.status === 'pending_approval').length;
   const rejectedCount = checkIns.filter(c => c.status === 'rejected').length;
+
+  const getLateMinutes = (checkInTimeStr: string, workStartTimeStr: string = '08:00') => {
+    if (!checkInTimeStr) return 0;
+    const [ciH, ciM] = checkInTimeStr.split(':').map(Number);
+    const [wsH, wsM] = workStartTimeStr.split(':').map(Number);
+    const checkInMins = (ciH || 0) * 60 + (ciM || 0);
+    const workStartMins = (wsH || 0) * 60 + (wsM || 0);
+    return Math.max(0, checkInMins - workStartMins);
+  };
+
+  const workDaysCount = useMemo(() => {
+    const validCheckIns = checkIns.filter(c => c.status === 'approved');
+    const uniqueDates = new Set(validCheckIns.map(c => c.check_in_date));
+    return uniqueDates.size || approvedCount;
+  }, [checkIns, approvedCount]);
+
+  const lateCheckIns = useMemo(() => {
+    return checkIns.filter(c => {
+      const isLate = c.check_in_time > (c.work_start_time || '08:00');
+      return isLate || c.status === 'pending_approval';
+    });
+  }, [checkIns]);
+
+  const lateDays = lateCheckIns.length;
+  const onTimeDays = Math.max(0, approvedCount - checkIns.filter(c => c.status === 'approved' && c.check_in_time > (c.work_start_time || '08:00')).length);
+
+  const totalLateMinutes = useMemo(() => {
+    return checkIns.reduce((acc, c) => {
+      return acc + getLateMinutes(c.check_in_time, c.work_start_time || '08:00');
+    }, 0);
+  }, [checkIns]);
+
+  const shiftList = viewMode === 'calendar' ? calendarShifts : (registrations || []);
+  const nightShiftsCount = useMemo(() => shiftList.filter((s: any) => s.shift_type === 'night').length, [shiftList]);
+  const weekendShiftsCount = useMemo(() => shiftList.filter((s: any) => s.shift_type === 'weekend').length, [shiftList]);
+  const holidayShiftsCount = useMemo(() => shiftList.filter((s: any) => s.shift_type === 'holiday').length, [shiftList]);
+  const totalShiftsCount = shiftList.length;
 
   const renderCalendarView = () => {
     const firstDayIndex = new Date(currentYear, currentMonth - 1, 1).getDay();
@@ -1259,174 +1296,196 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
 
       {/* Stats row */}
       <div className="responsive-grid-4" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem' }}>
-        {/* Card 1: Total */}
+        {/* Card 1: Approved / Valid */}
         <div className="stat-card hover-lift" style={{
           backgroundColor: 'var(--color-surface)',
           border: '1px solid var(--color-border-light)',
           padding: '0.875rem 1.125rem',
-          borderRadius: '12px',
+          borderRadius: '14px',
           display: 'flex',
           flexDirection: 'column',
-          boxShadow: '0 2px 8px rgba(0, 0, 0, 0.03)',
-          transition: 'all 0.2s ease'
-        }}>
-          <div className="decor-svg" style={{ color: 'var(--color-text-muted)' }}>
-            <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: '100%', height: '100%' }}>
-              <rect x="25" y="25" width="50" height="50" rx="5" stroke="currentColor" strokeWidth="2" />
-              <path d="M25 40 H 75 M 40 20 V 30 M 60 20 V 30" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-            </svg>
-          </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span className="stat-label" style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', fontWeight: 700, letterSpacing: '0.05em' }}>
-              {t('TỔNG BẢN GHI')}
-            </span>
-            <div className="stat-icon" style={{ width: '28px', height: '28px', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'var(--color-bg-light)', color: 'var(--color-text-muted)' }}>
-              <Calendar size={14} />
-            </div>
-          </div>
-          <div className="stat-value" style={{ fontSize: '1.625rem', fontWeight: 800, color: 'var(--color-text)', marginTop: '4px', lineHeight: 1.1 }}>
-            {totalCount}
-          </div>
-          <div style={{
-            marginTop: '4px',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '2px',
-            fontSize: '0.7rem',
-            color: 'var(--color-text-muted)'
-          }}>
-            <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-              <span style={{ width: '5px', height: '5px', borderRadius: '50%', backgroundColor: 'var(--color-text-muted)' }} />
-              {t('Ghi nhận từ các TVV')}
-            </span>
-          </div>
-        </div>
-
-        {/* Card 2: Approved */}
-        <div className="stat-card hover-lift" style={{
-          backgroundColor: 'var(--color-surface)',
-          border: '1px solid var(--color-border-light)',
-          padding: '0.875rem 1.125rem',
-          borderRadius: '12px',
-          display: 'flex',
-          flexDirection: 'column',
-          boxShadow: '0 2px 8px rgba(0, 0, 0, 0.03)',
-          transition: 'all 0.2s ease'
+          boxShadow: '0 2px 8px rgba(0, 0, 0, 0.02)',
+          position: 'relative',
+          overflow: 'hidden',
+          transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)'
         }}>
           <div className="decor-svg" style={{ color: '#10b981' }}>
             <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: '100%', height: '100%' }}>
+              <circle cx="50" cy="50" r="35" stroke="currentColor" strokeWidth="2" opacity="0.3" />
               <path d="M30 50 L 45 65 L 75 35" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span className="stat-label" style={{ fontSize: '0.7rem', color: '#10b981', fontWeight: 700, letterSpacing: '0.05em' }}>
+            <span className="stat-label" style={{ fontSize: '0.7rem', color: '#10b981', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase' }}>
               {t('ĐÃ DUYỆT / HỢP LỆ')}
             </span>
-            <div className="stat-icon" style={{ width: '28px', height: '28px', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(16, 185, 129, 0.1)', color: '#10b981' }}>
-              <CheckCircle size={14} />
+            <div className="stat-icon" style={{ width: '32px', height: '32px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(16, 185, 129, 0.1)', color: '#10b981', flexShrink: 0 }}>
+              <CheckCircle size={16} />
             </div>
           </div>
           <div className="stat-value" style={{ fontSize: '1.625rem', fontWeight: 800, color: '#10b981', marginTop: '4px', lineHeight: 1.1 }}>
             {approvedCount}
           </div>
           <div style={{
-            marginTop: '4px',
+            marginTop: '6px',
             display: 'flex',
             flexDirection: 'column',
-            gap: '2px',
-            fontSize: '0.7rem',
+            gap: '3px',
+            fontSize: '0.75rem',
             color: 'var(--color-text-muted)'
           }}>
-            <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-              <span style={{ width: '5px', height: '5px', borderRadius: '50%', backgroundColor: '#10b981' }} />
-              {t('Đúng giờ & đi trễ hợp lệ')}
+            <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+              <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#f59e0b', display: 'inline-block', flexShrink: 0 }} />
+              <span>{t('Đang chờ duyệt')}: <strong style={{ color: '#f59e0b' }}>{pendingCount}</strong> {t('bản ghi')}</span>
             </span>
           </div>
         </div>
 
-        {/* Card 3: Pending */}
+        {/* Card 2: Rejected */}
         <div className="stat-card hover-lift" style={{
           backgroundColor: 'var(--color-surface)',
           border: '1px solid var(--color-border-light)',
           padding: '0.875rem 1.125rem',
-          borderRadius: '12px',
+          borderRadius: '14px',
           display: 'flex',
           flexDirection: 'column',
-          boxShadow: '0 2px 8px rgba(0, 0, 0, 0.03)',
-          transition: 'all 0.2s ease'
-        }}>
-          <div className="decor-svg" style={{ color: '#f59e0b' }}>
-            <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: '100%', height: '100%' }}>
-              <circle cx="50" cy="50" r="30" stroke="currentColor" strokeWidth="2" />
-              <path d="M50 30 V 50 H 65" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-            </svg>
-          </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span className="stat-label" style={{ fontSize: '0.7rem', color: '#f59e0b', fontWeight: 700, letterSpacing: '0.05em' }}>
-              {t('ĐANG CHỜ DUYỆT')}
-            </span>
-            <div className="stat-icon" style={{ width: '28px', height: '28px', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(245, 158, 11, 0.1)', color: '#f59e0b' }}>
-              <Clock size={14} />
-            </div>
-          </div>
-          <div className="stat-value" style={{ fontSize: '1.625rem', fontWeight: 800, color: '#f59e0b', marginTop: '4px', lineHeight: 1.1 }}>
-            {pendingCount}
-          </div>
-          <div style={{
-            marginTop: '4px',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '2px',
-            fontSize: '0.7rem',
-            color: 'var(--color-text-muted)'
-          }}>
-            <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-              <span style={{ width: '5px', height: '5px', borderRadius: '50%', backgroundColor: '#f59e0b' }} />
-              {t('Yêu cầu phê duyệt đi trễ')}
-            </span>
-          </div>
-        </div>
-
-        {/* Card 4: Rejected */}
-        <div className="stat-card hover-lift" style={{
-          backgroundColor: 'var(--color-surface)',
-          border: '1px solid var(--color-border-light)',
-          padding: '0.875rem 1.125rem',
-          borderRadius: '12px',
-          display: 'flex',
-          flexDirection: 'column',
-          boxShadow: '0 2px 8px rgba(0, 0, 0, 0.03)',
-          transition: 'all 0.2s ease'
+          boxShadow: '0 2px 8px rgba(0, 0, 0, 0.02)',
+          position: 'relative',
+          overflow: 'hidden',
+          transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)'
         }}>
           <div className="decor-svg" style={{ color: '#ef4444' }}>
             <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: '100%', height: '100%' }}>
-              <circle cx="50" cy="50" r="30" stroke="currentColor" strokeWidth="2" />
+              <circle cx="50" cy="50" r="35" stroke="currentColor" strokeWidth="2" opacity="0.3" />
               <path d="M35 35 L 65 65 M 65 35 L 35 65" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
             </svg>
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span className="stat-label" style={{ fontSize: '0.7rem', color: '#ef4444', fontWeight: 700, letterSpacing: '0.05em' }}>
+            <span className="stat-label" style={{ fontSize: '0.7rem', color: '#ef4444', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase' }}>
               {t('BỊ TỪ CHỐI')}
             </span>
-            <div className="stat-icon" style={{ width: '28px', height: '28px', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(239, 68, 68, 0.1)', color: '#ef4444' }}>
-              <AlertCircle size={14} />
+            <div className="stat-icon" style={{ width: '32px', height: '32px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', flexShrink: 0 }}>
+              <AlertCircle size={16} />
             </div>
           </div>
           <div className="stat-value" style={{ fontSize: '1.625rem', fontWeight: 800, color: '#ef4444', marginTop: '4px', lineHeight: 1.1 }}>
             {rejectedCount}
           </div>
           <div style={{
-            marginTop: '4px',
+            marginTop: '6px',
             display: 'flex',
             flexDirection: 'column',
-            gap: '2px',
-            fontSize: '0.7rem',
+            gap: '3px',
+            fontSize: '0.75rem',
             color: 'var(--color-text-muted)'
           }}>
-            <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-              <span style={{ width: '5px', height: '5px', borderRadius: '50%', backgroundColor: '#ef4444' }} />
-              {t('Không được phê duyệt')}
+            <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+              <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#ef4444', display: 'inline-block', flexShrink: 0 }} />
+              <span>{t('Không được phê duyệt')}</span>
             </span>
+          </div>
+        </div>
+
+        {/* Card 3: Work Days (Month N) */}
+        <div className="stat-card hover-lift" style={{
+          backgroundColor: 'var(--color-surface)',
+          border: '1px solid var(--color-border-light)',
+          padding: '0.875rem 1.125rem',
+          borderRadius: '14px',
+          display: 'flex',
+          flexDirection: 'column',
+          boxShadow: '0 2px 8px rgba(0, 0, 0, 0.02)',
+          position: 'relative',
+          overflow: 'hidden',
+          transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)'
+        }}>
+          <div className="decor-svg" style={{ color: '#3b82f6' }}>
+            <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: '100%', height: '100%' }}>
+              <rect x="25" y="25" width="50" height="50" rx="6" stroke="currentColor" strokeWidth="2" opacity="0.3" />
+              <path d="M25 40 H 75 M 40 20 V 30 M 60 20 V 30" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+            </svg>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span className="stat-label" style={{ fontSize: '0.7rem', color: '#3b82f6', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase' }}>
+              {t(`NGÀY CÔNG THÁNG ${currentMonth}`)}
+            </span>
+            <div className="stat-icon" style={{ width: '32px', height: '32px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6', flexShrink: 0 }}>
+              <Calendar size={16} />
+            </div>
+          </div>
+          <div className="stat-value" style={{ fontSize: '1.625rem', fontWeight: 800, color: 'var(--color-text)', marginTop: '4px', lineHeight: 1.1 }}>
+            {workDaysCount} <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>{t('ngày')}</span>
+          </div>
+          <div style={{
+            marginTop: '6px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '3px',
+            fontSize: '0.75rem',
+            color: 'var(--color-text-muted)'
+          }}>
+            <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+              <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#10b981', display: 'inline-block', flexShrink: 0 }} />
+              <span>{t('Đúng giờ')}: <strong style={{ color: '#10b981' }}>{onTimeDays}</strong> {t('ngày')}</span>
+            </span>
+            <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+              <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#f59e0b', display: 'inline-block', flexShrink: 0 }} />
+              <span>{t('Đi trễ')}: <strong style={{ color: '#f59e0b' }}>{lateDays}</strong> {t('ngày')} ({totalLateMinutes} {t('phút')})</span>
+            </span>
+          </div>
+        </div>
+
+        {/* Card 4: Total Shifts */}
+        <div className="stat-card hover-lift" style={{
+          backgroundColor: 'var(--color-surface)',
+          border: '1px solid var(--color-border-light)',
+          padding: '0.875rem 1.125rem',
+          borderRadius: '14px',
+          display: 'flex',
+          flexDirection: 'column',
+          boxShadow: '0 2px 8px rgba(0, 0, 0, 0.02)',
+          position: 'relative',
+          overflow: 'hidden',
+          transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)'
+        }}>
+          <div className="decor-svg" style={{ color: '#8b5cf6' }}>
+            <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: '100%', height: '100%' }}>
+              <path d="M50 20 C 35 20, 25 32, 25 47 C 25 62, 35 74, 50 74 C 65 74, 75 62, 75 47 C 60 47, 50 37, 50 20 Z" stroke="currentColor" strokeWidth="2" opacity="0.3" fill="none" />
+            </svg>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span className="stat-label" style={{ fontSize: '0.7rem', color: '#8b5cf6', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase' }}>
+              {t('TỔNG CA TRỰC')}
+            </span>
+            <div className="stat-icon" style={{ width: '32px', height: '32px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(139, 92, 246, 0.1)', color: '#8b5cf6', flexShrink: 0 }}>
+              <Moon size={16} />
+            </div>
+          </div>
+          <div className="stat-value" style={{ fontSize: '1.625rem', fontWeight: 800, color: 'var(--color-text)', marginTop: '4px', lineHeight: 1.1 }}>
+            {totalShiftsCount} <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>{t('ca')}</span>
+          </div>
+          <div style={{
+            marginTop: '6px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '3px',
+            fontSize: '0.75rem',
+            color: 'var(--color-text-muted)'
+          }}>
+            <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+              <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#d97706', display: 'inline-block', flexShrink: 0 }} />
+              <span>{t('Trực đêm')}: <strong style={{ color: '#d97706' }}>{nightShiftsCount}</strong> {t('ca')}</span>
+            </span>
+            <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+              <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: 'var(--color-primary)', display: 'inline-block', flexShrink: 0 }} />
+              <span>{t('Cuối tuần')}: <strong style={{ color: 'var(--color-primary)' }}>{weekendShiftsCount}</strong> {t('ca')}</span>
+            </span>
+            {holidayShiftsCount > 0 && (
+              <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#ef4444', display: 'inline-block', flexShrink: 0 }} />
+                <span>{t('Lễ tết')}: <strong style={{ color: '#ef4444' }}>{holidayShiftsCount}</strong> {t('ca')}</span>
+              </span>
+            )}
           </div>
         </div>
       </div>
