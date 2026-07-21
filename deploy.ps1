@@ -3,7 +3,8 @@
 
 Write-Host "=== STARTING AUTOMATED DEPLOYMENT & MIGRATION ===" -ForegroundColor Cyan
 
-# 0. Build frontend
+# 0. Build frontend with Node.js heap ceiling limit to prevent RAM ballooning
+$env:NODE_OPTIONS = "--max-old-space-size=2048"
 Write-Host "0. Building frontend locally..." -ForegroundColor Yellow
 npm run build
 if ($LASTEXITCODE -ne 0) {
@@ -62,5 +63,8 @@ if ($gitChanges) {
 } else {
     Write-Host "No pending local changes to push to Git." -ForegroundColor Gray
 }
+
+# 4. Trigger GC to free process memory
+[System.GC]::Collect()
 
 Write-Host "=== DEPLOYMENT, MIGRATIONS & GIT PUSH COMPLETED SUCCESSFULLY ===" -ForegroundColor Green
