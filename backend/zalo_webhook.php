@@ -1671,7 +1671,7 @@ if ($eventName === 'user_send_text' || $eventName === 'message.text.received') {
 
             // Lấy thông tin Zalo hiện tại của bot xem đã được liên kết với ai chưa
             $existingSaleOwner = null;
-            $stmt = $conn->prepare("SELECT id, name, email FROM consultants WHERE zalo_chat_id = ? LIMIT 1");
+            $stmt = $conn->prepare("SELECT id, full_name AS name, email FROM users WHERE zalo_chat_id = ? LIMIT 1");
             if ($stmt) {
                 $stmt->bind_param("s", $chatId);
                 $stmt->execute();
@@ -1683,77 +1683,39 @@ if ($eventName === 'user_send_text' || $eventName === 'message.text.received') {
             }
 
             $existingAdminOwner = null;
-            $stmt = $conn->prepare("SELECT id, name, email FROM accounts WHERE zalo_chat_id = ? LIMIT 1");
-            if ($stmt) {
-                $stmt->bind_param("s", $chatId);
-                $stmt->execute();
-                $res = $stmt->get_result();
-                if ($res && $res->num_rows > 0) {
-                    $existingAdminOwner = $res->fetch_assoc();
-                }
-                $stmt->close();
-            }
 
-            // 1. Tìm trong hệ thống Sale (consultants)
+            // 1. Tìm trong hệ thống User
             $sale = null;
-            if ($targetType === '' || $targetType === 'sale') {
-                $stmtFind = null;
-                if ($userId > 0 && !empty($email)) {
-                    $stmtFind = $conn->prepare("SELECT id, name, email, zalo_chat_id FROM consultants WHERE id = ? AND email = ? LIMIT 1");
-                    if ($stmtFind)
-                        $stmtFind->bind_param("is", $userId, $email);
-                } else if ($userId > 0) {
-                    $stmtFind = $conn->prepare("SELECT id, name, email, zalo_chat_id FROM consultants WHERE id = ? LIMIT 1");
-                    if ($stmtFind)
-                        $stmtFind->bind_param("i", $userId);
-                } else {
-                    $stmtFind = $conn->prepare("SELECT id, name, email, zalo_chat_id FROM consultants WHERE email = ? LIMIT 1");
-                    if ($stmtFind)
-                        $stmtFind->bind_param("s", $email);
-                }
-
-                if ($stmtFind && $stmtFind->execute()) {
-                    $res = $stmtFind->get_result();
-                    if ($res && $res->num_rows > 0) {
-                        $sale = $res->fetch_assoc();
-                    }
-                }
-                if ($stmtFind)
-                    $stmtFind->close();
-            }
-
-            // 2. Tìm trong hệ thống Quản trị (accounts)
             $admin = null;
-            if ($targetType === '' || $targetType === 'admin') {
-                $stmtAdmin = null;
-                if ($userId > 0 && !empty($email)) {
-                    $stmtAdmin = $conn->prepare("SELECT id, name, email, zalo_chat_id FROM accounts WHERE id = ? AND email = ? LIMIT 1");
-                    if ($stmtAdmin)
-                        $stmtAdmin->bind_param("is", $userId, $email);
-                } else if ($userId > 0) {
-                    $stmtAdmin = $conn->prepare("SELECT id, name, email, zalo_chat_id FROM accounts WHERE id = ? LIMIT 1");
-                    if ($stmtAdmin)
-                        $stmtAdmin->bind_param("i", $userId);
-                } else {
-                    $stmtAdmin = $conn->prepare("SELECT id, name, email, zalo_chat_id FROM accounts WHERE email = ? LIMIT 1");
-                    if ($stmtAdmin)
-                        $stmtAdmin->bind_param("s", $email);
-                }
 
-                if ($stmtAdmin && $stmtAdmin->execute()) {
-                    $resAdmin = $stmtAdmin->get_result();
-                    if ($resAdmin && $resAdmin->num_rows > 0) {
-                        $admin = $resAdmin->fetch_assoc();
+            $stmtFind = null;
+            if ($userId > 0 && !empty($email)) {
+                $stmtFind = $conn->prepare("SELECT id, full_name AS name, email, role, zalo_chat_id FROM users WHERE id = ? AND email = ? LIMIT 1");
+                if ($stmtFind)
+                    $stmtFind->bind_param("is", $userId, $email);
+            } else if ($userId > 0) {
+                $stmtFind = $conn->prepare("SELECT id, full_name AS name, email, role, zalo_chat_id FROM users WHERE id = ? LIMIT 1");
+                if ($stmtFind)
+                    $stmtFind->bind_param("i", $userId);
+            } else {
+                $stmtFind = $conn->prepare("SELECT id, full_name AS name, email, role, zalo_chat_id FROM users WHERE email = ? LIMIT 1");
+                if ($stmtFind)
+                    $stmtFind->bind_param("s", $email);
+            }
+
+            if ($stmtFind && $stmtFind->execute()) {
+                $res = $stmtFind->get_result();
+                if ($res && $res->num_rows > 0) {
+                    $uRow = $res->fetch_assoc();
+                    if ($uRow['role'] === 'sales') {
+                        $sale = $uRow;
+                    } else {
+                        $admin = $uRow;
                     }
                 }
-                if ($stmtAdmin)
-                    $stmtAdmin->close();
             }
-
-            // Nếu tìm thấy cả sale và admin từ cùng 1 user (vì accounts chứa tất cả users), ưu tiên sale và bỏ admin trùng
-            if ($sale && $admin && $sale['id'] === $admin['id']) {
-                $admin = null;
-            }
+            if ($stmtFind)
+                $stmtFind->close();
 
             // Xử lý trùng lặp Email giữa 2 tài khoản Sale và Admin khác nhau
             if ($sale && $admin && $targetType === '') {
