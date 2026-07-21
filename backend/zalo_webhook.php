@@ -1785,14 +1785,15 @@ if ($eventName === 'user_send_text' || $eventName === 'message.text.received') {
                         } else if ($existingAdminOwner) {
                             $errorMsg .= "[ THÔNG BÁO LỖI ]\nTài khoản Zalo này đã được liên kết với một Quản trị viên khác trên hệ thống (" . $existingAdminOwner['name'] . " - " . $existingAdminOwner['email'] . "). Vui lòng báo Admin để hỗ trợ.\n\n";
                         } else {
-                            $stmtUpdate = $conn->prepare("UPDATE consultants SET zalo_chat_id = ? WHERE id = ?");
+                            $stmtUpdate = $conn->prepare("UPDATE users SET zalo_chat_id = ? WHERE id = ?");
                             if ($stmtUpdate) {
                                 $stmtUpdate->bind_param("si", $chatId, $sale['id']);
                                 if ($stmtUpdate->execute()) {
                                     $linkedAny = true;
                                     $successMessages[] = "Tư vấn viên: " . $sale['name'] . " - Email: " . $sale['email'];
-                                    // Cập nhật existing owner ảo để tránh xử lý trùng nếu trùng ID/email giữa sale và admin
                                     $existingSaleOwner = $sale;
+                                } else {
+                                    $errorMsg .= "[ THÔNG BÁO LỖI ] Lỗi cập nhật CSDL: " . $stmtUpdate->error . "\n\n";
                                 }
                                 $stmtUpdate->close();
                             }
@@ -1816,13 +1817,15 @@ if ($eventName === 'user_send_text' || $eventName === 'message.text.received') {
                         } else if ($existingAdminOwner && $existingAdminOwner['id'] !== $admin['id']) {
                             $errorMsg .= "[ THÔNG BÁO LỖI ]\nTài khoản Zalo này đã được liên kết với một Quản trị viên khác trên hệ thống (" . $existingAdminOwner['name'] . " - " . $existingAdminOwner['email'] . "). Vui lòng báo Admin để hỗ trợ.\n\n";
                         } else {
-                            $stmtUpdateAdmin = $conn->prepare("UPDATE accounts SET zalo_chat_id = ? WHERE id = ?");
+                            $stmtUpdateAdmin = $conn->prepare("UPDATE users SET zalo_chat_id = ? WHERE id = ?");
                             if ($stmtUpdateAdmin) {
                                 $stmtUpdateAdmin->bind_param("si", $chatId, $admin['id']);
                                 if ($stmtUpdateAdmin->execute()) {
                                     $linkedAny = true;
                                     $adminName = $admin['name'] ?: 'Quản trị viên';
                                     $successMessages[] = "Quản trị viên: " . $adminName . " - Email: " . $admin['email'];
+                                } else {
+                                    $errorMsg .= "[ THÔNG BÁO LỖI ] Lỗi cập nhật CSDL: " . $stmtUpdateAdmin->error . "\n\n";
                                 }
                                 $stmtUpdateAdmin->close();
                             }
