@@ -424,7 +424,7 @@ const getDefaultConfig = (key: string): EventConfig => {
       isOpen={isOpen}
       onClose={onClose}
       title="Cấu Hình Thông Báo Tùy Chỉnh Chuyên Sâu"
-      width={920}
+      width="min(1180px, 94vw)"
     >
       <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', fontFamily: 'system-ui, -apple-system, sans-serif', color: '#1e293b' }}>
 
@@ -448,7 +448,7 @@ const getDefaultConfig = (key: string): EventConfig => {
               }}
             >
               <ArrowLeft size={16} />
-              {isMobile ? 'Quay lại' : 'Quay lại danh sách thông báo'}
+              {!isMobile && 'Quay lại danh sách thông báo'}
             </button>
 
             {/* Mobile Right Action Buttons (Reset Icon & Save Button) */}

@@ -735,7 +735,7 @@ export const ProfilePage: React.FC = () => {
               style={{ width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}
             >
               <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-primary)', textTransform: 'uppercase', letterSpacing: '0.5px', margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
-                <Mail size={16} /> {t('Liên hệ & Tài khoản')}
+                <Mail size={16} /> {t('Thông tin liên hệ')}
               </h3>
               {openSections.contact ? <ChevronUp size={16} color="var(--color-text-muted)" /> : <ChevronDown size={16} color="var(--color-text-muted)" />}
             </button>

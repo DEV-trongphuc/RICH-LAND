@@ -12,29 +12,32 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 # 1. Compress and Upload all files via single compressed archives for 95% speed speedup
-Write-Host "1. Compressing assets..." -ForegroundColor Yellow
-tar -czf frontend.tar.gz -C dist .
-tar -czf backend.tar.gz -C backend .
+$tempFrontend = Join-Path $env:TEMP "richland_frontend.tar.gz"
+$tempBackend = Join-Path $env:TEMP "richland_backend.tar.gz"
+
+Write-Host "1. Compressing assets to system temp directory..." -ForegroundColor Yellow
+tar -czf "$tempFrontend" -C dist .
+tar -czf "$tempBackend" -C backend .
 
 Write-Host "1b. Uploading compressed archives via SCP..." -ForegroundColor Yellow
-scp -4 -P 2210 -o StrictHostKeyChecking=no frontend.tar.gz backend.tar.gz vhvxoigh@chiefaiofficer.vn:/home/vhvxoigh/open.domation.net/richland/
+scp -4 -P 2210 -o StrictHostKeyChecking=no "$tempFrontend" "$tempBackend" vhvxoigh@chiefaiofficer.vn:/home/vhvxoigh/open.domation.net/richland/
 if ($LASTEXITCODE -ne 0) {
-    Remove-Item frontend.tar.gz, backend.tar.gz -ErrorAction SilentlyContinue
+    Remove-Item "$tempFrontend", "$tempBackend" -ErrorAction SilentlyContinue
     Write-Host "ERROR: Failed to upload compressed archives." -ForegroundColor Red
     exit $LASTEXITCODE
 }
 Start-Sleep -Seconds 1
 
 Write-Host "1c. Extracting packages on remote server..." -ForegroundColor Yellow
-ssh -4 -p 2210 -o StrictHostKeyChecking=no vhvxoigh@chiefaiofficer.vn "tar -xzf /home/vhvxoigh/open.domation.net/richland/frontend.tar.gz -C /home/vhvxoigh/open.domation.net/richland/ && tar -xzf /home/vhvxoigh/open.domation.net/richland/backend.tar.gz -C /home/vhvxoigh/open.domation.net/richland/ && rm /home/vhvxoigh/open.domation.net/richland/frontend.tar.gz /home/vhvxoigh/open.domation.net/richland/backend.tar.gz"
+ssh -4 -p 2210 -o StrictHostKeyChecking=no vhvxoigh@chiefaiofficer.vn "tar -xzf /home/vhvxoigh/open.domation.net/richland/richland_frontend.tar.gz -C /home/vhvxoigh/open.domation.net/richland/ && tar -xzf /home/vhvxoigh/open.domation.net/richland/richland_backend.tar.gz -C /home/vhvxoigh/open.domation.net/richland/ && rm /home/vhvxoigh/open.domation.net/richland/richland_frontend.tar.gz /home/vhvxoigh/open.domation.net/richland/richland_backend.tar.gz"
 if ($LASTEXITCODE -ne 0) {
-    Remove-Item frontend.tar.gz, backend.tar.gz -ErrorAction SilentlyContinue
+    Remove-Item "$tempFrontend", "$tempBackend" -ErrorAction SilentlyContinue
     Write-Host "ERROR: Failed to extract remote packages." -ForegroundColor Red
     exit $LASTEXITCODE
 }
 
 # Clean up local temp packages
-Remove-Item frontend.tar.gz, backend.tar.gz -ErrorAction SilentlyContinue
+Remove-Item "$tempFrontend", "$tempBackend" -ErrorAction SilentlyContinue
 
 # 2. Trigger database migrations
 Write-Host "2. Running migrations on remote backend..." -ForegroundColor Yellow

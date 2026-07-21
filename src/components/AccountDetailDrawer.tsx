@@ -1927,7 +1927,7 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
                 </div>
               )}
 
-              {/* CARD 3: LIÊN HỆ & TÀI KHOẢN */}
+              {/* CARD 3: THÔNG TIN LIÊN HỆ */}
               {activeTab === 'account' && (
                 <div style={{
                   background: 'var(--color-surface)',
@@ -1948,7 +1948,7 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
                     }}
                   >
                     <span style={{ fontSize: '0.8125rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--color-text)' }}>
-                      <Lock size={14} style={{ color: 'var(--color-primary)' }} /> {t('LIÊN HỆ & TÀI KHOẢN')}
+                      <Lock size={14} style={{ color: 'var(--color-primary)' }} /> {t('THÔNG TIN LIÊN HỆ')}
                     </span>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }} onClick={e => e.stopPropagation()}>
                     {isAdmin && account && (

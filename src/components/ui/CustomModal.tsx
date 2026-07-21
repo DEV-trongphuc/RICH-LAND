@@ -53,9 +53,15 @@ export const CustomModal: React.FC<CustomModalProps> = ({
   }, []);
 
   const resolvedWidth = React.useMemo(() => {
-    if (maxWidth) return String(maxWidth);
-    if (!width) return '800px';
-    return String(width);
+    const formatDimension = (val: string | number) => {
+      if (typeof val === 'number') return `${val}px`;
+      const str = String(val).trim();
+      return /^\d+$/.test(str) ? `${str}px` : str;
+    };
+
+    if (maxWidth) return formatDimension(maxWidth);
+    if (width) return formatDimension(width);
+    return '800px';
   }, [width, maxWidth]);
 
   const motionProps = isMobile ? {

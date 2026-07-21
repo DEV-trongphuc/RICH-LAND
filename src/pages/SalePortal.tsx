@@ -9616,7 +9616,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
         case 'erp': return t('Hồ sơ & ERP');
         case 'certificates': return t('Bằng cấp & Chứng chỉ');
         case 'hr_records': return t('Khen thưởng & Kỷ luật');
-        case 'contact': return t('Liên hệ & Tài khoản');
+        case 'contact': return t('Thông tin liên hệ');
         case 'payment': return t('Thanh toán & Thuế');
         case 'emergency': return t('Liên hệ khẩn cấp');
         case 'documents': return t('Lưu trữ tài liệu');
@@ -10089,7 +10089,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                           >
                             <div style={{ display: 'flex', alignItems: 'center', gap: '12px', color: 'var(--color-text)' }}>
                               {renderColoredIcon(Server, '#007af5')}
-                              <span style={{ fontSize: '0.875rem', fontWeight: 600 }}>{t('Liên hệ & Tài khoản')}</span>
+                              <span style={{ fontSize: '0.875rem', fontWeight: 600 }}>{t('Thông tin liên hệ')}</span>
                             </div>
                             <ChevronRight size={14} style={{ color: 'var(--color-text-muted)' }} />
                           </button>
@@ -10251,7 +10251,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                       style={{ width: '100%', border: 'none', textAlign: 'left', cursor: 'pointer' }}
                     >
                       {renderColoredIcon(Server, '#007af5')}
-                      <span style={{ whiteSpace: 'nowrap' }}>{t('Liên hệ & Tài khoản')}</span>
+                      <span style={{ whiteSpace: 'nowrap' }}>{t('Thông tin liên hệ')}</span>
                     </button>
                     <button
                       type="button"
@@ -10294,6 +10294,9 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
               padding: isMobile ? '1rem' : '2rem',
               background: isMobile ? 'transparent' : 'var(--color-surface)',
               overflowY: 'auto',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '1.5rem',
               borderTopRightRadius: isMobile ? '0px' : '16px',
               borderBottomRightRadius: isMobile ? '0px' : '16px',
               borderTopLeftRadius: '0px',
@@ -11060,7 +11063,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
             {profileActiveTab === 'contact' && (
               <div className="card animate-fade-in" style={{ padding: '2rem', display: 'flex', flexDirection: 'column', gap: '1.5rem', background: 'var(--color-surface)', borderRadius: '12px', border: '1px solid var(--color-border-light)', boxShadow: '0 4px 20px rgba(0,0,0,0.02)' }}>
                 <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-text)', textTransform: 'uppercase', letterSpacing: '0.5px', margin: '0 0 0.5rem 0', display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <Server size={16} color="var(--color-primary)" /> {t('Liên hệ & Tài khoản')}
+                  <Server size={16} color="var(--color-primary)" /> {t('Thông tin liên hệ')}
                 </h3>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                     <div className="form-group">
