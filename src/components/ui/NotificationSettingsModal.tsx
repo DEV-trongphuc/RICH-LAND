@@ -233,12 +233,8 @@ export const NotificationSettingsModal: React.FC<NotificationSettingsModalProps>
             {/* Zalo Status Card */}
             <div className="bg-white/90 p-3 rounded-xl border border-red-100 flex items-center justify-between shadow-xs">
               <div className="flex items-center gap-3">
-                {/* Official Zalo Icon */}
                 <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center flex-shrink-0">
-                  <svg className="w-5 h-5" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M24 4C12.95 4 4 11.95 4 21.75C4 26.85 7.05 31.4 11.85 34.6L9.65 42.15C9.35 43.15 10.45 44 11.3 43.4L19.45 37.95C20.9 38.35 22.45 38.55 24 38.55C35.05 38.55 44 30.6 44 20.8C44 11 35.05 4 24 4Z" fill="#0068FF"/>
-                    <path d="M14.5 17.5H23.5L14.5 27.5H23.5" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
+                  <img src="https://stc-zpl.zdn.vn/favicon.ico" className="w-5 h-5 object-contain" alt="Zalo" />
                 </div>
                 <div>
                   <div className="font-bold text-slate-800">Zalo Bot</div>
@@ -262,11 +258,8 @@ export const NotificationSettingsModal: React.FC<NotificationSettingsModalProps>
             {/* Telegram Status Card */}
             <div className="bg-white/90 p-3 rounded-xl border border-red-100 flex items-center justify-between shadow-xs">
               <div className="flex items-center gap-3">
-                {/* Official Telegram Icon */}
                 <div className="w-8 h-8 rounded-lg bg-sky-50 flex items-center justify-center flex-shrink-0">
-                  <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69.01-.03.01-.14-.07-.2-.08-.06-.19-.04-.27-.02-.12.02-1.96 1.25-5.54 3.69-.52.36-1 .53-1.42.52-.47-.01-1.37-.26-2.03-.48-.82-.27-1.47-.42-1.42-.88.03-.24.37-.49 1.02-.75 3.99-1.74 6.66-2.89 8.01-3.45 3.81-1.59 4.6-1.87 5.12-1.88.11 0 .37.03.54.18.14.12.18.28.2.45-.02.07-.01.21-.04.37z" fill="#229ED9"/>
-                  </svg>
+                  <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/8/82/Telegram_logo.svg/3840px-Telegram_logo.svg.png" className="w-5 h-5 object-contain" alt="Telegram" />
                 </div>
                 <div>
                   <div className="font-bold text-slate-800">Telegram Bot</div>
@@ -291,10 +284,7 @@ export const NotificationSettingsModal: React.FC<NotificationSettingsModalProps>
             <div className="bg-white/90 p-3 rounded-xl border border-red-100 flex items-center justify-between shadow-xs">
               <div className="flex items-center gap-3">
                 <div className="w-8 h-8 rounded-lg bg-rose-50 flex items-center justify-center flex-shrink-0">
-                  <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <rect width="20" height="16" x="2" y="4" rx="2"/>
-                    <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/>
-                  </svg>
+                  <img src="/imgs/gmail-icon-free-png.webp" className="w-5 h-5 object-contain" alt="Email" />
                 </div>
                 <div>
                   <div className="font-bold text-slate-800">Email SMTP</div>
@@ -321,27 +311,19 @@ export const NotificationSettingsModal: React.FC<NotificationSettingsModalProps>
                     <th className="py-3.5 px-3 text-center w-[110px] text-slate-900">Nguồn Tổng</th>
                     <th className="py-3.5 px-3 text-center w-[120px]">
                       <div className="flex items-center justify-center gap-1.5 text-blue-600">
-                        <svg className="w-4 h-4" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
-                          <path d="M24 4C12.95 4 4 11.95 4 21.75C4 26.85 7.05 31.4 11.85 34.6L9.65 42.15C9.35 43.15 10.45 44 11.3 43.4L19.45 37.95C20.9 38.35 22.45 38.55 24 38.55C35.05 38.55 44 30.6 44 20.8C44 11 35.05 4 24 4Z" fill="#0068FF"/>
-                          <path d="M14.5 17.5H23.5L14.5 27.5H23.5" stroke="white" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"/>
-                        </svg>
+                        <img src="https://stc-zpl.zdn.vn/favicon.ico" className="w-4 h-4 object-contain" alt="Zalo" />
                         <span>Zalo</span>
                       </div>
                     </th>
                     <th className="py-3.5 px-3 text-center w-[120px]">
                       <div className="flex items-center justify-center gap-1.5 text-sky-600">
-                        <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                          <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69.01-.03.01-.14-.07-.2-.08-.06-.19-.04-.27-.02-.12.02-1.96 1.25-5.54 3.69-.52.36-1 .53-1.42.52-.47-.01-1.37-.26-2.03-.48-.82-.27-1.47-.42-1.42-.88.03-.24.37-.49 1.02-.75 3.99-1.74 6.66-2.89 8.01-3.45 3.81-1.59 4.6-1.87 5.12-1.88.11 0 .37.03.54.18.14.12.18.28.2.45-.02.07-.01.21-.04.37z" fill="#229ED9"/>
-                        </svg>
+                        <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/8/82/Telegram_logo.svg/3840px-Telegram_logo.svg.png" className="w-4 h-4 object-contain" alt="Telegram" />
                         <span>Telegram</span>
                       </div>
                     </th>
                     <th className="py-3.5 px-3 text-center w-[120px]">
                       <div className="flex items-center justify-center gap-1.5 text-rose-600">
-                        <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <rect width="20" height="16" x="2" y="4" rx="2"/>
-                          <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/>
-                        </svg>
+                        <img src="/imgs/gmail-icon-free-png.webp" className="w-4 h-4 object-contain" alt="Email" />
                         <span>Email</span>
                       </div>
                     </th>
