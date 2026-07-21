@@ -347,121 +347,151 @@ class CheckInController {
                     $insertNotif->execute([$adminId, $auth['tenant_id'], $title, $body, $type, $link]);
                 }
 
-                // Fetch details for Zalo, Telegram and Email notifications
+                // Fetch Admin/Manager details for notification sending
+                $inPlaceholders = implode(',', array_fill(0, count($admins), '?'));
+                $stmtDetails = $this->db->prepare("SELECT email, zalo_chat_id, telegram_chat_id, full_name FROM users WHERE id IN ($inPlaceholders)");
+                $stmtDetails->execute($admins);
+                $adminDetails = $stmtDetails->fetchAll(PDO::FETCH_ASSOC);
+
+                // ==================== CHANNEL 1: ZALO BOT (INDEPENDENT) ====================
                 try {
-                    $zaloChatIds = [];
-                    $tgChatIds = [];
-                    $emails = [];
-
-                    // Fetch Telegram group chat ID if configured
-                    $stmtTgGroup = $this->db->prepare("SELECT setting_value FROM system_settings WHERE setting_key = 'telegram_admin_group_chat_id' LIMIT 1");
-                    $stmtTgGroup->execute();
-                    $tgGroupChatId = trim((string)$stmtTgGroup->fetchColumn());
-                    if (!empty($tgGroupChatId)) {
-                        $tgChatIds[] = $tgGroupChatId;
-                    }
-
-                    $inPlaceholders = implode(',', array_fill(0, count($admins), '?'));
-                    $stmtDetails = $this->db->prepare("SELECT email, zalo_chat_id, telegram_chat_id, full_name FROM users WHERE id IN ($inPlaceholders)");
-                    $stmtDetails->execute($admins);
-                    $adminDetails = $stmtDetails->fetchAll(PDO::FETCH_ASSOC);
-
-                    foreach ($adminDetails as $adm) {
-                        if (!empty($adm['zalo_chat_id'])) {
-                            $zaloChatIds[] = $adm['zalo_chat_id'];
-                        }
-                        if (empty($tgGroupChatId) && !empty($adm['telegram_chat_id'])) {
-                            $tgChatIds[] = $adm['telegram_chat_id'];
-                        }
-                        if (!empty($adm['email'])) {
-                            $emails[] = $adm;
-                        }
-                    }
-
-                    // 1. Send Zalo
                     require_once __DIR__ . '/../zalo_bot.php';
                     $stmtBotToken = $this->db->prepare("SELECT setting_value FROM system_settings WHERE setting_key = 'zalo_bot_token' LIMIT 1");
                     $stmtBotToken->execute();
-                    $botToken = $stmtBotToken->fetchColumn();
-                    if ($botToken && !empty($zaloChatIds)) {
-                        if ($isSupplementary) {
-                            $zaloMsg = "🔄 [ YÊU CẦU CẬP NHẬT CÔNG ]\n\n"
-                                . "Nhân viên $userName vừa gửi Yêu cầu cập nhật công ngày $today:\n"
-                                . "  • Tên NV: $userName\n"
-                                . "  • Giờ đề xuất: " . substr($currentTime, 0, 5) . "\n"
-                                . "  • Lý do: \"$reason\"\n\n"
-                                . "Vui lòng truy cập hệ thống CRM để phê duyệt.";
-                        } else {
-                            $zaloMsg = "⏰ [ YÊU CẦU DUYỆT ĐI TRỄ ]\n\n"
-                                . "Nhân viên $userName vừa báo cáo đi trễ ngày $today:\n"
-                                . "  • Tên NV: $userName\n"
-                                . "  • Thời gian: " . substr($currentTime, 0, 5) . "\n"
-                                . "  • Lý do: \"$reason\"\n\n"
-                                . "Vui lòng truy cập hệ thống CRM để phê duyệt.";
-                        }
-                        try {
-                            sendZaloMessageToMultiple($botToken, array_unique($zaloChatIds), $zaloMsg, false);
-                        } catch (\Throwable $ze) {
-                            error_log("Error sending Zalo checkin notification: " . $ze->getMessage());
-                        }
-                    }
+                    $botToken = trim((string)$stmtBotToken->fetchColumn());
 
-                    // 2. Send Telegram
-                    require_once __DIR__ . '/../telegram_bot.php';
-                    $stmtTgToken = $this->db->prepare("SELECT setting_value FROM system_settings WHERE setting_key = 'telegram_bot_token' LIMIT 1");
-                    $stmtTgToken->execute();
-                    $tgToken = $stmtTgToken->fetchColumn();
-                    if ($tgToken && !empty($tgChatIds)) {
-                        if ($isSupplementary) {
-                            $tgMsg = "🔄 <b>[ YÊU CẦU CẬP NHẬT CÔNG ]</b>\n\n"
-                                . "Nhân viên <b>$userName</b> vừa gửi Yêu cầu cập nhật công ngày <code>$today</code>:\n"
-                                . "  • Tên NV: <b>$userName</b>\n"
-                                . "  • Giờ đề xuất: <code>" . substr($currentTime, 0, 5) . "</code>\n"
-                                . "  • Lý do: <i>\"$reason\"</i>\n\n"
-                                . "Vui lòng truy cập hệ thống CRM để phê duyệt.";
-                        } else {
-                            $tgMsg = "⏰ <b>[ YÊU CẦU DUYỆT ĐI TRỄ ]</b>\n\n"
-                                . "Nhân viên <b>$userName</b> vừa báo cáo đi trễ ngày <code>$today</code>:\n"
-                                . "  • Tên NV: <b>$userName</b>\n"
-                                . "  • Thời gian: <code>" . substr($currentTime, 0, 5) . "</code>\n"
-                                . "  • Lý do: <i>\"$reason\"</i>\n\n"
-                                . "Vui lòng truy cập hệ thống CRM để phê duyệt.";
+                    if ($botToken) {
+                        $zaloChatIds = [];
+                        // Group Chat ID
+                        $stmtZaloGroup = $this->db->prepare("SELECT setting_value FROM system_settings WHERE setting_key IN ('zalo_admin_group_chat_id', 'zalo_group_chat_id') LIMIT 1");
+                        $stmtZaloGroup->execute();
+                        $zaloGroupChatId = trim((string)$stmtZaloGroup->fetchColumn());
+                        if (!empty($zaloGroupChatId)) {
+                            $zaloChatIds[] = $zaloGroupChatId;
                         }
-                        foreach (array_unique($tgChatIds) as $cId) {
-                            try {
-                                sendTelegramMessage($tgToken, $cId, $tgMsg);
-                            } catch (\Throwable $tge) {
-                                error_log("Error sending Telegram checkin notification: " . $tge->getMessage());
+                        // Individual Chat IDs
+                        foreach ($adminDetails as $adm) {
+                            if (!empty($adm['zalo_chat_id'])) {
+                                $zaloChatIds[] = trim($adm['zalo_chat_id']);
+                            }
+                        }
+
+                        $zaloChatIds = array_unique(array_filter($zaloChatIds));
+
+                        if (!empty($zaloChatIds)) {
+                            if ($isSupplementary) {
+                                $zaloMsg = "🔄 [ YÊU CẦU CẬP NHẬT CÔNG ]\n\n"
+                                    . "Nhân viên $userName vừa gửi Yêu cầu cập nhật công ngày $today:\n"
+                                    . "  • Tên NV: $userName\n"
+                                    . "  • Giờ đề xuất: " . substr($currentTime, 0, 5) . "\n"
+                                    . "  • Lý do: \"$reason\"\n\n"
+                                    . "Vui lòng truy cập hệ thống CRM để phê duyệt.";
+                            } else {
+                                $zaloMsg = "⏰ [ YÊU CẦU DUYỆT ĐI TRỄ ]\n\n"
+                                    . "Nhân viên $userName vừa báo cáo đi trễ ngày $today:\n"
+                                    . "  • Tên NV: $userName\n"
+                                    . "  • Thời gian: " . substr($currentTime, 0, 5) . "\n"
+                                    . "  • Lý do: \"$reason\"\n\n"
+                                    . "Vui lòng truy cập hệ thống CRM để phê duyệt.";
+                            }
+
+                            foreach ($zaloChatIds as $zId) {
+                                try {
+                                    sendZaloMessage($botToken, $zId, $zaloMsg, true);
+                                } catch (\Throwable $ze) {
+                                    error_log("Error sending Zalo checkin notification to $zId: " . $ze->getMessage());
+                                }
                             }
                         }
                     }
+                } catch (\Throwable $zEx) {
+                    error_log("Error in Zalo notification channel: " . $zEx->getMessage());
+                }
 
-                    // 3. Send Email
-                    require_once __DIR__ . '/../mailer.php';
-                    foreach ($emails as $adm) {
-                        if ($isSupplementary) {
-                            $emailSubject = "[RICH LAND] Yêu cầu cập nhật công - NV $userName";
-                            $emailTitle = "YÊU CẦU CẬP NHẬT CÔNG";
-                            $emailContent = "Chào " . htmlspecialchars($adm['full_name']) . ",<br/><br/>" .
-                                            "Nhân viên <strong>$userName</strong> vừa gửi Yêu cầu cập nhật công bổ sung ngày $today lúc " . substr($currentTime, 0, 5) . ".<br/>" .
-                                            "Lý do: <em>\"$reason\"</em>.<br/>" .
-                                            "Vui lòng truy cập hệ thống CRM để phê duyệt.";
-                        } else {
-                            $emailSubject = "[RICH LAND] Yêu cầu phê duyệt đi trễ - NV $userName";
-                            $emailTitle = "DUYỆT YÊU CẦU ĐI TRỄ";
-                            $emailContent = "Chào " . htmlspecialchars($adm['full_name']) . ",<br/><br/>" .
-                                            "Nhân viên <strong>$userName</strong> vừa check-in trễ giờ quy định lúc " . substr($currentTime, 0, 5) . " ngày $today.<br/>" .
-                                            "Lý do đi trễ: <em>\"$reason\"</em>.<br/>" .
-                                            "Vui lòng truy cập hệ thống CRM để phê duyệt.";
+                // ==================== CHANNEL 2: TELEGRAM BOT (INDEPENDENT) ====================
+                try {
+                    require_once __DIR__ . '/../telegram_bot.php';
+                    $stmtTgToken = $this->db->prepare("SELECT setting_value FROM system_settings WHERE setting_key = 'telegram_bot_token' LIMIT 1");
+                    $stmtTgToken->execute();
+                    $tgToken = trim((string)$stmtTgToken->fetchColumn());
+
+                    if ($tgToken) {
+                        $tgChatIds = [];
+                        // Group Chat ID
+                        $stmtTgGroup = $this->db->prepare("SELECT setting_value FROM system_settings WHERE setting_key = 'telegram_admin_group_chat_id' LIMIT 1");
+                        $stmtTgGroup->execute();
+                        $tgGroupChatId = trim((string)$stmtTgGroup->fetchColumn());
+                        if (!empty($tgGroupChatId)) {
+                            $tgChatIds[] = $tgGroupChatId;
                         }
-                        try {
-                            sendEmailNotification($adm['email'], $emailSubject, $emailTitle, $emailContent, '', false);
-                        } catch (\Throwable $ee) {
-                            error_log("Error sending email checkin notification: " . $ee->getMessage());
+                        // Individual Chat IDs
+                        foreach ($adminDetails as $adm) {
+                            if (!empty($adm['telegram_chat_id'])) {
+                                $tgChatIds[] = trim($adm['telegram_chat_id']);
+                            }
+                        }
+
+                        $tgChatIds = array_unique(array_filter($tgChatIds));
+
+                        if (!empty($tgChatIds)) {
+                            if ($isSupplementary) {
+                                $tgMsg = "🔄 <b>[ YÊU CẦU CẬP NHẬT CÔNG ]</b>\n\n"
+                                    . "Nhân viên <b>$userName</b> vừa gửi Yêu cầu cập nhật công ngày <code>$today</code>:\n"
+                                    . "  • Tên NV: <b>$userName</b>\n"
+                                    . "  • Giờ đề xuất: <code>" . substr($currentTime, 0, 5) . "</code>\n"
+                                    . "  • Lý do: <i>\"$reason\"</i>\n\n"
+                                    . "Vui lòng truy cập hệ thống CRM để phê duyệt.";
+                            } else {
+                                $tgMsg = "⏰ <b>[ YÊU CẦU DUYỆT ĐI TRỄ ]</b>\n\n"
+                                    . "Nhân viên <b>$userName</b> vừa báo cáo đi trễ ngày <code>$today</code>:\n"
+                                    . "  • Tên NV: <b>$userName</b>\n"
+                                    . "  • Thời gian: <code>" . substr($currentTime, 0, 5) . "</code>\n"
+                                    . "  • Lý do: <i>\"$reason\"</i>\n\n"
+                                    . "Vui lòng truy cập hệ thống CRM để phê duyệt.";
+                            }
+
+                            foreach ($tgChatIds as $cId) {
+                                try {
+                                    sendTelegramMessage($tgToken, $cId, $tgMsg);
+                                } catch (\Throwable $tge) {
+                                    error_log("Error sending Telegram checkin notification to $cId: " . $tge->getMessage());
+                                }
+                            }
                         }
                     }
-                } catch (\Throwable $nEx) {
-                    error_log("Error sending check-in notifications: " . $nEx->getMessage());
+                } catch (\Throwable $tgEx) {
+                    error_log("Error in Telegram notification channel: " . $tgEx->getMessage());
+                }
+
+                // ==================== CHANNEL 3: EMAIL (INDEPENDENT & SYNCHRONOUS) ====================
+                try {
+                    require_once __DIR__ . '/../mailer.php';
+                    foreach ($adminDetails as $adm) {
+                        if (!empty($adm['email'])) {
+                            if ($isSupplementary) {
+                                $emailSubject = "[RICH LAND] Yêu cầu cập nhật công - NV $userName";
+                                $emailTitle = "YÊU CẦU CẬP NHẬT CÔNG";
+                                $emailContent = "Chào " . htmlspecialchars($adm['full_name']) . ",<br/><br/>" .
+                                                "Nhân viên <strong>$userName</strong> vừa gửi Yêu cầu cập nhật công bổ sung ngày $today lúc " . substr($currentTime, 0, 5) . ".<br/>" .
+                                                "Lý do: <em>\"$reason\"</em>.<br/>" .
+                                                "Vui lòng truy cập hệ thống CRM để phê duyệt.";
+                            } else {
+                                $emailSubject = "[RICH LAND] Yêu cầu phê duyệt đi trễ - NV $userName";
+                                $emailTitle = "DUYỆT YÊU CẦU ĐI TRỄ";
+                                $emailContent = "Chào " . htmlspecialchars($adm['full_name']) . ",<br/><br/>" .
+                                                "Nhân viên <strong>$userName</strong> vừa check-in trễ giờ quy định lúc " . substr($currentTime, 0, 5) . " ngày $today.<br/>" .
+                                                "Lý do đi trễ: <em>\"$reason\"</em>.<br/>" .
+                                                "Vui lòng truy cập hệ thống CRM để phê duyệt.";
+                            }
+                            try {
+                                sendEmailNotification($adm['email'], $emailSubject, $emailTitle, $emailContent, '', true);
+                            } catch (\Throwable $ee) {
+                                error_log("Error sending email checkin notification to " . $adm['email'] . ": " . $ee->getMessage());
+                            }
+                        }
+                    }
+                } catch (\Throwable $emEx) {
+                    error_log("Error in Email notification channel: " . $emEx->getMessage());
                 }
             }
         }
