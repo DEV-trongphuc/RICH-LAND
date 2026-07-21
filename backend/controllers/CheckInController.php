@@ -344,9 +344,19 @@ class CheckInController {
                 // Fetch details for Zalo, Telegram and Email notifications
                 try {
                     $zaloChatIds = [];
+                    $tgChatIds = [];
                     $emails = [];
+
+                    // Fetch Telegram group chat ID if configured
+                    $stmtTgGroup = $this->db->prepare("SELECT setting_value FROM system_settings WHERE setting_key = 'telegram_admin_group_chat_id' LIMIT 1");
+                    $stmtTgGroup->execute();
+                    $tgGroupChatId = trim((string)$stmtTgGroup->fetchColumn());
+                    if (!empty($tgGroupChatId)) {
+                        $tgChatIds[] = $tgGroupChatId;
+                    }
+
                     $inPlaceholders = implode(',', array_fill(0, count($admins), '?'));
-                    $stmtDetails = $this->db->prepare("SELECT email, zalo_chat_id, full_name FROM users WHERE id IN ($inPlaceholders)");
+                    $stmtDetails = $this->db->prepare("SELECT email, zalo_chat_id, telegram_chat_id, full_name FROM users WHERE id IN ($inPlaceholders)");
                     $stmtDetails->execute($admins);
                     $adminDetails = $stmtDetails->fetchAll(PDO::FETCH_ASSOC);
 
@@ -354,12 +364,15 @@ class CheckInController {
                         if (!empty($adm['zalo_chat_id'])) {
                             $zaloChatIds[] = $adm['zalo_chat_id'];
                         }
+                        if (empty($tgGroupChatId) && !empty($adm['telegram_chat_id'])) {
+                            $tgChatIds[] = $adm['telegram_chat_id'];
+                        }
                         if (!empty($adm['email'])) {
                             $emails[] = $adm;
                         }
                     }
 
-                    // Send Zalo / Telegram
+                    // 1. Send Zalo
                     require_once __DIR__ . '/../zalo_bot.php';
                     $stmtBotToken = $this->db->prepare("SELECT setting_value FROM system_settings WHERE setting_key = 'zalo_bot_token' LIMIT 1");
                     $stmtBotToken->execute();
@@ -371,10 +384,35 @@ class CheckInController {
                             . "  • Thời gian: " . substr($currentTime, 0, 5) . "\n"
                             . "  • Lý do: \"$reason\"\n\n"
                             . "Vui lòng truy cập hệ thống CRM để phê duyệt.";
-                        sendZaloMessageToMultiple($botToken, $zaloChatIds, $zaloMsg, false);
+                        try {
+                            sendZaloMessageToMultiple($botToken, array_unique($zaloChatIds), $zaloMsg, false);
+                        } catch (\Throwable $ze) {
+                            error_log("Error sending Zalo late checkin message: " . $ze->getMessage());
+                        }
                     }
 
-                    // Send Email
+                    // 2. Send Telegram
+                    require_once __DIR__ . '/../telegram_bot.php';
+                    $stmtTgToken = $this->db->prepare("SELECT setting_value FROM system_settings WHERE setting_key = 'telegram_bot_token' LIMIT 1");
+                    $stmtTgToken->execute();
+                    $tgToken = $stmtTgToken->fetchColumn();
+                    if ($tgToken && !empty($tgChatIds)) {
+                        $tgMsg = "⏰ <b>[ YÊU CẦU DUYỆT ĐI TRỄ ]</b>\n\n"
+                            . "Nhân viên <b>$userName</b> vừa báo cáo đi trễ ngày <code>$today</code>:\n"
+                            . "  • Tên NV: <b>$userName</b>\n"
+                            . "  • Thời gian: <code>" . substr($currentTime, 0, 5) . "</code>\n"
+                            . "  • Lý do: <i>\"$reason\"</i>\n\n"
+                            . "Vui lòng truy cập hệ thống CRM để phê duyệt.";
+                        foreach (array_unique($tgChatIds) as $cId) {
+                            try {
+                                sendTelegramMessage($tgToken, $cId, $tgMsg);
+                            } catch (\Throwable $tge) {
+                                error_log("Error sending Telegram late checkin message: " . $tge->getMessage());
+                            }
+                        }
+                    }
+
+                    // 3. Send Email
                     require_once __DIR__ . '/../mailer.php';
                     foreach ($emails as $adm) {
                         $emailSubject = "[RICH LAND] Yêu cầu phê duyệt đi trễ - NV $userName";
@@ -383,9 +421,13 @@ class CheckInController {
                                         "Nhân viên <strong>$userName</strong> vừa check-in trễ giờ quy định lúc " . substr($currentTime, 0, 5) . " ngày $today.<br/>" .
                                         "Lý do đi trễ: <em>\"$reason\"</em>.<br/>" .
                                         "Vui lòng truy cập hệ thống CRM để phê duyệt.";
-                        sendEmailNotification($adm['email'], $emailSubject, $emailTitle, $emailContent, '', false);
+                        try {
+                            sendEmailNotification($adm['email'], $emailSubject, $emailTitle, $emailContent, '', false);
+                        } catch (\Throwable $ee) {
+                            error_log("Error sending email late checkin notification: " . $ee->getMessage());
+                        }
                     }
-                } catch (Exception $nEx) {
+                } catch (\Throwable $nEx) {
                     error_log("Error sending late check-in notifications: " . $nEx->getMessage());
                 }
             }

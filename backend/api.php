@@ -698,125 +698,132 @@ function notifyLeaveChange($conn, $consultantId, $startDate, $endDate, $type = '
 }
 
 function notifyNightShiftChange($conn, $userId, $shiftDate, $register = true) {
-    // 1. Get user name & team leader info
-    $stmtC = $conn->prepare("
-        SELECT c.name as sale_name, c.team_id, t.leader_id 
-        FROM consultants c 
-        LEFT JOIN teams t ON c.team_id = t.id 
-        WHERE c.id = ?
-    ");
-    if (!$stmtC) return;
-    $stmtC->bind_param("i", $userId);
-    $stmtC->execute();
-    $cRow = $stmtC->get_result()->fetch_assoc();
-    $stmtC->close();
-    if (!$cRow) return;
-
-    $saleName = $cRow['sale_name'];
-    $leaderId = $cRow['leader_id'] ? (int)$cRow['leader_id'] : null;
-
-    // 2. Fetch Zalo Bot token
-    $stmtToken = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'zalo_bot_token' LIMIT 1");
-    $botToken = $stmtToken->fetch_assoc()['setting_value'] ?? '';
-    if (empty($botToken)) return;
-
-    // 3. Collect target chat IDs: all admins + team leader (if any)
-    require_once __DIR__ . '/zalo_bot.php';
-    $allAdmins = getTicketNotifyAdmins($conn);
-    $notifyChatIds = [];
-    foreach ($allAdmins as $adm) {
-        if (!empty($adm['zalo_chat_id'])) {
-            $notifyChatIds[] = $adm['zalo_chat_id'];
-        }
-    }
-
-    if ($leaderId) {
-        $stmtL = $conn->prepare("SELECT zalo_chat_id FROM users WHERE id = ?");
-        if ($stmtL) {
-            $stmtL->bind_param("i", $leaderId);
-            $stmtL->execute();
-            $lRow = $stmtL->get_result()->fetch_assoc();
-            $stmtL->close();
-            if ($lRow && !empty($lRow['zalo_chat_id']) && !in_array($lRow['zalo_chat_id'], $notifyChatIds)) {
-                $notifyChatIds[] = $lRow['zalo_chat_id'];
-            }
-        }
-    }
-
-    if (empty($notifyChatIds)) return;
-
-    // 4. Construct message
-    $formattedDate = date('d/m/Y', strtotime($shiftDate));
-    $timeStr = date('Y-m-d H:i:s');
-
-    if ($register) {
-        $zaloMsg = "🌙 [ ĐĂNG KÝ TRỰC ĐÊM ]\n\n"
-            . "Tư vấn viên $saleName vừa ĐĂNG KÝ trực ca đêm:\n"
-            . "  • Ngày trực: $formattedDate (18h-6h)\n"
-            . "  • Ghi nhận lúc: $timeStr\n\n"
-            . "Hệ thống sẽ tự động điều phối lead mới phát sinh vào ca đêm cho TVV này.";
-    } else {
-        $zaloMsg = "🌙 [ HỦY ĐĂNG KÝ TRỰC ĐÊM ]\n\n"
-            . "Tư vấn viên $saleName vừa HỦY đăng ký trực ca đêm:\n"
-            . "  • Ngày trực: $formattedDate (18h-6h)\n"
-            . "  • Thực hiện lúc: $timeStr";
-    }
-
+    if (!$userId) return;
     try {
-        sendZaloMessageToMultiple($botToken, $notifyChatIds, $zaloMsg, false);
-    } catch (Exception $e) {
-        error_log("Error sending night shift Zalo notification: " . $e->getMessage());
-    }
+        // 1. Get user name & team leader info
+        $stmtC = $conn->prepare("
+            SELECT c.name as sale_name, c.team_id, t.leader_id 
+            FROM consultants c 
+            LEFT JOIN teams t ON c.team_id = t.id 
+            WHERE c.id = ?
+        ");
+        if (!$stmtC) return;
+        $stmtC->bind_param("i", $userId);
+        $stmtC->execute();
+        $cRow = $stmtC->get_result()->fetch_assoc();
+        $stmtC->close();
+        if (!$cRow) return;
 
-    // 5. Fetch Telegram Bot token & Admin Group Chat ID
-    $stmtTgToken = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'telegram_bot_token' LIMIT 1");
-    $tgToken = $stmtTgToken->fetch_assoc()['setting_value'] ?? '';
-    $stmtTgAdminChat = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'telegram_admin_group_chat_id' LIMIT 1");
-    $tgAdminChatId = $stmtTgAdminChat->fetch_assoc()['setting_value'] ?? '';
+        $saleName = $cRow['sale_name'];
+        $leaderId = $cRow['leader_id'] ? (int)$cRow['leader_id'] : null;
+        $formattedDate = date('d/m/Y', strtotime($shiftDate));
+        $timeStr = date('Y-m-d H:i:s');
 
-    if (!empty($tgToken)) {
-        require_once __DIR__ . '/telegram_bot.php';
-        $tgNotifyChatIds = [];
-        if (!empty($tgAdminChatId)) {
-            $tgNotifyChatIds[] = $tgAdminChatId;
-        }
-        foreach ($allAdmins as $adm) {
-            if (!empty($adm['telegram_chat_id'])) {
-                $tgNotifyChatIds[] = $adm['telegram_chat_id'];
+        require_once __DIR__ . '/zalo_bot.php';
+        $allAdmins = getTicketNotifyAdmins($conn);
+
+        // 2. Send Zalo Bot Notification
+        $stmtToken = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'zalo_bot_token' LIMIT 1");
+        $botToken = $stmtToken ? ($stmtToken->fetch_assoc()['setting_value'] ?? '') : '';
+
+        if (!empty($botToken)) {
+            $notifyChatIds = [];
+            foreach ($allAdmins as $adm) {
+                if (!empty($adm['zalo_chat_id'])) {
+                    $notifyChatIds[] = $adm['zalo_chat_id'];
+                }
             }
-        }
-        if ($leaderId) {
-            $stmtL = $conn->prepare("SELECT telegram_chat_id FROM users WHERE id = ?");
-            if ($stmtL) {
-                $stmtL->bind_param("i", $leaderId);
-                $stmtL->execute();
-                $lRow = $stmtL->get_result()->fetch_assoc();
-                $stmtL->close();
-                if ($lRow && !empty($lRow['telegram_chat_id']) && !in_array($lRow['telegram_chat_id'], $tgNotifyChatIds)) {
-                    $tgNotifyChatIds[] = $lRow['telegram_chat_id'];
+
+            if ($leaderId) {
+                $stmtL = $conn->prepare("SELECT zalo_chat_id FROM users WHERE id = ?");
+                if ($stmtL) {
+                    $stmtL->bind_param("i", $leaderId);
+                    $stmtL->execute();
+                    $lRow = $stmtL->get_result()->fetch_assoc();
+                    $stmtL->close();
+                    if ($lRow && !empty($lRow['zalo_chat_id']) && !in_array($lRow['zalo_chat_id'], $notifyChatIds)) {
+                        $notifyChatIds[] = $lRow['zalo_chat_id'];
+                    }
+                }
+            }
+
+            if (!empty($notifyChatIds)) {
+                if ($register) {
+                    $zaloMsg = "🌙 [ ĐĂNG KÝ TRỰC ĐÊM ]\n\n"
+                        . "Tư vấn viên $saleName vừa ĐĂNG KÝ trực ca đêm:\n"
+                        . "  • Ngày trực: $formattedDate (18h-6h)\n"
+                        . "  • Ghi nhận lúc: $timeStr\n\n"
+                        . "Hệ thống sẽ tự động điều phối lead mới phát sinh vào ca đêm cho TVV này.";
+                } else {
+                    $zaloMsg = "🌙 [ HỦY ĐĂNG KÝ TRỰC ĐÊM ]\n\n"
+                        . "Tư vấn viên $saleName vừa HỦY đăng ký trực ca đêm:\n"
+                        . "  • Ngày trực: $formattedDate (18h-6h)\n"
+                        . "  • Thực hiện lúc: $timeStr";
+                }
+                try {
+                    sendZaloMessageToMultiple($botToken, array_unique($notifyChatIds), $zaloMsg, false);
+                } catch (Throwable $ez) {
+                    error_log("Error sending Zalo night shift notification: " . $ez->getMessage());
                 }
             }
         }
-        if ($register) {
-            $tgMsg = "🌙 <b>[ ĐĂNG KÝ TRỰC ĐÊM ]</b>\n\n"
-                . "Tư vấn viên <b>$saleName</b> vừa <b>ĐĂNG KÝ</b> trực ca đêm:\n"
-                . "  • Ngày trực: <code>$formattedDate</code> (18h-6h)\n"
-                . "  • Ghi nhận lúc: <i>$timeStr</i>\n\n"
-                . "Hệ thống sẽ tự động điều phối lead mới phát sinh vào ca đêm cho TVV này.";
-        } else {
-            $tgMsg = "🌙 <b>[ HỦY ĐĂNG KÝ TRỰC ĐÊM ]</b>\n\n"
-                . "Tư vấn viên <b>$saleName</b> vừa <b>HỦY</b> đăng ký trực ca đêm:\n"
-                . "  • Ngày trực: <code>$formattedDate</code> (18h-6h)\n"
-                . "  • Thực hiện lúc: <i>$timeStr</i>";
-        }
-        $tgNotifyChatIds = array_unique($tgNotifyChatIds);
-        foreach ($tgNotifyChatIds as $chatId) {
-            try {
-                sendTelegramMessage($tgToken, $chatId, $tgMsg);
-            } catch (Exception $e) {
-                error_log("Error sending night shift Telegram notification: " . $e->getMessage());
+
+        // 3. Send Telegram Bot Notification
+        $stmtTgToken = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'telegram_bot_token' LIMIT 1");
+        $tgToken = $stmtTgToken ? ($stmtTgToken->fetch_assoc()['setting_value'] ?? '') : '';
+        $stmtTgAdminChat = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'telegram_admin_group_chat_id' LIMIT 1");
+        $tgAdminChatId = $stmtTgAdminChat ? ($stmtTgAdminChat->fetch_assoc()['setting_value'] ?? '') : '';
+
+        if (!empty($tgToken)) {
+            require_once __DIR__ . '/telegram_bot.php';
+            $tgNotifyChatIds = [];
+            if (!empty($tgAdminChatId)) {
+                $tgNotifyChatIds[] = $tgAdminChatId;
+            } else {
+                foreach ($allAdmins as $adm) {
+                    if (!empty($adm['telegram_chat_id'])) {
+                        $tgNotifyChatIds[] = $adm['telegram_chat_id'];
+                    }
+                }
+            }
+
+            if ($leaderId) {
+                $stmtL = $conn->prepare("SELECT telegram_chat_id FROM users WHERE id = ?");
+                if ($stmtL) {
+                    $stmtL->bind_param("i", $leaderId);
+                    $stmtL->execute();
+                    $lRow = $stmtL->get_result()->fetch_assoc();
+                    $stmtL->close();
+                    if ($lRow && !empty($lRow['telegram_chat_id']) && !in_array($lRow['telegram_chat_id'], $tgNotifyChatIds)) {
+                        $tgNotifyChatIds[] = $lRow['telegram_chat_id'];
+                    }
+                }
+            }
+
+            if (!empty($tgNotifyChatIds)) {
+                if ($register) {
+                    $tgMsg = "🌙 <b>[ ĐĂNG KÝ TRỰC ĐÊM ]</b>\n\n"
+                        . "Tư vấn viên <b>$saleName</b> vừa <b>ĐĂNG KÝ</b> trực ca đêm:\n"
+                        . "  • Ngày trực: <code>$formattedDate</code> (18h-6h)\n"
+                        . "  • Ghi nhận lúc: <i>$timeStr</i>\n\n"
+                        . "Hệ thống sẽ tự động điều phối lead mới phát sinh vào ca đêm cho TVV này.";
+                } else {
+                    $tgMsg = "🌙 <b>[ HỦY ĐĂNG KÝ TRỰC ĐÊM ]</b>\n\n"
+                        . "Tư vấn viên <b>$saleName</b> vừa <b>HỦY</b> đăng ký trực ca đêm:\n"
+                        . "  • Ngày trực: <code>$formattedDate</code> (18h-6h)\n"
+                        . "  • Thực hiện lúc: <i>$timeStr</i>";
+                }
+                foreach (array_unique($tgNotifyChatIds) as $chatId) {
+                    try {
+                        sendTelegramMessage($tgToken, $chatId, $tgMsg);
+                    } catch (Throwable $etg) {
+                        error_log("Error sending Telegram night shift notification: " . $etg->getMessage());
+                    }
+                }
             }
         }
+    } catch (Throwable $e) {
+        error_log("Error in notifyNightShiftChange: " . $e->getMessage());
     }
 }
 
@@ -4056,8 +4063,13 @@ switch ($action) {
                 'approved' => $autoApprove
             ]));
             
+            $saleIdToNotify = ($currentSaleConsultantId > 0) ? $currentSaleConsultantId : $dbUserId;
             if ($autoApprove === 1) {
-                notifyNightShiftChange($conn, $currentSaleConsultantId, $shiftDate, true);
+                try {
+                    notifyNightShiftChange($conn, $saleIdToNotify, $shiftDate, true);
+                } catch (Throwable $e) {
+                    error_log("Night shift notify error: " . $e->getMessage());
+                }
 
                 // Gửi chuông báo cho Quản lý & Admins
                 $saleName = !empty($decodedUser['name']) ? $decodedUser['name'] : 'Nhân viên';
@@ -4084,7 +4096,7 @@ switch ($action) {
                     WHERE c.id = ?
                 ");
                 if ($stmtC) {
-                    $stmtC->bind_param("i", $currentSaleConsultantId);
+                    $stmtC->bind_param("i", $saleIdToNotify);
                     $stmtC->execute();
                     $cRow = $stmtC->get_result()->fetch_assoc();
                     $stmtC->close();
@@ -4147,7 +4159,11 @@ switch ($action) {
                 'shift_date' => $shiftDate
             ]));
             
-            notifyNightShiftChange($conn, $currentSaleConsultantId, $shiftDate, false);
+            try {
+                notifyNightShiftChange($conn, $saleIdToNotify, $shiftDate, false);
+            } catch (Throwable $e) {
+                error_log("Night shift cancel notify error: " . $e->getMessage());
+            }
             echo json_encode(['success' => true, 'message' => 'Hủy đăng ký trực đêm thành công.']);
         }
         break;

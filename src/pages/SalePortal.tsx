@@ -29,6 +29,7 @@ import { fetchAPI } from '../utils/api';
 import { compressToWebP } from '../utils/imageCompress';
 import { MentionInput } from '../components/ui/MentionInput';
 import { CustomModal } from '../components/ui/CustomModal';
+import { ConfirmModal } from '../components/ui/ConfirmModal';
 import { CustomSelect } from '../components/ui/CustomSelect';
 import { useLanguage } from '../contexts/LanguageContext';
 import { Avatar } from '../components/ui/Avatar';
@@ -928,6 +929,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
 
   // Leave scheduler state
   const [showLeaveScheduler, setShowLeaveScheduler] = useState(false);
+  const [showNightShiftConfirmModal, setShowNightShiftConfirmModal] = useState(false);
 
   const getHourLabel = (timeStr: string) => {
     if (!timeStr) return '';
@@ -11415,7 +11417,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                                     toast.error(t('Đã quá hạn đăng ký trực ca đêm hôm nay!'));
                                     return;
                                   }
-                                  handleToggleNightShift();
+                                  setShowNightShiftConfirmModal(true);
                                 }}
                               />
                             </div>
@@ -15160,6 +15162,24 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
           </div>
         </CustomModal>
       )}
+
+      <ConfirmModal
+        isOpen={showNightShiftConfirmModal}
+        onClose={() => setShowNightShiftConfirmModal(false)}
+        onConfirm={() => {
+          setShowNightShiftConfirmModal(false);
+          handleToggleNightShift();
+        }}
+        title={nightShiftRegistered ? t('Xác nhận HỦY trực ca đêm') : t('Xác nhận ĐĂNG KÝ trực ca đêm')}
+        message={
+          nightShiftRegistered
+            ? t('Bạn có chắc chắn muốn HỦY đăng ký trực ca đêm hôm nay (22h - 6h) không?')
+            : t('Bạn có chắc chắn muốn ĐĂNG KÝ trực ca đêm hôm nay (22h - 6h) để tự động nhận lead mới phân bổ trong ca không?')
+        }
+        confirmText={nightShiftRegistered ? t('Hủy trực ca đêm') : t('Xác nhận đăng ký')}
+        cancelText={t('Quay lại')}
+        confirmType={nightShiftRegistered ? 'danger' : 'primary'}
+      />
     </div>
   );
 };
