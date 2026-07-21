@@ -1,15 +1,17 @@
 <?php
 // backend/debug_syntax.php
-ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
-error_reporting(E_ALL);
+header('Content-Type: text/plain; charset=utf-8');
 
-echo "Testing syntax of zalo_webhook.php:\n";
+$output = [];
+$returnVar = 0;
+exec('php -l ' . escapeshellarg(__DIR__ . '/zalo_webhook.php') . ' 2>&1', $output, $returnVar);
 
-try {
-    include_once __DIR__ . '/zalo_webhook.php';
-    echo "Included successfully without fatal syntax error.\n";
-} catch (Throwable $t) {
-    echo "EXCEPTION CATCH: " . $t->getMessage() . " in " . $t->getFile() . " line " . $t->getLine() . "\n";
-    echo $t->getTraceAsString();
-}
+echo "PHP Lint Exit Code: $returnVar\n";
+echo implode("\n", $output) . "\n\n";
+
+$_SERVER['HTTP_X_BOT_API_SECRET_TOKEN'] = 'richlandvietnam-1808';
+ob_start();
+include __DIR__ . '/zalo_webhook.php';
+$out = ob_get_clean();
+
+echo "Execution Output:\n$out\n";
