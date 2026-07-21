@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { CustomModal } from './CustomModal';
-import { Power, CheckCircle, AlertTriangle, ShieldCheck, ExternalLink, RotateCcw, ArrowLeft, Check, Copy } from 'lucide-react';
+import { Power, CheckCircle, AlertTriangle, ShieldCheck, ExternalLink, RotateCcw, ArrowLeft, Check, Copy, Smartphone } from 'lucide-react';
 import { fetchAPI } from '../../utils/api';
 import { useAuthStore } from '../../store/authStore';
 import toast from 'react-hot-toast';
+import { QRCodeCanvas } from 'qrcode.react';
 
 interface NotificationSettingsModalProps {
   isOpen: boolean;
@@ -912,9 +913,10 @@ const getDefaultConfig = (key: string): EventConfig => {
         isOpen={isZaloModalOpen}
         onClose={() => setIsZaloModalOpen(false)}
         title="Kết Nối Zalo Bot Nhận Thông Báo"
-        width={480}
+        width={640}
       >
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', padding: '6px 2px' }}>
+          {/* Header banner */}
           <div style={{
             display: 'flex',
             alignItems: 'center',
@@ -937,88 +939,138 @@ const getDefaultConfig = (key: string): EventConfig => {
             </div>
           </div>
 
-          {/* Bước 1 */}
-          <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '14px 16px' }}>
-            <div style={{ fontSize: '0.8125rem', fontWeight: 700, color: '#0f172a', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span style={{ width: 22, height: 22, borderRadius: '50%', background: '#0068ff', color: 'white', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', fontWeight: 800 }}>1</span>
-              Nhấn liên kết mở Zalo Bot / OA:
-            </div>
-            <a
-              href={userInfo.zalo_bot_link}
-              target="_blank"
-              rel="noreferrer"
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 8,
-                padding: '10px 18px',
-                background: '#0068ff',
-                color: 'white',
-                borderRadius: '8px',
-                fontWeight: 700,
-                fontSize: '0.8125rem',
-                textDecoration: 'none',
-                boxShadow: '0 3px 8px rgba(0,104,255,0.25)'
-              }}
-            >
-              Mở Zalo Bot Trực Tiếp <ExternalLink size={14} />
-            </a>
-          </div>
+          {/* 2-column layout: instructions left, QR right */}
+          <div style={{ display: 'flex', gap: '16px', alignItems: 'stretch' }}>
 
-          {/* Bước 2 */}
-          <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '14px 16px' }}>
-            <div style={{ fontSize: '0.8125rem', fontWeight: 700, color: '#0f172a', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span style={{ width: 22, height: 22, borderRadius: '50%', background: '#0068ff', color: 'white', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', fontWeight: 800 }}>2</span>
-              Gửi mã kết nối này cho Zalo Bot:
-            </div>
-            
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 8 }}>
-              <div style={{
-                flex: 1,
-                background: '#0f172a',
-                color: '#38bdf8',
-                padding: '10px 14px',
-                borderRadius: '8px',
-                fontFamily: 'monospace',
-                fontWeight: 800,
-                fontSize: '1.05rem',
-                letterSpacing: '1px',
-                textAlign: 'center',
-                boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.2)'
-              }}>
-                CONNECT {userInfo.user_id || currentUser?.id}
+            {/* Left: Steps */}
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '12px' }}>
+
+              {/* Bước 1 */}
+              <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '14px 16px' }}>
+                <div style={{ fontSize: '0.8125rem', fontWeight: 700, color: '#0f172a', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ width: 22, height: 22, borderRadius: '50%', background: '#0068ff', color: 'white', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', fontWeight: 800 }}>1</span>
+                  Nhấn liên kết mở Zalo Bot:
+                </div>
+                <a
+                  href={userInfo.zalo_bot_link}
+                  target="_blank"
+                  rel="noreferrer"
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 8,
+                    padding: '10px 18px',
+                    background: '#0068ff',
+                    color: 'white',
+                    borderRadius: '8px',
+                    fontWeight: 700,
+                    fontSize: '0.8125rem',
+                    textDecoration: 'none',
+                    boxShadow: '0 3px 8px rgba(0,104,255,0.25)'
+                  }}
+                >
+                  Mở Zalo Bot Trực Tiếp <ExternalLink size={14} />
+                </a>
               </div>
-              <button
-                type="button"
-                onClick={() => {
-                  const code = `CONNECT ${userInfo.user_id || currentUser?.id || ''}`;
-                  navigator.clipboard.writeText(code);
-                  setCopiedCode(true);
-                  toast.success('Đã sao chép mã kết nối Zalo Bot!');
-                  setTimeout(() => setCopiedCode(false), 2000);
-                }}
-                style={{
-                  padding: '10px 16px',
-                  background: copiedCode ? '#16a34a' : '#0068ff',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '8px',
-                  fontWeight: 700,
-                  fontSize: '0.8125rem',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 6,
-                  transition: 'all 0.2s'
-                }}
-              >
-                {copiedCode ? <Check size={14} /> : <Copy size={14} />}
-                {copiedCode ? 'Đã sao chép' : 'Sao chép mã'}
-              </button>
+
+              {/* Bước 2 */}
+              <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '14px 16px', flex: 1 }}>
+                <div style={{ fontSize: '0.8125rem', fontWeight: 700, color: '#0f172a', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ width: 22, height: 22, borderRadius: '50%', background: '#0068ff', color: 'white', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', fontWeight: 800 }}>2</span>
+                  Gửi mã kết nối cho Zalo Bot:
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <div style={{
+                    flex: 1,
+                    background: '#0f172a',
+                    color: '#38bdf8',
+                    padding: '10px 14px',
+                    borderRadius: '8px',
+                    fontFamily: 'monospace',
+                    fontWeight: 800,
+                    fontSize: '1.05rem',
+                    letterSpacing: '1px',
+                    textAlign: 'center',
+                    boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.2)'
+                  }}>
+                    {userInfo.user_id || currentUser?.id}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const code = `CONNECT ${userInfo.user_id || currentUser?.id || ''}`;
+                      navigator.clipboard.writeText(code);
+                      setCopiedCode(true);
+                      toast.success('Đã sao chép mã kết nối Zalo Bot!');
+                      setTimeout(() => setCopiedCode(false), 2000);
+                    }}
+                    style={{
+                      padding: '10px 16px',
+                      background: copiedCode ? '#16a34a' : '#0068ff',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '8px',
+                      fontWeight: 700,
+                      fontSize: '0.8125rem',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 6,
+                      flexShrink: 0,
+                      transition: 'all 0.2s'
+                    }}
+                  >
+                    {copiedCode ? <Check size={14} /> : <Copy size={14} />}
+                    {copiedCode ? 'Đã sao chép' : 'Sao chép mã'}
+                  </button>
+                </div>
+              </div>
+
             </div>
-            <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: 10, lineHeight: 1.4 }}>
-              💡 Mẹo: Bạn có thể nhắn mã số <strong style={{ color: '#0f172a' }}>{userInfo.user_id || currentUser?.id}</strong> hoặc <strong style={{ color: '#0f172a' }}>CONNECT {userInfo.user_id || currentUser?.id}</strong> vào Zalo Bot.
+
+            {/* Right: QR Code */}
+            <div style={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '10px',
+              background: '#f8fafc',
+              border: '1px solid #e2e8f0',
+              borderRadius: '12px',
+              padding: '16px',
+              minWidth: 160
+            }}>
+              <div style={{
+                background: '#fff',
+                padding: '10px',
+                borderRadius: '10px',
+                border: '1px solid #e2e8f0',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}>
+                {userInfo.zalo_bot_link ? (
+                  <QRCodeCanvas
+                    value={userInfo.zalo_bot_link}
+                    size={120}
+                    level="H"
+                    includeMargin={false}
+                  />
+                ) : (
+                  <div style={{ width: 120, height: 120, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8' }}>
+                    <Smartphone size={40} />
+                  </div>
+                )}
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: '0.75rem', fontWeight: 700, color: '#0f172a' }}>
+                <Smartphone size={13} /> Quét bằng điện thoại
+              </div>
+              <div style={{ fontSize: '0.6875rem', color: '#64748b', textAlign: 'center', lineHeight: 1.4 }}>
+                Mở camera để quét &amp; chat trực tiếp
+              </div>
             </div>
+
           </div>
 
           <div style={{ fontSize: '0.75rem', color: '#64748b', fontStyle: 'italic', textAlign: 'center', marginTop: 2 }}>

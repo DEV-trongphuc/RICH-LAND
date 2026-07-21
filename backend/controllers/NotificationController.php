@@ -13,9 +13,18 @@ class NotificationController {
         
         $avatars = [];
         try {
-            $avatarsStmt = $this->db->query("SELECT name, avatar FROM accounts WHERE avatar IS NOT NULL AND avatar != ''");
+            // Lấy avatar từ cả accounts (admin) và consultants (sale)
+            $avatarsStmt = $this->db->query("
+                SELECT name, avatar FROM accounts WHERE avatar IS NOT NULL AND avatar != ''
+                UNION
+                SELECT name, avatar_url AS avatar FROM consultants WHERE avatar_url IS NOT NULL AND avatar_url != ''
+            ");
             if ($avatarsStmt) {
-                $avatars = $avatarsStmt->fetchAll(PDO::FETCH_KEY_PAIR);
+                foreach ($avatarsStmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+                    if (!empty($row['name']) && !empty($row['avatar'])) {
+                        $avatars[$row['name']] = $row['avatar'];
+                    }
+                }
             }
         } catch (\Throwable $e) {}
         

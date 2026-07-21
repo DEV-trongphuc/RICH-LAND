@@ -1598,9 +1598,12 @@ if ($eventName === 'user_send_text' || $eventName === 'message.text.received') {
         } else if (preg_match('/^(\d+)[\-\s]+([^\s]+)$/', $cleanText, $matches)) {
             $userId = (int) $matches[1];
             $email = strtolower(trim($matches[2]));
+        } else if (preg_match('/^connect[\s\-]+(\d+)$/i', $cleanText, $m)) {
+            $userId = (int) $m[1];
+            $targetType = ''; // CONNECT {id} -> tìm cả sale lẫn admin
         } else if (preg_match('/^\d+$/', $cleanText)) {
             $userId = (int) $cleanText;
-            $targetType = 'sale'; // Mặc định nếu chỉ nhập số thì dành cho Sale
+            $targetType = ''; // Nhập số thuần -> tìm cả sale lẫn admin
         } else if (filter_var($cleanText, FILTER_VALIDATE_EMAIL)) {
             $email = strtolower($cleanText);
         }

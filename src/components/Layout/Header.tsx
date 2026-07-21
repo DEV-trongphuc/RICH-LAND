@@ -2565,10 +2565,11 @@ export const Header = ({
                   return (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                       {filtered.map(notif => {
-                        const actorName = parseActorName(notif.body);
-                        const isWarning = notif.type === 'warning' || (notif.title && (notif.title.toLowerCase().includes('trùng số') || notif.title.toLowerCase().includes('rửa nguồn')));
+                        const isWarning = notif.type === 'warning' || (notif.title && (notif.title.toLowerCase().includes('trùng số') || notif.title.toLowerCase().includes('rửa nguồn') || notif.title.toLowerCase().includes('cảnh báo')));
                         const isAttendanceUpdate = notif.type === 'attendance_update' || (notif.title && notif.title.toLowerCase().includes('cập nhật công'));
-                        const isRichland = Boolean((notif.title && (notif.title.toLowerCase().includes('richland') || notif.title.toLowerCase().includes('rich land'))) || (notif.body && (notif.body.toLowerCase().includes('richland') || notif.body.toLowerCase().includes('rich land'))));
+                        // Không parse actorName cho cảnh báo hệ thống (tránh hiển thị tên sai)
+                        const actorName = isWarning ? null : parseActorName(notif.body);
+                        const isRichland = !actorName && Boolean((notif.title && (notif.title.toLowerCase().includes('richland') || notif.title.toLowerCase().includes('rich land'))) || (notif.body && (notif.body.toLowerCase().includes('richland') || notif.body.toLowerCase().includes('rich land'))));
                         
                         const bgBase = notif.is_read 
                           ? 'var(--color-surface)' 
@@ -2618,107 +2619,28 @@ export const Header = ({
                             }}
                           >
                             <div style={{ position: 'relative', display: 'flex', flexShrink: 0, marginTop: 2 }}>
-                              {isRichland ? (
-                                <div style={{
-                                  width: 38,
-                                  height: 38,
-                                  borderRadius: '50%',
-                                  overflow: 'hidden',
-                                  border: '1px solid var(--color-border-light)',
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'center',
-                                  background: 'white',
-                                  flexShrink: 0
-                                }}>
+                              {isWarning ? (
+                                /* Cảnh báo hệ thống → logo Richland */
+                                <div style={{ width: 38, height: 38, borderRadius: '50%', overflow: 'hidden', border: '1px solid var(--color-border-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'white', flexShrink: 0 }}>
                                   <img src="/LOGO.jpg" alt="Richland" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                                 </div>
                               ) : actorName ? (
+                                /* Sale / Admin gửi → avatar đúng người */
                                 <div style={{ position: 'relative', display: 'inline-flex' }}>
                                   <Avatar src={notifAvatars[actorName] || undefined} name={actorName} size={38} />
-                                  <span style={{
-                                    position: 'absolute',
-                                    bottom: -2,
-                                    right: -2,
-                                    width: 18,
-                                    height: 18,
-                                    borderRadius: '50%',
-                                    background: (() => {
-                                      switch (notif.type) {
-                                        case 'warning': return '#ef4444';
-                                        case 'mention':
-                                        case 'task_assignment':
-                                        case 'task_participant':
-                                        case 'approval_request': return '#3b82f6';
-                                        case 'project_roster': return '#10b981';
-                                        case 'project_document': return '#f59e0b';
-                                        case 'project_comment':
-                                        case 'attendance_update': return '#8b5cf6';
-                                        case 'attendance': return '#eab308';
-                                        default: return '#6b7280';
-                                      }
-                                    })(),
-                                    border: '1.5px solid var(--color-surface, #ffffff)',
-                                    boxShadow: '0 1px 3px rgba(0,0,0,0.15)',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center'
-                                  }}>
-                                    {(() => {
-                                      switch (notif.type) {
-                                        case 'mention':
-                                        case 'task_assignment':
-                                        case 'task_participant':
-                                        case 'approval_request':
-                                          return <CheckSquare size={11} style={{ color: 'white' }} />;
-                                        case 'project_roster':
-                                          return <Users size={11} style={{ color: 'white' }} />;
-                                        case 'project_document':
-                                          return <FileText size={11} style={{ color: 'white' }} />;
-                                        case 'project_comment':
-                                          return <MessageSquare size={11} style={{ color: 'white' }} />;
-                                        case 'warning':
-                                          return <AlertTriangle size={11} style={{ color: 'white' }} />;
-                                        case 'attendance_update':
-                                          return <Clock size={11} style={{ color: 'white' }} />;
-                                        default:
-                                          return <Info size={11} style={{ color: 'white' }} />;
-                                      }
-                                    })()}
+                                  <span style={{ position: 'absolute', bottom: -2, right: -2, width: 18, height: 18, borderRadius: '50%', background: (() => { switch (notif.type) { case 'warning': return '#ef4444'; case 'mention': case 'task_assignment': case 'task_participant': case 'approval_request': return '#3b82f6'; case 'project_roster': return '#10b981'; case 'project_document': return '#f59e0b'; case 'project_comment': case 'attendance_update': return '#8b5cf6'; case 'attendance': return '#eab308'; default: return '#6b7280'; } })(), border: '1.5px solid var(--color-surface, #ffffff)', boxShadow: '0 1px 3px rgba(0,0,0,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                    {(() => { switch (notif.type) { case 'mention': case 'task_assignment': case 'task_participant': case 'approval_request': return <CheckSquare size={11} style={{ color: 'white' }} />; case 'project_roster': return <Users size={11} style={{ color: 'white' }} />; case 'project_document': return <FileText size={11} style={{ color: 'white' }} />; case 'project_comment': return <MessageSquare size={11} style={{ color: 'white' }} />; case 'warning': return <AlertTriangle size={11} style={{ color: 'white' }} />; case 'attendance_update': return <Clock size={11} style={{ color: 'white' }} />; default: return <Info size={11} style={{ color: 'white' }} />; } })()}
                                   </span>
                                 </div>
+                              ) : isRichland ? (
+                                /* Thông báo hệ thống Admin Richland → logo */
+                                <div style={{ width: 38, height: 38, borderRadius: '50%', overflow: 'hidden', border: '1px solid var(--color-border-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'white', flexShrink: 0 }}>
+                                  <img src="/LOGO.jpg" alt="Richland" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                </div>
                               ) : (
-                                <div style={{
-                                  width: 38,
-                                  height: 38,
-                                  borderRadius: '50%',
-                                  background: isWarning ? 'rgba(239, 68, 68, 0.1)' : isAttendanceUpdate ? 'rgba(139, 92, 246, 0.1)' : 'rgba(59, 130, 246, 0.1)',
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'center',
-                                  boxShadow: 'inset 0 0 0 1px rgba(0,0,0,0.02)'
-                                }}>
-                                  {(() => {
-                                    switch (notif.type) {
-                                      case 'mention':
-                                      case 'task_assignment':
-                                      case 'task_participant':
-                                      case 'approval_request':
-                                        return <CheckSquare size={18} style={{ color: '#3b82f6' }} />;
-                                      case 'project_roster':
-                                        return <Users size={18} style={{ color: '#10b981' }} />;
-                                      case 'project_document':
-                                        return <FileText size={18} style={{ color: '#f59e0b' }} />;
-                                      case 'project_comment':
-                                        return <MessageSquare size={18} style={{ color: '#8b5cf6' }} />;
-                                      case 'warning':
-                                        return <AlertTriangle size={18} style={{ color: '#ef4444' }} />;
-                                      case 'attendance_update':
-                                        return <Clock size={18} style={{ color: '#8b5cf6' }} />;
-                                      default:
-                                        return <Info size={18} style={{ color: '#6b7280' }} />;
-                                    }
-                                  })()}
+                                /* Fallback → icon circle */
+                                <div style={{ width: 38, height: 38, borderRadius: '50%', background: isAttendanceUpdate ? 'rgba(139, 92, 246, 0.1)' : 'rgba(59, 130, 246, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: 'inset 0 0 0 1px rgba(0,0,0,0.02)' }}>
+                                  {(() => { switch (notif.type) { case 'mention': case 'task_assignment': case 'task_participant': case 'approval_request': return <CheckSquare size={18} style={{ color: '#3b82f6' }} />; case 'project_roster': return <Users size={18} style={{ color: '#10b981' }} />; case 'project_document': return <FileText size={18} style={{ color: '#f59e0b' }} />; case 'project_comment': return <MessageSquare size={18} style={{ color: '#8b5cf6' }} />; case 'attendance_update': return <Clock size={18} style={{ color: '#8b5cf6' }} />; default: return <Info size={18} style={{ color: '#6b7280' }} />; } })()}
                                 </div>
                               )}
                             </div>
