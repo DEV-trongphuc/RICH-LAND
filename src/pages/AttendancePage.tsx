@@ -798,26 +798,26 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
                                 <>
                                   {nights.length > 0 && (
                                     <span 
-                                      style={{ fontSize: '0.65rem', padding: '2px 5px', borderRadius: '4px', background: 'rgba(245, 158, 11, 0.1)', color: '#d97706', fontWeight: 700 }}
+                                      style={{ fontSize: '0.65rem', padding: '2px 6px', borderRadius: '6px', background: 'rgba(245, 158, 11, 0.12)', color: '#d97706', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '3px' }}
                                       title={t('Trực đêm: ') + nights.map(n => n.user_name).join(', ')}
                                     >
-                                      🌙 {nights.length}
+                                      <Moon size={11} /> {nights.length}
                                     </span>
                                   )}
                                   {weekends.length > 0 && (
                                     <span 
-                                      style={{ fontSize: '0.65rem', padding: '2px 5px', borderRadius: '4px', background: 'rgba(99, 102, 241, 0.1)', color: 'var(--color-primary)', fontWeight: 700 }}
+                                      style={{ fontSize: '0.65rem', padding: '2px 6px', borderRadius: '6px', background: 'rgba(99, 102, 241, 0.12)', color: 'var(--color-primary)', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '3px' }}
                                       title={t('Cuối tuần: ') + weekends.map(w => w.user_name).join(', ')}
                                     >
-                                      📅 {weekends.length}
+                                      <Calendar size={11} /> {weekends.length}
                                     </span>
                                   )}
                                   {holidays.length > 0 && (
                                     <span 
-                                      style={{ fontSize: '0.65rem', padding: '2px 5px', borderRadius: '4px', background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', fontWeight: 700 }}
+                                      style={{ fontSize: '0.65rem', padding: '2px 6px', borderRadius: '6px', background: 'rgba(239, 68, 68, 0.12)', color: '#ef4444', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '3px' }}
                                       title={t('Ngày lễ: ') + holidays.map(h => h.user_name).join(', ')}
                                     >
-                                      🎉 {holidays.length}
+                                      <Zap size={11} /> {holidays.length}
                                     </span>
                                   )}
                                 </>
@@ -831,16 +831,19 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
                               let bg = 'rgba(245, 158, 11, 0.05)';
                               let border = 'rgba(245, 158, 11, 0.2)';
                               let text = '#d97706';
+                              let ShiftIcon = Moon;
                               if (s.shift_type === 'weekend') {
                                 label = t('Cuối tuần');
                                 bg = 'rgba(99, 102, 241, 0.05)';
                                 border = 'rgba(99, 102, 241, 0.2)';
                                 text = 'var(--color-primary)';
+                                ShiftIcon = Calendar;
                               } else if (s.shift_type === 'holiday') {
                                 label = s.holiday_name ? `${t('Lễ')} (${s.holiday_name})` : t('Ngày lễ');
                                 bg = 'rgba(239, 68, 68, 0.05)';
                                 border = 'rgba(239, 68, 68, 0.2)';
                                 text = '#ef4444';
+                                ShiftIcon = Zap;
                               }
 
                               const isAppr = Number(s.approved) === 1;
@@ -858,7 +861,8 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
                                   color: text,
                                   fontWeight: 600
                                 }} title={`${label} (${isAppr ? t('Đã duyệt') : t('Chờ duyệt')})`}>
-                                  <span style={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap', maxWidth: '80px' }}>
+                                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap', maxWidth: '85px' }}>
+                                    <ShiftIcon size={10} />
                                     {label}
                                   </span>
                                   <span style={{ fontSize: '0.625rem', opacity: 0.8, fontWeight: 800 }}>
