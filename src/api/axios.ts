@@ -44,8 +44,17 @@ api.interceptors.request.use((config) => {
   // Rewrite URL to api.php?action=... to bypass missing web server rewrite rules
   if (config.url && !config.url.startsWith('http') && !config.url.includes('api.php')) {
     const cleanUrl = config.url.replace(/^\//, ''); // remove leading slash
+    const qParts = cleanUrl.split('?');
     config.params = config.params || {};
-    config.params.action = cleanUrl;
+    config.params.action = qParts[0];
+    if (qParts[1]) {
+      const searchParams = new URLSearchParams(qParts[1]);
+      searchParams.forEach((val, key) => {
+        if (config.params[key] === undefined) {
+          config.params[key] = val;
+        }
+      });
+    }
     config.url = 'api.php';
   }
 

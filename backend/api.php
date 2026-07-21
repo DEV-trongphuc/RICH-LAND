@@ -36,7 +36,7 @@ if (in_array($baseAction, [
     'contacts', 'companies', 'deals', 'activities', 'notes', 'campaigns', 'marketing-campaigns', 'upload', 'teams', 'dashboard',
     'notifications', 'workflow-task-templates', 'search', 'export', 'import', 'system'
 ], true)) {
-    $_SERVER['REQUEST_URI'] = '/backend/' . $action;
+    $_SERVER['REQUEST_URI'] = '/backend/' . $action . (!empty($_GET) ? '?' . http_build_query($_GET) : '');
     require_once __DIR__ . '/index.php';
     exit;
 }
