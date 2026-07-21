@@ -37,16 +37,30 @@ class TeamController
             }
         }
 
-        $stmt = $this->db->prepare("
-            SELECT t.*, u.full_name as leader_name, 
-                   (SELECT COUNT(*) FROM users WHERE team_id = t.id AND role = 'sales') as member_count 
-            FROM teams t 
-            LEFT JOIN users u ON t.leader_id = u.id 
-            $where
-            ORDER BY t.name ASC
-        ");
-        $stmt->execute($params);
-        respond(200, $stmt->fetchAll());
+        try {
+            $stmt = $this->db->prepare("
+                SELECT t.*, u.full_name as leader_name, 
+                       (SELECT COUNT(*) FROM users WHERE team_id = t.id AND role = 'sales') as member_count 
+                FROM teams t 
+                LEFT JOIN users u ON t.leader_id = u.id 
+                $where
+                ORDER BY t.name ASC
+            ");
+            $stmt->execute($params);
+            respond(200, $stmt->fetchAll());
+        } catch (Throwable $e) {
+            $fallbackWhere = str_replace('COALESCE(t.co_leader_ids, t.leader_id)', 't.leader_id', $where);
+            $stmt = $this->db->prepare("
+                SELECT t.*, u.full_name as leader_name, 
+                       (SELECT COUNT(*) FROM users WHERE team_id = t.id) as member_count 
+                FROM teams t 
+                LEFT JOIN users u ON t.leader_id = u.id 
+                $fallbackWhere
+                ORDER BY t.name ASC
+            ");
+            $stmt->execute($params);
+            respond(200, $stmt->fetchAll());
+        }
     }
 
     public function store(array $auth): void
