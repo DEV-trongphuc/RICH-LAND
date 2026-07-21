@@ -113,13 +113,24 @@ class NotificationController {
         $stmt->execute([$auth['user_id'], $auth['tenant_id']]);
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
 
+        $defaultPrefs = [
+            'email_warning' => 1,
+            'email_mention' => 1,
+            'email_approval_request' => 1,
+            'email_project_document' => 1,
+            'email_project_comment' => 1,
+            'email_project_roster' => 1,
+            'email_info' => 1
+        ];
+        $settings = array_merge($defaultPrefs, $row ?: []);
+
         $matrixConfig = null;
         if (!empty($row['matrix_config'])) {
             $matrixConfig = json_decode($row['matrix_config'], true);
         }
 
         respond(200, [
-            'settings' => $row ?: [],
+            'settings' => $settings,
             'matrix_config' => $matrixConfig,
             'user_info' => [
                 'email' => $userInfo['email'] ?? '',

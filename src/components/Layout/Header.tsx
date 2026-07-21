@@ -217,10 +217,10 @@ export const Header = ({
     email_warning: 1,
     email_mention: 1,
     email_approval_request: 1,
-    email_project_document: 0,
-    email_project_comment: 0,
-    email_project_roster: 0,
-    email_info: 0
+    email_project_document: 1,
+    email_project_comment: 1,
+    email_project_roster: 1,
+    email_info: 1
   });
 
   const fetchNotifications = async () => {
@@ -284,7 +284,16 @@ export const Header = ({
     try {
       const res = await fetchAPI('notifications/settings');
       if (res.success && res.data) {
-        setNotifPrefs(res.data);
+        const settingsData = res.data.settings || res.data;
+        setNotifPrefs({
+          email_warning: settingsData.email_warning ?? 1,
+          email_mention: settingsData.email_mention ?? 1,
+          email_approval_request: settingsData.email_approval_request ?? 1,
+          email_project_document: settingsData.email_project_document ?? 1,
+          email_project_comment: settingsData.email_project_comment ?? 1,
+          email_project_roster: settingsData.email_project_roster ?? 1,
+          email_info: settingsData.email_info ?? 1,
+        });
       }
     } catch (err) {
       console.error("Error fetching notification settings:", err);
@@ -308,6 +317,7 @@ export const Header = ({
 
   useEffect(() => {
     fetchNotifications();
+    fetchNotifPrefs();
     const interval = setInterval(fetchNotifications, 30000); // Polling fallback every 30s
     
     const handleRealtimeUpdate = () => {
@@ -324,7 +334,7 @@ export const Header = ({
       window.removeEventListener('realtime-update-received', handleRealtimeUpdate);
       window.removeEventListener('new-notification-received', handleRealtimeUpdate);
     };
-  }, []);
+  }, [showNotifSettings]);
 
   const handleMarkRead = async (id: number, isReadVal: number = 1) => {
     try {
