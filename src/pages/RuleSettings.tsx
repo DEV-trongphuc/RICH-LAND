@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { withRouterFreezer } from '../components/RouterFreezer';
-import { Plus, Trash2, ShieldCheck, ArrowRight, Filter, Server, MapPin, GripVertical, Edit2, Link2, FileSpreadsheet, Zap, Keyboard, Globe, Play, XCircle, AlertCircle, RefreshCw, Mail, Info, Layers, Cpu } from 'lucide-react';
+import { Plus, Trash2, ShieldCheck, ArrowRight, Filter, Server, MapPin, GripVertical, Edit2, Link2, FileSpreadsheet, Zap, Keyboard, Globe, Play, XCircle, AlertCircle, RefreshCw, Mail, Info, Layers, Cpu, SlidersHorizontal } from 'lucide-react';
 import {
   DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors
 } from '@dnd-kit/core';
@@ -176,9 +176,18 @@ const SortableRuleItem = ({ rule, idx, connections, onEdit, onDelete, isDragDisa
                           )}
                           <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.5rem' }}>
                             <span style={{
-                              background: 'rgba(163, 20, 34, 0.08)', border: '1px solid var(--color-primary-light)', padding: '4px 10px', borderRadius: 8, fontWeight: 600, color: 'var(--color-primary)', fontSize: '0.8125rem', display: 'flex', alignItems: 'center', gap: 6
+                              background: 'rgba(37, 99, 235, 0.08)',
+                              border: '1px solid rgba(37, 99, 235, 0.25)',
+                              padding: '4px 10px',
+                              borderRadius: 8,
+                              fontWeight: 600,
+                              color: '#2563eb',
+                              fontSize: '0.8125rem',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: 6
                             }}>
-                              <Server size={12} /> {c.col}
+                              <SlidersHorizontal size={13} style={{ color: '#2563eb' }} /> {c.col}
                             </span>
                             <span style={{ color: 'var(--color-text-light)', fontSize: '0.8125rem', fontStyle: 'italic' }}>
                               {t(OP_LABELS[c.op]) || c.op}
