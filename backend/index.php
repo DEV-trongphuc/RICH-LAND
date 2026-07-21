@@ -445,11 +445,25 @@ try {
     $currentHour = (int)date('H');
     $activeNightShiftDate = ($currentHour < $endHour) ? date('Y-m-d', strtotime('-1 day')) : date('Y-m-d');
     
-    // Preserve historical registrations for attendance calendar & audit history (only delete old logs > 90 days if needed)
-    $stmt1 = $db->prepare("DELETE FROM night_shift_registrations WHERE shift_date < DATE_SUB(CURDATE(), INTERVAL 90 DAY)");
-    $stmt1->execute();
-    $db->exec("DELETE FROM weekend_shift_registrations WHERE shift_date < DATE_SUB(CURDATE(), INTERVAL 90 DAY)");
-    $db->exec("DELETE FROM holiday_shift_registrations WHERE shift_date < DATE_SUB(CURDATE(), INTERVAL 90 DAY)");
+    // Preserve historical registrations for attendance calendar & audit history according to system_settings retention (default 90 days, or 0 for permanent)
+    $retentionDays = 90;
+    try {
+        $retentionRow = $db->query("SELECT setting_value FROM system_settings WHERE setting_key = 'shift_history_retention_days' LIMIT 1")->fetch(PDO::FETCH_ASSOC);
+        if ($retentionRow && isset($retentionRow['setting_value'])) {
+            $retentionDays = (int)$retentionRow['setting_value'];
+        }
+    } catch (Exception $e) {
+        $retentionDays = 90;
+    }
+
+    if ($retentionDays > 0) {
+        $stmt1 = $db->prepare("DELETE FROM night_shift_registrations WHERE shift_date < DATE_SUB(CURDATE(), INTERVAL ? DAY)");
+        $stmt1->execute([$retentionDays]);
+        $stmt2 = $db->prepare("DELETE FROM weekend_shift_registrations WHERE shift_date < DATE_SUB(CURDATE(), INTERVAL ? DAY)");
+        $stmt2->execute([$retentionDays]);
+        $stmt3 = $db->prepare("DELETE FROM holiday_shift_registrations WHERE shift_date < DATE_SUB(CURDATE(), INTERVAL ? DAY)");
+        $stmt3->execute([$retentionDays]);
+    }
 } catch (Exception $e) {
     error_log("Shift Cleanup Error: " . $e->getMessage());
 }

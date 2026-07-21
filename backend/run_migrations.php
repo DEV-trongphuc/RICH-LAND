@@ -2955,6 +2955,15 @@ SQL;
             $logMsg("Hoàn thành cập nhật phiên bản 178.", "success");
         }
 
+        // Version 179 (Cấu hình thời gian lưu trữ lịch sử ca trực shift_history_retention_days)
+        if ($currentVersion < 179) {
+            $logMsg("Đang chạy cập nhật phiên bản 179 (Cấu hình thời gian lưu trữ lịch sử ca trực)...", "info");
+            $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('shift_history_retention_days', '90')");
+            $conn->query("INSERT INTO system_settings (setting_key, setting_value) VALUES ('db_version', '179') ON DUPLICATE KEY UPDATE setting_value = '179'");
+            $currentVersion = 179;
+            $logMsg("Hoàn thành cập nhật phiên bản 179.", "success");
+        }
+
     $logMsg("Tự sửa đổi cấu trúc hoàn thành thành công.", "success");
 
     $logMsg("Hệ thống đã cập nhật thành công lên phiên bản mới nhất: " . $currentVersion, "success");

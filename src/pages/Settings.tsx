@@ -254,6 +254,7 @@ const SettingsInner = () => {
   const [weekendShiftRegistrationLeadHours, setWeekendShiftRegistrationLeadHours] = useState<number>(0);
   const [holidaySchedules, setHolidaySchedules] = useState<any[]>([]);
   const [autoApproveHolidayShift, setAutoApproveHolidayShift] = useState<boolean>(false);
+  const [shiftHistoryRetentionDays, setShiftHistoryRetentionDays] = useState<number>(90);
   const [allowLeadDistributionOnPendingCheckin, setAllowLeadDistributionOnPendingCheckin] = useState<boolean>(false);
   const [globalWorkStartTime, setGlobalWorkStartTime] = useState<string>("08:00");
   const [globalWorkEndTime, setGlobalWorkEndTime] = useState<string>("17:30");
@@ -666,6 +667,9 @@ const SettingsInner = () => {
         }
         if (json.data.auto_approve_weekend_shift !== undefined) {
           setAutoApproveWeekendShift(json.data.auto_approve_weekend_shift === '1' || json.data.auto_approve_weekend_shift === 1);
+        }
+        if (json.data.shift_history_retention_days !== undefined) {
+          setShiftHistoryRetentionDays(Number(json.data.shift_history_retention_days));
         }
         if (json.data.weekend_shift_registration_lead_hours !== undefined) {
           setWeekendShiftRegistrationLeadHours(Number(json.data.weekend_shift_registration_lead_hours));
@@ -1157,6 +1161,7 @@ const SettingsInner = () => {
       late_night_shift_registration_minutes: allowLateNightShiftRegistration ? lateNightShiftRegistrationMinutes : 0,
       advance_night_shift_registration_minutes: allowLateNightShiftRegistration ? 0 : advanceNightShiftRegistrationMinutes,
       auto_approve_night_shift: autoApproveNightShift ? 1 : 0,
+      shift_history_retention_days: shiftHistoryRetentionDays,
       allow_lead_distribution_on_pending_checkin: allowLeadDistributionOnPendingCheckin ? 1 : 0,
       attendance_notification_enabled: attendanceNotificationEnabled ? 1 : 0,
       attendance_notification_lead_minutes: attendanceNotificationLeadMinutes,
@@ -4874,6 +4879,24 @@ function doPost(e) {
                           checked={autoApproveNightShift}
                           onChange={setAutoApproveNightShift}
                         />
+                      </div>
+                    </div>
+
+                    <div style={{ borderTop: '1px solid var(--color-border-light)', paddingTop: '1rem' }}>
+                      <label className="form-label" style={{ fontWeight: 700 }}>{t('Thời gian lưu trữ lịch sử ca trực (Đêm, Cuối tuần, Ngày lễ)')}</label>
+                      <CustomSelect
+                        options={[
+                          { value: '90', label: t('90 ngày (3 tháng - Mặc định)') },
+                          { value: '180', label: t('180 ngày (6 tháng)') },
+                          { value: '365', label: t('365 ngày (1 năm)') },
+                          { value: '0', label: t('Vĩnh viễn (Lưu trữ mãi mãi, không bao giờ xóa)') }
+                        ]}
+                        value={shiftHistoryRetentionDays.toString()}
+                        onChange={val => setShiftHistoryRetentionDays(Number(val))}
+                        width="100%"
+                      />
+                      <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 4, lineHeight: 1.4 }}>
+                        {t('Quy định thời hạn hệ thống lưu giữ lịch sử phân công ca trực trên Lịch Chấm công. Chọn "Vĩnh viễn" nếu muốn giữ lại toàn bộ lịch sử không giới hạn.')}
                       </div>
                     </div>
                   </div>
