@@ -214,20 +214,11 @@ export const NotificationSettingsModal: React.FC<NotificationSettingsModalProps>
   };
 
   const handleConnectZalo = () => {
-    const link = userInfo.zalo_bot_link?.trim();
-    if (!link) {
-      showToast('Chưa cấu hình Zalo Bot Link trong hệ thống. Vui lòng liên hệ Admin!', 'warning');
-      return;
-    }
     setIsZaloModalOpen(true);
   };
 
   const handleConnectTelegram = () => {
-    const username = userInfo.telegram_bot_username?.trim();
-    if (!username) {
-      showToast('Chưa cấu hình Telegram Bot Username trong hệ thống. Vui lòng liên hệ Admin!', 'warning');
-      return;
-    }
+    const username = userInfo.telegram_bot_username?.trim() || 'RichLand_Bot';
     const connectUserId = userInfo.user_id || currentUser?.id;
     const telegramUrl = `https://t.me/${username}?start=connect_${connectUserId}`;
     window.open(telegramUrl, '_blank');
@@ -910,7 +901,7 @@ const getDefaultConfig = (key: string): EventConfig => {
         isOpen={isZaloModalOpen}
         onClose={() => setIsZaloModalOpen(false)}
         title="Kết Nối Zalo Bot Nhận Thông Báo"
-        maxWidth="480px"
+        width={480}
       >
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', padding: '6px 2px' }}>
           <div style={{
@@ -942,7 +933,7 @@ const getDefaultConfig = (key: string): EventConfig => {
               Nhấn liên kết mở Zalo Bot / OA:
             </div>
             <a
-              href={userInfo.zalo_bot_link}
+              href={userInfo.zalo_bot_link || 'https://zalo.me/1926311792402734025'}
               target="_blank"
               rel="noreferrer"
               style={{

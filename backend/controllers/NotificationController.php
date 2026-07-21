@@ -135,6 +135,10 @@ class NotificationController {
             }
         } catch (\Throwable $sysEx) {}
 
+        if (empty($zaloBotLink)) {
+            $zaloBotLink = 'https://zalo.me/1926311792402734025';
+        }
+
         $matrixConfig = null;
         if (!empty($row['matrix_config'])) {
             $matrixConfig = json_decode($row['matrix_config'], true);
