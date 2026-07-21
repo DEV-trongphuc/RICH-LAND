@@ -682,10 +682,9 @@ switch ($resource) {
     case 'notifications':
         $auth = requireAuth();
         $ctrl = new NotificationController($db);
-        if ($resourceId === 'settings') {
             if ($method === 'GET') {
                 $ctrl->getSettings($auth);
-            } elseif ($method === 'PATCH') {
+            } elseif ($method === 'PATCH' || $method === 'POST') {
                 $ctrl->updateSettings($auth);
             } else {
                 respond(405, null, 'Phương thức không hỗ trợ cho settings', false);

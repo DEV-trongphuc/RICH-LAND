@@ -2155,7 +2155,7 @@ export const Header = ({
               </div>
               
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', overflowY: 'auto', maxHeight: '55vh', paddingRight: '4px' }} className="custom-scrollbar">
-                {/* Advanced Matrix Control Button */}
+                {/* Advanced Notification Settings Banner Button */}
                 <button
                   type="button"
                   onClick={() => {
@@ -2168,47 +2168,50 @@ export const Header = ({
                     justifyContent: 'space-between',
                     padding: '14px 16px',
                     borderRadius: '12px',
-                    background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)',
-                    color: 'white',
-                    border: '1px solid #334155',
+                    background: 'linear-gradient(135deg, #fff5f5 0%, #fee2e2 100%)',
+                    color: '#991b1b',
+                    border: '1px solid #fca5a5',
                     gap: '1rem',
-                    boxShadow: '0 4px 12px rgba(15, 23, 42, 0.15)',
+                    boxShadow: '0 2px 8px rgba(220, 38, 38, 0.08)',
                     marginBottom: '6px',
                     cursor: 'pointer',
-                    width: '100%'
+                    width: '100%',
+                    transition: 'all 0.2s ease'
                   }}
                 >
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', textAlign: 'left' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <span style={{ fontSize: '0.9rem', fontWeight: 700, color: '#f8fafc' }}>
-                        🎛️ Ma Trận Cấu Hình Kênh Thông Báo
+                      <span style={{ fontSize: '0.9rem', fontWeight: 800, color: '#991b1b' }}>
+                        ⚙️ Cấu Hình Thông Báo Tùy Chỉnh Chuyên Sâu
                       </span>
                       <span style={{
                         fontSize: '0.625rem',
-                        fontWeight: 700,
-                        color: '#38bdf8',
-                        background: 'rgba(56, 189, 248, 0.15)',
-                        padding: '2px 6px',
+                        fontWeight: 800,
+                        color: '#dc2626',
+                        background: '#fef2f2',
+                        border: '1px solid #fca5a5',
+                        padding: '2px 8px',
                         borderRadius: '10px',
                         textTransform: 'uppercase'
                       }}>
-                        Nâng cao
+                        Chuyên sâu
                       </span>
                     </div>
-                    <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>
-                      Cài đặt nguồn tổng và tùy chỉnh từng sự kiện nhận qua Zalo, Tele hay Email
+                    <span style={{ fontSize: '0.75rem', color: '#7f1d1d', opacity: 0.85 }}>
+                      Cài đặt nguồn tổng và bật/tắt từng kênh (Zalo Bot, Telegram Bot, Email) theo từng sự kiện
                     </span>
                   </div>
                   <span style={{
                     fontSize: '0.75rem',
                     fontWeight: 700,
-                    background: '#38bdf8',
-                    color: '#0f172a',
-                    padding: '6px 12px',
+                    background: '#dc2626',
+                    color: 'white',
+                    padding: '7px 14px',
                     borderRadius: '8px',
-                    whiteSpace: 'nowrap'
+                    whiteSpace: 'nowrap',
+                    boxShadow: '0 2px 4px rgba(220, 38, 38, 0.2)'
                   }}>
-                    Mở Ma Trận
+                    Mở Tùy chỉnh chuyên sâu
                   </span>
                 </button>
                 {/* Browser Notifications Preference */}

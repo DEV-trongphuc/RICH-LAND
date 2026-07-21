@@ -387,9 +387,6 @@ class CheckInController {
         $upd = $this->db->prepare("UPDATE check_ins SET status = ?, admin_note = COALESCE(?, admin_note) WHERE id = ?");
         $upd->execute([$status, $adminNote, $id]);
 
-            }
-        } catch (\Throwable $uEx) {}
-
         logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'UPDATE_CHECK_IN', 'check_in', $id, json_encode([
             'old_status' => $row['status'],
             'new_status' => $status,
