@@ -1039,6 +1039,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
     payment: true,
     emergency: false
   });
+  const profileLoadedIdRef = useRef<string | number | null>(null);
   const [profileActiveTab, setProfileActiveTab] = useState(() => window.innerWidth < 768 ? '' : 'personal');
   const [emergencyContacts, setEmergencyContacts] = useState<{ name: string, relationship: string, phone: string }[]>([{ name: '', relationship: '', phone: '' }]);
   const [profileCertificates, setProfileCertificates] = useState<{ id: string, name: string, code: string, issuer: string, link: string, image: string, issuedDate: string, expiryDate: string }[]>([]);
@@ -2715,143 +2716,148 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
 
   useEffect(() => {
     if (data.consultant_profile) {
-      const isSaleOrManager = ['sale', 'manager'].includes(String(displayUser?.role || user?.role).toLowerCase());
-      const isMobileViewport = window.innerWidth <= 1024;
-      if (isMobileViewport) {
-        setProfileActiveTab('');
-      } else {
-        setProfileActiveTab(isSaleOrManager ? 'schedule' : 'personal');
-      }
-      setEditName(data.consultant_profile.name || '');
-      setEditAvatar(data.consultant_profile.avatar || '');
-      const fallbackStart = sysSettings?.global_work_start_time || '08:00';
-      const fallbackEnd = sysSettings?.global_work_end_time || '17:30';
+      const currentProfileId = data.consultant_profile.id || 'current';
+      if (profileLoadedIdRef.current !== currentProfileId) {
+        profileLoadedIdRef.current = currentProfileId;
 
-      setEditWorkStartTime(data.consultant_profile.work_start_time || fallbackStart);
-      setEditWorkEndTime(data.consultant_profile.work_end_time || fallbackEnd);
-      setEditDob(data.consultant_profile.dob || '');
-      setEditGender(data.consultant_profile.gender || '');
-      setEditCitizenId(data.consultant_profile.citizen_id || '');
-      
-      const rawAddress = data.consultant_profile.address || '';
-      if (rawAddress.startsWith('{"erp_profile":')) {
-        try {
-          const parsed = JSON.parse(rawAddress);
-          const erp = parsed.erp_profile || {};
-          setEditAddress(erp.address_text || '');
-          setEditEmployeeId(erp.employee_id || '');
-          setEditDepartment(erp.department || '');
-          setEditJobTitle(erp.job_title || '');
-          setEditContractType(erp.contract_type || 'official');
-          setEditDateJoined(erp.date_joined || '');
-          setEditDirectManager(erp.direct_manager || '');
-          setEditWorkplace(erp.workplace || '');
-          setEditPersonalPhone(erp.personal_phone || '');
-          setEditExtNumber(erp.ext_number || '');
-          setEditEmergencyName(erp.emergency_contact_name || '');
-          setEditEmergencyRelation(erp.emergency_contact_relationship || '');
-          setEditEmergencyPhone(erp.emergency_contact_phone || '');
-          setEditAddressTemporary(erp.address_temporary || '');
-          if (Array.isArray(erp.emergency_contacts) && erp.emergency_contacts.length > 0) {
-            setEmergencyContacts(erp.emergency_contacts);
-          } else if (erp.emergency_contact_name || erp.emergency_contact_relationship || erp.emergency_contact_phone) {
-            setEmergencyContacts([
-              {
-                name: erp.emergency_contact_name || '',
-                relationship: erp.emergency_contact_relationship || '',
-                phone: erp.emergency_contact_phone || ''
-              }
-            ]);
-          } else {
-            setEmergencyContacts([{ name: '', relationship: '', phone: '' }]);
-          }
-
-          if (Array.isArray(erp.certificates)) {
-            setProfileCertificates(erp.certificates);
-          } else {
-            setProfileCertificates([]);
-          }
-
-          if (Array.isArray(erp.hr_records)) {
-            setProfileHRRecords(erp.hr_records);
-          } else {
-            setProfileHRRecords([]);
-          }
-          setEditTaxId(erp.tax_id || '');
-          setEditInsuranceId(erp.insurance_id || '');
-          setEditBrokerLicense(erp.broker_license || '');
-          setEditDegree(erp.degree || '');
-          setEditNationality(erp.nationality || '');
-          setEditMaritalStatus(erp.marital_status || '');
-          setEditPersonalEmail(erp.personal_email || '');
-          setEditHometown(erp.hometown || '');
-          setEditBankBranch(erp.bank_branch || '');
-        } catch (e) {
-          setEditAddress(rawAddress);
+        const isSaleOrManager = ['sale', 'manager'].includes(String(displayUser?.role || user?.role).toLowerCase());
+        const isMobileViewport = window.innerWidth <= 1024;
+        if (isMobileViewport) {
+          setProfileActiveTab('');
+        } else {
+          setProfileActiveTab(isSaleOrManager ? 'schedule' : 'personal');
         }
-      } else {
-        setEditAddress(rawAddress);
-        setEditEmployeeId('');
-        setEditDepartment('');
-        setEditJobTitle('');
-        setEditContractType('official');
-        setEditDateJoined('');
-        setEditDirectManager('');
-        setEditWorkplace('');
-        setEditPersonalPhone('');
-        setEditExtNumber('');
-        setEditEmergencyName('');
-        setEditEmergencyRelation('');
-        setEditEmergencyPhone('');
-        setEditAddressTemporary('');
-        setEmergencyContacts([{ name: '', relationship: '', phone: '' }]);
-        setProfileCertificates([]);
-        setProfileHRRecords([]);
-        setEditTaxId('');
-        setEditInsuranceId('');
-        setEditBrokerLicense('');
-        setEditDegree('');
-        setEditNationality('');
-        setEditMaritalStatus('');
-        setEditPersonalEmail('');
-        setEditHometown('');
-        setEditBankBranch('');
-      }
+        setEditName(data.consultant_profile.name || '');
+        setEditAvatar(data.consultant_profile.avatar || '');
+        const fallbackStart = sysSettings?.global_work_start_time || '08:00';
+        const fallbackEnd = sysSettings?.global_work_end_time || '17:30';
 
-      setEditBankName(data.consultant_profile.bank_name || '');
-      setEditBankAccount(data.consultant_profile.bank_account || '');
-      setEditLeaveStart(data.consultant_profile.leave_start || '');
-      setEditLeaveEnd(data.consultant_profile.leave_end || '');
+        setEditWorkStartTime(data.consultant_profile.work_start_time || fallbackStart);
+        setEditWorkEndTime(data.consultant_profile.work_end_time || fallbackEnd);
+        setEditDob(data.consultant_profile.dob || '');
+        setEditGender(data.consultant_profile.gender || '');
+        setEditCitizenId(data.consultant_profile.citizen_id || '');
+        
+        const rawAddress = data.consultant_profile.address || '';
+        if (rawAddress.startsWith('{"erp_profile":')) {
+          try {
+            const parsed = JSON.parse(rawAddress);
+            const erp = parsed.erp_profile || {};
+            setEditAddress(erp.address_text || '');
+            setEditEmployeeId(erp.employee_id || '');
+            setEditDepartment(erp.department || '');
+            setEditJobTitle(erp.job_title || '');
+            setEditContractType(erp.contract_type || 'official');
+            setEditDateJoined(erp.date_joined || '');
+            setEditDirectManager(erp.direct_manager || '');
+            setEditWorkplace(erp.workplace || '');
+            setEditPersonalPhone(erp.personal_phone || '');
+            setEditExtNumber(erp.ext_number || '');
+            setEditEmergencyName(erp.emergency_contact_name || '');
+            setEditEmergencyRelation(erp.emergency_contact_relationship || '');
+            setEditEmergencyPhone(erp.emergency_contact_phone || '');
+            setEditAddressTemporary(erp.address_temporary || '');
+            if (Array.isArray(erp.emergency_contacts) && erp.emergency_contacts.length > 0) {
+              setEmergencyContacts(erp.emergency_contacts);
+            } else if (erp.emergency_contact_name || erp.emergency_contact_relationship || erp.emergency_contact_phone) {
+              setEmergencyContacts([
+                {
+                  name: erp.emergency_contact_name || '',
+                  relationship: erp.emergency_contact_relationship || '',
+                  phone: erp.emergency_contact_phone || ''
+                }
+              ]);
+            } else {
+              setEmergencyContacts([{ name: '', relationship: '', phone: '' }]);
+            }
 
-      const schedule = data.consultant_profile.work_schedule;
-      if (schedule && Object.keys(schedule).length > 0) {
-        setEditWorkSchedule(schedule);
-        setScheduleMode('custom');
-      } else if (sysSettings?.global_work_schedule) {
-        try {
-          const globalSchedule = typeof sysSettings.global_work_schedule === 'string'
-            ? JSON.parse(sysSettings.global_work_schedule)
-            : sysSettings.global_work_schedule;
-          setEditWorkSchedule(globalSchedule);
-          let isSimpleDaily = true;
-          const firstDay = globalSchedule["1"] || globalSchedule[1];
-          if (firstDay) {
-            for (let i = 1; i <= 7; i++) {
-              const day = globalSchedule[String(i)] || globalSchedule[i];
-              if (!day || !day.active || day.start !== firstDay.start || day.end !== firstDay.end) {
-                isSimpleDaily = false;
-                break;
+            if (Array.isArray(erp.certificates)) {
+              setProfileCertificates(erp.certificates);
+            } else {
+              setProfileCertificates([]);
+            }
+
+            if (Array.isArray(erp.hr_records)) {
+              setProfileHRRecords(erp.hr_records);
+            } else {
+              setProfileHRRecords([]);
+            }
+            setEditTaxId(erp.tax_id || '');
+            setEditInsuranceId(erp.insurance_id || '');
+            setEditBrokerLicense(erp.broker_license || '');
+            setEditDegree(erp.degree || '');
+            setEditNationality(erp.nationality || '');
+            setEditMaritalStatus(erp.marital_status || '');
+            setEditPersonalEmail(erp.personal_email || '');
+            setEditHometown(erp.hometown || '');
+            setEditBankBranch(erp.bank_branch || '');
+          } catch (e) {
+            setEditAddress(rawAddress);
+          }
+        } else {
+          setEditAddress(rawAddress);
+          setEditEmployeeId('');
+          setEditDepartment('');
+          setEditJobTitle('');
+          setEditContractType('official');
+          setEditDateJoined('');
+          setEditDirectManager('');
+          setEditWorkplace('');
+          setEditPersonalPhone('');
+          setEditExtNumber('');
+          setEditEmergencyName('');
+          setEditEmergencyRelation('');
+          setEditEmergencyPhone('');
+          setEditAddressTemporary('');
+          setEmergencyContacts([{ name: '', relationship: '', phone: '' }]);
+          setProfileCertificates([]);
+          setProfileHRRecords([]);
+          setEditTaxId('');
+          setEditInsuranceId('');
+          setEditBrokerLicense('');
+          setEditDegree('');
+          setEditNationality('');
+          setEditMaritalStatus('');
+          setEditPersonalEmail('');
+          setEditHometown('');
+          setEditBankBranch('');
+        }
+
+        setEditBankName(data.consultant_profile.bank_name || '');
+        setEditBankAccount(data.consultant_profile.bank_account || '');
+        setEditLeaveStart(data.consultant_profile.leave_start || '');
+        setEditLeaveEnd(data.consultant_profile.leave_end || '');
+
+        const schedule = data.consultant_profile.work_schedule;
+        if (schedule && Object.keys(schedule).length > 0) {
+          setEditWorkSchedule(schedule);
+          setScheduleMode('custom');
+        } else if (sysSettings?.global_work_schedule) {
+          try {
+            const globalSchedule = typeof sysSettings.global_work_schedule === 'string'
+              ? JSON.parse(sysSettings.global_work_schedule)
+              : sysSettings.global_work_schedule;
+            setEditWorkSchedule(globalSchedule);
+            let isSimpleDaily = true;
+            const firstDay = globalSchedule["1"] || globalSchedule[1];
+            if (firstDay) {
+              for (let i = 1; i <= 7; i++) {
+                const day = globalSchedule[String(i)] || globalSchedule[i];
+                if (!day || !day.active || day.start !== firstDay.start || day.end !== firstDay.end) {
+                  isSimpleDaily = false;
+                  break;
+                }
               }
             }
+            setScheduleMode(isSimpleDaily ? 'daily' : 'custom');
+          } catch (e) {
+            setEditWorkSchedule(DEFAULT_SCHEDULE);
+            setScheduleMode('daily');
           }
-          setScheduleMode(isSimpleDaily ? 'daily' : 'custom');
-        } catch (e) {
+        } else {
           setEditWorkSchedule(DEFAULT_SCHEDULE);
           setScheduleMode('daily');
         }
-      } else {
-        setEditWorkSchedule(DEFAULT_SCHEDULE);
-        setScheduleMode('daily');
       }
     }
   }, [data.consultant_profile, sysSettings]);
