@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useLanguage } from '../../contexts/LanguageContext';
-import { Send, X, Database, Sparkles, LayoutGrid, Search, ChevronRight } from 'lucide-react';
+import { Send, X, Database, Sparkles, LayoutGrid, Search, ChevronRight, RefreshCw } from 'lucide-react';
 import { fetchAPI } from '../../utils/api';
 
 interface Message {
@@ -640,10 +640,18 @@ Bạn có thể gõ rõ từ khóa hoặc click vào các gợi ý bên dưới 
           }
           .chatbot-parent.is-closed {
             left: auto !important;
-            right: 16px !important;
-            bottom: 80px !important;
-            width: 52px !important;
-            height: 52px !important;
+            right: 12px !important;
+            bottom: 74px !important;
+            width: 38px !important;
+            height: 38px !important;
+          }
+          .chatbot-parent.is-closed button {
+            width: 38px !important;
+            height: 38px !important;
+            min-width: 38px !important;
+            min-height: 38px !important;
+            max-width: 38px !important;
+            max-height: 38px !important;
           }
           .chatbot-window {
             width: 100% !important;
@@ -993,7 +1001,7 @@ Bạn có thể gõ rõ từ khóa hoặc click vào các gợi ý bên dưới 
             <>
               {chatMode === 'project_campaign' && selectedEntity && (
                 <div style={{
-                  padding: '8px 16px',
+                  padding: '6px 14px',
                   background: 'rgba(163, 20, 34, 0.05)',
                   borderBottom: '1px solid var(--chatbot-window-border)',
                   display: 'flex',
@@ -1001,14 +1009,14 @@ Bạn có thể gõ rõ từ khóa hoặc click vào các gợi ý bên dưới 
                   justifyContent: 'space-between',
                   gap: '8px'
                 }}>
-                  <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#a31422', display: 'flex', alignItems: 'center', gap: '6px', textAlign: 'left' }}>
-                    {t('Đang hỏi về')} {selectedEntity.type === 'project' ? t('Dự án') : t('Chiến dịch')}: 
-                    <strong style={{ color: 'var(--chatbot-text)' }}>{selectedEntity.name}</strong>
-                    {loadingContext && <span style={{ fontSize: '0.7rem', fontWeight: 'normal', color: 'var(--chatbot-text-muted)' }} className="dot-typing">({t('Đang nạp tài liệu')})</span>}
-                    {!loadingContext && <span style={{ fontSize: '0.7rem', color: '#10b981', background: 'rgba(16,185,129,0.1)', padding: '2px 6px', borderRadius: '10px' }}>{t('Đã nạp tài liệu')}</span>}
-                  </span>
+                  <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#a31422', display: 'flex', alignItems: 'center', gap: '4px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    <span>{t('Đang hỏi về')}:</span>
+                    <strong style={{ color: 'var(--chatbot-text)', fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{selectedEntity.name}</strong>
+                    {loadingContext && <span style={{ fontSize: '0.7rem', color: 'var(--chatbot-text-muted)', flexShrink: 0 }}>({t('Đang nạp...')})</span>}
+                  </div>
                   <button
                     type="button"
+                    title={t('Thay đổi dự án / chiến dịch')}
                     onClick={() => {
                       setSelectedEntity(null);
                       setEntityContext('');
@@ -1017,16 +1025,25 @@ Bạn có thể gõ rõ từ khóa hoặc click vào các gợi ý bên dưới 
                       background: 'transparent',
                       border: 'none',
                       color: 'var(--chatbot-text-muted)',
-                      fontSize: '0.75rem',
                       cursor: 'pointer',
-                      fontWeight: 700,
-                      padding: '2px 6px',
-                      borderRadius: '4px'
+                      padding: '4px',
+                      borderRadius: '6px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      flexShrink: 0,
+                      transition: 'all 0.2s'
                     }}
-                    onMouseEnter={e => e.currentTarget.style.background = 'rgba(0,0,0,0.05)'}
-                    onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                    onMouseEnter={e => {
+                      e.currentTarget.style.background = 'rgba(163, 20, 34, 0.1)';
+                      e.currentTarget.style.color = '#a31422';
+                    }}
+                    onMouseLeave={e => {
+                      e.currentTarget.style.background = 'transparent';
+                      e.currentTarget.style.color = 'var(--chatbot-text-muted)';
+                    }}
                   >
-                    {t('Thay đổi')}
+                    <RefreshCw size={14} />
                   </button>
                 </div>
               )}

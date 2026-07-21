@@ -14,6 +14,8 @@ interface CustomModalProps {
   disableAnimation?: boolean;
   headerAction?: React.ReactNode;
   zIndex?: number;
+  fullScreenOnMobile?: boolean;
+  modalClassName?: string;
 }
 
 export const CustomModal: React.FC<CustomModalProps> = ({
@@ -25,7 +27,9 @@ export const CustomModal: React.FC<CustomModalProps> = ({
   showCloseIcon = true,
   disableAnimation = false,
   headerAction,
-  zIndex
+  zIndex,
+  fullScreenOnMobile = false,
+  modalClassName
 }) => {
   // Prevent body scroll when modal is open
   useEffect(() => {
@@ -60,9 +64,9 @@ export const CustomModal: React.FC<CustomModalProps> = ({
     exit: { y: '100%', opacity: 1 },
     transition: { type: 'tween' as const, ease: [0.16, 1, 0.3, 1] as any, duration: 0.35 }
   } : {
-    initial: { opacity: 0, scale: 0.95, y: 15 },
-    animate: { opacity: 1, scale: 1, y: 0 },
-    exit: { opacity: 0, scale: 0.95, y: 15 },
+    initial: { opacity: 0, y: 15 },
+    animate: { opacity: 1, y: 0 },
+    exit: { opacity: 0, y: 15 },
     transition: { type: "spring" as const, duration: 0.4, bounce: 0.12 }
   };
 
@@ -81,14 +85,14 @@ export const CustomModal: React.FC<CustomModalProps> = ({
     <AnimatePresence>
       {isOpen && (
         disableAnimation ? (
-          <div className={styles.overlay} style={zIndex ? { zIndex } : undefined}>
+          <div className={`${styles.overlay} ${fullScreenOnMobile ? styles.fullscreenOverlay : ''}`} style={zIndex ? { zIndex } : undefined}>
             <div
               className={styles.backdrop}
               onClick={onClose}
             />
 
             <div
-              className={styles.modal}
+              className={`${styles.modal} ${fullScreenOnMobile ? styles.fullScreenMobile : ''} ${modalClassName || ''}`}
               style={{ width: isMobile ? '100vw' : resolvedWidth, maxWidth: isMobile ? '100vw' : resolvedWidth }}
             >
               <div className={styles.dragHandle} />
@@ -117,7 +121,7 @@ export const CustomModal: React.FC<CustomModalProps> = ({
             </div>
           </div>
         ) : (
-          <div className={styles.overlay} style={zIndex ? { zIndex } : undefined}>
+          <div className={`${styles.overlay} ${fullScreenOnMobile ? styles.fullscreenOverlay : ''}`} style={zIndex ? { zIndex } : undefined}>
             <motion.div
               className={styles.backdrop}
               initial={{ opacity: 0 }}
@@ -127,7 +131,7 @@ export const CustomModal: React.FC<CustomModalProps> = ({
             />
 
             <motion.div
-              className={styles.modal}
+              className={`${styles.modal} ${fullScreenOnMobile ? styles.fullScreenMobile : ''} ${modalClassName || ''}`}
               style={{ width: isMobile ? '100vw' : resolvedWidth, maxWidth: isMobile ? '100vw' : resolvedWidth }}
               {...motionProps}
               {...dragProps}

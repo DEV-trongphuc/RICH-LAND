@@ -594,6 +594,10 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
             const dayCheckIns = getCellData(cell.dateStr);
             const dayShifts = getCellShifts(cell.dateStr) || [];
             const isWeekend = (idx % 7 === 5 || idx % 7 === 6);
+            const isHoliday = cell.dateStr && (
+              dayShifts.some(s => s.shift_type === 'holiday') ||
+              (sysSettings?.holidays && Array.isArray(sysSettings.holidays) && sysSettings.holidays.some((h: any) => h.date === cell.dateStr))
+            );
 
             const approved = dayCheckIns ? dayCheckIns.filter(c => c.status === 'approved') : [];
             const pending = dayCheckIns ? dayCheckIns.filter(c => c.status === 'pending_approval') : [];
@@ -611,9 +615,11 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
                 }}
                 style={{
                   backgroundColor: cell.isCurrentMonth
-                    ? isWeekend
-                      ? 'rgba(142, 142, 147, 0.02)'
-                      : 'var(--color-surface)'
+                    ? isHoliday
+                      ? 'rgba(239, 68, 68, 0.07)'
+                      : isWeekend
+                        ? 'rgba(142, 142, 147, 0.02)'
+                        : 'var(--color-surface)'
                     : 'rgba(142, 142, 147, 0.05)',
                   minHeight: '96px',
                   padding: '8px 10px',
@@ -1875,36 +1881,57 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
                 {isSales ? t('Yêu cầu') : t('Bảng công')}
               </button>
 
-              <button
-                onClick={() => setModalTab('night_duty')}
-                style={{
-                  padding: isMobile ? '8px 2px 10px 2px' : '8px 4px 12px 4px',
-                  fontSize: isMobile ? '0.72rem' : '0.875rem',
-                  fontWeight: 700,
-                  color: modalTab === 'night_duty' ? 'var(--color-primary)' : 'var(--color-text-light)',
-                  border: 'none',
-                  background: 'transparent',
-                  borderBottom: modalTab === 'night_duty' ? '2px solid var(--color-primary)' : '2px solid transparent',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: isMobile ? '3px' : '6px'
-                }}
-              >
-                <Moon size={isMobile ? 13 : 16} />
-                {t('Trực đêm')}
-                <span style={{
-                  fontSize: '0.625rem',
-                  padding: isMobile ? '1px 4px' : '2px 6px',
-                  borderRadius: '10px',
-                  background: modalTab === 'night_duty' ? 'var(--color-primary-light)' : 'var(--color-bg)',
-                  color: modalTab === 'night_duty' ? 'var(--color-primary)' : 'var(--color-text-muted)',
-                  fontWeight: 600
-                }}>
-                  {calendarShifts.filter(s => s.shift_date === selectedDateForDetail && s.shift_type === 'night').length}
-                </span>
-              </button>
+              {(() => {
+                const detailDayShifts = calendarShifts.filter(s => s.shift_date === selectedDateForDetail);
+                const hasHoliday = detailDayShifts.some(s => s.shift_type === 'holiday');
+                const dayOfWeek = selectedDateForDetail ? new Date(selectedDateForDetail).getDay() : 1;
+                const isWeekendDetail = dayOfWeek === 0 || dayOfWeek === 6;
+                const activeShiftType = hasHoliday ? 'holiday' : isWeekendDetail ? 'weekend' : 'night';
+
+                return (
+                  <button
+                    type="button"
+                    onClick={() => setModalTab('night_duty')}
+                    style={{
+                      padding: isMobile ? '8px 2px 10px 2px' : '8px 4px 12px 4px',
+                      fontSize: isMobile ? '0.72rem' : '0.875rem',
+                      fontWeight: 700,
+                      color: modalTab === 'night_duty' ? 'var(--color-primary)' : 'var(--color-text-light)',
+                      border: 'none',
+                      background: 'transparent',
+                      borderBottom: modalTab === 'night_duty' ? '2px solid var(--color-primary)' : '2px solid transparent',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: isMobile ? '3px' : '6px'
+                    }}
+                  >
+                    {activeShiftType === 'holiday' ? (
+                      <Zap size={isMobile ? 13 : 16} />
+                    ) : activeShiftType === 'weekend' ? (
+                      <Calendar size={isMobile ? 13 : 16} />
+                    ) : (
+                      <Moon size={isMobile ? 13 : 16} />
+                    )}
+                    {activeShiftType === 'holiday'
+                      ? t('Trực lễ')
+                      : activeShiftType === 'weekend'
+                      ? t('Trực cuối tuần')
+                      : t('Trực đêm')}
+                    <span style={{
+                      fontSize: '0.625rem',
+                      padding: isMobile ? '1px 4px' : '2px 6px',
+                      borderRadius: '10px',
+                      background: modalTab === 'night_duty' ? 'var(--color-primary-light)' : 'var(--color-bg)',
+                      color: modalTab === 'night_duty' ? 'var(--color-primary)' : 'var(--color-text-muted)',
+                      fontWeight: 600
+                    }}>
+                      {detailDayShifts.length}
+                    </span>
+                  </button>
+                );
+              })()}
             </div>
 
             {/* Tab content body */}
@@ -2245,21 +2272,38 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
                   )}
                 </div>
               ) : (
-                /* Sub-tab 3: Night Duty Log */
+                /* Sub-tab 3: Duty Shift Log */
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', overflowY: 'auto', maxHeight: '420px', paddingRight: '4px' }}>
                     {(() => {
-                      const nightShifts = calendarShifts.filter(s => s.shift_date === selectedDateForDetail && s.shift_type === 'night');
-                      if (nightShifts.length === 0) {
+                      const dayShifts = calendarShifts.filter(s => s.shift_date === selectedDateForDetail);
+                      const hasHoliday = dayShifts.some(s => s.shift_type === 'holiday');
+                      const dayOfWeek = selectedDateForDetail ? new Date(selectedDateForDetail).getDay() : 1;
+                      const isWeekendDetail = dayOfWeek === 0 || dayOfWeek === 6;
+                      const activeShiftType = hasHoliday ? 'holiday' : isWeekendDetail ? 'weekend' : 'night';
+
+                      if (dayShifts.length === 0) {
                         return (
                           <div style={{ textAlign: 'center', padding: '3rem 1rem', color: 'var(--color-text-muted)' }}>
-                            <Moon size={32} style={{ display: 'block', margin: '0 auto 8px', opacity: 0.4 }} />
-                            <p style={{ fontSize: '0.8125rem' }}>{t('Không có nhân sự nào được phân công trực đêm trong ngày này.')}</p>
+                            {activeShiftType === 'holiday' ? (
+                              <Zap size={32} style={{ display: 'block', margin: '0 auto 8px', opacity: 0.4 }} />
+                            ) : activeShiftType === 'weekend' ? (
+                              <Calendar size={32} style={{ display: 'block', margin: '0 auto 8px', opacity: 0.4 }} />
+                            ) : (
+                              <Moon size={32} style={{ display: 'block', margin: '0 auto 8px', opacity: 0.4 }} />
+                            )}
+                            <p style={{ fontSize: '0.8125rem' }}>
+                              {activeShiftType === 'holiday'
+                                ? t('Không có nhân sự nào được phân công trực lễ trong ngày này.')
+                                : activeShiftType === 'weekend'
+                                ? t('Không có nhân sự nào được phân công trực cuối tuần trong ngày này.')
+                                : t('Không có nhân sự nào được phân công trực đêm trong ngày này.')}
+                            </p>
                           </div>
                         );
                       }
-                      return nightShifts.map((row) => (
-                        <div key={row.id} style={{
+                      return dayShifts.map((row, rIdx) => (
+                        <div key={row.id || `${row.shift_type}-${rIdx}`} style={{
                           padding: '12px',
                           background: 'var(--color-bg-light)',
                           border: '1px solid var(--color-border)',
@@ -2278,7 +2322,11 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
                           </div>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
                             <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>
-                              🌙 {row.shift_date ? row.shift_date.split('-').reverse().join('/') : ''} ({sysSettings?.night_shift_start_time || '18:00'} - {sysSettings?.night_shift_end_time || '06:00'})
+                              {row.shift_type === 'holiday'
+                                ? `🎉 ${t('Trực lễ')} ${row.holiday_name ? `(${row.holiday_name})` : ''}`
+                                : row.shift_type === 'weekend'
+                                ? `📅 ${t('Trực cuối tuần')}`
+                                : `🌙 ${t('Trực đêm')} (${sysSettings?.night_shift_start_time || '18:00'} - ${sysSettings?.night_shift_end_time || '06:00'})`}
                             </span>
                             <span style={{
                               fontSize: '0.65rem',

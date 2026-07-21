@@ -11245,10 +11245,12 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                             </span>
                           )}
                           {['sale', 'manager'].includes(String(effectiveRole).toLowerCase()) && (
-                            <div style={{ opacity: (nightShiftCanToggle && !isTodayWeekend) ? 1 : 0.6 }}>
+                            <div style={{ opacity: (nightShiftCanToggle && !isTodayWeekend && !togglingNightShift) ? 1 : 0.6, pointerEvents: togglingNightShift ? 'none' : 'auto' }}>
                               <ToggleSwitch
                                 checked={nightShiftRegistered}
+                                disabled={togglingNightShift || !nightShiftCanToggle || isTodayWeekend}
                                 onChange={() => {
+                                  if (togglingNightShift) return;
                                   if (isTodayWeekend) {
                                     toast.error(t('Hôm nay là cuối tuần, vui lòng đăng ký trực cuối tuần ở trên!'));
                                     return;

@@ -1755,79 +1755,6 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
 
       ) : (
         <>
-          <div key="source-quality-loaded" className="responsive-grid-1-1" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem', marginBottom: '1.25rem' }}>
-            {/* Top Consultants */}
-            <div className="card" style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                <h3 style={{ fontSize: isMobile ? '0.95rem' : '1.125rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8, color: 'var(--color-text)' }}>
-                  <Users size={18} color="var(--color-primary)" /> {t('Top Tư vấn viên nhận Data')}
-                </h3>
-              </div>
-              <div className="custom-scrollbar" style={{ display: 'flex', flexDirection: 'column', gap: '1rem', flex: 1, justifyContent: 'flex-start', overflowY: 'auto', maxHeight: 260, paddingRight: 4 }}>
-                {stats?.topConsultants && stats.topConsultants.length > 0 ? stats.topConsultants.slice(0, 20).map((c: any, i: number) => (
-                  <div
-                    key={i}
-                    className="top-consultant-item"
-                    style={{ display: 'flex', flexDirection: 'column', gap: 6 }}
-                    onClick={() => {
-                      setStatsConsultant(c);
-                      syncDateFilterToModal(dateFilter);
-                      setStatsModalOpen(true);
-                    }}
-                  >
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.875rem', fontWeight: 600, alignItems: 'center' }}>
-                      <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', width: 16 }}>#{i + 1}</span>
-                        <Avatar
-                          src={c.avatar}
-                          name={c.name}
-                          size={24}
-                          style={{
-                            filter: (c.status === 'inactive' || c.status === 'leave' || Number(c.vacation_mode) === 1) ? 'grayscale(1)' : 'none',
-                            opacity: (c.status === 'inactive' || c.status === 'leave' || Number(c.vacation_mode) === 1) ? 0.5 : 1
-                          }}
-                        />
-                        <span className="consultant-name" style={{ transition: 'color 0.2s ease', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
-                          {c.name}
-                          <BarChart2 size={14} className="consultant-chart-icon" style={{ opacity: 0.35, color: 'var(--color-primary)' }} />
-                        </span>
-                      </span>
-                      <span style={{ color: 'var(--color-text)' }}>{c.data} {t('lead')}</span>
-                    </div>
-                    <div style={{ height: 6, background: 'var(--color-bg)', borderRadius: 4, overflow: 'hidden', marginLeft: 24 }}>
-                      <div style={{ width: `${c.percent}%`, height: '100%', background: c.color, borderRadius: 4 }} />
-                    </div>
-                  </div>
-                )) : (
-                  <div style={{ textAlign: 'center', color: 'var(--color-text-muted)' }}>{t('Chưa có dữ liệu thống kê')}</div>
-                )}
-              </div>
-            </div>
-
-            {/* Round Assignment Ratio */}
-            <div className="card" style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                <h3 style={{ fontSize: isMobile ? '0.95rem' : '1.125rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8, color: 'var(--color-text)' }}>
-                  <GitBranch size={18} color="#3b82f6" /> {t('Tỷ lệ theo Vòng Phân Bổ')}
-                </h3>
-              </div>
-              <div className="custom-scrollbar" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', flex: 1, justifyContent: 'flex-start', overflowY: 'auto', maxHeight: 260, paddingRight: 4 }}>
-                {stats?.roundRatio && stats.roundRatio.length > 0 ? stats.roundRatio.slice(0, 10).map((r: any, i: number) => (
-                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                    <div style={{ width: 14, height: 14, borderRadius: '50%', background: r.color, flexShrink: 0 }} />
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>{t(r.round)}</div>
-                      <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{r.percent}% {t('tổng data')}</div>
-                    </div>
-                    <div style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--color-text)' }}>{r.count}</div>
-                  </div>
-                )) : (
-                  <div style={{ textAlign: 'center', color: 'var(--color-text-muted)' }}>{t('Chưa có dữ liệu thống kê')}</div>
-                )}
-              </div>
-            </div>
-          </div>
-
           {/* Lead Flow Distribution & Timeout analysis */}
           <div className="card" style={{ padding: '1.25rem', marginBottom: '1.25rem', display: 'flex', flexDirection: 'column' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
@@ -2024,6 +1951,79 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
                 </>
               );
             })()}
+          </div>
+
+          <div key="source-quality-loaded" className="responsive-grid-1-1" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem', marginBottom: '1.25rem' }}>
+            {/* Top Consultants */}
+            <div className="card" style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                <h3 style={{ fontSize: isMobile ? '0.95rem' : '1.125rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8, color: 'var(--color-text)' }}>
+                  <Users size={18} color="var(--color-primary)" /> {t('Top Tư vấn viên nhận Data')}
+                </h3>
+              </div>
+              <div className="custom-scrollbar" style={{ display: 'flex', flexDirection: 'column', gap: '1rem', flex: 1, justifyContent: 'flex-start', overflowY: 'auto', maxHeight: 260, paddingRight: 4 }}>
+                {stats?.topConsultants && stats.topConsultants.length > 0 ? stats.topConsultants.slice(0, 20).map((c: any, i: number) => (
+                  <div
+                    key={i}
+                    className="top-consultant-item"
+                    style={{ display: 'flex', flexDirection: 'column', gap: 6 }}
+                    onClick={() => {
+                      setStatsConsultant(c);
+                      syncDateFilterToModal(dateFilter);
+                      setStatsModalOpen(true);
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.875rem', fontWeight: 600, alignItems: 'center' }}>
+                      <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', width: 16 }}>#{i + 1}</span>
+                        <Avatar
+                          src={c.avatar}
+                          name={c.name}
+                          size={24}
+                          style={{
+                            filter: (c.status === 'inactive' || c.status === 'leave' || Number(c.vacation_mode) === 1) ? 'grayscale(1)' : 'none',
+                            opacity: (c.status === 'inactive' || c.status === 'leave' || Number(c.vacation_mode) === 1) ? 0.5 : 1
+                          }}
+                        />
+                        <span className="consultant-name" style={{ transition: 'color 0.2s ease', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                          {c.name}
+                          <BarChart2 size={14} className="consultant-chart-icon" style={{ opacity: 0.35, color: 'var(--color-primary)' }} />
+                        </span>
+                      </span>
+                      <span style={{ color: 'var(--color-text)' }}>{c.data} {t('lead')}</span>
+                    </div>
+                    <div style={{ height: 6, background: 'var(--color-bg)', borderRadius: 4, overflow: 'hidden', marginLeft: 24 }}>
+                      <div style={{ width: `${c.percent}%`, height: '100%', background: c.color, borderRadius: 4 }} />
+                    </div>
+                  </div>
+                )) : (
+                  <div style={{ textAlign: 'center', color: 'var(--color-text-muted)' }}>{t('Chưa có dữ liệu thống kê')}</div>
+                )}
+              </div>
+            </div>
+
+            {/* Round Assignment Ratio */}
+            <div className="card" style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                <h3 style={{ fontSize: isMobile ? '0.95rem' : '1.125rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8, color: 'var(--color-text)' }}>
+                  <GitBranch size={18} color="#3b82f6" /> {t('Tỷ lệ theo Vòng Phân Bổ')}
+                </h3>
+              </div>
+              <div className="custom-scrollbar" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', flex: 1, justifyContent: 'flex-start', overflowY: 'auto', maxHeight: 260, paddingRight: 4 }}>
+                {stats?.roundRatio && stats.roundRatio.length > 0 ? stats.roundRatio.slice(0, 10).map((r: any, i: number) => (
+                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                    <div style={{ width: 14, height: 14, borderRadius: '50%', background: r.color, flexShrink: 0 }} />
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>{t(r.round)}</div>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{r.percent}% {t('tổng data')}</div>
+                    </div>
+                    <div style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--color-text)' }}>{r.count}</div>
+                  </div>
+                )) : (
+                  <div style={{ textAlign: 'center', color: 'var(--color-text-muted)' }}>{t('Chưa có dữ liệu thống kê')}</div>
+                )}
+              </div>
+            </div>
           </div>
 
           {/* NEW ROW: Source Stats & Error Stats */}

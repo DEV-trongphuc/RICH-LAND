@@ -4009,6 +4009,24 @@ switch ($action) {
         $register = isset($b['register']) ? (bool)$b['register'] : true;
 
         if ($register) {
+            // Check if user is already registered for today to prevent duplicate requests/notifications
+            $stmtCheckReg = $conn->prepare("SELECT approved FROM night_shift_registrations WHERE user_id = ? AND shift_date = ? LIMIT 1");
+            $stmtCheckReg->bind_param("is", $dbUserId, $shiftDate);
+            $stmtCheckReg->execute();
+            $existingReg = $stmtCheckReg->get_result()->fetch_assoc();
+            $stmtCheckReg->close();
+
+            if ($existingReg) {
+                $isPending = ((int)$existingReg['approved'] === 0);
+                echo json_encode([
+                    'success' => true, 
+                    'message' => 'Bạn đã đăng ký trực ca đêm ngày hôm nay rồi.', 
+                    'pending' => $isPending,
+                    'already' => true
+                ]);
+                break;
+            }
+
             // Check if today is a leave day
             $stmtCheckLeave = $conn->prepare("SELECT 1 FROM consultant_leaves WHERE consultant_id = ? AND ? BETWEEN start_date AND end_date LIMIT 1");
             $stmtCheckLeave->bind_param("is", $dbUserId, $shiftDate);
@@ -4107,6 +4125,18 @@ switch ($action) {
                 echo json_encode(['success' => true, 'message' => 'Đăng ký trực đêm thành công. Vui lòng chờ Admin phê duyệt.', 'pending' => true]);
             }
         } else {
+            // Check if user is registered currently
+            $stmtCheckReg = $conn->prepare("SELECT 1 FROM night_shift_registrations WHERE user_id = ? AND shift_date = ? LIMIT 1");
+            $stmtCheckReg->bind_param("is", $dbUserId, $shiftDate);
+            $stmtCheckReg->execute();
+            $existingReg = $stmtCheckReg->get_result()->fetch_assoc();
+            $stmtCheckReg->close();
+
+            if (!$existingReg) {
+                echo json_encode(['success' => true, 'message' => 'Bạn chưa đăng ký trực ca đêm ngày hôm nay.', 'already' => true]);
+                break;
+            }
+
             $stmt = $conn->prepare("DELETE FROM night_shift_registrations WHERE user_id = ? AND shift_date = ?");
             $stmt->bind_param("is", $dbUserId, $shiftDate);
             $stmt->execute();

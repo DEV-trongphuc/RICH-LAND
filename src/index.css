@@ -5128,4 +5128,149 @@ a,
   touch-action: manipulation;
 }
 
+/* Mobile page bottom scroll spacing */
+@media (max-width: 768px) {
+  .responsive-main,
+  .sale-portal-main,
+  .page-container,
+  main {
+    padding-bottom: calc(85px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+}
+
+/* AI Face Scanner & Success Screen Animations */
+@keyframes checkin-scan-line {
+  0% { top: 12%; opacity: 0.25; }
+  50% { top: 82%; opacity: 0.95; }
+  100% { top: 12%; opacity: 0.25; }
+}
+
+@keyframes checkin-success-pop {
+  0% { transform: scale(0.3) rotate(-15deg); opacity: 0; }
+  60% { transform: scale(1.15) rotate(4deg); opacity: 1; }
+  80% { transform: scale(0.95) rotate(-2deg); }
+  100% { transform: scale(1) rotate(0deg); opacity: 1; }
+}
+
+@keyframes checkin-pulse-aura {
+  0% { transform: scale(0.85); opacity: 0.8; }
+  100% { transform: scale(2.2); opacity: 0; }
+}
+
+@keyframes checkin-progress-fill {
+  0% { width: 0%; }
+  100% { width: 100%; }
+}
+
+.checkin-scan-laser {
+  position: absolute;
+  left: 5%;
+  right: 5%;
+  height: 3px;
+  background: linear-gradient(90deg, transparent 0%, #10b981 50%, transparent 100%);
+  box-shadow: 0 0 18px 4px #10b981, 0 0 6px #10b981;
+  animation: checkin-scan-line 2s ease-in-out infinite;
+  z-index: 10;
+  pointer-events: none;
+}
+
+.checkin-success-badge {
+  animation: checkin-success-pop 0.65s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+.checkin-pulse-ring {
+  position: absolute;
+  inset: -15px;
+  border-radius: 50%;
+  border: 2px solid rgba(16, 185, 129, 0.5);
+  animation: checkin-pulse-aura 2s cubic-bezier(0.1, 0.8, 0.3, 1) infinite;
+  pointer-events: none;
+}
+
+.checkin-progress-bar {
+  animation: checkin-progress-fill 2s linear forwards;
+}
+
+/* Biometric Tech Grid HUD Overlay */
+.checkin-scanner-hud {
+  position: absolute;
+  inset: 0;
+  background-image: 
+    linear-gradient(rgba(59, 130, 246, 0.08) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(59, 130, 246, 0.08) 1px, transparent 1px);
+  background-size: 16px 16px;
+  background-position: center;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 8;
+  opacity: 0.85;
+}
+
+.checkin-scanner-hud.active {
+  background-image: 
+    linear-gradient(rgba(16, 185, 129, 0.12) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(16, 185, 129, 0.12) 1px, transparent 1px);
+  box-shadow: inset 0 0 20px rgba(16, 185, 129, 0.15);
+}
+
+/* Pulsing radar waves behind scanner circular frame */
+@keyframes checkin-radar-pulse {
+  0% { transform: scale(1); opacity: 0.65; }
+  100% { transform: scale(1.15); opacity: 0; }
+}
+
+.checkin-radar-ring {
+  position: absolute;
+  inset: -15px;
+  border-radius: 50%;
+  border: 2px solid rgba(59, 130, 246, 0.22);
+  animation: checkin-radar-pulse 2.2s cubic-bezier(0.16, 1, 0.3, 1) infinite;
+  pointer-events: none;
+  z-index: 5;
+  transition: all 0.3s ease;
+}
+
+.checkin-radar-ring.active {
+  border-color: rgba(16, 185, 129, 0.4);
+}
+
+.checkin-radar-ring-2 {
+  position: absolute;
+  inset: -15px;
+  border-radius: 50%;
+  border: 2px solid rgba(59, 130, 246, 0.15);
+  animation: checkin-radar-pulse 2.2s cubic-bezier(0.16, 1, 0.3, 1) infinite;
+  animation-delay: 1.1s;
+  pointer-events: none;
+  z-index: 5;
+  transition: all 0.3s ease;
+}
+
+.checkin-radar-ring-2.active {
+  border-color: rgba(16, 185, 129, 0.25);
+}
+
+/* Biometric White-to-Pink Soft Brand Gradient Theme */
+.checkin-modal-dark {
+  background: linear-gradient(180deg, #ffffff 0%, #fff2f4 100%) !important;
+  color: var(--color-text) !important;
+  border: 1px solid rgba(189, 29, 45, 0.12) !important;
+  box-shadow: 0 25px 60px rgba(189, 29, 45, 0.1) !important;
+}
+
+.checkin-modal-dark h3 {
+  color: var(--color-text) !important;
+  font-weight: 700 !important;
+}
+
+.checkin-modal-dark button.closeBtn {
+  color: var(--color-text-muted) !important;
+  background: rgba(0, 0, 0, 0.04) !important;
+}
+
+.checkin-modal-dark button.closeBtn:hover {
+  background: rgba(0, 0, 0, 0.08) !important;
+  color: var(--color-text) !important;
+}
+
 

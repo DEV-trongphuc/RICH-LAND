@@ -445,13 +445,13 @@ try {
     $currentHour = (int)date('H');
     $activeNightShiftDate = ($currentHour < $endHour) ? date('Y-m-d', strtotime('-1 day')) : date('Y-m-d');
     
-    $stmt1 = $db->prepare("DELETE FROM night_shift_registrations WHERE shift_date < ?");
-    $stmt1->execute([$activeNightShiftDate]);
-
-    $db->exec("DELETE FROM weekend_shift_registrations WHERE shift_date < CURDATE()");
-    $db->exec("DELETE FROM holiday_shift_registrations WHERE shift_date < CURDATE()");
+    // Preserve historical registrations for attendance calendar & audit history (only delete old logs > 90 days if needed)
+    $stmt1 = $db->prepare("DELETE FROM night_shift_registrations WHERE shift_date < DATE_SUB(CURDATE(), INTERVAL 90 DAY)");
+    $stmt1->execute();
+    $db->exec("DELETE FROM weekend_shift_registrations WHERE shift_date < DATE_SUB(CURDATE(), INTERVAL 90 DAY)");
+    $db->exec("DELETE FROM holiday_shift_registrations WHERE shift_date < DATE_SUB(CURDATE(), INTERVAL 90 DAY)");
 } catch (Exception $e) {
-    error_log("Shift Wipe Error: " . $e->getMessage());
+    error_log("Shift Cleanup Error: " . $e->getMessage());
 }
 
 if ($resource === 'check') {
