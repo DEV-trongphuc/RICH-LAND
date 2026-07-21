@@ -2980,7 +2980,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
 
       if (res.success) {
         toast.success(t('Cập nhật thông tin tài khoản thành công!'));
-        loadPortalData();
+        loadPortalData(true);
       } else {
         toast.error(res.message || t('Lỗi lưu cài đặt tài khoản'));
       }
