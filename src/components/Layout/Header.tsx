@@ -2180,42 +2180,27 @@ export const Header = ({
                     marginBottom: '4px'
                   }}
                 >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1, minWidth: 0 }}>
-                    {/* Overlapping 3 Channel Logos */}
-                    <div style={{ display: 'flex', alignItems: 'center', flexShrink: 0 }}>
-                      <div style={{ width: 28, height: 28, borderRadius: '50%', background: '#fff', border: '1.5px solid #fff', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 3 }}>
-                        <img src="https://stc-zpl.zdn.vn/favicon.ico" style={{ width: 18, height: 18, objectFit: 'contain' }} alt="Zalo" />
-                      </div>
-                      <div style={{ width: 28, height: 28, borderRadius: '50%', background: '#fff', border: '1.5px solid #fff', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginLeft: -8, zIndex: 2 }}>
-                        <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/8/82/Telegram_logo.svg/3840px-Telegram_logo.svg.png" style={{ width: 18, height: 18, objectFit: 'contain' }} alt="Telegram" />
-                      </div>
-                      <div style={{ width: 28, height: 28, borderRadius: '50%', background: '#fff', border: '1.5px solid #fff', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginLeft: -8, zIndex: 1 }}>
-                        <img src="/imgs/gmail-icon-free-png.webp" style={{ width: 18, height: 18, objectFit: 'contain' }} alt="Email" />
-                      </div>
-                    </div>
-
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', flex: 1, minWidth: 0 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                        <span style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)' }}>
-                          Tùy chỉnh thông báo chuyên sâu
-                        </span>
-                        <span style={{
-                          fontSize: '0.625rem',
-                          fontWeight: 700,
-                          color: '#BD1D2D',
-                          background: '#fef2f2',
-                          border: '1px solid #fecaca',
-                          padding: '2px 6px',
-                          borderRadius: '10px',
-                          textTransform: 'uppercase'
-                        }}>
-                          Đa kênh
-                        </span>
-                      </div>
-                      <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', lineHeight: 1.4 }}>
-                        Tùy chỉnh nguồn tổng và bật/tắt Zalo, Telegram, Email cho từng sự kiện.
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', flex: 1, minWidth: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                      <span style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)' }}>
+                        Tùy chỉnh thông báo chuyên sâu
+                      </span>
+                      <span style={{
+                        fontSize: '0.625rem',
+                        fontWeight: 700,
+                        color: '#BD1D2D',
+                        background: '#fef2f2',
+                        border: '1px solid #fecaca',
+                        padding: '2px 6px',
+                        borderRadius: '10px',
+                        textTransform: 'uppercase'
+                      }}>
+                        Đa kênh
                       </span>
                     </div>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', lineHeight: 1.4 }}>
+                      Tùy chỉnh nguồn tổng và bật/tắt Zalo, Telegram, Email cho từng sự kiện.
+                    </span>
                   </div>
 
                   <button
@@ -2225,19 +2210,35 @@ export const Header = ({
                       setIsMatrixModalOpen(true);
                     }}
                     style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '8px',
                       padding: '6px 14px',
                       background: '#BD1D2D',
                       color: 'white',
                       border: 'none',
-                      borderRadius: '8px',
+                      borderRadius: '10px',
                       fontSize: '0.75rem',
                       fontWeight: 700,
                       cursor: 'pointer',
                       whiteSpace: 'nowrap',
-                      flexShrink: 0
+                      flexShrink: 0,
+                      boxShadow: '0 2px 8px rgba(189, 29, 45, 0.25)'
                     }}
                   >
-                    Cấu hình ngay
+                    {/* Overlapping 3 Channel Logos inside button */}
+                    <div style={{ display: 'flex', alignItems: 'center' }}>
+                      <div style={{ width: 22, height: 22, borderRadius: '50%', background: '#fff', border: '1px solid #fff', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 3 }}>
+                        <img src="https://stc-zpl.zdn.vn/favicon.ico" style={{ width: 14, height: 14, objectFit: 'contain' }} alt="Zalo" />
+                      </div>
+                      <div style={{ width: 22, height: 22, borderRadius: '50%', background: '#fff', border: '1px solid #fff', display: 'flex', alignItems: 'center', justifyContent: 'center', marginLeft: -6, zIndex: 2 }}>
+                        <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/8/82/Telegram_logo.svg/3840px-Telegram_logo.svg.png" style={{ width: 14, height: 14, objectFit: 'contain' }} alt="Telegram" />
+                      </div>
+                      <div style={{ width: 22, height: 22, borderRadius: '50%', background: '#fff', border: '1px solid #fff', display: 'flex', alignItems: 'center', justifyContent: 'center', marginLeft: -6, zIndex: 1 }}>
+                        <img src="/imgs/gmail-icon-free-png.webp" style={{ width: 14, height: 14, objectFit: 'contain' }} alt="Email" />
+                      </div>
+                    </div>
+                    <span>Cấu hình</span>
                   </button>
                 </div>
                 {/* Browser Notifications Preference */}
