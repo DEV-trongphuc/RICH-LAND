@@ -37,6 +37,8 @@ import { EmptyCard } from '../components/ui/EmptyCard';
 import { Pagination } from '../components/ui/Pagination';
 import { TableSkeleton, StatRowSkeleton, CalendarSkeleton, CardSkeleton, Skeleton } from '../components/ui/Skeleton';
 import { ToggleSwitch } from '../components/ui/ToggleSwitch';
+import { SignaturePadModal } from '../components/ui/SignaturePadModal';
+import { Edit3 } from 'lucide-react';
 import { FairShareAudit } from './FairShareAudit';
 import { InvoicesPage } from './InvoicesPage';
 import ProjectsPage from './ProjectsPage';
@@ -181,7 +183,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
   const navigate = useNavigate();
   const routerLocation = useLocation();
   const loc = location || routerLocation;
-  const { user, token, login, logout } = useAuth();
+  const { user, token, login, logout, updateUser } = useAuth();
   const currentUser = user;
   const { language, setLanguage, t } = useLanguage();
   const { showConfirm, closeConfirm } = useUIStore();
@@ -1016,6 +1018,51 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
   const [editContractType, setEditContractType] = useState('official');
   const [editDateJoined, setEditDateJoined] = useState('');
   const [editDirectManager, setEditDirectManager] = useState('');
+  const [editDirectManagerId, setEditDirectManagerId] = useState('');
+  const [allUsersList, setAllUsersList] = useState<any[]>([]);
+  const [saleSignatureUrl, setSaleSignatureUrl] = useState<string | null>(user?.signature_url || null);
+  const [showSaleSignatureModal, setShowSaleSignatureModal] = useState(false);
+
+  useEffect(() => {
+    const fetchUsersList = async () => {
+      try {
+        const res = await fetchAPI('users?all=1');
+        if (res && Array.isArray(res)) {
+          setAllUsersList(res);
+        } else if (res?.success && Array.isArray(res.data)) {
+          setAllUsersList(res.data);
+        }
+      } catch (err) {
+        console.warn('Failed to fetch users list in SalePortal:', err);
+      }
+    };
+    fetchUsersList();
+  }, []);
+
+  useEffect(() => {
+    if (user?.signature_url) {
+      setSaleSignatureUrl(user.signature_url);
+    }
+  }, [user?.signature_url]);
+
+  const handleSaveSaleSignature = async (newUrl: string) => {
+    setSaleSignatureUrl(newUrl);
+    setShowSaleSignatureModal(false);
+    const uid = user?.id;
+    if (uid) {
+      try {
+        await fetchAPI(`users/${uid}`, {
+          method: 'PATCH',
+          body: JSON.stringify({ signature_url: newUrl })
+        });
+        toast.success('Đã lưu chữ ký mẫu thành công');
+        updateUser({ signature_url: newUrl });
+      } catch (err) {
+        console.error(err);
+        toast.error('Không thể lưu chữ ký');
+      }
+    }
+  };
   const [editWorkplace, setEditWorkplace] = useState('');
   const [editPersonalPhone, setEditPersonalPhone] = useState('');
   const [editExtNumber, setEditExtNumber] = useState('');
@@ -10194,6 +10241,63 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                         style={{ fontSize: isMobile ? '0.8125rem' : '0.875rem', height: isMobile ? '36px' : '40px' }}
                       />
                     </div>
+
+                    <div className="form-group" style={{ marginTop: '0.5rem', paddingTop: '1rem', borderTop: '1px solid var(--color-border-light)' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                        <label className="form-label" style={{ fontWeight: 600, margin: 0, fontSize: isMobile ? '0.75rem' : '0.875rem' }}>{t('Chữ ký Điện tử Cá nhân')}</label>
+                        <button
+                          type="button"
+                          onClick={() => setShowSaleSignatureModal(true)}
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            color: '#BD1D2D',
+                            fontSize: '0.8rem',
+                            fontWeight: 700,
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '4px'
+                          }}
+                        >
+                          <Edit3 size={14} />
+                          {saleSignatureUrl ? t('Thay đổi chữ ký mẫu') : t('Tạo chữ ký mẫu')}
+                        </button>
+                      </div>
+
+                      {saleSignatureUrl ? (
+                        <div style={{
+                          background: '#f8fafc',
+                          border: '1px solid #e2e8f0',
+                          borderRadius: '8px',
+                          padding: '12px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          maxHeight: '100px',
+                          backgroundImage: 'radial-gradient(#cbd5e1 1px, transparent 1px)',
+                          backgroundSize: '12px 12px'
+                        }}>
+                          <img src={saleSignatureUrl} alt="Chữ ký mẫu" style={{ maxHeight: '75px', objectFit: 'contain' }} />
+                        </div>
+                      ) : (
+                        <div
+                          onClick={() => setShowSaleSignatureModal(true)}
+                          style={{
+                            border: '2px dashed var(--color-border)',
+                            borderRadius: '8px',
+                            padding: '16px',
+                            textAlign: 'center',
+                            color: 'var(--color-text-muted)',
+                            fontSize: '0.8125rem',
+                            cursor: 'pointer',
+                            background: 'var(--color-bg-light)'
+                          }}
+                        >
+                          {t('Chưa thiết lập chữ ký mẫu. Bấm vào đây để vẽ hoặc tải ảnh chữ ký.')}
+                        </div>
+                      )}
+                    </div>
                 </div>
               </div>
             )}
@@ -10272,13 +10376,26 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                       </div>
                       <div className="form-group">
                         <label className="form-label" style={{ fontWeight: 600, fontSize: isMobile ? '0.75rem' : '0.875rem' }}>{t('Người quản lý trực tiếp')}</label>
-                        <input
-                          type="text"
-                          className="form-input"
-                          value={editDirectManager}
-                          onChange={(e) => setEditDirectManager(e.target.value)}
-                          placeholder="Họ tên người quản lý"
-                          style={{ fontSize: isMobile ? '0.8125rem' : '0.875rem', height: isMobile ? '36px' : '40px' }}
+                        <CustomSelect
+                          value={editDirectManagerId || editDirectManager}
+                          onChange={(val: any) => {
+                            setEditDirectManagerId(String(val));
+                            const found = allUsersList.find(u => String(u.id) === String(val));
+                            if (found) {
+                              setEditDirectManager(found.name || found.full_name || found.username || String(val));
+                            } else {
+                              setEditDirectManager(String(val));
+                            }
+                          }}
+                          options={allUsersList.map(u => ({
+                            value: String(u.id),
+                            label: u.name || u.full_name || u.username,
+                            avatar: u.avatar || u.avatar_url,
+                            sublabel: u.role ? `(${u.role})` : undefined
+                          }))}
+                          placeholder={t('Chọn người quản lý trực tiếp...')}
+                          searchable
+                          showAvatars
                         />
                       </div>
                     </div>
@@ -15196,6 +15313,13 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
         confirmText={nightShiftRegistered ? t('Hủy trực ca đêm') : t('Xác nhận đăng ký')}
         cancelText={t('Quay lại')}
         confirmType={nightShiftRegistered ? 'danger' : 'primary'}
+      />
+
+      <SignaturePadModal
+        isOpen={showSaleSignatureModal}
+        onClose={() => setShowSaleSignatureModal(false)}
+        onSave={handleSaveSaleSignature}
+        initialSignatureUrl={saleSignatureUrl}
       />
     </div>
   );

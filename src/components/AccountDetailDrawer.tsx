@@ -5,7 +5,7 @@ import {
   X, Camera, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Save, Trash2, Download, 
   Paperclip, Loader2, Eye, EyeOff, User, Shield, Info, Send, 
   Link2Off, RefreshCw, KeyRound, Building2, Calendar, Clock, Plus, FileText,
-  CreditCard, PhoneCall, Lock, Search, Check, Award, AlertCircle
+  CreditCard, PhoneCall, Lock, Search, Check, Award, AlertCircle, Edit3
 } from 'lucide-react';
 import { fetchAPI } from '../utils/api';
 import { compressToWebP } from '../utils/imageCompress';
@@ -15,6 +15,7 @@ import { AddressSelect } from './ui/AddressSelect';
 import { Avatar } from './ui/Avatar';
 import { CustomModal } from './ui/CustomModal';
 import { ToggleSwitch } from './ui/ToggleSwitch';
+import { SignaturePadModal } from './ui/SignaturePadModal';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import styles from '../pages/EntityDrawer.module.css';
@@ -220,6 +221,29 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
   const [personalPhone, setPersonalPhone] = useState('');
   const [extNumber, setExtNumber] = useState('');
   const [address, setAddress] = useState('');
+  const [signatureUrl, setSignatureUrl] = useState<string | null>(null);
+  const [showSignatureModal, setShowSignatureModal] = useState(false);
+
+  const handleSaveSignature = async (newUrl: string) => {
+    setSignatureUrl(newUrl);
+    setShowSignatureModal(false);
+    const targetId = account?.id || currentUser?.id;
+    if (targetId) {
+      try {
+        await fetchAPI(`users/${targetId}`, {
+          method: 'PATCH',
+          body: JSON.stringify({ signature_url: newUrl })
+        });
+        toast.success('Đã lưu chữ ký mẫu thành công');
+        if (String(targetId) === String(currentUser?.id)) {
+          updateUser({ signature_url: newUrl });
+        }
+      } catch (err) {
+        console.error(err);
+        toast.error('Không thể lưu chữ ký');
+      }
+    }
+  };
 
   // 3. Personnel & ERP Fields
   const [employeeId, setEmployeeId] = useState('');
@@ -327,6 +351,7 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
       setAvatar(account.avatar || '');
       setPhone(account.phone || '');
       setIsActive(String(account.is_active ?? '1'));
+      setSignatureUrl(account.signature_url || account.signature_img || currentUser?.signature_url || null);
 
       // Fetch Full Consultant Profile (for ERP metadata, Schedules, etc.)
       const fetchFullDetails = async () => {
@@ -1579,6 +1604,64 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
                       <div className="form-group">
                         <label className="form-label">{t('Email cá nhân')}</label>
                         <input type="email" className="form-input" value={personalEmail} onChange={e => setPersonalEmail(e.target.value)} placeholder="a@gmail.com" />
+                      </div>
+                      <div className="form-group" style={{ gridColumn: isMobileOrTablet ? 'span 1' : 'span 3', marginTop: '0.5rem', paddingTop: '1rem', borderTop: '1px solid var(--color-border-light)' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                          <label className="form-label" style={{ fontWeight: 600, margin: 0 }}>{t('Chữ ký Điện tử Cá nhân')}</label>
+                          {!readOnly && (
+                            <button
+                              type="button"
+                              onClick={() => setShowSignatureModal(true)}
+                              style={{
+                                background: 'none',
+                                border: 'none',
+                                color: '#BD1D2D',
+                                fontSize: '0.8rem',
+                                fontWeight: 700,
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '4px'
+                              }}
+                            >
+                              <Edit3 size={14} />
+                              {signatureUrl ? t('Thay đổi chữ ký mẫu') : t('Tạo chữ ký mẫu')}
+                            </button>
+                          )}
+                        </div>
+
+                        {signatureUrl ? (
+                          <div style={{
+                            background: '#f8fafc',
+                            border: '1px solid #e2e8f0',
+                            borderRadius: '8px',
+                            padding: '12px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            maxHeight: '100px',
+                            backgroundImage: 'radial-gradient(#cbd5e1 1px, transparent 1px)',
+                            backgroundSize: '12px 12px'
+                          }}>
+                            <img src={signatureUrl} alt="Chữ ký mẫu" style={{ maxHeight: '75px', objectFit: 'contain' }} />
+                          </div>
+                        ) : (
+                          <div
+                            onClick={() => !readOnly && setShowSignatureModal(true)}
+                            style={{
+                              border: '2px dashed var(--color-border)',
+                              borderRadius: '8px',
+                              padding: '16px',
+                              textAlign: 'center',
+                              color: 'var(--color-text-muted)',
+                              fontSize: '0.8125rem',
+                              cursor: readOnly ? 'default' : 'pointer',
+                              background: 'var(--color-bg-light)'
+                            }}
+                          >
+                            {t('Chưa thiết lập chữ ký mẫu. Bấm vào đây để vẽ hoặc tải ảnh chữ ký.')}
+                          </div>
+                        )}
                       </div>
                       <div className="form-group" style={{ gridColumn: isMobileOrTablet ? 'span 1' : 'span 3' }}>
                         <div style={{ display: 'grid', gridTemplateColumns: isMobileOrTablet ? '1fr' : '1fr 1fr', gap: '1rem' }}>
@@ -3984,6 +4067,13 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
           </div>
         )}
       </AnimatePresence>
+
+      <SignaturePadModal
+        isOpen={showSignatureModal}
+        onClose={() => setShowSignatureModal(false)}
+        onSave={handleSaveSignature}
+        initialSignatureUrl={signatureUrl}
+      />
     </>,
     document.body
   );
