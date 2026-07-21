@@ -673,7 +673,33 @@ const PersonalAccountInner = () => {
                   </div>
                 )}
               </div>
-            )}
+          {/* Mobile Log Out Button */}
+          <div style={{ marginTop: '2rem', paddingTop: '1.5rem', borderTop: '1px solid var(--color-border-light)', display: 'flex', justifyContent: 'center' }}>
+            <button
+              type="button"
+              onClick={() => logout()}
+              style={{
+                width: '100%',
+                maxWidth: '400px',
+                padding: '12px 20px',
+                borderRadius: '12px',
+                background: 'rgba(239, 68, 68, 0.08)',
+                border: '1px solid rgba(239, 68, 68, 0.25)',
+                color: '#ef4444',
+                fontWeight: 700,
+                fontSize: '0.9375rem',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease'
+              }}
+            >
+              <LogOut size={18} />
+              {t('Đăng xuất tài khoản')}
+            </button>
+          </div>
         </div>
 
       </div>
