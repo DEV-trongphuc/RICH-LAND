@@ -143,19 +143,25 @@ class CooperationController {
             // No extra filters
         } else if ($scope === 'team') {
             $sql .= " AND (
-                JSON_CONTAINS(JSON_KEYS(CASE WHEN (cs.shares_json IS NOT NULL AND JSON_VALID(cs.shares_json)) THEN cs.shares_json ELSE '{}' END), JSON_QUOTE(CAST(? AS CHAR))) 
+                (cs.shares_json IS NOT NULL AND JSON_VALID(cs.shares_json) AND JSON_CONTAINS(JSON_KEYS(cs.shares_json), JSON_QUOTE(CAST(? AS CHAR))))
                 OR cs.created_by = ?
                 OR EXISTS (
                     SELECT 1 FROM users u2 
                     WHERE u2.team_id IN (SELECT id FROM teams WHERE leader_id = ?)
-                    AND (JSON_CONTAINS(JSON_KEYS(CASE WHEN (cs.shares_json IS NOT NULL AND JSON_VALID(cs.shares_json)) THEN cs.shares_json ELSE '{}' END), JSON_QUOTE(CAST(u2.id AS CHAR))) OR cs.created_by = u2.id)
+                    AND (
+                        (cs.shares_json IS NOT NULL AND JSON_VALID(cs.shares_json) AND JSON_CONTAINS(JSON_KEYS(cs.shares_json), JSON_QUOTE(CAST(u2.id AS CHAR))))
+                        OR cs.created_by = u2.id
+                    )
                 )
             )";
             $params[] = $auth['user_id'];
             $params[] = $auth['user_id'];
             $params[] = $auth['user_id'];
         } else if ($scope === 'own') {
-            $sql .= " AND (JSON_CONTAINS(JSON_KEYS(CASE WHEN (cs.shares_json IS NOT NULL AND JSON_VALID(cs.shares_json)) THEN cs.shares_json ELSE '{}' END), JSON_QUOTE(CAST(? AS CHAR))) OR cs.created_by = ?)";
+            $sql .= " AND (
+                (cs.shares_json IS NOT NULL AND JSON_VALID(cs.shares_json) AND JSON_CONTAINS(JSON_KEYS(cs.shares_json), JSON_QUOTE(CAST(? AS CHAR))))
+                OR cs.created_by = ?
+            )";
             $params[] = $auth['user_id'];
             $params[] = $auth['user_id'];
         } else {
@@ -164,8 +170,8 @@ class CooperationController {
 
         if (isset($_GET['pending_sign']) && $_GET['pending_sign'] === '1') {
             $sql .= " AND cs.status != 'rejected' 
-                      AND JSON_CONTAINS(JSON_KEYS(CASE WHEN (cs.shares_json IS NOT NULL AND JSON_VALID(cs.shares_json)) THEN cs.shares_json ELSE '{}' END), JSON_QUOTE(CAST(? AS CHAR)))
-                      AND NOT JSON_CONTAINS(JSON_KEYS(CASE WHEN (cs.signatures_json IS NOT NULL AND JSON_VALID(cs.signatures_json)) THEN cs.signatures_json ELSE '{}' END), JSON_QUOTE(CAST(? AS CHAR)))";
+                      AND (cs.shares_json IS NOT NULL AND JSON_VALID(cs.shares_json) AND JSON_CONTAINS(JSON_KEYS(cs.shares_json), JSON_QUOTE(CAST(? AS CHAR))))
+                      AND NOT (cs.signatures_json IS NOT NULL AND JSON_VALID(cs.signatures_json) AND JSON_CONTAINS(JSON_KEYS(cs.signatures_json), JSON_QUOTE(CAST(? AS CHAR))))";
             $params[] = $auth['user_id'];
             $params[] = $auth['user_id'];
         }

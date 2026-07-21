@@ -77,9 +77,8 @@ function respond(int $code, $data = null, string $message = '', bool $success = 
 
 // ── Global Exception Handler ──────────────────────────────────
 set_exception_handler(function (Throwable $e) {
-    $msg = (defined('APP_ENV') && APP_ENV === 'production') 
-           ? 'Đã có lỗi hệ thống xảy ra. Vui lòng thử lại sau.' 
-           : $e->getMessage() . " in " . $e->getFile() . " line " . $e->getLine();
+    error_log("GLOBAL EXCEPTION: " . $e->getMessage() . " in " . $e->getFile() . " line " . $e->getLine());
+    $msg = $e->getMessage() . " in " . $e->getFile() . " line " . $e->getLine();
     respond(500, null, $msg, false);
 });
 
