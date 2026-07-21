@@ -2552,10 +2552,10 @@ export const Header = ({
                   const parseActorName = (body: string) => {
                     if (!body) return null;
                     let cleanBody = body;
-                    if (body.startsWith('Nhân viên ')) {
-                      cleanBody = body.substring(10);
+                    if (cleanBody.startsWith('Nhân viên ')) {
+                      cleanBody = cleanBody.substring(10);
                     }
-                    const match = cleanBody.match(/^(\p{Lu}\p{Ll}*(?:\s+\p{Lu}\p{Ll}*){1,4})\s+(?:đã|có)\s+/u);
+                    const match = cleanBody.match(/^(.+?)(?:\s*\([^)]*\))?\s+(?:đã|vừa|gửi|báo|có|check-in)\s+/u);
                     if (match) {
                       return match[1].trim();
                     }

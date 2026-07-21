@@ -412,6 +412,18 @@ class CheckInController {
             'sale_name' => $row['full_name']
         ]));
 
+        // Send approval result notification to employee via NotificationService (In-App Bell, Email, Zalo, Telegram)
+        require_once __DIR__ . '/../NotificationService.php';
+        $isSupplementary = !empty($row['reason']) && (mb_stripos($row['reason'], 'bổ sung') !== false || $row['check_in_date'] !== date('Y-m-d'));
+        NotificationService::send($this->db, $auth['tenant_id'], 'ATTENDANCE_APPROVAL_RESULT', [
+            'user_id' => (int)$row['user_id'],
+            'user_name' => $row['full_name'] ?? 'Nhân viên',
+            'date' => $row['check_in_date'],
+            'status' => $status,
+            'reason' => $adminNote ?: ($row['reason'] ?? ''),
+            'is_supplementary' => $isSupplementary
+        ]);
+
         respond(200, null, 'Cập nhật trạng thái check-in thành công');
     }
 
