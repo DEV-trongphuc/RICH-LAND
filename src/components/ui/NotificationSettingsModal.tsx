@@ -722,7 +722,7 @@ const getDefaultConfig = (key: string): EventConfig => {
                                 height: 20,
                                 borderRadius: 20,
                                 border: 'none',
-                                background: cfg.master ? '#BD1D2D' : '#cbd5e1',
+                                background: cfg.master ? '#16a34a' : '#cbd5e1',
                                 cursor: 'pointer',
                                 padding: 0,
                                 margin: '0 auto',

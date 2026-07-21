@@ -2388,7 +2388,7 @@ export const Header = ({
                             marginLeft: '6px'
                           }}
                         >
-                          (Tùy chỉnh đa kênh &gt;)
+                          (Custom &gt;)
                         </button>
                       </div>
                       <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', lineHeight: 1.4 }}>
