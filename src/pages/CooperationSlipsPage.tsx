@@ -1366,8 +1366,9 @@ export default function CooperationSlipsPage() {
                               <button
                                 onClick={() => handleOpenRequestAdjustmentModal(slip)}
                                 className="coop-btn-request-edit"
+                                title="Gửi yêu cầu chỉnh sửa lại tỷ lệ chia hoa hồng"
                               >
-                                Yêu cầu chỉnh sửa tỷ lệ
+                                <PenTool size={12} /> Yêu cầu sửa tỷ lệ
                               </button>
                             )
                           )}
