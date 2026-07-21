@@ -2,7 +2,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { createPortal } from 'react-dom';
 import { withRouterFreezer } from '../components/RouterFreezer';
-import { Users, Plus, Trash2, Mail, MessageCircle, Shield, UserX, Clock, X, Link2Off, User, Send, Check, RefreshCw, BarChart2, Calendar, Scale, Eye, CheckCircle, AlertTriangle, AlertCircle, Building2, ChevronLeft, ChevronRight, Search, Phone, Info, TrendingUp, Paperclip, Link2, File as FileIcon, Folder, Download, MapPin, MoreHorizontal, Database, UserPlus } from 'lucide-react';
+import { Users, Plus, Trash2, Mail, MessageCircle, Shield, UserX, Clock, X, Link2Off, User, Send, Check, RefreshCw, BarChart2, Calendar, Scale, Eye, CheckCircle, AlertTriangle, AlertCircle, Building2, ChevronLeft, ChevronRight, Search, Phone, Info, TrendingUp, Paperclip, Link2, File as FileIcon, Folder, Download, MapPin, MoreHorizontal, Database, UserPlus, ExternalLink, Copy } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { CustomModal } from '../components/ui/CustomModal';
 import { ConfirmModal } from '../components/ui/ConfirmModal';
@@ -199,6 +199,40 @@ const ConsultantsInner = () => {
   const [teamsPage, setTeamsPage] = useState(1);
   const [selectedBranch, setSelectedBranch] = useState<string>('');
   const ITEMS_PER_PAGE = 8;
+
+  const [zaloBotLink, setZaloBotLink] = useState<string>('');
+  const [telegramBotUsername, setTelegramBotUsername] = useState<string>('');
+  const [isZaloModalOpen, setIsZaloModalOpen] = useState<boolean>(false);
+  const [copiedCode, setCopiedCode] = useState<boolean>(false);
+
+  useEffect(() => {
+    fetchAPI('notifications/settings')
+      .then(res => {
+        if (res && res.success && res.data?.user_info) {
+          if (res.data.user_info.zalo_bot_link) setZaloBotLink(res.data.user_info.zalo_bot_link);
+          if (res.data.user_info.telegram_bot_username) setTelegramBotUsername(res.data.user_info.telegram_bot_username);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  const handleConnectZalo = () => {
+    const link = zaloBotLink.trim();
+    if (!link) {
+      toast.error('Hệ thống chưa setup nhận thông báo qua Zalobot');
+      return;
+    }
+    setIsZaloModalOpen(true);
+  };
+
+  const handleConnectTelegram = (userId: number) => {
+    const username = telegramBotUsername.trim();
+    if (!username) {
+      toast.error('Hệ thống chưa setup nhận thông báo qua Telegram Bot');
+      return;
+    }
+    window.open(`https://t.me/${username}?start=connect_${userId}`, '_blank');
+  };
 
   const [scheduleMode, setScheduleMode] = useState<'daily' | 'custom'>('daily');
   const [formData, setFormData] = useState<{
@@ -1440,15 +1474,28 @@ const ConsultantsInner = () => {
                             }}>
                               {t('Chưa liên kết')}
                             </span>
-                            {u.email && u.email.toLowerCase() !== user?.email?.toLowerCase() && (
-                              zaloRemindedId === u.id ? (
-                                <span style={{ fontSize: '0.7rem', padding: '2px 6px', color: '#10b981', display: 'flex', alignItems: 'center', gap: 4, fontWeight: 600 }}>
-                                  <Check size={12} /> {t('Đã nhắc')}
-                                </span>
-                              ) : (
-                                <button onClick={(e) => { e.stopPropagation(); handleResendZaloVerify(u.id); }} className="btn ghost" style={{ fontSize: '0.7rem', padding: '2px 6px', color: '#10b981', display: 'flex', alignItems: 'center', gap: 4 }} title={t("Gửi email nhắc xác thực Zalo")} disabled={zaloRemindingId === u.id}>
-                                  {zaloRemindingId === u.id ? <RefreshCw size={12} className="spin" /> : <Send size={12} />} {zaloRemindingId === u.id ? t('Đang gửi...') : t('Nhắc')}
-                                </button>
+                            {u.email && u.email.toLowerCase() === user?.email?.toLowerCase() ? (
+                              <button
+                                onClick={(e) => { e.stopPropagation(); handleConnectZalo(); }}
+                                style={{
+                                  fontSize: '0.725rem', padding: '3px 8px', borderRadius: '6px',
+                                  background: '#0068ff', color: 'white', border: 'none',
+                                  display: 'inline-flex', alignItems: 'center', gap: 4, fontWeight: 700, cursor: 'pointer'
+                                }}
+                              >
+                                {t('Liên kết')} <ExternalLink size={12} />
+                              </button>
+                            ) : (
+                              u.email && (
+                                zaloRemindedId === u.id ? (
+                                  <span style={{ fontSize: '0.7rem', padding: '2px 6px', color: '#10b981', display: 'flex', alignItems: 'center', gap: 4, fontWeight: 600 }}>
+                                    <Check size={12} /> {t('Đã nhắc')}
+                                  </span>
+                                ) : (
+                                  <button onClick={(e) => { e.stopPropagation(); handleResendZaloVerify(u.id); }} className="btn ghost" style={{ fontSize: '0.7rem', padding: '2px 6px', color: '#10b981', display: 'flex', alignItems: 'center', gap: 4 }} title={t("Gửi email nhắc xác thực Zalo")} disabled={zaloRemindingId === u.id}>
+                                    {zaloRemindingId === u.id ? <RefreshCw size={12} className="spin" /> : <Send size={12} />} {zaloRemindingId === u.id ? t('Đang gửi...') : t('Nhắc')}
+                                  </button>
+                                )
                               )
                             )}
                           </div>
@@ -1475,15 +1522,28 @@ const ConsultantsInner = () => {
                               }}>
                                 {t('Chưa liên kết')}
                               </span>
-                              {u.email && u.email.toLowerCase() !== user?.email?.toLowerCase() && (
-                                tgRemindedId === u.id ? (
-                                  <span style={{ fontSize: '0.7rem', padding: '2px 6px', color: '#10b981', display: 'flex', alignItems: 'center', gap: 4, fontWeight: 600 }}>
-                                    <Check size={12} /> {t('Đã nhắc')}
-                                  </span>
-                                ) : (
-                                  <button onClick={(e) => { e.stopPropagation(); handleResendTelegramVerify(u.id); }} className="btn ghost" style={{ fontSize: '0.7rem', padding: '2px 6px', color: '#10b981', display: 'flex', alignItems: 'center', gap: 4 }} title={t("Gửi email nhắc liên kết Telegram")} disabled={tgRemindingId === u.id}>
-                                    {tgRemindingId === u.id ? <RefreshCw size={12} className="spin" /> : <Send size={12} />} {tgRemindingId === u.id ? t('Đang gửi...') : t('Nhắc')}
-                                  </button>
+                              {u.email && u.email.toLowerCase() === user?.email?.toLowerCase() ? (
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); handleConnectTelegram(u.id); }}
+                                  style={{
+                                    fontSize: '0.725rem', padding: '3px 8px', borderRadius: '6px',
+                                    background: '#0284c7', color: 'white', border: 'none',
+                                    display: 'inline-flex', alignItems: 'center', gap: 4, fontWeight: 700, cursor: 'pointer'
+                                  }}
+                                >
+                                  {t('Liên kết')} <ExternalLink size={12} />
+                                </button>
+                              ) : (
+                                u.email && (
+                                  tgRemindedId === u.id ? (
+                                    <span style={{ fontSize: '0.7rem', padding: '2px 6px', color: '#10b981', display: 'flex', alignItems: 'center', gap: 4, fontWeight: 600 }}>
+                                      <Check size={12} /> {t('Đã nhắc')}
+                                    </span>
+                                  ) : (
+                                    <button onClick={(e) => { e.stopPropagation(); handleResendTelegramVerify(u.id); }} className="btn ghost" style={{ fontSize: '0.7rem', padding: '2px 6px', color: '#10b981', display: 'flex', alignItems: 'center', gap: 4 }} title={t("Gửi email nhắc liên kết Telegram")} disabled={tgRemindingId === u.id}>
+                                      {tgRemindingId === u.id ? <RefreshCw size={12} className="spin" /> : <Send size={12} />} {tgRemindingId === u.id ? t('Đang gửi...') : t('Nhắc')}
+                                    </button>
+                                  )
                                 )
                               )}
                             </div>
@@ -3983,6 +4043,128 @@ const ConsultantsInner = () => {
           <button className="btn primary" onClick={() => setShowInfoModal(false)} style={{ minWidth: 100 }}>{t("Đồng ý")}</button>
         </div>
       </CustomModal>
+
+      {/* Zalo Bot Connect Modal */}
+      {isZaloModalOpen && (
+        <CustomModal
+          isOpen={isZaloModalOpen}
+          onClose={() => setIsZaloModalOpen(false)}
+          title="Kết Nối Zalo Bot Nhận Thông Báo"
+          width={480}
+        >
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', padding: '6px 2px' }}>
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '12px',
+              background: '#eff6ff',
+              border: '1px solid #bfdbfe',
+              padding: '14px 16px',
+              borderRadius: '12px'
+            }}>
+              <div style={{ width: 36, height: 36, borderRadius: '50%', background: '#0068ff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <img src="https://stc-zpl.zdn.vn/favicon.ico" style={{ width: 22, height: 22 }} alt="Zalo" />
+              </div>
+              <div>
+                <div style={{ fontWeight: 700, fontSize: '0.875rem', color: '#1e3a8a' }}>
+                  Xác Thực Tài Khoản Zalo Cá Nhân
+                </div>
+                <div style={{ fontSize: '0.75rem', color: '#3b82f6', marginTop: 2 }}>
+                  Gửi mã kết nối bên dưới đến Zalo Bot để hoàn tất liên kết
+                </div>
+              </div>
+            </div>
+
+            {/* Bước 1 */}
+            <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '14px 16px' }}>
+              <div style={{ fontSize: '0.8125rem', fontWeight: 700, color: '#0f172a', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ width: 22, height: 22, borderRadius: '50%', background: '#0068ff', color: 'white', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', fontWeight: 800 }}>1</span>
+                Nhấn liên kết mở Zalo Bot / OA:
+              </div>
+              <a
+                href={zaloBotLink}
+                target="_blank"
+                rel="noreferrer"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  padding: '10px 18px',
+                  background: '#0068ff',
+                  color: 'white',
+                  borderRadius: '8px',
+                  fontWeight: 700,
+                  fontSize: '0.8125rem',
+                  textDecoration: 'none',
+                  boxShadow: '0 3px 8px rgba(0,104,255,0.25)'
+                }}
+              >
+                Mở Zalo Bot Trực Tiếp <ExternalLink size={14} />
+              </a>
+            </div>
+
+            {/* Bước 2 */}
+            <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '14px 16px' }}>
+              <div style={{ fontSize: '0.8125rem', fontWeight: 700, color: '#0f172a', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ width: 22, height: 22, borderRadius: '50%', background: '#0068ff', color: 'white', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', fontWeight: 800 }}>2</span>
+                Gửi mã kết nối này cho Zalo Bot:
+              </div>
+              
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 8 }}>
+                <div style={{
+                  flex: 1,
+                  background: '#0f172a',
+                  color: '#38bdf8',
+                  padding: '10px 14px',
+                  borderRadius: '8px',
+                  fontFamily: 'monospace',
+                  fontWeight: 800,
+                  fontSize: '1.05rem',
+                  letterSpacing: '1px',
+                  textAlign: 'center',
+                  boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.2)'
+                }}>
+                  CONNECT {user?.id}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const code = `CONNECT ${user?.id || ''}`;
+                    navigator.clipboard.writeText(code);
+                    setCopiedCode(true);
+                    toast.success('Đã sao chép mã kết nối Zalo Bot!');
+                    setTimeout(() => setCopiedCode(false), 2000);
+                  }}
+                  style={{
+                    padding: '10px 16px',
+                    background: copiedCode ? '#16a34a' : '#0068ff',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '8px',
+                    fontWeight: 700,
+                    fontSize: '0.8125rem',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    transition: 'all 0.2s'
+                  }}
+                >
+                  {copiedCode ? <Check size={14} /> : <Copy size={14} />}
+                  {copiedCode ? 'Đã sao chép' : 'Sao chép mã'}
+                </button>
+              </div>
+              <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: 10, lineHeight: 1.4 }}>
+                💡 Mẹo: Bạn có thể nhắn mã số <strong style={{ color: '#0f172a' }}>{user?.id}</strong> hoặc <strong style={{ color: '#0f172a' }}>CONNECT {user?.id}</strong> vào Zalo Bot.
+              </div>
+            </div>
+
+            <div style={{ fontSize: '0.75rem', color: '#64748b', fontStyle: 'italic', textAlign: 'center', marginTop: 2 }}>
+              ✨ Ngay khi nhắn mã thành công, Zalo Bot sẽ tự động phản hồi xác nhận liên kết tài khoản của bạn!
+            </div>
+          </div>
+        </CustomModal>
+      )}
     </div>
   );
 };

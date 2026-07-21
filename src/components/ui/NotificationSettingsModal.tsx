@@ -214,11 +214,22 @@ export const NotificationSettingsModal: React.FC<NotificationSettingsModalProps>
   };
 
   const handleConnectZalo = () => {
+    const link = userInfo.zalo_bot_link?.trim();
+    if (!link) {
+      showToast('Hệ thống chưa setup nhận thông báo qua Zalobot', 'warning');
+      toast.error('Hệ thống chưa setup nhận thông báo qua Zalobot');
+      return;
+    }
     setIsZaloModalOpen(true);
   };
 
   const handleConnectTelegram = () => {
-    const username = userInfo.telegram_bot_username?.trim() || 'RichLand_Bot';
+    const username = userInfo.telegram_bot_username?.trim();
+    if (!username) {
+      showToast('Hệ thống chưa setup nhận thông báo qua Telegram Bot', 'warning');
+      toast.error('Hệ thống chưa setup nhận thông báo qua Telegram Bot');
+      return;
+    }
     const connectUserId = userInfo.user_id || currentUser?.id;
     const telegramUrl = `https://t.me/${username}?start=connect_${connectUserId}`;
     window.open(telegramUrl, '_blank');
@@ -933,7 +944,7 @@ const getDefaultConfig = (key: string): EventConfig => {
               Nhấn liên kết mở Zalo Bot / OA:
             </div>
             <a
-              href={userInfo.zalo_bot_link || 'https://zalo.me/1926311792402734025'}
+              href={userInfo.zalo_bot_link}
               target="_blank"
               rel="noreferrer"
               style={{

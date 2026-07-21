@@ -129,15 +129,17 @@ class NotificationController {
         try {
             $stmtSys = $this->db->query("SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('zalo_bot_link', 'telegram_bot_username')");
             if ($stmtSys) {
-                $sysData = $stmtSys->fetchAll(PDO::FETCH_KEY_PAIR);
-                $zaloBotLink = trim((string)($sysData['zalo_bot_link'] ?? ''));
-                $tgBotUsername = trim((string)($sysData['telegram_bot_username'] ?? ''));
+                $rows = $stmtSys->fetchAll(PDO::FETCH_ASSOC);
+                foreach ($rows as $r) {
+                    if ($r['setting_key'] === 'zalo_bot_link') {
+                        $zaloBotLink = trim((string)$r['setting_value']);
+                    }
+                    if ($r['setting_key'] === 'telegram_bot_username') {
+                        $tgBotUsername = trim((string)$r['setting_value']);
+                    }
+                }
             }
         } catch (\Throwable $sysEx) {}
-
-        if (empty($zaloBotLink)) {
-            $zaloBotLink = 'https://zalo.me/1926311792402734025';
-        }
 
         $matrixConfig = null;
         if (!empty($row['matrix_config'])) {
