@@ -695,6 +695,7 @@ switch ($resource) {
     case 'notifications':
         $auth = requireAuth();
         $ctrl = new NotificationController($db);
+        if ($resourceId === 'settings') {
             if ($method === 'GET') {
                 $ctrl->getSettings($auth);
             } elseif ($method === 'PATCH' || $method === 'POST') {
