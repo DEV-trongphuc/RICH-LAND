@@ -5138,12 +5138,12 @@ function doPost(e) {
                       <h4 style={{ fontSize: '0.9375rem', fontWeight: 700, color: 'var(--color-text)' }}>{t('Quy tắc Chấm công & Đền bù')}</h4>
                     </div>
 
-                    <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '1.5rem', alignItems: 'start' }}>
-                      {/* Cột Trái: Quy tắc đền bù Lead */}
-                      <div style={{ background: 'var(--color-surface)', padding: '1.25rem', borderRadius: '12px', border: '1px solid var(--color-border-light)', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '1.5rem', alignItems: 'stretch' }}>
+                      {/* Cột Trái: Quy tắc Đền bù & Phân phối Data */}
+                      <div style={{ background: 'var(--color-surface)', padding: '1.25rem', borderRadius: '12px', border: '1px solid var(--color-border-light)', display: 'flex', flexDirection: 'column', gap: '1.25rem', height: '100%' }}>
                         <div style={{ fontWeight: 700, fontSize: '0.875rem', color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: '6px' }}>
                           <RefreshCw size={15} style={{ color: 'var(--color-primary)' }} />
-                          {t('Quy tắc Tự động Đền bù Lead')}
+                          {t('Đền bù Lead & Phân phối Data')}
                         </div>
 
                         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '1rem', borderBottom: '1px solid var(--color-border-light)', paddingBottom: '1rem' }}>
@@ -5163,7 +5163,7 @@ function doPost(e) {
                           </div>
                         </div>
 
-                        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '1rem' }}>
+                        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '1rem', borderBottom: '1px solid var(--color-border-light)', paddingBottom: '1rem' }}>
                           <div style={{ flex: 1, minWidth: 0 }}>
                             <div style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text)' }}>
                               {t('Tự động đền bù khi bị thu hồi do nghỉ phép')}
@@ -5179,16 +5179,33 @@ function doPost(e) {
                             />
                           </div>
                         </div>
+
+                        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '1rem' }}>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text)' }}>
+                              {t('Cho phép nhận data ngay khi chấm công')}
+                            </div>
+                            <div style={{ fontSize: '0.725rem', color: 'var(--color-text-muted)', marginTop: 4, lineHeight: 1.4 }}>
+                              {t('Cho phép nhân viên đi trễ (trạng thái chờ duyệt) được nhận lead ngay trong lúc chờ sếp duyệt.')}
+                            </div>
+                          </div>
+                          <div style={{ flexShrink: 0, marginTop: '2px' }}>
+                            <ToggleSwitch
+                              checked={allowLeadDistributionOnPendingCheckin}
+                              onChange={setAllowLeadDistributionOnPendingCheckin}
+                            />
+                          </div>
+                        </div>
                       </div>
 
-                      {/* Cột Phải: SLA & Nhắc nhở thông báo */}
-                      <div style={{ background: 'var(--color-surface)', padding: '1.25rem', borderRadius: '12px', border: '1px solid var(--color-border-light)', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                      {/* Cột Phải: SLA & Nhắc nhở Thông báo */}
+                      <div style={{ background: 'var(--color-surface)', padding: '1.25rem', borderRadius: '12px', border: '1px solid var(--color-border-light)', display: 'flex', flexDirection: 'column', gap: '1.25rem', height: '100%' }}>
                         <div style={{ fontWeight: 700, fontSize: '0.875rem', color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: '6px' }}>
                           <Clock size={15} style={{ color: 'var(--color-primary)' }} />
                           {t('SLA & Nhắc nhở Thông báo')}
                         </div>
 
-                        <div>
+                        <div style={{ borderBottom: '1px solid var(--color-border-light)', paddingBottom: '1rem' }}>
                           <label className="form-label" style={{ fontWeight: 700, fontSize: '0.8125rem' }}>{t('SLA Duyệt đi trễ (Chấm công)')}</label>
                           <div style={{ display: 'flex', alignItems: 'center', position: 'relative' }}>
                             <input
@@ -5206,30 +5223,13 @@ function doPost(e) {
                           </span>
                         </div>
 
-                        <div style={{ borderTop: '1px solid var(--color-border-light)', paddingTop: '1rem', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '1rem' }}>
-                          <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text)' }}>
-                              {t('Cho phép nhận data ngay khi chấm công')}
-                            </div>
-                            <div style={{ fontSize: '0.725rem', color: 'var(--color-text-muted)', marginTop: 4, lineHeight: 1.4 }}>
-                              {t('Cho phép nhân viên đi trễ (trạng thái chờ duyệt) được nhận lead ngay trong lúc chờ sếp duyệt.')}
-                            </div>
-                          </div>
-                          <div style={{ flexShrink: 0, marginTop: '2px' }}>
-                            <ToggleSwitch
-                              checked={allowLeadDistributionOnPendingCheckin}
-                              onChange={setAllowLeadDistributionOnPendingCheckin}
-                            />
-                          </div>
-                        </div>
-
-                        <div style={{ borderTop: '1px solid var(--color-border-light)', paddingTop: '1rem', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '1rem' }}>
+                        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '1rem', borderBottom: '1px solid var(--color-border-light)', paddingBottom: '1rem' }}>
                           <div style={{ flex: 1, minWidth: 0 }}>
                             <div style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text)' }}>
                               {t('Thông báo trước giờ chấm công')}
                             </div>
                             <div style={{ fontSize: '0.725rem', color: 'var(--color-text-muted)', marginTop: 4, lineHeight: 1.4 }}>
-                              {t('Bật nhắc nhở Sale điểm danh qua ứng dụng & Zalo trước giờ làm việc.')}
+                              {t('Bật nhắc nhở Sale điểm danh qua ứng dụng, Zalo, Telegram & Email.')}
                             </div>
                             {attendanceNotificationEnabled && (
                               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '8px' }}>
@@ -5254,13 +5254,13 @@ function doPost(e) {
                           </div>
                         </div>
 
-                        <div style={{ borderTop: '1px dashed var(--color-border-light)', paddingTop: '1rem', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '1rem' }}>
+                        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '1rem' }}>
                           <div style={{ flex: 1, minWidth: 0 }}>
                             <div style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text)' }}>
                               {t('Thông báo nhắc lịch trực đêm')}
                             </div>
                             <div style={{ fontSize: '0.725rem', color: 'var(--color-text-muted)', marginTop: 4, lineHeight: 1.4 }}>
-                              {t('Gửi thông báo nhắc nhở kèm lời chúc cho Sale có lịch trực đêm.')}
+                              {t('Gửi nhắc nhở qua App/Zalo/Telegram/Email cho Sale có lịch trực đêm.')}
                             </div>
                             {nightDutyNotificationEnabled && (
                               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '8px' }}>
