@@ -151,29 +151,71 @@ class NotificationController {
             $this->db->exec("ALTER TABLE user_notification_settings ADD COLUMN matrix_config LONGTEXT NULL");
         } catch (\Throwable $e) {}
 
-        if (isset($b['matrix_config'])) {
-            $matrixConfig = json_encode($b['matrix_config'], JSON_UNESCAPED_UNICODE);
+        // Fetch existing settings row
+        $stmtEx = $this->db->prepare("SELECT * FROM user_notification_settings WHERE user_id = ? AND tenant_id = ? LIMIT 1");
+        $stmtEx->execute([$auth['user_id'], $auth['tenant_id']]);
+        $existingRow = $stmtEx->fetch(PDO::FETCH_ASSOC) ?: [];
+        $existingMatrix = !empty($existingRow['matrix_config']) ? json_decode($existingRow['matrix_config'], true) : [];
+
+        if (isset($b['matrix_config']) && is_array($b['matrix_config'])) {
+            $m = $b['matrix_config'];
+            $matrixConfigStr = json_encode($m, JSON_UNESCAPED_UNICODE);
+
+            // Synchronize outer email preferences from matrix
+            $email_warning = (!empty($m['SECURITY_DEADLINE_WARNING']['master']) && !empty($m['SECURITY_DEADLINE_WARNING']['email'])) ? 1 : 0;
+            $email_mention = (!empty($m['MENTION_TAGGED']['master']) && !empty($m['MENTION_TAGGED']['email'])) ? 1 : 0;
+            $email_approval_request = (!empty($m['DEPOSIT_NEW']['master']) && !empty($m['DEPOSIT_NEW']['email'])) ? 1 : 0;
+            $email_project_document = (!empty($m['PROJECT_ROSTER_UPDATE']['master']) && !empty($m['PROJECT_ROSTER_UPDATE']['email'])) ? 1 : 0;
+            $email_project_comment = (!empty($m['CUSTOMER_UPDATE']['master']) && !empty($m['CUSTOMER_UPDATE']['email'])) ? 1 : 0;
+            $email_project_roster = (!empty($m['PROJECT_ROSTER_UPDATE']['master']) && !empty($m['PROJECT_ROSTER_UPDATE']['email'])) ? 1 : 0;
+            $email_info = (!empty($m['MONTHLY_ATTENDANCE_REPORT']['master']) && !empty($m['MONTHLY_ATTENDANCE_REPORT']['email'])) ? 1 : 0;
+
             $stmt = $this->db->prepare("
-                INSERT INTO user_notification_settings (user_id, tenant_id, matrix_config)
-                VALUES (?, ?, ?)
-                ON DUPLICATE KEY UPDATE matrix_config = VALUES(matrix_config)
+                INSERT INTO user_notification_settings 
+                (user_id, tenant_id, matrix_config, email_warning, email_mention, email_approval_request, email_project_document, email_project_comment, email_project_roster, email_info)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON DUPLICATE KEY UPDATE 
+                    matrix_config = VALUES(matrix_config),
+                    email_warning = VALUES(email_warning),
+                    email_mention = VALUES(email_mention),
+                    email_approval_request = VALUES(email_approval_request),
+                    email_project_document = VALUES(email_project_document),
+                    email_project_comment = VALUES(email_project_comment),
+                    email_project_roster = VALUES(email_project_roster),
+                    email_info = VALUES(email_info)
             ");
-            $stmt->execute([$auth['user_id'], $auth['tenant_id'], $matrixConfig]);
+            $stmt->execute([
+                $auth['user_id'], $auth['tenant_id'], $matrixConfigStr,
+                $email_warning, $email_mention, $email_approval_request,
+                $email_project_document, $email_project_comment, $email_project_roster, $email_info
+            ]);
             respond(200, null, 'Cập nhật ma trận cấu hình thông báo thành công');
             return;
         }
+
+        $email_warning = isset($b['email_warning']) ? (int)$b['email_warning'] : ($existingRow['email_warning'] ?? 1);
+        $email_mention = isset($b['email_mention']) ? (int)$b['email_mention'] : ($existingRow['email_mention'] ?? 1);
+        $email_approval_request = isset($b['email_approval_request']) ? (int)$b['email_approval_request'] : ($existingRow['email_approval_request'] ?? 1);
+        $email_project_document = isset($b['email_project_document']) ? (int)$b['email_project_document'] : ($existingRow['email_project_document'] ?? 0);
+        $email_project_comment = isset($b['email_project_comment']) ? (int)$b['email_project_comment'] : ($existingRow['email_project_comment'] ?? 0);
+        $email_project_roster = isset($b['email_project_roster']) ? (int)$b['email_project_roster'] : ($existingRow['email_project_roster'] ?? 0);
+        $email_info = isset($b['email_info']) ? (int)$b['email_info'] : ($existingRow['email_info'] ?? 0);
+
+        // Update matrix config json to stay in sync with outer toggles
+        $m = is_array($existingMatrix) ? $existingMatrix : [];
         
-        $email_warning = isset($b['email_warning']) ? (int)$b['email_warning'] : 1;
-        $email_mention = isset($b['email_mention']) ? (int)$b['email_mention'] : 1;
-        $email_approval_request = isset($b['email_approval_request']) ? (int)$b['email_approval_request'] : 1;
-        $email_project_document = isset($b['email_project_document']) ? (int)$b['email_project_document'] : 0;
-        $email_project_comment = isset($b['email_project_comment']) ? (int)$b['email_project_comment'] : 0;
-        $email_project_roster = isset($b['email_project_roster']) ? (int)$b['email_project_roster'] : 0;
-        $email_info = isset($b['email_info']) ? (int)$b['email_info'] : 0;
+        $m['SECURITY_DEADLINE_WARNING'] = array_merge($m['SECURITY_DEADLINE_WARNING'] ?? ['zalo' => true, 'telegram' => true], ['master' => (bool)$email_warning, 'email' => (bool)$email_warning]);
+        $m['MENTION_TAGGED'] = array_merge($m['MENTION_TAGGED'] ?? ['zalo' => true, 'telegram' => true], ['master' => (bool)$email_mention, 'email' => (bool)$email_mention]);
+        $m['DEPOSIT_NEW'] = array_merge($m['DEPOSIT_NEW'] ?? ['zalo' => true, 'telegram' => true], ['master' => (bool)$email_approval_request, 'email' => (bool)$email_approval_request]);
+        $m['PROJECT_ROSTER_UPDATE'] = array_merge($m['PROJECT_ROSTER_UPDATE'] ?? ['zalo' => false, 'telegram' => false], ['master' => (bool)$email_project_document, 'email' => (bool)$email_project_document]);
+        $m['CUSTOMER_UPDATE'] = array_merge($m['CUSTOMER_UPDATE'] ?? ['zalo' => false, 'telegram' => false], ['master' => (bool)$email_project_comment, 'email' => (bool)$email_project_comment]);
+        $m['MONTHLY_ATTENDANCE_REPORT'] = array_merge($m['MONTHLY_ATTENDANCE_REPORT'] ?? ['zalo' => false, 'telegram' => false], ['master' => (bool)$email_info, 'email' => (bool)$email_info]);
+
+        $matrixConfigStr = json_encode($m, JSON_UNESCAPED_UNICODE);
 
         $stmt = $this->db->prepare("INSERT INTO user_notification_settings 
-            (user_id, tenant_id, email_warning, email_mention, email_approval_request, email_project_document, email_project_comment, email_project_roster, email_info)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            (user_id, tenant_id, email_warning, email_mention, email_approval_request, email_project_document, email_project_comment, email_project_roster, email_info, matrix_config)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON DUPLICATE KEY UPDATE 
                 email_warning = VALUES(email_warning),
                 email_mention = VALUES(email_mention),
@@ -181,7 +223,8 @@ class NotificationController {
                 email_project_document = VALUES(email_project_document),
                 email_project_comment = VALUES(email_project_comment),
                 email_project_roster = VALUES(email_project_roster),
-                email_info = VALUES(email_info)");
+                email_info = VALUES(email_info),
+                matrix_config = VALUES(matrix_config)");
         
         $stmt->execute([
             $auth['user_id'],
@@ -192,7 +235,8 @@ class NotificationController {
             $email_project_document,
             $email_project_comment,
             $email_project_roster,
-            $email_info
+            $email_info,
+            $matrixConfigStr
         ]);
 
         respond(200, null, 'Cập nhật cấu hình thông báo thành công');

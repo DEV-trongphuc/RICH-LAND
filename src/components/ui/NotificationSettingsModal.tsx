@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { CustomModal } from './CustomModal';
-import { Power, CheckCircle, AlertTriangle, ShieldCheck, ExternalLink, RotateCcw, ArrowLeft } from 'lucide-react';
+import { Power, CheckCircle, AlertTriangle, ShieldCheck, ExternalLink, RotateCcw, ArrowLeft, Check } from 'lucide-react';
 import { fetchAPI } from '../../utils/api';
 import { useAuthStore } from '../../store/authStore';
 import toast from 'react-hot-toast';
@@ -590,112 +590,124 @@ const getDefaultConfig = (key: string): EventConfig => {
                             </div>
                           </td>
 
-                          {/* Zalo Toggle */}
+                          {/* Zalo Checkbox */}
                           <td style={{ padding: '14px 10px', textAlign: 'center', verticalAlign: 'middle' }}>
-                            <button
-                              type="button"
-                              disabled={!cfg.master}
-                              onClick={() => handleChannelToggle(evt.key, 'zalo')}
+                            <label
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                cursor: (!cfg.master || !userInfo.has_zalo) ? 'not-allowed' : 'pointer',
+                                margin: '0 auto'
+                              }}
                               title={!userInfo.has_zalo ? "Chưa liên kết Zalo" : (cfg.zalo ? "Tắt Zalo" : "Bật Zalo")}
-                              style={{
-                                position: 'relative',
-                                width: 36,
-                                height: 20,
-                                borderRadius: 20,
-                                border: 'none',
-                                background: !cfg.master ? '#e2e8f0' : (cfg.zalo && userInfo.has_zalo ? '#16a34a' : '#cbd5e1'),
-                                cursor: !cfg.master ? 'not-allowed' : 'pointer',
-                                padding: 0,
-                                margin: '0 auto',
-                                display: 'block',
-                                transition: 'background 0.2s ease',
-                                outline: 'none'
-                              }}
                             >
-                              <span style={{
-                                position: 'absolute',
-                                top: 3,
-                                left: (cfg.zalo && userInfo.has_zalo) ? 19 : 3,
-                                width: 14,
-                                height: 14,
-                                borderRadius: '50%',
-                                background: 'white',
-                                boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
-                                transition: 'left 0.2s ease'
-                              }} />
-                            </button>
+                              <input
+                                type="checkbox"
+                                disabled={!cfg.master || !userInfo.has_zalo}
+                                checked={cfg.zalo && userInfo.has_zalo}
+                                onChange={() => handleChannelToggle(evt.key, 'zalo')}
+                                style={{ opacity: 0, width: 0, height: 0, position: 'absolute' }}
+                              />
+                              <span
+                                style={{
+                                  width: 20,
+                                  height: 20,
+                                  borderRadius: '6px',
+                                  border: (cfg.zalo && userInfo.has_zalo) ? '2px solid #BD1D2D' : '2px solid #cbd5e1',
+                                  background: (cfg.zalo && userInfo.has_zalo) ? '#BD1D2D' : '#ffffff',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  color: '#ffffff',
+                                  transition: 'all 0.15s ease',
+                                  opacity: !cfg.master ? 0.4 : 1,
+                                  boxShadow: (cfg.zalo && userInfo.has_zalo) ? '0 2px 5px rgba(189, 29, 45, 0.25)' : 'none'
+                                }}
+                              >
+                                {(cfg.zalo && userInfo.has_zalo) && <Check size={14} strokeWidth={3.5} />}
+                              </span>
+                            </label>
                           </td>
 
-                          {/* Telegram Toggle */}
+                          {/* Telegram Checkbox */}
                           <td style={{ padding: '14px 10px', textAlign: 'center', verticalAlign: 'middle' }}>
-                            <button
-                              type="button"
-                              disabled={!cfg.master}
-                              onClick={() => handleChannelToggle(evt.key, 'telegram')}
+                            <label
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                cursor: (!cfg.master || !userInfo.has_telegram) ? 'not-allowed' : 'pointer',
+                                margin: '0 auto'
+                              }}
                               title={!userInfo.has_telegram ? "Chưa liên kết Telegram" : (cfg.telegram ? "Tắt Telegram" : "Bật Telegram")}
-                              style={{
-                                position: 'relative',
-                                width: 36,
-                                height: 20,
-                                borderRadius: 20,
-                                border: 'none',
-                                background: !cfg.master ? '#e2e8f0' : (cfg.telegram && userInfo.has_telegram ? '#16a34a' : '#cbd5e1'),
-                                cursor: !cfg.master ? 'not-allowed' : 'pointer',
-                                padding: 0,
-                                margin: '0 auto',
-                                display: 'block',
-                                transition: 'background 0.2s ease',
-                                outline: 'none'
-                              }}
                             >
-                              <span style={{
-                                position: 'absolute',
-                                top: 3,
-                                left: (cfg.telegram && userInfo.has_telegram) ? 19 : 3,
-                                width: 14,
-                                height: 14,
-                                borderRadius: '50%',
-                                background: 'white',
-                                boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
-                                transition: 'left 0.2s ease'
-                              }} />
-                            </button>
+                              <input
+                                type="checkbox"
+                                disabled={!cfg.master || !userInfo.has_telegram}
+                                checked={cfg.telegram && userInfo.has_telegram}
+                                onChange={() => handleChannelToggle(evt.key, 'telegram')}
+                                style={{ opacity: 0, width: 0, height: 0, position: 'absolute' }}
+                              />
+                              <span
+                                style={{
+                                  width: 20,
+                                  height: 20,
+                                  borderRadius: '6px',
+                                  border: (cfg.telegram && userInfo.has_telegram) ? '2px solid #BD1D2D' : '2px solid #cbd5e1',
+                                  background: (cfg.telegram && userInfo.has_telegram) ? '#BD1D2D' : '#ffffff',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  color: '#ffffff',
+                                  transition: 'all 0.15s ease',
+                                  opacity: !cfg.master ? 0.4 : 1,
+                                  boxShadow: (cfg.telegram && userInfo.has_telegram) ? '0 2px 5px rgba(189, 29, 45, 0.25)' : 'none'
+                                }}
+                              >
+                                {(cfg.telegram && userInfo.has_telegram) && <Check size={14} strokeWidth={3.5} />}
+                              </span>
+                            </label>
                           </td>
 
-                          {/* Email Toggle */}
+                          {/* Email Checkbox */}
                           <td style={{ padding: '14px 10px', textAlign: 'center', verticalAlign: 'middle' }}>
-                            <button
-                              type="button"
-                              disabled={!cfg.master}
-                              onClick={() => handleChannelToggle(evt.key, 'email')}
-                              title={cfg.email ? "Tắt Email" : "Bật Email"}
+                            <label
                               style={{
-                                position: 'relative',
-                                width: 36,
-                                height: 20,
-                                borderRadius: 20,
-                                border: 'none',
-                                background: !cfg.master ? '#e2e8f0' : (cfg.email ? '#16a34a' : '#cbd5e1'),
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
                                 cursor: !cfg.master ? 'not-allowed' : 'pointer',
-                                padding: 0,
-                                margin: '0 auto',
-                                display: 'block',
-                                transition: 'background 0.2s ease',
-                                outline: 'none'
+                                margin: '0 auto'
                               }}
+                              title={cfg.email ? "Tắt Email" : "Bật Email"}
                             >
-                              <span style={{
-                                position: 'absolute',
-                                top: 3,
-                                left: cfg.email ? 19 : 3,
-                                width: 14,
-                                height: 14,
-                                borderRadius: '50%',
-                                background: 'white',
-                                boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
-                                transition: 'left 0.2s ease'
-                              }} />
-                            </button>
+                              <input
+                                type="checkbox"
+                                disabled={!cfg.master}
+                                checked={cfg.email}
+                                onChange={() => handleChannelToggle(evt.key, 'email')}
+                                style={{ opacity: 0, width: 0, height: 0, position: 'absolute' }}
+                              />
+                              <span
+                                style={{
+                                  width: 20,
+                                  height: 20,
+                                  borderRadius: '6px',
+                                  border: cfg.email ? '2px solid #BD1D2D' : '2px solid #cbd5e1',
+                                  background: cfg.email ? '#BD1D2D' : '#ffffff',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  color: '#ffffff',
+                                  transition: 'all 0.15s ease',
+                                  opacity: !cfg.master ? 0.4 : 1,
+                                  boxShadow: cfg.email ? '0 2px 5px rgba(189, 29, 45, 0.25)' : 'none'
+                                }}
+                              >
+                                {cfg.email && <Check size={14} strokeWidth={3.5} />}
+                              </span>
+                            </label>
                           </td>
 
                           {/* Master Power Switch (Far Right with divider) */}
@@ -710,7 +722,7 @@ const getDefaultConfig = (key: string): EventConfig => {
                                 height: 20,
                                 borderRadius: 20,
                                 border: 'none',
-                                background: cfg.master ? '#16a34a' : '#cbd5e1',
+                                background: cfg.master ? '#BD1D2D' : '#cbd5e1',
                                 cursor: 'pointer',
                                 padding: 0,
                                 margin: '0 auto',
@@ -742,19 +754,21 @@ const getDefaultConfig = (key: string): EventConfig => {
           </div>
         )}
 
-        {/* Footer Actions (Sticky Bottom Bar) */}
+        {/* Footer Actions (Sticky Bottom Bar - Flush to bottom) */}
         <div style={{
           position: 'sticky',
-          bottom: 0,
+          bottom: '-24px',
+          margin: '20px -24px -24px -24px',
+          padding: '14px 24px',
           background: '#ffffff',
-          zIndex: 20,
+          zIndex: 50,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          padding: '14px 0',
-          marginTop: '10px',
           borderTop: '1px solid #e2e8f0',
-          boxShadow: '0 -4px 14px rgba(0, 0, 0, 0.05)',
+          boxShadow: '0 -6px 20px rgba(0, 0, 0, 0.07)',
+          borderBottomLeftRadius: '16px',
+          borderBottomRightRadius: '16px',
           gap: '16px'
         }}>
           {/* Left Side: Hủy bỏ button & Tip */}
