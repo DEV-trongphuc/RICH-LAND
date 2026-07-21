@@ -228,6 +228,23 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
   const [contractType, setContractType] = useState('official');
   const [dateJoined, setDateJoined] = useState('');
   const [directManager, setDirectManager] = useState('');
+  const [directManagerId, setDirectManagerId] = useState('');
+  const [allUsers, setAllUsers] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const fetchUsersList = async () => {
+      try {
+        const res = await fetchAPI('users?all=1');
+        if (res.success && Array.isArray(res.data)) {
+          setAllUsers(res.data);
+        }
+      } catch (err) {
+        console.warn('Failed to fetch users for direct manager dropdown:', err);
+      }
+    };
+    fetchUsersList();
+  }, [isOpen]);
   const [workplace, setWorkplace] = useState('');
   const [brokerLicense, setBrokerLicense] = useState('');
   const [degree, setDegree] = useState('undergraduate');
@@ -364,6 +381,7 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
                 setContractType(erp.contract_type || 'official');
                 setDateJoined(erp.date_joined || '');
                 setDirectManager(erp.direct_manager || '');
+                setDirectManagerId(erp.direct_manager_id || '');
                 setWorkplace(erp.workplace || '');
                 setPersonalPhone(erp.personal_phone || '');
                 setExtNumber(erp.ext_number || '');
@@ -789,6 +807,7 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
           contract_type: contractType,
           date_joined: dateJoined,
           direct_manager: directManager,
+          direct_manager_id: directManagerId,
           workplace: workplace,
           personal_phone: personalPhone,
           ext_number: extNumber,
@@ -1706,7 +1725,23 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
                       </div>
                       <div className="form-group">
                         <label className="form-label">{t('Quản lý trực tiếp')}</label>
-                        <input className="form-input" value={directManager} onChange={e => setDirectManager(e.target.value)} placeholder={t('Tên quản lý')} />
+                        <CustomSelect
+                          value={directManagerId || directManager}
+                          onChange={(val, option) => {
+                            setDirectManagerId(String(val));
+                            setDirectManager(option?.label || String(val));
+                          }}
+                          options={allUsers.map(u => ({
+                            value: String(u.id),
+                            label: u.name || u.full_name || u.username,
+                            avatar: u.avatar || u.avatar_url,
+                            sublabel: u.role ? `(${u.role})` : undefined
+                          }))}
+                          placeholder={t('Chọn người quản lý trực tiếp...')}
+                          searchable
+                          showAvatars
+                          disabled={readOnly}
+                        />
                       </div>
                       <div className="form-group">
                         <AddressSelect

@@ -1311,7 +1311,19 @@ export const Header = ({
             <Avatar src={user?.avatar} name={user?.name} size={32} />
             <div className="responsive-hide-mobile" style={{ display: 'flex', flexDirection: 'column' }}>
               <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--color-text)' }}>{user?.name || 'User'}</span>
-              <span style={{ fontSize: '0.7rem', color: 'var(--color-text-light)' }}>{getRoleLabel(user?.role)}</span>
+              <span style={{ fontSize: '0.7rem', color: 'var(--color-text-light)' }}>
+                {(() => {
+                  const jt = user?.job_title || (user as any)?.erp_profile?.job_title;
+                  if (jt) return jt;
+                  if (user?.address) {
+                    try {
+                      const p = typeof user.address === 'string' ? JSON.parse(user.address) : user.address;
+                      if (p?.erp_profile?.job_title) return p.erp_profile.job_title;
+                    } catch(e) {}
+                  }
+                  return getRoleLabel(user?.role);
+                })()}
+              </span>
             </div>
           </div>
 

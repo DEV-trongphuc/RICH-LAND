@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useLanguage } from '../../contexts/LanguageContext';
-import { Send, X, Database, Sparkles, LayoutGrid, Search, ChevronRight, RefreshCw } from 'lucide-react';
+import { Send, X, Database, Sparkles, LayoutGrid, Search, ChevronRight, RefreshCw, ChevronLeft } from 'lucide-react';
 import { fetchAPI } from '../../utils/api';
 
 interface Message {
@@ -1009,14 +1009,9 @@ Bạn có thể gõ rõ từ khóa hoặc click vào các gợi ý bên dưới 
                   justifyContent: 'space-between',
                   gap: '8px'
                 }}>
-                  <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#a31422', display: 'flex', alignItems: 'center', gap: '4px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    <span>{t('Đang hỏi về')}:</span>
-                    <strong style={{ color: 'var(--chatbot-text)', fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{selectedEntity.name}</strong>
-                    {loadingContext && <span style={{ fontSize: '0.7rem', color: 'var(--chatbot-text-muted)', flexShrink: 0 }}>({t('Đang nạp...')})</span>}
-                  </div>
                   <button
                     type="button"
-                    title={t('Thay đổi dự án / chiến dịch')}
+                    title={t('Quay lại chọn dự án / chiến dịch')}
                     onClick={() => {
                       setSelectedEntity(null);
                       setEntityContext('');
@@ -1024,7 +1019,7 @@ Bạn có thể gõ rõ từ khóa hoặc click vào các gợi ý bên dưới 
                     style={{
                       background: 'transparent',
                       border: 'none',
-                      color: 'var(--chatbot-text-muted)',
+                      color: '#a31422',
                       cursor: 'pointer',
                       padding: '4px',
                       borderRadius: '6px',
@@ -1035,16 +1030,20 @@ Bạn có thể gõ rõ từ khóa hoặc click vào các gợi ý bên dưới 
                       transition: 'all 0.2s'
                     }}
                     onMouseEnter={e => {
-                      e.currentTarget.style.background = 'rgba(163, 20, 34, 0.1)';
-                      e.currentTarget.style.color = '#a31422';
+                      e.currentTarget.style.background = 'rgba(163, 20, 34, 0.12)';
                     }}
                     onMouseLeave={e => {
                       e.currentTarget.style.background = 'transparent';
-                      e.currentTarget.style.color = 'var(--chatbot-text-muted)';
                     }}
                   >
-                    <RefreshCw size={14} />
+                    <ChevronLeft size={16} style={{ color: '#a31422' }} />
                   </button>
+
+                  <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#a31422', display: 'flex', alignItems: 'center', gap: '4px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginLeft: 'auto' }}>
+                    <span>{t('Đang hỏi về')}:</span>
+                    <strong style={{ color: 'var(--chatbot-text)', fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{selectedEntity.name}</strong>
+                    {loadingContext && <span style={{ fontSize: '0.7rem', color: 'var(--chatbot-text-muted)', flexShrink: 0 }}>({t('Đang nạp...')})</span>}
+                  </div>
                 </div>
               )}
 

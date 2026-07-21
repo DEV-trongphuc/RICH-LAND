@@ -12884,6 +12884,18 @@ switch ($action) {
             }
 
             if ($stmt->execute()) {
+                // Sync job_title from address payload if available
+                if (!empty($address)) {
+                    $arr = json_decode($address, true);
+                    $jt = $arr['erp_profile']['job_title'] ?? null;
+                    if ($jt !== null) {
+                        $stmtJ = $conn->prepare("UPDATE users SET job_title = ? WHERE id = ?");
+                        $stmtJ->bind_param("si", $jt, $id);
+                        $stmtJ->execute();
+                        $stmtJ->close();
+                    }
+                }
+
                 // Save manager_behavior_mode if provided
                 if (isset($input['manager_behavior_mode'])) {
                     $stmtBeh = $conn->prepare("UPDATE users SET manager_behavior_mode = ? WHERE id = ?");

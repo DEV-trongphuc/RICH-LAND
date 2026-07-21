@@ -2964,6 +2964,86 @@ SQL;
             $logMsg("Hoàn thành cập nhật phiên bản 179.", "success");
         }
 
+        // Version 180 (Thêm cột job_title vào bảng users và cập nhật views accounts & consultants)
+        if ($currentVersion < 180) {
+            $logMsg("Đang chạy cập nhật phiên bản 180 (Thêm cột job_title vào bảng users)...", "info");
+            $chkJobTitle = $conn->query("SHOW COLUMNS FROM users LIKE 'job_title'");
+            if ($chkJobTitle && $chkJobTitle->num_rows === 0) {
+                $conn->query("ALTER TABLE users ADD COLUMN `job_title` VARCHAR(150) DEFAULT NULL AFTER `full_name`");
+                $logMsg("Đã thêm cột job_title vào bảng users.", "success");
+            }
+            try {
+                $conn->query("DROP VIEW IF EXISTS `accounts`");
+                $conn->query("
+                    CREATE VIEW `accounts` AS 
+                    SELECT 
+                      `id`, 
+                      `username`, 
+                      `password_hash`, 
+                      `role`, 
+                      `full_name` AS `name`, 
+                      `job_title`,
+                      `created_at`, 
+                      `email`, 
+                      `zalo_chat_id`, 
+                      `telegram_chat_id`,
+                      `is_confirmed`, 
+                      `confirm_token`, 
+                      `last_login_at` AS `last_login`, 
+                      `avatar_url` AS `avatar`,
+                      `dob`,
+                      `gender`,
+                      `citizen_id`,
+                      `address`,
+                      `bank_name`,
+                      `bank_account`,
+                      `phone`,
+                      `is_active`,
+                      `team_id`
+                    FROM `users`
+                ");
+                $conn->query("DROP VIEW IF EXISTS `consultants`");
+                $conn->query("
+                    CREATE VIEW `consultants` AS 
+                    SELECT 
+                      `id`, 
+                      `full_name` AS `name`, 
+                      `job_title`,
+                      `email`, 
+                      `phone`,
+                      `status`, 
+                      `leave_start`, 
+                      `leave_end`, 
+                      `created_at`, 
+                      `zalo_chat_id`, 
+                      `telegram_chat_id`,
+                      IF(`use_custom_work_hours` = 1, `work_start_time`, (SELECT setting_value FROM system_settings WHERE setting_key = 'global_work_start_time' LIMIT 1)) AS `work_start_time`,
+                      IF(`use_custom_work_hours` = 1, `work_end_time`, (SELECT setting_value FROM system_settings WHERE setting_key = 'global_work_end_time' LIMIT 1)) AS `work_end_time`,
+                      IF(`use_custom_work_hours` = 1, `work_schedule`, (SELECT setting_value FROM system_settings WHERE setting_key = 'global_work_schedule' LIMIT 1)) AS `work_schedule`,
+                      `avatar_url` AS `avatar`, 
+                      `vacation_mode`, 
+                      `overtime_mode`,
+                      `team_id`,
+                      `dob`,
+                      `gender`,
+                      `citizen_id`,
+                      `address`,
+                      `bank_name`,
+                      `bank_account`,
+                      `extra_fields_json`,
+                      `use_custom_work_hours`
+                    FROM `users`
+                    WHERE `role` = 'sales' OR `role` = 'sale'
+                ");
+                $logMsg("Đã cập nhật VIEW accounts & consultants hỗ trợ job_title.", "success");
+            } catch (Throwable $t) {
+                $logMsg("Lỗi khi cập nhật VIEW accounts/consultants: " . $t->getMessage(), "error");
+            }
+            $conn->query("INSERT INTO system_settings (setting_key, setting_value) VALUES ('db_version', '180') ON DUPLICATE KEY UPDATE setting_value = '180'");
+            $currentVersion = 180;
+            $logMsg("Hoàn thành cập nhật phiên bản 180.", "success");
+        }
+
     $logMsg("Tự sửa đổi cấu trúc hoàn thành thành công.", "success");
 
     $logMsg("Hệ thống đã cập nhật thành công lên phiên bản mới nhất: " . $currentVersion, "success");

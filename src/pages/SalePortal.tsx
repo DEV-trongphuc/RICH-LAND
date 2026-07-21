@@ -6571,7 +6571,17 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                     boxShadow: '0 2px 8px rgba(189, 29, 45, 0.5)',
                     letterSpacing: '0.6px'
                   }}>
-                    {displayUser?.role === 'sale' ? t('Tư vấn viên') : displayUser?.role === 'sales' ? t('Tư vấn viên') : displayUser?.role}
+                    {(() => {
+                      const jt = displayUser?.job_title || displayUser?.erp_profile?.job_title;
+                      if (jt) return jt;
+                      if (displayUser?.address) {
+                        try {
+                          const p = typeof displayUser.address === 'string' ? JSON.parse(displayUser.address) : displayUser.address;
+                          if (p?.erp_profile?.job_title) return p.erp_profile.job_title;
+                        } catch(e) {}
+                      }
+                      return displayUser?.role === 'sale' ? t('Tư vấn viên') : displayUser?.role === 'sales' ? t('Tư vấn viên') : displayUser?.role;
+                    })()}
                   </span>
                 </div>
                 {!isAdmin && (
@@ -6704,7 +6714,17 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                     boxShadow: '0 2px 8px rgba(189, 29, 45, 0.5)',
                     letterSpacing: '0.6px'
                   }}>
-                    {displayUser?.role === 'sale' ? t('Tư vấn viên') : displayUser?.role === 'sales' ? t('Tư vấn viên') : displayUser?.role}
+                    {(() => {
+                      const jt = displayUser?.job_title || displayUser?.erp_profile?.job_title;
+                      if (jt) return jt;
+                      if (displayUser?.address) {
+                        try {
+                          const p = typeof displayUser.address === 'string' ? JSON.parse(displayUser.address) : displayUser.address;
+                          if (p?.erp_profile?.job_title) return p.erp_profile.job_title;
+                        } catch(e) {}
+                      }
+                      return displayUser?.role === 'sale' ? t('Tư vấn viên') : displayUser?.role === 'sales' ? t('Tư vấn viên') : displayUser?.role;
+                    })()}
                   </span>
                 </div>
               </div>
@@ -12915,7 +12935,19 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                 <Avatar src={displayUser?.avatar} name={displayUser?.name} size={32} />
                 <div className="responsive-hide-mobile" style={{ display: 'flex', flexDirection: 'column', textAlign: 'left' }}>
                   <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--color-text)' }}>{displayUser?.name || 'User'}</span>
-                  <span style={{ fontSize: '0.7rem', color: 'var(--color-text-light)' }}>{displayUser?.email}</span>
+                  <span style={{ fontSize: '0.7rem', color: 'var(--color-text-light)' }}>
+                    {(() => {
+                      const jt = displayUser?.job_title || displayUser?.erp_profile?.job_title;
+                      if (jt) return jt;
+                      if (displayUser?.address) {
+                        try {
+                          const p = typeof displayUser.address === 'string' ? JSON.parse(displayUser.address) : displayUser.address;
+                          if (p?.erp_profile?.job_title) return p.erp_profile.job_title;
+                        } catch(e) {}
+                      }
+                      return displayUser?.email || '';
+                    })()}
+                  </span>
                 </div>
               </div>
 
