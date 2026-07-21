@@ -17,6 +17,7 @@ import confetti from 'canvas-confetti';
 import { WarRoomFlightDeck } from '../components/Dashboard/WarRoomFlightDeck';
 import { QuickAddLeadModal } from '../components/QuickAddLeadModal';
 import { AddressSelect } from '../components/ui/AddressSelect';
+import { ToggleSwitch } from '../components/ui/ToggleSwitch';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer, ComposedChart,
@@ -36,7 +37,6 @@ import { Avatar } from '../components/ui/Avatar';
 import { EmptyCard } from '../components/ui/EmptyCard';
 import { Pagination } from '../components/ui/Pagination';
 import { TableSkeleton, StatRowSkeleton, CalendarSkeleton, CardSkeleton, Skeleton } from '../components/ui/Skeleton';
-import { ToggleSwitch } from '../components/ui/ToggleSwitch';
 import { SignaturePadModal } from '../components/ui/SignaturePadModal';
 import { Edit3 } from 'lucide-react';
 import { FairShareAudit } from './FairShareAudit';
@@ -10147,6 +10147,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                               padding: '14px 16px',
                               background: 'transparent',
                               border: 'none',
+                              borderBottom: '1px solid var(--color-border-light)',
                               width: '100%',
                               cursor: 'pointer',
                               textAlign: 'left'
@@ -10155,6 +10156,28 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                             <div style={{ display: 'flex', alignItems: 'center', gap: '12px', color: 'var(--color-text)' }}>
                               {renderColoredIcon(FileText, '#8e8e93')}
                               <span style={{ fontSize: '0.875rem', fontWeight: 600 }}>{t('Lưu trữ tài liệu')}</span>
+                            </div>
+                            <ChevronRight size={14} style={{ color: 'var(--color-text-muted)' }} />
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => setProfileActiveTab('security')}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'space-between',
+                              padding: '14px 16px',
+                              background: 'transparent',
+                              border: 'none',
+                              width: '100%',
+                              cursor: 'pointer',
+                              textAlign: 'left'
+                            }}
+                          >
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', color: 'var(--color-text)' }}>
+                              {renderColoredIcon(ShieldCheck, '#ef4444')}
+                              <span style={{ fontSize: '0.875rem', fontWeight: 600 }}>{t('Tài khoản & Bảo mật')}</span>
                             </div>
                             <ChevronRight size={14} style={{ color: 'var(--color-text-muted)' }} />
                           </button>
@@ -10274,6 +10297,15 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                     >
                       {renderColoredIcon(FileText, '#8e8e93')}
                       <span style={{ whiteSpace: 'nowrap' }}>{t('Lưu trữ tài liệu')}</span>
+                    </button>
+                    <button
+                      type="button"
+                      className={`${styles.sidebarTabBtn} ${profileActiveTab === 'security' ? styles.sidebarTabActive : ''}`}
+                      onClick={() => setProfileActiveTab('security')}
+                      style={{ width: '100%', border: 'none', textAlign: 'left', cursor: 'pointer' }}
+                    >
+                      {renderColoredIcon(ShieldCheck, '#ef4444')}
+                      <span style={{ whiteSpace: 'nowrap' }}>{t('Tài khoản & Bảo mật')}</span>
                     </button>
                   </>
                 )}
@@ -11114,150 +11146,210 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                         />
                       </div>
                     </div>
+                </div>
+              </div>
+            )}
 
-                    {/* Divider */}
-                    <div style={{ height: '1px', background: 'var(--color-border-light)', margin: '0.5rem 0' }} />
+            {/* SECURITY & ACCOUNT TAB (TÀI KHOẢN & BẢO MẬT) */}
+            {profileActiveTab === 'security' && (
+              <div className="card animate-fade-in" style={{ padding: '2rem', display: 'flex', flexDirection: 'column', gap: '1.5rem', background: 'var(--color-surface)', borderRadius: '12px', border: '1px solid var(--color-border-light)', boxShadow: '0 4px 20px rgba(0,0,0,0.02)' }}>
+                <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-text)', textTransform: 'uppercase', letterSpacing: '0.5px', margin: '0 0 0.5rem 0', display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <ShieldCheck size={16} color="var(--color-primary)" /> {t('Tài khoản & Bảo mật')}
+                </h3>
 
-                    {/* Change Password Section */}
-                    <form onSubmit={handleChangePasswordSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                      <h4 style={{ fontSize: '0.9rem', fontWeight: 700, margin: 0, display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--color-text)' }}>
-                        <KeyRound size={16} color="var(--color-primary)" />
-                        {t('Đổi mật khẩu tài khoản')}
-                      </h4>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                  {/* Change Password Section */}
+                  <form onSubmit={handleChangePasswordSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                    <h4 style={{ fontSize: '0.9rem', fontWeight: 700, margin: 0, display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--color-text)' }}>
+                      <KeyRound size={16} color="var(--color-primary)" />
+                      {t('Đổi mật khẩu tài khoản')}
+                    </h4>
 
-                      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr 1fr', gap: '1rem' }}>
-                        <div className="form-group" style={{ margin: 0 }}>
-                          <label className="form-label" style={{ fontWeight: 600 }}>{t('Mật khẩu hiện tại')}</label>
-                          <input
-                            type="password"
-                            className="form-input"
-                            value={oldPass}
-                            onChange={e => setOldPass(e.target.value)}
-                            placeholder="••••••••"
-                          />
-                        </div>
-                        <div className="form-group" style={{ margin: 0 }}>
-                          <label className="form-label" style={{ fontWeight: 600 }}>{t('Mật khẩu mới')}</label>
-                          <input
-                            type="password"
-                            className="form-input"
-                            value={newPass}
-                            onChange={e => setNewPass(e.target.value)}
-                            placeholder="≥ 6 ký tự"
-                          />
-                        </div>
-                        <div className="form-group" style={{ margin: 0 }}>
-                          <label className="form-label" style={{ fontWeight: 600 }}>{t('Xác nhận mật khẩu mới')}</label>
-                          <input
-                            type="password"
-                            className="form-input"
-                            value={confirmPass}
-                            onChange={e => setConfirmPass(e.target.value)}
-                            placeholder="Nhập lại mật khẩu mới"
-                          />
-                        </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr 1fr', gap: '1rem' }}>
+                      <div className="form-group" style={{ margin: 0 }}>
+                        <label className="form-label" style={{ fontWeight: 600 }}>{t('Mật khẩu hiện tại')}</label>
+                        <input
+                          type="password"
+                          className="form-input"
+                          value={oldPass}
+                          onChange={e => setOldPass(e.target.value)}
+                          placeholder="••••••••"
+                        />
                       </div>
+                      <div className="form-group" style={{ margin: 0 }}>
+                        <label className="form-label" style={{ fontWeight: 600 }}>{t('Mật khẩu mới')}</label>
+                        <input
+                          type="password"
+                          className="form-input"
+                          value={newPass}
+                          onChange={e => setNewPass(e.target.value)}
+                          placeholder="≥ 6 ký tự"
+                        />
+                      </div>
+                      <div className="form-group" style={{ margin: 0 }}>
+                        <label className="form-label" style={{ fontWeight: 600 }}>{t('Xác nhận mật khẩu mới')}</label>
+                        <input
+                          type="password"
+                          className="form-input"
+                          value={confirmPass}
+                          onChange={e => setConfirmPass(e.target.value)}
+                          placeholder="Nhập lại mật khẩu mới"
+                        />
+                      </div>
+                    </div>
 
-                      <button
-                        type="submit"
-                        className="btn primary sm"
-                        disabled={changingPass || !oldPass || !newPass || !confirmPass}
-                        style={{ width: 'fit-content', alignSelf: 'flex-start' }}
-                      >
-                        {changingPass ? <Loader2 size={14} className="spin" /> : <Save size={14} />}
-                        {t('Lưu mật khẩu mới')}
-                      </button>
-                    </form>
+                    <button
+                      type="submit"
+                      className="btn primary sm"
+                      disabled={changingPass || !oldPass || !newPass || !confirmPass}
+                      style={{ width: 'fit-content', alignSelf: 'flex-start' }}
+                    >
+                      {changingPass ? <Loader2 size={14} className="spin" /> : <Save size={14} />}
+                      {t('Lưu mật khẩu mới')}
+                    </button>
+                  </form>
 
-                    {/* Divider */}
-                    <div style={{ height: '1px', background: 'var(--color-border-light)', margin: '0.5rem 0' }} />
+                  {/* Divider */}
+                  <div style={{ height: '1px', background: 'var(--color-border-light)', margin: '0.5rem 0' }} />
 
-                    {/* 2FA Security Section */}
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <h4 style={{ fontSize: '0.9rem', fontWeight: 700, margin: 0, display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--color-text)' }}>
-                          <Shield size={16} color="var(--color-primary)" />
-                          {t('Xác thực 2 yếu tố (2FA)')}
-                        </h4>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <span style={{ fontSize: '0.8rem', fontWeight: 700, color: twoFactorEnabled ? 'var(--color-success)' : 'var(--color-text-muted)' }}>
-                            {twoFactorEnabled ? t('Đang bật') : t('Đang tắt')}
-                          </span>
-                          {twoFactorEnabled && (
+                  {/* 2FA Security Section */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <h4 style={{ fontSize: '0.9rem', fontWeight: 700, margin: 0, display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--color-text)' }}>
+                        <Shield size={16} color="var(--color-primary)" />
+                        {t('Xác thực 2 yếu tố (2FA)')}
+                      </h4>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <span style={{ fontSize: '0.8rem', fontWeight: 700, color: twoFactorEnabled ? 'var(--color-success)' : 'var(--color-text-muted)' }}>
+                          {twoFactorEnabled ? t('Đang bật') : t('Đang tắt')}
+                        </span>
+                        <ToggleSwitch
+                          checked={twoFactorEnabled}
+                          onChange={(val) => {
+                            if (!val) {
+                              setShowDisable2FAModal(true);
+                            } else {
+                              handleStart2FASetup('email');
+                            }
+                          }}
+                        />
+                      </div>
+                    </div>
+
+                    <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', margin: 0, lineHeight: 1.5 }}>
+                      {t('Tăng cường bảo mật cho tài khoản của bạn bằng cách yêu cầu mã xác thực OTP qua Email hoặc ứng dụng Google Authenticator mỗi khi đăng nhập.')}
+                    </p>
+
+                    {/* Active 2FA Method Status Box */}
+                    {twoFactorEnabled && (
+                      <div style={{
+                        padding: '0.75rem 1rem',
+                        borderRadius: '10px',
+                        background: 'rgba(16, 185, 129, 0.05)',
+                        border: '1px solid rgba(16, 185, 129, 0.2)',
+                        display: 'flex',
+                        flexDirection: isMobile ? 'column' : 'row',
+                        justifyContent: 'space-between',
+                        alignItems: isMobile ? 'flex-start' : 'center',
+                        gap: '0.75rem'
+                      }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                          <div style={{ width: '34px', height: '34px', borderRadius: '8px', background: 'rgba(16, 185, 129, 0.12)', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
+                            {twoFactorType === 'totp' ? <ShieldCheck size={18} color="#10b981" /> : <Mail size={18} color="#10b981" />}
+                          </div>
+                          <div>
+                            <span style={{ fontSize: '0.675rem', fontWeight: 700, textTransform: 'uppercase', color: '#059669', letterSpacing: '0.4px', display: 'block' }}>
+                              {t('Phương thức xác thực đang hoạt động')}
+                            </span>
+                            <h5 style={{ margin: '1px 0 0 0', fontSize: '0.825rem', fontWeight: 700, color: 'var(--color-text)' }}>
+                              {twoFactorType === 'totp' ? t('Google Authenticator (Ứng dụng TOTP)') : t('Mã OTP qua Email')}
+                            </h5>
+                          </div>
+                        </div>
+
+                        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                          {twoFactorType === 'email' ? (
                             <button
                               type="button"
-                              onClick={() => setShowDisable2FAModal(true)}
-                              className="btn outline sm danger-text"
-                              style={{ padding: '4px 10px', fontSize: '0.75rem' }}
+                              className="btn outline sm"
+                              onClick={() => handleStart2FASetup('totp')}
+                              style={{ padding: '4px 10px', fontSize: '0.75rem', height: 'auto' }}
                             >
-                              {t('Tắt 2FA')}
+                              {t('Chuyển sang Google Authenticator')}
                             </button>
-                          )}
-                        </div>
-                      </div>
-
-                      <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', margin: 0, lineHeight: 1.5 }}>
-                        {t('Tăng cường bảo mật cho tài khoản của bạn bằng cách yêu cầu mã xác thực OTP qua Email hoặc ứng dụng Google Authenticator mỗi khi đăng nhập.')}
-                      </p>
-
-                      {!twoFactorEnabled && (
-                        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '1rem', marginTop: '0.5rem' }}>
-                          {/* Option A: Email OTP */}
-                          <div style={{
-                            padding: '1.25rem',
-                            border: '1.5px solid var(--color-border-light)',
-                            borderRadius: '12px',
-                            background: 'var(--color-bg-alt)',
-                            display: 'flex',
-                            flexDirection: 'column',
-                            gap: '12px'
-                          }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                              <Mail size={20} style={{ color: 'var(--color-primary)' }} />
-                              <strong style={{ fontSize: '0.875rem', color: 'var(--color-text)' }}>{t('Mã OTP qua Email')}</strong>
-                            </div>
-                            <p style={{ fontSize: '0.775rem', color: 'var(--color-text-muted)', margin: 0, flex: 1 }}>
-                              {t('Mã xác thực 6 chữ số sẽ được tự động gửi về Email cá nhân của bạn mỗi khi đăng nhập.')}
-                            </p>
+                          ) : (
                             <button
                               type="button"
                               className="btn outline sm"
                               onClick={() => handleStart2FASetup('email')}
-                              style={{ width: 'fit-content' }}
+                              style={{ padding: '4px 10px', fontSize: '0.75rem', height: 'auto' }}
                             >
-                              {t('Bật xác thực Email OTP')}
+                              {t('Chuyển sang Email OTP')}
                             </button>
-                          </div>
-
-                          {/* Option B: Google Authenticator */}
-                          <div style={{
-                            padding: '1.25rem',
-                            border: '1.5px solid var(--color-border-light)',
-                            borderRadius: '12px',
-                            background: 'var(--color-bg-alt)',
-                            display: 'flex',
-                            flexDirection: 'column',
-                            gap: '12px'
-                          }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                              <ShieldCheck size={20} style={{ color: 'var(--color-primary)' }} />
-                              <strong style={{ fontSize: '0.875rem', color: 'var(--color-text)' }}>{t('Google Authenticator (App)')}</strong>
-                            </div>
-                            <p style={{ fontSize: '0.775rem', color: 'var(--color-text-muted)', margin: 0, flex: 1 }}>
-                              {t('Quét mã QR bằng ứng dụng Google Authenticator hoặc Authy trên điện thoại để lấy mã 6 chữ số mọi lúc.')}
-                            </p>
-                            <button
-                              type="button"
-                              className="btn primary sm"
-                              onClick={() => handleStart2FASetup('totp')}
-                              style={{ width: 'fit-content' }}
-                            >
-                              {t('Cấu hình Google Authenticator')}
-                            </button>
-                          </div>
+                          )}
                         </div>
-                      )}
-                    </div>
+                      </div>
+                    )}
+
+                    {/* Method Selector Options when 2FA is DISABLED */}
+                    {!twoFactorEnabled && (
+                      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '1rem', marginTop: '0.5rem' }}>
+                        {/* Option A: Email OTP */}
+                        <div style={{
+                          padding: '1.25rem',
+                          border: '1.5px solid var(--color-border-light)',
+                          borderRadius: '12px',
+                          background: 'var(--color-bg-alt)',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '12px'
+                        }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                            <Mail size={20} style={{ color: 'var(--color-primary)' }} />
+                            <strong style={{ fontSize: '0.875rem', color: 'var(--color-text)' }}>{t('Mã OTP qua Email')}</strong>
+                          </div>
+                          <p style={{ fontSize: '0.775rem', color: 'var(--color-text-muted)', margin: 0, flex: 1 }}>
+                            {t('Mã xác thực 6 chữ số sẽ được tự động gửi về Email cá nhân của bạn mỗi khi đăng nhập.')}
+                          </p>
+                          <button
+                            type="button"
+                            className="btn outline sm"
+                            onClick={() => handleStart2FASetup('email')}
+                            style={{ width: 'fit-content' }}
+                          >
+                            {t('Bật xác thực Email OTP')}
+                          </button>
+                        </div>
+
+                        {/* Option B: Google Authenticator */}
+                        <div style={{
+                          padding: '1.25rem',
+                          border: '1.5px solid var(--color-border-light)',
+                          borderRadius: '12px',
+                          background: 'var(--color-bg-alt)',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '12px'
+                        }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                            <ShieldCheck size={20} style={{ color: 'var(--color-primary)' }} />
+                            <strong style={{ fontSize: '0.875rem', color: 'var(--color-text)' }}>{t('Google Authenticator (App)')}</strong>
+                          </div>
+                          <p style={{ fontSize: '0.775rem', color: 'var(--color-text-muted)', margin: 0, flex: 1 }}>
+                            {t('Quét mã QR bằng ứng dụng Google Authenticator hoặc Authy trên điện thoại để lấy mã 6 chữ số mọi lúc.')}
+                          </p>
+                          <button
+                            type="button"
+                            className="btn primary sm"
+                            onClick={() => handleStart2FASetup('totp')}
+                            style={{ width: 'fit-content' }}
+                          >
+                            {t('Cấu hình Google Authenticator')}
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             )}
