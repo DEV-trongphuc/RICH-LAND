@@ -2155,65 +2155,81 @@ export const Header = ({
               </div>
               
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', overflowY: 'auto', maxHeight: '55vh', paddingRight: '4px' }} className="custom-scrollbar">
-                {/* Advanced Notification Settings Banner Button */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsNotifModalOpen(false);
-                    setIsMatrixModalOpen(true);
-                  }}
+                {/* Advanced Multi-Channel Notification Settings List Item */}
+                <div
                   style={{
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'space-between',
                     padding: '14px 16px',
                     borderRadius: '12px',
-                    background: 'linear-gradient(135deg, #fff5f5 0%, #fee2e2 100%)',
-                    color: '#991b1b',
-                    border: '1px solid #fca5a5',
+                    background: 'var(--color-surface)',
+                    border: '1px solid var(--color-border-light)',
                     gap: '1rem',
-                    boxShadow: '0 2px 8px rgba(220, 38, 38, 0.08)',
-                    marginBottom: '6px',
-                    cursor: 'pointer',
-                    width: '100%',
-                    transition: 'all 0.2s ease'
+                    boxShadow: '0 2px 6px rgba(0, 0, 0, 0.01)',
+                    marginBottom: '4px'
                   }}
                 >
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', textAlign: 'left' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <span style={{ fontSize: '0.9rem', fontWeight: 800, color: '#991b1b' }}>
-                        ⚙️ Cấu Hình Thông Báo Tùy Chỉnh Chuyên Sâu
-                      </span>
-                      <span style={{
-                        fontSize: '0.625rem',
-                        fontWeight: 800,
-                        color: '#dc2626',
-                        background: '#fef2f2',
-                        border: '1px solid #fca5a5',
-                        padding: '2px 8px',
-                        borderRadius: '10px',
-                        textTransform: 'uppercase'
-                      }}>
-                        Chuyên sâu
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1, minWidth: 0 }}>
+                    {/* Overlapping 3 Channel Logos */}
+                    <div style={{ display: 'flex', alignItems: 'center', flexShrink: 0 }}>
+                      <div style={{ width: 28, height: 28, borderRadius: '50%', background: '#fff', border: '1.5px solid #fff', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 3 }}>
+                        <img src="https://stc-zpl.zdn.vn/favicon.ico" style={{ width: 18, height: 18, objectFit: 'contain' }} alt="Zalo" />
+                      </div>
+                      <div style={{ width: 28, height: 28, borderRadius: '50%', background: '#fff', border: '1.5px solid #fff', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginLeft: -8, zIndex: 2 }}>
+                        <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/8/82/Telegram_logo.svg/3840px-Telegram_logo.svg.png" style={{ width: 18, height: 18, objectFit: 'contain' }} alt="Telegram" />
+                      </div>
+                      <div style={{ width: 28, height: 28, borderRadius: '50%', background: '#fff', border: '1.5px solid #fff', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginLeft: -8, zIndex: 1 }}>
+                        <img src="/imgs/gmail-icon-free-png.webp" style={{ width: 18, height: 18, objectFit: 'contain' }} alt="Email" />
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', flex: 1, minWidth: 0 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                        <span style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)' }}>
+                          Tùy chỉnh thông báo chuyên sâu
+                        </span>
+                        <span style={{
+                          fontSize: '0.625rem',
+                          fontWeight: 700,
+                          color: '#dc2626',
+                          background: '#fef2f2',
+                          border: '1px solid #fecaca',
+                          padding: '2px 6px',
+                          borderRadius: '10px',
+                          textTransform: 'uppercase'
+                        }}>
+                          Đa kênh
+                        </span>
+                      </div>
+                      <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', lineHeight: 1.4 }}>
+                        Tùy chỉnh nguồn tổng và bật/tắt Zalo, Telegram, Email cho từng sự kiện.
                       </span>
                     </div>
-                    <span style={{ fontSize: '0.75rem', color: '#7f1d1d', opacity: 0.85 }}>
-                      Cài đặt nguồn tổng và bật/tắt từng kênh (Zalo Bot, Telegram Bot, Email) theo từng sự kiện
-                    </span>
                   </div>
-                  <span style={{
-                    fontSize: '0.75rem',
-                    fontWeight: 700,
-                    background: '#dc2626',
-                    color: 'white',
-                    padding: '7px 14px',
-                    borderRadius: '8px',
-                    whiteSpace: 'nowrap',
-                    boxShadow: '0 2px 4px rgba(220, 38, 38, 0.2)'
-                  }}>
-                    Mở Tùy chỉnh chuyên sâu
-                  </span>
-                </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsNotifModalOpen(false);
+                      setIsMatrixModalOpen(true);
+                    }}
+                    style={{
+                      padding: '6px 14px',
+                      background: '#dc2626',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '8px',
+                      fontSize: '0.75rem',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      whiteSpace: 'nowrap',
+                      flexShrink: 0
+                    }}
+                  >
+                    Cấu hình ngay
+                  </button>
+                </div>
                 {/* Browser Notifications Preference */}
                 <div
                   style={{
@@ -2826,6 +2842,10 @@ export const Header = ({
       <NotificationSettingsModal
         isOpen={isMatrixModalOpen}
         onClose={() => setIsMatrixModalOpen(false)}
+        onBack={() => {
+          setIsMatrixModalOpen(false);
+          setIsNotifModalOpen(true);
+        }}
       />
     </header>
   );

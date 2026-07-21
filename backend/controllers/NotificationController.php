@@ -58,8 +58,17 @@ class NotificationController {
             $this->db->exec("ALTER TABLE user_notification_settings ADD COLUMN matrix_config LONGTEXT NULL");
         } catch (\Throwable $e) {}
 
-        // Fetch user account linking information
-        $stmtUser = $this->db->prepare("SELECT email, zalo_chat_id, telegram_chat_id FROM users WHERE id = ? LIMIT 1");
+        // Fetch user account linking information across users, accounts, and consultants
+        $stmtUser = $this->db->prepare("
+            SELECT 
+                COALESCE(NULLIF(TRIM(u.email), ''), NULLIF(TRIM(a.email), ''), NULLIF(TRIM(c.email), '')) as email,
+                COALESCE(NULLIF(TRIM(u.zalo_chat_id), ''), NULLIF(TRIM(a.zalo_chat_id), ''), NULLIF(TRIM(c.zalo_chat_id), '')) as zalo_chat_id,
+                COALESCE(NULLIF(TRIM(u.telegram_chat_id), ''), NULLIF(TRIM(a.telegram_chat_id), ''), NULLIF(TRIM(c.telegram_chat_id), '')) as telegram_chat_id
+            FROM users u
+            LEFT JOIN accounts a ON u.id = a.id
+            LEFT JOIN consultants c ON u.id = c.id
+            WHERE u.id = ? LIMIT 1
+        ");
         $stmtUser->execute([$auth['user_id']]);
         $userInfo = $stmtUser->fetch(PDO::FETCH_ASSOC) ?: [];
 
