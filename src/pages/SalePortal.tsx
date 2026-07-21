@@ -6855,15 +6855,6 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                   width="100%"
                 />
               </div>
-              {/* Button to open Connection Health Modal */}
-              <button
-                className="btn outline"
-                onClick={() => { }}
-                title={t("Kiểm tra kết nối hệ thống")}
-                style={{ flex: isMobile ? '0 0 38px' : '0 0 38px', width: isMobile ? '38px' : '38px', height: isMobile ? '38px' : '38px', minWidth: isMobile ? '38px' : '38px', maxWidth: isMobile ? '38px' : '38px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid var(--color-border)', borderRadius: '8px', background: 'var(--color-surface)', color: 'var(--color-text-light)', cursor: 'default' }}
-              >
-                <Server size={isMobile ? 14 : 16} />
-              </button>
 
             </div>
           </div>

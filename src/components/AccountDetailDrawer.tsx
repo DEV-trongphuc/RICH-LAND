@@ -1139,12 +1139,12 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
                 {account ? t('Hồ sơ Nhân sự') : t('Thêm Nhân sự')}
               </h2>
               <p style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', margin: '2px 0 0', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                {account ? `${t('Mã nhân viên')}: ${employeeId || '—'} · ${name}` : t('Khai báo hồ sơ làm việc.')}
+                {account ? `${t('Mã nhân viên')}: ${employeeId || (account?.id ? `RL-${account.id}` : '—')} · ${name}` : t('Khai báo hồ sơ làm việc.')}
               </p>
             </div>
           </div>
           
-          {/* Save Button with ONLY icon on the Right */}
+          {/* Save Button with text on Desktop and Icon on Mobile */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
             {!loading && !readOnly && (
               <button 
@@ -1157,15 +1157,16 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  width: '36px',
                   height: '36px',
-                  padding: 0,
+                  padding: '0 14px',
                   fontSize: '0.8125rem',
-                  fontWeight: 600
+                  fontWeight: 600,
+                  gap: '6px'
                 }}
                 title={t('Lưu Hồ sơ Nhân sự')}
               >
-                {isSaving ? <Loader2 size={16} className="spin" /> : <Save size={18} />}
+                {isSaving ? <Loader2 size={16} className="spin" /> : <Save size={16} />}
+                <span className="responsive-hide-mobile">{isSaving ? t('Đang lưu...') : t('Cập nhật thông tin')}</span>
               </button>
             )}
           </div>
@@ -1235,8 +1236,13 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
                     </div>
                     <div style={{ textAlign: 'center', marginTop: 4 }}>
                       <h4 style={{ fontSize: '0.875rem', fontWeight: 700, margin: 0, color: 'var(--color-text)', wordBreak: 'break-word' }}>{name || t('Chưa cập nhật')}</h4>
+                      {!!(jobTitle || (account as any)?.job_title || (account as any)?.erp_profile?.job_title) && (
+                        <p style={{ fontSize: '0.725rem', color: '#a31422', fontWeight: 700, margin: '2px 0 0' }}>
+                          {jobTitle || (account as any)?.job_title || (account as any)?.erp_profile?.job_title}
+                        </p>
+                      )}
                       <p style={{ fontSize: '0.725rem', color: 'var(--color-text-muted)', margin: '2px 0 0' }}>
-                        {employeeId ? `${t('Mã nhân viên')}: ${employeeId}` : ''}
+                        {t('Mã nhân viên')}: {employeeId || (account?.id ? `RL-${account.id}` : '—')}
                       </p>
                     </div>
                     <input 
