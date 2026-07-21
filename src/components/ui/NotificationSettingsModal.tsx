@@ -142,7 +142,7 @@ const ALL_EVENTS = EVENT_CATEGORIES.flatMap(cat => cat.events);
 export const NotificationSettingsModal: React.FC<NotificationSettingsModalProps> = ({ isOpen, onClose, onBack }) => {
   const currentUser = useAuthStore(state => state.user);
   const role = (currentUser?.role || '').toLowerCase();
-  const isAdminOrManager = role === 'admin' || role === 'director' || role === 'manager' || role === 'leader' || role === 'head_of_department';
+  const isAdminOrManager = role === 'admin' || role === 'superadmin' || role === 'director' || role === 'manager' || role === 'leader' || role === 'head_of_department' || role === 'truongphong' || role === 'quanly' || role === 'giamdoc' || role.includes('admin') || role.includes('manager') || role.includes('leader') || role.includes('director') || role.includes('head');
 
   const visibleCategories = EVENT_CATEGORIES.filter(cat => {
     if (cat.category === 'ADMIN_MANAGER') {
