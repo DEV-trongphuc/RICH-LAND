@@ -175,31 +175,38 @@ export const NotificationSettingsModal: React.FC<NotificationSettingsModalProps>
     setTimeout(() => setToastMessage(null), 4000);
   };
 
+// Default Matrix Configurations:
+// - Email: ON (true) for all events
+// - Zalo & Telegram: ON (true) ONLY for important/urgent events
+// - Master Bell: ON (true) for all events
 const DEFAULT_EVENT_CONFIGS: Record<string, EventConfig> = {
+  // IMPORTANT EVENTS -> Zalo & Telegram = ON, Email = ON
   LEAD_ASSIGNMENT: { master: true, zalo: true, telegram: true, email: true },
   SECURITY_DEADLINE_WARNING: { master: true, zalo: true, telegram: true, email: true },
-  MENTION_TAGGED: { master: true, zalo: true, telegram: true, email: false },
-  CUSTOMER_UPDATE: { master: true, zalo: false, telegram: false, email: false },
-  WORKFLOW_TASK_ASSIGNED: { master: true, zalo: true, telegram: false, email: false },
-  ATTENDANCE_APPROVAL_RESULT: { master: true, zalo: true, telegram: false, email: true },
+  MENTION_TAGGED: { master: true, zalo: true, telegram: true, email: true },
   MY_DEPOSIT_UPDATE: { master: true, zalo: true, telegram: true, email: true },
-  NIGHT_SHIFT_BOOKING: { master: true, zalo: false, telegram: false, email: false },
-  PROFILE_ACCOUNT_UPDATE: { master: true, zalo: false, telegram: false, email: true },
   CHECKIN_LATE: { master: true, zalo: true, telegram: true, email: true },
-  ATTENDANCE_UPDATE: { master: true, zalo: true, telegram: false, email: true },
   EXPENSE_REQUEST: { master: true, zalo: true, telegram: true, email: true },
-  TICKET_NEW: { master: true, zalo: true, telegram: false, email: false },
   COOPERATION_PENDING_APPROVAL: { master: true, zalo: true, telegram: true, email: true },
   DEPOSIT_NEW: { master: true, zalo: true, telegram: true, email: true },
-  LEAVE_REQUEST: { master: true, zalo: true, telegram: false, email: true },
-  PROJECT_ROSTER_UPDATE: { master: true, zalo: false, telegram: false, email: false },
+
+  // ROUTINE / STANDARD EVENTS -> Zalo & Telegram = OFF, Email = ON
+  CUSTOMER_UPDATE: { master: true, zalo: false, telegram: false, email: true },
+  WORKFLOW_TASK_ASSIGNED: { master: true, zalo: false, telegram: false, email: true },
+  ATTENDANCE_APPROVAL_RESULT: { master: true, zalo: false, telegram: false, email: true },
+  NIGHT_SHIFT_BOOKING: { master: true, zalo: false, telegram: false, email: true },
+  PROFILE_ACCOUNT_UPDATE: { master: true, zalo: false, telegram: false, email: true },
+  ATTENDANCE_UPDATE: { master: true, zalo: false, telegram: false, email: true },
+  TICKET_NEW: { master: true, zalo: false, telegram: false, email: true },
+  LEAVE_REQUEST: { master: true, zalo: false, telegram: false, email: true },
+  PROJECT_ROSTER_UPDATE: { master: true, zalo: false, telegram: false, email: true },
   MONTHLY_ATTENDANCE_REPORT: { master: true, zalo: false, telegram: false, email: true },
-  HOLIDAY_ROSTER_OPEN: { master: true, zalo: true, telegram: false, email: false },
-  HOLIDAY_ANNOUNCEMENT: { master: true, zalo: false, telegram: false, email: false },
+  HOLIDAY_ROSTER_OPEN: { master: true, zalo: false, telegram: false, email: true },
+  HOLIDAY_ANNOUNCEMENT: { master: true, zalo: false, telegram: false, email: true },
 };
 
 const getDefaultConfig = (key: string): EventConfig => {
-  return DEFAULT_EVENT_CONFIGS[key] || { master: true, zalo: false, telegram: false, email: false };
+  return DEFAULT_EVENT_CONFIGS[key] || { master: true, zalo: false, telegram: false, email: true };
 };
 
   useEffect(() => {
