@@ -1275,10 +1275,10 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
       {/* Stats row */}
       <div className="responsive-grid-4" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem' }}>
         {/* Card 1: Approved / Valid */}
-        <div className="stat-card hover-lift" style={{
-          backgroundColor: 'var(--color-surface)',
-          border: '1px solid var(--color-border-light)',
-          padding: '0.875rem 1.125rem',
+        <div className="card-panel stat-card hover-lift" style={{
+          backgroundColor: 'rgba(16, 185, 129, 0.04)',
+          border: '1px solid rgba(16, 185, 129, 0.2)',
+          padding: '1rem 1.125rem',
           borderRadius: '14px',
           display: 'flex',
           flexDirection: 'column',
@@ -1287,17 +1287,11 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
           overflow: 'hidden',
           transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)'
         }}>
-          <div className="decor-svg" style={{ color: '#10b981' }}>
-            <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: '100%', height: '100%' }}>
-              <circle cx="50" cy="50" r="35" stroke="currentColor" strokeWidth="2" opacity="0.3" />
-              <path d="M30 50 L 45 65 L 75 35" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <span className="stat-label" style={{ fontSize: '0.7rem', color: '#10b981', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase' }}>
               {t('ĐÃ DUYỆT / HỢP LỆ')}
             </span>
-            <div className="stat-icon" style={{ width: '32px', height: '32px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(16, 185, 129, 0.1)', color: '#10b981', flexShrink: 0 }}>
+            <div className="stat-icon" style={{ width: '32px', height: '32px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(16, 185, 129, 0.15)', color: '#10b981', flexShrink: 0 }}>
               <CheckCircle size={16} />
             </div>
           </div>
@@ -1322,10 +1316,10 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
         </div>
 
         {/* Card 2: Rejected */}
-        <div className="stat-card hover-lift" style={{
-          backgroundColor: 'var(--color-surface)',
-          border: '1px solid var(--color-border-light)',
-          padding: '0.875rem 1.125rem',
+        <div className="card-panel stat-card hover-lift" style={{
+          backgroundColor: 'rgba(239, 68, 68, 0.04)',
+          border: '1px solid rgba(239, 68, 68, 0.2)',
+          padding: '1rem 1.125rem',
           borderRadius: '14px',
           display: 'flex',
           flexDirection: 'column',
@@ -1334,17 +1328,11 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
           overflow: 'hidden',
           transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)'
         }}>
-          <div className="decor-svg" style={{ color: '#ef4444' }}>
-            <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: '100%', height: '100%' }}>
-              <circle cx="50" cy="50" r="35" stroke="currentColor" strokeWidth="2" opacity="0.3" />
-              <path d="M35 35 L 65 65 M 65 35 L 35 65" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
-            </svg>
-          </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <span className="stat-label" style={{ fontSize: '0.7rem', color: '#ef4444', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase' }}>
               {t('BỊ TỪ CHỐI')}
             </span>
-            <div className="stat-icon" style={{ width: '32px', height: '32px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', flexShrink: 0 }}>
+            <div className="stat-icon" style={{ width: '32px', height: '32px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(239, 68, 68, 0.15)', color: '#ef4444', flexShrink: 0 }}>
               <AlertCircle size={16} />
             </div>
           </div>
@@ -1369,10 +1357,10 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
         </div>
 
         {/* Card 3: Work Days (Month N) */}
-        <div className="stat-card hover-lift" style={{
-          backgroundColor: 'var(--color-surface)',
-          border: '1px solid var(--color-border-light)',
-          padding: '0.875rem 1.125rem',
+        <div className="card-panel stat-card hover-lift" style={{
+          backgroundColor: 'rgba(59, 130, 246, 0.04)',
+          border: '1px solid rgba(59, 130, 246, 0.2)',
+          padding: '1rem 1.125rem',
           borderRadius: '14px',
           display: 'flex',
           flexDirection: 'column',
@@ -1381,17 +1369,11 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
           overflow: 'hidden',
           transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)'
         }}>
-          <div className="decor-svg" style={{ color: '#3b82f6' }}>
-            <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: '100%', height: '100%' }}>
-              <rect x="25" y="25" width="50" height="50" rx="6" stroke="currentColor" strokeWidth="2" opacity="0.3" />
-              <path d="M25 40 H 75 M 40 20 V 30 M 60 20 V 30" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-            </svg>
-          </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <span className="stat-label" style={{ fontSize: '0.7rem', color: '#3b82f6', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase' }}>
               {t(`NGÀY CÔNG THÁNG ${currentMonth}`)}
             </span>
-            <div className="stat-icon" style={{ width: '32px', height: '32px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6', flexShrink: 0 }}>
+            <div className="stat-icon" style={{ width: '32px', height: '32px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(59, 130, 246, 0.15)', color: '#3b82f6', flexShrink: 0 }}>
               <Calendar size={16} />
             </div>
           </div>
@@ -1420,10 +1402,10 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
         </div>
 
         {/* Card 4: Total Shifts */}
-        <div className="stat-card hover-lift" style={{
-          backgroundColor: 'var(--color-surface)',
-          border: '1px solid var(--color-border-light)',
-          padding: '0.875rem 1.125rem',
+        <div className="card-panel stat-card hover-lift" style={{
+          backgroundColor: 'rgba(139, 92, 246, 0.04)',
+          border: '1px solid rgba(139, 92, 246, 0.2)',
+          padding: '1rem 1.125rem',
           borderRadius: '14px',
           display: 'flex',
           flexDirection: 'column',
@@ -1432,16 +1414,11 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
           overflow: 'hidden',
           transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)'
         }}>
-          <div className="decor-svg" style={{ color: '#8b5cf6' }}>
-            <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: '100%', height: '100%' }}>
-              <path d="M50 20 C 35 20, 25 32, 25 47 C 25 62, 35 74, 50 74 C 65 74, 75 62, 75 47 C 60 47, 50 37, 50 20 Z" stroke="currentColor" strokeWidth="2" opacity="0.3" fill="none" />
-            </svg>
-          </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <span className="stat-label" style={{ fontSize: '0.7rem', color: '#8b5cf6', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase' }}>
               {t('TỔNG CA TRỰC')}
             </span>
-            <div className="stat-icon" style={{ width: '32px', height: '32px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(139, 92, 246, 0.1)', color: '#8b5cf6', flexShrink: 0 }}>
+            <div className="stat-icon" style={{ width: '32px', height: '32px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(139, 92, 246, 0.15)', color: '#8b5cf6', flexShrink: 0 }}>
               <Moon size={16} />
             </div>
           </div>
