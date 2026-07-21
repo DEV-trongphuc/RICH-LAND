@@ -1,6 +1,20 @@
 <?php
 require_once __DIR__ . '/config.php';          // DB constants + CORS origins
 
+register_shutdown_function(function() {
+    $error = error_get_last();
+    if ($error !== null && in_array($error['type'], [E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR])) {
+        if (!headers_sent()) {
+            http_response_code(500);
+            header('Content-Type: application/json; charset=UTF-8');
+        }
+        echo json_encode([
+            'success' => false,
+            'message' => 'FATAL ERROR: ' . $error['message'] . ' in ' . $error['file'] . ' on line ' . $error['line']
+        ], JSON_UNESCAPED_UNICODE);
+    }
+});
+
 if (defined('APP_ENV') && APP_ENV === 'production') {
     ini_set('display_errors', 0);
     ini_set('display_startup_errors', 0);
