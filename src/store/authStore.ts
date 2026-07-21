@@ -7,6 +7,7 @@ export interface AuthUser {
   full_name: string;
   role: string;
   avatar_url: string | null;
+  signature_url?: string | null;
   bio?: string | null;
   tenant_id: number;
   tenant_name: string;

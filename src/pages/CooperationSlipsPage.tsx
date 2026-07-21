@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { fetchAPI } from '../utils/api';
 import { useAuth } from '../contexts/AuthContext';
+import { useLanguage } from '../contexts/LanguageContext';
 import { FileText, Check, X, ShieldAlert, UserPlus, PenTool, CheckCircle, AlertCircle, ChevronDown, ChevronUp, Trash2, Paperclip, ExternalLink, Search, Zap, Edit3 } from 'lucide-react';
 import { SignaturePadModal } from '../components/ui/SignaturePadModal';
 import { PeriodFilter, getDateRange } from '../components/ui/PeriodFilter';
@@ -108,7 +109,8 @@ function numberToVietnameseWords(num: number): string {
 
 export default function CooperationSlipsPage() {
   const { addToast, showConfirm } = useUIStore();
-  const { user } = useAuth();
+  const { user, updateUser } = useAuth();
+  const { t } = useLanguage();
   const [slips, setSlips] = useState<CooperationSlip[]>([]);
   const [salesAccounts, setSalesAccounts] = useState<SalesAccount[]>([]);
   const [loading, setLoading] = useState(true);
@@ -1905,6 +1907,98 @@ export default function CooperationSlipsPage() {
               </div>
             )}
 
+            {/* Quick Signature Banner if user has saved signature */}
+            {user?.signature_url ? (
+              <div style={{
+                background: 'rgba(189, 29, 45, 0.05)',
+                border: '1px solid rgba(189, 29, 45, 0.2)',
+                borderRadius: '12px',
+                padding: '12px 16px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: '12px'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <div style={{
+                    background: 'white',
+                    border: '1px solid var(--color-border)',
+                    borderRadius: '6px',
+                    padding: '4px 8px',
+                    maxHeight: '45px',
+                    display: 'flex',
+                    alignItems: 'center'
+                  }}>
+                    <img src={user.signature_url} alt="Chữ ký mẫu" style={{ maxHeight: '35px', objectFit: 'contain' }} />
+                  </div>
+                  <div>
+                    <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--color-text)' }}>
+                      {t('Chữ ký mẫu đã lưu của bạn')}
+                    </div>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
+                      {t('Điền chữ ký cá nhân chính chủ chỉ với 1-click')}
+                    </div>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => handleSignSlip(signingSlip.id, user.signature_url!)}
+                  style={{
+                    padding: '8px 16px',
+                    borderRadius: '8px',
+                    border: 'none',
+                    background: '#BD1D2D',
+                    color: 'white',
+                    fontSize: '0.8125rem',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    boxShadow: 'var(--shadow-sm)',
+                    whiteSpace: 'nowrap',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px'
+                  }}
+                >
+                  <Zap size={15} />
+                  {t('Dùng chữ ký của tôi')}
+                </button>
+              </div>
+            ) : (
+              <div style={{
+                background: 'var(--color-bg-light)',
+                border: '1px border var(--color-border)',
+                borderRadius: '10px',
+                padding: '10px 14px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: '10px'
+              }}>
+                <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>
+                  {t('Bạn chưa cài đặt chữ ký mẫu cá nhân.')}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setShowQuickSignatureModal(true)}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    color: '#BD1D2D',
+                    fontSize: '0.8rem',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px'
+                  }}
+                >
+                  <Edit3 size={13} />
+                  {t('Tạo chữ ký mẫu ngay')}
+                </button>
+              </div>
+            )}
+
             {/* Signature Area Selector & Component */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
               <div style={{ display: 'flex', gap: '10px', borderBottom: '1px solid var(--color-border)', paddingBottom: '0.75rem' }}>
@@ -2758,6 +2852,26 @@ export default function CooperationSlipsPage() {
         document.body
       )}
 
+      {/* Signature Setup Modal */}
+      <SignaturePadModal
+        isOpen={showQuickSignatureModal}
+        onClose={() => setShowQuickSignatureModal(false)}
+        onSave={async (newSigUrl) => {
+          const res = await fetchAPI('update_profile', {
+            method: 'POST',
+            body: JSON.stringify({ signature_url: newSigUrl })
+          });
+          if (res.success) {
+            updateUser({ signature_url: newSigUrl });
+            if (signingSlip) {
+              handleSignSlip(signingSlip.id, newSigUrl);
+            }
+          } else {
+            throw new Error(res.message || t('Lỗi lưu chữ ký'));
+          }
+        }}
+        initialSignatureUrl={user?.signature_url}
+      />
       {/* Signature Setup Modal */}
       <SignaturePadModal
         isOpen={showQuickSignatureModal}
