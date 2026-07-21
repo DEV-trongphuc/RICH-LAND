@@ -315,6 +315,114 @@ class NotificationService {
                                     "Vui lòng truy cập hệ thống CRM để xử lý."
                 ];
 
+            case 'COOPERATION_PENDING_APPROVAL':
+                $recipients = self::getAdminsAndManagers($db, $tenantId);
+                $slipId = $payload['slip_id'] ?? '0';
+                return [
+                    'recipients' => $recipients,
+                    'title' => "Yêu cầu phê duyệt phiếu hợp tác",
+                    'body' => "Phiếu hợp tác #" . $slipId . " đã thu thập đủ chữ ký và đang chờ phê duyệt",
+                    'type' => "cooperation",
+                    'link' => "/cooperation-slips",
+                    'zalo_msg' => "✍️ [ YÊU CẦU PHÊ DUYỆT PHIẾU HỢP TÁC ]\n\n"
+                        . "Phiếu hợp tác chia sẻ hoa hồng #$slipId đã thu thập đầy đủ chữ ký của các thành viên.\n"
+                        . "  • Mã phiếu: #$slipId\n"
+                        . "  • Trạng thái: Chờ phê duyệt\n\n"
+                        . "Vui lòng truy cập hệ thống CRM để phê duyệt.",
+                    'tg_msg' => "✍️ <b>[ YÊU CẦU PHÊ DUYỆT PHIẾU HỢP TÁC ]</b>\n\n"
+                        . "Phiếu hợp tác chia sẻ hoa hồng <b>#$slipId</b> đã thu thập đầy đủ chữ ký của các thành viên.\n"
+                        . "  • Trạng thái: Chờ phê duyệt\n\n"
+                        . "Vui lòng truy cập hệ thống CRM để phê duyệt.",
+                    'email_subject' => "[RICH LAND] Yêu cầu phê duyệt Phiếu hợp tác #$slipId",
+                    'email_title' => "PHÊ DUYỆT PHIẾU HỢP TÁC",
+                    'email_content' => "Chào quản trị viên,<br/><br/>" .
+                                    "Phiếu hợp tác chia sẻ hoa hồng <strong>#$slipId</strong> đã thu thập đầy đủ chữ ký của các thành viên.<br/>" .
+                                    "Vui lòng truy cập hệ thống CRM để phê duyệt."
+                ];
+
+            case 'DEPOSIT_NEW':
+                $recipients = self::getAdminsAndManagers($db, $tenantId);
+                $depId = $payload['deposit_id'] ?? '0';
+                $customerName = $payload['customer_name'] ?? 'Khách hàng';
+                $depAmount = number_format((float)($payload['amount'] ?? 0), 0, ',', '.') . 'đ';
+                return [
+                    'recipients' => $recipients,
+                    'title' => "Yêu cầu duyệt đặt cọc mới",
+                    'body' => "Nhân viên " . $userName . " vừa tạo giao dịch đặt cọc cho khách hàng " . $customerName . " (" . $depAmount . ")",
+                    'type' => "deposit",
+                    'link' => "/deposits",
+                    'zalo_msg' => "🏠 [ YÊU CẦU DUYỆT ĐẶT CỌC MỚI ]\n\n"
+                        . "Nhân viên $userName vừa tạo yêu cầu đặt cọc mới:\n"
+                        . "  • Mã cọc: #$depId\n"
+                        . "  • Khách hàng: $customerName\n"
+                        . "  • Số tiền: $depAmount\n\n"
+                        . "Vui lòng truy cập CRM để xem xét.",
+                    'tg_msg' => "🏠 <b>[ YÊU CẦU DUYỆT ĐẶT CỌC MỚI ]</b>\n\n"
+                        . "Nhân viên <b>$userName</b> vừa tạo yêu cầu đặt cọc mới:\n"
+                        . "  • Mã cọc: <b>#$depId</b>\n"
+                        . "  • Khách hàng: <b>" . htmlspecialchars($customerName) . "</b>\n"
+                        . "  • Số tiền: <b>$depAmount</b>\n\n"
+                        . "Vui lòng truy cập CRM để xem xét.",
+                    'email_subject' => "[RICH LAND] Yêu cầu duyệt Đặt cọc mới #$depId",
+                    'email_title' => "DUYỆT ĐẶT CỌC MỚI",
+                    'email_content' => "Chào quản trị viên,<br/><br/>" .
+                                    "Nhân viên <strong>$userName</strong> vừa tạo giao dịch đặt cọc mới cho khách hàng <strong>" . htmlspecialchars($customerName) . "</strong>.<br/>" .
+                                    "Số tiền cọc: <strong>$depAmount</strong>.<br/>" .
+                                    "Vui lòng truy cập CRM để xem xét."
+                ];
+
+            case 'NIGHT_SHIFT_BOOKING':
+                $recipients = self::getAdminsAndManagers($db, $tenantId);
+                $shiftDate = $payload['shift_date'] ?? $today;
+                return [
+                    'recipients' => $recipients,
+                    'title' => "Đăng ký trực đêm mới",
+                    'body' => "Nhân viên " . $userName . " đã đăng ký trực ca đêm ngày " . $shiftDate,
+                    'type' => "roster",
+                    'link' => "/roster",
+                    'zalo_msg' => "🌙 [ ĐĂNG KÝ TRỰC ĐÊM MỚI ]\n\n"
+                        . "Nhân viên $userName vừa đăng ký trực ca đêm:\n"
+                        . "  • Ngày trực: $shiftDate\n"
+                        . "  • Trạng thái: Đã ghi nhận\n\n"
+                        . "Vui lòng kiểm tra lịch trực trên CRM.",
+                    'tg_msg' => "🌙 <b>[ ĐĂNG KÝ TRỰC ĐÊM MỚI ]</b>\n\n"
+                        . "Nhân viên <b>$userName</b> vừa đăng ký trực ca đêm:\n"
+                        . "  • Ngày trực: <code>$shiftDate</code>\n\n"
+                        . "Vui lòng kiểm tra lịch trực trên CRM.",
+                    'email_subject' => "[RICH LAND] Đăng ký trực đêm - NV $userName",
+                    'email_title' => "ĐĂNG KÝ TRỰC ĐÊM",
+                    'email_content' => "Chào quản trị viên,<br/><br/>" .
+                                    "Nhân viên <strong>$userName</strong> vừa đăng ký trực ca đêm ngày <strong>$shiftDate</strong>.<br/>" .
+                                    "Vui lòng kiểm tra lịch trực trên CRM."
+                ];
+
+            case 'LEAVE_REQUEST':
+                $recipients = self::getAdminsAndManagers($db, $tenantId);
+                $leaveDate = $payload['leave_date'] ?? $today;
+                return [
+                    'recipients' => $recipients,
+                    'title' => "Đơn xin nghỉ phép mới",
+                    'body' => "Nhân viên " . $userName . " đã gửi đơn xin nghỉ phép ngày " . $leaveDate . " với lý do: \"" . $reason . "\"",
+                    'type' => "leave",
+                    'link' => "/attendance",
+                    'zalo_msg' => "🏖️ [ ĐƠN XIN NGHỈ PHÉP MỚI ]\n\n"
+                        . "Nhân viên $userName vừa gửi đơn xin nghỉ phép:\n"
+                        . "  • Ngày nghỉ: $leaveDate\n"
+                        . "  • Lý do: \"$reason\"\n\n"
+                        . "Vui lòng truy cập CRM để phê duyệt.",
+                    'tg_msg' => "🏖️ <b>[ ĐƠN XIN NGHỈ PHÉP MỚI ]</b>\n\n"
+                        . "Nhân viên <b>$userName</b> vừa gửi đơn xin nghỉ phép:\n"
+                        . "  • Ngày nghỉ: <code>$leaveDate</code>\n"
+                        . "  • Lý do: <i>\"$reason\"</i>\n\n"
+                        . "Vui lòng truy cập CRM để phê duyệt.",
+                    'email_subject' => "[RICH LAND] Đơn xin nghỉ phép - NV $userName",
+                    'email_title' => "ĐƠN XIN NGHỈ PHÉP",
+                    'email_content' => "Chào quản trị viên,<br/><br/>" .
+                                    "Nhân viên <strong>$userName</strong> vừa gửi đơn xin nghỉ phép ngày $leaveDate.<br/>" .
+                                    "Lý do: <em>\"$reason\"</em>.<br/>" .
+                                    "Vui lòng truy cập CRM để phê duyệt."
+                ];
+
             default:
                 return null;
         }
