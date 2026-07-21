@@ -2327,6 +2327,13 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
     setIsCameraActive(false);
   };
 
+  useEffect(() => {
+    if (cameraStream && videoRef.current) {
+      videoRef.current.srcObject = cameraStream;
+      videoRef.current.play().catch(err => console.log('SalePortal camera play error:', err));
+    }
+  }, [cameraStream, isCameraActive]);
+
   const capturePhoto = () => {
     if (videoRef.current) {
       const video = videoRef.current;
@@ -13521,6 +13528,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                   <video
                     ref={videoRef}
                     style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                    autoPlay
                     playsInline
                     muted
                   />

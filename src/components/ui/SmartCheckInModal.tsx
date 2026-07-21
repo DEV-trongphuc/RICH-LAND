@@ -110,6 +110,14 @@ export const SmartCheckInModal: React.FC<SmartCheckInModalProps> = ({
     setIsCameraActive(false);
   };
 
+  // Ensure camera stream is assigned to video element when stream or element becomes available
+  useEffect(() => {
+    if (cameraStream && videoRef.current) {
+      videoRef.current.srcObject = cameraStream;
+      videoRef.current.play().catch(err => console.log('Camera video play error:', err));
+    }
+  }, [cameraStream, isCameraActive]);
+
   // Start camera automatically when modal opens
   useEffect(() => {
     if (isOpen && (!todayCheckIn || todayCheckIn.status === 'rejected') && !isSuccessScreen) {
@@ -573,6 +581,7 @@ export const SmartCheckInModal: React.FC<SmartCheckInModalProps> = ({
                     <video
                       ref={videoRef}
                       style={{ width: '100%', height: '100%', objectFit: 'cover', transform: 'scaleX(-1)' }}
+                      autoPlay
                       playsInline
                       muted
                     />
@@ -616,38 +625,36 @@ export const SmartCheckInModal: React.FC<SmartCheckInModalProps> = ({
                 )}
               </div>
 
-              {/* Floating Status Pill on Camera */}
-              {isCameraActive && !capturedImage && (
-                <div style={{
-                  position: 'absolute',
-                  bottom: 15,
-                  left: '50%',
-                  transform: 'translateX(-50%)',
-                  zIndex: 15,
-                  backgroundColor: faceScanProgress > 60 ? 'rgba(16, 185, 129, 0.95)' : 'rgba(15, 23, 42, 0.9)',
-                  backdropFilter: 'blur(8px)',
-                  color: '#fff',
-                  padding: '5px 16px',
-                  borderRadius: '20px',
-                  fontSize: '0.75rem',
-                  fontWeight: 700,
-                  whiteSpace: 'nowrap',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 6,
-                  border: faceScanProgress > 60 ? '1px solid rgba(16, 185, 129, 0.35)' : '1px solid rgba(255, 255, 255, 0.15)',
-                  boxShadow: '0 8px 24px rgba(0,0,0,0.3)',
-                  transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
-                }}>
-                  <Sparkles size={12} className={faceScanProgress > 60 ? 'spin' : ''} />
-                  <span>
-                    {faceScanProgress > 0 && faceScanProgress < 100
-                      ? `${scanStatusText} (${faceScanProgress}%)`
-                      : scanStatusText}
-                  </span>
-                </div>
-              )}
             </div>
+
+            {/* Floating Status Pill - Positioned below the Circular Camera Frame */}
+            {isCameraActive && !capturedImage && (
+              <div style={{
+                marginTop: '16px',
+                backgroundColor: faceScanProgress > 60 ? 'rgba(16, 185, 129, 0.95)' : 'rgba(15, 23, 42, 0.9)',
+                backdropFilter: 'blur(8px)',
+                color: '#fff',
+                padding: '6px 18px',
+                borderRadius: '20px',
+                fontSize: '0.78rem',
+                fontWeight: 700,
+                whiteSpace: 'nowrap',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+                border: faceScanProgress > 60 ? '1px solid rgba(16, 185, 129, 0.35)' : '1px solid rgba(255, 255, 255, 0.15)',
+                boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
+                transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                zIndex: 15
+              }}>
+                <Sparkles size={13} className={faceScanProgress > 60 ? 'spin' : ''} />
+                <span>
+                  {faceScanProgress > 0 && faceScanProgress < 100
+                    ? `${scanStatusText} (${faceScanProgress}%)`
+                    : scanStatusText}
+                </span>
+              </div>
+            )}
 
             {/* Captured Actions or Manual Retake */}
             {capturedImage && (
