@@ -170,11 +170,13 @@
     bottom: 0 !important;
     padding-bottom: calc(env(safe-area-inset-bottom, 16px) + 24px) !important;
   }
-  .fullScreenMobile {
+  .modal.fullScreenMobile {
     height: 100dvh !important;
     max-height: 100dvh !important;
     min-height: 100dvh !important;
     border-radius: 0 !important;
+    border: none !important;
+    margin: 0 !important;
     padding-bottom: env(safe-area-inset-bottom, 16px) !important;
   }
   .fullScreenMobile .dragHandle {
