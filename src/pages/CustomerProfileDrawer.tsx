@@ -4250,7 +4250,8 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
     const isOwner = Number(currentUser?.id) === Number(formData.owner_id || contact?.owner_id);
     const isAdmin = currentUser?.role && ['admin', 'superadmin', 'super_admin', 'assistant', 'director', 'manager'].includes(currentUser.role);
     if (currentUser?.role === 'sale' && !isOwner && !isAdmin) {
-      addToast('Chặn thao tác: Chỉ chủ sở hữu (Owner) mới có quyền chuyển trạng thái khách hàng!', 'error');
+      const ownerName = formData.owner_name || contact?.owner_name || contact?.consultant_name || 'chủ sở hữu';
+      addToast(`Chặn thao tác: Chỉ chủ sở hữu (Owner: ${ownerName}) mới có quyền chuyển trạng thái khách hàng!`, 'error');
       return;
     }
 
@@ -6339,7 +6340,14 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                           <div className="form-group">
                             <label className="form-label">Người đang chăm sóc (Sale)</label>
                             {currentUser?.role === 'sale' ? (
-                              <div style={{ padding: '8px 12px', background: 'var(--color-bg)', border: '1px solid var(--color-border)', borderRadius: '8px', fontSize: '0.875rem', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              <div 
+                                style={{ padding: '8px 12px', background: 'var(--color-bg)', border: '1px solid var(--color-border)', borderRadius: '8px', fontSize: '0.875rem', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}
+                                onClick={() => {
+                                  const ownerName = formData.owner_name || contact?.owner_name || contact?.consultant_name || 'chủ sở hữu';
+                                  addToast(`Chặn thao tác: Chỉ chủ sở hữu (${ownerName}) hoặc Admin mới có quyền chuyển nhượng người chăm sóc!`, 'error');
+                                }}
+                                title="Chỉ Owner hoặc Admin mới có quyền chuyển nhượng người chăm sóc"
+                              >
                                 <Avatar src={formData.owner_avatar} name={formData.owner_name} size="sm" />
                                 <span>{formData.owner_name || 'Chưa giao'}</span>
                               </div>
@@ -6364,26 +6372,36 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                           </div>
                           <div className="form-group">
                             <label className="form-label">Nhân sự chăm sóc phụ (Co-care)</label>
-                            <CustomSelect
-                              multiple
-                              options={users
-                                .filter(u => Number(u.id) !== Number(formData.owner_id))
-                                .map(u => ({
-                                  value: String(u.id),
-                                  label: u.full_name,
-                                  avatar: u.avatar_url,
-                                  sublabel: [u.phone, u.email, u.role].filter(Boolean).join(' - ')
-                                }))}
-                              value={(formData.collaborator_ids || '').split(',').map((s: string) => s.trim()).filter(Boolean)}
-                              onChange={val => {
-                                const list = Array.isArray(val) ? val.filter((v: any) => v !== 'all') : [];
-                                setFormData((prev: any) => ({ ...prev, collaborator_ids: list.join(',') }));
+                            <div
+                              onClickCapture={(e) => {
+                                if (isViewer || !isMainOwnerOrManagerAdmin) {
+                                  e.stopPropagation();
+                                  const ownerName = formData.owner_name || contact?.owner_name || contact?.consultant_name || 'chủ sở hữu';
+                                  addToast(`Chặn thao tác: Chỉ chủ sở hữu (${ownerName}) mới có quyền chỉnh sửa nhân sự chăm sóc phụ (Co-care)!`, 'error');
+                                }
                               }}
-                              placeholder="Chọn nhân sự chăm sóc phụ..."
-                              searchable
-                              showAvatars
-                              disabled={isViewer || !isMainOwnerOrManagerAdmin}
-                            />
+                            >
+                              <CustomSelect
+                                multiple
+                                options={users
+                                  .filter(u => Number(u.id) !== Number(formData.owner_id))
+                                  .map(u => ({
+                                    value: String(u.id),
+                                    label: u.full_name,
+                                    avatar: u.avatar_url,
+                                    sublabel: [u.phone, u.email, u.role].filter(Boolean).join(' - ')
+                                  }))}
+                                value={(formData.collaborator_ids || '').split(',').map((s: string) => s.trim()).filter(Boolean)}
+                                onChange={val => {
+                                  const list = Array.isArray(val) ? val.filter((v: any) => v !== 'all') : [];
+                                  setFormData((prev: any) => ({ ...prev, collaborator_ids: list.join(',') }));
+                                }}
+                                placeholder="Chọn nhân sự chăm sóc phụ..."
+                                searchable
+                                showAvatars
+                                disabled={isViewer || !isMainOwnerOrManagerAdmin}
+                              />
+                            </div>
                             
                             {(() => {
                               const list = (formData.collaborator_ids || '').split(',').map((s: string) => s.trim()).filter(Boolean);

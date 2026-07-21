@@ -426,34 +426,44 @@ export const DealDrawer: React.FC<DealDrawerProps> = ({ isOpen, onClose, deal, o
                         </div>
                         <div className="form-group">
                           <label className="form-label">Giai đoạn (Pipeline Stage)</label>
-                           <CustomSelect 
-                             options={stages.map(s => ({ value: s.id, label: s.name }))}
-                             value={formData?.stage_id}
-                             onChange={val => {
-                               const targetStageId = Number(val);
-                               const fromStage = deal?.stage_id || 0;
-                               
-                               const fromIdx = stages.findIndex(s => Number(s.id) === Number(fromStage));
-                               const toIdx = stages.findIndex(s => Number(s.id) === Number(targetStageId));
-                               
-                               const fromStageObj = stages[fromIdx];
-                               const toStageObj = stages[toIdx];
-                               
-                               const isFromDeposit = fromStageObj?.name?.toLowerCase()?.includes('cọc') || fromStageObj?.name?.toLowerCase()?.includes('deposit');
-                               const isToSuccess = toStageObj?.name?.toLowerCase()?.includes('hợp đồng') || toStageObj?.name?.toLowerCase()?.includes('won') || toStageObj?.name?.toLowerCase()?.includes('thành công') || toStageObj?.is_won;
-                               const isCancellation = isFromDeposit && !isToSuccess;
-                               
-                               const isBackward = fromIdx !== -1 && toIdx !== -1 && toIdx < fromIdx;
-                               
-                               if (isBackward && !isCancellation) {
-                                 addToast("Không thể di chuyển ngược giai đoạn trên Pipeline.", "error");
-                                 return;
-                               }
-                               
-                               setFormData({...formData, stage_id: targetStageId});
-                             }}
-                             disabled={isViewer}
-                           />
+                          <div
+                            onClickCapture={(e) => {
+                              if (isReadOnly) {
+                                e.stopPropagation();
+                                const ownerName = formData?.owner_name || deal?.owner_name || deal?.consultant_name || 'chủ sở hữu';
+                                addToast(`Chặn thao tác: Chỉ chủ sở hữu (Owner: ${ownerName}) mới có quyền chuyển đổi giai đoạn Deal!`, 'error');
+                              }
+                            }}
+                          >
+                            <CustomSelect 
+                              options={stages.map(s => ({ value: s.id, label: s.name }))}
+                              value={formData?.stage_id}
+                              onChange={val => {
+                                const targetStageId = Number(val);
+                                const fromStage = deal?.stage_id || 0;
+                                
+                                const fromIdx = stages.findIndex(s => Number(s.id) === Number(fromStage));
+                                const toIdx = stages.findIndex(s => Number(s.id) === Number(targetStageId));
+                                
+                                const fromStageObj = stages[fromIdx];
+                                const toStageObj = stages[toIdx];
+                                
+                                const isFromDeposit = fromStageObj?.name?.toLowerCase()?.includes('cọc') || fromStageObj?.name?.toLowerCase()?.includes('deposit');
+                                const isToSuccess = toStageObj?.name?.toLowerCase()?.includes('hợp đồng') || toStageObj?.name?.toLowerCase()?.includes('won') || toStageObj?.name?.toLowerCase()?.includes('thành công') || toStageObj?.is_won;
+                                const isCancellation = isFromDeposit && !isToSuccess;
+                                
+                                const isBackward = fromIdx !== -1 && toIdx !== -1 && toIdx < fromIdx;
+                                
+                                if (isBackward && !isCancellation) {
+                                  addToast("Không thể di chuyển ngược giai đoạn trên Pipeline.", "error");
+                                  return;
+                                }
+                                
+                                setFormData({...formData, stage_id: targetStageId});
+                              }}
+                              disabled={isViewer}
+                            />
+                          </div>
                         </div>
                         <div className="form-group">
                           <label className="form-label">Ngày dự kiến chốt</label>
