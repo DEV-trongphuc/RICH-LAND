@@ -905,123 +905,13 @@ class FinanceController
 
             $statusVal = $data['status'] ?? 'pending';
             if ($statusVal === 'pending') {
-                $stmtMgrs = $this->db->prepare("SELECT id, email FROM users WHERE tenant_id = ? AND role IN ('admin', 'superadmin', 'super_admin', 'manager')");
-                $stmtMgrs->execute([$auth['tenant_id']]);
-                $mgrs = $stmtMgrs->fetchAll(PDO::FETCH_ASSOC) ?: [];
-                
-                // Fetch group and notification settings
-                $stmtGSettings = $this->db->prepare("SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('zalo_admin_group_chat_id', 'zalo_notify_only_group', 'telegram_admin_group_chat_id', 'telegram_notify_only_group')");
-                $stmtGSettings->execute();
-                $gSettings = $stmtGSettings->fetchAll(PDO::FETCH_KEY_PAIR);
-
-                $zaloGroupChatId = trim((string)($gSettings['zalo_admin_group_chat_id'] ?? ''));
-                $zaloOnlyGroup = ($gSettings['zalo_notify_only_group'] ?? '0') === '1';
-
-                $tgGroupChatId = trim((string)($gSettings['telegram_admin_group_chat_id'] ?? ''));
-                $tgOnlyGroup = ($gSettings['telegram_notify_only_group'] ?? '0') === '1';
-
-                // ==================== CHANNEL 1: ZALO BOT (INDEPENDENT) ====================
-                try {
-                    require_once __DIR__ . '/../zalo_bot.php';
-                    $stmtBotToken = $this->db->prepare("SELECT setting_value FROM system_settings WHERE setting_key = 'zalo_bot_token' LIMIT 1");
-                    $stmtBotToken->execute();
-                    $botToken = trim((string)$stmtBotToken->fetchColumn());
-
-                    if ($botToken) {
-                        $zaloChatIds = [];
-                        if (!empty($zaloGroupChatId)) {
-                            $zaloChatIds[] = $zaloGroupChatId;
-                        }
-                        if (!$zaloOnlyGroup) {
-                            foreach ($mgrs as $mgr) {
-                                $stmtZalo = $this->db->prepare("SELECT zalo_chat_id FROM users WHERE id = ? LIMIT 1");
-                                $stmtZalo->execute([$mgr['id']]);
-                                $zId = trim((string)$stmtZalo->fetchColumn());
-                                if (!empty($zId)) {
-                                    $zaloChatIds[] = $zId;
-                                }
-                            }
-                        }
-                        $zaloChatIds = array_unique(array_filter($zaloChatIds));
-
-                        if (!empty($zaloChatIds)) {
-                            $zaloMsg = "💸 [ YÊU CẦU PHÊ DUYỆT CHI PHÍ ]\n\n"
-                                . "Nhân viên " . $auth['full_name'] . " vừa tạo yêu cầu chi phí mới:\n"
-                                . "  • Tiêu đề: " . $data['title'] . "\n"
-                                . "  • Số tiền: " . number_format($totalAmount, 0, ',', '.') . "đ\n"
-                                . "  • Ghi chú: \"" . ($data['notes'] ?? 'Không có') . "\"\n\n"
-                                . "Vui lòng truy cập hệ thống CRM để phê duyệt.";
-                            foreach ($zaloChatIds as $zId) {
-                                try {
-                                    sendZaloMessage($botToken, $zId, $zaloMsg, true);
-                                } catch (\Throwable $ze) {}
-                            }
-                        }
-                    }
-                } catch (\Throwable $zEx) {
-                    error_log("Error sending expense Zalo notification: " . $zEx->getMessage());
-                }
-
-                // ==================== CHANNEL 2: TELEGRAM BOT (INDEPENDENT) ====================
-                try {
-                    require_once __DIR__ . '/../telegram_bot.php';
-                    $stmtTgToken = $this->db->prepare("SELECT setting_value FROM system_settings WHERE setting_key = 'telegram_bot_token' LIMIT 1");
-                    $stmtTgToken->execute();
-                    $tgToken = trim((string)$stmtTgToken->fetchColumn());
-
-                    if ($tgToken) {
-                        $tgChatIds = [];
-                        if (!empty($tgGroupChatId)) {
-                            $tgChatIds[] = $tgGroupChatId;
-                        }
-                        if (!$tgOnlyGroup) {
-                            foreach ($mgrs as $mgr) {
-                                $stmtTg = $this->db->prepare("SELECT telegram_chat_id FROM users WHERE id = ? LIMIT 1");
-                                $stmtTg->execute([$mgr['id']]);
-                                $tId = trim((string)$stmtTg->fetchColumn());
-                                if (!empty($tId)) {
-                                    $tgChatIds[] = $tId;
-                                }
-                            }
-                        }
-                        $tgChatIds = array_unique(array_filter($tgChatIds));
-
-                        if (!empty($tgChatIds)) {
-                            $tgMsg = "💸 <b>[ YÊU CẦU PHÊ DUYỆT CHI PHÍ ]</b>\n\n"
-                                . "Nhân viên <b>" . htmlspecialchars($auth['full_name']) . "</b> vừa tạo yêu cầu chi phí mới:\n"
-                                . "  • Tiêu đề: <b>" . htmlspecialchars($data['title']) . "</b>\n"
-                                . "  • Số tiền: <b>" . number_format($totalAmount, 0, ',', '.') . "đ</b>\n"
-                                . "  • Ghi chú: <i>\"" . htmlspecialchars($data['notes'] ?? 'Không có') . "\"</i>\n\n"
-                                . "Vui lòng truy cập hệ thống CRM để phê duyệt.";
-                            foreach ($tgChatIds as $cId) {
-                                try {
-                                    sendTelegramMessage($tgToken, $cId, $tgMsg);
-                                } catch (\Throwable $tge) {}
-                            }
-                        }
-                    }
-                } catch (\Throwable $tgEx) {
-                    error_log("Error sending expense Telegram notification: " . $tgEx->getMessage());
-                }
-
-                // ==================== CHANNEL 3: EMAIL (INDEPENDENT & SYNCHRONOUS) ====================
-                try {
-                    require_once __DIR__ . '/../mailer.php';
-                    foreach ($mgrs as $mgr) {
-                        if (!empty($mgr['email'])) {
-                            $emailSubject = "[RICH LAND] Yêu cầu phê duyệt Chi phí #" . $expId;
-                            $emailTitle = "PHÊ DUYỆT CHI PHÍ";
-                            $emailContent = "Chào quản trị viên,<br/><br/>" .
-                                            "Nhân viên <strong>" . htmlspecialchars($auth['full_name']) . "</strong> đã tạo một khoản chi phí mới cần phê duyệt: <strong>" . htmlspecialchars($data['title']) . "</strong>.<br/>" .
-                                            "Số tiền: <strong>" . number_format($totalAmount, 0, ',', '.') . "đ</strong>.<br/>" .
-                                            "Ghi chú: <em>" . htmlspecialchars($data['notes'] ?? 'Không có') . "</em>.<br/>" .
-                                            "Vui lòng truy cập hệ thống RICH LAND CRM để xem xét và duyệt chi phí.";
-                            sendEmailNotification($mgr['email'], $emailSubject, $emailTitle, $emailContent, '', true);
-                        }
-                    }
-                } catch (\Throwable $emEx) {
-                    error_log("Error sending expense email notification: " . $emEx->getMessage());
-                }
+                require_once __DIR__ . '/../NotificationService.php';
+                NotificationService::send($this->db, $auth['tenant_id'], 'EXPENSE_REQUEST', [
+                    'user_name' => $auth['full_name'],
+                    'title' => $data['title'],
+                    'amount' => $totalAmount,
+                    'reason' => $data['notes'] ?? 'Không có'
+                ]);
             }
 
             $this->showExpense($auth, $expId);
