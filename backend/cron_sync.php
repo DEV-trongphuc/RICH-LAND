@@ -2742,6 +2742,7 @@ function sendShiftRemindersAndCheckInAlerts($conn) {
         'night_duty_notification_enabled',
         'night_duty_notification_lead_minutes',
         'zalo_bot_token',
+        'telegram_bot_token',
         'night_shift_start_time',
         'night_shift_end_time'
     )");
@@ -2752,6 +2753,7 @@ function sendShiftRemindersAndCheckInAlerts($conn) {
     }
 
     $zaloBotToken = $settings['zalo_bot_token'] ?? '';
+    $telegramBotToken = $settings['telegram_bot_token'] ?? '';
 
     $attendanceEnabled = isset($settings['attendance_notification_enabled']) ? (int)$settings['attendance_notification_enabled'] : 1;
     $attendanceLeadMinutes = isset($settings['attendance_notification_lead_minutes']) ? (int)$settings['attendance_notification_lead_minutes'] : 10;
@@ -2761,16 +2763,22 @@ function sendShiftRemindersAndCheckInAlerts($conn) {
     $now = new DateTime();
     $todayStr = $now->format('Y-m-d');
 
-    // Include zalo_bot.php if token is available
+    // Include zalo_bot.php & telegram_bot.php if available
     if (!empty($zaloBotToken)) {
         @require_once __DIR__ . '/zalo_bot.php';
+    }
+    if (!empty($telegramBotToken) && file_exists(__DIR__ . '/telegram_bot.php')) {
+        @require_once __DIR__ . '/telegram_bot.php';
+    }
+    if (file_exists(__DIR__ . '/mailer.php')) {
+        @require_once __DIR__ . '/mailer.php';
     }
 
     // A. Check-in reminders
     if ($attendanceEnabled === 1) {
         // Query active users who have not checked in today
         $userQuery = "
-            SELECT u.id, u.full_name, u.zalo_chat_id, 
+            SELECT u.id, u.full_name, u.email, u.zalo_chat_id, u.telegram_chat_id,
                    IF(u.use_custom_work_hours = 1, u.work_start_time, (SELECT setting_value FROM system_settings WHERE setting_key = 'global_work_start_time' LIMIT 1)) AS work_start_time
             FROM users u
             WHERE u.status = 'active'
@@ -2818,9 +2826,26 @@ function sendShiftRemindersAndCheckInAlerts($conn) {
                                     $insNotif->execute();
                                     $insNotif->close();
 
-                                    // 2. Send Zalo message if token & chat_id available
+                                    // 2. Send Zalo message if available
                                     if (!empty($zaloBotToken) && !empty($user['zalo_chat_id']) && function_exists('sendZaloMessage')) {
-                                        sendZaloMessage($zaloBotToken, $user['zalo_chat_id'], $msg, false);
+                                        @sendZaloMessage($zaloBotToken, $user['zalo_chat_id'], $msg, false);
+                                    }
+
+                                    // 3. Send Telegram message if available
+                                    if (!empty($telegramBotToken) && !empty($user['telegram_chat_id']) && function_exists('sendTelegramMessage')) {
+                                        $tgText = "⏰ <b>[ NHẮC NHỞ CHẤM CÔNG ]</b>\n\nXin chào <b>" . htmlspecialchars($user['full_name']) . "</b>,\nĐã đến giờ chấm công cho ca làm việc hôm nay (" . $workStart . ")!\nVui lòng truy cập hệ thống để thực hiện chấm công đúng giờ.\nChúc bạn một ngày làm việc hiệu quả!";
+                                        @sendTelegramMessage($telegramBotToken, $user['telegram_chat_id'], $tgText);
+                                    }
+
+                                    // 4. Send Email notification if email exists
+                                    if (!empty($user['email']) && function_exists('sendEmailNotification')) {
+                                        $emailSubject = "[RICH LAND] Nhắc nhở chấm công đi làm";
+                                        $emailTitle = "NHẮC NHỞ CHẤM CÔNG";
+                                        $emailContent = "Chào <strong>" . htmlspecialchars($user['full_name']) . "</strong>,<br/><br/>" .
+                                                        "Đã đến giờ chấm công cho ca làm việc hôm nay (lúc " . htmlspecialchars($workStart) . ").<br/>" .
+                                                        "Vui lòng truy cập hệ thống để thực hiện điểm danh/chấm công đúng giờ quy định.<br/><br/>" .
+                                                        "Chúc bạn một ngày làm việc hiệu quả!";
+                                        @sendEmailNotification($user['email'], $emailSubject, $emailTitle, $emailContent, 'Chấm công ngay', true);
                                     }
                                     
                                     $ins = $conn->prepare("INSERT IGNORE INTO sent_notifications (user_id, notify_type, notify_date) VALUES (?, 'checkin_reminder', ?)");
@@ -2828,7 +2853,7 @@ function sendShiftRemindersAndCheckInAlerts($conn) {
                                     $ins->execute();
                                     $ins->close();
                                     
-                                    logSync("Sent check-in reminder to Sale: {$user['full_name']} (User ID: {$userId})");
+                                    logSync("Sent check-in reminder (Web/Zalo/Telegram/Email) to Sale: {$user['full_name']} (User ID: {$userId})");
                                 }
                             }
                         }
@@ -2858,7 +2883,7 @@ function sendShiftRemindersAndCheckInAlerts($conn) {
                 if ($nowTimestamp >= $reminderTimestamp && $nowTimestamp < $nightStartTimestamp) {
                     // Get all active approved night shift registrations for today
                     $nightRegsQuery = "
-                        SELECT n.user_id, u.full_name, u.zalo_chat_id
+                        SELECT n.user_id, u.full_name, u.email, u.zalo_chat_id, u.telegram_chat_id
                         FROM night_shift_registrations n
                         JOIN users u ON n.user_id = u.id
                         WHERE n.shift_date = ? AND n.approved = 1 AND u.status = 'active'
@@ -2888,7 +2913,24 @@ function sendShiftRemindersAndCheckInAlerts($conn) {
 
                             // 2. Send Zalo message if available
                             if (!empty($zaloBotToken) && !empty($reg['zalo_chat_id']) && function_exists('sendZaloMessage')) {
-                                sendZaloMessage($zaloBotToken, $reg['zalo_chat_id'], $msg, false);
+                                @sendZaloMessage($zaloBotToken, $reg['zalo_chat_id'], $msg, false);
+                            }
+
+                            // 3. Send Telegram message if available
+                            if (!empty($telegramBotToken) && !empty($reg['telegram_chat_id']) && function_exists('sendTelegramMessage')) {
+                                $tgText = "🌙 <b>[ NHẮC NHỞ LỊCH TRỰC ĐÊM ]</b>\n\nXin chào <b>" . htmlspecialchars($reg['full_name']) . "</b>,\nHôm nay bạn có lịch trực đêm từ <b>{$nightShiftStart}</b> đến <b>{$nightShiftEnd}</b>.\nChúc bạn buổi tối vui vẻ và trực ca hiệu quả!";
+                                @sendTelegramMessage($telegramBotToken, $reg['telegram_chat_id'], $tgText);
+                            }
+
+                            // 4. Send Email notification if email exists
+                            if (!empty($reg['email']) && function_exists('sendEmailNotification')) {
+                                $emailSubject = "[RICH LAND] Nhắc nhở lịch trực đêm hôm nay";
+                                $emailTitle = "NHẮC NHỞ LỊCH TRỰC ĐÊM";
+                                $emailContent = "Chào <strong>" . htmlspecialchars($reg['full_name']) . "</strong>,<br/><br/>" .
+                                                "Hệ thống ghi nhận bạn có lịch trực ca đêm hôm nay (từ " . htmlspecialchars($nightShiftStart) . " đến " . htmlspecialchars($nightShiftEnd) . ").<br/>" .
+                                                "Vui lòng chú ý thời gian để nhận lead/hỗ trợ khách hàng theo đúng ca trực.<br/><br/>" .
+                                                "Chúc bạn buổi tối trực ca thuận lợi!";
+                                @sendEmailNotification($reg['email'], $emailSubject, $emailTitle, $emailContent, 'Xem lịch trực', true);
                             }
                             
                             $ins = $conn->prepare("INSERT IGNORE INTO sent_notifications (user_id, notify_type, notify_date) VALUES (?, 'night_duty_reminder', ?)");
@@ -2896,7 +2938,7 @@ function sendShiftRemindersAndCheckInAlerts($conn) {
                             $ins->execute();
                             $ins->close();
                             
-                            logSync("Sent night shift reminder to Sale: {$reg['full_name']} (User ID: {$userId})");
+                            logSync("Sent night shift reminder (Web/Zalo/Telegram/Email) to Sale: {$reg['full_name']} (User ID: {$userId})");
                         }
                     }
                     $stmtRegs->close();
