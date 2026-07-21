@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { 
   X, CheckSquare, Check, Paperclip, Link2, MessageSquare, Calendar, User, Clock, 
   Settings, AlertCircle, Trash2, Plus, Send, Share2, FileText, Globe, 
-  Users, RefreshCw, Layers, CheckSquare2, Info, Receipt, Scale, ArrowUpRight, Search
+  Users, RefreshCw, Layers, CheckSquare2, Info, Receipt, Scale, ArrowUpRight, Search, Save
 } from 'lucide-react';
 import api from '../api/axios';
 import toast from 'react-hot-toast';
@@ -1145,7 +1145,7 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
                 transition: 'all 0.2s'
               }}
             >
-              {isSaving ? <RefreshCw className="spin" size={14} /> : <CheckSquare2 size={14} />}
+              {isSaving ? <RefreshCw className="spin" size={14} /> : <Save size={16} />}
               {!isMobileOrTablet && <span>{t('Lưu thay đổi')}</span>}
             </button>
 
