@@ -60,6 +60,12 @@ const EVENT_CATEGORIES = [
         icon: '📋'
       },
       {
+        key: 'ATTENDANCE_REMINDER',
+        name: 'Nhắc nhở Chấm công & Điểm danh hàng ngày',
+        desc: 'Thông báo nhắc nhở trước giờ vào ca làm việc hành chính hàng ngày',
+        icon: '⏰'
+      },
+      {
         key: 'ATTENDANCE_APPROVAL_RESULT',
         name: 'Kết quả Phê duyệt Chấm công',
         desc: 'Khi yêu cầu đi trễ hoặc bổ sung công của bạn được Admin/Quản lý duyệt hoặc từ chối',

@@ -2784,6 +2784,36 @@ function sendShiftRemindersAndCheckInAlerts($conn) {
         @require_once __DIR__ . '/mailer.php';
     }
 
+    // Helper lambda to check user matrix config for reminders
+    $userMatrixCache = [];
+    $getSaleMatrixSetting = function($conn, $userId, $eventType, $channel) use (&$userMatrixCache) {
+        if (!isset($userMatrixCache[$userId])) {
+            $userMatrixCache[$userId] = [];
+            $stmtM = $conn->prepare("SELECT matrix_config FROM user_notification_settings WHERE user_id = ? LIMIT 1");
+            if ($stmtM) {
+                $stmtM->bind_param("i", $userId);
+                $stmtM->execute();
+                $rowM = $stmtM->get_result()->fetch_assoc();
+                $stmtM->close();
+                if ($rowM && !empty($rowM['matrix_config'])) {
+                    $userMatrixCache[$userId] = json_decode($rowM['matrix_config'], true) ?: [];
+                }
+            }
+        }
+        $cfg = $userMatrixCache[$userId];
+        if (!isset($cfg[$eventType])) {
+            return true; // Default enabled if not customized
+        }
+        $evt = $cfg[$eventType];
+        if (isset($evt['master']) && !$evt['master']) {
+            return false;
+        }
+        if (isset($evt[$channel])) {
+            return (bool)$evt[$channel];
+        }
+        return true;
+    };
+
     // A. Check-in reminders
     if ($attendanceEnabled === 1) {
         // Query active users who have not checked in today
@@ -2831,49 +2861,57 @@ function sendShiftRemindersAndCheckInAlerts($conn) {
                                     $msg = "⏰ Đã đến giờ chấm công! Vui lòng thực hiện chấm công đi làm đúng giờ quy định. Chúc bạn một ngày làm việc hiệu quả!";
                                     
                                     // 1. Send Web In-App Notification Bell (Isolated)
-                                    try {
-                                        $insNotif = $conn->prepare("INSERT INTO notifications (user_id, tenant_id, title, body, type, link) VALUES (?, 1, '⏰ Nhắc nhở chấm công', ?, 'attendance_reminder', '/attendance')");
-                                        if ($insNotif) {
-                                            $insNotif->bind_param("is", $userId, $msg);
-                                            $insNotif->execute();
-                                            $insNotif->close();
+                                    if ($getSaleMatrixSetting($conn, $userId, 'ATTENDANCE_REMINDER', 'bell')) {
+                                        try {
+                                            $insNotif = $conn->prepare("INSERT INTO notifications (user_id, tenant_id, title, body, type, link) VALUES (?, 1, '⏰ Nhắc nhở chấm công', ?, 'attendance_reminder', '/attendance')");
+                                            if ($insNotif) {
+                                                $insNotif->bind_param("is", $userId, $msg);
+                                                $insNotif->execute();
+                                                $insNotif->close();
+                                            }
+                                        } catch (Throwable $eWeb) {
+                                            error_log("Checkin Reminder Web Notif Error: " . $eWeb->getMessage());
                                         }
-                                    } catch (Throwable $eWeb) {
-                                        error_log("Checkin Reminder Web Notif Error: " . $eWeb->getMessage());
                                     }
 
                                     // 2. Send Zalo message if available (Isolated)
-                                    try {
-                                        if (!empty($zaloBotToken) && !empty($user['zalo_chat_id']) && function_exists('sendZaloMessage')) {
-                                            sendZaloMessage($zaloBotToken, $user['zalo_chat_id'], $msg, false);
+                                    if ($getSaleMatrixSetting($conn, $userId, 'ATTENDANCE_REMINDER', 'zalo')) {
+                                        try {
+                                            if (!empty($zaloBotToken) && !empty($user['zalo_chat_id']) && function_exists('sendZaloMessage')) {
+                                                sendZaloMessage($zaloBotToken, $user['zalo_chat_id'], $msg, false);
+                                            }
+                                        } catch (Throwable $eZalo) {
+                                            error_log("Checkin Reminder Zalo Error: " . $eZalo->getMessage());
                                         }
-                                    } catch (Throwable $eZalo) {
-                                        error_log("Checkin Reminder Zalo Error: " . $eZalo->getMessage());
                                     }
 
                                     // 3. Send Telegram message if available (Isolated)
-                                    try {
-                                        if (!empty($telegramBotToken) && !empty($user['telegram_chat_id']) && function_exists('sendTelegramMessage')) {
-                                            $tgText = "⏰ <b>[ NHẮC NHỞ CHẤM CÔNG ]</b>\n\nXin chào <b>" . htmlspecialchars($user['full_name']) . "</b>,\nĐã đến giờ chấm công cho ca làm việc hôm nay (" . $workStart . ")!\nVui lòng truy cập hệ thống để thực hiện chấm công đúng giờ.\nChúc bạn một ngày làm việc hiệu quả!";
-                                            sendTelegramMessage($telegramBotToken, $user['telegram_chat_id'], $tgText);
+                                    if ($getSaleMatrixSetting($conn, $userId, 'ATTENDANCE_REMINDER', 'telegram')) {
+                                        try {
+                                            if (!empty($telegramBotToken) && !empty($user['telegram_chat_id']) && function_exists('sendTelegramMessage')) {
+                                                $tgText = "⏰ <b>[ NHẮC NHỞ CHẤM CÔNG ]</b>\n\nXin chào <b>" . htmlspecialchars($user['full_name']) . "</b>,\nĐã đến giờ chấm công cho ca làm việc hôm nay (" . $workStart . ")!\nVui lòng truy cập hệ thống để thực hiện chấm công đúng giờ.\nChúc bạn một ngày làm việc hiệu quả!";
+                                                sendTelegramMessage($telegramBotToken, $user['telegram_chat_id'], $tgText);
+                                            }
+                                        } catch (Throwable $eTg) {
+                                            error_log("Checkin Reminder Telegram Error: " . $eTg->getMessage());
                                         }
-                                    } catch (Throwable $eTg) {
-                                        error_log("Checkin Reminder Telegram Error: " . $eTg->getMessage());
                                     }
 
                                     // 4. Send Email notification if email exists (Isolated)
-                                    try {
-                                        if (!empty($user['email']) && function_exists('sendEmailNotification')) {
-                                            $emailSubject = "[RICH LAND] Nhắc nhở chấm công đi làm";
-                                            $emailTitle = "NHẮC NHỞ CHẤM CÔNG";
-                                            $emailContent = "Chào <strong>" . htmlspecialchars($user['full_name']) . "</strong>,<br/><br/>" .
-                                                            "Đã đến giờ chấm công cho ca làm việc hôm nay (lúc " . htmlspecialchars($workStart) . ").<br/>" .
-                                                            "Vui lòng truy cập hệ thống để thực hiện điểm danh/chấm công đúng giờ quy định.<br/><br/>" .
-                                                            "Chúc bạn một ngày làm việc hiệu quả!";
-                                            sendEmailNotification($user['email'], $emailSubject, $emailTitle, $emailContent, 'Chấm công ngay', true);
+                                    if ($getSaleMatrixSetting($conn, $userId, 'ATTENDANCE_REMINDER', 'email')) {
+                                        try {
+                                            if (!empty($user['email']) && function_exists('sendEmailNotification')) {
+                                                $emailSubject = "[RICH LAND] Nhắc nhở chấm công đi làm";
+                                                $emailTitle = "NHẮC NHỞ CHẤM CÔNG";
+                                                $emailContent = "Chào <strong>" . htmlspecialchars($user['full_name']) . "</strong>,<br/><br/>" .
+                                                                "Đã đến giờ chấm công cho ca làm việc hôm nay (lúc " . htmlspecialchars($workStart) . ").<br/>" .
+                                                                "Vui lòng truy cập hệ thống để thực hiện điểm danh/chấm công đúng giờ quy định.<br/><br/>" .
+                                                                "Chúc bạn một ngày làm việc hiệu quả!";
+                                                sendEmailNotification($user['email'], $emailSubject, $emailTitle, $emailContent, 'Chấm công ngay', true);
+                                            }
+                                        } catch (Throwable $eMail) {
+                                            error_log("Checkin Reminder Email Error: " . $eMail->getMessage());
                                         }
-                                    } catch (Throwable $eMail) {
-                                        error_log("Checkin Reminder Email Error: " . $eMail->getMessage());
                                     }
                                     
                                     $ins = $conn->prepare("INSERT IGNORE INTO sent_notifications (user_id, notify_type, notify_date) VALUES (?, 'checkin_reminder', ?)");
@@ -2934,49 +2972,57 @@ function sendShiftRemindersAndCheckInAlerts($conn) {
                             $msg = "🌙 Hôm nay bạn có đăng ký trực đêm thời gian từ {$nightShiftStart} đến {$nightShiftEnd}. Chúc bạn buổi tối vui vẻ và trực ca hiệu quả!";
                             
                             // 1. Send Web In-App Notification Bell (Isolated)
-                            try {
-                                $insNotif = $conn->prepare("INSERT INTO notifications (user_id, tenant_id, title, body, type, link) VALUES (?, 1, '🌙 Nhắc nhở ca trực đêm', ?, 'night_duty_reminder', '/attendance')");
-                                if ($insNotif) {
-                                    $insNotif->bind_param("is", $userId, $msg);
-                                    $insNotif->execute();
-                                    $insNotif->close();
+                            if ($getSaleMatrixSetting($conn, $userId, 'NIGHT_SHIFT_BOOKING', 'bell')) {
+                                try {
+                                    $insNotif = $conn->prepare("INSERT INTO notifications (user_id, tenant_id, title, body, type, link) VALUES (?, 1, '🌙 Nhắc nhở ca trực đêm', ?, 'night_duty_reminder', '/attendance')");
+                                    if ($insNotif) {
+                                        $insNotif->bind_param("is", $userId, $msg);
+                                        $insNotif->execute();
+                                        $insNotif->close();
+                                    }
+                                } catch (Throwable $eWeb) {
+                                    error_log("Night Duty Web Notif Error: " . $eWeb->getMessage());
                                 }
-                            } catch (Throwable $eWeb) {
-                                error_log("Night Duty Web Notif Error: " . $eWeb->getMessage());
                             }
 
                             // 2. Send Zalo message if available (Isolated)
-                            try {
-                                if (!empty($zaloBotToken) && !empty($reg['zalo_chat_id']) && function_exists('sendZaloMessage')) {
-                                    sendZaloMessage($zaloBotToken, $reg['zalo_chat_id'], $msg, false);
+                            if ($getSaleMatrixSetting($conn, $userId, 'NIGHT_SHIFT_BOOKING', 'zalo')) {
+                                try {
+                                    if (!empty($zaloBotToken) && !empty($reg['zalo_chat_id']) && function_exists('sendZaloMessage')) {
+                                        sendZaloMessage($zaloBotToken, $reg['zalo_chat_id'], $msg, false);
+                                    }
+                                } catch (Throwable $eZalo) {
+                                    error_log("Night Duty Zalo Error: " . $eZalo->getMessage());
                                 }
-                            } catch (Throwable $eZalo) {
-                                error_log("Night Duty Zalo Error: " . $eZalo->getMessage());
                             }
 
                             // 3. Send Telegram message if available (Isolated)
-                            try {
-                                if (!empty($telegramBotToken) && !empty($reg['telegram_chat_id']) && function_exists('sendTelegramMessage')) {
-                                    $tgText = "🌙 <b>[ NHẮC NHỞ LỊCH TRỰC ĐÊM ]</b>\n\nXin chào <b>" . htmlspecialchars($reg['full_name']) . "</b>,\nHôm nay bạn có lịch trực đêm từ <b>{$nightShiftStart}</b> đến <b>{$nightShiftEnd}</b>.\nChúc bạn buổi tối vui vẻ và trực ca hiệu quả!";
-                                    sendTelegramMessage($telegramBotToken, $reg['telegram_chat_id'], $tgText);
+                            if ($getSaleMatrixSetting($conn, $userId, 'NIGHT_SHIFT_BOOKING', 'telegram')) {
+                                try {
+                                    if (!empty($telegramBotToken) && !empty($reg['telegram_chat_id']) && function_exists('sendTelegramMessage')) {
+                                        $tgText = "🌙 <b>[ NHẮC NHỞ LỊCH TRỰC ĐÊM ]</b>\n\nXin chào <b>" . htmlspecialchars($reg['full_name']) . "</b>,\nHôm nay bạn có lịch trực đêm từ <b>{$nightShiftStart}</b> đến <b>{$nightShiftEnd}</b>.\nChúc bạn buổi tối vui vẻ và trực ca hiệu quả!";
+                                        sendTelegramMessage($telegramBotToken, $reg['telegram_chat_id'], $tgText);
+                                    }
+                                } catch (Throwable $eTg) {
+                                    error_log("Night Duty Telegram Error: " . $eTg->getMessage());
                                 }
-                            } catch (Throwable $eTg) {
-                                error_log("Night Duty Telegram Error: " . $eTg->getMessage());
                             }
 
                             // 4. Send Email notification if email exists (Isolated)
-                            try {
-                                if (!empty($reg['email']) && function_exists('sendEmailNotification')) {
-                                    $emailSubject = "[RICH LAND] Nhắc nhở lịch trực đêm hôm nay";
-                                    $emailTitle = "NHẮC NHỞ LỊCH TRỰC ĐÊM";
-                                    $emailContent = "Chào <strong>" . htmlspecialchars($reg['full_name']) . "</strong>,<br/><br/>" .
-                                                    "Hệ thống ghi nhận bạn có lịch trực ca đêm hôm nay (từ " . htmlspecialchars($nightShiftStart) . " đến " . htmlspecialchars($nightShiftEnd) . ").<br/>" .
-                                                    "Vui lòng chú ý thời gian để nhận lead/hỗ trợ khách hàng theo đúng ca trực.<br/><br/>" .
-                                                    "Chúc bạn buổi tối trực ca thuận lợi!";
-                                    sendEmailNotification($reg['email'], $emailSubject, $emailTitle, $emailContent, 'Xem lịch trực', true);
+                            if ($getSaleMatrixSetting($conn, $userId, 'NIGHT_SHIFT_BOOKING', 'email')) {
+                                try {
+                                    if (!empty($reg['email']) && function_exists('sendEmailNotification')) {
+                                        $emailSubject = "[RICH LAND] Nhắc nhở lịch trực đêm hôm nay";
+                                        $emailTitle = "NHẮC NHỞ LỊCH TRỰC ĐÊM";
+                                        $emailContent = "Chào <strong>" . htmlspecialchars($reg['full_name']) . "</strong>,<br/><br/>" .
+                                                        "Hệ thống ghi nhận bạn có lịch trực ca đêm hôm nay (từ " . htmlspecialchars($nightShiftStart) . " đến " . htmlspecialchars($nightShiftEnd) . ").<br/>" .
+                                                        "Vui lòng chú ý thời gian để nhận lead/hỗ trợ khách hàng theo đúng ca trực.<br/><br/>" .
+                                                        "Chúc bạn buổi tối trực ca thuận lợi!";
+                                        sendEmailNotification($reg['email'], $emailSubject, $emailTitle, $emailContent, 'Xem lịch trực', true);
+                                    }
+                                } catch (Throwable $eMail) {
+                                    error_log("Night Duty Email Error: " . $eMail->getMessage());
                                 }
-                            } catch (Throwable $eMail) {
-                                error_log("Night Duty Email Error: " . $eMail->getMessage());
                             }
                             
                             $ins = $conn->prepare("INSERT IGNORE INTO sent_notifications (user_id, notify_type, notify_date) VALUES (?, 'night_duty_reminder', ?)");
