@@ -318,13 +318,13 @@ class ActivityController {
                 OR a.created_by = ?
                 OR a.approver_id = ?
                 OR FIND_IN_SET(?, a.participant_ids)
-                OR (a.related_type = 'contact' AND EXISTS (
+                OR (a.related_type = \'contact\' AND EXISTS (
                     SELECT 1 FROM contacts ct WHERE ct.id = a.related_id AND (ct.owner_id = ? OR FIND_IN_SET(?, ct.collaborator_ids) OR ct.id IN (
                         SELECT contact_id FROM cooperation_slips 
                         WHERE shares_json IS NOT NULL AND JSON_VALID(shares_json) AND JSON_CONTAINS(JSON_KEYS(shares_json), JSON_QUOTE(CAST(? AS CHAR)))
                     ))
                 )) 
-                OR (a.related_type = 'deal' AND EXISTS (
+                OR (a.related_type = \'deal\' AND EXISTS (
                     SELECT 1 FROM deals d LEFT JOIN contacts ct ON d.contact_id = ct.id WHERE d.id = a.related_id AND (
                         d.owner_id = ? OR ct.owner_id = ? OR FIND_IN_SET(?, ct.collaborator_ids) OR ct.id IN (
                             SELECT contact_id FROM cooperation_slips 
