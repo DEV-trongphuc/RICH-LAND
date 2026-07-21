@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { CustomModal } from './CustomModal';
-import { Power, CheckCircle, AlertTriangle, ShieldCheck, ExternalLink, RotateCcw, ArrowLeft, Check, Copy, Smartphone } from 'lucide-react';
+import { Power, CheckCircle, AlertTriangle, ShieldCheck, ExternalLink, RotateCcw, ArrowLeft, Check, Copy, Smartphone, RefreshCw, Save } from 'lucide-react';
 import { fetchAPI } from '../../utils/api';
 import { useAuthStore } from '../../store/authStore';
 import toast from 'react-hot-toast';
@@ -428,9 +428,9 @@ const getDefaultConfig = (key: string): EventConfig => {
     >
       <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', fontFamily: 'system-ui, -apple-system, sans-serif', color: '#1e293b' }}>
 
-        {/* Top Header Bar with Back Button */}
+        {/* Top Header Bar with Back Button & Mobile Actions */}
         {onBack && (
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start', marginBottom: '-4px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '-4px' }}>
             <button
               type="button"
               onClick={onBack}
@@ -448,8 +448,58 @@ const getDefaultConfig = (key: string): EventConfig => {
               }}
             >
               <ArrowLeft size={16} />
-              Quay lại danh sách thông báo
+              {isMobile ? 'Quay lại' : 'Quay lại danh sách thông báo'}
             </button>
+
+            {/* Mobile Right Action Buttons (Reset Icon & Save Button) */}
+            {isMobile && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <button
+                  type="button"
+                  onClick={handleResetDefault}
+                  title="Khôi phục mặc định"
+                  style={{
+                    width: 32,
+                    height: 32,
+                    borderRadius: 8,
+                    background: '#f1f5f9',
+                    border: '1px solid #cbd5e1',
+                    color: '#475569',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: 'pointer'
+                  }}
+                >
+                  <RotateCcw size={15} />
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSave}
+                  disabled={saving}
+                  title="Lưu cấu hình"
+                  style={{
+                    height: 32,
+                    padding: '0 12px',
+                    borderRadius: 8,
+                    background: '#BD1D2D',
+                    color: 'white',
+                    border: 'none',
+                    fontSize: '0.8125rem',
+                    fontWeight: 700,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    cursor: 'pointer',
+                    boxShadow: '0 2px 6px rgba(189, 29, 45, 0.25)',
+                    opacity: saving ? 0.6 : 1
+                  }}
+                >
+                  {saving ? <RefreshCw size={14} className="spin" /> : <Save size={15} />}
+                  <span>Lưu</span>
+                </button>
+              </div>
+            )}
           </div>
         )}
 
@@ -1038,95 +1088,96 @@ const getDefaultConfig = (key: string): EventConfig => {
           </div>
         )}
 
-        {/* Footer Actions (Sticky Bottom Bar - Flush to bottom) */}
-        <div style={{
-          position: 'sticky',
-          bottom: isMobile ? '-16px' : '-24px',
-          margin: isMobile ? '16px -16px -16px -16px' : '20px -24px -24px -24px',
-          padding: isMobile ? '12px 16px' : '14px 24px',
-          background: '#ffffff',
-          zIndex: 50,
-          display: 'flex',
-          flexDirection: isMobile ? 'column' : 'row',
-          alignItems: isMobile ? 'stretch' : 'center',
-          justifyContent: 'space-between',
-          borderTop: '1px solid #e2e8f0',
-          boxShadow: '0 -6px 20px rgba(0, 0, 0, 0.07)',
-          borderBottomLeftRadius: '16px',
-          borderBottomRightRadius: '16px',
-          gap: isMobile ? '10px' : '16px'
-        }}>
-          {/* Left Side: Hủy bỏ button & Tip */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '14px', flexWrap: 'wrap' }}>
-            <button
-              type="button"
-              onClick={onClose}
-              style={{
-                padding: isMobile ? '6px 14px' : '8px 18px',
-                fontSize: '0.8125rem',
-                fontWeight: 600,
-                color: '#64748b',
-                background: '#f8fafc',
-                border: '1px solid #cbd5e1',
-                borderRadius: '10px',
-                cursor: 'pointer',
-                whiteSpace: 'nowrap'
-              }}
-            >
-              Hủy bỏ
-            </button>
-            <div style={{ fontSize: '0.72rem', color: '#64748b', whiteSpace: 'nowrap' }}>
-              💡 <strong>Mẹo:</strong> Chuông In-App luôn tự động.
+        {/* Footer Actions (Sticky Bottom Bar on Desktop) */}
+        {!isMobile && (
+          <div style={{
+            position: 'sticky',
+            bottom: '-24px',
+            margin: '20px -24px -24px -24px',
+            padding: '14px 24px',
+            background: '#ffffff',
+            zIndex: 50,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            borderTop: '1px solid #e2e8f0',
+            boxShadow: '0 -6px 20px rgba(0, 0, 0, 0.07)',
+            borderBottomLeftRadius: '16px',
+            borderBottomRightRadius: '16px',
+            gap: '16px'
+          }}>
+            {/* Left Side: Hủy bỏ button & Tip */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+              <button
+                type="button"
+                onClick={onClose}
+                style={{
+                  padding: '8px 18px',
+                  fontSize: '0.875rem',
+                  fontWeight: 600,
+                  color: '#64748b',
+                  background: '#f8fafc',
+                  border: '1px solid #cbd5e1',
+                  borderRadius: '10px',
+                  cursor: 'pointer',
+                  whiteSpace: 'nowrap'
+                }}
+              >
+                Hủy bỏ
+              </button>
+              <div style={{ fontSize: '0.75rem', color: '#64748b', whiteSpace: 'nowrap' }}>
+                💡 <strong>Mẹo:</strong> Chuông In-App luôn duy trì tự động.
+              </div>
+            </div>
+
+            {/* Right Side: Reset & Save */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0 }}>
+              <button
+                type="button"
+                onClick={handleResetDefault}
+                title="Khôi phục về cài đặt mặc định ban đầu"
+                style={{
+                  padding: '8px 14px',
+                  fontSize: '0.8125rem',
+                  fontWeight: 600,
+                  color: '#475569',
+                  background: '#f1f5f9',
+                  border: '1px solid #cbd5e1',
+                  borderRadius: '10px',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  whiteSpace: 'nowrap'
+                }}
+              >
+                <RotateCcw size={14} />
+                Khôi phục mặc định
+              </button>
+              <button
+                type="button"
+                onClick={handleSave}
+                disabled={saving}
+                style={{
+                  padding: '10px 20px',
+                  fontSize: '0.875rem',
+                  fontWeight: 700,
+                  color: 'white',
+                  background: '#BD1D2D',
+                  border: 'none',
+                  borderRadius: '12px',
+                  cursor: 'pointer',
+                  boxShadow: '0 4px 14px rgba(189, 29, 45, 0.28)',
+                  opacity: saving ? 0.6 : 1,
+                  transition: 'all 0.2s ease',
+                  whiteSpace: 'nowrap'
+                }}
+              >
+                {saving ? "Đang lưu..." : "Lưu Cấu Hình Chuyên Sâu"}
+              </button>
             </div>
           </div>
-
-          {/* Right Side: Reset & Save */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0, justifyContent: isMobile ? 'flex-end' : 'flex-start' }}>
-            <button
-              type="button"
-              onClick={handleResetDefault}
-              title="Khôi phục về cài đặt mặc định ban đầu"
-              style={{
-                padding: isMobile ? '8px 10px' : '8px 14px',
-                fontSize: isMobile ? '0.75rem' : '0.8125rem',
-                fontWeight: 600,
-                color: '#475569',
-                background: '#f1f5f9',
-                border: '1px solid #cbd5e1',
-                borderRadius: '10px',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '4px',
-                whiteSpace: 'nowrap'
-              }}
-            >
-              <RotateCcw size={14} />
-              {isMobile ? 'Mặc định' : 'Khôi phục mặc định'}
-            </button>
-            <button
-              type="button"
-              onClick={handleSave}
-              disabled={saving}
-              style={{
-                padding: isMobile ? '8px 14px' : '10px 20px',
-                fontSize: isMobile ? '0.8125rem' : '0.875rem',
-                fontWeight: 700,
-                color: 'white',
-                background: '#BD1D2D',
-                border: 'none',
-                borderRadius: '12px',
-                cursor: 'pointer',
-                boxShadow: '0 4px 14px rgba(189, 29, 45, 0.28)',
-                opacity: saving ? 0.6 : 1,
-                transition: 'all 0.2s ease',
-                whiteSpace: 'nowrap'
-              }}
-            >
-              {saving ? "Đang lưu..." : (isMobile ? "Lưu cấu hình" : "Lưu Cấu Hình Chuyên Sâu")}
-            </button>
-          </div>
-        </div>
+        )}
 
       </div>
     </CustomModal>
