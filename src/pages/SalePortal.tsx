@@ -2665,31 +2665,11 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
   };
 
   useEffect(() => {
-    if (checkInModalOpen) {
-      startCamera();
-    } else {
-      stopCamera();
-    }
-    return () => {
-      stopCamera();
-    };
-  }, [checkInModalOpen]);
-
-  useEffect(() => {
-    const handleTriggerCheckIn = () => {
-      setCheckInModalOpen(true);
-    };
-    window.addEventListener('trigger-checkin-modal', handleTriggerCheckIn);
-    
-    // Check localStorage flag
+    // Check localStorage flag for check-in
     if (localStorage.getItem('trigger_checkin') === '1') {
       localStorage.removeItem('trigger_checkin');
-      setCheckInModalOpen(true);
+      window.dispatchEvent(new CustomEvent('trigger-checkin-modal'));
     }
-
-    return () => {
-      window.removeEventListener('trigger-checkin-modal', handleTriggerCheckIn);
-    };
   }, []);
 
   useEffect(() => {
@@ -6246,7 +6226,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
       issues.push({
         type: 'checkin',
         text: t('Bạn chưa hoàn thành chấm công ngày hôm nay.'),
-        action: () => setCheckInModalOpen(true)
+        action: () => window.dispatchEvent(new CustomEvent('trigger-checkin-modal'))
       });
     }
 
@@ -6832,7 +6812,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
           <div style={{ display: 'flex', gap: '8px', flexShrink: 0, flexWrap: 'nowrap', width: isMobile ? '100%' : 'auto', justifyContent: isMobile ? 'stretch' : 'flex-end' }}>
             {isCheckInLoaded && !isAdmin && !isOvertime && (!todayCheckIn || todayCheckIn.status === 'rejected') && (
               <button 
-                onClick={() => setCheckInModalOpen(true)}
+                onClick={() => window.dispatchEvent(new CustomEvent('trigger-checkin-modal'))}
                 className="welcome-action-btn primary-btn"
               >
                 <Camera size={14} />
@@ -13001,7 +12981,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                     }}
                     onClick={() => {
                       if (todayCheckIn.status === 'rejected') {
-                        setCheckInModalOpen(true);
+                        window.dispatchEvent(new CustomEvent('trigger-checkin-modal'));
                       }
                     }}
                     title={
@@ -13037,7 +13017,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                       height: 'auto',
                       backgroundColor: '#BD1D2D',
                     }}
-                    onClick={() => setCheckInModalOpen(true)}
+                    onClick={() => window.dispatchEvent(new CustomEvent('trigger-checkin-modal'))}
                   >
                     <Camera size={14} />
                     {t('Chấm công')}
@@ -13442,210 +13422,6 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
         </div>
       )}
 
-      {/* Check-in Modal */}
-      {/* Check-in Modal */}
-      {checkInModalOpen && (
-        <CustomModal
-          isOpen={checkInModalOpen}
-          onClose={() => setCheckInModalOpen(false)}
-          title={t("CHẤM CÔNG HÀNG NGÀY")}
-          width="500px"
-        >
-          {todayCheckIn && todayCheckIn.status !== 'rejected' ? (
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1.25rem', padding: '1rem', textAlign: 'center' }}>
-              <div style={{
-                width: '64px',
-                height: '64px',
-                borderRadius: '50%',
-                background: todayCheckIn.status === 'approved' ? 'rgba(16, 185, 129, 0.1)' : 'rgba(245, 158, 11, 0.1)',
-                color: todayCheckIn.status === 'approved' ? 'var(--color-success)' : 'var(--color-warning)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: '2.25rem',
-                fontWeight: 'bold'
-              }}>
-                {todayCheckIn.status === 'approved' ? '✓' : '⏳'}
-              </div>
-              <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 650, color: 'var(--color-text)' }}>
-                {todayCheckIn.status === 'approved' ? t('Đã Chấm công Thành công') : t('Đang chờ phê duyệt đi trễ')}
-              </h3>
-              <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', margin: 0 }}>
-                {t('Thời gian chấm công:')} <b>{todayCheckIn.check_in_time ? todayCheckIn.check_in_time.substring(0, 5) : ''}</b> ngày {todayCheckIn.check_in_date}
-              </p>
-              {todayCheckIn.reason && (
-                <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-light)', margin: '4px 0 0', fontStyle: 'italic', background: 'var(--color-bg)', padding: '6px 12px', borderRadius: '6px', border: '1px dashed var(--color-border)' }}>
-                  "{todayCheckIn.reason}"
-                </p>
-              )}
-              <div style={{ width: '100%', display: 'flex', justifyContent: 'center', marginTop: '1rem' }}>
-                <button className="btn primary" onClick={() => setCheckInModalOpen(false)} style={{ backgroundColor: '#BD1D2D', border: 'none', borderRadius: '20px', padding: '8px 24px', fontWeight: 600 }}>
-                  {t('Đồng ý')}
-                </button>
-              </div>
-            </div>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-              <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', margin: 0 }}>
-                {t('Vui lòng chụp ảnh selfie khuôn mặt của bạn để thực hiện chấm công và nhận data hôm nay.')}
-              </p>
-
-              <div style={{ display: 'flex', justifyContent: 'center' }}>
-                <div style={{
-                  backgroundColor: 'var(--color-bg)',
-                  color: 'var(--color-text)',
-                  padding: '6px 14px',
-                  borderRadius: '20px',
-                  fontSize: '0.75rem',
-                  fontWeight: 700,
-                  border: '1px solid var(--color-border)'
-                }}>
-                  {t('Giờ vào làm quy định:')} <span style={{ color: '#BD1D2D' }}>{impersonatedSale ? (impersonatedSale.work_start_time || '08:00') : (data.consultant_profile?.work_start_time || '08:00')}</span>
-                </div>
-              </div>
-
-              <div style={{
-                position: 'relative',
-                width: '260px',
-                height: '260px',
-                backgroundColor: '#000',
-                borderRadius: '50%',
-                overflow: 'hidden',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                border: '4px solid var(--color-border)',
-                margin: '0 auto',
-                boxShadow: '0 8px 24px rgba(0,0,0,0.12)'
-              }}>
-                {capturedImage ? (
-                  <img
-                    src={capturedImage}
-                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                    alt="Captured Selfie"
-                  />
-                ) : isCameraActive ? (
-                  <video
-                    ref={videoRef}
-                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                    autoPlay
-                    playsInline
-                    muted
-                  />
-                ) : (
-                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px', color: '#fff', padding: '20px', textAlign: 'center' }}>
-                    <Camera size={40} style={{ opacity: 0.5 }} />
-                    <span style={{ fontSize: '0.75rem', opacity: 0.8 }}>
-                      {cameraError || t('Camera chưa được kích hoạt')}
-                    </span>
-                    <button
-                      type="button"
-                      className="btn primary sm"
-                      onClick={startCamera}
-                      style={{ backgroundColor: '#BD1D2D', border: 'none' }}
-                    >
-                      {t('Kích hoạt Camera')}
-                    </button>
-                  </div>
-                )}
-              </div>
-
-              <div style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
-                {isCameraActive && !capturedImage && (
-                  <button
-                    type="button"
-                    className="btn primary"
-                    onClick={capturePhoto}
-                    style={{
-                      backgroundColor: '#BD1D2D',
-                      color: '#fff',
-                      borderRadius: '20px',
-                      padding: '8px 20px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '6px'
-                    }}
-                  >
-                    <Camera size={16} />
-                    {t('Chụp ảnh selfie')}
-                  </button>
-                )}
-                {capturedImage && (
-                  <button
-                    type="button"
-                    className="btn outline"
-                    onClick={startCamera}
-                    style={{
-                      borderRadius: '20px',
-                      padding: '8px 20px'
-                    }}
-                  >
-                    {t('Chụp lại')}
-                  </button>
-                )}
-              </div>
-
-              {isLate && (
-                <div style={{
-                  background: 'rgba(239, 68, 68, 0.05)',
-                  border: '1px solid rgba(239, 68, 68, 0.2)',
-                  borderRadius: '8px',
-                  padding: '12px',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '8px'
-                }}>
-                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center', color: 'var(--color-danger)', fontSize: '0.8125rem', fontWeight: 700 }}>
-                    <AlertTriangle size={16} />
-                    {t('Bạn đã trễ giờ làm việc!')}
-                  </div>
-                  <p style={{ fontSize: '0.75rem', color: 'var(--color-text-light)', margin: 0 }}>
-                    {t('Vui lòng gửi lý do "Xin nhận lead hôm nay" để Quản lý duyệt mở cổng nhận data.')}
-                  </p>
-                  <textarea
-                    className="form-control"
-                    style={{
-                      width: '100%',
-                      height: '70px',
-                      fontSize: '0.8125rem',
-                      padding: '8px',
-                      borderRadius: '6px',
-                      border: '1px solid var(--color-border)',
-                      resize: 'none'
-                    }}
-                    placeholder={t('Ví dụ: Kẹt xe tại ngã tư Thủ Đức, hỏng xe...')}
-                    value={checkInReason}
-                    onChange={(e) => setCheckInReason(e.target.value)}
-                    required
-                  />
-                </div>
-              )}
-
-              <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', borderTop: '1px solid var(--color-border)', paddingTop: '12px', marginTop: '4px' }}>
-                <button
-                  type="button"
-                  className="btn secondary sm"
-                  onClick={() => setCheckInModalOpen(false)}
-                >
-                  {t('Đóng')}
-                </button>
-                <button
-                  type="button"
-                  className="btn primary sm"
-                  disabled={checkInSubmitting || !capturedImage || (isLate && !checkInReason.trim())}
-                  onClick={() => handleSubmitCheckIn()}
-                  style={{
-                    backgroundColor: '#BD1D2D',
-                    color: '#fff',
-                  }}
-                >
-                  {checkInSubmitting ? t('Đang gửi...') : t('Xác nhận Chấm công')}
-                </button>
-              </div>
-            </div>
-          )}
-        </CustomModal>
-      )}
 
       {/* Vacation Confirm Modal */}
       {vacationConfirmOpen && (

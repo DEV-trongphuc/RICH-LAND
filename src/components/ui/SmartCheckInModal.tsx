@@ -85,19 +85,26 @@ export const SmartCheckInModal: React.FC<SmartCheckInModalProps> = ({
       if (cameraStream) {
         cameraStream.getTracks().forEach(track => track.stop());
       }
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: 'user' },
-        audio: false
-      });
+      
+      let stream: MediaStream | null = null;
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } },
+          audio: false
+        });
+      } catch (e1) {
+        console.warn("Camera ideal constraint failed, retrying simple video constraint:", e1);
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: true,
+          audio: false
+        });
+      }
+
       setCameraStream(stream);
       setIsCameraActive(true);
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        videoRef.current.play().catch(() => {});
-      }
     } catch (err: any) {
       console.error("Camera access error:", err);
-      setCameraError(t('Không thể truy cập camera. Vui lòng cấp quyền camera trong trình duyệt.'));
+      setCameraError(t('Không thể truy cập camera. Vui lòng cấp quyền camera trong trình duyệt hoặc tải ảnh selfie.'));
       setIsCameraActive(false);
     }
   };
@@ -113,8 +120,12 @@ export const SmartCheckInModal: React.FC<SmartCheckInModalProps> = ({
   // Ensure camera stream is assigned to video element when stream or element becomes available
   useEffect(() => {
     if (cameraStream && videoRef.current) {
-      videoRef.current.srcObject = cameraStream;
-      videoRef.current.play().catch(err => console.log('Camera video play error:', err));
+      const video = videoRef.current;
+      video.srcObject = cameraStream;
+      video.setAttribute('playsinline', 'true');
+      video.setAttribute('autoplay', 'true');
+      video.muted = true;
+      video.play().catch(err => console.log('Camera video play error:', err));
     }
   }, [cameraStream, isCameraActive]);
 
@@ -613,14 +624,42 @@ export const SmartCheckInModal: React.FC<SmartCheckInModalProps> = ({
                     <span style={{ fontSize: '0.75rem', opacity: 0.8 }}>
                       {cameraError || t('Đang tải camera...')}
                     </span>
-                    <button
-                      type="button"
-                      className="btn primary sm"
-                      onClick={startCamera}
-                      style={{ backgroundColor: '#BD1D2D', border: 'none', borderRadius: '20px' }}
-                    >
-                      {t('Kích hoạt Camera')}
-                    </button>
+                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', justifyContent: 'center' }}>
+                      <button
+                        type="button"
+                        className="btn primary sm"
+                        onClick={startCamera}
+                        style={{ backgroundColor: '#BD1D2D', border: 'none', borderRadius: '20px' }}
+                      >
+                        {t('Kích hoạt Camera')}
+                      </button>
+                      <label style={{ cursor: 'pointer', display: 'inline-flex', alignItems: 'center' }}>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          capture="user"
+                          style={{ display: 'none' }}
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) {
+                              const reader = new FileReader();
+                              reader.onload = (ev) => {
+                                const res = ev.target?.result as string;
+                                if (res) {
+                                  setCapturedImage(res);
+                                  stopCamera();
+                                  if (!isLate) submitCheckIn(res);
+                                }
+                              };
+                              reader.readAsDataURL(file);
+                            }
+                          }}
+                        />
+                        <span className="btn outline sm" style={{ borderRadius: '20px', borderColor: 'rgba(255,255,255,0.3)', color: '#fff' }}>
+                          {t('Tải ảnh selfie')}
+                        </span>
+                      </label>
+                    </div>
                   </div>
                 )}
               </div>
