@@ -2203,45 +2203,42 @@ export const Header = ({
                     </span>
                   </div>
 
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsNotifModalOpen(false);
-                      setIsMatrixModalOpen(true);
-                    }}
-                    style={{
-                      display: 'inline-flex',
-                      flexDirection: 'column',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: '4px',
-                      padding: '7px 16px',
-                      background: '#BD1D2D',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: '12px',
-                      fontSize: '0.75rem',
-                      fontWeight: 700,
-                      cursor: 'pointer',
-                      whiteSpace: 'nowrap',
-                      flexShrink: 0,
-                      boxShadow: '0 3px 10px rgba(189, 29, 45, 0.28)'
-                    }}
-                  >
-                    {/* Overlapping 3 Channel Logos ABOVE text */}
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
+                    {/* Overlapping 3 Channel Logos OUTSIDE & ABOVE button */}
                     <div style={{ display: 'flex', alignItems: 'center' }}>
-                      <div style={{ width: 22, height: 22, borderRadius: '50%', background: '#fff', border: '1.5px solid #fff', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 3, boxShadow: '0 1px 3px rgba(0,0,0,0.15)' }}>
+                      <div style={{ width: 22, height: 22, borderRadius: '50%', background: '#fff', border: '1.5px solid #fff', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 3, boxShadow: '0 1px 3px rgba(0,0,0,0.12)' }}>
                         <img src="https://stc-zpl.zdn.vn/favicon.ico" style={{ width: 14, height: 14, objectFit: 'contain' }} alt="Zalo" />
                       </div>
-                      <div style={{ width: 22, height: 22, borderRadius: '50%', background: '#fff', border: '1.5px solid #fff', display: 'flex', alignItems: 'center', justifyContent: 'center', marginLeft: -7, zIndex: 2, boxShadow: '0 1px 3px rgba(0,0,0,0.15)' }}>
+                      <div style={{ width: 22, height: 22, borderRadius: '50%', background: '#fff', border: '1.5px solid #fff', display: 'flex', alignItems: 'center', justifyContent: 'center', marginLeft: -7, zIndex: 2, boxShadow: '0 1px 3px rgba(0,0,0,0.12)' }}>
                         <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/8/82/Telegram_logo.svg/3840px-Telegram_logo.svg.png" style={{ width: 14, height: 14, objectFit: 'contain' }} alt="Telegram" />
                       </div>
-                      <div style={{ width: 22, height: 22, borderRadius: '50%', background: '#fff', border: '1.5px solid #fff', display: 'flex', alignItems: 'center', justifyContent: 'center', marginLeft: -7, zIndex: 1, boxShadow: '0 1px 3px rgba(0,0,0,0.15)' }}>
+                      <div style={{ width: 22, height: 22, borderRadius: '50%', background: '#fff', border: '1.5px solid #fff', display: 'flex', alignItems: 'center', justifyContent: 'center', marginLeft: -7, zIndex: 1, boxShadow: '0 1px 3px rgba(0,0,0,0.12)' }}>
                         <img src="/imgs/gmail-icon-free-png.webp" style={{ width: 14, height: 14, objectFit: 'contain' }} alt="Email" />
                       </div>
                     </div>
-                    <span style={{ fontSize: '0.75rem', fontWeight: 700, letterSpacing: '0.02em' }}>Cấu hình</span>
-                  </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsNotifModalOpen(false);
+                        setIsMatrixModalOpen(true);
+                      }}
+                      style={{
+                        padding: '5px 14px',
+                        background: '#BD1D2D',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '8px',
+                        fontSize: '0.75rem',
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        whiteSpace: 'nowrap',
+                        boxShadow: '0 2px 6px rgba(189, 29, 45, 0.22)'
+                      }}
+                    >
+                      Cấu hình
+                    </button>
+                  </div>
                 </div>
                 {/* Browser Notifications Preference */}
                 <div
