@@ -1727,9 +1727,14 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
                         <label className="form-label">{t('Quản lý trực tiếp')}</label>
                         <CustomSelect
                           value={directManagerId || directManager}
-                          onChange={(val, option) => {
+                          onChange={(val: any) => {
                             setDirectManagerId(String(val));
-                            setDirectManager(option?.label || String(val));
+                            const found = allUsers.find(u => String(u.id) === String(val));
+                            if (found) {
+                              setDirectManager(found.name || found.full_name || found.username || String(val));
+                            } else {
+                              setDirectManager(String(val));
+                            }
                           }}
                           options={allUsers.map(u => ({
                             value: String(u.id),

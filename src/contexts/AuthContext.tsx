@@ -11,6 +11,9 @@ type User = {
   consultant_id?: number;
   avatar?: string;
   manager_behavior_mode?: string;
+  job_title?: string;
+  address?: string;
+  erp_profile?: any;
 };
 
 interface AuthContextType {

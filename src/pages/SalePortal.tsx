@@ -6572,11 +6572,12 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                     letterSpacing: '0.6px'
                   }}>
                     {(() => {
-                      const jt = displayUser?.job_title || displayUser?.erp_profile?.job_title;
+                      const u = displayUser as any;
+                      const jt = u?.job_title || u?.erp_profile?.job_title;
                       if (jt) return jt;
-                      if (displayUser?.address) {
+                      if (u?.address) {
                         try {
-                          const p = typeof displayUser.address === 'string' ? JSON.parse(displayUser.address) : displayUser.address;
+                          const p = typeof u.address === 'string' ? JSON.parse(u.address) : u.address;
                           if (p?.erp_profile?.job_title) return p.erp_profile.job_title;
                         } catch(e) {}
                       }
@@ -6715,11 +6716,12 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                     letterSpacing: '0.6px'
                   }}>
                     {(() => {
-                      const jt = displayUser?.job_title || displayUser?.erp_profile?.job_title;
+                      const u = displayUser as any;
+                      const jt = u?.job_title || u?.erp_profile?.job_title;
                       if (jt) return jt;
-                      if (displayUser?.address) {
+                      if (u?.address) {
                         try {
-                          const p = typeof displayUser.address === 'string' ? JSON.parse(displayUser.address) : displayUser.address;
+                          const p = typeof u.address === 'string' ? JSON.parse(u.address) : u.address;
                           if (p?.erp_profile?.job_title) return p.erp_profile.job_title;
                         } catch(e) {}
                       }
@@ -12937,11 +12939,12 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                   <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--color-text)' }}>{displayUser?.name || 'User'}</span>
                   <span style={{ fontSize: '0.7rem', color: 'var(--color-text-light)' }}>
                     {(() => {
-                      const jt = displayUser?.job_title || displayUser?.erp_profile?.job_title;
+                      const u = displayUser as any;
+                      const jt = u?.job_title || u?.erp_profile?.job_title;
                       if (jt) return jt;
-                      if (displayUser?.address) {
+                      if (u?.address) {
                         try {
-                          const p = typeof displayUser.address === 'string' ? JSON.parse(displayUser.address) : displayUser.address;
+                          const p = typeof u.address === 'string' ? JSON.parse(u.address) : u.address;
                           if (p?.erp_profile?.job_title) return p.erp_profile.job_title;
                         } catch(e) {}
                       }

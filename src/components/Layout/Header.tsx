@@ -1313,11 +1313,12 @@ export const Header = ({
               <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--color-text)' }}>{user?.name || 'User'}</span>
               <span style={{ fontSize: '0.7rem', color: 'var(--color-text-light)' }}>
                 {(() => {
-                  const jt = user?.job_title || (user as any)?.erp_profile?.job_title;
+                  const u = user as any;
+                  const jt = u?.job_title || u?.erp_profile?.job_title;
                   if (jt) return jt;
-                  if (user?.address) {
+                  if (u?.address) {
                     try {
-                      const p = typeof user.address === 'string' ? JSON.parse(user.address) : user.address;
+                      const p = typeof u.address === 'string' ? JSON.parse(u.address) : u.address;
                       if (p?.erp_profile?.job_title) return p.erp_profile.job_title;
                     } catch(e) {}
                   }
