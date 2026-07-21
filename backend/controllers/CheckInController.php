@@ -427,9 +427,15 @@ class CheckInController {
             }
         }
 
-        // Update
-        $upd = $this->db->prepare("UPDATE check_ins SET status = ?, reason = CASE WHEN ? != '' THEN ? ELSE reason END WHERE id = ?");
-        $upd->execute([$status, $reason, $reason, $id]);
+        // Ensure admin_note column exists
+        try {
+            $this->db->exec("ALTER TABLE check_ins ADD COLUMN admin_note VARCHAR(255) NULL AFTER reason");
+        } catch (\Throwable $e) {}
+
+        // Update status and admin_note, keeping original Sale reason intact
+        $adminNote = (!empty($reason) && trim($reason) !== '') ? trim($reason) : null;
+        $upd = $this->db->prepare("UPDATE check_ins SET status = ?, admin_note = COALESCE(?, admin_note) WHERE id = ?");
+        $upd->execute([$status, $adminNote, $id]);
 
         // Send notification back to the Sale user
         $title = $status === 'approved' ? "Chấm công đi trễ đã được duyệt" : ($status === 'rejected' ? "Yêu cầu nhận lead bị từ chối" : "Yêu cầu nhận lead đang chờ duyệt");

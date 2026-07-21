@@ -821,7 +821,7 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
                                   )}
                                   {weekends.length > 0 && (
                                     <span 
-                                      style={{ fontSize: '0.65rem', padding: '2px 6px', borderRadius: '6px', background: 'rgba(99, 102, 241, 0.12)', color: 'var(--color-primary)', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '3px' }}
+                                      style={{ fontSize: '0.65rem', padding: '2px 6px', borderRadius: '6px', background: 'rgba(59, 130, 246, 0.1)', color: '#2563eb', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '3px' }}
                                       title={t('Cuối tuần: ') + weekends.map(w => w.user_name).join(', ')}
                                     >
                                       <Calendar size={11} /> {weekends.length}
@@ -849,9 +849,9 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
                               let ShiftIcon = Moon;
                               if (s.shift_type === 'weekend') {
                                 label = t('Cuối tuần');
-                                bg = 'rgba(99, 102, 241, 0.05)';
-                                border = 'rgba(99, 102, 241, 0.2)';
-                                text = 'var(--color-primary)';
+                                bg = 'rgba(59, 130, 246, 0.06)';
+                                border = 'rgba(59, 130, 246, 0.2)';
+                                text = '#2563eb';
                                 ShiftIcon = Calendar;
                               } else if (s.shift_type === 'holiday') {
                                 label = s.holiday_name ? `${t('Lễ')} (${s.holiday_name})` : t('Ngày lễ');
@@ -1620,10 +1620,20 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
                           </td>
 
                           <td style={{ padding: '12px 16px', color: 'var(--color-text)', maxWidth: '250px', whiteSpace: 'normal', wordBreak: 'break-word' }}>
-                            {row.reason ? (
-                              <div style={{ display: 'flex', gap: '6px', alignItems: 'flex-start' }}>
-                                <ShieldAlert size={14} style={{ color: 'var(--color-warning)', flexShrink: 0, marginTop: '2px' }} />
-                                <span>{row.reason}</span>
+                            {row.reason || row.admin_note ? (
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                {row.reason && (
+                                  <div style={{ display: 'flex', gap: '6px', alignItems: 'flex-start' }}>
+                                    <ShieldAlert size={14} style={{ color: 'var(--color-warning)', flexShrink: 0, marginTop: '2px' }} />
+                                    <span>{row.reason}</span>
+                                  </div>
+                                )}
+                                {row.admin_note && (
+                                  <div style={{ display: 'flex', gap: '6px', alignItems: 'center', fontSize: '0.75rem', color: 'var(--color-text-muted)', backgroundColor: 'var(--color-bg-light)', padding: '2px 8px', borderRadius: '6px', width: 'fit-content' }}>
+                                    <span style={{ fontWeight: 600, color: '#3b82f6', flexShrink: 0 }}>{t('Ghi chú duyệt')}:</span>
+                                    <span>{row.admin_note}</span>
+                                  </div>
+                                )}
                               </div>
                             ) : (
                               <span style={{ color: 'var(--color-text-light)', fontStyle: 'italic' }}>{t('Không có')}</span>

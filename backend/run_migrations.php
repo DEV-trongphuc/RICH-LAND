@@ -3147,6 +3147,19 @@ SQL;
             $logMsg("Hoàn thành cập nhật phiên bản 182.", "success");
         }
 
+        // Version 183 (Thêm cột admin_note vào bảng check_ins để bảo lưu lý do trễ của Sale và ghi chú Admin)
+        if ($currentVersion < 183) {
+            $logMsg("Đang chạy cập nhật phiên bản 183 (Thêm cột admin_note vào bảng check_ins)...", "info");
+            $chkAdminNote = $conn->query("SHOW COLUMNS FROM check_ins LIKE 'admin_note'");
+            if ($chkAdminNote && $chkAdminNote->num_rows == 0) {
+                $conn->query("ALTER TABLE check_ins ADD COLUMN admin_note VARCHAR(255) NULL COMMENT 'Ghi chú phê duyệt từ Admin/Manager'");
+                $logMsg("Đã thêm cột admin_note vào bảng check_ins", "success");
+            }
+            $conn->query("INSERT INTO system_settings (setting_key, setting_value) VALUES ('db_version', '183') ON DUPLICATE KEY UPDATE setting_value = '183'");
+            $currentVersion = 183;
+            $logMsg("Hoàn thành cập nhật phiên bản 183.", "success");
+        }
+
     $logMsg("Tự sửa đổi cấu trúc hoàn thành thành công.", "success");
 
     $logMsg("Hệ thống đã cập nhật thành công lên phiên bản mới nhất: " . $currentVersion, "success");
