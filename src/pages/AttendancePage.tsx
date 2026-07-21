@@ -173,7 +173,7 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
 
   const fetchConsultantsList = async () => {
     try {
-      const res = await fetchAPI('get_consultants');
+      const res = await fetchAPI('get_consultants&all=1');
       if (res.success) {
         setConsultants(res.data || []);
       }
@@ -1329,8 +1329,10 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
           <div style={{
             marginTop: '6px',
             display: 'flex',
-            flexDirection: 'column',
-            gap: '3px',
+            flexDirection: 'row',
+            flexWrap: 'wrap',
+            alignItems: 'center',
+            gap: '4px 12px',
             fontSize: '0.75rem',
             color: 'var(--color-text-muted)'
           }}>
@@ -1374,8 +1376,10 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
           <div style={{
             marginTop: '6px',
             display: 'flex',
-            flexDirection: 'column',
-            gap: '3px',
+            flexDirection: 'row',
+            flexWrap: 'wrap',
+            alignItems: 'center',
+            gap: '4px 12px',
             fontSize: '0.75rem',
             color: 'var(--color-text-muted)'
           }}>
@@ -1419,8 +1423,10 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
           <div style={{
             marginTop: '6px',
             display: 'flex',
-            flexDirection: 'column',
-            gap: '3px',
+            flexDirection: 'row',
+            flexWrap: 'wrap',
+            alignItems: 'center',
+            gap: '4px 12px',
             fontSize: '0.75rem',
             color: 'var(--color-text-muted)'
           }}>
@@ -1467,8 +1473,10 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
           <div style={{
             marginTop: '6px',
             display: 'flex',
-            flexDirection: 'column',
-            gap: '3px',
+            flexDirection: 'row',
+            flexWrap: 'wrap',
+            alignItems: 'center',
+            gap: '4px 12px',
             fontSize: '0.75rem',
             color: 'var(--color-text-muted)'
           }}>
