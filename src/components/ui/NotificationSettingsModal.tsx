@@ -175,6 +175,33 @@ export const NotificationSettingsModal: React.FC<NotificationSettingsModalProps>
     setTimeout(() => setToastMessage(null), 4000);
   };
 
+const DEFAULT_EVENT_CONFIGS: Record<string, EventConfig> = {
+  LEAD_ASSIGNMENT: { master: true, zalo: true, telegram: true, email: true },
+  SECURITY_DEADLINE_WARNING: { master: true, zalo: true, telegram: true, email: true },
+  MENTION_TAGGED: { master: true, zalo: true, telegram: true, email: false },
+  CUSTOMER_UPDATE: { master: true, zalo: false, telegram: false, email: false },
+  WORKFLOW_TASK_ASSIGNED: { master: true, zalo: true, telegram: false, email: false },
+  ATTENDANCE_APPROVAL_RESULT: { master: true, zalo: true, telegram: false, email: true },
+  MY_DEPOSIT_UPDATE: { master: true, zalo: true, telegram: true, email: true },
+  NIGHT_SHIFT_BOOKING: { master: true, zalo: false, telegram: false, email: false },
+  PROFILE_ACCOUNT_UPDATE: { master: true, zalo: false, telegram: false, email: true },
+  CHECKIN_LATE: { master: true, zalo: true, telegram: true, email: true },
+  ATTENDANCE_UPDATE: { master: true, zalo: true, telegram: false, email: true },
+  EXPENSE_REQUEST: { master: true, zalo: true, telegram: true, email: true },
+  TICKET_NEW: { master: true, zalo: true, telegram: false, email: false },
+  COOPERATION_PENDING_APPROVAL: { master: true, zalo: true, telegram: true, email: true },
+  DEPOSIT_NEW: { master: true, zalo: true, telegram: true, email: true },
+  LEAVE_REQUEST: { master: true, zalo: true, telegram: false, email: true },
+  PROJECT_ROSTER_UPDATE: { master: true, zalo: false, telegram: false, email: false },
+  MONTHLY_ATTENDANCE_REPORT: { master: true, zalo: false, telegram: false, email: true },
+  HOLIDAY_ROSTER_OPEN: { master: true, zalo: true, telegram: false, email: false },
+  HOLIDAY_ANNOUNCEMENT: { master: true, zalo: false, telegram: false, email: false },
+};
+
+const getDefaultConfig = (key: string): EventConfig => {
+  return DEFAULT_EVENT_CONFIGS[key] || { master: true, zalo: false, telegram: false, email: false };
+};
+
   useEffect(() => {
     if (isOpen) {
       setLoading(true);
@@ -187,12 +214,7 @@ export const NotificationSettingsModal: React.FC<NotificationSettingsModalProps>
             const savedSettings = res.data.matrix_config || {};
             const initialSettings: EventSettingsState = {};
             ALL_EVENTS.forEach(evt => {
-              initialSettings[evt.key] = savedSettings[evt.key] || {
-                master: true,
-                zalo: true,
-                telegram: true,
-                email: true,
-              };
+              initialSettings[evt.key] = savedSettings[evt.key] || getDefaultConfig(evt.key);
             });
             setEventSettings(initialSettings);
           }
@@ -208,15 +230,10 @@ export const NotificationSettingsModal: React.FC<NotificationSettingsModalProps>
   const handleResetDefault = () => {
     const defaultState: EventSettingsState = {};
     ALL_EVENTS.forEach(evt => {
-      defaultState[evt.key] = {
-        master: true,
-        zalo: true,
-        telegram: true,
-        email: true
-      };
+      defaultState[evt.key] = getDefaultConfig(evt.key);
     });
     setEventSettings(defaultState);
-    showToast("Đã khôi phục về mặc định ban đầu! Bấm 'Lưu Cấu Hình Chuyên Sâu' để hoàn tất.", "success");
+    showToast("Đã khôi phục về cấu hình mặc định chuẩn! Bấm 'Lưu Cấu Hình Chuyên Sâu' để hoàn tất.", "success");
   };
 
   const handleMasterToggle = (eventKey: string) => {
