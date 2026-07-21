@@ -90,13 +90,13 @@ class ActivityController {
             
             if (in_array($auth['role'], ['sales', 'sale'], true)) {
                 if ($activity['related_type'] === 'contact') {
-                    $checkOwner = $this->db->prepare('SELECT id FROM contacts WHERE id=? AND tenant_id=? AND (owner_id=? OR FIND_IN_SET(?, collaborator_ids) OR id IN (
+                    $checkOwner = $this->db->prepare("SELECT id FROM contacts WHERE id=? AND tenant_id=? AND (owner_id=? OR FIND_IN_SET(?, collaborator_ids) OR id IN (
                         SELECT contact_id FROM cooperation_slips 
-                        WHERE JSON_CONTAINS(JSON_KEYS(CASE WHEN (shares_json IS NOT NULL AND JSON_VALID(shares_json)) THEN shares_json ELSE "{}" END), JSON_QUOTE(CAST(? AS CHAR)))
-                    ))');
+                        WHERE JSON_CONTAINS(JSON_KEYS(CASE WHEN (shares_json IS NOT NULL AND JSON_VALID(shares_json)) THEN shares_json ELSE '{}' END), JSON_QUOTE(CAST(? AS CHAR)))
+                    ))");
                     $checkOwner->execute([(int)$activity['related_id'], $auth['tenant_id'], $auth['user_id'], $auth['user_id'], $auth['user_id']]);
                 } else if ($activity['related_type'] === 'deal') {
-                    $checkOwner = $this->db->prepare('
+                    $checkOwner = $this->db->prepare("
                         SELECT d.id FROM deals d
                         LEFT JOIN contacts ct ON d.contact_id = ct.id AND ct.deleted_at IS NULL
                         WHERE d.id=? AND d.tenant_id=? AND (
@@ -105,10 +105,10 @@ class ActivityController {
                             OR FIND_IN_SET(?, ct.collaborator_ids)
                             OR d.contact_id IN (
                                 SELECT contact_id FROM cooperation_slips 
-                                WHERE JSON_CONTAINS(JSON_KEYS(CASE WHEN (shares_json IS NOT NULL AND JSON_VALID(shares_json)) THEN shares_json ELSE "{}" END), JSON_QUOTE(CAST(? AS CHAR)))
+                                WHERE JSON_CONTAINS(JSON_KEYS(CASE WHEN (shares_json IS NOT NULL AND JSON_VALID(shares_json)) THEN shares_json ELSE '{}' END), JSON_QUOTE(CAST(? AS CHAR)))
                             )
                         )
-                    ');
+                    ");
                     $checkOwner->execute([
                         (int)$activity['related_id'], $auth['tenant_id'], 
                         $auth['user_id'], $auth['user_id'], $auth['user_id'], $auth['user_id']
@@ -321,14 +321,14 @@ class ActivityController {
                 OR (a.related_type = \'contact\' AND EXISTS (
                     SELECT 1 FROM contacts ct WHERE ct.id = a.related_id AND (ct.owner_id = ? OR FIND_IN_SET(?, ct.collaborator_ids) OR ct.id IN (
                         SELECT contact_id FROM cooperation_slips 
-                        WHERE JSON_CONTAINS(JSON_KEYS(CASE WHEN (shares_json IS NOT NULL AND JSON_VALID(shares_json)) THEN shares_json ELSE "{}" END), JSON_QUOTE(CAST(? AS CHAR)))
+                        WHERE JSON_CONTAINS(JSON_KEYS(CASE WHEN (shares_json IS NOT NULL AND JSON_VALID(shares_json)) THEN shares_json ELSE \'{}\' END), JSON_QUOTE(CAST(? AS CHAR)))
                     ))
                 )) 
                 OR (a.related_type = \'deal\' AND EXISTS (
                     SELECT 1 FROM deals d LEFT JOIN contacts ct ON d.contact_id = ct.id WHERE d.id = a.related_id AND (
                         d.owner_id = ? OR ct.owner_id = ? OR FIND_IN_SET(?, ct.collaborator_ids) OR ct.id IN (
                             SELECT contact_id FROM cooperation_slips 
-                            WHERE JSON_CONTAINS(JSON_KEYS(CASE WHEN (shares_json IS NOT NULL AND JSON_VALID(shares_json)) THEN shares_json ELSE "{}" END), JSON_QUOTE(CAST(? AS CHAR)))
+                            WHERE JSON_CONTAINS(JSON_KEYS(CASE WHEN (shares_json IS NOT NULL AND JSON_VALID(shares_json)) THEN shares_json ELSE \'{}\' END), JSON_QUOTE(CAST(? AS CHAR)))
                         )
                     )
                 ))

@@ -11,8 +11,13 @@ class NotificationController {
         $unread = $this->db->prepare("SELECT COUNT(*) FROM notifications WHERE user_id=? AND tenant_id=? AND is_read=0");
         $unread->execute([$auth['user_id'], $auth['tenant_id']]);
         
-        $avatarsStmt = $this->db->query("SELECT name, avatar FROM accounts WHERE avatar IS NOT NULL AND avatar != ''");
-        $avatars = $avatarsStmt->fetchAll(PDO::FETCH_KEY_PAIR);
+        $avatars = [];
+        try {
+            $avatarsStmt = $this->db->query("SELECT name, avatar FROM accounts WHERE avatar IS NOT NULL AND avatar != ''");
+            if ($avatarsStmt) {
+                $avatars = $avatarsStmt->fetchAll(PDO::FETCH_KEY_PAIR);
+            }
+        } catch (\Throwable $e) {}
         
         respond(200, [
             'items' => $items,
