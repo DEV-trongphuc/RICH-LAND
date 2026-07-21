@@ -58,19 +58,51 @@ class NotificationController {
             $this->db->exec("ALTER TABLE user_notification_settings ADD COLUMN matrix_config LONGTEXT NULL");
         } catch (\Throwable $e) {}
 
-        // Fetch user account linking information across users, accounts, and consultants
-        $stmtUser = $this->db->prepare("
-            SELECT 
-                COALESCE(NULLIF(TRIM(u.email), ''), NULLIF(TRIM(a.email), ''), NULLIF(TRIM(c.email), '')) as email,
-                COALESCE(NULLIF(TRIM(u.zalo_chat_id), ''), NULLIF(TRIM(a.zalo_chat_id), ''), NULLIF(TRIM(c.zalo_chat_id), '')) as zalo_chat_id,
-                COALESCE(NULLIF(TRIM(u.telegram_chat_id), ''), NULLIF(TRIM(a.telegram_chat_id), ''), NULLIF(TRIM(c.telegram_chat_id), '')) as telegram_chat_id
-            FROM users u
-            LEFT JOIN accounts a ON u.id = a.id
-            LEFT JOIN consultants c ON u.id = c.id
-            WHERE u.id = ? LIMIT 1
-        ");
-        $stmtUser->execute([$auth['user_id']]);
-        $userInfo = $stmtUser->fetch(PDO::FETCH_ASSOC) ?: [];
+        // Fetch user account linking information safely
+        $userInfo = ['email' => '', 'zalo_chat_id' => '', 'telegram_chat_id' => ''];
+        
+        try {
+            $stmtUser = $this->db->prepare("SELECT email, zalo_chat_id, telegram_chat_id FROM users WHERE id = ? LIMIT 1");
+            $stmtUser->execute([$auth['user_id']]);
+            $resU = $stmtUser->fetch(PDO::FETCH_ASSOC);
+            if ($resU) {
+                $userInfo = array_merge($userInfo, array_filter($resU, function($v) { return !is_null($v); }));
+            }
+        } catch (\Throwable $e) {}
+
+        // Fallback for Zalo Chat ID from consultants or accounts
+        if (empty(trim((string)($userInfo['zalo_chat_id'] ?? '')))) {
+            try {
+                $stmtC = $this->db->prepare("SELECT zalo_chat_id FROM consultants WHERE id = ? LIMIT 1");
+                $stmtC->execute([$auth['user_id']]);
+                $cZalo = $stmtC->fetchColumn();
+                if (!empty($cZalo)) {
+                    $userInfo['zalo_chat_id'] = (string)$cZalo;
+                }
+            } catch (\Throwable $e) {}
+        }
+        if (empty(trim((string)($userInfo['zalo_chat_id'] ?? '')))) {
+            try {
+                $stmtA = $this->db->prepare("SELECT zalo_chat_id FROM accounts WHERE id = ? LIMIT 1");
+                $stmtA->execute([$auth['user_id']]);
+                $aZalo = $stmtA->fetchColumn();
+                if (!empty($aZalo)) {
+                    $userInfo['zalo_chat_id'] = (string)$aZalo;
+                }
+            } catch (\Throwable $e) {}
+        }
+
+        // Fallback for Telegram Chat ID from consultants or accounts
+        if (empty(trim((string)($userInfo['telegram_chat_id'] ?? '')))) {
+            try {
+                $stmtC = $this->db->prepare("SELECT telegram_chat_id FROM consultants WHERE id = ? LIMIT 1");
+                $stmtC->execute([$auth['user_id']]);
+                $cTg = $stmtC->fetchColumn();
+                if (!empty($cTg)) {
+                    $userInfo['telegram_chat_id'] = (string)$cTg;
+                }
+            } catch (\Throwable $e) {}
+        }
 
         $stmt = $this->db->prepare("SELECT * FROM user_notification_settings WHERE user_id = ? AND tenant_id = ?");
         $stmt->execute([$auth['user_id'], $auth['tenant_id']]);
