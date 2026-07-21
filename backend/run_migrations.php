@@ -3170,6 +3170,15 @@ SQL;
             $logMsg("Hoàn thành cập nhật phiên bản 184.", "success");
         }
 
+        // Version 185 (Clear dữ liệu chấm công hôm nay theo yêu cầu của Admin)
+        if ($currentVersion < 185) {
+            $logMsg("Đang chạy cập nhật phiên bản 185 (Xóa dữ liệu chấm công hôm nay để nhân viên chấm công lại)...", "info");
+            $conn->query("DELETE FROM check_ins WHERE check_in_date = CURDATE() OR check_in_date = '2026-07-21'");
+            $conn->query("INSERT INTO system_settings (setting_key, setting_value) VALUES ('db_version', '185') ON DUPLICATE KEY UPDATE setting_value = '185'");
+            $currentVersion = 185;
+            $logMsg("Đã xóa dữ liệu chấm công hôm nay thành công.", "success");
+        }
+
     $logMsg("Tự sửa đổi cấu trúc hoàn thành thành công.", "success");
 
     $logMsg("Hệ thống đã cập nhật thành công lên phiên bản mới nhất: " . $currentVersion, "success");

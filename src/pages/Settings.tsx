@@ -5001,7 +5001,7 @@ function doPost(e) {
                                 <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', margin: 0, userSelect: 'none', whiteSpace: 'nowrap' }}>
                                   <input
                                     type="checkbox"
-                                    className="custom-checkbox"
+                                    style={{ accentColor: 'var(--color-primary)', width: '18px', height: '18px', cursor: 'pointer' }}
                                     checked={isActive}
                                     onChange={(e) => {
                                       const val = e.target.checked;
