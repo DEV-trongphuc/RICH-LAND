@@ -667,9 +667,6 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
               c.shareholders?.some((sh: any) => sh.user_id === user?.id && !sh.signed)
             );
             setSalesPendingSignCount(pendingSign.length);
-            if (pendingSign.length > 0) {
-              setIsSalesSignModalOpen(true);
-            }
           }
         })
         .catch(err => console.error('Error loading sales coops:', err));

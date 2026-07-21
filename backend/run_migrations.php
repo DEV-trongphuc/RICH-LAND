@@ -3080,7 +3080,26 @@ SQL;
             try {
                 $conn->query("
                     CREATE OR REPLACE VIEW `accounts` AS 
-                    SELECT `id`, `username`, `password`, `email`, `role`, `is_active`, `zalo_id`, `created_at`, `signature_url`
+                    SELECT 
+                      `id`, 
+                      `username`, 
+                      `password_hash` AS `password`, 
+                      `email`, 
+                      `role`, 
+                      `is_confirmed`, 
+                      `confirm_token`, 
+                      `last_login_at` AS `last_login`, 
+                      `avatar_url` AS `avatar`,
+                      `signature_url`,
+                      `dob`,
+                      `gender`,
+                      `citizen_id`,
+                      `address`,
+                      `bank_name`,
+                      `bank_account`,
+                      `phone`,
+                      `is_active`,
+                      `team_id`
                     FROM `users`
                 ");
                 $conn->query("
