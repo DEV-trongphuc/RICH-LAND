@@ -217,10 +217,10 @@ export const Header = ({
     email_warning: 1,
     email_mention: 1,
     email_approval_request: 1,
-    email_project_document: 1,
-    email_project_comment: 1,
-    email_project_roster: 1,
-    email_info: 1
+    email_project_document: 0,
+    email_project_comment: 0,
+    email_project_roster: 0,
+    email_info: 0
   });
 
   const fetchNotifications = async () => {
@@ -289,10 +289,10 @@ export const Header = ({
           email_warning: settingsData.email_warning ?? 1,
           email_mention: settingsData.email_mention ?? 1,
           email_approval_request: settingsData.email_approval_request ?? 1,
-          email_project_document: settingsData.email_project_document ?? 1,
-          email_project_comment: settingsData.email_project_comment ?? 1,
-          email_project_roster: settingsData.email_project_roster ?? 1,
-          email_info: settingsData.email_info ?? 1,
+          email_project_document: settingsData.email_project_document ?? 0,
+          email_project_comment: settingsData.email_project_comment ?? 0,
+          email_project_roster: settingsData.email_project_roster ?? 0,
+          email_info: settingsData.email_info ?? 0,
         });
       }
     } catch (err) {
