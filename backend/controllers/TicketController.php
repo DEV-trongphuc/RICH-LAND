@@ -268,39 +268,118 @@ class TicketController {
             $adminIds = [];
             $zaloChatIds = [];
             
-            require_once __DIR__ . '/../zalo_bot.php';
-            $stmtBotToken = $this->db->prepare("SELECT setting_value FROM system_settings WHERE setting_key = 'zalo_bot_token' LIMIT 1");
-            $stmtBotToken->execute();
-            $botToken = $stmtBotToken->fetchColumn();
+            // Fetch group and notification settings
+            $stmtGSettings = $this->db->prepare("SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('zalo_admin_group_chat_id', 'zalo_notify_only_group', 'telegram_admin_group_chat_id', 'telegram_notify_only_group')");
+            $stmtGSettings->execute();
+            $gSettings = $stmtGSettings->fetchAll(PDO::FETCH_KEY_PAIR);
+
+            $zaloGroupChatId = trim((string)($gSettings['zalo_admin_group_chat_id'] ?? ''));
+            $zaloOnlyGroup = ($gSettings['zalo_notify_only_group'] ?? '0') === '1';
+
+            $tgGroupChatId = trim((string)($gSettings['telegram_admin_group_chat_id'] ?? ''));
+            $tgOnlyGroup = ($gSettings['telegram_notify_only_group'] ?? '0') === '1';
 
             foreach ($adminsDetails as $adm) {
                 if ((int)$adm['id'] !== (int)$auth['user_id']) {
                     $adminIds[] = (int)$adm['id'];
                 }
-                if (!empty($adm['zalo_chat_id'])) {
-                    $zaloChatIds[] = $adm['zalo_chat_id'];
-                }
-                // Send email
-                if (!empty($adm['email'])) {
-                    $emailSubject = "[RICH LAND] Yêu cầu hỗ trợ mới (Ticket #" . $id . ")";
-                    $emailTitle = "TICKET HỖ TRỢ MỚI";
-                    $emailContent = "Chào " . htmlspecialchars($adm['full_name']) . ",<br/><br/>" .
-                                    "Có yêu cầu hỗ trợ mới từ <strong>" . htmlspecialchars($auth['full_name']) . "</strong>:<br/>" .
-                                    "Tiêu đề: <strong>" . htmlspecialchars($data['subject']) . "</strong>.<br/>" .
-                                    "Mô tả: <em>\"" . htmlspecialchars($data['description'] ?? 'Không có') . "\"</em>.<br/>" .
-                                    "Vui lòng truy cập hệ thống CRM để xử lý.";
-                    sendEmailNotification($adm['email'], $emailSubject, $emailTitle, $emailContent, '', false);
-                }
             }
 
-            if ($botToken && !empty($zaloChatIds)) {
-                $zaloMsg = "🎫 [ TICKET HỖ TRỢ MỚI ]\n\n"
-                    . "Có yêu cầu hỗ trợ mới từ " . $auth['full_name'] . ":\n"
-                    . "  • Ticket: #" . $id . "\n"
-                    . "  • Tiêu đề: " . $data['subject'] . "\n"
-                    . "  • Độ ưu tiên: " . ($data['priority'] ?? 'medium') . "\n\n"
-                    . "Vui lòng truy cập CRM để xử lý.";
-                sendZaloMessageToMultiple($botToken, $zaloChatIds, $zaloMsg, false);
+            // ==================== CHANNEL 1: ZALO BOT (INDEPENDENT) ====================
+            try {
+                require_once __DIR__ . '/../zalo_bot.php';
+                $stmtBotToken = $this->db->prepare("SELECT setting_value FROM system_settings WHERE setting_key = 'zalo_bot_token' LIMIT 1");
+                $stmtBotToken->execute();
+                $botToken = trim((string)$stmtBotToken->fetchColumn());
+
+                if ($botToken) {
+                    $zaloChatIds = [];
+                    if (!empty($zaloGroupChatId)) {
+                        $zaloChatIds[] = $zaloGroupChatId;
+                    }
+                    if (!$zaloOnlyGroup) {
+                        foreach ($adminsDetails as $adm) {
+                            if (!empty($adm['zalo_chat_id'])) {
+                                $zaloChatIds[] = trim($adm['zalo_chat_id']);
+                            }
+                        }
+                    }
+                    $zaloChatIds = array_unique(array_filter($zaloChatIds));
+
+                    if (!empty($zaloChatIds)) {
+                        $zaloMsg = "🎫 [ TICKET HỖ TRỢ MỚI ]\n\n"
+                            . "Có yêu cầu hỗ trợ mới từ " . $auth['full_name'] . ":\n"
+                            . "  • Ticket: #" . $id . "\n"
+                            . "  • Tiêu đề: " . $data['subject'] . "\n"
+                            . "  • Độ ưu tiên: " . ($data['priority'] ?? 'medium') . "\n\n"
+                            . "Vui lòng truy cập CRM để xử lý.";
+                        foreach ($zaloChatIds as $zId) {
+                            try {
+                                sendZaloMessage($botToken, $zId, $zaloMsg, true);
+                            } catch (\Throwable $ze) {}
+                        }
+                    }
+                }
+            } catch (\Throwable $zEx) {
+                error_log("Error in ticket Zalo notifications: " . $zEx->getMessage());
+            }
+
+            // ==================== CHANNEL 2: TELEGRAM BOT (INDEPENDENT) ====================
+            try {
+                require_once __DIR__ . '/../telegram_bot.php';
+                $stmtTgToken = $this->db->prepare("SELECT setting_value FROM system_settings WHERE setting_key = 'telegram_bot_token' LIMIT 1");
+                $stmtTgToken->execute();
+                $tgToken = trim((string)$stmtTgToken->fetchColumn());
+
+                if ($tgToken) {
+                    $tgChatIds = [];
+                    if (!empty($tgGroupChatId)) {
+                        $tgChatIds[] = $tgGroupChatId;
+                    }
+                    if (!$tgOnlyGroup) {
+                        foreach ($adminsDetails as $adm) {
+                            if (!empty($adm['telegram_chat_id'])) {
+                                $tgChatIds[] = trim($adm['telegram_chat_id']);
+                            }
+                        }
+                    }
+                    $tgChatIds = array_unique(array_filter($tgChatIds));
+
+                    if (!empty($tgChatIds)) {
+                        $tgMsg = "🎫 <b>[ TICKET HỖ TRỢ MỚI ]</b>\n\n"
+                            . "Có yêu cầu hỗ trợ mới từ <b>" . htmlspecialchars($auth['full_name']) . "</b>:\n"
+                            . "  • Ticket: <b>#" . $id . "</b>\n"
+                            . "  • Tiêu đề: <b>" . htmlspecialchars($data['subject']) . "</b>\n"
+                            . "  • Độ ưu tiên: <b>" . htmlspecialchars($data['priority'] ?? 'medium') . "</b>\n\n"
+                            . "Vui lòng truy cập CRM để xử lý.";
+                        foreach ($tgChatIds as $cId) {
+                            try {
+                                sendTelegramMessage($tgToken, $cId, $tgMsg);
+                            } catch (\Throwable $tge) {}
+                        }
+                    }
+                }
+            } catch (\Throwable $tgEx) {
+                error_log("Error in ticket Telegram notifications: " . $tgEx->getMessage());
+            }
+
+            // ==================== CHANNEL 3: EMAIL (INDEPENDENT & SYNCHRONOUS) ====================
+            try {
+                require_once __DIR__ . '/../mailer.php';
+                foreach ($adminsDetails as $adm) {
+                    if (!empty($adm['email'])) {
+                        $emailSubject = "[RICH LAND] Yêu cầu hỗ trợ mới (Ticket #" . $id . ")";
+                        $emailTitle = "TICKET HỖ TRỢ MỚI";
+                        $emailContent = "Chào " . htmlspecialchars($adm['full_name']) . ",<br/><br/>" .
+                                        "Có yêu cầu hỗ trợ mới từ <strong>" . htmlspecialchars($auth['full_name']) . "</strong>:<br/>" .
+                                        "Tiêu đề: <strong>" . htmlspecialchars($data['subject']) . "</strong>.<br/>" .
+                                        "Mô tả: <em>\"" . htmlspecialchars($data['description'] ?? 'Không có') . "\"</em>.<br/>" .
+                                        "Vui lòng truy cập hệ thống CRM để xử lý.";
+                        sendEmailNotification($adm['email'], $emailSubject, $emailTitle, $emailContent, '', true);
+                    }
+                }
+            } catch (\Throwable $emEx) {
+                error_log("Error in ticket Email notifications: " . $emEx->getMessage());
             }
 
             $stmtNotif = $this->db->prepare("INSERT INTO notifications (user_id, tenant_id, title, body, type, link) VALUES (?, ?, ?, ?, 'ticket_assignment', ?)");
