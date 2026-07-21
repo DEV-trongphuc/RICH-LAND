@@ -73,26 +73,33 @@ if ($eventName === 'user_send_text' || $eventName === 'message.text.received') {
     // Hỗ trợ cả 2 định dạng (Zalo OA chuẩn và Zalo Mini App)
     $text = '';
     $chatId = '';
+    $senderId = '';
     $msgId = '';
     $isOAMessage = false; // Phân biệt OA 1-on-1 vs Group Bot
 
     if (isset($data['message']['text'])) {
         $text = trim($data['message']['text']);
-        $chatId = $data['sender']['id'] ?? $data['message']['chat']['id'] ?? $data['message']['from']['id'] ?? '';
+        // ƯU TIÊN: message.chat.id trước (room chat_id cho Zalo Bot API)
+        $chatId = $data['message']['chat']['id'] ?? $data['result']['message']['chat']['id'] ?? $data['sender']['id'] ?? $data['message']['from']['id'] ?? '';
+        $senderId = $data['sender']['id'] ?? $data['message']['from']['id'] ?? $chatId;
         $msgId = $data['message']['msg_id'] ?? $data['message']['id'] ?? '';
-        // OA message: có sender.id (Zalo user ID) và event là user_send_text
         $isOAMessage = isset($data['sender']['id']) && $eventName === 'user_send_text';
     } else if (isset($data['result']['message']['text'])) {
         $text = trim($data['result']['message']['text']);
-        $chatId = $data['result']['message']['chat']['id'] ?? $data['result']['message']['from']['id'] ?? '';
+        $chatId = $data['result']['message']['chat']['id'] ?? $data['result']['message']['from']['id'] ?? $data['sender']['id'] ?? '';
+        $senderId = $data['result']['message']['from']['id'] ?? $data['sender']['id'] ?? $chatId;
         $msgId = $data['result']['message']['msg_id'] ?? '';
         $isOAMessage = false;
     }
 
-    // Hàm gửi tin nhắn đúng API theo context
-    $sendReply = function(string $message) use ($botToken, $chatId, $isOAMessage, $conn) {
+    // Hàm gửi tin nhắn phản hồi đa tầng (Bot API chatId -> Bot API senderId -> Zalo OA CS API)
+    $sendReply = function(string $message) use ($botToken, $chatId, $senderId, $isOAMessage, $conn) {
+        if (empty($message)) return false;
+
+        @file_put_contents(__DIR__ . '/webhook_log.txt', date('[Y-m-d H:i:s]') . " REPLY ATTEMPT: chatId=$chatId, senderId=$senderId, isOA=" . ($isOAMessage ? '1' : '0') . "\n", FILE_APPEND | LOCK_EX);
+
+        // 1. Nếu là tin nhắn từ Zalo OA và có token OA Access Token
         if ($isOAMessage) {
-            // Zalo OA 1-on-1: dùng OA API với access token
             $oaAccessToken = '';
             try {
                 $stmtOA = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'zalo_oa_access_token' LIMIT 1");
@@ -100,8 +107,9 @@ if ($eventName === 'user_send_text' || $eventName === 'message.text.received') {
             } catch (\Throwable $e) {}
 
             if (!empty($oaAccessToken)) {
+                $recipientId = !empty($senderId) ? $senderId : $chatId;
                 $oaPayload = json_encode([
-                    'recipient' => ['user_id' => $chatId],
+                    'recipient' => ['user_id' => $recipientId],
                     'message'   => ['text' => $message]
                 ], JSON_UNESCAPED_UNICODE);
                 $ch = curl_init('https://openapi.zalo.me/v3.0/oa/message/cs');
@@ -113,13 +121,24 @@ if ($eventName === 'user_send_text' || $eventName === 'message.text.received') {
                 $res = curl_exec($ch);
                 $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
                 curl_close($ch);
-                error_log("Zalo OA Reply HTTP: $httpCode, Response: $res");
-                return;
+                @file_put_contents(__DIR__ . '/zalo_send_log.txt', date('[Y-m-d H:i:s]') . " Zalo OA Reply Target: $recipientId, HTTP: $httpCode, Res: $res\n", FILE_APPEND | LOCK_EX);
+                if ($httpCode >= 200 && $httpCode < 300) return true;
             }
-            // Fallback: nếu chưa có OA token, dùng Group Bot API
         }
-        // Group Bot API
-        sendZaloMessage($botToken, $chatId, $message);
+
+        // 2. Gửi qua Zalo Bot Platform API dùng chatId (room ID)
+        if (!empty($chatId)) {
+            $ok = sendZaloMessage($botToken, $chatId, $message);
+            if ($ok) return true;
+        }
+
+        // 3. Dự phòng gửi qua Zalo Bot Platform API dùng senderId nếu khác chatId
+        if (!empty($senderId) && $senderId !== $chatId) {
+            $ok = sendZaloMessage($botToken, $senderId, $message);
+            if ($ok) return true;
+        }
+
+        return false;
     };
 
     $fromName = 'bạn'; // Zalo webhook user_send_text thường không kèm tên, dùng default
@@ -1823,9 +1842,9 @@ if ($eventName === 'user_send_text' || $eventName === 'message.text.received') {
                 if (!empty($errorMsg)) {
                     $msg .= "\n\nLưu ý thêm:\n" . trim($errorMsg);
                 }
-                sendZaloMessage($botToken, $chatId, $msg);
+                $sendReply($msg);
             } else {
-                sendZaloMessage($botToken, $chatId, trim($errorMsg));
+                $sendReply(trim($errorMsg));
             }
         } else {
             // Hướng dẫn lại
@@ -1835,7 +1854,7 @@ if ($eventName === 'user_send_text' || $eventName === 'message.text.received') {
                 . "- Nhập mã ID của bạn (Ví dụ: 12)\n"
                 . "- Hoặc nhập địa chỉ Email của bạn (Ví dụ: nguyenvanan@gmail.com)\n\n"
                 . "Chúc bạn làm việc hiệu quả!";
-            sendZaloMessage($botToken, $chatId, $guideMsg);
+            $sendReply($guideMsg);
         }
     }
 }
