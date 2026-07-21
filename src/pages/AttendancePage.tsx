@@ -849,9 +849,9 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
                               let ShiftIcon = Moon;
                               if (s.shift_type === 'weekend') {
                                 label = t('Cuối tuần');
-                                bg = 'rgba(59, 130, 246, 0.06)';
-                                border = 'rgba(59, 130, 246, 0.2)';
-                                text = '#2563eb';
+                                bg = 'rgba(239, 68, 68, 0.05)';
+                                border = 'rgba(239, 68, 68, 0.2)';
+                                text = '#ef4444';
                                 ShiftIcon = Calendar;
                               } else if (s.shift_type === 'holiday') {
                                 label = s.holiday_name ? `${t('Lễ')} (${s.holiday_name})` : t('Ngày lễ');
