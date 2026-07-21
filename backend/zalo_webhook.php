@@ -13,6 +13,17 @@ $rawBody = file_get_contents('php://input');
 $headerSecret = $_SERVER['HTTP_X_BOT_API_SECRET_TOKEN'] ?? $_SERVER['HTTP_X_ZALO_SECRET'] ?? '';
 
 $logFile = __DIR__ . '/webhook_log.txt';
+
+set_error_handler(function($errno, $errstr, $errfile, $errline) use ($logFile) {
+    @file_put_contents($logFile, date('[Y-m-d H:i:s]') . " PHP ERROR [$errno]: $errstr in $errfile line $errline\n\n", FILE_APPEND | LOCK_EX);
+});
+register_shutdown_function(function() use ($logFile) {
+    $err = error_get_last();
+    if ($err && in_array($err['type'], [E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR])) {
+        @file_put_contents($logFile, date('[Y-m-d H:i:s]') . " FATAL ERROR: " . print_r($err, true) . "\n\n", FILE_APPEND | LOCK_EX);
+    }
+});
+
 if (file_exists($logFile) && @filesize($logFile) > 5 * 1024 * 1024) {
     $bakFile = __DIR__ . '/webhook_log.bak.txt';
     if (file_exists($bakFile)) {
