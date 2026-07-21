@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { CustomModal } from './CustomModal';
-import { Power, CheckCircle, AlertTriangle, ShieldCheck, ExternalLink } from 'lucide-react';
+import { Power, CheckCircle, AlertTriangle, ShieldCheck, ExternalLink, RotateCcw } from 'lucide-react';
 import { fetchAPI } from '../../utils/api';
 
 interface NotificationSettingsModalProps {
@@ -101,16 +101,16 @@ export const NotificationSettingsModal: React.FC<NotificationSettingsModalProps>
       fetchAPI('notifications/settings')
         .then(res => {
           if (res && res.success && res.data) {
-            if (res.data.user_info) {
-              setUserInfo(res.data.user_info);
-            }
+            const uInfo = res.data.user_info || { has_zalo: false, has_telegram: false, has_email: true };
+            setUserInfo(uInfo);
+            
             const savedSettings = res.data.matrix_config || {};
             const initialSettings: EventSettingsState = {};
             DEFAULT_EVENTS.forEach(evt => {
               initialSettings[evt.key] = savedSettings[evt.key] || {
                 master: true,
-                zalo: true,
-                telegram: true,
+                zalo: uInfo.has_zalo ? true : false,
+                telegram: uInfo.has_telegram ? true : false,
                 email: true,
               };
             });
@@ -124,6 +124,20 @@ export const NotificationSettingsModal: React.FC<NotificationSettingsModalProps>
         .finally(() => setLoading(false));
     }
   }, [isOpen]);
+
+  const handleResetDefault = () => {
+    const defaultState: EventSettingsState = {};
+    DEFAULT_EVENTS.forEach(evt => {
+      defaultState[evt.key] = {
+        master: true,
+        zalo: userInfo.has_zalo ? true : false,
+        telegram: userInfo.has_telegram ? true : false,
+        email: true
+      };
+    });
+    setEventSettings(defaultState);
+    showToast("Đã khôi phục về mặc định ban đầu! Bấm 'Lưu Cấu Hình Chuyên Sâu' để hoàn tất.", "success");
+  };
 
   const handleMasterToggle = (eventKey: string) => {
     setEventSettings(prev => {
@@ -578,7 +592,28 @@ export const NotificationSettingsModal: React.FC<NotificationSettingsModalProps>
           <div style={{ fontSize: '0.75rem', color: '#64748b' }}>
             💡 <strong>Mẹo:</strong> Chuông In-App hệ thống luôn duy trì để đảm bảo không bỏ lỡ lịch sử hoạt động.
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <button
+              type="button"
+              onClick={handleResetDefault}
+              title="Khôi phục về cài đặt mặc định ban đầu"
+              style={{
+                padding: '8px 14px',
+                fontSize: '0.8125rem',
+                fontWeight: 600,
+                color: '#475569',
+                background: '#f1f5f9',
+                border: '1px solid #cbd5e1',
+                borderRadius: '10px',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px'
+              }}
+            >
+              <RotateCcw size={14} />
+              Khôi phục mặc định
+            </button>
             <button
               type="button"
               onClick={onClose}
@@ -586,7 +621,7 @@ export const NotificationSettingsModal: React.FC<NotificationSettingsModalProps>
                 padding: '8px 16px',
                 fontSize: '0.875rem',
                 fontWeight: 600,
-                color: '#475569',
+                color: '#64748b',
                 background: 'none',
                 border: 'none',
                 cursor: 'pointer'
@@ -621,3 +656,4 @@ export const NotificationSettingsModal: React.FC<NotificationSettingsModalProps>
     </CustomModal>
   );
 };
+
