@@ -354,6 +354,15 @@ const SettingsInner = () => {
   const [zaloWeeklyReportDay, setZaloWeeklyReportDay] = useState('0');
   const [zaloWeeklyReportTime, setZaloWeeklyReportTime] = useState('08:00');
 
+  // Advanced Attendance & Report Settings
+  const [requireCheckout, setRequireCheckout] = useState(false);
+  const [autoApproveCheckin, setAutoApproveCheckin] = useState(false);
+  const [attendanceReportEnabled, setAttendanceReportEnabled] = useState(false);
+  const [attendanceReportTriggerDay, setAttendanceReportTriggerDay] = useState(1);
+  const [attendanceReportDateMode, setAttendanceReportDateMode] = useState('previous_month');
+  const [attendanceReportStartDate, setAttendanceReportStartDate] = useState('');
+  const [attendanceReportEndDate, setAttendanceReportEndDate] = useState('');
+
   // Monthly report config
   const [zaloMonthlyReportEnabled, setZaloMonthlyReportEnabled] = useState('0');
   const [zaloMonthlyReportTime, setZaloMonthlyReportTime] = useState('08:00');
@@ -720,6 +729,27 @@ const SettingsInner = () => {
         }
         if (json.data.require_checkin_holiday_lead !== undefined) {
           setRequireCheckinHolidayLead(json.data.require_checkin_holiday_lead === '1' || json.data.require_checkin_holiday_lead === 1);
+        }
+        if (json.data.require_checkout !== undefined) {
+          setRequireCheckout(json.data.require_checkout === '1' || json.data.require_checkout === 1);
+        }
+        if (json.data.auto_approve_checkin !== undefined) {
+          setAutoApproveCheckin(json.data.auto_approve_checkin === '1' || json.data.auto_approve_checkin === 1);
+        }
+        if (json.data.attendance_report_enabled !== undefined) {
+          setAttendanceReportEnabled(json.data.attendance_report_enabled === '1' || json.data.attendance_report_enabled === 1);
+        }
+        if (json.data.attendance_report_trigger_day !== undefined) {
+          setAttendanceReportTriggerDay(Number(json.data.attendance_report_trigger_day) || 1);
+        }
+        if (json.data.attendance_report_date_mode !== undefined) {
+          setAttendanceReportDateMode(json.data.attendance_report_date_mode);
+        }
+        if (json.data.attendance_report_start_date !== undefined) {
+          setAttendanceReportStartDate(json.data.attendance_report_start_date || '');
+        }
+        if (json.data.attendance_report_end_date !== undefined) {
+          setAttendanceReportEndDate(json.data.attendance_report_end_date || '');
         }
         if (json.data.global_work_start_time !== undefined) {
           setGlobalWorkStartTime(json.data.global_work_start_time);
@@ -1182,6 +1212,13 @@ const SettingsInner = () => {
       auto_approve_holiday_shift: autoApproveHolidayShift ? 1 : 0,
       require_checkin_weekend_lead: requireCheckinWeekendLead ? 1 : 0,
       require_checkin_holiday_lead: requireCheckinHolidayLead ? 1 : 0,
+      require_checkout: requireCheckout ? 1 : 0,
+      auto_approve_checkin: autoApproveCheckin ? 1 : 0,
+      attendance_report_enabled: attendanceReportEnabled ? 1 : 0,
+      attendance_report_trigger_day: attendanceReportTriggerDay,
+      attendance_report_date_mode: attendanceReportDateMode,
+      attendance_report_start_date: attendanceReportStartDate,
+      attendance_report_end_date: attendanceReportEndDate,
       golden_hours_start_time: goldenHoursStartTime,
       golden_hours_end_time: goldenHoursEndTime,
       global_work_start_time: globalWorkStartTime,
@@ -5205,7 +5242,7 @@ function doPost(e) {
                           </div>
                         </div>
 
-                        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '1rem' }}>
+                        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '1rem', borderBottom: '1px solid var(--color-border-light)', paddingBottom: '1rem' }}>
                           <div style={{ flex: 1, minWidth: 0 }}>
                             <div style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text)' }}>
                               {t('Cho phép nhận data ngay khi chấm công')}
@@ -5220,6 +5257,114 @@ function doPost(e) {
                               onChange={setAllowLeadDistributionOnPendingCheckin}
                             />
                           </div>
+                        </div>
+
+                        {/* Yêu cầu Chấm công Ra ca (Cuối ca) */}
+                        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '1rem', borderBottom: '1px solid var(--color-border-light)', paddingBottom: '1rem' }}>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text)' }}>
+                              {t('Yêu cầu Chấm công Ra ca (Cuối ca)')}
+                            </div>
+                            <div style={{ fontSize: '0.725rem', color: 'var(--color-text-muted)', marginTop: 4, lineHeight: 1.4 }}>
+                              {t('Bắt buộc nhân viên thực hiện chấm công Ra ca khi kết thúc giờ làm việc. Nhắc nhở sẽ tự động gửi vào đúng giờ tan làm.')}
+                            </div>
+                          </div>
+                          <div style={{ flexShrink: 0, marginTop: '2px' }}>
+                            <ToggleSwitch
+                              checked={requireCheckout}
+                              onChange={setRequireCheckout}
+                            />
+                          </div>
+                        </div>
+
+                        {/* Tự động duyệt Chấm công (Bỏ qua duyệt đi trễ / về sớm) */}
+                        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '1rem', borderBottom: '1px solid var(--color-border-light)', paddingBottom: '1rem' }}>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text)' }}>
+                              {t('Tự động duyệt Chấm công (Bỏ qua xét duyệt đi trễ & về sớm)')}
+                            </div>
+                            <div style={{ fontSize: '0.725rem', color: 'var(--color-text-muted)', marginTop: 4, lineHeight: 1.4 }}>
+                              {t('Nếu bật, khi chấm công trễ hoặc về sớm, hệ thống sẽ chấp nhận tự động ngay lập tức mà không cần nhân viên gửi lý do hay chờ quản lý phê duyệt.')}
+                            </div>
+                          </div>
+                          <div style={{ flexShrink: 0, marginTop: '2px' }}>
+                            <ToggleSwitch
+                              checked={autoApproveCheckin}
+                              onChange={setAutoApproveCheckin}
+                            />
+                          </div>
+                        </div>
+
+                        {/* Báo cáo Chấm công & Trực ca tự động gửi Sale */}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '1rem' }}>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text)' }}>
+                                {t('Báo cáo Chấm công & Trực ca tự động gửi Sale')}
+                              </div>
+                              <div style={{ fontSize: '0.725rem', color: 'var(--color-text-muted)', marginTop: 4, lineHeight: 1.4 }}>
+                                {t('Tự động tổng kết và gửi báo cáo chi tiết về số ngày làm việc, đi trễ, ca trực đêm & trực cuối tuần cho từng nhân viên Sale qua Ma trận thông báo.')}
+                              </div>
+                            </div>
+                            <div style={{ flexShrink: 0, marginTop: '2px' }}>
+                              <ToggleSwitch
+                                checked={attendanceReportEnabled}
+                                onChange={setAttendanceReportEnabled}
+                              />
+                            </div>
+                          </div>
+
+                          {attendanceReportEnabled && (
+                            <div style={{ background: 'var(--color-bg-secondary)', padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--color-border-light)', marginTop: '4px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                  <span style={{ fontSize: '0.75rem', fontWeight: 600 }}>{t('Ngày gửi trong tháng:')}</span>
+                                  <input
+                                    type="number"
+                                    min={1}
+                                    max={31}
+                                    className="form-input"
+                                    style={{ width: '60px', height: '28px', padding: '2px 6px', fontSize: '0.75rem', textAlign: 'center' }}
+                                    value={attendanceReportTriggerDay}
+                                    onChange={e => setAttendanceReportTriggerDay(Math.min(31, Math.max(1, Number(e.target.value))))}
+                                  />
+                                </div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                  <span style={{ fontSize: '0.75rem', fontWeight: 600 }}>{t('Khoảng dữ liệu:')}</span>
+                                  <select
+                                    className="form-select"
+                                    style={{ height: '28px', padding: '2px 8px', fontSize: '0.75rem' }}
+                                    value={attendanceReportDateMode}
+                                    onChange={e => setAttendanceReportDateMode(e.target.value)}
+                                  >
+                                    <option value="previous_month">{t('Tháng trước (Mặc định)')}</option>
+                                    <option value="last_30_days">{t('30 ngày gần nhất')}</option>
+                                    <option value="custom">{t('Khoảng ngày tùy chỉnh')}</option>
+                                  </select>
+                                </div>
+                              </div>
+                              {attendanceReportDateMode === 'custom' && (
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px' }}>
+                                  <span style={{ fontSize: '0.725rem' }}>{t('Từ ngày:')}</span>
+                                  <input
+                                    type="date"
+                                    className="form-input"
+                                    style={{ height: '28px', padding: '2px 6px', fontSize: '0.75rem' }}
+                                    value={attendanceReportStartDate}
+                                    onChange={e => setAttendanceReportStartDate(e.target.value)}
+                                  />
+                                  <span style={{ fontSize: '0.725rem' }}>{t('Đến ngày:')}</span>
+                                  <input
+                                    type="date"
+                                    className="form-input"
+                                    style={{ height: '28px', padding: '2px 6px', fontSize: '0.75rem' }}
+                                    value={attendanceReportEndDate}
+                                    onChange={e => setAttendanceReportEndDate(e.target.value)}
+                                  />
+                                </div>
+                              )}
+                            </div>
+                          )}
                         </div>
                       </div>
 

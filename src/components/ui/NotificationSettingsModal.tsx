@@ -84,6 +84,30 @@ const EVENT_CATEGORIES = [
         icon: '🌙'
       },
       {
+        key: 'CHECKOUT_REMINDER',
+        name: 'Nhắc nhở Chấm công Ra ca (Cuối ngày)',
+        desc: 'Thông báo nhắc nhở chấm công ra về vào đúng giờ kết thúc ca làm việc',
+        icon: '🌆'
+      },
+      {
+        key: 'HOLIDAY_REGISTRATION_OPENED',
+        name: 'Admin Mở Đăng ký Trực lễ',
+        desc: 'Thông báo khi Ban quản trị mở đăng ký trực ca các ngày Lễ, Tết',
+        icon: '🎉'
+      },
+      {
+        key: 'HOLIDAY_UPDATE',
+        name: 'Thông báo Lịch nghỉ Lễ & Công ty',
+        desc: 'Thông báo chính thức về lịch nghỉ lễ hoặc điều chỉnh ngày làm việc của công ty',
+        icon: '🌴'
+      },
+      {
+        key: 'MONTHLY_ATTENDANCE_REPORT',
+        name: 'Báo cáo Tổng kết Chấm công & Trực ca',
+        desc: 'Báo cáo định kỳ thống kê số ngày chấm công, trễ, ca trực đêm và ca cuối tuần',
+        icon: '📊'
+      },
+      {
         key: 'PROFILE_ACCOUNT_UPDATE',
         name: 'Cập nhật Hồ sơ & Mật khẩu Tài khoản',
         desc: 'Cảnh báo bảo mật khi thông tin cá nhân, hồ sơ hoặc mật khẩu tài khoản được cập nhật',

@@ -1586,14 +1586,26 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
                             </div>
                           </td>
 
-                          <td style={{ padding: '12px 16px', fontWeight: 600, color: isLate ? 'var(--color-danger)' : 'var(--color-success)' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                              <Clock size={14} />
-                              {row.check_in_time}
-                              {isLate && (
-                                <span style={{ fontSize: '0.65rem', fontWeight: 500, backgroundColor: 'rgba(239,68,68,0.1)', padding: '2px 6px', borderRadius: '4px', marginLeft: '4px' }}>
-                                  {t('Trễ')}
-                                </span>
+                          <td style={{ padding: '12px 16px' }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontWeight: 600, color: isLate ? 'var(--color-danger)' : 'var(--color-success)' }}>
+                                <Clock size={14} />
+                                <span>{t('Vào:')} {row.check_in_time ? row.check_in_time.substring(0, 5) : '--:--'}</span>
+                                {isLate && (
+                                  <span style={{ fontSize: '0.65rem', fontWeight: 500, backgroundColor: 'rgba(239,68,68,0.1)', padding: '2px 6px', borderRadius: '4px' }}>
+                                    {t('Trễ')} {row.late_minutes ? `${row.late_minutes}m` : ''}
+                                  </span>
+                                )}
+                              </div>
+                              {row.check_out_time && (
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.75rem', color: row.early_minutes > 0 ? '#f59e0b' : 'var(--color-text-muted)' }}>
+                                  <span>{t('Ra:')} {row.check_out_time.substring(11, 16)}</span>
+                                  {row.early_minutes > 0 && (
+                                    <span style={{ fontSize: '0.65rem', fontWeight: 500, backgroundColor: 'rgba(245,158,11,0.15)', color: '#d97706', padding: '1px 5px', borderRadius: '4px' }}>
+                                      {t('Về sớm')} {row.early_minutes}m
+                                    </span>
+                                  )}
+                                </div>
                               )}
                             </div>
                           </td>

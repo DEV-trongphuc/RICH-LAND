@@ -210,8 +210,95 @@ class CheckInController {
         $reason = trim($b['reason'] ?? '');
         $today = trim($b['check_in_date'] ?? date('Y-m-d'));
         $currentTime = trim($b['check_in_time'] ?? date('H:i:s'));
+        $action = trim($b['action'] ?? ''); // 'checkin' or 'checkout' or auto-detect
         
         $isSupplementary = ($today !== date('Y-m-d')) || (!empty($b['is_supplementary']));
+
+        // Fetch system settings for checkout & auto-approve requirements
+        $stmtSettings = $this->db->prepare("SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('require_checkin_weekend_lead', 'require_checkin_holiday_lead', 'holiday_schedules', 'require_checkout', 'auto_approve_checkin', 'global_work_start_time', 'global_work_end_time')");
+        $stmtSettings->execute();
+        $settingsMap = $stmtSettings->fetchAll(PDO::FETCH_KEY_PAIR);
+
+        $reqCheckout = isset($settingsMap['require_checkout']) ? (int)$settingsMap['require_checkout'] : 0;
+        $autoApprove = isset($settingsMap['auto_approve_checkin']) ? (int)$settingsMap['auto_approve_checkin'] : 0;
+        $reqWeekend = isset($settingsMap['require_checkin_weekend_lead']) ? (int)$settingsMap['require_checkin_weekend_lead'] : 0;
+        $reqHoliday = isset($settingsMap['require_checkin_holiday_lead']) ? (int)$settingsMap['require_checkin_holiday_lead'] : 0;
+
+        // Check if user is on leave for that date
+        $stmtLeave = $this->db->prepare("SELECT 1 FROM consultant_leaves WHERE consultant_id = ? AND ? BETWEEN start_date AND end_date LIMIT 1");
+        $stmtLeave->execute([$auth['user_id'], $today]);
+        if ($stmtLeave->fetch()) {
+            respond(400, null, 'Bạn đang trong thời gian nghỉ phép, không cần và không thể check-in vào ngày này.', false);
+        }
+
+        // Fetch existing check_in record for today
+        $stmtExisting = $this->db->prepare("SELECT * FROM check_ins WHERE user_id = ? AND check_in_date = ? LIMIT 1");
+        $stmtExisting->execute([$auth['user_id'], $today]);
+        $existingRow = $stmtExisting->fetch(PDO::FETCH_ASSOC);
+
+        // Fetch user work hours
+        $stmtUser = $this->db->prepare("SELECT work_start_time, work_end_time, use_custom_work_hours FROM users WHERE id = ?");
+        $stmtUser->execute([$auth['user_id']]);
+        $uRow = $stmtUser->fetch(PDO::FETCH_ASSOC);
+        
+        $workStartTime = '08:00';
+        $workEndTime = '17:30';
+        if ($uRow) {
+            if ((int)($uRow['use_custom_work_hours'] ?? 0) === 1) {
+                $workStartTime = $uRow['work_start_time'] ?: '08:00';
+                $workEndTime = $uRow['work_end_time'] ?: '17:30';
+            } else {
+                $workStartTime = $settingsMap['global_work_start_time'] ?? '08:00';
+                $workEndTime = $settingsMap['global_work_end_time'] ?? '17:30';
+            }
+        }
+
+        // ==================== FLOW A: CHECK-OUT (RA CA) ====================
+        if (($action === 'checkout' || ($reqCheckout === 1 && $existingRow && empty($existingRow['check_out_time']))) && !$isSupplementary) {
+            if (!$existingRow) {
+                respond(400, null, 'Bạn chưa thực hiện Chấm công Vào ca hôm nay, không thể chấm công Ra ca.', false);
+            }
+
+            $outTimeStr = $today . ' ' . $currentTime;
+            $workEndStr = $today . ' ' . substr($workEndTime, 0, 5) . ':00';
+            
+            $earlyMinutes = 0;
+            $checkOutStatus = 'on_time';
+
+            if (strtotime($outTimeStr) < strtotime($workEndStr)) {
+                $earlyMinutes = (int)ceil((strtotime($workEndStr) - strtotime($outTimeStr)) / 60);
+                $checkOutStatus = 'early';
+            }
+
+            $updateOut = $this->db->prepare("UPDATE check_ins SET check_out_time = ?, early_minutes = ?, check_out_status = ? WHERE id = ?");
+            $updateOut->execute([$outTimeStr, $earlyMinutes, $checkOutStatus, $existingRow['id']]);
+
+            logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'CHECK_OUT', 'check_in', $existingRow['id'], json_encode([
+                'date' => $today,
+                'time' => $currentTime,
+                'early_minutes' => $earlyMinutes,
+                'check_out_status' => $checkOutStatus
+            ]));
+
+            $msgText = $earlyMinutes > 0
+                ? "Ghi nhận Chấm công Ra ca thành công! (Về sớm {$earlyMinutes} phút)"
+                : "Ghi nhận Chấm công Ra ca thành công! Chúc bạn buổi tối vui vẻ.";
+
+            respond(200, [
+                'id' => $existingRow['id'],
+                'status' => $existingRow['status'],
+                'check_out_time' => $outTimeStr,
+                'early_minutes' => $earlyMinutes,
+                'check_out_status' => $checkOutStatus,
+                'message' => $msgText
+            ]);
+            return;
+        }
+
+        // ==================== FLOW B: CHECK-IN (VÀO CA) ====================
+        if ($existingRow) {
+            respond(409, null, 'Bạn đã thực hiện check-in hoặc gửi yêu cầu cho ngày này rồi', false);
+        }
 
         if (empty($selfieUrl) && !$isSupplementary) {
             respond(422, null, 'Ảnh selfie check-in là bắt buộc', false);
@@ -221,47 +308,8 @@ class CheckInController {
             respond(422, null, 'Vui lòng cung cấp lý do/ghi chú cập nhật bổ sung chấm công', false);
         }
 
-        // Check if user is on leave for that check_in_date
-        $stmtLeave = $this->db->prepare("SELECT 1 FROM consultant_leaves WHERE consultant_id = ? AND ? BETWEEN start_date AND end_date LIMIT 1");
-        $stmtLeave->execute([$auth['user_id'], $today]);
-        if ($stmtLeave->fetch()) {
-            respond(400, null, 'Bạn đang trong thời gian nghỉ phép, không cần và không thể check-in vào ngày này.', false);
-        }
-
-        // Check if already checked in on that date
-        $stmt = $this->db->prepare("SELECT id FROM check_ins WHERE user_id = ? AND check_in_date = ?");
-        $stmt->execute([$auth['user_id'], $today]);
-        if ($stmt->fetch()) {
-            respond(409, null, 'Bạn đã thực hiện check-in hoặc gửi yêu cầu cho ngày này rồi', false);
-        }
-
-        // Fetch user work_start_time
-        $stmtUser = $this->db->prepare("SELECT work_start_time, use_custom_work_hours FROM users WHERE id = ?");
-        $stmtUser->execute([$auth['user_id']]);
-        $uRow = $stmtUser->fetch();
-        
-        $workStartTime = '08:00';
-        if ($uRow) {
-            if ((int)$uRow['use_custom_work_hours'] === 1) {
-                $workStartTime = $uRow['work_start_time'] ?: '08:00';
-            } else {
-                $stmtGlobal = $this->db->prepare("SELECT setting_value FROM system_settings WHERE setting_key = 'global_work_start_time' LIMIT 1");
-                $stmtGlobal->execute();
-                $globalStart = $stmtGlobal->fetchColumn();
-                $workStartTime = $globalStart ?: '08:00';
-            }
-        }
-
         $dayOfWeek = (int)date('N', strtotime($today));
         $isWeekend = ($dayOfWeek >= 6);
-
-        // Fetch system settings for mandatory weekend/holiday check-in
-        $stmtSettings = $this->db->prepare("SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('require_checkin_weekend_lead', 'require_checkin_holiday_lead', 'holiday_schedules')");
-        $stmtSettings->execute();
-        $settingsMap = $stmtSettings->fetchAll(PDO::FETCH_KEY_PAIR);
-
-        $reqWeekend = isset($settingsMap['require_checkin_weekend_lead']) ? (int)$settingsMap['require_checkin_weekend_lead'] : 0;
-        $reqHoliday = isset($settingsMap['require_checkin_holiday_lead']) ? (int)$settingsMap['require_checkin_holiday_lead'] : 0;
 
         $isHoliday = false;
         if (!empty($settingsMap['holiday_schedules'])) {
@@ -282,45 +330,49 @@ class CheckInController {
 
         $isMandatoryAutoApprove = ($isWeekend && $reqWeekend === 1) || ($isHoliday && $reqHoliday === 1);
 
+        $currentHM = substr($currentTime, 0, 5);
+        $workStartHM = substr($workStartTime, 0, 5);
+        $isLate = ($currentHM > $workStartHM);
+
+        $lateMinutes = 0;
+        if ($isLate) {
+            $lateMinutes = (int)ceil((strtotime($today . ' ' . $currentHM . ':00') - strtotime($today . ' ' . $workStartHM . ':00')) / 60);
+        }
+
         $status = 'approved';
-        $isLate = false;
         if ($isSupplementary) {
             $status = 'pending_approval';
-        } else if ($isMandatoryAutoApprove) {
-            // Auto-approve check-in on Weekend / Holiday when mandatory check-in is enabled
+        } else if ($isMandatoryAutoApprove || $autoApprove === 1) {
+            // Auto-approve check-in when auto_approve_checkin is ON or on Weekend/Holiday mandatory check-in
             $status = 'approved';
-            $isLate = false;
-        } else {
-            // Check if late (compare HH:ii format)
-            $currentHM = substr($currentTime, 0, 5);
-            $workStartHM = substr($workStartTime, 0, 5);
-            $isLate = ($currentHM > $workStartHM);
-            if ($isLate) {
-                if (empty($reason)) {
-                    respond(422, null, 'Bạn đi làm trễ giờ làm việc (' . $workStartHM . '). Vui lòng gửi lý do để quản lý phê duyệt.', false);
-                }
-                $status = 'pending_approval';
+        } else if ($isLate) {
+            if (empty($reason)) {
+                respond(422, null, 'Bạn đi làm trễ ' . $lateMinutes . ' phút. Vui lòng gửi lý do để quản lý phê duyệt.', false);
             }
+            $status = 'pending_approval';
         }
+
+        $inTimeStr = $today . ' ' . $currentTime;
 
         // Insert check-in log
         $insert = $this->db->prepare("
-            INSERT INTO check_ins (user_id, check_in_date, check_in_time, selfie_url, status, reason)
-            VALUES (?, ?, ?, ?, ?, ?)
+            INSERT INTO check_ins (user_id, check_in_date, check_in_time, late_minutes, selfie_url, status, reason)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
         ");
-        $insert->execute([$auth['user_id'], $today, $currentTime, $selfieUrl ?: null, $status, $reason ?: null]);
+        $insert->execute([$auth['user_id'], $today, $inTimeStr, $lateMinutes, $selfieUrl ?: null, $status, $reason ?: null]);
         
         $newId = (int)$this->db->lastInsertId();
 
         logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'CHECK_IN', 'check_in', $newId, json_encode([
             'date' => $today,
             'time' => $currentTime,
+            'late_minutes' => $lateMinutes,
             'is_late' => $isLate,
             'status' => $status
         ]));
 
-        // Send notifications to Admins & Managers if late or supplementary check-in request
-        if ($isLate || $isSupplementary) {
+        // Send notifications to Admins & Managers if late (and approval is needed) or supplementary request
+        if (($isLate && $status === 'pending_approval') || $isSupplementary) {
             require_once __DIR__ . '/../NotificationService.php';
             $stmtUserDetails = $this->db->prepare("SELECT full_name, team_id FROM users WHERE id = ?");
             $stmtUserDetails->execute([$auth['user_id']]);
@@ -336,10 +388,18 @@ class CheckInController {
             ]);
         }
 
+        $msgText = 'Check-in thành công!';
+        if ($status === 'approved' && $isLate) {
+            $msgText = "Đã ghi nhận Chấm công Vào ca! (Đi trễ {$lateMinutes} phút)";
+        } else if ($status === 'pending_approval') {
+            $msgText = $isSupplementary ? 'Đã gửi yêu cầu bổ sung chấm công thành công. Đang chờ phê duyệt.' : 'Đã gửi báo cáo đi trễ thành công. Đang chờ phê duyệt.';
+        }
+
         respond(200, [
             'id' => $newId,
             'status' => $status,
-            'message' => $status === 'approved' ? 'Check-in thành công!' : ($isSupplementary ? 'Đã gửi yêu cầu bổ sung chấm công thành công. Đang chờ phê duyệt.' : 'Đã gửi báo cáo đi trễ thành công. Đang chờ phê duyệt.')
+            'late_minutes' => $lateMinutes,
+            'message' => $msgText
         ]);
     }
 

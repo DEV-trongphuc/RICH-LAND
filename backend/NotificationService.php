@@ -277,13 +277,98 @@ class NotificationService {
                         . (!empty($reason) ? "  • Ghi chú: \"$reason\"\n" : ""),
                     'tg_msg' => "✅ <b>[ KẾT QUẢ DUYỆT " . ($isSupplementary ? "CẬP NHẬT CÔNG" : "ĐI TRỄ") . " ]</b>\n\n"
                         . "Yêu cầu của <b>" . htmlspecialchars($userName) . "</b> ngày <code>$today</code> đã được <b>$statusText</b> bởi quản trị viên.\n"
-                        . (!empty($reason) ? "  • Ghi chú: <i>\"" . htmlspecialchars($reason) . "\"</i>\n" : ""),
                     'email_subject' => "[RICH LAND] Phê duyệt " . ($isSupplementary ? "cập nhật công" : "đi trễ") . " - Ngày " . $today,
                     'email_title' => "KẾT QUẢ PHÊ DUYỆT CHẤM CÔNG",
                     'email_content' => "Chào <strong>" . htmlspecialchars($userName) . "</strong>,<br/><br/>" .
                                     "Yêu cầu " . ($isSupplementary ? "cập nhật công" : "phê duyệt đi trễ") . " ngày $today của bạn đã được <strong>$statusText</strong> bởi quản trị viên.<br/>" .
                                     (!empty($reason) ? "Ghi chú: <em>\"" . htmlspecialchars($reason) . "\"</em><br/>" : "") .
                                     "Vui lòng kiểm tra trên hệ thống CRM."
+                ];
+
+            case 'HOLIDAY_REGISTRATION_OPENED':
+                $holidayName = $payload['holiday_name'] ?? 'Lễ, Tết';
+                $shiftDate = $payload['shift_date'] ?? '';
+                $deadline = $payload['deadline'] ?? '';
+                $recipients = self::getAllActiveUsers($db, $tenantId);
+                return [
+                    'recipients' => $recipients,
+                    'title' => "🎉 Mở đăng ký ca trực lễ $holidayName",
+                    'body' => "Ban quản trị đã mở đăng ký trực ca cho ngày lễ $holidayName ($shiftDate)." . (!empty($deadline) ? " Hạn đăng ký: $deadline" : ""),
+                    'type' => "holiday",
+                    'link' => "/sale-portal",
+                    'zalo_msg' => "🎉 [ MỞ ĐĂNG KÝ TRỰC LỄ ]\n\n"
+                        . "Ban quản trị đã mở đăng ký ca trực cho ngày nghỉ lễ: $holidayName ($shiftDate).\n"
+                        . (!empty($deadline) ? "  • Hạn chót đăng ký: $deadline\n" : "")
+                        . "Vui lòng truy cập trang Cá nhân / Sale Portal để đăng ký nhận lead.",
+                    'tg_msg' => "🎉 <b>[ MỞ ĐĂNG KÝ TRỰC LỄ ]</b>\n\n"
+                        . "Ban quản trị đã mở đăng ký ca trực cho ngày nghỉ lễ: <b>$holidayName</b> (<code>$shiftDate</code>).\n"
+                        . (!empty($deadline) ? "  • Hạn chót đăng ký: <code>$deadline</code>\n" : "")
+                        . "Vui lòng truy cập hệ thống để đăng ký nhận lead.",
+                    'email_subject' => "[RICH LAND] Mở đăng ký trực lễ - $holidayName",
+                    'email_title' => "MỞ ĐĂNG KÝ TRỰC LỄ",
+                    'email_content' => "Chào các thành viên,<br/><br/>" .
+                                    "Ban quản trị chính thức mở đăng ký nhận lead ca trực cho ngày lễ: <strong>$holidayName</strong> ($shiftDate).<br/>" .
+                                    (!empty($deadline) ? "Hạn chót đăng ký: <strong>$deadline</strong>.<br/>" : "") .
+                                    "Vui lòng truy cập trang Sale Portal để đăng ký."
+                ];
+
+            case 'HOLIDAY_UPDATE':
+                $holidayName = $payload['holiday_name'] ?? 'Ngày nghỉ lễ';
+                $description = $payload['description'] ?? '';
+                $recipients = self::getAllActiveUsers($db, $tenantId);
+                return [
+                    'recipients' => $recipients,
+                    'title' => "🌴 Thông báo lịch nghỉ lễ $holidayName",
+                    'body' => "Công ty thông báo lịch nghỉ lễ $holidayName. $description",
+                    'type' => "holiday",
+                    'link' => "/sale-portal",
+                    'zalo_msg' => "🌴 [ THÔNG BÁO LỊCH NGHĨ LỄ ]\n\n"
+                        . "Công ty thông báo chính thức lịch nghỉ lễ: $holidayName.\n"
+                        . (!empty($description) ? "  • Chi tiết: $description\n" : "")
+                        . "Chúc toàn thể cán bộ nhân viên có kỳ nghỉ vui vẻ!",
+                    'tg_msg' => "🌴 <b>[ THÔNG BÁO LỊCH NGHĨ LỄ ]</b>\n\n"
+                        . "Công ty thông báo chính thức lịch nghỉ lễ: <b>$holidayName</b>.\n"
+                        . (!empty($description) ? "  • Chi tiết: <i>$description</i>\n" : "")
+                        . "Chúc toàn thể cán bộ nhân viên có kỳ nghỉ vui vẻ!",
+                    'email_subject' => "[RICH LAND] Thông báo lịch nghỉ lễ - $holidayName",
+                    'email_title' => "THÔNG BÁO LỊCH NGHĨ LỄ",
+                    'email_content' => "Chào toàn thể cán bộ nhân viên,<br/><br/>" .
+                                    "Công ty xin thông báo chính thức lịch nghỉ lễ: <strong>$holidayName</strong>.<br/>" .
+                                    (!empty($description) ? "Chi tiết: <em>\"$description\"</em><br/>" : "") .
+                                    "Chúc các bạn có một kỳ nghỉ an lành và vui vẻ!"
+                ];
+
+            case 'MONTHLY_ATTENDANCE_REPORT':
+                $recipients = $payload['recipients'] ?? [];
+                $summaryText = $payload['summary_text'] ?? '';
+                $periodStr = $payload['period_str'] ?? '';
+                return [
+                    'recipients' => $recipients,
+                    'title' => "📊 Báo cáo Chấm công & Trực ca ($periodStr)",
+                    'body' => $summaryText,
+                    'type' => "attendance_report",
+                    'link' => "/attendance",
+                    'zalo_msg' => "📊 [ BÁO CÁO CHẤM CÔNG & TRỰC CA ]\n\n" . $summaryText,
+                    'tg_msg' => "📊 <b>[ BÁO CÁO CHẤM CÔNG & TRỰC CA ]</b>\n\n" . preg_replace('/•\s*([^:]+):/', '• <b>$1</b>:', htmlspecialchars($summaryText)),
+                    'email_subject' => "[RICH LAND] Báo cáo tổng kết Chấm công & Trực ca ($periodStr)",
+                    'email_title' => "BÁO CÁO CHẤM CÔNG CÁ NHÂN",
+                    'email_content' => nl2br(htmlspecialchars($summaryText))
+                ];
+
+            case 'CHECKOUT_REMINDER':
+                $recipients = $payload['recipients'] ?? [];
+                $workEnd = $payload['work_end'] ?? '17:30';
+                return [
+                    'recipients' => $recipients,
+                    'title' => "🌆 Nhắc nhở chấm công Ra ca",
+                    'body' => "Đã đến giờ tan làm ($workEnd)! Vui lòng thực hiện chấm công ra ca.",
+                    'type' => "attendance",
+                    'link' => "/attendance",
+                    'zalo_msg' => "🌆 [ NHẮC NHỞ CHẤM CÔNG RA CA ]\n\nĐã đến giờ tan làm ($workEnd)! Vui lòng truy cập hệ thống để chấm công ra ca.",
+                    'tg_msg' => "🌆 <b>[ NHẮC NHỞ CHẤM CÔNG RA CA ]</b>\n\nĐã đến giờ tan làm (<code>$workEnd</code>)! Vui lòng truy cập hệ thống để chấm công ra ca.",
+                    'email_subject' => "[RICH LAND] Nhắc nhở chấm công ra ca",
+                    'email_title' => "NHẮC NHỞ TAN LÀM",
+                    'email_content' => "Chào bạn,<br/><br/>Đã đến giờ tan làm ca chiều (lúc $workEnd).<br/>Vui lòng truy cập hệ thống CRM để chấm công ra ca."
                 ];
 
             case 'EXPENSE_REQUEST':

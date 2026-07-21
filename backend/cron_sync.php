@@ -3042,6 +3042,176 @@ function sendShiftRemindersAndCheckInAlerts($conn) {
     }
 }
 
+function sendCheckOutReminders($conn) {
+    $resSet = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'require_checkout' LIMIT 1");
+    $reqCheckout = 0;
+    if ($resSet && $r = $resSet->fetch_assoc()) {
+        $reqCheckout = (int)$r['setting_value'];
+    }
+    if ($reqCheckout !== 1) return;
+
+    $todayStr = date('Y-m-d');
+    $nowStr = date('H:i');
+
+    $resGlobalEnd = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'global_work_end_time' LIMIT 1");
+    $globalWorkEnd = '17:30';
+    if ($resGlobalEnd && $rg = $resGlobalEnd->fetch_assoc()) {
+        $globalWorkEnd = substr($rg['setting_value'], 0, 5);
+    }
+
+    if ($nowStr < $globalWorkEnd) return;
+
+    $sql = "
+        SELECT u.id, u.full_name, u.email, u.zalo_chat_id, u.telegram_chat_id, 
+               IF(COALESCE(u.use_custom_work_hours, 0) = 1, u.work_end_time, '$globalWorkEnd') AS work_end_time
+        FROM check_ins c
+        JOIN users u ON c.user_id = u.id
+        WHERE c.check_in_date = ? AND c.check_out_time IS NULL AND u.status = 'active'
+    ";
+    $stmt = $conn->prepare($sql);
+    $stmt->bind_param("s", $todayStr);
+    $stmt->execute();
+    $res = $stmt->get_result();
+
+    require_once __DIR__ . '/NotificationService.php';
+    require_once __DIR__ . '/config.php';
+    $dsn = "mysql:host=" . DB_HOST . ";dbname=" . DB_NAME . ";charset=utf8mb4";
+    $pdo = new PDO($dsn, DB_USER, DB_PASS, [
+        PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+        PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC
+    ]);
+
+    while ($user = $res->fetch_assoc()) {
+        $userId = (int)$user['id'];
+        
+        $chk = $conn->prepare("SELECT id FROM sent_notifications WHERE user_id = ? AND notify_type = 'checkout_reminder' AND notify_date = ?");
+        $chk->bind_param("is", $userId, $todayStr);
+        $chk->execute();
+        $hasSent = (bool)$chk->get_result()->fetch_assoc();
+        $chk->close();
+
+        if (!$hasSent) {
+            NotificationService::send($pdo, 1, 'CHECKOUT_REMINDER', [
+                'recipients' => [$user],
+                'work_end' => substr($user['work_end_time'], 0, 5)
+            ]);
+
+            $ins = $conn->prepare("INSERT IGNORE INTO sent_notifications (user_id, notify_type, notify_date) VALUES (?, 'checkout_reminder', ?)");
+            $ins->bind_param("is", $userId, $todayStr);
+            $ins->execute();
+            $ins->close();
+
+            logSync("Sent check-out reminder to Sale: {$user['full_name']} (User ID: {$userId})");
+        }
+    }
+    $stmt->close();
+}
+
+function sendScheduledAttendanceReports($conn) {
+    $stmtS = $conn->query("SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('attendance_report_enabled', 'attendance_report_trigger_day', 'attendance_report_date_mode', 'attendance_report_start_date', 'attendance_report_end_date')");
+    $settings = [];
+    if ($stmtS) {
+        while ($r = $stmtS->fetch_assoc()) {
+            $settings[$r['setting_key']] = $r['setting_value'];
+        }
+    }
+
+    if (empty($settings['attendance_report_enabled']) || (int)$settings['attendance_report_enabled'] !== 1) {
+        return;
+    }
+
+    $triggerDay = (int)($settings['attendance_report_trigger_day'] ?? 1);
+    $todayDay = (int)date('j');
+    $todayStr = date('Y-m-d');
+
+    if ($todayDay !== $triggerDay) return;
+
+    $mode = $settings['attendance_report_date_mode'] ?? 'previous_month';
+    
+    if ($mode === 'last_30_days') {
+        $startDate = date('Y-m-d', strtotime('-30 days'));
+        $endDate = date('Y-m-d', strtotime('-1 day'));
+        $periodStr = "30 ngày gần nhất (" . date('d/m/Y', strtotime($startDate)) . " - " . date('d/m/Y', strtotime($endDate)) . ")";
+    } elseif ($mode === 'custom' && !empty($settings['attendance_report_start_date']) && !empty($settings['attendance_report_end_date'])) {
+        $startDate = $settings['attendance_report_start_date'];
+        $endDate = $settings['attendance_report_end_date'];
+        $periodStr = "Từ " . date('d/m/Y', strtotime($startDate)) . " đến " . date('d/m/Y', strtotime($endDate));
+    } else {
+        $firstDayPrev = date('Y-m-01', strtotime('first day of last month'));
+        $lastDayPrev = date('Y-m-t', strtotime('last day of last month'));
+        $startDate = $firstDayPrev;
+        $endDate = $lastDayPrev;
+        $periodStr = "Tháng " . date('m/Y', strtotime($startDate));
+    }
+
+    $salesRes = $conn->query("SELECT id, full_name, email, zalo_chat_id, telegram_chat_id FROM users WHERE role IN ('sales', 'sale') AND status = 'active'");
+    if (!$salesRes) return;
+
+    require_once __DIR__ . '/NotificationService.php';
+    require_once __DIR__ . '/config.php';
+    $dsn = "mysql:host=" . DB_HOST . ";dbname=" . DB_NAME . ";charset=utf8mb4";
+    $pdo = new PDO($dsn, DB_USER, DB_PASS, [
+        PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+        PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC
+    ]);
+
+    while ($sale = $salesRes->fetch_assoc()) {
+        $userId = (int)$sale['id'];
+
+        $reportKey = 'monthly_att_report_' . $startDate . '_' . $endDate;
+        $chk = $conn->prepare("SELECT id FROM sent_notifications WHERE user_id = ? AND notify_type = ? AND notify_date = ?");
+        $chk->bind_param("iss", $userId, $reportKey, $todayStr);
+        $chk->execute();
+        $hasSent = (bool)$chk->get_result()->fetch_assoc();
+        $chk->close();
+
+        if ($hasSent) continue;
+
+        $stmtC = $conn->prepare("SELECT COUNT(*) as total_days, SUM(late_minutes) as total_late_min, SUM(IF(late_minutes > 0, 1, 0)) as late_days, SUM(IF(early_minutes > 0, 1, 0)) as early_days FROM check_ins WHERE user_id = ? AND check_in_date BETWEEN ? AND ? AND status = 'approved'");
+        $stmtC->bind_param("iss", $userId, $startDate, $endDate);
+        $stmtC->execute();
+        $attData = $stmtC->get_result()->fetch_assoc();
+        $stmtC->close();
+
+        $totalCheckedIn = (int)($attData['total_days'] ?? 0);
+        $lateDays = (int)($attData['late_days'] ?? 0);
+        $totalLateMin = (int)($attData['total_late_min'] ?? 0);
+
+        $stmtNight = $conn->prepare("SELECT COUNT(*) as cnt FROM night_shift_registrations WHERE user_id = ? AND shift_date BETWEEN ? AND ? AND approved = 1");
+        $stmtNight->bind_param("iss", $userId, $startDate, $endDate);
+        $stmtNight->execute();
+        $nightShifts = (int)($stmtNight->get_result()->fetch_assoc()['cnt'] ?? 0);
+        $stmtNight->close();
+
+        $stmtDuty = $conn->prepare("SELECT COUNT(*) as cnt FROM duty_registrations WHERE user_id = ? AND duty_date BETWEEN ? AND ? AND approved = 1");
+        $stmtDuty->bind_param("iss", $userId, $startDate, $endDate);
+        $stmtDuty->execute();
+        $dutyShifts = (int)($stmtDuty->get_result()->fetch_assoc()['cnt'] ?? 0);
+        $stmtDuty->close();
+
+        $summaryText = "Xin chào {$sale['full_name']},\n"
+            . "Hệ thống xin gửi tổng kết Chấm công & Trực ca của bạn trong {$periodStr}:\n"
+            . "  • Số ngày đã chấm công: {$totalCheckedIn} ngày\n"
+            . "  • Số lần đi trễ: {$lateDays} lần (Tổng {$totalLateMin} phút)\n"
+            . "  • Số ca trực đêm: {$nightShifts} ca\n"
+            . "  • Số ca trực cuối tuần / lễ: {$dutyShifts} ca\n\n"
+            . "Chúc bạn làm việc hiệu quả và đạt nhiều doanh số!";
+
+        NotificationService::send($pdo, 1, 'MONTHLY_ATTENDANCE_REPORT', [
+            'recipients' => [$sale],
+            'summary_text' => $summaryText,
+            'period_str' => $periodStr
+        ]);
+
+        $ins = $conn->prepare("INSERT IGNORE INTO sent_notifications (user_id, notify_type, notify_date) VALUES (?, ?, ?)");
+        $ins->bind_param("iss", $userId, $reportKey, $todayStr);
+        $ins->execute();
+        $ins->close();
+
+        logSync("Dispatched Monthly Attendance Report to Sale: {$sale['full_name']} (User ID: {$userId})");
+    }
+}
+
 logSync("Cronjob finished.");
 
 if (!defined('DIAG_TOKEN')) {
@@ -3057,6 +3227,24 @@ if (!defined('DIAG_TOKEN')) {
         sendShiftRemindersAndCheckInAlerts($conn);
     } catch (Exception $e) {
         logSync("Error running sendShiftRemindersAndCheckInAlerts: " . $e->getMessage());
+    }
+
+    // --- Chạy kiểm tra gửi nhắc nhở chấm công Ra ca (Cuối ca) ---
+    try {
+        if (function_exists('sendCheckOutReminders')) {
+            sendCheckOutReminders($conn);
+        }
+    } catch (Exception $e) {
+        logSync("Error running sendCheckOutReminders: " . $e->getMessage());
+    }
+
+    // --- Chạy gửi báo cáo chấm công & trực ca định kỳ cho Sale ---
+    try {
+        if (function_exists('sendScheduledAttendanceReports')) {
+            sendScheduledAttendanceReports($conn);
+        }
+    } catch (Exception $e) {
+        logSync("Error running sendScheduledAttendanceReports: " . $e->getMessage());
     }
 
     // --- Chạy kiểm tra cảnh báo SLA duyệt đi trễ ---

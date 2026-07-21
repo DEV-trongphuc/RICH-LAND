@@ -151,8 +151,24 @@ try {
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
     ");
 
-    // 3. Update DB version in system_settings
-    $conn->query("INSERT INTO system_settings (setting_key, setting_value) VALUES ('db_version', '185') ON DUPLICATE KEY UPDATE setting_value = '185'");
+    // 3. Ensure check_ins table has check-out and early leave columns
+    $chkColCO = $conn->query("SHOW COLUMNS FROM check_ins LIKE 'check_out_time'");
+    if (!$chkColCO || $chkColCO->num_rows == 0) {
+        $conn->query("ALTER TABLE check_ins ADD COLUMN check_out_time DATETIME NULL COMMENT 'Thời gian chấm công ra ca' AFTER check_in_time");
+        $conn->query("ALTER TABLE check_ins ADD COLUMN early_minutes INT DEFAULT 0 COMMENT 'Số phút về sớm' AFTER late_minutes");
+        $conn->query("ALTER TABLE check_ins ADD COLUMN check_out_status VARCHAR(50) DEFAULT NULL COMMENT 'Trạng thái ra ca (on_time, early)' AFTER status");
+        $logMsg("Đã bổ sung các cột chấm công ra ca (check_out_time, early_minutes, check_out_status) vào bảng check_ins.", "success");
+    }
+
+    // 4. Ensure default system settings exist for advanced features
+    $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('attendance_report_enabled', '0')");
+    $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('attendance_report_trigger_day', '1')");
+    $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('attendance_report_date_mode', 'previous_month')");
+    $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('require_checkout', '0')");
+    $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('auto_approve_checkin', '0')");
+
+    // 5. Update DB version in system_settings
+    $conn->query("INSERT INTO system_settings (setting_key, setting_value) VALUES ('db_version', '186') ON DUPLICATE KEY UPDATE setting_value = '186'");
     
     $logMsg("Hệ thống đã duy trì cấu trúc Cơ sở dữ liệu ở phiên bản mới nhất: " . $targetVersion, "success");
 
