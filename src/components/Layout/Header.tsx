@@ -2202,7 +2202,7 @@ export const Header = ({
                         <span style={{
                           fontSize: '0.625rem',
                           fontWeight: 700,
-                          color: '#dc2626',
+                          color: '#BD1D2D',
                           background: '#fef2f2',
                           border: '1px solid #fecaca',
                           padding: '2px 6px',
@@ -2226,7 +2226,7 @@ export const Header = ({
                     }}
                     style={{
                       padding: '6px 14px',
-                      background: '#dc2626',
+                      background: '#BD1D2D',
                       color: 'white',
                       border: 'none',
                       borderRadius: '8px',
@@ -2298,8 +2298,8 @@ export const Header = ({
                           style={{
                             padding: '6px 12px',
                             background: 'rgba(239, 68, 68, 0.08)',
-                            color: '#ef4444',
-                            border: '1px solid rgba(239, 68, 68, 0.2)',
+                            color: '#BD1D2D',
+                            border: '1px solid rgba(189, 29, 45, 0.2)',
                             borderRadius: '8px',
                             fontSize: '0.75rem',
                             fontWeight: 700,
@@ -2353,7 +2353,7 @@ export const Header = ({
                       boxShadow: '0 2px 6px rgba(0, 0, 0, 0.01)'
                     }}
                   >
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', flex: 1, minWidth: 0 }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: 1, minWidth: 0 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                         <span style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)' }}>
                           {pref.title}
@@ -2362,8 +2362,8 @@ export const Header = ({
                           <span style={{
                             fontSize: '0.625rem',
                             fontWeight: 700,
-                            color: '#ef4444',
-                            background: 'rgba(239, 68, 68, 0.08)',
+                            color: '#BD1D2D',
+                            background: 'rgba(189, 29, 45, 0.08)',
                             padding: '2px 6px',
                             borderRadius: '10px',
                             textTransform: 'uppercase'
@@ -2371,6 +2371,25 @@ export const Header = ({
                             Mặc định
                           </span>
                         )}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsNotifModalOpen(false);
+                            setIsMatrixModalOpen(true);
+                          }}
+                          style={{
+                            fontSize: '0.75rem',
+                            color: '#BD1D2D',
+                            background: 'none',
+                            border: 'none',
+                            cursor: 'pointer',
+                            fontWeight: 600,
+                            padding: 0,
+                            marginLeft: '6px'
+                          }}
+                        >
+                          (Tùy chỉnh đa kênh &gt;)
+                        </button>
                       </div>
                       <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', lineHeight: 1.4 }}>
                         {pref.desc}
@@ -2390,7 +2409,7 @@ export const Header = ({
                         left: 0,
                         right: 0,
                         bottom: 0,
-                        backgroundColor: notifPrefs[pref.key] === 1 ? 'var(--color-primary)' : '#cbd5e1',
+                        backgroundColor: notifPrefs[pref.key] === 1 ? '#BD1D2D' : '#cbd5e1',
                         transition: 'all 0.2s ease',
                         borderRadius: '20px'
                       }}>
@@ -2403,7 +2422,7 @@ export const Header = ({
                           backgroundColor: 'white',
                           transition: 'all 0.2s ease',
                           borderRadius: '50%',
-                          boxShadow: '0 1px 3px rgba(0,0,0,0.15)'
+                          boxShadow: '0 1px 3px rgba(0,0,0,0.2)'
                         }} />
                       </span>
                     </label>

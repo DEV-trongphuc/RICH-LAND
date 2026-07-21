@@ -3,6 +3,7 @@ import { CustomModal } from './CustomModal';
 import { Power, CheckCircle, AlertTriangle, ShieldCheck, ExternalLink, RotateCcw, ArrowLeft } from 'lucide-react';
 import { fetchAPI } from '../../utils/api';
 import { useAuthStore } from '../../store/authStore';
+import toast from 'react-hot-toast';
 
 interface NotificationSettingsModalProps {
   isOpen: boolean;
@@ -87,7 +88,7 @@ const EVENT_CATEGORIES = [
     category: 'ADMIN_MANAGER',
     title: 'Dành Cho Quản Lý & Admin (Phê Duyệt & Giám Sát)',
     badge: 'Quản lý & Admin',
-    badgeColor: '#dc2626',
+    badgeColor: '#BD1D2D',
     badgeBg: '#fef2f2',
     events: [
       {
@@ -304,14 +305,17 @@ const getDefaultConfig = (key: string): EventConfig => {
     })
       .then(res => {
         if (res && res.success) {
+          toast.success("Đã lưu cấu hình tùy chỉnh thông báo thành công!");
           showToast("Đã lưu cấu hình tùy chỉnh thông báo thành công!", "success");
           setTimeout(() => onClose(), 1000);
         } else {
+          toast.error(res?.message || "Không thể lưu cài đặt");
           showToast(res?.message || "Không thể lưu cài đặt", "error");
         }
       })
       .catch(err => {
         console.error("Save error:", err);
+        toast.error("Lỗi kết nối máy chủ");
         showToast("Lỗi kết nối máy chủ", "error");
       })
       .finally(() => setSaving(false));
@@ -338,7 +342,7 @@ const getDefaultConfig = (key: string): EventConfig => {
                 gap: '6px',
                 background: 'none',
                 border: 'none',
-                color: '#dc2626',
+                color: '#BD1D2D',
                 fontSize: '0.875rem',
                 fontWeight: 700,
                 cursor: 'pointer',
@@ -379,7 +383,7 @@ const getDefaultConfig = (key: string): EventConfig => {
           boxShadow: '0 1px 4px rgba(0, 0, 0, 0.03)'
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px', paddingBottom: '10px', borderBottom: '1px solid #f1f5f9' }}>
-            <ShieldCheck size={20} color="#dc2626" />
+            <ShieldCheck size={20} color="#BD1D2D" />
             <h3 style={{ margin: 0, fontSize: '0.9375rem', fontWeight: 700, color: '#0f172a' }}>
               Trạng Thái Kết Nối Kênh Thông Báo Cá Nhân
             </h3>
@@ -528,12 +532,12 @@ const getDefaultConfig = (key: string): EventConfig => {
                     </div>
                   </th>
                   <th style={{ padding: '14px 10px', textAlign: 'center', width: 110 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', color: '#dc2626' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', color: '#BD1D2D' }}>
                       <img src="/imgs/gmail-icon-free-png.webp" style={{ width: 16, height: 16, objectFit: 'contain' }} alt="Email" />
                       <span>Email</span>
                     </div>
                   </th>
-                  <th style={{ padding: '14px 10px', textAlign: 'center', width: 130, color: '#16a34a', fontWeight: 800 }}>Bật thông báo</th>
+                  <th style={{ padding: '14px 10px', textAlign: 'center', width: 130, color: '#16a34a', fontWeight: 800, borderLeft: '1px solid #e2e8f0' }}>Bật thông báo</th>
                 </tr>
               </thead>
               <tbody style={{ fontSize: '0.875rem' }}>
@@ -694,8 +698,8 @@ const getDefaultConfig = (key: string): EventConfig => {
                             </button>
                           </td>
 
-                          {/* Master Power Switch (Far Right) */}
-                          <td style={{ padding: '14px 10px', textAlign: 'center', verticalAlign: 'middle' }}>
+                          {/* Master Power Switch (Far Right with divider) */}
+                          <td style={{ padding: '14px 10px', textAlign: 'center', verticalAlign: 'middle', borderLeft: '1px solid #f1f5f9' }}>
                             <button
                               type="button"
                               onClick={() => handleMasterToggle(evt.key)}
@@ -738,13 +742,19 @@ const getDefaultConfig = (key: string): EventConfig => {
           </div>
         )}
 
-        {/* Footer Actions */}
+        {/* Footer Actions (Sticky Bottom Bar) */}
         <div style={{
+          position: 'sticky',
+          bottom: 0,
+          background: '#ffffff',
+          zIndex: 20,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          paddingTop: '14px',
-          borderTop: '1px solid #f1f5f9',
+          padding: '14px 0',
+          marginTop: '10px',
+          borderTop: '1px solid #e2e8f0',
+          boxShadow: '0 -4px 14px rgba(0, 0, 0, 0.05)',
           gap: '16px'
         }}>
           {/* Left Side: Hủy bỏ button & Tip */}
@@ -804,11 +814,11 @@ const getDefaultConfig = (key: string): EventConfig => {
                 fontSize: '0.875rem',
                 fontWeight: 700,
                 color: 'white',
-                background: '#dc2626',
+                background: '#BD1D2D',
                 border: 'none',
                 borderRadius: '12px',
                 cursor: 'pointer',
-                boxShadow: '0 4px 12px rgba(220, 38, 38, 0.25)',
+                boxShadow: '0 4px 14px rgba(189, 29, 45, 0.28)',
                 opacity: saving ? 0.6 : 1,
                 transition: 'all 0.2s ease',
                 whiteSpace: 'nowrap'
