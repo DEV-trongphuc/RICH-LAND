@@ -252,36 +252,20 @@ class NoteController {
 
         // 2. Process mentions
         if (!empty($mentions)) {
-            require_once __DIR__ . '/../mailer.php';
+            require_once __DIR__ . '/../NotificationService.php';
             $ins = $this->db->prepare("INSERT IGNORE INTO note_mentions (note_id, user_id) VALUES (?,?)");
-            $notif = $this->db->prepare("INSERT INTO notifications (user_id, tenant_id, title, body, type, link) VALUES (?,?,?,?,?,?)");
-            $stmtUser = $this->db->prepare("SELECT email, full_name FROM users WHERE id = ?");
             
             foreach ($mentions as $uid) {
                 $uid = (int)$uid;
                 $ins->execute([$id, $uid]);
                 
-                $notif->execute([
-                    $uid, $auth['tenant_id'], 
-                    'Bạn được nhắc tên', 
-                    $auth['full_name'] . ' đã nhắc tên bạn trong một ghi chú.',
-                    'mention', 
-                    "/notes/{$id}"
+                // Dispatch unified multi-channel notification via NotificationService (Zalo, Telegram, Email, Matrix Check)
+                NotificationService::send($this->db, $auth['tenant_id'], 'MENTION_TAGGED', [
+                    'user_id' => $uid,
+                    'author_name' => $auth['full_name'] ?? 'Đồng nghiệp',
+                    'comment' => $b['body'] ?? '',
+                    'link' => "/contacts/{$entityId}"
                 ]);
-
-                // Send email notification
-                $stmtUser->execute([$uid]);
-                $userRow = $stmtUser->fetch(PDO::FETCH_ASSOC);
-                if ($userRow && !empty($userRow['email'])) {
-                    $emailSubject = "[RICH LAND] Bạn được nhắc tên trong ghi chú của " . $auth['full_name'];
-                    $emailTitle = "NHẮC TÊN TRÊN HỆ THỐNG";
-                    $emailContent = "Chào <strong>" . htmlspecialchars($userRow['full_name']) . "</strong>,<br/><br/>" .
-                                    "Bạn đã được nhắc tên bởi <strong>" . htmlspecialchars($auth['full_name']) . "</strong> trong một ghi chú.<br/>" .
-                                    "Nội dung:<br/>" .
-                                    "<blockquote style='border-left: 4px solid #eab308; padding-left: 12px; margin: 12px 0; color: #475569;'>" . nl2br(htmlspecialchars($b['body'])) . "</blockquote>" .
-                                    "Vui lòng truy cập hệ thống để biết thêm chi tiết.";
-                    sendEmailNotification($userRow['email'], $emailSubject, $emailTitle, $emailContent, '', false);
-                }
             }
         }
         respond(201, ['id' => $id], 'Đã thêm ghi chú');
