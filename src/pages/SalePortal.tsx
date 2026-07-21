@@ -1123,7 +1123,6 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
   };
 
   const handleStart2FASetup = async (type: 'email' | 'totp') => {
-    setTwoFactorType(type);
     if (type === 'email') {
       try {
         const res = await fetchAPI('users/2fa-enable', {
@@ -1131,6 +1130,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
           body: JSON.stringify({ type: 'email' })
         });
         if (res.success) {
+          setTwoFactorType('email');
           setTwoFactorEnabled(true);
           updateUser({ two_factor_enabled: 1, two_factor_type: 'email' });
           toast.success(t('Đã bật xác thực 2 yếu tố qua Email OTP thành công!'));
@@ -1174,6 +1174,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
         })
       });
       if (res.success) {
+        setTwoFactorType('totp');
         setTwoFactorEnabled(true);
         updateUser({ two_factor_enabled: 1, two_factor_type: 'totp' });
         toast.success(t('Đã kích hoạt 2FA Google Authenticator thành công!'));
@@ -12123,7 +12124,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                           <div style={{
                             display: 'grid',
                             gridTemplateColumns: 'repeat(7, 1fr)',
-                            gap: isMobile ? '4px' : '8px',
+                            gap: isMobile ? '3px' : '8px',
                             marginTop: '0.25rem',
                             width: '100%'
                           }}>
@@ -12140,6 +12141,18 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                               const today = new Date();
                               const todayStr = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0');
                               const isPastDay = day.date < todayStr;
+
+                              const getShortDayLabel = (name: string) => {
+                                if (!name) return '';
+                                if (name.includes('2') || name.includes('Hai')) return 'T2';
+                                if (name.includes('3') || name.includes('Ba')) return 'T3';
+                                if (name.includes('4') || name.includes('Tư')) return 'T4';
+                                if (name.includes('5') || name.includes('Năm')) return 'T5';
+                                if (name.includes('6') || name.includes('Sáu')) return 'T6';
+                                if (name.includes('7') || name.includes('Bảy')) return 'T7';
+                                if (name.includes('CN') || name.includes('Chủ')) return 'CN';
+                                return name.replace('Thứ ', 'T');
+                              };
 
                               // Determine background, border and text colors based on state
                               let borderStyle = '1px solid var(--color-border-light)';
@@ -12168,8 +12181,8 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                                     }
                                   }}
                                   style={{
-                                    padding: isMobile ? '6px 2px' : '10px 4px',
-                                    borderRadius: '10px',
+                                    padding: isMobile ? '5px 1px' : '10px 4px',
+                                    borderRadius: isMobile ? '8px' : '10px',
                                     border: borderStyle,
                                     background: backgroundStyle,
                                     cursor: isPastDay 
@@ -12180,28 +12193,27 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                                     flexDirection: 'column',
                                     alignItems: 'center',
                                     justifyContent: 'center',
-                                    gap: '2px',
+                                    gap: isMobile ? '1px' : '2px',
                                     transition: 'all 0.2s',
                                     textAlign: 'center',
-                                    aspectRatio: '1',
-                                    minHeight: isMobile ? '56px' : '70px',
+                                    minHeight: isMobile ? '48px' : '70px',
                                     boxSizing: 'border-box',
                                     userSelect: 'none'
                                   }}
                                   className="weekly-date-card"
                                 >
-                                  <span style={{ fontSize: isMobile ? '0.72rem' : '0.8rem', fontWeight: 800, color: 'var(--color-text)', lineHeight: 1 }}>
-                                    {isMobile ? day.name.replace('Thứ ', 'T') : day.name}
+                                  <span style={{ fontSize: isMobile ? '0.7rem' : '0.8rem', fontWeight: 800, color: 'var(--color-text)', lineHeight: 1 }}>
+                                    {isMobile ? getShortDayLabel(day.name) : day.name}
                                   </span>
-                                  <span style={{ fontSize: isMobile ? '0.6rem' : '0.68rem', color: 'var(--color-text-muted)', lineHeight: 1, marginTop: '1px' }}>
+                                  <span style={{ fontSize: isMobile ? '0.58rem' : '0.68rem', color: 'var(--color-text-muted)', lineHeight: 1, marginTop: '1px' }}>
                                     {new Date(day.date).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' })}
                                   </span>
                                   
                                   {/* Status badge */}
                                   <span style={{
-                                    fontSize: isMobile ? '0.55rem' : '0.62rem',
+                                    fontSize: isMobile ? '0.52rem' : '0.62rem',
                                     fontWeight: 700,
-                                    padding: '1px 3px',
+                                    padding: isMobile ? '1px 2px' : '1px 3px',
                                     borderRadius: '4px',
                                     marginTop: '2px',
                                     whiteSpace: 'nowrap',
