@@ -158,7 +158,7 @@ class NotificationService {
                 error_log("NotificationService Telegram Channel Error: " . $tgEx->getMessage());
             }
 
-            // ==================== CHANNEL 4: EMAIL SMTP (INDEPENDENT & SYNCHRONOUS) ====================
+            // ==================== CHANNEL 4: EMAIL SMTP (INDEPENDENT VIA MAIL QUEUE) ====================
             try {
                 if (!empty($emailSubject) && !empty($emailContent)) {
                     require_once __DIR__ . '/mailer.php';
@@ -166,7 +166,7 @@ class NotificationService {
                         $rId = (int)($rec['id'] ?? 0);
                         if (!empty($rec['email']) && $isChannelEnabled($rId, 'email')) {
                             try {
-                                sendEmailNotification($rec['email'], $emailSubject, $emailTitle, $emailContent, '', true);
+                                sendEmailNotification($rec['email'], $emailSubject, $emailTitle, $emailContent, '', false);
                             } catch (\Throwable $ee) {
                                 error_log("NotificationService Email send error (" . $rec['email'] . "): " . $ee->getMessage());
                             }
