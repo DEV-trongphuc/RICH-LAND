@@ -2031,7 +2031,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
     if (!token || !ALLOWED_PORTAL_ROLES.includes(user?.role || '')) return;
     const activePaths = ['/', '/workspace', '/account', '/calendar', '/databank', '/fair-share'];
     if (!activePaths.includes(loc.pathname)) return;
-    if (!isSilent) setLoading(true);
+    if (!isSilent && !data?.consultant_profile && loc.pathname !== '/account') setLoading(true);
     fetchPortalTasks();
     fetchPortalCoops();
 
