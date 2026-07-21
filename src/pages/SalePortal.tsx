@@ -9619,6 +9619,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
         case 'payment': return t('Thanh toán & Thuế');
         case 'emergency': return t('Liên hệ khẩn cấp');
         case 'documents': return t('Lưu trữ tài liệu');
+        case 'security': return t('Tài khoản & Bảo mật');
         default: return '';
       }
     };
@@ -15714,7 +15715,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
           isOpen={show2FAConfigModal}
           onClose={() => setShow2FAConfigModal(false)}
           title={t("Cấu hình Google Authenticator (2FA)")}
-          maxWidth="420px"
+          maxWidth="380px"
         >
           <form onSubmit={handleConfirmEnableTOTP} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', padding: '0.5rem 0', alignItems: 'center', textAlign: 'center' }}>
             <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--color-text-muted)', lineHeight: 1.5 }}>

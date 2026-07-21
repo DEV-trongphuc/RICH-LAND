@@ -25,6 +25,7 @@ export const CustomModal: React.FC<CustomModalProps> = ({
   onClose,
   title,
   width,
+  maxWidth,
   children,
   showCloseIcon = true,
   disableAnimation = false,
@@ -52,13 +53,10 @@ export const CustomModal: React.FC<CustomModalProps> = ({
   }, []);
 
   const resolvedWidth = React.useMemo(() => {
+    if (maxWidth) return String(maxWidth);
     if (!width) return '800px';
-    const num = parseInt(String(width), 10);
-    if (!isNaN(num) && num < 680) {
-      return '680px';
-    }
-    return width;
-  }, [width]);
+    return String(width);
+  }, [width, maxWidth]);
 
   const motionProps = isMobile ? {
     initial: { y: '100%', opacity: 1 },
@@ -95,7 +93,7 @@ export const CustomModal: React.FC<CustomModalProps> = ({
 
             <div
               className={`${styles.modal} ${fullScreenOnMobile ? styles.fullScreenMobile : ''} ${modalClassName || ''}`}
-              style={{ width: isMobile ? '100vw' : resolvedWidth, maxWidth: isMobile ? '100vw' : resolvedWidth }}
+              style={{ width: isMobile ? '100vw' : '100%', maxWidth: isMobile ? '100vw' : resolvedWidth }}
             >
               <div className={styles.dragHandle} />
               {title && (
@@ -134,7 +132,7 @@ export const CustomModal: React.FC<CustomModalProps> = ({
 
             <motion.div
               className={`${styles.modal} ${fullScreenOnMobile ? styles.fullScreenMobile : ''} ${modalClassName || ''}`}
-              style={{ width: isMobile ? '100vw' : resolvedWidth, maxWidth: isMobile ? '100vw' : resolvedWidth }}
+              style={{ width: isMobile ? '100vw' : '100%', maxWidth: isMobile ? '100vw' : resolvedWidth }}
               {...motionProps}
               {...dragProps}
             >
