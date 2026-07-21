@@ -144,12 +144,40 @@ export const NotificationSettingsModal: React.FC<NotificationSettingsModalProps>
   const role = (currentUser?.role || '').toLowerCase();
   const isAdminOrManager = role === 'admin' || role === 'superadmin' || role === 'director' || role === 'manager' || role === 'leader' || role === 'head_of_department' || role === 'truongphong' || role === 'quanly' || role === 'giamdoc' || role.includes('admin') || role.includes('manager') || role.includes('leader') || role.includes('director') || role.includes('head');
 
-  const visibleCategories = EVENT_CATEGORIES.filter(cat => {
-    if (cat.category === 'ADMIN_MANAGER') {
-      return isAdminOrManager;
-    }
-    return true;
-  });
+  const visibleCategories = React.useMemo(() => {
+    return EVENT_CATEGORIES.filter(cat => {
+      if (cat.category === 'ADMIN_MANAGER') {
+        return isAdminOrManager;
+      }
+      return true;
+    }).map(cat => {
+      if (cat.category === 'SALE_CONSULTANT') {
+        return {
+          ...cat,
+          badge: isAdminOrManager ? 'Cá nhân & Quản lý' : 'Cá nhân & Sale',
+          title: isAdminOrManager 
+            ? 'Dành Cho Quản Trị & Ban Giám Đốc (Thông Tin Cá Nhân & Phụ Trách Direct)' 
+            : 'Dành Cho Nhân Viên & Sale (Nhận Tin Cá Nhân)',
+          events: cat.events.map(evt => {
+            if (evt.key === 'LEAD_ASSIGNMENT' && isAdminOrManager) {
+              return { ...evt, desc: 'Khi có khách hàng tiềm năng mới được tự động phân bổ cho bạn hoặc cấp quản lý' };
+            }
+            if (evt.key === 'MY_DEPOSIT_UPDATE' && isAdminOrManager) {
+              return { ...evt, desc: 'Khi giao dịch cọc cá nhân hoặc giao dịch thuộc team có cập nhật trạng thái duyệt/bể cọc' };
+            }
+            if (evt.key === 'SECURITY_DEADLINE_WARNING' && isAdminOrManager) {
+              return { ...evt, desc: 'Cảnh báo trước khi data thuộc danh sách quản lý bị thu hồi về Kho Data chung' };
+            }
+            if (evt.key === 'ATTENDANCE_APPROVAL_RESULT' && isAdminOrManager) {
+              return { ...evt, desc: 'Khi yêu cầu bổ sung công / đi trễ của cá nhân hoặc phòng ban có kết quả phê duyệt' };
+            }
+            return evt;
+          })
+        };
+      }
+      return cat;
+    });
+  }, [isAdminOrManager]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [userInfo, setUserInfo] = useState<{

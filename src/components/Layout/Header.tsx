@@ -2224,6 +2224,9 @@ export const Header = ({
                         setIsMatrixModalOpen(true);
                       }}
                       style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '5px',
                         padding: '5px 14px',
                         background: '#BD1D2D',
                         color: 'white',
@@ -2236,7 +2239,8 @@ export const Header = ({
                         boxShadow: '0 2px 6px rgba(189, 29, 45, 0.22)'
                       }}
                     >
-                      Cấu hình
+                      <Settings size={13} />
+                      <span>Cấu hình</span>
                     </button>
                   </div>
                 </div>
