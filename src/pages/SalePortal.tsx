@@ -10117,28 +10117,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                             <ChevronRight size={14} style={{ color: 'var(--color-text-muted)' }} />
                           </button>
 
-                          <button
-                            type="button"
-                            onClick={() => setProfileActiveTab('emergency')}
-                            style={{
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'space-between',
-                              padding: '14px 16px',
-                              background: 'transparent',
-                              border: 'none',
-                              borderBottom: '1px solid var(--color-border-light)',
-                              width: '100%',
-                              cursor: 'pointer',
-                              textAlign: 'left'
-                            }}
-                          >
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', color: 'var(--color-text)' }}>
-                              {renderColoredIcon(Scale, '#ff2d55')}
-                              <span style={{ fontSize: '0.875rem', fontWeight: 600 }}>{t('Liên hệ khẩn cấp')}</span>
-                            </div>
-                            <ChevronRight size={14} style={{ color: 'var(--color-text-muted)' }} />
-                          </button>
+
 
                           <button
                             type="button"
@@ -10283,15 +10262,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                       {renderColoredIcon(Receipt, '#34c759')}
                       <span style={{ whiteSpace: 'nowrap' }}>{t('Thanh toán & Thuế')}</span>
                     </button>
-                    <button
-                      type="button"
-                      className={`${styles.sidebarTabBtn} ${profileActiveTab === 'emergency' ? styles.sidebarTabActive : ''}`}
-                      onClick={() => setProfileActiveTab('emergency')}
-                      style={{ width: '100%', border: 'none', textAlign: 'left', cursor: 'pointer' }}
-                    >
-                      {renderColoredIcon(Scale, '#ff2d55')}
-                      <span style={{ whiteSpace: 'nowrap' }}>{t('Liên hệ khẩn cấp')}</span>
-                    </button>
+
                     <button
                       type="button"
                       className={`${styles.sidebarTabBtn} ${profileActiveTab === 'documents' ? styles.sidebarTabActive : ''}`}
@@ -11423,8 +11394,8 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
               </div>
             )}
 
-            {/* 5. EMERGENCY CONTACT */}
-            {profileActiveTab === 'emergency' && (
+            {/* 5. EMERGENCY CONTACT (Merged into Contact & Account) */}
+            {(profileActiveTab === 'contact' || profileActiveTab === 'emergency') && (
               <div className="card animate-fade-in" style={{ padding: '2rem', display: 'flex', flexDirection: 'column', gap: '1.5rem', background: 'var(--color-surface)', borderRadius: '12px', border: '1px solid var(--color-border-light)', boxShadow: '0 4px 20px rgba(0,0,0,0.02)' }}>
                 <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-text)', textTransform: 'uppercase', letterSpacing: '0.5px', margin: '0 0 0.5rem 0', display: 'flex', alignItems: 'center', gap: 8 }}>
                   <Scale size={16} color="var(--color-primary)" /> {t('Liên hệ khẩn cấp')}

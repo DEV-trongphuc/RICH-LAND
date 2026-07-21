@@ -1367,17 +1367,7 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
                           </div>
                           <ChevronRight size={14} style={{ color: 'var(--color-text-muted)' }} />
                         </button>
-                        <button
-                          type="button"
-                          onClick={() => setActiveTab('emergency')}
-                          style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px', background: 'transparent', border: 'none', borderBottom: '1px solid var(--color-border-light)', width: '100%', cursor: 'pointer', textAlign: 'left' }}
-                        >
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', color: 'var(--color-text)' }}>
-                            {renderColoredIcon(Shield, '#ff2d55')}
-                            <span style={{ fontSize: '0.875rem', fontWeight: 600 }}>{t('Liên hệ khẩn cấp')}</span>
-                          </div>
-                          <ChevronRight size={14} style={{ color: 'var(--color-text-muted)' }} />
-                        </button>
+
                         <button
                           type="button"
                           onClick={() => setActiveTab('documents')}
@@ -1457,15 +1447,7 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
                         {renderColoredIcon(CreditCard, '#34c759')}
                         <span style={{ whiteSpace: 'nowrap' }}>{t('Tài khoản Ngân hàng')}</span>
                       </button>
-                      <button
-                        type="button"
-                        className={`${styles.sidebarTabBtn} ${activeTab === 'emergency' ? styles.sidebarTabActive : ''}`}
-                        onClick={() => setActiveTab('emergency')}
-                        style={{ padding: '8px 0.75rem', fontSize: '0.825rem', display: 'flex', alignItems: 'center', gap: '12px', width: '100%', border: 'none', background: activeTab === 'emergency' ? 'var(--color-bg-light)' : 'transparent', borderRadius: '8px', cursor: 'pointer', textAlign: 'left', fontWeight: activeTab === 'emergency' ? 700 : 500 }}
-                      >
-                        {renderColoredIcon(Shield, '#ff2d55')}
-                        <span style={{ whiteSpace: 'nowrap' }}>{t('Liên hệ khẩn cấp')}</span>
-                      </button>
+
                       <button
                         type="button"
                         className={`${styles.sidebarTabBtn} ${activeTab === 'schedule' ? styles.sidebarTabActive : ''}`}
@@ -2322,8 +2304,8 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
                 </div>
               )}
 
-              {/* CARD 5: LIÊN HỆ KHẨN CẤP */}
-              {activeTab === 'emergency' && (
+              {/* CARD 5: LIÊN HỆ KHẨN CẤP (Merged into Personal & Contact) */}
+              {(activeTab === 'personal' || activeTab === 'emergency') && (
                 <div style={{
                   background: 'var(--color-surface)',
                   borderRadius: '16px',
