@@ -712,34 +712,22 @@ const getDefaultConfig = (key: string): EventConfig => {
                               display: 'flex',
                               alignItems: 'center',
                               justifyContent: 'center',
-                              gap: '4px',
-                              padding: '6px 4px',
-                              borderRadius: '8px',
-                              border: (cfg.zalo && userInfo.has_zalo) ? '1.5px solid #0068ff' : '1px solid #cbd5e1',
+                              gap: '5px',
+                              padding: '7px 6px',
+                              borderRadius: '10px',
+                              border: (cfg.zalo && userInfo.has_zalo) ? '1.5px solid #0068ff' : '1px solid #e2e8f0',
                               background: (cfg.zalo && userInfo.has_zalo) ? '#eff6ff' : '#f8fafc',
-                              color: (cfg.zalo && userInfo.has_zalo) ? '#0068ff' : '#64748b',
-                              fontSize: '0.72rem',
+                              color: (cfg.zalo && userInfo.has_zalo) ? '#0068ff' : '#94a3b8',
+                              fontSize: '0.78rem',
                               fontWeight: 700,
                               cursor: (!cfg.master || !userInfo.has_zalo) ? 'not-allowed' : 'pointer',
-                              opacity: (!userInfo.has_zalo) ? 0.5 : 1
+                              opacity: (cfg.zalo && userInfo.has_zalo) ? 1 : 0.45,
+                              filter: (cfg.zalo && userInfo.has_zalo) ? 'none' : 'grayscale(60%)',
+                              transition: 'all 0.15s ease'
                             }}
                           >
-                            <img src="https://stc-zpl.zdn.vn/favicon.ico" style={{ width: 13, height: 13, objectFit: 'contain' }} alt="Zalo" />
+                            <img src="https://stc-zpl.zdn.vn/favicon.ico" style={{ width: 14, height: 14, objectFit: 'contain' }} alt="Zalo" />
                             <span>Zalo</span>
-                            <span style={{
-                              width: 14,
-                              height: 14,
-                              borderRadius: '4px',
-                              background: (cfg.zalo && userInfo.has_zalo) ? '#0068ff' : '#cbd5e1',
-                              color: 'white',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              fontSize: '10px',
-                              fontWeight: 900
-                            }}>
-                              {(cfg.zalo && userInfo.has_zalo) ? '✓' : ''}
-                            </span>
                           </button>
 
                           {/* Telegram Chip */}
@@ -750,34 +738,22 @@ const getDefaultConfig = (key: string): EventConfig => {
                               display: 'flex',
                               alignItems: 'center',
                               justifyContent: 'center',
-                              gap: '4px',
-                              padding: '6px 4px',
-                              borderRadius: '8px',
-                              border: (cfg.telegram && userInfo.has_telegram) ? '1.5px solid #0284c7' : '1px solid #cbd5e1',
+                              gap: '5px',
+                              padding: '7px 6px',
+                              borderRadius: '10px',
+                              border: (cfg.telegram && userInfo.has_telegram) ? '1.5px solid #0284c7' : '1px solid #e2e8f0',
                               background: (cfg.telegram && userInfo.has_telegram) ? '#f0f9ff' : '#f8fafc',
-                              color: (cfg.telegram && userInfo.has_telegram) ? '#0284c7' : '#64748b',
-                              fontSize: '0.72rem',
+                              color: (cfg.telegram && userInfo.has_telegram) ? '#0284c7' : '#94a3b8',
+                              fontSize: '0.78rem',
                               fontWeight: 700,
                               cursor: (!cfg.master || !userInfo.has_telegram) ? 'not-allowed' : 'pointer',
-                              opacity: (!userInfo.has_telegram) ? 0.5 : 1
+                              opacity: (cfg.telegram && userInfo.has_telegram) ? 1 : 0.45,
+                              filter: (cfg.telegram && userInfo.has_telegram) ? 'none' : 'grayscale(60%)',
+                              transition: 'all 0.15s ease'
                             }}
                           >
-                            <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/8/82/Telegram_logo.svg/3840px-Telegram_logo.svg.png" style={{ width: 13, height: 13, objectFit: 'contain' }} alt="Telegram" />
+                            <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/8/82/Telegram_logo.svg/3840px-Telegram_logo.svg.png" style={{ width: 14, height: 14, objectFit: 'contain' }} alt="Telegram" />
                             <span>Tele</span>
-                            <span style={{
-                              width: 14,
-                              height: 14,
-                              borderRadius: '4px',
-                              background: (cfg.telegram && userInfo.has_telegram) ? '#0284c7' : '#cbd5e1',
-                              color: 'white',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              fontSize: '10px',
-                              fontWeight: 900
-                            }}>
-                              {(cfg.telegram && userInfo.has_telegram) ? '✓' : ''}
-                            </span>
                           </button>
 
                           {/* Email Chip */}
@@ -788,33 +764,22 @@ const getDefaultConfig = (key: string): EventConfig => {
                               display: 'flex',
                               alignItems: 'center',
                               justifyContent: 'center',
-                              gap: '4px',
-                              padding: '6px 4px',
-                              borderRadius: '8px',
-                              border: cfg.email ? '1.5px solid #BD1D2D' : '1px solid #cbd5e1',
+                              gap: '5px',
+                              padding: '7px 6px',
+                              borderRadius: '10px',
+                              border: cfg.email ? '1.5px solid #BD1D2D' : '1px solid #e2e8f0',
                               background: cfg.email ? '#fef2f2' : '#f8fafc',
-                              color: cfg.email ? '#BD1D2D' : '#64748b',
-                              fontSize: '0.72rem',
+                              color: cfg.email ? '#BD1D2D' : '#94a3b8',
+                              fontSize: '0.78rem',
                               fontWeight: 700,
-                              cursor: 'pointer'
+                              cursor: 'pointer',
+                              opacity: cfg.email ? 1 : 0.45,
+                              filter: cfg.email ? 'none' : 'grayscale(60%)',
+                              transition: 'all 0.15s ease'
                             }}
                           >
-                            <img src="/imgs/gmail-icon-free-png.webp" style={{ width: 13, height: 13, objectFit: 'contain' }} alt="Email" />
+                            <img src="/imgs/gmail-icon-free-png.webp" style={{ width: 14, height: 14, objectFit: 'contain' }} alt="Email" />
                             <span>Email</span>
-                            <span style={{
-                              width: 14,
-                              height: 14,
-                              borderRadius: '4px',
-                              background: cfg.email ? '#BD1D2D' : '#cbd5e1',
-                              color: 'white',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              fontSize: '10px',
-                              fontWeight: 900
-                            }}>
-                              {cfg.email ? '✓' : ''}
-                            </span>
                           </button>
                         </div>
                       )}
