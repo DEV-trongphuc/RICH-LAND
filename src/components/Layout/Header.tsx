@@ -2368,17 +2368,21 @@ export const Header = ({
                             setIsMatrixModalOpen(true);
                           }}
                           style={{
-                            fontSize: '0.75rem',
-                            color: '#BD1D2D',
-                            background: 'none',
-                            border: 'none',
+                            fontSize: '0.6875rem',
+                            fontWeight: 700,
+                            color: 'var(--color-text-muted)',
+                            background: 'var(--color-bg-alt)',
+                            border: '1px solid var(--color-border-light)',
+                            borderRadius: '10px',
+                            padding: '2px 8px',
                             cursor: 'pointer',
-                            fontWeight: 600,
-                            padding: 0,
-                            marginLeft: '6px'
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            transition: 'all 0.15s ease'
                           }}
+                          className="hover-bg-alt"
                         >
-                          (Custom &gt;)
+                          Custom
                         </button>
                       </div>
                       <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', lineHeight: 1.4 }}>

@@ -12122,11 +12122,14 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '4px' }}>
                           {/* Grid with 7 days in 1 row of compact square boxes */}
                           <div style={{
-                            display: 'grid',
-                            gridTemplateColumns: 'repeat(7, 1fr)',
+                            display: 'flex',
+                            flexDirection: 'row',
+                            alignItems: 'stretch',
+                            justifyContent: 'space-between',
                             gap: isMobile ? '3px' : '8px',
                             marginTop: '0.25rem',
-                            width: '100%'
+                            width: '100%',
+                            boxSizing: 'border-box'
                           }}>
                             {getWeekDates().map((day) => {
                               const reg = weeklyRegistrations.find(r => r.shift_date === day.date);
@@ -12181,6 +12184,8 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                                     }
                                   }}
                                   style={{
+                                    flex: '1 1 0px',
+                                    minWidth: 0,
                                     padding: isMobile ? '5px 1px' : '10px 4px',
                                     borderRadius: isMobile ? '8px' : '10px',
                                     border: borderStyle,

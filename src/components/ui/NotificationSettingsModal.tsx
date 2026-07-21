@@ -236,6 +236,13 @@ export const NotificationSettingsModal: React.FC<NotificationSettingsModalProps>
   const [isZaloModalOpen, setIsZaloModalOpen] = useState(false);
   const [copiedCode, setCopiedCode] = useState(false);
 
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth <= 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   const [eventSettings, setEventSettings] = useState<EventSettingsState>({});
   const [toastMessage, setToastMessage] = useState<{ text: string; type: 'success' | 'warning' | 'error' } | null>(null);
 
@@ -480,7 +487,7 @@ const getDefaultConfig = (key: string): EventConfig => {
             </h3>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)', gap: isMobile ? '8px' : '12px' }}>
             {/* Zalo Card */}
             <div style={{
               background: '#f8fafc',
@@ -603,10 +610,11 @@ const getDefaultConfig = (key: string): EventConfig => {
             background: 'white',
             border: '1px solid #e2e8f0',
             borderRadius: '16px',
-            overflow: 'hidden',
+            overflowX: 'auto',
+            overflowY: 'hidden',
             boxShadow: '0 1px 4px rgba(0,0,0,0.02)'
           }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+            <table style={{ width: '100%', minWidth: isMobile ? '560px' : '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
               <thead>
                 <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0', fontSize: '0.75rem', fontWeight: 800, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                   <th style={{ padding: '14px 18px' }}>Sự Kiện Thông Báo Hệ Thống</th>
@@ -848,28 +856,29 @@ const getDefaultConfig = (key: string): EventConfig => {
         {/* Footer Actions (Sticky Bottom Bar - Flush to bottom) */}
         <div style={{
           position: 'sticky',
-          bottom: '-24px',
-          margin: '20px -24px -24px -24px',
-          padding: '14px 24px',
+          bottom: isMobile ? '-16px' : '-24px',
+          margin: isMobile ? '16px -16px -16px -16px' : '20px -24px -24px -24px',
+          padding: isMobile ? '12px 16px' : '14px 24px',
           background: '#ffffff',
           zIndex: 50,
           display: 'flex',
-          alignItems: 'center',
+          flexDirection: isMobile ? 'column' : 'row',
+          alignItems: isMobile ? 'stretch' : 'center',
           justifyContent: 'space-between',
           borderTop: '1px solid #e2e8f0',
           boxShadow: '0 -6px 20px rgba(0, 0, 0, 0.07)',
           borderBottomLeftRadius: '16px',
           borderBottomRightRadius: '16px',
-          gap: '16px'
+          gap: isMobile ? '10px' : '16px'
         }}>
           {/* Left Side: Hủy bỏ button & Tip */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '14px', flexWrap: 'wrap' }}>
             <button
               type="button"
               onClick={onClose}
               style={{
-                padding: '8px 18px',
-                fontSize: '0.875rem',
+                padding: isMobile ? '6px 14px' : '8px 18px',
+                fontSize: '0.8125rem',
                 fontWeight: 600,
                 color: '#64748b',
                 background: '#f8fafc',
@@ -881,20 +890,20 @@ const getDefaultConfig = (key: string): EventConfig => {
             >
               Hủy bỏ
             </button>
-            <div style={{ fontSize: '0.75rem', color: '#64748b', whiteSpace: 'nowrap' }}>
-              💡 <strong>Mẹo:</strong> Chuông In-App luôn duy trì tự động.
+            <div style={{ fontSize: '0.72rem', color: '#64748b', whiteSpace: 'nowrap' }}>
+              💡 <strong>Mẹo:</strong> Chuông In-App luôn tự động.
             </div>
           </div>
 
           {/* Right Side: Reset & Save */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0, justifyContent: isMobile ? 'flex-end' : 'flex-start' }}>
             <button
               type="button"
               onClick={handleResetDefault}
               title="Khôi phục về cài đặt mặc định ban đầu"
               style={{
-                padding: '8px 14px',
-                fontSize: '0.8125rem',
+                padding: isMobile ? '8px 10px' : '8px 14px',
+                fontSize: isMobile ? '0.75rem' : '0.8125rem',
                 fontWeight: 600,
                 color: '#475569',
                 background: '#f1f5f9',
@@ -903,20 +912,20 @@ const getDefaultConfig = (key: string): EventConfig => {
                 cursor: 'pointer',
                 display: 'flex',
                 alignItems: 'center',
-                gap: '6px',
+                gap: '4px',
                 whiteSpace: 'nowrap'
               }}
             >
               <RotateCcw size={14} />
-              Khôi phục mặc định
+              {isMobile ? 'Mặc định' : 'Khôi phục mặc định'}
             </button>
             <button
               type="button"
               onClick={handleSave}
               disabled={saving}
               style={{
-                padding: '10px 20px',
-                fontSize: '0.875rem',
+                padding: isMobile ? '8px 14px' : '10px 20px',
+                fontSize: isMobile ? '0.8125rem' : '0.875rem',
                 fontWeight: 700,
                 color: 'white',
                 background: '#BD1D2D',
@@ -929,7 +938,7 @@ const getDefaultConfig = (key: string): EventConfig => {
                 whiteSpace: 'nowrap'
               }}
             >
-              {saving ? "Đang lưu..." : "Lưu Cấu Hình Chuyên Sâu"}
+              {saving ? "Đang lưu..." : (isMobile ? "Lưu cấu hình" : "Lưu Cấu Hình Chuyên Sâu")}
             </button>
           </div>
         </div>
