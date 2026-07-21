@@ -5,13 +5,15 @@ interface DigitPinInputProps {
   value: string;
   onChange: (value: string) => void;
   disabled?: boolean;
+  align?: 'left' | 'center';
 }
 
 export const DigitPinInput: React.FC<DigitPinInputProps> = ({
   length = 6,
   value,
   onChange,
-  disabled = false
+  disabled = false,
+  align = 'center'
 }) => {
   const inputsRef = useRef<(HTMLInputElement | null)[]>([]);
 
@@ -57,7 +59,7 @@ export const DigitPinInput: React.FC<DigitPinInputProps> = ({
   };
 
   return (
-    <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', margin: '10px 0' }}>
+    <div style={{ display: 'flex', gap: '6px', justifyContent: align === 'left' ? 'flex-start' : 'center', margin: '6px 0' }}>
       {digits.map((digit, idx) => (
         <input
           key={idx}
@@ -78,20 +80,20 @@ export const DigitPinInput: React.FC<DigitPinInputProps> = ({
             fontSize: '1.15rem',
             fontWeight: '700',
             borderRadius: '8px',
-            border: digit ? '1px solid var(--color-primary)' : '1px solid var(--color-border-light)',
+            border: digit ? '1.5px solid var(--color-primary)' : '1.5px solid var(--color-border)',
             background: 'var(--color-bg-alt)',
             color: 'var(--color-text)',
             outline: 'none',
-            boxShadow: digit ? '0 0 0 2px rgba(189, 29, 45, 0.06)' : 'none',
+            boxShadow: digit ? '0 0 0 2px rgba(189, 29, 45, 0.08)' : 'none',
             transition: 'all 0.15s ease'
           }}
           onFocus={(e) => {
             e.target.style.borderColor = 'var(--color-primary)';
-            e.target.style.boxShadow = '0 0 0 2px rgba(189, 29, 45, 0.06)';
+            e.target.style.boxShadow = '0 0 0 2px rgba(189, 29, 45, 0.08)';
           }}
           onBlur={(e) => {
             if (!e.target.value) {
-              e.target.style.borderColor = 'var(--color-border-light)';
+              e.target.style.borderColor = 'var(--color-border)';
               e.target.style.boxShadow = 'none';
             }
           }}
