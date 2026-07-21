@@ -15756,21 +15756,6 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
               </div>
             </div>
 
-            {setup2FAData?.backup_codes && setup2FAData.backup_codes.length > 0 && (
-              <div style={{ background: 'var(--color-bg-light)', padding: '1rem', borderRadius: '10px', border: '1px solid var(--color-border-light)' }}>
-                <strong style={{ fontSize: '0.8rem', color: 'var(--color-danger)', display: 'block', marginBottom: '6px' }}>
-                  ⚠️ {t("Mã dự phòng (Lưu lại ở nơi an toàn phòng khi mất điện thoại):")}
-                </strong>
-                <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(5, 1fr)', gap: '6px' }}>
-                  {setup2FAData.backup_codes.map((code, idx) => (
-                    <span key={idx} style={{ fontFamily: 'monospace', background: 'var(--color-surface)', padding: '4px 8px', borderRadius: '4px', fontSize: '0.8rem', fontWeight: 700, textAlign: 'center', border: '1px solid var(--color-border)' }}>
-                      {code}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            )}
-
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
               <button
                 type="button"
