@@ -5193,53 +5193,63 @@ function doPost(e) {
                     </div>
                   </div>
 
-                  {/* Nhóm 1: Quy tắc Chấm công & Đền bù */}
+                  {/* Nhóm 1: Section riêng - Quy tắc Đền bù Lead & Data */}
+                  <div style={{ background: 'var(--color-bg-secondary)', padding: '1.25rem', borderRadius: 'var(--radius-xl)', border: '1px solid var(--color-border)', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <RefreshCw size={15} style={{ color: 'var(--color-primary)' }} />
+                      <h4 style={{ fontSize: '0.9375rem', fontWeight: 700, color: 'var(--color-text)' }}>{t('Quy tắc Đền bù Lead & Data')}</h4>
+                    </div>
+
+                    <div style={{ background: 'var(--color-surface)', padding: '1.25rem', borderRadius: '12px', border: '1px solid var(--color-border-light)', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '1rem', borderBottom: '1px solid var(--color-border-light)', paddingBottom: '1rem' }}>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text)' }}>
+                            {t('Tự động đền bù khi bị thu hồi do trễ check-in')}
+                          </div>
+                          <div style={{ fontSize: '0.725rem', color: 'var(--color-text-muted)', marginTop: 4, lineHeight: 1.4 }}>
+                            {t('Nếu bật, Sales bị thu hồi lead do chưa check-in đúng giờ sẽ được tự động cộng bù lại lượt khi làm bù.')}
+                          </div>
+                        </div>
+                        <div style={{ flexShrink: 0, marginTop: '2px' }}>
+                          <ToggleSwitch
+                            checked={lateCheckinCompensationEnabled === 1}
+                            onChange={val => setLateCheckinCompensationEnabled(val ? 1 : 0)}
+                          />
+                        </div>
+                      </div>
+
+                      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '1rem' }}>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text)' }}>
+                            {t('Tự động đền bù khi bị thu hồi do nghỉ phép')}
+                          </div>
+                          <div style={{ fontSize: '0.725rem', color: 'var(--color-text-muted)', marginTop: 4, lineHeight: 1.4 }}>
+                            {t('Nếu bật, Sales xin nghỉ phép/ngưng hoạt động bị thu hồi lead sẽ được hệ thống tính điểm đền bù.')}
+                          </div>
+                        </div>
+                        <div style={{ flexShrink: 0, marginTop: '2px' }}>
+                          <ToggleSwitch
+                            checked={leaveCompensationEnabled === 1}
+                            onChange={val => setLeaveCompensationEnabled(val ? 1 : 0)}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Nhóm 2: Quy tắc Chấm công, SLA & Báo cáo */}
                   <div style={{ background: 'var(--color-bg-secondary)', padding: '1.25rem', borderRadius: 'var(--radius-xl)', border: '1px solid var(--color-border)', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                       <Clock size={15} style={{ color: 'var(--color-primary)' }} />
-                      <h4 style={{ fontSize: '0.9375rem', fontWeight: 700, color: 'var(--color-text)' }}>{t('Quy tắc Chấm công & Đền bù')}</h4>
+                      <h4 style={{ fontSize: '0.9375rem', fontWeight: 700, color: 'var(--color-text)' }}>{t('Quy tắc Chấm công, SLA & Báo cáo')}</h4>
                     </div>
 
                     <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '1.5rem', alignItems: 'stretch' }}>
-                      {/* Cột Trái: Quy tắc Đền bù & Phân phối Data */}
+                      {/* Cột Trái: Phân phối Lead & Tự động duyệt */}
                       <div style={{ background: 'var(--color-surface)', padding: '1.25rem', borderRadius: '12px', border: '1px solid var(--color-border-light)', display: 'flex', flexDirection: 'column', gap: '1.25rem', height: '100%' }}>
                         <div style={{ fontWeight: 700, fontSize: '0.875rem', color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                          <RefreshCw size={15} style={{ color: 'var(--color-primary)' }} />
-                          {t('Đền bù Lead & Phân phối Data')}
-                        </div>
-
-                        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '1rem', borderBottom: '1px solid var(--color-border-light)', paddingBottom: '1rem' }}>
-                          <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text)' }}>
-                              {t('Tự động đền bù khi bị thu hồi do trễ check-in')}
-                            </div>
-                            <div style={{ fontSize: '0.725rem', color: 'var(--color-text-muted)', marginTop: 4, lineHeight: 1.4 }}>
-                              {t('Nếu bật, Sales bị thu hồi lead do chưa check-in đúng giờ sẽ được tự động cộng bù lại lượt khi làm bù.')}
-                            </div>
-                          </div>
-                          <div style={{ flexShrink: 0, marginTop: '2px' }}>
-                            <ToggleSwitch
-                              checked={lateCheckinCompensationEnabled === 1}
-                              onChange={val => setLateCheckinCompensationEnabled(val ? 1 : 0)}
-                            />
-                          </div>
-                        </div>
-
-                        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '1rem', borderBottom: '1px solid var(--color-border-light)', paddingBottom: '1rem' }}>
-                          <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text)' }}>
-                              {t('Tự động đền bù khi bị thu hồi do nghỉ phép')}
-                            </div>
-                            <div style={{ fontSize: '0.725rem', color: 'var(--color-text-muted)', marginTop: 4, lineHeight: 1.4 }}>
-                              {t('Nếu bật, Sales xin nghỉ phép/ngưng hoạt động bị thu hồi lead sẽ được hệ thống tính điểm đền bù.')}
-                            </div>
-                          </div>
-                          <div style={{ flexShrink: 0, marginTop: '2px' }}>
-                            <ToggleSwitch
-                              checked={leaveCompensationEnabled === 1}
-                              onChange={val => setLeaveCompensationEnabled(val ? 1 : 0)}
-                            />
-                          </div>
+                          <Zap size={15} style={{ color: 'var(--color-primary)' }} />
+                          {t('Phân phối Lead & Tự động duyệt')}
                         </div>
 
                         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '1rem', borderBottom: '1px solid var(--color-border-light)', paddingBottom: '1rem' }}>
@@ -5257,6 +5267,32 @@ function doPost(e) {
                               onChange={setAllowLeadDistributionOnPendingCheckin}
                             />
                           </div>
+                        </div>
+
+                        {/* Tự động duyệt Chấm công (Bỏ qua duyệt đi trễ / về sớm) */}
+                        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '1rem' }}>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text)' }}>
+                              {t('Tự động duyệt Chấm công (Bỏ qua xét duyệt đi trễ & về sớm)')}
+                            </div>
+                            <div style={{ fontSize: '0.725rem', color: 'var(--color-text-muted)', marginTop: 4, lineHeight: 1.4 }}>
+                              {t('Nếu bật, khi chấm công trễ hoặc về sớm, hệ thống sẽ chấp nhận tự động ngay lập tức mà không cần nhân viên gửi lý do hay chờ quản lý phê duyệt.')}
+                            </div>
+                          </div>
+                          <div style={{ flexShrink: 0, marginTop: '2px' }}>
+                            <ToggleSwitch
+                              checked={autoApproveCheckin}
+                              onChange={setAutoApproveCheckin}
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Cột Phải: Cấu hình Chấm công, SLA & Báo cáo */}
+                      <div style={{ background: 'var(--color-surface)', padding: '1.25rem', borderRadius: '12px', border: '1px solid var(--color-border-light)', display: 'flex', flexDirection: 'column', gap: '1.25rem', height: '100%' }}>
+                        <div style={{ fontWeight: 700, fontSize: '0.875rem', color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <Clock size={15} style={{ color: 'var(--color-primary)' }} />
+                          {t('Cấu hình Chấm công, SLA & Báo cáo')}
                         </div>
 
                         {/* Yêu cầu Chấm công Ra ca (Cuối ca) */}
@@ -5277,20 +5313,82 @@ function doPost(e) {
                           </div>
                         </div>
 
-                        {/* Tự động duyệt Chấm công (Bỏ qua duyệt đi trễ / về sớm) */}
+                        <div style={{ borderBottom: '1px solid var(--color-border-light)', paddingBottom: '1rem' }}>
+                          <label className="form-label" style={{ fontWeight: 700, fontSize: '0.8125rem' }}>{t('SLA Duyệt đi trễ (Chấm công)')}</label>
+                          <div style={{ display: 'flex', alignItems: 'center', position: 'relative' }}>
+                            <input
+                              type="number"
+                              className="form-input"
+                              style={{ paddingRight: '3.5rem' }}
+                              value={checkinApprovalSlaMinutes}
+                              onChange={e => setCheckinApprovalSlaMinutes(Number(e.target.value))}
+                              min={1}
+                            />
+                            <span style={{ position: 'absolute', right: '12px', fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>{t('phút')}</span>
+                          </div>
+                          <span style={{ fontSize: '0.725rem', color: 'var(--color-text-muted)', marginTop: '4px', display: 'block', lineHeight: 1.4 }}>
+                            {t('Thời gian chờ duyệt xin nhận lead trễ trước khi gửi cảnh báo leo thang.')}
+                          </span>
+                        </div>
+
                         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '1rem', borderBottom: '1px solid var(--color-border-light)', paddingBottom: '1rem' }}>
                           <div style={{ flex: 1, minWidth: 0 }}>
                             <div style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text)' }}>
-                              {t('Tự động duyệt Chấm công (Bỏ qua xét duyệt đi trễ & về sớm)')}
+                              {t('Thông báo trước giờ chấm công')}
                             </div>
                             <div style={{ fontSize: '0.725rem', color: 'var(--color-text-muted)', marginTop: 4, lineHeight: 1.4 }}>
-                              {t('Nếu bật, khi chấm công trễ hoặc về sớm, hệ thống sẽ chấp nhận tự động ngay lập tức mà không cần nhân viên gửi lý do hay chờ quản lý phê duyệt.')}
+                              {t('Bật nhắc nhở Sale điểm danh qua ứng dụng, Zalo, Telegram & Email.')}
                             </div>
+                            {attendanceNotificationEnabled && (
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '8px' }}>
+                                <span style={{ fontSize: '0.725rem', color: 'var(--color-text)', fontWeight: 600 }}>{t('Báo trước:')}</span>
+                                <input
+                                  type="number"
+                                  className="form-input"
+                                  style={{ width: '70px', height: '28px', padding: '2px 8px', fontSize: '0.75rem', borderRadius: '6px', textAlign: 'center' }}
+                                  value={attendanceNotificationLeadMinutes}
+                                  onChange={e => setAttendanceNotificationLeadMinutes(Math.max(1, Number(e.target.value)))}
+                                  min={1}
+                                />
+                                <span style={{ fontSize: '0.725rem', color: 'var(--color-text-muted)' }}>{t('phút')}</span>
+                              </div>
+                            )}
                           </div>
                           <div style={{ flexShrink: 0, marginTop: '2px' }}>
                             <ToggleSwitch
-                              checked={autoApproveCheckin}
-                              onChange={setAutoApproveCheckin}
+                              checked={attendanceNotificationEnabled}
+                              onChange={setAttendanceNotificationEnabled}
+                            />
+                          </div>
+                        </div>
+
+                        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '1rem', borderBottom: '1px solid var(--color-border-light)', paddingBottom: '1rem' }}>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text)' }}>
+                              {t('Thông báo nhắc lịch trực đêm')}
+                            </div>
+                            <div style={{ fontSize: '0.725rem', color: 'var(--color-text-muted)', marginTop: 4, lineHeight: 1.4 }}>
+                              {t('Gửi nhắc nhở qua App/Zalo/Telegram/Email cho Sale có lịch trực đêm.')}
+                            </div>
+                            {nightDutyNotificationEnabled && (
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '8px' }}>
+                                <span style={{ fontSize: '0.725rem', color: 'var(--color-text)', fontWeight: 600 }}>{t('Báo trước:')}</span>
+                                <input
+                                  type="number"
+                                  className="form-input"
+                                  style={{ width: '70px', height: '26px', padding: '2px 8px', fontSize: '0.75rem', borderRadius: '6px', textAlign: 'center' }}
+                                  value={nightDutyNotificationLeadMinutes}
+                                  onChange={e => setNightDutyNotificationLeadMinutes(Math.max(1, Number(e.target.value)))}
+                                  min={1}
+                                />
+                                <span style={{ fontSize: '0.725rem', color: 'var(--color-text-muted)' }}>{t('phút')}</span>
+                              </div>
+                            )}
+                          </div>
+                          <div style={{ flexShrink: 0, marginTop: '2px' }}>
+                            <ToggleSwitch
+                              checked={nightDutyNotificationEnabled}
+                              onChange={setNightDutyNotificationEnabled}
                             />
                           </div>
                         </div>
@@ -5365,94 +5463,6 @@ function doPost(e) {
                               )}
                             </div>
                           )}
-                        </div>
-                      </div>
-
-                      {/* Cột Phải: SLA & Nhắc nhở Thông báo */}
-                      <div style={{ background: 'var(--color-surface)', padding: '1.25rem', borderRadius: '12px', border: '1px solid var(--color-border-light)', display: 'flex', flexDirection: 'column', gap: '1.25rem', height: '100%' }}>
-                        <div style={{ fontWeight: 700, fontSize: '0.875rem', color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                          <Clock size={15} style={{ color: 'var(--color-primary)' }} />
-                          {t('SLA & Nhắc nhở Thông báo')}
-                        </div>
-
-                        <div style={{ borderBottom: '1px solid var(--color-border-light)', paddingBottom: '1rem' }}>
-                          <label className="form-label" style={{ fontWeight: 700, fontSize: '0.8125rem' }}>{t('SLA Duyệt đi trễ (Chấm công)')}</label>
-                          <div style={{ display: 'flex', alignItems: 'center', position: 'relative' }}>
-                            <input
-                              type="number"
-                              className="form-input"
-                              style={{ paddingRight: '3.5rem' }}
-                              value={checkinApprovalSlaMinutes}
-                              onChange={e => setCheckinApprovalSlaMinutes(Number(e.target.value))}
-                              min={1}
-                            />
-                            <span style={{ position: 'absolute', right: '12px', fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>{t('phút')}</span>
-                          </div>
-                          <span style={{ fontSize: '0.725rem', color: 'var(--color-text-muted)', marginTop: '4px', display: 'block', lineHeight: 1.4 }}>
-                            {t('Thời gian chờ duyệt xin nhận lead trễ trước khi gửi cảnh báo leo thang.')}
-                          </span>
-                        </div>
-
-                        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '1rem', borderBottom: '1px solid var(--color-border-light)', paddingBottom: '1rem' }}>
-                          <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text)' }}>
-                              {t('Thông báo trước giờ chấm công')}
-                            </div>
-                            <div style={{ fontSize: '0.725rem', color: 'var(--color-text-muted)', marginTop: 4, lineHeight: 1.4 }}>
-                              {t('Bật nhắc nhở Sale điểm danh qua ứng dụng, Zalo, Telegram & Email.')}
-                            </div>
-                            {attendanceNotificationEnabled && (
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '8px' }}>
-                                <span style={{ fontSize: '0.725rem', color: 'var(--color-text)', fontWeight: 600 }}>{t('Báo trước:')}</span>
-                                <input
-                                  type="number"
-                                  className="form-input"
-                                  style={{ width: '70px', height: '28px', padding: '2px 8px', fontSize: '0.75rem', borderRadius: '6px', textAlign: 'center' }}
-                                  value={attendanceNotificationLeadMinutes}
-                                  onChange={e => setAttendanceNotificationLeadMinutes(Math.max(1, Number(e.target.value)))}
-                                  min={1}
-                                />
-                                <span style={{ fontSize: '0.725rem', color: 'var(--color-text-muted)' }}>{t('phút')}</span>
-                              </div>
-                            )}
-                          </div>
-                          <div style={{ flexShrink: 0, marginTop: '2px' }}>
-                            <ToggleSwitch
-                              checked={attendanceNotificationEnabled}
-                              onChange={setAttendanceNotificationEnabled}
-                            />
-                          </div>
-                        </div>
-
-                        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '1rem' }}>
-                          <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text)' }}>
-                              {t('Thông báo nhắc lịch trực đêm')}
-                            </div>
-                            <div style={{ fontSize: '0.725rem', color: 'var(--color-text-muted)', marginTop: 4, lineHeight: 1.4 }}>
-                              {t('Gửi nhắc nhở qua App/Zalo/Telegram/Email cho Sale có lịch trực đêm.')}
-                            </div>
-                            {nightDutyNotificationEnabled && (
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '8px' }}>
-                                <span style={{ fontSize: '0.725rem', color: 'var(--color-text)', fontWeight: 600 }}>{t('Báo trước:')}</span>
-                                <input
-                                  type="number"
-                                  className="form-input"
-                                  style={{ width: '70px', height: '26px', padding: '2px 8px', fontSize: '0.75rem', borderRadius: '6px', textAlign: 'center' }}
-                                  value={nightDutyNotificationLeadMinutes}
-                                  onChange={e => setNightDutyNotificationLeadMinutes(Math.max(1, Number(e.target.value)))}
-                                  min={1}
-                                />
-                                <span style={{ fontSize: '0.725rem', color: 'var(--color-text-muted)' }}>{t('phút')}</span>
-                              </div>
-                            )}
-                          </div>
-                          <div style={{ flexShrink: 0, marginTop: '2px' }}>
-                            <ToggleSwitch
-                              checked={nightDutyNotificationEnabled}
-                              onChange={setNightDutyNotificationEnabled}
-                            />
-                          </div>
                         </div>
                       </div>
                     </div>
