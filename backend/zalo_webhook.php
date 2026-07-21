@@ -46,26 +46,9 @@ if (!$data || !isset($data['event_name'])) {
     echo json_encode(["message" => "Invalid payload"]);
     exit;
 }
-// TỐI ƯU HIỆU SUẤT: Lấy Bot Token một lần duy nhất từ DB
+// Lấy Bot Token một lần duy nhất từ DB
 $stmtToken = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'zalo_bot_token' LIMIT 1");
 $botToken = $stmtToken->fetch_assoc()['setting_value'] ?? '';
-
-// TỐI ƯU HIỆU SUẤT: Đóng kết nối sớm (Early Termination) để Zalo Server không bị treo chờ
-ob_end_clean();
-header("Connection: close");
-ignore_user_abort(true);
-ob_start();
-echo json_encode(["message" => "Received"]);
-$size = ob_get_length();
-header("Content-Length: $size");
-ob_end_flush();
-flush();
-if (function_exists('fastcgi_finish_request')) {
-    fastcgi_finish_request();
-}
-// Đảm bảo background processing có đủ thời gian chạy sau khi đã close connection
-set_time_limit(60);
-@session_write_close();
 
 $eventName = $data['event_name'] ?? '';
 
