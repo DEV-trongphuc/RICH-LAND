@@ -150,15 +150,51 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
         );
       }
       const selectedOpts = options.filter(o => arr.some(v => String(v) === String(o.value)));
-      if (selectedOpts.length === 1) {
+      if (selectedOpts.length > 0) {
         return (
-          <span className={styles.triggerContent}>
-            {!showAvatars && selectedOpts[0].icon && <span style={{ display: 'flex' }}>{selectedOpts[0].icon}</span>}
-            {t(selectedOpts[0].label)}
-          </span>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', alignItems: 'center', width: '100%', padding: '2px 0' }}>
+            {selectedOpts.map(opt => (
+              <span
+                key={String(opt.value)}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  padding: '2px 8px',
+                  borderRadius: '6px',
+                  background: 'var(--color-primary-light)',
+                  color: 'var(--color-primary)',
+                  fontSize: '0.75rem',
+                  fontWeight: 600,
+                  whiteSpace: 'nowrap',
+                  lineHeight: 1.4
+                }}
+              >
+                {!showAvatars && opt.icon && <span style={{ display: 'flex', fontSize: '12px' }}>{opt.icon}</span>}
+                <span>{t(opt.label)}</span>
+                <span
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleSelect(opt, e);
+                  }}
+                  style={{
+                    cursor: 'pointer',
+                    opacity: 0.7,
+                    marginLeft: '2px',
+                    fontSize: '0.85rem',
+                    fontWeight: 800,
+                    lineHeight: 1
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.opacity = '1'}
+                  onMouseLeave={e => e.currentTarget.style.opacity = '0.7'}
+                >
+                  ×
+                </span>
+              </span>
+            ))}
+          </div>
         );
       }
-      return <span className={styles.triggerContent}>{t('Đã chọn')} ({selectedOpts.length})</span>;
     }
     return selectedOption ? (
       <span className={styles.triggerContent} style={{ display: 'flex', alignItems: 'center', gap: 6, width: '100%', justifyContent: 'space-between', minWidth: 0, overflow: 'hidden' }}>

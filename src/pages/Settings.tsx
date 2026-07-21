@@ -129,7 +129,7 @@ const SettingsInner = () => {
   const [showChatIdGuide, setShowChatIdGuide] = useState(false);
 
   const renderHelpBanner = (tabKey: string, title: string, content: React.ReactNode) => {
-    const isCollapsed = collapsedHelps[tabKey] ?? false;
+    const isCollapsed = collapsedHelps[tabKey] ?? true;
     return (
       <div style={{
         background: 'var(--color-surface)',
