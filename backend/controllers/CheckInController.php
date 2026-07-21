@@ -601,6 +601,105 @@ class CheckInController {
         ");
         $insertNotif->execute([$row['user_id'], $auth['tenant_id'], $title, $body, $type, $link]);
 
+        // Send notifications back to Zalo Group, Telegram Group, and Sale User via 3 independent channels
+        try {
+            $stmtSaleUser = $this->db->prepare("SELECT full_name, email, zalo_chat_id, telegram_chat_id FROM users WHERE id = ? LIMIT 1");
+            $stmtSaleUser->execute([$row['user_id']]);
+            $saleUser = $stmtSaleUser->fetch(PDO::FETCH_ASSOC);
+
+            if ($saleUser) {
+                // ==================== CHANNEL 1: ZALO BOT (INDEPENDENT) ====================
+                try {
+                    require_once __DIR__ . '/../zalo_bot.php';
+                    $stmtBotToken = $this->db->prepare("SELECT setting_value FROM system_settings WHERE setting_key = 'zalo_bot_token' LIMIT 1");
+                    $stmtBotToken->execute();
+                    $botToken = trim((string)$stmtBotToken->fetchColumn());
+
+                    if ($botToken) {
+                        $zTargets = [];
+                        // Group Chat ID
+                        $stmtZGroup = $this->db->prepare("SELECT setting_value FROM system_settings WHERE setting_key IN ('zalo_admin_group_chat_id', 'zalo_group_chat_id', 'zalo_group') AND setting_value IS NOT NULL AND TRIM(setting_value) != '' LIMIT 1");
+                        $stmtZGroup->execute();
+                        $zGroupChatId = trim((string)$stmtZGroup->fetchColumn());
+                        if (!empty($zGroupChatId)) {
+                            $zTargets[] = $zGroupChatId;
+                        }
+                        // Personal Sale Zalo Chat ID
+                        if (!empty($saleUser['zalo_chat_id'])) {
+                            $zTargets[] = trim($saleUser['zalo_chat_id']);
+                        }
+
+                        $zTargets = array_unique(array_filter($zTargets));
+                        if (!empty($zTargets)) {
+                            $zMsg = "✅ [ KẾT QUẢ DUYỆT " . ($isSupplementary ? "CẬP NHẬT CÔNG" : "ĐI TRỄ") . " ]\n\n"
+                                . "Yêu cầu của " . $row['full_name'] . " ngày " . $row['check_in_date'] . " đã được " . $statusText . " bởi quản trị viên.\n"
+                                . (!empty($reason) ? "  • Ghi chú: \"$reason\"\n" : "");
+                            foreach ($zTargets as $zId) {
+                                try {
+                                    sendZaloMessage($botToken, $zId, $zMsg, true);
+                                } catch (\Throwable $ze) {}
+                            }
+                        }
+                    }
+                } catch (\Throwable $zEx) {
+                    error_log("Error in Zalo notification update channel: " . $zEx->getMessage());
+                }
+
+                // ==================== CHANNEL 2: TELEGRAM BOT (INDEPENDENT) ====================
+                try {
+                    require_once __DIR__ . '/../telegram_bot.php';
+                    $stmtTgToken = $this->db->prepare("SELECT setting_value FROM system_settings WHERE setting_key = 'telegram_bot_token' LIMIT 1");
+                    $stmtTgToken->execute();
+                    $tgToken = trim((string)$stmtTgToken->fetchColumn());
+
+                    if ($tgToken) {
+                        $tgTargets = [];
+                        // Group Chat ID
+                        $stmtTgGroup = $this->db->prepare("SELECT setting_value FROM system_settings WHERE setting_key = 'telegram_admin_group_chat_id' LIMIT 1");
+                        $stmtTgGroup->execute();
+                        $tgGroupChatId = trim((string)$stmtTgGroup->fetchColumn());
+                        if (!empty($tgGroupChatId)) {
+                            $tgTargets[] = $tgGroupChatId;
+                        }
+                        // Personal Sale Telegram Chat ID
+                        if (!empty($saleUser['telegram_chat_id'])) {
+                            $tgTargets[] = trim($saleUser['telegram_chat_id']);
+                        }
+
+                        $tgTargets = array_unique(array_filter($tgTargets));
+                        if (!empty($tgTargets)) {
+                            $tgMsg = "✅ <b>[ KẾT QUẢ DUYỆT " . ($isSupplementary ? "CẬP NHẬT CÔNG" : "ĐI TRỄ") . " ]</b>\n\n"
+                                . "Yêu cầu của <b>" . htmlspecialchars($row['full_name']) . "</b> ngày <code>" . $row['check_in_date'] . "</code> đã được <b>" . $statusText . "</b> bởi quản trị viên.\n"
+                                . (!empty($reason) ? "  • Ghi chú: <i>\"" . htmlspecialchars($reason) . "\"</i>\n" : "");
+                            foreach ($tgTargets as $cId) {
+                                try {
+                                    sendTelegramMessage($tgToken, $cId, $tgMsg);
+                                } catch (\Throwable $tge) {}
+                            }
+                        }
+                    }
+                } catch (\Throwable $tgEx) {
+                    error_log("Error in Telegram notification update channel: " . $tgEx->getMessage());
+                }
+
+                // ==================== CHANNEL 3: EMAIL (INDEPENDENT) ====================
+                try {
+                    if (!empty($saleUser['email'])) {
+                        require_once __DIR__ . '/../mailer.php';
+                        $emailSubj = "[RICH LAND] Phê duyệt " . ($isSupplementary ? "cập nhật công" : "đi trễ") . " - Ngày " . $row['check_in_date'];
+                        $emailTit = "KẾT QUẢ PHÊ DUYỆT CHẤM CÔNG";
+                        $emailCont = "Chào <strong>" . htmlspecialchars($saleUser['full_name']) . "</strong>,<br/><br/>" .
+                                     "Yêu cầu " . ($isSupplementary ? "cập nhật công" : "phê duyệt đi trễ") . " ngày " . $row['check_in_date'] . " của bạn đã được <strong>" . $statusText . "</strong> bởi quản trị viên.<br/>" .
+                                     (!empty($reason) ? "Ghi chú: <em>\"" . htmlspecialchars($reason) . "\"</em><br/>" : "") .
+                                     "Vui lòng kiểm tra trên hệ thống CRM.";
+                        sendEmailNotification($saleUser['email'], $emailSubj, $emailTit, $emailCont, '', true);
+                    }
+                } catch (\Throwable $emEx) {
+                    error_log("Error in Email notification update channel: " . $emEx->getMessage());
+                }
+            }
+        } catch (\Throwable $uEx) {}
+
         logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'UPDATE_CHECK_IN', 'check_in', $id, json_encode([
             'old_status' => $row['status'],
             'new_status' => $status,
