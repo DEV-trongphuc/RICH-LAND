@@ -12207,21 +12207,23 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                                   }}
                                   className="weekly-date-card"
                                 >
-                                  <span style={{ fontSize: isMobile ? '0.7rem' : '0.8rem', fontWeight: 800, color: 'var(--color-text)', lineHeight: 1 }}>
+                                  <span style={{ fontSize: isMobile ? '0.65rem' : '0.8rem', fontWeight: 800, color: 'var(--color-text)', lineHeight: 1 }}>
                                     {isMobile ? getShortDayLabel(day.name) : day.name}
                                   </span>
-                                  <span style={{ fontSize: isMobile ? '0.58rem' : '0.68rem', color: 'var(--color-text-muted)', lineHeight: 1, marginTop: '1px' }}>
+                                  <span style={{ fontSize: isMobile ? '0.5rem' : '0.68rem', color: 'var(--color-text-muted)', lineHeight: 1, marginTop: '1px' }}>
                                     {new Date(day.date).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' })}
                                   </span>
                                   
                                   {/* Status badge */}
                                   <span style={{
-                                    fontSize: isMobile ? '0.52rem' : '0.62rem',
+                                    fontSize: isMobile ? '0.42rem' : '0.62rem',
                                     fontWeight: 700,
                                     padding: isMobile ? '1px 2px' : '1px 3px',
-                                    borderRadius: '4px',
+                                    borderRadius: isMobile ? '3px' : '4px',
                                     marginTop: '2px',
                                     whiteSpace: 'nowrap',
+                                    lineHeight: 1,
+                                    letterSpacing: isMobile ? '-0.02em' : 'normal',
                                     color: isSelected 
                                       ? (isNightRegistered ? '#8b5cf6' : (isApproved ? 'var(--color-success)' : 'var(--color-primary)')) 
                                       : 'var(--color-text-muted)',

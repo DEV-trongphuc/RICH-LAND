@@ -602,10 +602,230 @@ const getDefaultConfig = (key: string): EventConfig => {
           </div>
         </div>
 
-        {/* Custom Settings Table */}
+        {/* Custom Settings Table or Mobile Cards List */}
         {loading ? (
           <div style={{ padding: '48px', textAlign: 'center', color: '#94a3b8', fontSize: '0.875rem' }}>Đang tải cài đặt thông báo tùy chỉnh...</div>
+        ) : isMobile ? (
+          /* MOBILE CARDS VIEW */
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+            {visibleCategories.map(cat => (
+              <div key={cat.category} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                {/* Category Header */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '4px 2px' }}>
+                  <span style={{
+                    fontSize: '0.625rem',
+                    fontWeight: 800,
+                    color: cat.badgeColor,
+                    background: cat.badgeBg,
+                    padding: '3px 8px',
+                    borderRadius: '10px',
+                    textTransform: 'uppercase'
+                  }}>
+                    {cat.badge}
+                  </span>
+                  <span style={{ fontSize: '0.8125rem', fontWeight: 700, color: '#334155' }}>
+                    {cat.title}
+                  </span>
+                </div>
+
+                {/* Event Cards */}
+                {cat.events.map(evt => {
+                  const cfg = eventSettings[evt.key] || { master: true, zalo: true, telegram: true, email: true };
+                  return (
+                    <div
+                      key={evt.key}
+                      style={{
+                        background: !cfg.master ? '#f8fafc' : '#ffffff',
+                        border: '1px solid #e2e8f0',
+                        borderRadius: '14px',
+                        padding: '12px 14px',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '10px',
+                        boxShadow: '0 2px 6px rgba(0,0,0,0.02)',
+                        opacity: !cfg.master ? 0.75 : 1
+                      }}
+                    >
+                      {/* Top Row: Icon + Name + Master Switch */}
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0, flex: 1 }}>
+                          <span style={{ fontSize: '1.25rem', lineHeight: 1 }}>{evt.icon}</span>
+                          <span style={{ fontWeight: 700, fontSize: '0.85rem', color: '#0f172a', lineHeight: 1.25 }}>
+                            {evt.name}
+                          </span>
+                        </div>
+                        {/* Master Power Switch */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
+                          <span style={{ fontSize: '0.7rem', fontWeight: 700, color: cfg.master ? '#16a34a' : '#94a3b8' }}>
+                            {cfg.master ? 'Bật' : 'Tắt'}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => handleMasterToggle(evt.key)}
+                            title={cfg.master ? "Tắt thông báo" : "Bật thông báo"}
+                            style={{
+                              position: 'relative',
+                              width: 38,
+                              height: 22,
+                              borderRadius: 22,
+                              border: 'none',
+                              background: cfg.master ? '#16a34a' : '#cbd5e1',
+                              cursor: 'pointer',
+                              padding: 0,
+                              outline: 'none'
+                            }}
+                          >
+                            <span style={{
+                              position: 'absolute',
+                              top: 3,
+                              left: cfg.master ? 19 : 3,
+                              width: 16,
+                              height: 16,
+                              borderRadius: '50%',
+                              background: 'white',
+                              boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
+                              transition: 'left 0.2s ease'
+                            }} />
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Event Description */}
+                      <div style={{ fontSize: '0.75rem', color: '#64748b', lineHeight: 1.35 }}>
+                        {evt.desc}
+                      </div>
+
+                      {/* Channel Chips (Zalo, Telegram, Email) */}
+                      {cfg.master && (
+                        <div style={{
+                          display: 'grid',
+                          gridTemplateColumns: 'repeat(3, 1fr)',
+                          gap: '6px',
+                          paddingTop: '8px',
+                          borderTop: '1px dashed #e2e8f0'
+                        }}>
+                          {/* Zalo Chip */}
+                          <button
+                            type="button"
+                            onClick={() => handleChannelToggle(evt.key, 'zalo')}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              gap: '4px',
+                              padding: '6px 4px',
+                              borderRadius: '8px',
+                              border: (cfg.zalo && userInfo.has_zalo) ? '1.5px solid #0068ff' : '1px solid #cbd5e1',
+                              background: (cfg.zalo && userInfo.has_zalo) ? '#eff6ff' : '#f8fafc',
+                              color: (cfg.zalo && userInfo.has_zalo) ? '#0068ff' : '#64748b',
+                              fontSize: '0.72rem',
+                              fontWeight: 700,
+                              cursor: (!cfg.master || !userInfo.has_zalo) ? 'not-allowed' : 'pointer',
+                              opacity: (!userInfo.has_zalo) ? 0.5 : 1
+                            }}
+                          >
+                            <img src="https://stc-zpl.zdn.vn/favicon.ico" style={{ width: 13, height: 13, objectFit: 'contain' }} alt="Zalo" />
+                            <span>Zalo</span>
+                            <span style={{
+                              width: 14,
+                              height: 14,
+                              borderRadius: '4px',
+                              background: (cfg.zalo && userInfo.has_zalo) ? '#0068ff' : '#cbd5e1',
+                              color: 'white',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              fontSize: '10px',
+                              fontWeight: 900
+                            }}>
+                              {(cfg.zalo && userInfo.has_zalo) ? '✓' : ''}
+                            </span>
+                          </button>
+
+                          {/* Telegram Chip */}
+                          <button
+                            type="button"
+                            onClick={() => handleChannelToggle(evt.key, 'telegram')}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              gap: '4px',
+                              padding: '6px 4px',
+                              borderRadius: '8px',
+                              border: (cfg.telegram && userInfo.has_telegram) ? '1.5px solid #0284c7' : '1px solid #cbd5e1',
+                              background: (cfg.telegram && userInfo.has_telegram) ? '#f0f9ff' : '#f8fafc',
+                              color: (cfg.telegram && userInfo.has_telegram) ? '#0284c7' : '#64748b',
+                              fontSize: '0.72rem',
+                              fontWeight: 700,
+                              cursor: (!cfg.master || !userInfo.has_telegram) ? 'not-allowed' : 'pointer',
+                              opacity: (!userInfo.has_telegram) ? 0.5 : 1
+                            }}
+                          >
+                            <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/8/82/Telegram_logo.svg/3840px-Telegram_logo.svg.png" style={{ width: 13, height: 13, objectFit: 'contain' }} alt="Telegram" />
+                            <span>Tele</span>
+                            <span style={{
+                              width: 14,
+                              height: 14,
+                              borderRadius: '4px',
+                              background: (cfg.telegram && userInfo.has_telegram) ? '#0284c7' : '#cbd5e1',
+                              color: 'white',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              fontSize: '10px',
+                              fontWeight: 900
+                            }}>
+                              {(cfg.telegram && userInfo.has_telegram) ? '✓' : ''}
+                            </span>
+                          </button>
+
+                          {/* Email Chip */}
+                          <button
+                            type="button"
+                            onClick={() => handleChannelToggle(evt.key, 'email')}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              gap: '4px',
+                              padding: '6px 4px',
+                              borderRadius: '8px',
+                              border: cfg.email ? '1.5px solid #BD1D2D' : '1px solid #cbd5e1',
+                              background: cfg.email ? '#fef2f2' : '#f8fafc',
+                              color: cfg.email ? '#BD1D2D' : '#64748b',
+                              fontSize: '0.72rem',
+                              fontWeight: 700,
+                              cursor: 'pointer'
+                            }}
+                          >
+                            <img src="/imgs/gmail-icon-free-png.webp" style={{ width: 13, height: 13, objectFit: 'contain' }} alt="Email" />
+                            <span>Email</span>
+                            <span style={{
+                              width: 14,
+                              height: 14,
+                              borderRadius: '4px',
+                              background: cfg.email ? '#BD1D2D' : '#cbd5e1',
+                              color: 'white',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              fontSize: '10px',
+                              fontWeight: 900
+                            }}>
+                              {cfg.email ? '✓' : ''}
+                            </span>
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            ))}
+          </div>
         ) : (
+          /* DESKTOP TABLE VIEW */
           <div style={{
             background: 'white',
             border: '1px solid #e2e8f0',
@@ -614,7 +834,7 @@ const getDefaultConfig = (key: string): EventConfig => {
             overflowY: 'hidden',
             boxShadow: '0 1px 4px rgba(0,0,0,0.02)'
           }}>
-            <table style={{ width: '100%', minWidth: isMobile ? '560px' : '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+            <table style={{ width: '100%', minWidth: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
               <thead>
                 <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0', fontSize: '0.75rem', fontWeight: 800, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                   <th style={{ padding: '14px 18px' }}>Sự Kiện Thông Báo Hệ Thống</th>
