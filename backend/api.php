@@ -335,9 +335,17 @@ function check_zalo_direct_log_for_lead($logFile, $createdDate, $phone, $name) {
     return 'N/A';
 }
 
-function parse_zalo_direct_logs($logFile) {
+function parse_zalo_direct_logs($logFile, $conn = null) {
     $logs = [];
     if (!file_exists($logFile)) return $logs;
+    
+    $zaloGroupChatId = '';
+    if ($conn) {
+        $res = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'zalo_admin_group_chat_id' LIMIT 1");
+        if ($res && $row = $res->fetch_assoc()) {
+            $zaloGroupChatId = trim($row['setting_value'] ?? '');
+        }
+    }
     
     $handle = fopen($logFile, 'r');
     if (!$handle) return $logs;
@@ -382,26 +390,36 @@ function parse_zalo_direct_logs($logFile) {
                 }
             }
             
+            $isDirect = empty($zaloGroupChatId) || (strtolower($chatId) !== strtolower($zaloGroupChatId));
+
             $logs[] = [
                 'id' => 'direct_' . md5($line),
                 'channel' => 'zalo',
                 'target' => $chatId,
-                'subject' => 'Zalo Direct cURL',
+                'subject' => 'Zalo Message',
                 'body' => $body,
                 'status' => ($httpCode == 200) ? 'sent' : 'failed',
                 'created_at' => $time,
                 'sent_at' => $time,
-                'is_direct' => true
+                'is_direct' => $isDirect
             ];
         }
     }
     return $logs;
 }
 
-function parse_telegram_direct_logs($logFile) {
+function parse_telegram_direct_logs($logFile, $conn = null) {
     $logs = [];
     if (!file_exists($logFile)) return $logs;
     
+    $tgGroupChatId = '';
+    if ($conn) {
+        $res = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'telegram_admin_group_chat_id' LIMIT 1");
+        if ($res && $row = $res->fetch_assoc()) {
+            $tgGroupChatId = trim($row['setting_value'] ?? '');
+        }
+    }
+
     $handle = fopen($logFile, 'r');
     if (!$handle) return $logs;
     
@@ -445,6 +463,8 @@ function parse_telegram_direct_logs($logFile) {
                 }
             }
             
+            $isDirect = empty($tgGroupChatId) || (strtolower($chatId) !== strtolower($tgGroupChatId));
+
             $logs[] = [
                 'id' => 'tg_direct_' . md5($line),
                 'channel' => 'telegram',
@@ -454,7 +474,7 @@ function parse_telegram_direct_logs($logFile) {
                 'status' => ($httpCode == 200) ? 'sent' : 'failed',
                 'created_at' => $time,
                 'sent_at' => $time,
-                'is_direct' => true
+                'is_direct' => $isDirect
             ];
         }
     }
@@ -5225,12 +5245,31 @@ switch ($action) {
         }
 
         $res = $conn->query("
-            SELECT c.*, u.role, t.name as team_name, t.branch as team_branch 
-            FROM consultants c 
-            LEFT JOIN accounts u ON c.email = u.email AND c.email != '' AND c.email IS NOT NULL
+            SELECT 
+                c.id, 
+                c.full_name AS name, 
+                c.email, 
+                c.phone, 
+                c.role, 
+                c.team_id, 
+                c.avatar_url AS avatar, 
+                c.zalo_chat_id, 
+                c.telegram_chat_id, 
+                c.job_title, 
+                c.leave_start, 
+                c.leave_end, 
+                c.vacation_mode, 
+                c.overtime_mode,
+                c.status,
+                IF(c.use_custom_work_hours = 1, c.work_start_time, (SELECT setting_value FROM system_settings WHERE setting_key = 'global_work_start_time' LIMIT 1)) AS work_start_time,
+                IF(c.use_custom_work_hours = 1, c.work_end_time, (SELECT setting_value FROM system_settings WHERE setting_key = 'global_work_end_time' LIMIT 1)) AS work_end_time,
+                IF(c.use_custom_work_hours = 1, c.work_schedule, (SELECT setting_value FROM system_settings WHERE setting_key = 'global_work_schedule' LIMIT 1)) AS work_schedule,
+                t.name as team_name, 
+                t.branch as team_branch 
+            FROM users c 
             LEFT JOIN teams t ON c.team_id = t.id 
             $where
-            ORDER BY c.name ASC
+            ORDER BY c.full_name ASC
         ");
         $data = [];
         if ($res && $res->num_rows > 0) {
@@ -5242,7 +5281,7 @@ switch ($action) {
             }
         }
         if (empty($data)) {
-            $uRes = $conn->query("SELECT id, full_name AS name, email, role, avatar_url AS avatar FROM users WHERE is_active = 1 ORDER BY full_name ASC");
+            $uRes = $conn->query("SELECT id, full_name AS name, email, phone, role, avatar_url AS avatar, zalo_chat_id, telegram_chat_id FROM users WHERE is_active = 1 ORDER BY full_name ASC");
             if ($uRes) {
                 while ($uRow = $uRes->fetch_assoc()) {
                     $data[] = $uRow;
@@ -8626,19 +8665,24 @@ switch ($action) {
                 SUM(CASE WHEN r.status = 'approved_no_comp' AND ($dateCondition) THEN 1 ELSE 0 END) as approved_no_comp_cnt,
                 SUM(CASE WHEN r.status = 'rejected' AND ($dateCondition) THEN 1 ELSE 0 END) as rejected_cnt
             FROM data_reports r
-            JOIN leads l ON r.lead_id = l.id
-            JOIN consultants c ON r.consultant_id = c.id
-            JOIN distribution_rounds dr ON r.round_id = dr.id
+            LEFT JOIN leads l ON r.lead_id = l.id
+            LEFT JOIN consultants c ON r.consultant_id = c.id
+            LEFT JOIN distribution_rounds dr ON r.round_id = dr.id
             " . (count($baseConds) > 0 ? "WHERE " . implode(" AND ", $baseConds) : "") . "
         ";
+        $rowStats = [];
         $stmtStats = $conn->prepare($statsSql);
-        if (count($baseParams) > 0) {
-            $stmtStats->bind_param($baseTypes, ...$baseParams);
+        if ($stmtStats) {
+            if (count($baseParams) > 0) {
+                $stmtStats->bind_param($baseTypes, ...$baseParams);
+            }
+            $stmtStats->execute();
+            $resStats = $stmtStats->get_result();
+            if ($resStats) {
+                $rowStats = $resStats->fetch_assoc() ?: [];
+            }
+            $stmtStats->close();
         }
-        $stmtStats->execute();
-        $resStats = $stmtStats->get_result();
-        $rowStats = $resStats->fetch_assoc();
-        $stmtStats->close();
 
         $stats = [
             'pending' => (int) ($rowStats['pending_cnt'] ?? 0),
@@ -8652,17 +8696,21 @@ switch ($action) {
         $countSql = "
             SELECT COUNT(*) as cnt
             FROM data_reports r
-            JOIN leads l ON r.lead_id = l.id
-            JOIN consultants c ON r.consultant_id = c.id
-            JOIN distribution_rounds dr ON r.round_id = dr.id
+            LEFT JOIN leads l ON r.lead_id = l.id
+            LEFT JOIN consultants c ON r.consultant_id = c.id
+            LEFT JOIN distribution_rounds dr ON r.round_id = dr.id
             $recordsWhere
         ";
+        $totalCount = 0;
         $stmtCount = $conn->prepare($countSql);
-        if (count($recordsParams) > 0) {
-            $stmtCount->bind_param($recordsTypes, ...$recordsParams);
+        if ($stmtCount) {
+            if (count($recordsParams) > 0) {
+                $stmtCount->bind_param($recordsTypes, ...$recordsParams);
+            }
+            $stmtCount->execute();
+            $totalCount = (int) ($stmtCount->get_result()->fetch_assoc()['cnt'] ?? 0);
+            $stmtCount->close();
         }
-        $stmtCount->execute();
-        $totalCount = (int) ($stmtCount->get_result()->fetch_assoc()['cnt'] ?? 0);
 
         // Query 3: Get paginated records
         $recordsSql = "
@@ -8676,9 +8724,9 @@ switch ($action) {
                    (SELECT MAX(dl2.received_at) FROM distribution_logs dl2 WHERE dl2.lead_id = r.lead_id AND dl2.id < dl.id) as last_activity_at,
                    a.avatar as resolved_by_avatar
             FROM data_reports r
-            JOIN leads l ON r.lead_id = l.id
-            JOIN consultants c ON r.consultant_id = c.id
-            JOIN distribution_rounds dr ON r.round_id = dr.id
+            LEFT JOIN leads l ON r.lead_id = l.id
+            LEFT JOIN consultants c ON r.consultant_id = c.id
+            LEFT JOIN distribution_rounds dr ON r.round_id = dr.id
             LEFT JOIN (
                 SELECT lead_id, assigned_to, round_id, MAX(id) as max_id
                 FROM distribution_logs
@@ -8692,20 +8740,23 @@ switch ($action) {
         ";
         $stmtRecords = $conn->prepare($recordsSql);
 
-        // Append limit and offset to parameters
-        $recordsParams[] = $pageSize;
-        $recordsParams[] = $offset;
-        $recordsTypes .= "ii";
-
-        $stmtRecords->bind_param($recordsTypes, ...$recordsParams);
-        $stmtRecords->execute();
-        $resRecords = $stmtRecords->get_result();
-
         $data = [];
-        if ($resRecords) {
-            while ($row = $resRecords->fetch_assoc()) {
-                $data[] = $row;
+        if ($stmtRecords) {
+            // Append limit and offset to parameters
+            $recordsParams[] = $pageSize;
+            $recordsParams[] = $offset;
+            $recordsTypes .= "ii";
+
+            $stmtRecords->bind_param($recordsTypes, ...$recordsParams);
+            $stmtRecords->execute();
+            $resRecords = $stmtRecords->get_result();
+
+            if ($resRecords) {
+                while ($row = $resRecords->fetch_assoc()) {
+                    $data[] = $row;
+                }
             }
+            $stmtRecords->close();
         }
 
         // Query 4: Get unique consultants who have reports
@@ -12610,7 +12661,7 @@ switch ($action) {
         $zaloDirectLogs = [];
         if ($channel === 'all' || $channel === 'zalo') {
             $zaloLogFile = __DIR__ . '/zalo_send_log.txt';
-            $zaloDirectLogs = parse_zalo_direct_logs($zaloLogFile);
+            $zaloDirectLogs = parse_zalo_direct_logs($zaloLogFile, $conn);
             
             // Deduplicate direct logs with zalo queue logs in memory
             $dedupedDirectLogs = [];
@@ -12638,7 +12689,7 @@ switch ($action) {
         $telegramDirectLogs = [];
         if ($channel === 'all' || $channel === 'telegram') {
             $telegramLogFile = __DIR__ . '/telegram_send_log.txt';
-            $telegramDirectLogs = parse_telegram_direct_logs($telegramLogFile);
+            $telegramDirectLogs = parse_telegram_direct_logs($telegramLogFile, $conn);
         }
 
         $rawLogs = array_merge($mailLogs, $zaloQueueLogs, $zaloDirectLogs, $telegramDirectLogs);

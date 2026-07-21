@@ -458,6 +458,23 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
     if (!target || target === '-') return { avatar: undefined, name: t('Hệ thống') };
     const cleanTarget = target.trim().toLowerCase();
     
+    // Check if target matches Zalo or Telegram Admin Group Chat IDs
+    const zaloGroup = sysSettings?.zalo_admin_group_chat_id ? String(sysSettings.zalo_admin_group_chat_id).trim().toLowerCase() : '';
+    const teleGroup = sysSettings?.telegram_admin_group_chat_id ? String(sysSettings.telegram_admin_group_chat_id).trim().toLowerCase() : '';
+
+    if (zaloGroup && cleanTarget === zaloGroup) {
+      return { 
+        avatar: 'https://stc-zpl.zdn.vn/favicon.ico', 
+        name: t('Zalo Group Bot (Admin)') 
+      };
+    }
+    if (teleGroup && cleanTarget === teleGroup) {
+      return { 
+        avatar: 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/82/Telegram_logo.svg/3840px-Telegram_logo.svg.png', 
+        name: t('Telegram Group Bot (Admin)') 
+      };
+    }
+
     const cons = consultants.find(c => {
       const emailMatch = c.email && c.email.trim().toLowerCase() === cleanTarget;
       const zaloMatch = c.zalo_chat_id && c.zalo_chat_id.toString().trim().toLowerCase() === cleanTarget;
