@@ -1756,10 +1756,15 @@ if ($eventName === 'user_send_text' || $eventName === 'message.text.received') {
                     $stmtAdmin->close();
             }
 
-            // Xử lý trùng lặp Email giữa Sale và Admin
+            // Nếu tìm thấy cả sale và admin từ cùng 1 user (vì accounts chứa tất cả users), ưu tiên sale và bỏ admin trùng
+            if ($sale && $admin && $sale['id'] === $admin['id']) {
+                $admin = null;
+            }
+
+            // Xử lý trùng lặp Email giữa 2 tài khoản Sale và Admin khác nhau
             if ($sale && $admin && $targetType === '') {
-                $errorMsg = "[ HỆ THỐNG RICH LAND DATA ]\n\nEmail này đang được dùng cho cả tài khoản Quản trị viên và Tư vấn viên.\nĐể đảm bảo chính xác, vui lòng sử dụng Mã ID thay vì Email để xác thực:\n\n- Nếu bạn muốn liên kết Admin: Gửi A + Mã ID (Ví dụ: A" . $admin['id'] . ")\n- Nếu bạn muốn liên kết Tư vấn viên: Gửi Mã ID (Ví dụ: " . $sale['id'] . ")";
-                sendZaloMessage($botToken, $chatId, $errorMsg);
+                $errorMsg = "[ HỆ THỐNG RICH LAND DATA ]\n\nEmail này đang được dùng cho cả 2 tài khoản Quản trị viên và Tư vấn viên khác nhau.\nĐể đảm bảo chính xác, vui lòng sử dụng Mã ID thay vì Email để xác thực:\n\n- Nếu bạn muốn liên kết Admin: Gửi A + Mã ID (Ví dụ: A" . $admin['id'] . ")\n- Nếu bạn muốn liên kết Tư vấn viên: Gửi Mã ID (Ví dụ: " . $sale['id'] . ")";
+                $sendReply($errorMsg);
                 exit;
             }
 
