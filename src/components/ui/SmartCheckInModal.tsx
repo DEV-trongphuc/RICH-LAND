@@ -774,24 +774,24 @@ export const SmartCheckInModal: React.FC<SmartCheckInModalProps> = ({
                   type="button"
                   onClick={handleManualCapture}
                   style={{
-                    background: isManualMode ? '#BD1D2D' : 'rgba(0, 0, 0, 0.04)',
-                    border: isManualMode ? 'none' : '1px solid rgba(0, 0, 0, 0.08)',
-                    color: isManualMode ? '#ffffff' : '#64748b',
-                    fontSize: '0.875rem',
+                    background: isManualMode ? '#BD1D2D' : 'transparent',
+                    border: 'none',
+                    color: isManualMode ? '#ffffff' : '#94a3b8',
+                    fontSize: '0.8125rem',
                     fontWeight: isManualMode ? 700 : 500,
                     cursor: 'pointer',
-                    padding: isManualMode ? '10px 28px' : '8px 22px',
-                    borderRadius: '24px',
+                    padding: isManualMode ? '10px 28px' : '4px 12px',
+                    borderRadius: isManualMode ? '24px' : '0',
+                    textDecoration: isManualMode ? 'none' : 'underline',
                     display: 'inline-flex',
                     alignItems: 'center',
                     gap: '6px',
                     margin: '0 auto',
-                    boxShadow: isManualMode ? '0 4px 14px rgba(189, 29, 45, 0.3)' : 'none',
                     transition: 'all 0.2s ease'
                   }}
                 >
-                  <Camera size={isManualMode ? 16 : 14} />
-                  <span>{isManualMode ? t('Chụp ảnh') : t('Không nhận diện được khuôn mặt')}</span>
+                  {isManualMode && <Camera size={16} />}
+                  <span>{isManualMode ? t('Chụp ảnh thủ công') : t('Không nhận diện được khuôn mặt')}</span>
                 </button>
               </div>
             )}
