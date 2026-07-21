@@ -2657,7 +2657,7 @@ function checkCheckInSlaEscalation($conn) {
             ";
             $admRes = $conn->query($admQuery);
             if ($admRes) {
-                $title = "CẢNH BÁO SLA: Duyệt đi trễ quá hạn";
+                $title = "CẢNH BÁO: Duyệt đi trễ quá hạn";
                 $body = "Yêu cầu duyệt đi trễ của " . $row['sale_name'] . " (lý do: \"" . $row['reason'] . "\") đã quá " . $slaMinutes . " phút chưa được xử lý!";
                 $type = "attendance";
                 $link = "/attendance";

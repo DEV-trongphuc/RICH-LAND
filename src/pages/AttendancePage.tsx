@@ -751,6 +751,20 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
                             const checkInLate = c.check_in_time > (c.work_start_time || '08:00');
                             const isApproved = c.status === 'approved';
                             const isPending = c.status === 'pending_approval';
+                            const todayStr = new Date().toISOString().slice(0, 10);
+                            const isSupplementary = c.check_in_date < todayStr || c.is_supplementary;
+
+                            let bg = isApproved ? (checkInLate ? 'rgba(0, 122, 255, 0.06)' : 'rgba(16, 185, 129, 0.08)') : isPending ? 'rgba(245, 158, 11, 0.06)' : 'rgba(239, 68, 68, 0.06)';
+                            let border = isApproved ? (checkInLate ? 'rgba(0, 122, 255, 0.15)' : 'rgba(16, 185, 129, 0.15)') : isPending ? 'rgba(245, 158, 11, 0.2)' : 'rgba(239, 68, 68, 0.2)';
+                            let txtColor = isApproved ? (checkInLate ? '#007aff' : '#10b981') : isPending ? '#d97706' : '#ef4444';
+                            let tagLabel = isSales ? (isSupplementary ? t('Cập nhật công') : t('Check-in')) : c.user_name;
+
+                            if (isSupplementary) {
+                              bg = 'rgba(139, 92, 246, 0.08)';
+                              border = 'rgba(139, 92, 246, 0.25)';
+                              txtColor = '#8B5CF6';
+                            }
+
                             return (
                               <div
                                 key={c.id}
@@ -760,16 +774,8 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
                                   gap: '2px',
                                   padding: '5px 8px',
                                   borderRadius: '8px',
-                                  border: '1px solid',
-                                  backgroundColor: 
-                                    isApproved 
-                                      ? (checkInLate ? 'rgba(0, 122, 255, 0.06)' : 'rgba(16, 185, 129, 0.08)') 
-                                      : isPending ? 'rgba(245, 158, 11, 0.06)' : 'rgba(239, 68, 68, 0.06)',
-                                  borderColor: 
-                                    isApproved 
-                                      ? (checkInLate ? 'rgba(0, 122, 255, 0.15)' : 'rgba(16, 185, 129, 0.15)') 
-                                      : isPending ? 'rgba(245, 158, 11, 0.2)' :
-                                      'rgba(239, 68, 68, 0.2)',
+                                  border: `1px solid ${border}`,
+                                  backgroundColor: bg,
                                   boxShadow: '0 1px 2px rgba(0,0,0,0.02)',
                                 }}
                                 className="single-checkin-tag"
@@ -777,18 +783,14 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
                                 <div style={{
                                   fontSize: '0.7rem',
                                   fontWeight: 600,
-                                  color: 
-                                    isApproved 
-                                      ? (checkInLate ? '#007aff' : '#10b981') 
-                                      : isPending ? '#d97706' :
-                                      '#ef4444',
+                                  color: txtColor,
                                   display: 'flex',
                                   alignItems: 'center',
                                   justifyContent: 'space-between',
                                   gap: '4px'
                                 }}>
                                   <span style={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap', maxWidth: '80px' }}>
-                                    {isSales ? t('Check-in') : c.user_name}
+                                    {tagLabel}
                                   </span>
                                   <div style={{ display: 'flex', alignItems: 'center', gap: '3px', flexShrink: 0 }}>
                                     <span style={{ fontSize: '0.65rem', fontWeight: 700 }}>{c.check_in_time.substring(0, 5)}</span>
@@ -1641,36 +1643,46 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
                           </td>
 
                           <td style={{ padding: '12px 16px' }}>
-                            <span style={{
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: '4px',
-                              padding: '4px 10px',
-                              borderRadius: '12px',
-                              fontSize: '0.7rem',
-                              fontWeight: 600,
-                              backgroundColor:
-                                row.status === 'approved' ? (
-                                  isLate ? 'rgba(0, 122, 255, 0.08)' : 'var(--color-success-light)'
-                                ) :
-                                row.status === 'pending_approval' ? 'var(--color-warning-light)' :
-                                'var(--color-danger-light)',
-                              color:
-                                row.status === 'approved' ? (
-                                  isLate ? '#007aff' : 'var(--color-success)'
-                                ) :
-                                row.status === 'pending_approval' ? 'var(--color-warning)' :
-                                'var(--color-danger)',
-                            }}>
-                              {row.status === 'approved' && <CheckCircle size={12} />}
-                              {row.status === 'pending_approval' && <AlertCircle size={12} />}
-                              {row.status === 'rejected' && <X size={12} />}
-                              {row.status === 'approved' ? (
-                                isLate ? t('Đã duyệt') : t('Đúng giờ')
-                              ) :
-                               row.status === 'pending_approval' ? t('Chờ duyệt đi trễ') :
-                               t('Bị từ chối')}
-                            </span>
+                            {(() => {
+                              const todayStr = new Date().toISOString().slice(0, 10);
+                              const isSupplementary = row.check_in_date < todayStr || row.is_supplementary;
+
+                              let bg = row.status === 'approved' ? (isLate ? 'rgba(0, 122, 255, 0.08)' : 'var(--color-success-light)') : row.status === 'pending_approval' ? 'var(--color-warning-light)' : 'var(--color-danger-light)';
+                              let color = row.status === 'approved' ? (isLate ? '#007aff' : 'var(--color-success)') : row.status === 'pending_approval' ? 'var(--color-warning)' : 'var(--color-danger)';
+                              let label = row.status === 'approved' ? (isLate ? t('Đã duyệt') : t('Đúng giờ')) : row.status === 'pending_approval' ? t('Chờ duyệt đi trễ') : t('Bị từ chối');
+
+                              if (isSupplementary) {
+                                bg = 'rgba(139, 92, 246, 0.1)';
+                                color = '#8B5CF6';
+                                if (row.status === 'pending_approval') {
+                                  label = t('Đang chờ cập nhật công');
+                                } else if (row.status === 'approved') {
+                                  label = t('Cập nhật công');
+                                } else {
+                                  label = t('Từ chối cập nhật công');
+                                }
+                              }
+
+                              return (
+                                <span style={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '4px',
+                                  padding: '4px 10px',
+                                  borderRadius: '12px',
+                                  fontSize: '0.7rem',
+                                  fontWeight: 600,
+                                  backgroundColor: bg,
+                                  color: color,
+                                  border: isSupplementary ? '1px solid rgba(139, 92, 246, 0.2)' : 'none'
+                                }}>
+                                  {row.status === 'approved' && <CheckCircle size={12} />}
+                                  {row.status === 'pending_approval' && <AlertCircle size={12} />}
+                                  {row.status === 'rejected' && <X size={12} />}
+                                  {label}
+                                </span>
+                              );
+                            })()}
                           </td>
 
                           <td style={{ padding: '12px 16px', textAlign: 'right' }}>
@@ -2005,25 +2017,40 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
                                   <span style={{ fontSize: '0.6875rem', color: 'var(--color-text-light)' }}>{row.user_email}</span>
                                 </div>
                               </div>
-                              <span style={{
-                                fontSize: '0.65rem',
-                                fontWeight: 600,
-                                padding: '2px 8px',
-                                borderRadius: '20px',
-                                backgroundColor:
-                                  row.status === 'approved' 
-                                    ? (isLate ? 'rgba(16, 185, 129, 0.1)' : 'var(--color-success-light)') 
-                                    : row.status === 'pending_approval' ? 'var(--color-warning-light)' : 'var(--color-danger-light)',
-                                color:
-                                  row.status === 'approved'
-                                    ? (isLate ? '#10b981' : 'var(--color-success)')
-                                    : row.status === 'pending_approval' ? 'var(--color-warning)' : 'var(--color-danger)',
-                                border: row.status === 'approved' && isLate ? '1px solid rgba(16, 185, 129, 0.2)' : 'none',
-                              }}>
-                                {row.status === 'approved' 
-                                  ? (isLate ? t('Hợp lệ') : t('Đúng giờ')) 
-                                  : row.status === 'pending_approval' ? t('Chờ duyệt') : t('Bị từ chối')}
-                              </span>
+                              {(() => {
+                                const todayStr = new Date().toISOString().slice(0, 10);
+                                const isSupplementary = row.check_in_date < todayStr || row.is_supplementary;
+
+                                let bg = row.status === 'approved' ? (isLate ? 'rgba(16, 185, 129, 0.1)' : 'var(--color-success-light)') : row.status === 'pending_approval' ? 'var(--color-warning-light)' : 'var(--color-danger-light)';
+                                let color = row.status === 'approved' ? (isLate ? '#10b981' : 'var(--color-success)') : row.status === 'pending_approval' ? 'var(--color-warning)' : 'var(--color-danger)';
+                                let label = row.status === 'approved' ? (isLate ? t('Hợp lệ') : t('Đúng giờ')) : row.status === 'pending_approval' ? t('Chờ duyệt') : t('Bị từ chối');
+
+                                if (isSupplementary) {
+                                  bg = 'rgba(139, 92, 246, 0.1)';
+                                  color = '#8B5CF6';
+                                  if (row.status === 'pending_approval') {
+                                    label = t('Đang chờ cập nhật công');
+                                  } else if (row.status === 'approved') {
+                                    label = t('Cập nhật công');
+                                  } else {
+                                    label = t('Từ chối cập nhật công');
+                                  }
+                                }
+
+                                return (
+                                  <span style={{
+                                    fontSize: '0.65rem',
+                                    fontWeight: 600,
+                                    padding: '2px 8px',
+                                    borderRadius: '20px',
+                                    backgroundColor: bg,
+                                    color: color,
+                                    border: isSupplementary ? '1px solid rgba(139, 92, 246, 0.2)' : (row.status === 'approved' && isLate ? '1px solid rgba(16, 185, 129, 0.2)' : 'none'),
+                                  }}>
+                                    {label}
+                                  </span>
+                                );
+                              })()}
                             </div>
 
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px' }}>
@@ -2113,38 +2140,73 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
               ) : modalTab === 'fingerprint' ? (
                 /* Sub-tab 2: Fingerprint Excel / Supplementary Form */
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-                  {isSales ? (
-                    // Sales supplementary request form
-                    hasCheckIn ? (
-                      <div style={{
-                        display: 'flex',
-                        flexDirection: 'column',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: '12px',
-                        background: 'rgba(107, 114, 128, 0.03)',
-                        border: '1px solid var(--color-border-light)',
-                        padding: '2.5rem 1.5rem',
-                        borderRadius: '12px',
-                        textAlign: 'center',
-                        height: '100%',
-                        minHeight: '220px'
-                      }}>
-                        <CheckCircle size={36} color="var(--color-success)" />
-                        <h4 style={{ fontWeight: 700, fontSize: '0.95rem', color: 'var(--color-text)', margin: 0 }}>
-                          {t('Đã Chấm Công')}
-                        </h4>
-                        <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', margin: 0, maxWidth: '220px' }}>
-                          {t('Bạn đã có dữ liệu chấm công cho ngày này. Không cần gửi thêm yêu cầu.')}
-                        </p>
-                      </div>
-                    ) : (
+                  {isSales ? (() => {
+                    const todayStr = new Date().toISOString().slice(0, 10);
+                    const detailCheckIns = calendarCheckIns.filter(c => c.check_in_date === selectedDateForDetail);
+                    const pendingCheckIn = detailCheckIns.find(c => c.status === 'pending_approval');
+                    const approvedCheckIn = detailCheckIns.find(c => c.status === 'approved');
+
+                    if (pendingCheckIn) {
+                      return (
+                        <div style={{
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: '12px',
+                          background: 'rgba(139, 92, 246, 0.04)',
+                          border: '1px solid rgba(139, 92, 246, 0.2)',
+                          padding: '2.5rem 1.5rem',
+                          borderRadius: '12px',
+                          textAlign: 'center',
+                          height: '100%',
+                          minHeight: '220px'
+                        }}>
+                          <Clock size={38} color="#8B5CF6" />
+                          <h4 style={{ fontWeight: 700, fontSize: '1rem', color: '#8B5CF6', margin: 0 }}>
+                            {t('Đang chờ cập nhật công')}
+                          </h4>
+                          <p style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)', margin: 0, maxWidth: '280px', lineHeight: 1.45 }}>
+                            {t('Yêu cầu cập nhật công cho ngày ')}{selectedDateForDetail}{t(' của bạn đang chờ quản trị viên phê duyệt.')}
+                          </p>
+                        </div>
+                      );
+                    }
+
+                    if (approvedCheckIn) {
+                      return (
+                        <div style={{
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: '12px',
+                          background: 'rgba(16, 185, 129, 0.04)',
+                          border: '1px solid rgba(16, 185, 129, 0.2)',
+                          padding: '2.5rem 1.5rem',
+                          borderRadius: '12px',
+                          textAlign: 'center',
+                          height: '100%',
+                          minHeight: '220px'
+                        }}>
+                          <CheckCircle size={38} color="var(--color-success)" />
+                          <h4 style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--color-text)', margin: 0 }}>
+                            {selectedDateForDetail && selectedDateForDetail < todayStr ? t('Cập nhật công của bạn đã được duyệt') : t('Đã Chấm Công')}
+                          </h4>
+                          <p style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)', margin: 0, maxWidth: '280px', lineHeight: 1.45 }}>
+                            {t('Dữ liệu chấm công cho ngày ')}{selectedDateForDetail}{t(' đã được hệ thống và quản trị viên phê duyệt thành công.')}
+                          </p>
+                        </div>
+                      );
+                    }
+
+                    return (
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', background: 'var(--color-bg-light)', border: '1px solid var(--color-border)', padding: '1.25rem', borderRadius: '12px' }}>
                         <h4 style={{ fontWeight: 700, fontSize: '0.95rem', color: 'var(--color-text)', margin: 0 }}>
-                          📝 {t('Yêu Cầu Chấm Công Bổ Sung')}
+                          📝 {t('Yêu Cầu Cập Nhật Công Bổ Sung')}
                         </h4>
                         <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', margin: 0 }}>
-                          {t('Gửi yêu cầu chấm công bổ sung cho ngày ')}{selectedDateForDetail}{t('. Quản trị viên sẽ phê duyệt yêu cầu này.')}
+                          {t('Gửi yêu cầu cập nhật công bổ sung cho ngày ')}{selectedDateForDetail}{t('. Quản trị viên sẽ phê duyệt yêu cầu này.')}
                         </p>
 
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '4px' }}>
@@ -2201,11 +2263,11 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
                             marginTop: '6px'
                           }}
                         >
-                          {suppSubmitting ? t('Đang gửi yêu cầu...') : t('Gửi yêu cầu chấm công')}
+                          {suppSubmitting ? t('Đang gửi yêu cầu...') : t('Gửi yêu cầu cập nhật công')}
                         </button>
                       </div>
-                    )
-                  ) : (
+                    );
+                  })() : (
                     // Admin/Manager official log upload & sheet preview
                     <>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>

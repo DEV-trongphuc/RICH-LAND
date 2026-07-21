@@ -2457,15 +2457,20 @@ export const Header = ({
                       {filtered.map(notif => {
                         const actorName = parseActorName(notif.body);
                         const isWarning = notif.type === 'warning' || (notif.title && (notif.title.toLowerCase().includes('trùng số') || notif.title.toLowerCase().includes('rửa nguồn')));
+                        const isAttendanceUpdate = notif.type === 'attendance_update' || (notif.title && notif.title.toLowerCase().includes('cập nhật công'));
                         const isRichland = Boolean((notif.title && (notif.title.toLowerCase().includes('richland') || notif.title.toLowerCase().includes('rich land'))) || (notif.body && (notif.body.toLowerCase().includes('richland') || notif.body.toLowerCase().includes('rich land'))));
                         
                         const bgBase = notif.is_read 
                           ? 'var(--color-surface)' 
-                          : (isWarning ? 'linear-gradient(135deg, rgba(239, 68, 68, 0.02) 0%, rgba(239, 68, 68, 0.06) 100%)' : 'linear-gradient(135deg, rgba(59, 130, 246, 0.02) 0%, rgba(59, 130, 246, 0.06) 100%)');
+                          : (isWarning ? 'linear-gradient(135deg, rgba(239, 68, 68, 0.02) 0%, rgba(239, 68, 68, 0.06) 100%)' 
+                             : isAttendanceUpdate ? 'linear-gradient(135deg, rgba(139, 92, 246, 0.02) 0%, rgba(139, 92, 246, 0.06) 100%)'
+                             : 'linear-gradient(135deg, rgba(59, 130, 246, 0.02) 0%, rgba(59, 130, 246, 0.06) 100%)');
                         
                         const borderColor = notif.is_read
                           ? 'var(--color-border-light)'
-                          : (isWarning ? 'rgba(239, 68, 68, 0.2)' : 'rgba(59, 130, 246, 0.2)');
+                          : (isWarning ? 'rgba(239, 68, 68, 0.2)' 
+                             : isAttendanceUpdate ? 'rgba(139, 92, 246, 0.25)' 
+                             : 'rgba(59, 130, 246, 0.2)');
 
                         return (
                           <div
@@ -2486,7 +2491,7 @@ export const Header = ({
                               opacity: notif.is_read ? 0.75 : 1
                             }}
                             onMouseEnter={e => {
-                              e.currentTarget.style.borderColor = isWarning ? '#ef4444' : '#3b82f6';
+                              e.currentTarget.style.borderColor = isWarning ? '#ef4444' : isAttendanceUpdate ? '#8b5cf6' : '#3b82f6';
                               e.currentTarget.style.boxShadow = '0 6px 16px rgba(0, 0, 0, 0.08)';
                               e.currentTarget.style.transform = 'translateY(-1px)';
                               if (notif.is_read) {
@@ -2537,7 +2542,8 @@ export const Header = ({
                                         case 'approval_request': return '#3b82f6';
                                         case 'project_roster': return '#10b981';
                                         case 'project_document': return '#f59e0b';
-                                        case 'project_comment': return '#8b5cf6';
+                                        case 'project_comment':
+                                        case 'attendance_update': return '#8b5cf6';
                                         case 'attendance': return '#eab308';
                                         default: return '#6b7280';
                                       }
@@ -2563,6 +2569,8 @@ export const Header = ({
                                           return <MessageSquare size={11} style={{ color: 'white' }} />;
                                         case 'warning':
                                           return <AlertTriangle size={11} style={{ color: 'white' }} />;
+                                        case 'attendance_update':
+                                          return <Clock size={11} style={{ color: 'white' }} />;
                                         default:
                                           return <Info size={11} style={{ color: 'white' }} />;
                                       }
@@ -2574,7 +2582,7 @@ export const Header = ({
                                   width: 38,
                                   height: 38,
                                   borderRadius: '50%',
-                                  background: isWarning ? 'rgba(239, 68, 68, 0.1)' : 'rgba(59, 130, 246, 0.1)',
+                                  background: isWarning ? 'rgba(239, 68, 68, 0.1)' : isAttendanceUpdate ? 'rgba(139, 92, 246, 0.1)' : 'rgba(59, 130, 246, 0.1)',
                                   display: 'flex',
                                   alignItems: 'center',
                                   justifyContent: 'center',
@@ -2595,6 +2603,8 @@ export const Header = ({
                                         return <MessageSquare size={18} style={{ color: '#8b5cf6' }} />;
                                       case 'warning':
                                         return <AlertTriangle size={18} style={{ color: '#ef4444' }} />;
+                                      case 'attendance_update':
+                                        return <Clock size={18} style={{ color: '#8b5cf6' }} />;
                                       default:
                                         return <Info size={18} style={{ color: '#6b7280' }} />;
                                     }

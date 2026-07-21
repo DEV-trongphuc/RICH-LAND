@@ -300,8 +300,8 @@ class CheckInController {
             'status' => $status
         ]));
 
-        // Send notifications to Admins & Managers if late
-        if ($isLate) {
+        // Send notifications to Admins & Managers if late or supplementary check-in request
+        if ($isLate || $isSupplementary) {
             // Get user's name & team_id
             $stmtUserDetails = $this->db->prepare("SELECT full_name, team_id FROM users WHERE id = ?");
             $stmtUserDetails->execute([$auth['user_id']]);
@@ -328,9 +328,15 @@ class CheckInController {
             $admins = $stmtAdmins->fetchAll(PDO::FETCH_COLUMN);
 
             if (!empty($admins)) {
-                $title = "Yêu cầu duyệt đi trễ";
-                $body = "Nhân viên " . $userName . " đã check-in trễ lúc " . substr($currentTime, 0, 5) . " và gửi lý do: \"" . $reason . "\"";
-                $type = "attendance";
+                if ($isSupplementary) {
+                    $title = "Yêu cầu cập nhật công";
+                    $body = "Nhân viên " . $userName . " vừa gửi Yêu cầu cập nhật công bổ sung ngày " . $today . " lúc " . substr($currentTime, 0, 5) . " với lý do: \"" . $reason . "\"";
+                    $type = "attendance_update";
+                } else {
+                    $title = "Yêu cầu duyệt đi trễ";
+                    $body = "Nhân viên " . $userName . " đã check-in trễ lúc " . substr($currentTime, 0, 5) . " và gửi lý do: \"" . $reason . "\"";
+                    $type = "attendance";
+                }
                 $link = "/attendance?view=calendar&date=" . $today;
 
                 $insertNotif = $this->db->prepare("
@@ -378,16 +384,25 @@ class CheckInController {
                     $stmtBotToken->execute();
                     $botToken = $stmtBotToken->fetchColumn();
                     if ($botToken && !empty($zaloChatIds)) {
-                        $zaloMsg = "⏰ [ YÊU CẦU DUYỆT ĐI TRỄ ]\n\n"
-                            . "Nhân viên $userName vừa báo cáo đi trễ ngày $today:\n"
-                            . "  • Tên NV: $userName\n"
-                            . "  • Thời gian: " . substr($currentTime, 0, 5) . "\n"
-                            . "  • Lý do: \"$reason\"\n\n"
-                            . "Vui lòng truy cập hệ thống CRM để phê duyệt.";
+                        if ($isSupplementary) {
+                            $zaloMsg = "🔄 [ YÊU CẦU CẬP NHẬT CÔNG ]\n\n"
+                                . "Nhân viên $userName vừa gửi Yêu cầu cập nhật công ngày $today:\n"
+                                . "  • Tên NV: $userName\n"
+                                . "  • Giờ đề xuất: " . substr($currentTime, 0, 5) . "\n"
+                                . "  • Lý do: \"$reason\"\n\n"
+                                . "Vui lòng truy cập hệ thống CRM để phê duyệt.";
+                        } else {
+                            $zaloMsg = "⏰ [ YÊU CẦU DUYỆT ĐI TRỄ ]\n\n"
+                                . "Nhân viên $userName vừa báo cáo đi trễ ngày $today:\n"
+                                . "  • Tên NV: $userName\n"
+                                . "  • Thời gian: " . substr($currentTime, 0, 5) . "\n"
+                                . "  • Lý do: \"$reason\"\n\n"
+                                . "Vui lòng truy cập hệ thống CRM để phê duyệt.";
+                        }
                         try {
                             sendZaloMessageToMultiple($botToken, array_unique($zaloChatIds), $zaloMsg, false);
                         } catch (\Throwable $ze) {
-                            error_log("Error sending Zalo late checkin message: " . $ze->getMessage());
+                            error_log("Error sending Zalo checkin notification: " . $ze->getMessage());
                         }
                     }
 
@@ -397,17 +412,26 @@ class CheckInController {
                     $stmtTgToken->execute();
                     $tgToken = $stmtTgToken->fetchColumn();
                     if ($tgToken && !empty($tgChatIds)) {
-                        $tgMsg = "⏰ <b>[ YÊU CẦU DUYỆT ĐI TRỄ ]</b>\n\n"
-                            . "Nhân viên <b>$userName</b> vừa báo cáo đi trễ ngày <code>$today</code>:\n"
-                            . "  • Tên NV: <b>$userName</b>\n"
-                            . "  • Thời gian: <code>" . substr($currentTime, 0, 5) . "</code>\n"
-                            . "  • Lý do: <i>\"$reason\"</i>\n\n"
-                            . "Vui lòng truy cập hệ thống CRM để phê duyệt.";
+                        if ($isSupplementary) {
+                            $tgMsg = "🔄 <b>[ YÊU CẦU CẬP NHẬT CÔNG ]</b>\n\n"
+                                . "Nhân viên <b>$userName</b> vừa gửi Yêu cầu cập nhật công ngày <code>$today</code>:\n"
+                                . "  • Tên NV: <b>$userName</b>\n"
+                                . "  • Giờ đề xuất: <code>" . substr($currentTime, 0, 5) . "</code>\n"
+                                . "  • Lý do: <i>\"$reason\"</i>\n\n"
+                                . "Vui lòng truy cập hệ thống CRM để phê duyệt.";
+                        } else {
+                            $tgMsg = "⏰ <b>[ YÊU CẦU DUYỆT ĐI TRỄ ]</b>\n\n"
+                                . "Nhân viên <b>$userName</b> vừa báo cáo đi trễ ngày <code>$today</code>:\n"
+                                . "  • Tên NV: <b>$userName</b>\n"
+                                . "  • Thời gian: <code>" . substr($currentTime, 0, 5) . "</code>\n"
+                                . "  • Lý do: <i>\"$reason\"</i>\n\n"
+                                . "Vui lòng truy cập hệ thống CRM để phê duyệt.";
+                        }
                         foreach (array_unique($tgChatIds) as $cId) {
                             try {
                                 sendTelegramMessage($tgToken, $cId, $tgMsg);
                             } catch (\Throwable $tge) {
-                                error_log("Error sending Telegram late checkin message: " . $tge->getMessage());
+                                error_log("Error sending Telegram checkin notification: " . $tge->getMessage());
                             }
                         }
                     }
@@ -415,20 +439,29 @@ class CheckInController {
                     // 3. Send Email
                     require_once __DIR__ . '/../mailer.php';
                     foreach ($emails as $adm) {
-                        $emailSubject = "[RICH LAND] Yêu cầu phê duyệt đi trễ - NV $userName";
-                        $emailTitle = "DUYỆT YÊU CẦU ĐI TRỄ";
-                        $emailContent = "Chào " . htmlspecialchars($adm['full_name']) . ",<br/><br/>" .
-                                        "Nhân viên <strong>$userName</strong> vừa check-in trễ giờ quy định lúc " . substr($currentTime, 0, 5) . " ngày $today.<br/>" .
-                                        "Lý do đi trễ: <em>\"$reason\"</em>.<br/>" .
-                                        "Vui lòng truy cập hệ thống CRM để phê duyệt.";
+                        if ($isSupplementary) {
+                            $emailSubject = "[RICH LAND] Yêu cầu cập nhật công - NV $userName";
+                            $emailTitle = "YÊU CẦU CẬP NHẬT CÔNG";
+                            $emailContent = "Chào " . htmlspecialchars($adm['full_name']) . ",<br/><br/>" .
+                                            "Nhân viên <strong>$userName</strong> vừa gửi Yêu cầu cập nhật công bổ sung ngày $today lúc " . substr($currentTime, 0, 5) . ".<br/>" .
+                                            "Lý do: <em>\"$reason\"</em>.<br/>" .
+                                            "Vui lòng truy cập hệ thống CRM để phê duyệt.";
+                        } else {
+                            $emailSubject = "[RICH LAND] Yêu cầu phê duyệt đi trễ - NV $userName";
+                            $emailTitle = "DUYỆT YÊU CẦU ĐI TRỄ";
+                            $emailContent = "Chào " . htmlspecialchars($adm['full_name']) . ",<br/><br/>" .
+                                            "Nhân viên <strong>$userName</strong> vừa check-in trễ giờ quy định lúc " . substr($currentTime, 0, 5) . " ngày $today.<br/>" .
+                                            "Lý do đi trễ: <em>\"$reason\"</em>.<br/>" .
+                                            "Vui lòng truy cập hệ thống CRM để phê duyệt.";
+                        }
                         try {
                             sendEmailNotification($adm['email'], $emailSubject, $emailTitle, $emailContent, '', false);
                         } catch (\Throwable $ee) {
-                            error_log("Error sending email late checkin notification: " . $ee->getMessage());
+                            error_log("Error sending email checkin notification: " . $ee->getMessage());
                         }
                     }
                 } catch (\Throwable $nEx) {
-                    error_log("Error sending late check-in notifications: " . $nEx->getMessage());
+                    error_log("Error sending check-in notifications: " . $nEx->getMessage());
                 }
             }
         }
@@ -439,7 +472,7 @@ class CheckInController {
             'check_in_time' => $currentTime,
             'status' => $status,
             'is_late' => $isLate
-        ], 'Check-in thành công' . ($isLate ? ' (Đang chờ quản lý duyệt vì đi trễ)' : ''));
+        ], 'Gửi yêu cầu thành công');
     }
 
     public function update(array $auth, int $id): void {
@@ -514,9 +547,18 @@ class CheckInController {
         $upd->execute([$status, $adminNote, $id]);
 
         // Send notification back to the Sale user
-        $title = $status === 'approved' ? "Chấm công đi trễ đã được duyệt" : ($status === 'rejected' ? "Yêu cầu nhận lead bị từ chối" : "Yêu cầu nhận lead đang chờ duyệt");
-        $statusText = $status === 'approved' ? "chấp thuận" : ($status === 'rejected' ? "từ chối" : "cập nhật thành chờ duyệt");
-        $body = "Yêu cầu nhận lead ngày " . $row['check_in_date'] . " của bạn đã được " . $statusText . " bởi quản trị viên.";
+        $isSupplementary = ($row['check_in_date'] < date('Y-m-d'));
+        if ($isSupplementary) {
+            $title = $status === 'approved' ? "Cập nhật công của bạn đã được duyệt" : ($status === 'rejected' ? "Yêu cầu cập nhật công bị từ chối" : "Yêu cầu cập nhật công đang chờ duyệt");
+            $statusText = $status === 'approved' ? "chấp thuận" : ($status === 'rejected' ? "từ chối" : "cập nhật thành chờ duyệt");
+            $body = "Yêu cầu cập nhật công ngày " . $row['check_in_date'] . " của bạn đã được " . $statusText . " bởi quản trị viên.";
+        } else {
+            $title = $status === 'approved' ? "Chấm công đi trễ đã được duyệt" : ($status === 'rejected' ? "Yêu cầu nhận lead bị từ chối" : "Yêu cầu nhận lead đang chờ duyệt");
+            $statusText = $status === 'approved' ? "chấp thuận" : ($status === 'rejected' ? "từ chối" : "cập nhật thành chờ duyệt");
+            $body = "Yêu cầu nhận lead ngày " . $row['check_in_date'] . " của bạn đã được " . $statusText . " bởi quản trị viên.";
+        }
+        $type = "attendance";
+        $link = "/sale-portal";
         if ($status === 'rejected' && !empty($reason)) {
             $body .= " Ghi chú: \"" . $reason . "\"";
         }
