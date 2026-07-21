@@ -8,7 +8,7 @@ import {
   Clock3, GitBranch, ArrowUpRight, ShieldAlert, Send, ArrowLeft,
   Sun, Moon, ChevronDown, ChevronUp, AlertTriangle, ChevronLeft, ChevronRight,
   LayoutDashboard, Database, Ticket, Calendar, RefreshCw, Menu, Tag, Server, Scale, Settings, Info, Cpu,
-  Camera, Video, Layers, Plus, Receipt, CreditCard, Building2, Users, User, UserCheck, UserPlus, Trash2, CheckSquare, X, Paperclip, LifeBuoy, Fingerprint, LayoutGrid, Monitor, Tv, Phone, Save, Award, Ban, RotateCcw
+  Camera, Video, Layers, Plus, Receipt, CreditCard, Building2, Users, User, UserCheck, UserPlus, Trash2, CheckSquare, X, Paperclip, LifeBuoy, Fingerprint, LayoutGrid, Monitor, Tv, Phone, Save, Award, Ban, RotateCcw, MoreHorizontal, Check
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { createPortal } from 'react-dom';

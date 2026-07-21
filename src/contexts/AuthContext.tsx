@@ -92,8 +92,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             const data = res.data.data || res.data;
             const latestAvatar = data.avatar_url || data.avatar;
             const latestName = data.full_name || data.name;
-            if ((latestAvatar && latestAvatar !== user.avatar) || (latestName && latestName !== user.name)) {
-              updateUser({ avatar: latestAvatar, name: latestName });
+            const latestJobTitle = data.job_title || (data.address ? (() => { try { return JSON.parse(data.address)?.erp_profile?.job_title; } catch(e) { return null; } })() : null);
+            if (
+              (latestAvatar && latestAvatar !== user.avatar) || 
+              (latestName && latestName !== user.name) ||
+              (latestJobTitle !== undefined && latestJobTitle !== user.job_title)
+            ) {
+              updateUser({ avatar: latestAvatar, name: latestName, job_title: latestJobTitle || '' });
             }
           }
         } catch (err) {
