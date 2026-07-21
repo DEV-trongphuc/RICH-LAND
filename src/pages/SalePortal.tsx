@@ -994,6 +994,19 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
   const [leaveHistory, setLeaveHistory] = useState<any[]>([]);
   const [loadingLeaves, setLoadingLeaves] = useState(false);
 
+  const [isMobileDateMenuOpen, setIsMobileDateMenuOpen] = useState(false);
+  const mobileDateMenuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (mobileDateMenuRef.current && !mobileDateMenuRef.current.contains(e.target as Node)) {
+        setIsMobileDateMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
   // Enterprise ERP Profile Extra Fields
   const [editEmployeeId, setEditEmployeeId] = useState('');
   const [editDepartment, setEditDepartment] = useState('');
@@ -6830,40 +6843,153 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
         </div>
 
           {/* Dashboard header */}
-          <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', marginBottom: '0px' }}>
-            <div>
-              <h1 className="page-title">{t("Tổng quan Phân bổ Data")}</h1>
-              <p className="page-subtitle" style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', margin: '4px 0 0' }}>{t("Phân tích hiệu suất giao data theo thời gian thực — Hệ thống đang hoạt động trơn tru.")}</p>
-            </div>
-            <div className="mobile-w-full" style={{ display: 'flex', gap: '8px', alignItems: 'center', width: isMobile ? '100%' : 'auto', flexWrap: 'nowrap' }}>
-              <div style={{ position: 'relative', zIndex: 100, flex: '1 1 auto', minWidth: isMobile ? '0' : '240px', maxWidth: '320px' }}>
-                <CustomSelect
-                  options={[
-                    { value: 'all', label: t('Tất cả thời gian'), icon: <Clock size={16} /> },
-                    { value: 'today', label: t('Hôm nay') },
-                    { value: 'yesterday', label: t('Hôm qua') },
-                    { value: 'this_week', label: t('Tuần này') },
-                    { value: 'last_week', label: t('Tuần trước') },
-                    { value: 'two_weeks_ago', label: t('Tuần trước nữa') },
-                    { value: '7_days', label: t('7 ngày qua') },
-                    { value: '30_days', label: t('30 ngày qua') },
-                    { value: 'this_month', label: t('Tháng này') },
-                    { value: 'last_month', label: t('Tháng trước') },
-                    { value: 'this_year', label: t('Năm nay') },
-                    { value: 'custom', label: t('Tùy chọn ngày...') }
-                  ]}
-                  value={dateMode}
-                  onChange={(val) => {
-                    if (val === 'custom') {
-                      setShowCustomDate(true);
-                    } else {
-                      handleDateModeChange(String(val));
-                    }
-                  }}
-                  width="100%"
-                />
-              </div>
+          <div className="page-header" style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginBottom: '0px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', gap: '12px' }}>
+              <h1 className="page-title" style={{ margin: 0, fontSize: isMobile ? '1.15rem' : undefined }}>{t("Tổng quan Phân bổ Data")}</h1>
+              
+              {isMobile ? (
+                <div ref={mobileDateMenuRef} style={{ position: 'relative', flexShrink: 0 }}>
+                  <button
+                    type="button"
+                    onClick={() => setIsMobileDateMenuOpen(prev => !prev)}
+                    style={{
+                      width: '36px',
+                      height: '36px',
+                      borderRadius: '10px',
+                      border: '1px solid var(--color-border)',
+                      background: 'var(--color-surface)',
+                      color: 'var(--color-text)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      cursor: 'pointer',
+                      boxShadow: 'var(--shadow-sm)',
+                      position: 'relative'
+                    }}
+                    title={t("Bộ lọc thời gian")}
+                  >
+                    <MoreHorizontal size={18} />
+                    {dateMode !== 'all' && (
+                      <span style={{
+                        position: 'absolute',
+                        top: '5px',
+                        right: '5px',
+                        width: '7px',
+                        height: '7px',
+                        borderRadius: '50%',
+                        backgroundColor: '#BD1D2D'
+                      }} />
+                    )}
+                  </button>
 
+                  <AnimatePresence>
+                    {isMobileDateMenuOpen && (
+                      <motion.div
+                        initial={{ opacity: 0, scale: 0.95, y: -5 }}
+                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                        exit={{ opacity: 0, scale: 0.95, y: -5 }}
+                        style={{
+                          position: 'absolute',
+                          top: '100%',
+                          right: 0,
+                          marginTop: '6px',
+                          width: '210px',
+                          maxHeight: '320px',
+                          overflowY: 'auto',
+                          background: 'var(--color-surface)',
+                          border: '1px solid var(--color-border)',
+                          borderRadius: '12px',
+                          boxShadow: '0 10px 25px rgba(0,0,0,0.25)',
+                          zIndex: 1000,
+                          padding: '6px'
+                        }}
+                      >
+                        {[
+                          { value: 'all', label: t('Tất cả thời gian') },
+                          { value: 'today', label: t('Hôm nay') },
+                          { value: 'yesterday', label: t('Hôm qua') },
+                          { value: 'this_week', label: t('Tuần này') },
+                          { value: 'last_week', label: t('Tuần trước') },
+                          { value: 'two_weeks_ago', label: t('Tuần trước nữa') },
+                          { value: '7_days', label: t('7 ngày qua') },
+                          { value: '30_days', label: t('30 ngày qua') },
+                          { value: 'this_month', label: t('Tháng này') },
+                          { value: 'last_month', label: t('Tháng trước') },
+                          { value: 'this_year', label: t('Năm nay') },
+                          { value: 'custom', label: t('Tùy chọn ngày...') }
+                        ].map((opt) => (
+                          <button
+                            key={opt.value}
+                            type="button"
+                            onClick={() => {
+                              setIsMobileDateMenuOpen(false);
+                              if (opt.value === 'custom') {
+                                setShowCustomDate(true);
+                              } else {
+                                handleDateModeChange(opt.value);
+                              }
+                            }}
+                            style={{
+                              width: '100%',
+                              textAlign: 'left',
+                              padding: '8px 12px',
+                              fontSize: '0.8125rem',
+                              borderRadius: '8px',
+                              border: 'none',
+                              background: dateMode === opt.value ? 'rgba(189, 29, 45, 0.1)' : 'transparent',
+                              color: dateMode === opt.value ? '#BD1D2D' : 'var(--color-text)',
+                              fontWeight: dateMode === opt.value ? 700 : 500,
+                              cursor: 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'space-between'
+                            }}
+                          >
+                            <span>{opt.label}</span>
+                            {dateMode === opt.value && <Check size={14} style={{ color: '#BD1D2D' }} />}
+                          </button>
+                        ))}
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+              ) : null}
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+              <p className="page-subtitle" style={{ fontSize: isMobile ? '0.75rem' : '0.875rem', color: 'var(--color-text-muted)', margin: 0 }}>
+                {t("Phân tích hiệu suất giao data theo thời gian thực — Hệ thống đang hoạt động trơn tru.")}
+              </p>
+
+              {!isMobile && (
+                <div style={{ position: 'relative', zIndex: 100, flexShrink: 0, minWidth: '240px', maxWidth: '320px' }}>
+                  <CustomSelect
+                    options={[
+                      { value: 'all', label: t('Tất cả thời gian'), icon: <Clock size={16} /> },
+                      { value: 'today', label: t('Hôm nay') },
+                      { value: 'yesterday', label: t('Hôm qua') },
+                      { value: 'this_week', label: t('Tuần này') },
+                      { value: 'last_week', label: t('Tuần trước') },
+                      { value: 'two_weeks_ago', label: t('Tuần trước nữa') },
+                      { value: '7_days', label: t('7 ngày qua') },
+                      { value: '30_days', label: t('30 ngày qua') },
+                      { value: 'this_month', label: t('Tháng này') },
+                      { value: 'last_month', label: t('Tháng trước') },
+                      { value: 'this_year', label: t('Năm nay') },
+                      { value: 'custom', label: t('Tùy chọn ngày...') }
+                    ]}
+                    value={dateMode}
+                    onChange={(val) => {
+                      if (val === 'custom') {
+                        setShowCustomDate(true);
+                      } else {
+                        handleDateModeChange(String(val));
+                      }
+                    }}
+                    width="100%"
+                  />
+                </div>
+              )}
             </div>
           </div>
 
