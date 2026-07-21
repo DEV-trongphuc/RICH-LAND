@@ -460,28 +460,32 @@ class NotificationService {
             case 'LEAD_ASSIGNMENT':
                 $recipients = self::getRecipientById($db, $payload['user_id'] ?? 0);
                 $custName = $payload['customer_name'] ?? 'Khách hàng mới';
-                $custPhone = $payload['phone'] ?? '';
+                $phone = $payload['phone'] ?? '';
+                $maskedPhone = !empty($phone) && strlen($phone) >= 7 
+                    ? (substr($phone, 0, 4) . '***' . substr($phone, -3)) 
+                    : '******';
                 return [
                     'recipients' => $recipients,
                     'title' => "Khách hàng mới được phân bổ",
-                    'body' => "Bạn vừa được phân bổ khách hàng mới: $custName" . ($custPhone ? " ($custPhone)" : ""),
+                    'body' => "Bạn vừa được phân bổ khách hàng mới. Vui lòng vào CRM (Sale Portal) để nhận và xem chi tiết.",
                     'type' => "lead",
-                    'link' => "/contacts",
+                    'link' => "/sale-portal",
                     'zalo_msg' => "🎯 [ KHÁCH HÀNG MỚI ĐƯỢC CHIA ]\n\n"
-                        . "Bạn vừa nhận phân bổ khách hàng mới:\n"
-                        . "  • Tên khách: $custName\n"
-                        . ($custPhone ? "  • SĐT: $custPhone\n" : "")
-                        . "\nVui lòng liên hệ chăm sóc sớm nhất.",
+                        . "Bạn vừa được hệ thống phân bổ 1 khách hàng mới:\n"
+                        . "  • Trạng thái: Chờ nhận & xem chi tiết\n"
+                        . "  • SĐT liên hệ: $maskedPhone\n\n"
+                        . "Vui lòng truy cập Sale Portal trên CRM ngay để nhận và lấy thông tin chi tiết!",
                     'tg_msg' => "🎯 <b>[ KHÁCH HÀNG MỚI ĐƯỢC CHIA ]</b>\n\n"
-                        . "Bạn vừa nhận phân bổ khách hàng mới:\n"
-                        . "  • Tên khách: <b>" . htmlspecialchars($custName) . "</b>\n"
-                        . ($custPhone ? "  • SĐT: <code>$custPhone</code>\n" : "")
-                        . "\nVui lòng liên hệ chăm sóc sớm nhất.",
-                    'email_subject' => "[RICH LAND] Phân bổ khách hàng mới - $custName",
+                        . "Bạn vừa được hệ thống phân bổ 1 khách hàng mới:\n"
+                        . "  • Trạng thái: <b>Chờ nhận & xem chi tiết</b>\n"
+                        . "  • SĐT liên hệ: <code>$maskedPhone</code>\n\n"
+                        . "Vui lòng truy cập Sale Portal trên CRM ngay để nhận và lấy thông tin chi tiết!",
+                    'email_subject' => "[RICH LAND] Thông báo phân bổ khách hàng mới",
                     'email_title' => "KHÁCH HÀNG MỚI ĐƯỢC PHÂN BỔ",
                     'email_content' => "Chào bạn,<br/><br/>" .
-                                    "Hệ thống vừa phân bổ khách hàng mới cho bạn: <strong>" . htmlspecialchars($custName) . "</strong>.<br/>" .
-                                    "Vui lòng đăng nhập CRM để cập nhật tiến độ chăm sóc."
+                                    "Hệ thống vừa phân bổ 1 khách hàng mới cho bạn.<br/>" .
+                                    "Vì lý do bảo mật dữ liệu, thông tin chi tiết và SĐT đầy đủ chỉ hiển thị khi bạn đăng nhập vào CRM.<br/>" .
+                                    "Vui lòng truy cập <strong>Sale Portal</strong> trên CRM để nhận khách hàng."
                 ];
 
             case 'CUSTOMER_UPDATE':
