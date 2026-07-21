@@ -457,9 +457,302 @@ class NotificationService {
                                     "Vui lòng truy cập CRM để phê duyệt."
                 ];
 
+            case 'LEAD_ASSIGNMENT':
+                $recipients = self::getRecipientById($db, $payload['user_id'] ?? 0);
+                $custName = $payload['customer_name'] ?? 'Khách hàng mới';
+                $custPhone = $payload['phone'] ?? '';
+                return [
+                    'recipients' => $recipients,
+                    'title' => "Khách hàng mới được phân bổ",
+                    'body' => "Bạn vừa được phân bổ khách hàng mới: $custName" . ($custPhone ? " ($custPhone)" : ""),
+                    'type' => "lead",
+                    'link' => "/contacts",
+                    'zalo_msg' => "🎯 [ KHÁCH HÀNG MỚI ĐƯỢC CHIA ]\n\n"
+                        . "Bạn vừa nhận phân bổ khách hàng mới:\n"
+                        . "  • Tên khách: $custName\n"
+                        . ($custPhone ? "  • SĐT: $custPhone\n" : "")
+                        . "\nVui lòng liên hệ chăm sóc sớm nhất.",
+                    'tg_msg' => "🎯 <b>[ KHÁCH HÀNG MỚI ĐƯỢC CHIA ]</b>\n\n"
+                        . "Bạn vừa nhận phân bổ khách hàng mới:\n"
+                        . "  • Tên khách: <b>" . htmlspecialchars($custName) . "</b>\n"
+                        . ($custPhone ? "  • SĐT: <code>$custPhone</code>\n" : "")
+                        . "\nVui lòng liên hệ chăm sóc sớm nhất.",
+                    'email_subject' => "[RICH LAND] Phân bổ khách hàng mới - $custName",
+                    'email_title' => "KHÁCH HÀNG MỚI ĐƯỢC PHÂN BỔ",
+                    'email_content' => "Chào bạn,<br/><br/>" .
+                                    "Hệ thống vừa phân bổ khách hàng mới cho bạn: <strong>" . htmlspecialchars($custName) . "</strong>.<br/>" .
+                                    "Vui lòng đăng nhập CRM để cập nhật tiến độ chăm sóc."
+                ];
+
+            case 'CUSTOMER_UPDATE':
+                $recipients = self::getRecipientById($db, $payload['user_id'] ?? 0);
+                $custName = $payload['customer_name'] ?? 'Khách hàng';
+                $updateContent = $payload['content'] ?? 'Thông tin khách hàng vừa được cập nhật';
+                return [
+                    'recipients' => $recipients,
+                    'title' => "Cập nhật khách hàng $custName",
+                    'body' => $updateContent,
+                    'type' => "customer",
+                    'link' => "/contacts",
+                    'zalo_msg' => "👤 [ CẬP NHẬT KHÁCH HÀNG ]\n\n"
+                        . "Khách hàng $custName có cập nhật mới:\n"
+                        . "  • Nội dung: $updateContent\n\n"
+                        . "Vui lòng truy cập CRM để xem chi tiết.",
+                    'tg_msg' => "👤 <b>[ CẬP NHẬT KHÁCH HÀNG ]</b>\n\n"
+                        . "Khách hàng <b>" . htmlspecialchars($custName) . "</b> có cập nhật mới:\n"
+                        . "  • Nội dung: <i>" . htmlspecialchars($updateContent) . "</i>\n\n"
+                        . "Vui lòng truy cập CRM để xem chi tiết.",
+                    'email_subject' => "[RICH LAND] Cập nhật thông tin khách hàng $custName",
+                    'email_title' => "CẬP NHẬT KHÁCH HÀNG",
+                    'email_content' => "Chào bạn,<br/><br/>" .
+                                    "Khách hàng <strong>" . htmlspecialchars($custName) . "</strong> có cập nhật mới.<br/>" .
+                                    "Nội dung: <em>" . htmlspecialchars($updateContent) . "</em>.<br/>" .
+                                    "Vui lòng kiểm tra trên CRM."
+                ];
+
+            case 'SECURITY_DEADLINE_WARNING':
+                $recipients = self::getRecipientById($db, $payload['user_id'] ?? 0);
+                $custName = $payload['customer_name'] ?? 'Khách hàng';
+                $deadlineText = $payload['deadline'] ?? '24h';
+                return [
+                    'recipients' => $recipients,
+                    'title' => "Cảnh báo hạn bảo mật Data",
+                    'body' => "Khách hàng $custName sắp hết hạn bảo mật và sẽ bị thu hồi sau $deadlineText",
+                    'type' => "security_warning",
+                    'link' => "/contacts",
+                    'zalo_msg' => "⏳ [ CẢNH BÁO HẠN BẢO MẬT DATA ]\n\n"
+                        . "Khách hàng $custName của bạn sắp hết thời hạn bảo mật:\n"
+                        . "  • Thời gian còn lại: $deadlineText\n\n"
+                        . "Hãy cập nhật tương tác để gia hạn bảo mật data.",
+                    'tg_msg' => "⏳ <b>[ CẢNH BÁO HẠN BẢO MẬT DATA ]</b>\n\n"
+                        . "Khách hàng <b>" . htmlspecialchars($custName) . "</b> của bạn sắp hết thời hạn bảo mật:\n"
+                        . "  • Thời gian còn lại: <code>$deadlineText</code>\n\n"
+                        . "Hãy cập nhật tương tác để gia hạn bảo mật data.",
+                    'email_subject' => "[RICH LAND] Cảnh báo hạn bảo mật Data - $custName",
+                    'email_title' => "CẢNH BÁO HẠN BẢO MẬT DATA",
+                    'email_content' => "Chào bạn,<br/><br/>" .
+                                    "Khách hàng <strong>" . htmlspecialchars($custName) . "</strong> sắp hết thời hạn bảo mật.<br/>" .
+                                    "Thời gian còn lại: <strong>$deadlineText</strong>.<br/>" .
+                                    "Hãy cập nhật tương tác để giữ quyền chăm sóc data."
+                ];
+
+            case 'MENTION_TAGGED':
+                $recipients = self::getRecipientById($db, $payload['user_id'] ?? 0);
+                $authorName = $payload['author_name'] ?? 'Đồng nghiệp';
+                $commentText = $payload['comment'] ?? 'đã nhắc tên bạn';
+                return [
+                    'recipients' => $recipients,
+                    'title' => "$authorName vừa nhắc tên bạn",
+                    'body' => "$authorName: \"$commentText\"",
+                    'type' => "mention",
+                    'link' => $payload['link'] ?? '/',
+                    'zalo_msg' => "🏷️ [ ĐƯỢC TAG TÊN / MENTION ]\n\n"
+                        . "$authorName vừa nhắc tên bạn trong ghi chú/thảo luận:\n"
+                        . "  • Nội dung: \"$commentText\"\n\n"
+                        . "Bấm để xem chi tiết.",
+                    'tg_msg' => "🏷️ <b>[ ĐƯỢC TAG TÊN / MENTION ]</b>\n\n"
+                        . "<b>" . htmlspecialchars($authorName) . "</b> vừa nhắc tên bạn trong ghi chú/thảo luận:\n"
+                        . "  • Nội dung: <i>\"" . htmlspecialchars($commentText) . "\"</i>\n\n"
+                        . "Bấm để xem chi tiết.",
+                    'email_subject' => "[RICH LAND] $authorName vừa tag tên bạn trong bình luận",
+                    'email_title' => "BẠN ĐƯỢC NHẮC ĐẾN",
+                    'email_content' => "Chào bạn,<br/><br/>" .
+                                    "<strong>" . htmlspecialchars($authorName) . "</strong> vừa nhắc tên bạn trong bình luận:<br/>" .
+                                    "<em>\"" . htmlspecialchars($commentText) . "\"</em>.<br/>" .
+                                    "Vui lòng kiểm tra trên CRM."
+                ];
+
+            case 'WORKFLOW_TASK_ASSIGNED':
+                $recipients = self::getRecipientById($db, $payload['user_id'] ?? 0);
+                $taskTitle = $payload['task_title'] ?? 'Nhiệm vụ mới';
+                $dueDate = $payload['due_date'] ?? '';
+                return [
+                    'recipients' => $recipients,
+                    'title' => "Công việc CRM mới được giao",
+                    'body' => "Bạn được giao công việc: $taskTitle" . ($dueDate ? " (Hạn: $dueDate)" : ""),
+                    'type' => "task",
+                    'link' => "/activities",
+                    'zalo_msg' => "📋 [ GÁN CÔNG VIỆC MỚI ]\n\n"
+                        . "Bạn vừa được giao nhiệm vụ CRM mới:\n"
+                        . "  • Tiêu đề: $taskTitle\n"
+                        . ($dueDate ? "  • Hạn hoàn thành: $dueDate\n" : "")
+                        . "\nVui lòng kiểm tra và xử lý.",
+                    'tg_msg' => "📋 <b>[ GÁN CÔNG VIỆC MỚI ]</b>\n\n"
+                        . "Bạn vừa được giao nhiệm vụ CRM mới:\n"
+                        . "  • Tiêu đề: <b>" . htmlspecialchars($taskTitle) . "</b>\n"
+                        . ($dueDate ? "  • Hạn hoàn thành: <code>$dueDate</code>\n" : "")
+                        . "\nVui lòng kiểm tra và xử lý.",
+                    'email_subject' => "[RICH LAND] Công việc mới được giao - $taskTitle",
+                    'email_title' => "CÔNG VIỆC MỚI ĐƯỢC GIAO",
+                    'email_content' => "Chào bạn,<br/><br/>" .
+                                    "Bạn vừa được phân công công việc mới: <strong>" . htmlspecialchars($taskTitle) . "</strong>.<br/>" .
+                                    ($dueDate ? "Hạn hoàn thành: <strong>$dueDate</strong>.<br/>" : "") .
+                                    "Vui lòng truy cập CRM để thực hiện."
+                ];
+
+            case 'PROFILE_ACCOUNT_UPDATE':
+                $recipients = self::getRecipientById($db, $payload['user_id'] ?? 0);
+                return [
+                    'recipients' => $recipients,
+                    'title' => "Cập nhật hồ sơ & bảo mật tài khoản",
+                    'body' => "Thông tin hồ sơ hoặc cài đặt tài khoản của bạn vừa được cập nhật thành công.",
+                    'type' => "account",
+                    'link' => "/personal-account",
+                    'zalo_msg' => "🔒 [ BẢO MẬT TÀI KHOẢN ]\n\n"
+                        . "Thông tin hồ sơ tài khoản của bạn vừa được cập nhật thành công.\n"
+                        . "Nếu không phải bạn thực hiện, vui lòng liên hệ Admin ngay lập tức.",
+                    'tg_msg' => "🔒 <b>[ BẢO MẬT TÀI KHOẢN ]</b>\n\n"
+                        . "Thông tin hồ sơ tài khoản của bạn vừa được cập nhật thành công.\n"
+                        . "Nếu không phải bạn thực hiện, vui lòng liên hệ Admin ngay lập tức.",
+                    'email_subject' => "[RICH LAND] Cập nhật thông tin hồ sơ tài khoản",
+                    'email_title' => "THÔNG BÁO BẢO MẬT TÀI KHOẢN",
+                    'email_content' => "Chào bạn,<br/><br/>" .
+                                    "Thông tin hồ sơ tài khoản của bạn vừa được thay đổi.<br/>" .
+                                    "Nếu không phải bạn thực hiện, vui lòng đổi mật khẩu và liên hệ Ban quản trị ngay."
+                ];
+
+            case 'PROJECT_ROSTER_UPDATE':
+                $recipients = self::getAdminsAndManagers($db, $tenantId);
+                $projectName = $payload['project_name'] ?? 'Dự án';
+                return [
+                    'recipients' => $recipients,
+                    'title' => "Cập nhật lịch Roster dự án",
+                    'body' => "Lịch trực Roster dự án $projectName vừa được cập nhật mới.",
+                    'type' => "project",
+                    'link' => "/projects",
+                    'zalo_msg' => "🏢 [ CẬP NHẬT ROSTER DỰ ÁN ]\n\n"
+                        . "Lịch trực ca và phân công nhân sự dự án $projectName vừa được cập nhật.\n"
+                        . "Vui lòng xem chi tiết trên bảng Roster CRM.",
+                    'tg_msg' => "🏢 <b>[ CẬP NHẬT ROSTER DỰ ÁN ]</b>\n\n"
+                        . "Lịch trực ca và phân công nhân sự dự án <b>" . htmlspecialchars($projectName) . "</b> vừa được cập nhật.\n"
+                        . "Vui lòng xem chi tiết trên bảng Roster CRM.",
+                    'email_subject' => "[RICH LAND] Cập nhật Lịch Roster dự án $projectName",
+                    'email_title' => "CẬP NHẬT LỊCH ROSTER DỰ ÁN",
+                    'email_content' => "Chào quản trị viên,<br/><br/>" .
+                                    "Danh sách phân công Roster dự án <strong>" . htmlspecialchars($projectName) . "</strong> vừa có thay đổi.<br/>" .
+                                    "Vui lòng truy cập CRM để xem chi tiết."
+                ];
+
+            case 'MONTHLY_ATTENDANCE_REPORT':
+                $recipients = !empty($payload['user_id']) ? self::getRecipientById($db, (int)$payload['user_id']) : self::getAllUsers($db, $tenantId);
+                $periodText = $payload['period'] ?? 'Tháng vừa qua';
+                $workDays = $payload['work_days'] ?? 0;
+                $lateDays = $payload['late_days'] ?? 0;
+                $lateMins = $payload['late_minutes'] ?? 0;
+                $missingDays = $payload['missing_days'] ?? 0;
+                $nightShifts = $payload['night_shifts'] ?? 0;
+                $weekendShifts = $payload['weekend_shifts'] ?? 0;
+                $holidayShifts = $payload['holiday_shifts'] ?? 0;
+
+                $reportSummary = "• Ngày chấm công: $workDays ngày\n"
+                    . "• Đi trễ: $lateDays lần ($lateMins phút)\n"
+                    . "• Quên chấm (giờ hành chính): $missingDays ngày\n"
+                    . "• Trực đêm: $nightShifts ca\n"
+                    . "• Trực cuối tuần: $weekendShifts ca\n"
+                    . ($holidayShifts > 0 ? "• Trực lễ: $holidayShifts ca\n" : "");
+
+                return [
+                    'recipients' => $recipients,
+                    'title' => "Báo cáo Chấm công & Ca trực ($periodText)",
+                    'body' => "Tổng kết $periodText: $workDays ngày công, $lateDays lần trễ ($lateMins phút), $missingDays ngày chưa chấm.",
+                    'type' => "attendance_report",
+                    'link' => "/sale-portal",
+                    'zalo_msg' => "📊 [ BÁO CÁO CHẤM CÔNG & CA TRỰC - $periodText ]\n\n"
+                        . "Chi tiết tổng kết cá nhân:\n"
+                        . $reportSummary
+                        . "\nVui lòng xem thêm chi tiết tại Sale Portal.",
+                    'tg_msg' => "📊 <b>[ BÁO CÁO CHẤM CÔNG & CA TRỰC - $periodText ]</b>\n\n"
+                        . "Chi tiết tổng kết cá nhân:\n"
+                        . nl2br(htmlspecialchars($reportSummary))
+                        . "\nVui lòng xem thêm chi tiết tại Sale Portal.",
+                    'email_subject' => "[RICH LAND] Báo cáo Chấm công & Ca trực - $periodText",
+                    'email_title' => "BÁO CÁO CHẤM CÔNG & CA TRỰC",
+                    'email_content' => "Chào <strong>$userName</strong>,<br/><br/>" .
+                                    "Dưới đây là chi tiết báo cáo chấm công & ca trực kỳ <strong>$periodText</strong> của bạn:<br/>" .
+                                    "<ul>" .
+                                    "<li>Ngày đã chấm công hợp lệ: <strong>$workDays ngày</strong></li>" .
+                                    "<li>Số lần đi trễ: <strong>$lateDays lần ($lateMins phút)</strong></li>" .
+                                    "<li>Số ngày vắng/chưa chấm (giờ hành chính): <strong style='color:red;'>$missingDays ngày</strong></li>" .
+                                    "<li>Ca trực đêm: <strong>$nightShifts ca</strong></li>" .
+                                    "<li>Ca trực cuối tuần: <strong>$weekendShifts ca</strong></li>" .
+                                    ($holidayShifts > 0 ? "<li>Ca trực lễ/tết: <strong>$holidayShifts ca</strong></li>" : "") .
+                                    "</ul><br/>" .
+                                    "Vui lòng truy cập hệ thống để đối soát thông tin."
+                ];
+
+            case 'HOLIDAY_ROSTER_OPEN':
+                $recipients = self::getAllUsers($db, $tenantId);
+                $holidayName = $payload['holiday_name'] ?? 'Lễ / Tết';
+                $deadline = $payload['deadline'] ?? 'trước ngày trực';
+                return [
+                    'recipients' => $recipients,
+                    'title' => "Mở đăng ký trực lễ $holidayName",
+                    'body' => "Ban quản trị đã mở cổng đăng ký ca trực ngày lễ $holidayName. Hạn đăng ký: $deadline",
+                    'type' => "roster",
+                    'link' => "/roster",
+                    'zalo_msg' => "🎉 [ MỞ ĐĂNG KÝ TRỰC LỄ / TẾT ]\n\n"
+                        . "Hệ thống đã mở đăng ký trực ngày lễ $holidayName.\n"
+                        . "  • Dịp lễ: $holidayName\n"
+                        . "  • Hạn đăng ký: $deadline\n\n"
+                        . "Vui lòng truy cập mục Lịch Roster để đăng ký ca trực.",
+                    'tg_msg' => "🎉 <b>[ MỞ ĐĂNG KÝ TRỰC LỄ / TẾT ]</b>\n\n"
+                        . "Hệ thống đã mở đăng ký trực ngày lễ <b>" . htmlspecialchars($holidayName) . "</b>.\n"
+                        . "  • Dịp lễ: <b>" . htmlspecialchars($holidayName) . "</b>\n"
+                        . "  • Hạn đăng ký: <code>$deadline</code>\n\n"
+                        . "Vui lòng truy cập mục Lịch Roster để đăng ký ca trực.",
+                    'email_subject' => "[RICH LAND] Mở đăng ký trực lễ $holidayName",
+                    'email_title' => "MỞ ĐĂNG KÝ TRỰC LỄ / TẾT",
+                    'email_content' => "Chào toàn thể cán bộ nhân viên,<br/><br/>" .
+                                    "Hệ thống đã mở cổng đăng ký ca trực dịp <strong>" . htmlspecialchars($holidayName) . "</strong>.<br/>" .
+                                    "Hạn đăng ký: <strong>$deadline</strong>.<br/>" .
+                                    "Vui lòng truy cập CRM để đăng ký ca trực."
+                ];
+
+            case 'HOLIDAY_ANNOUNCEMENT':
+                $recipients = self::getAllUsers($db, $tenantId);
+                $holidayName = $payload['holiday_name'] ?? 'Nghỉ lễ';
+                $datesText = $payload['dates'] ?? '';
+                return [
+                    'recipients' => $recipients,
+                    'title' => "Thông báo lịch nghỉ lễ $holidayName",
+                    'body' => "Công ty thông báo lịch nghỉ lễ $holidayName" . ($datesText ? ": $datesText" : ""),
+                    'type' => "announcement",
+                    'link' => "/",
+                    'zalo_msg' => "📢 [ THÔNG BÁO LỊCH NGHỈ LỄ ]\n\n"
+                        . "Thông báo lịch nghỉ lễ $holidayName toàn công ty:\n"
+                        . "  • Dịp lễ: $holidayName\n"
+                        . ($datesText ? "  • Thời gian: $datesText\n" : "")
+                        . "\nChúc toàn thể nhân viên có kỳ nghỉ lễ an toàn và vui vẻ!",
+                    'tg_msg' => "📢 <b>[ THÔNG BÁO LỊCH NGHỈ LỄ ]</b>\n\n"
+                        . "Thông báo lịch nghỉ lễ <b>" . htmlspecialchars($holidayName) . "</b> toàn công ty:\n"
+                        . "  • Dịp lễ: <b>" . htmlspecialchars($holidayName) . "</b>\n"
+                        . ($datesText ? "  • Thời gian: <code>$datesText</code>\n" : "")
+                        . "\nChúc toàn thể nhân viên có kỳ nghỉ lễ an toàn và vui vẻ!",
+                    'email_subject' => "[RICH LAND] Thông báo lịch nghỉ lễ $holidayName",
+                    'email_title' => "THÔNG BÁO LỊCH NGHỈ LỄ",
+                    'email_content' => "Chào toàn thể cán bộ nhân viên,<br/><br/>" .
+                                    "Công ty xin thông báo lịch nghỉ lễ <strong>" . htmlspecialchars($holidayName) . "</strong>.<br/>" .
+                                    ($datesText ? "Thời gian nghỉ: <strong>$datesText</strong>.<br/><br/>" : "") .
+                                    "Chúc toàn thể nhân viên kỳ nghỉ vui vẻ!"
+                ];
+
             default:
                 return null;
         }
+    }
+
+    private static function getRecipientById(PDO $db, int $userId): array {
+        if ($userId <= 0) return [];
+        $stmt = $db->prepare("SELECT id, email, zalo_chat_id, telegram_chat_id, full_name FROM users WHERE id = ? LIMIT 1");
+        $stmt->execute([$userId]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        return $row ? [$row] : [];
+    }
+
+    private static function getAllUsers(PDO $db, int $tenantId): array {
+        $stmt = $db->prepare("SELECT id, email, zalo_chat_id, telegram_chat_id, full_name FROM users WHERE tenant_id = ? AND is_active = 1");
+        $stmt->execute([$tenantId]);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
     }
 
     /**
