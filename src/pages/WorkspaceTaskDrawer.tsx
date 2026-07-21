@@ -1177,6 +1177,31 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
           </div>
 
           <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexShrink: 0 }}>
+            {/* Notification Mute Bell Button */}
+            <button
+              type="button"
+              onClick={handleBellClick}
+              disabled={loadingMute}
+              className="hover-lift"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: '36px',
+                height: '36px',
+                borderRadius: '8px',
+                border: isMuted ? '1px solid var(--color-border)' : '1px solid rgba(189, 29, 45, 0.3)',
+                background: isMuted ? 'var(--color-bg)' : 'rgba(189, 29, 45, 0.08)',
+                color: isMuted ? 'var(--color-text-muted)' : '#BD1D2D',
+                cursor: 'pointer',
+                boxShadow: 'var(--shadow-sm)',
+                transition: 'all 0.2s'
+              }}
+              title={isMuted ? t("Thông báo đang tắt (Bấm để bật)") : t("Thông báo đang bật (Bấm để tắt)")}
+            >
+              {isMuted ? <BellOff size={18} /> : <Bell size={18} />}
+            </button>
+
             <button
               onClick={handleManualSave}
               disabled={isSaving}
@@ -1202,31 +1227,6 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
             >
               {isSaving ? <RefreshCw className="spin" size={14} /> : <Save size={16} />}
               {!isMobileOrTablet && <span>{t('Lưu thay đổi')}</span>}
-            </button>
-
-            {/* Notification Mute Bell Button */}
-            <button
-              type="button"
-              onClick={handleBellClick}
-              disabled={loadingMute}
-              className="hover-lift"
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                width: '36px',
-                height: '36px',
-                borderRadius: '8px',
-                border: isMuted ? '1px solid var(--color-border)' : '1px solid rgba(189, 29, 45, 0.3)',
-                background: isMuted ? 'var(--color-bg)' : 'rgba(189, 29, 45, 0.08)',
-                color: isMuted ? 'var(--color-text-muted)' : '#BD1D2D',
-                cursor: 'pointer',
-                boxShadow: 'var(--shadow-sm)',
-                transition: 'all 0.2s'
-              }}
-              title={isMuted ? t("Thông báo đang tắt (Bấm để bật)") : t("Thông báo đang bật (Bấm để tắt)")}
-            >
-              {isMuted ? <BellOff size={18} /> : <Bell size={18} />}
             </button>
 
             <button 
