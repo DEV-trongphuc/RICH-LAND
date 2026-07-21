@@ -3065,6 +3065,64 @@ SQL;
             $logMsg("Hoàn thành cập nhật phiên bản 181.", "success");
         }
 
+        if ($currentVersion < 182) {
+            $logMsg("Đang chạy cập nhật phiên bản 182 (Thêm cột signature_url vào bảng users và cập nhật views)...", "info");
+            try {
+                $checkSig = $conn->query("SHOW COLUMNS FROM users LIKE 'signature_url'");
+                if (!$checkSig || $checkSig->num_rows == 0) {
+                    $conn->query("ALTER TABLE users ADD COLUMN signature_url LONGTEXT DEFAULT NULL AFTER avatar_url");
+                    $logMsg("Đã thêm cột signature_url vào bảng users thành công.", "success");
+                }
+            } catch (Throwable $t) {
+                $logMsg("Lỗi khi thêm cột signature_url: " . $t->getMessage(), "error");
+            }
+
+            try {
+                $conn->query("
+                    CREATE OR REPLACE VIEW `accounts` AS 
+                    SELECT `id`, `username`, `password`, `email`, `role`, `is_active`, `zalo_id`, `created_at`, `signature_url`
+                    FROM `users`
+                ");
+                $conn->query("
+                    CREATE OR REPLACE VIEW `consultants` AS 
+                    SELECT 
+                      `id`, 
+                      `full_name` AS `name`, 
+                      `job_title`,
+                      `email`, 
+                      `role`, 
+                      `status`, 
+                      `leave_start`, 
+                      `leave_end`, 
+                      `work_start_time`, 
+                      `work_end_time`, 
+                      `work_schedule`, 
+                      `avatar_url` AS `avatar`, 
+                      `signature_url`,
+                      `vacation_mode`, 
+                      `overtime_mode`,
+                      `team_id`,
+                      `dob`,
+                      `gender`,
+                      `citizen_id`,
+                      `address`,
+                      `bank_name`,
+                      `bank_account`,
+                      `extra_fields_json`,
+                      `use_custom_work_hours`
+                    FROM `users`
+                    WHERE `role` = 'sales' OR `role` = 'sale'
+                ");
+                $logMsg("Đã cập nhật VIEW accounts & consultants bao gồm signature_url.", "success");
+            } catch (Throwable $t) {
+                $logMsg("Lỗi khi cập nhật VIEW accounts/consultants: " . $t->getMessage(), "error");
+            }
+
+            $conn->query("INSERT INTO system_settings (setting_key, setting_value) VALUES ('db_version', '182') ON DUPLICATE KEY UPDATE setting_value = '182'");
+            $currentVersion = 182;
+            $logMsg("Hoàn thành cập nhật phiên bản 182.", "success");
+        }
+
     $logMsg("Tự sửa đổi cấu trúc hoàn thành thành công.", "success");
 
     $logMsg("Hệ thống đã cập nhật thành công lên phiên bản mới nhất: " . $currentVersion, "success");

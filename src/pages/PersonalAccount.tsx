@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useLanguage } from '../contexts/LanguageContext';
-import { User, Key, Eye, EyeOff, Save, ShieldAlert, Mail, Activity, Clock, Settings, ChevronDown, ChevronUp, LogOut } from 'lucide-react';
+import { User, Key, Eye, EyeOff, Save, ShieldAlert, Mail, Activity, Clock, Settings, ChevronDown, ChevronUp, LogOut, Edit3 } from 'lucide-react';
+import { SignaturePadModal } from '../components/ui/SignaturePadModal';
 import { fetchAPI } from '../utils/api';
 import { compressToWebP } from '../utils/imageCompress';
 import { useAuth } from '../contexts/AuthContext';
@@ -41,6 +42,9 @@ const PersonalAccountInner = () => {
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const [signatureUrl, setSignatureUrl] = useState<string | null>(user?.signature_url || null);
+  const [showSignatureModal, setShowSignatureModal] = useState(false);
+
   useEffect(() => {
     if (user) {
       setProfileData({
@@ -48,8 +52,22 @@ const PersonalAccountInner = () => {
         email: user.email || user.username || '',
         avatar: user.avatar || ''
       });
+      setSignatureUrl(user.signature_url || null);
     }
   }, [user]);
+
+  const handleSaveSignatureInProfile = async (newSigUrl: string) => {
+    setSignatureUrl(newSigUrl);
+    const res = await fetchAPI('update_profile', {
+      method: 'POST',
+      body: JSON.stringify({ signature_url: newSigUrl })
+    });
+    if (res.success) {
+      updateUser({ signature_url: newSigUrl });
+    } else {
+      throw new Error(res.message || t('Lỗi lưu chữ ký'));
+    }
+  };
 
   useEffect(() => {
     if (activeTab === 'activity') {
@@ -382,6 +400,62 @@ const PersonalAccountInner = () => {
                     {t('Tên đăng nhập không thể thay đổi sau khi tạo để bảo mật vết hệ thống.')}
                   </small>
                 </div>
+                <div className="form-group" style={{ marginTop: '1.5rem', paddingTop: '1.5rem', borderTop: '1px solid var(--color-border-light)' }}>
+                  <label className="form-label" style={{ fontWeight: 600, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span>{t('Chữ ký Điện tử Cá nhân')}</span>
+                    <button
+                      type="button"
+                      onClick={() => setShowSignatureModal(true)}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        color: '#BD1D2D',
+                        fontSize: '0.8rem',
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '4px'
+                      }}
+                    >
+                      <Edit3 size={14} />
+                      {signatureUrl ? t('Thay đổi chữ ký mẫu') : t('Tạo chữ ký mẫu')}
+                    </button>
+                  </label>
+
+                  {signatureUrl ? (
+                    <div style={{
+                      background: '#f8fafc',
+                      border: '1px solid #e2e8f0',
+                      borderRadius: '8px',
+                      padding: '12px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      maxHeight: '100px',
+                      backgroundImage: 'radial-gradient(#cbd5e1 1px, transparent 1px)',
+                      backgroundSize: '12px 12px'
+                    }}>
+                      <img src={signatureUrl} alt="Chữ ký mẫu" style={{ maxHeight: '75px', objectFit: 'contain' }} />
+                    </div>
+                  ) : (
+                    <div
+                      onClick={() => setShowSignatureModal(true)}
+                      style={{
+                        border: '2px dashed var(--color-border)',
+                        borderRadius: '8px',
+                        padding: '16px',
+                        textAlign: 'center',
+                        color: 'var(--color-text-muted)',
+                        fontSize: '0.8125rem',
+                        cursor: 'pointer',
+                        background: 'var(--color-bg-light)'
+                      }}
+                    >
+                      {t('Bạn chưa thiết lập chữ ký mẫu. Bấm vào đây để vẽ hoặc tải ảnh chữ ký.')}
+                    </div>
+                  )}
+                </div>
 
                 <div style={{ display: 'flex', justifyContent: 'flex-end', borderTop: '1px solid var(--color-border-light)', paddingTop: '1.5rem' }}>
                   <button type="submit" className="btn primary" style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '0 20px', height: '40px', fontWeight: 700 }} disabled={loading}>
@@ -603,6 +677,12 @@ const PersonalAccountInner = () => {
         </div>
 
       </div>
+      <SignaturePadModal
+        isOpen={showSignatureModal}
+        onClose={() => setShowSignatureModal(false)}
+        onSave={handleSaveSignatureInProfile}
+        initialSignatureUrl={signatureUrl}
+      />
     </div>
   );
 };

@@ -12905,6 +12905,14 @@ switch ($action) {
                     $stmtBeh->close();
                 }
 
+                // Save signature_url if provided
+                if (isset($input['signature_url'])) {
+                    $stmtSig = $conn->prepare("UPDATE users SET signature_url = ? WHERE id = ?");
+                    $stmtSig->bind_param("si", $input['signature_url'], $id);
+                    $stmtSig->execute();
+                    $stmtSig->close();
+                }
+
                 // Save permissions_json if provided
                 if (isset($input['permissions_json'])) {
                     $stmtPerm = $conn->prepare("UPDATE users SET permissions_json = ? WHERE id = ?");
@@ -12967,6 +12975,7 @@ switch ($action) {
         $allowedFields = [
             'name' => ['col' => 'full_name', 'type' => 's'],
             'avatar' => ['col' => 'avatar_url', 'type' => 's'],
+            'signature_url' => ['col' => 'signature_url', 'type' => 's'],
             'job_title' => ['col' => 'job_title', 'type' => 's'],
             'dob' => ['col' => 'dob', 'type' => 's'],
             'gender' => ['col' => 'gender', 'type' => 's'],
@@ -13066,7 +13075,7 @@ switch ($action) {
             exit;
         }
 
-        $stmtP = $conn->prepare("SELECT u.id, u.full_name AS name, u.email, a.role, u.job_title, u.status, u.leave_start, u.leave_end, u.work_start_time, u.work_end_time, u.work_schedule, u.avatar_url AS avatar, u.vacation_mode, u.dob, u.gender, u.citizen_id, u.address, u.bank_name, u.bank_account, u.zalo_chat_id, u.telegram_chat_id, u.overtime_mode, u.permissions_json, u.extra_fields_json, u.manager_behavior_mode, u.use_custom_work_hours FROM users u LEFT JOIN accounts a ON u.id = a.id WHERE u.id = ?");
+        $stmtP = $conn->prepare("SELECT u.id, u.full_name AS name, u.email, a.role, u.job_title, u.status, u.leave_start, u.leave_end, u.work_start_time, u.work_end_time, u.work_schedule, u.avatar_url AS avatar, u.signature_url, u.vacation_mode, u.dob, u.gender, u.citizen_id, u.address, u.bank_name, u.bank_account, u.zalo_chat_id, u.telegram_chat_id, u.overtime_mode, u.permissions_json, u.extra_fields_json, u.manager_behavior_mode, u.use_custom_work_hours FROM users u LEFT JOIN accounts a ON u.id = a.id WHERE u.id = ?");
         $stmtP->bind_param("i", $targetUserId);
         $stmtP->execute();
         $consultantProfile = $stmtP->get_result()->fetch_assoc();
@@ -13261,6 +13270,14 @@ switch ($action) {
         if ($extra_fields_json === '') $extra_fields_json = null;
 
         // 1. Update users table
+        if (isset($input['signature_url'])) {
+            $sigVal = !empty($input['signature_url']) ? trim($input['signature_url']) : null;
+            $stmtSig = $conn->prepare("UPDATE users SET signature_url = ? WHERE id = ?");
+            $stmtSig->bind_param("si", $sigVal, $targetUserId);
+            $stmtSig->execute();
+            $stmtSig->close();
+        }
+
         $stmt = $conn->prepare("UPDATE users SET full_name=?, work_start_time=?, work_end_time=?, work_schedule=?, avatar_url=?, dob=?, gender=?, citizen_id=?, address=?, bank_name=?, bank_account=?, leave_start=?, leave_end=?, zalo_chat_id=?, overtime_mode=?, use_custom_work_hours=?, extra_fields_json=? WHERE id=?");
         $stmt->bind_param("ssssssssssssssiisi", $name, $work_start_time, $work_end_time, $work_schedule, $avatar, $dob, $gender, $citizen_id, $address, $bank_name, $bank_account, $leave_start, $leave_end, $zalo_chat_id, $overtime_mode, $use_custom_work_hours, $extra_fields_json, $targetUserId);
         $success = $stmt->execute();
