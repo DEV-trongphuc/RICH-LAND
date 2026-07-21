@@ -520,6 +520,10 @@ switch ($resource) {
     case 'auth':
         $ctrl = new AuthController($db);
         if ($resourceId === 'login'   && $method === 'POST') $ctrl->login();
+        elseif ($resourceId === 'verify-2fa' && $method === 'POST') $ctrl->verify2FA();
+        elseif ($resourceId === 'forgot-password' && $method === 'POST') $ctrl->forgotPasswordRequest();
+        elseif ($resourceId === 'reset-password' && $method === 'POST') $ctrl->forgotPasswordReset();
+        elseif ($resourceId === 'change-password' && $method === 'POST') $ctrl->changePassword(requireAuth());
         elseif ($resourceId === 'refresh' && $method === 'POST') $ctrl->refresh();
         elseif ($resourceId === 'logout'  && $method === 'POST') $ctrl->logout();
         elseif ($resourceId === 'me'      && $method === 'GET')  $ctrl->me(requireAuth());
@@ -668,7 +672,10 @@ switch ($resource) {
     case 'users':
         $auth = requireAuth();
         $ctrl = new UserController($db);
-        if     (!$resourceId && $method === 'GET')    { requireRole($auth, ['admin', 'super_admin', 'superadmin', 'manager', 'sales', 'sale', 'director']); $ctrl->index($auth); }
+        if     ($resourceId === '2fa-setup' && $method === 'GET') $ctrl->setup2FA($auth);
+        elseif ($resourceId === '2fa-enable' && $method === 'POST') $ctrl->enable2FA($auth);
+        elseif ($resourceId === '2fa-disable' && $method === 'POST') $ctrl->disable2FA($auth);
+        elseif (!$resourceId && $method === 'GET')    { requireRole($auth, ['admin', 'super_admin', 'superadmin', 'manager', 'sales', 'sale', 'director']); $ctrl->index($auth); }
         elseif (!$resourceId && $method === 'POST')   { requireRole($auth, ['admin', 'super_admin', 'director']); $ctrl->store($auth); }
         elseif ($resourceId  && $method === 'GET')    $ctrl->show($auth, (int)$resourceId);
         elseif ($resourceId  && $method === 'PUT')    $ctrl->update($auth, (int)$resourceId);

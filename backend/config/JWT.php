@@ -6,7 +6,9 @@ class JWT {
 
     public static function encode(array $payload): string {
         $header  = self::base64UrlEncode(json_encode(['typ' => 'JWT', 'alg' => 'HS256']));
-        $payload['exp'] = time() + JWT_EXPIRE_ACCESS;
+        if (!isset($payload['exp'])) {
+            $payload['exp'] = time() + JWT_EXPIRE_ACCESS;
+        }
         $payload['iat'] = time();
         $payloadEncoded = self::base64UrlEncode(json_encode($payload));
         $signature      = self::base64UrlEncode(hash_hmac('sha256', "$header.$payloadEncoded", self::$secret, true));

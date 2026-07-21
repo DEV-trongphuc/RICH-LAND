@@ -104,19 +104,21 @@ class UserController {
         $this->show($auth, $newId);
     }
     public function show(array $auth,int $id): void {
-        if (!in_array($auth['role'], ['admin', 'super_admin', 'superadmin', 'director'], true) && $auth['user_id'] !== $id) respond(403, null, 'Không có quyền xem thông tin người khác', false);
+        if (!in_array($auth['role'], ['admin', 'super_admin', 'superadmin', 'director', 'manager', 'sales', 'sale', 'assistant', 'viewer'], true)) {
+            respond(403, null, 'Quyền truy cập không đủ', false);
+        }
         try {
-            $stmt=$this->db->prepare("SELECT id,email,full_name,role,avatar_url,phone,is_active,last_login_at,created_at,dob,gender,citizen_id,address,bank_name,bank_account,permissions_json FROM users WHERE id=? AND tenant_id=?");
+            $stmt=$this->db->prepare("SELECT id,email,full_name,role,job_title,avatar_url,signature_url,phone,is_active,last_login_at,created_at,dob,gender,citizen_id,address,bank_name,bank_account,two_factor_enabled,two_factor_type,permissions_json FROM users WHERE id=? AND tenant_id=?");
             $stmt->execute([$id,$auth['tenant_id']]); $row=$stmt->fetch();
         } catch (PDOException $e) {
-            $stmt=$this->db->prepare("SELECT id,email,full_name,role,avatar_url,phone,is_active,last_login_at,created_at FROM users WHERE id=? AND tenant_id=?");
+            $stmt=$this->db->prepare("SELECT id,email,full_name,role,avatar_url,signature_url,phone,is_active,last_login_at,created_at FROM users WHERE id=? AND tenant_id=?");
             $stmt->execute([$id,$auth['tenant_id']]); $row=$stmt->fetch();
         }
         if(!$row) respond(404,null,'Không tìm thấy người dùng',false);
         respond(200,$row);
     }
     public function update(array $auth,int $id): void {
-        if (!in_array($auth['role'], ['admin', 'super_admin', 'superadmin', 'director'], true) && $auth['user_id'] !== $id) respond(403, null, 'Không có quyền cập nhật thông tin người khác', false);
+        if (!in_array($auth['role'], ['admin', 'super_admin', 'superadmin', 'director'], true) && (int)$auth['user_id'] !== (int)$id) respond(403, null, 'Không có quyền cập nhật thông tin người khác', false);
         
         $b = getBody();
         $fields = ['email', 'full_name', 'phone', 'avatar_url', 'is_active', 'dob', 'gender', 'citizen_id', 'address', 'bank_name', 'bank_account', 'permissions_json'];
@@ -162,5 +164,95 @@ class UserController {
             }
             respond(500, null, 'Lỗi cơ sở dữ liệu: ' . $e->getMessage(), false);
         }
+    }
+
+    public function setup2FA(array $auth): void {
+        require_once __DIR__ . '/../utils/TOTP.php';
+
+        $stmt = $this->db->prepare("SELECT email FROM users WHERE id = ? LIMIT 1");
+        $stmt->execute([$auth['user_id']]);
+        $user = $stmt->fetch();
+        if (!$user) respond(404, null, 'Người dùng không tồn tại', false);
+
+        $secret = TOTP::generateSecret();
+        $otpauthUrl = TOTP::getOtpAuthUrl($user['email'], $secret, 'RichLand');
+
+        // Generate 5 backup codes
+        $backupCodes = [];
+        for ($i = 0; $i < 5; $i++) {
+            $backupCodes[] = str_pad((string)random_int(10000000, 99999999), 8, '0', STR_PAD_LEFT);
+        }
+
+        respond(200, [
+            'secret' => $secret,
+            'otpauth_url' => $otpauthUrl,
+            'backup_codes' => $backupCodes
+        ]);
+    }
+
+    public function enable2FA(array $auth): void {
+        $body = getBody();
+        $type = trim($body['type'] ?? 'email');
+        $code = trim($body['code'] ?? '');
+        $secret = trim($body['secret'] ?? '');
+        $backupCodes = $body['backup_codes'] ?? [];
+
+        if (!in_array($type, ['email', 'totp'], true)) {
+            respond(422, null, 'Phương thức 2FA không hợp lệ', false);
+        }
+
+        if ($type === 'totp') {
+            if (!$code || !$secret) {
+                respond(422, null, 'Vui lòng quét mã QR và nhập mã xác thực từ app', false);
+            }
+            require_once __DIR__ . '/../utils/TOTP.php';
+            if (!TOTP::verifyCode($secret, $code)) {
+                respond(400, null, 'Mã xác thực từ ứng dụng không đúng. Vui lòng thử lại.', false);
+            }
+        }
+
+        $backupCodesJson = is_array($backupCodes) ? json_encode($backupCodes) : null;
+
+        $this->db->prepare("
+            UPDATE users 
+            SET two_factor_enabled = 1, two_factor_type = ?, two_factor_secret = ?, two_factor_backup_codes = ? 
+            WHERE id = ? AND tenant_id = ?
+        ")->execute([$type, $secret ?: null, $backupCodesJson, $auth['user_id'], $auth['tenant_id']]);
+
+        logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'UPDATE', 'user_2fa', $auth['user_id'], "Kích hoạt 2FA loại $type");
+
+        respond(200, [
+            'two_factor_enabled' => 1,
+            'two_factor_type' => $type
+        ], 'Đã bật xác thực 2 yếu tố (2FA) thành công');
+    }
+
+    public function disable2FA(array $auth): void {
+        $body = getBody();
+        $password = trim($body['password'] ?? '');
+
+        if (!$password) {
+            respond(422, null, 'Vui lòng nhập mật khẩu hiện tại để tắt 2FA', false);
+        }
+
+        $stmt = $this->db->prepare("SELECT password_hash FROM users WHERE id = ? LIMIT 1");
+        $stmt->execute([$auth['user_id']]);
+        $user = $stmt->fetch();
+
+        if (!$user || !password_verify($password, $user['password_hash'])) {
+            respond(400, null, 'Mật khẩu hiện tại không chính xác', false);
+        }
+
+        $this->db->prepare("
+            UPDATE users 
+            SET two_factor_enabled = 0, two_factor_secret = NULL, two_factor_backup_codes = NULL 
+            WHERE id = ? AND tenant_id = ?
+        ")->execute([$auth['user_id'], $auth['tenant_id']]);
+
+        logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'UPDATE', 'user_2fa', $auth['user_id'], "Tắt 2FA");
+
+        respond(200, [
+            'two_factor_enabled' => 0
+        ], 'Đã tắt xác thực 2 yếu tố (2FA)');
     }
 }

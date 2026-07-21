@@ -13,6 +13,8 @@ export interface AuthUser {
   tenant_name: string;
   tenant_slug: string;
   manager_behavior_mode?: string | null;
+  two_factor_enabled?: number;
+  two_factor_type?: string;
 }
 
 interface AuthStore {

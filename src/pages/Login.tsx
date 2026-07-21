@@ -2,7 +2,10 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
-import { LogIn, Lock, Mail, Share2, Bell, BarChart3, Sparkles, ShieldCheck, Zap, Bot, History, CheckCircle2, User, ArrowRight } from 'lucide-react';
+import { LogIn, Lock, Mail, Share2, Bell, BarChart3, Sparkles, ShieldCheck, Zap, Bot, History, CheckCircle2, User, ArrowRight, Shield, KeyRound, Loader2, X } from 'lucide-react';
+import { fetchAPI } from '../utils/api';
+import toast from 'react-hot-toast';
+import { CustomModal } from '../components/ui/CustomModal';
 
 export const Login = () => {
   const { t } = useLanguage();
@@ -12,6 +15,20 @@ export const Login = () => {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const { login } = useAuth();
+
+  // 2FA Prompt State
+  const [show2FAModal, setShow2FAModal] = useState(false);
+  const [pending2FAData, setPending2FAData] = useState<{ tempToken: string; type: string; maskedEmail: string } | null>(null);
+  const [otpCode, setOtpCode] = useState('');
+  const [verifying2FA, setVerifying2FA] = useState(false);
+
+  // Forgot Password State
+  const [showForgotPasswordModal, setShowForgotPasswordModal] = useState(false);
+  const [forgotStep, setForgotStep] = useState<1 | 2>(1);
+  const [forgotEmail, setForgotEmail] = useState('');
+  const [forgotOtp, setForgotOtp] = useState('');
+  const [forgotNewPassword, setForgotNewPassword] = useState('');
+  const [forgotLoading, setForgotLoading] = useState(false);
 
   const handleGoogleLoginResponse = async (response: any) => {
     setLoading(true);
@@ -104,23 +121,116 @@ export const Login = () => {
     }
 
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL || '/backend'}/api.php?action=login`, {
+      const res = await fetchAPI('auth/login', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password })
       });
-      const json = await res.json();
 
-      if (json.success) {
-        login(json.token, json.user);
-        navigate('/');
+      if (res.success && res.data) {
+        if (res.data.requires_2fa) {
+          setPending2FAData({
+            tempToken: res.data.temp_token,
+            type: res.data.two_factor_type,
+            maskedEmail: res.data.masked_email
+          });
+          setOtpCode('');
+          setShow2FAModal(true);
+        } else {
+          login(res.data.access_token, res.data.user);
+          navigate('/');
+        }
       } else {
-        setError(t(json.message) || t('Đăng nhập thất bại'));
+        setError(t(res.message) || t('Đăng nhập thất bại'));
       }
-    } catch {
-      setError(t('Không thể kết nối đến máy chủ. Vui lòng kiểm tra kết nối mạng và thử lại.'));
+    } catch (err: any) {
+      setError(err.message || t('Không thể kết nối đến máy chủ. Vui lòng kiểm tra kết nối mạng và thử lại.'));
     }
     setLoading(false);
+  };
+
+  const handleVerify2FA = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!otpCode || otpCode.trim().length < 6) {
+      toast.error('Vui lòng nhập đủ 6 chữ số mã xác thực');
+      return;
+    }
+    setVerifying2FA(true);
+    try {
+      const res = await fetchAPI('auth/verify-2fa', {
+        method: 'POST',
+        body: JSON.stringify({
+          temp_token: pending2FAData?.tempToken,
+          otp_code: otpCode.trim()
+        })
+      });
+      if (res.success && res.data) {
+        login(res.data.access_token, res.data.user);
+        setShow2FAModal(false);
+        navigate('/');
+      } else {
+        toast.error(res.message || 'Mã xác thực không chính xác');
+      }
+    } catch (err: any) {
+      toast.error(err.message || 'Lỗi xác thực 2FA');
+    }
+    setVerifying2FA(false);
+  };
+
+  const handleSendForgotOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!forgotEmail) {
+      toast.error('Vui lòng nhập Email');
+      return;
+    }
+    setForgotLoading(true);
+    try {
+      const res = await fetchAPI('auth/forgot-password', {
+        method: 'POST',
+        body: JSON.stringify({ email: forgotEmail })
+      });
+      if (res.success) {
+        toast.success(res.message || 'Đã gửi mã OTP đến email');
+        setForgotStep(2);
+      } else {
+        toast.error(res.message || 'Không thể gửi mã OTP');
+      }
+    } catch (err: any) {
+      toast.error(err.message || 'Lỗi gửi yêu cầu');
+    }
+    setForgotLoading(false);
+  };
+
+  const handleResetPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!forgotOtp || !forgotNewPassword) {
+      toast.error('Vui lòng nhập đầy đủ OTP và Mật khẩu mới');
+      return;
+    }
+    if (forgotNewPassword.length < 6) {
+      toast.error('Mật khẩu mới phải có ít nhất 6 ký tự');
+      return;
+    }
+    setForgotLoading(true);
+    try {
+      const res = await fetchAPI('auth/reset-password', {
+        method: 'POST',
+        body: JSON.stringify({
+          email: forgotEmail,
+          otp_code: forgotOtp.trim(),
+          new_password: forgotNewPassword
+        })
+      });
+      if (res.success) {
+        toast.success(res.message || 'Đặt lại mật khẩu thành công!');
+        setEmail(forgotEmail);
+        setShowForgotPasswordModal(false);
+      } else {
+        toast.error(res.message || 'Không thể đặt lại mật khẩu');
+      }
+    } catch (err: any) {
+      toast.error(err.message || 'Lỗi đặt lại mật khẩu');
+    }
+    setForgotLoading(false);
   };
 
   const handleQuickLogin = async (emailVal: string, passwordVal: string, roleName: string) => {
@@ -302,6 +412,26 @@ export const Login = () => {
                     required
                   />
                 </div>
+                <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '6px' }}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowForgotPasswordModal(true);
+                      setForgotEmail(email);
+                      setForgotStep(1);
+                    }}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      color: '#f43f5e',
+                      fontSize: '0.8rem',
+                      fontWeight: 600,
+                      cursor: 'pointer'
+                    }}
+                  >
+                    {t("Quên mật khẩu?")}
+                  </button>
+                </div>
               </div>
 
               <button
@@ -384,6 +514,168 @@ export const Login = () => {
         <div style={{ position: 'absolute', bottom: '24px', right: '24px', color: 'rgba(255,255,255,0.015)', fontSize: '80px', fontWeight: 900, pointerEvents: 'none', userSelect: 'none', transform: 'rotate(2deg) translateY(40px)' }}>
           RICHLAND.
         </div>
+
+        {/* 2FA Verification Modal */}
+        {show2FAModal && (
+          <CustomModal
+            isOpen={show2FAModal}
+            onClose={() => setShow2FAModal(false)}
+            title={t("Xác thực 2 yếu tố (2FA)")}
+            maxWidth="500px"
+          >
+            <form onSubmit={handleVerify2FA} style={{ display: 'flex', flexDirection: 'column', gap: '1rem', padding: '0.5rem 0' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', background: 'var(--color-bg-light)', padding: '12px 16px', borderRadius: '10px' }}>
+                <Shield size={24} style={{ color: 'var(--color-primary)', flexShrink: 0 }} />
+                <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--color-text)' }}>
+                  {pending2FAData?.type === 'email'
+                    ? t(`Đã gửi mã OTP 6 chữ số đến email: ${pending2FAData?.maskedEmail}`)
+                    : t("Vui lòng mở ứng dụng Google Authenticator và nhập mã 6 chữ số")}
+                </p>
+              </div>
+
+              <div className="form-group" style={{ margin: 0 }}>
+                <label className="form-label">{t("Nhập mã 6 chữ số")}</label>
+                <input
+                  type="text"
+                  className="form-input"
+                  value={otpCode}
+                  onChange={e => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 8))}
+                  placeholder="123456"
+                  style={{ textAlign: 'center', fontSize: '1.25rem', letterSpacing: '6px', fontWeight: 800 }}
+                  autoFocus
+                  required
+                />
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '0.5rem' }}>
+                <button
+                  type="button"
+                  className="btn outline sm"
+                  onClick={() => setShow2FAModal(false)}
+                  disabled={verifying2FA}
+                >
+                  {t("Hủy")}
+                </button>
+                <button
+                  type="submit"
+                  className="btn primary sm"
+                  disabled={verifying2FA || otpCode.length < 6}
+                >
+                  {verifying2FA ? <Loader2 size={14} className="spin" /> : <ShieldCheck size={14} />}
+                  {t("Xác thực & Đăng nhập")}
+                </button>
+              </div>
+            </form>
+          </CustomModal>
+        )}
+
+        {/* Forgot Password Modal */}
+        {showForgotPasswordModal && (
+          <CustomModal
+            isOpen={showForgotPasswordModal}
+            onClose={() => setShowForgotPasswordModal(false)}
+            title={t("Quên mật khẩu")}
+            maxWidth="500px"
+          >
+            {forgotStep === 1 ? (
+              <form onSubmit={handleSendForgotOtp} style={{ display: 'flex', flexDirection: 'column', gap: '1rem', padding: '0.5rem 0' }}>
+                <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--color-text-muted)' }}>
+                  {t("Nhập email tài khoản của bạn. Hệ thống sẽ gửi mã xác thực OTP 6 chữ số để bạn đặt lại mật khẩu.")}
+                </p>
+
+                <div className="form-group" style={{ margin: 0 }}>
+                  <label className="form-label">{t("Email đăng ký")}</label>
+                  <input
+                    type="email"
+                    className="form-input"
+                    value={forgotEmail}
+                    onChange={e => setForgotEmail(e.target.value)}
+                    placeholder="email@richland.net"
+                    required
+                  />
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '0.5rem' }}>
+                  <button
+                    type="button"
+                    className="btn outline sm"
+                    onClick={() => setShowForgotPasswordModal(false)}
+                    disabled={forgotLoading}
+                  >
+                    {t("Hủy")}
+                  </button>
+                  <button
+                    type="submit"
+                    className="btn primary sm"
+                    disabled={forgotLoading || !forgotEmail}
+                  >
+                    {forgotLoading ? <Loader2 size={14} className="spin" /> : <Mail size={14} />}
+                    {t("Gửi mã OTP")}
+                  </button>
+                </div>
+              </form>
+            ) : (
+              <form onSubmit={handleResetPassword} style={{ display: 'flex', flexDirection: 'column', gap: '1rem', padding: '0.5rem 0' }}>
+                <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', padding: '10px 14px', borderRadius: '8px', color: '#166534', fontSize: '0.8125rem' }}>
+                  {t(`Đã gửi mã OTP đến email ${forgotEmail}. Vui lòng kiểm tra hộp thư.`)}
+                </div>
+
+                <div className="form-group" style={{ margin: 0 }}>
+                  <label className="form-label">{t("Mã OTP 6 chữ số")}</label>
+                  <input
+                    type="text"
+                    className="form-input"
+                    value={forgotOtp}
+                    onChange={e => setForgotOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                    placeholder="123456"
+                    style={{ textAlign: 'center', fontSize: '1.1rem', letterSpacing: '4px', fontWeight: 700 }}
+                    required
+                  />
+                </div>
+
+                <div className="form-group" style={{ margin: 0 }}>
+                  <label className="form-label">{t("Mật khẩu mới")}</label>
+                  <input
+                    type="password"
+                    className="form-input"
+                    value={forgotNewPassword}
+                    onChange={e => setForgotNewPassword(e.target.value)}
+                    placeholder={t("Nhập mật khẩu mới (ít nhất 6 ký tự)")}
+                    required
+                  />
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.5rem' }}>
+                  <button
+                    type="button"
+                    onClick={() => setForgotStep(1)}
+                    style={{ background: 'none', border: 'none', color: 'var(--color-primary)', fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer' }}
+                  >
+                    {t("← Gửi lại OTP")}
+                  </button>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <button
+                      type="button"
+                      className="btn outline sm"
+                      onClick={() => setShowForgotPasswordModal(false)}
+                      disabled={forgotLoading}
+                    >
+                      {t("Hủy")}
+                    </button>
+                    <button
+                      type="submit"
+                      className="btn primary sm"
+                      disabled={forgotLoading || !forgotOtp || !forgotNewPassword}
+                    >
+                      {forgotLoading ? <Loader2 size={14} className="spin" /> : <KeyRound size={14} />}
+                      {t("Xác nhận đặt lại")}
+                    </button>
+                  </div>
+                </div>
+              </form>
+            )}
+          </CustomModal>
+        )}
       </div>
 
       <style>{`

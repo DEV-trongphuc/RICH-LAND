@@ -191,7 +191,7 @@ const PersonalAccountInner = () => {
     }
     setLoading(true);
     try {
-      const res = await fetchAPI('change_password', {
+      const res = await fetchAPI('auth/change-password', {
         method: 'POST',
         body: JSON.stringify({ old_password: passData.oldPassword, new_password: passData.newPassword })
       });

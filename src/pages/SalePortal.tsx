@@ -8,7 +8,7 @@ import {
   Clock3, GitBranch, ArrowUpRight, ShieldAlert, Send, ArrowLeft,
   Sun, Moon, ChevronDown, ChevronUp, AlertTriangle, ChevronLeft, ChevronRight,
   LayoutDashboard, Database, Ticket, Calendar, RefreshCw, Menu, Tag, Server, Scale, Settings, Info, Cpu,
-  Camera, Video, Layers, Plus, Receipt, CreditCard, Building2, Users, User, UserCheck, UserPlus, Trash2, CheckSquare, X, Paperclip, LifeBuoy, Fingerprint, LayoutGrid, Monitor, Tv, Phone, Save, Award, Ban, RotateCcw, MoreHorizontal, Check
+  Camera, Video, Layers, Plus, Receipt, CreditCard, Building2, Users, User, UserCheck, UserPlus, Trash2, CheckSquare, X, Paperclip, LifeBuoy, Fingerprint, LayoutGrid, Monitor, Tv, Phone, Save, Award, Ban, RotateCcw, MoreHorizontal, Check, KeyRound, Loader2, Shield, Mail, ShieldCheck, Lock as LockIcon
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { createPortal } from 'react-dom';
@@ -1062,6 +1062,155 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
         toast.error('Không thể lưu chữ ký');
       }
     }
+  };
+
+  // Password Change & 2FA State
+  const [oldPass, setOldPass] = useState('');
+  const [newPass, setNewPass] = useState('');
+  const [confirmPass, setConfirmPass] = useState('');
+  const [changingPass, setChangingPass] = useState(false);
+
+  const [twoFactorEnabled, setTwoFactorEnabled] = useState<boolean>(Boolean(user?.two_factor_enabled));
+  const [twoFactorType, setTwoFactorType] = useState<'email' | 'totp'>((user?.two_factor_type as any) || 'email');
+  const [show2FAConfigModal, setShow2FAConfigModal] = useState(false);
+  const [setup2FAData, setSetup2FAData] = useState<{ secret: string; otpauth_url: string; backup_codes: string[] } | null>(null);
+  const [test2FACode, setTest2FACode] = useState('');
+  const [enabling2FA, setEnabling2FA] = useState(false);
+  const [showDisable2FAModal, setShowDisable2FAModal] = useState(false);
+  const [disable2FAPassword, setDisable2FAPassword] = useState('');
+  const [disabling2FA, setDisabling2FA] = useState(false);
+
+  useEffect(() => {
+    if (user) {
+      setTwoFactorEnabled(Boolean(user.two_factor_enabled));
+      setTwoFactorType((user.two_factor_type as any) || 'email');
+    }
+  }, [user]);
+
+  const handleChangePasswordSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!oldPass || !newPass || !confirmPass) {
+      toast.error(t('Vui lòng điền đầy đủ thông tin mật khẩu'));
+      return;
+    }
+    if (newPass !== confirmPass) {
+      toast.error(t('Mật khẩu mới không trùng khớp'));
+      return;
+    }
+    if (newPass.length < 6) {
+      toast.error(t('Mật khẩu mới phải có ít nhất 6 ký tự'));
+      return;
+    }
+    setChangingPass(true);
+    try {
+      const res = await fetchAPI('auth/change-password', {
+        method: 'POST',
+        body: JSON.stringify({ old_password: oldPass, new_password: newPass })
+      });
+      if (res.success) {
+        toast.success(res.message || t('Đổi mật khẩu thành công!'));
+        setOldPass('');
+        setNewPass('');
+        setConfirmPass('');
+      } else {
+        toast.error(res.message || t('Đổi mật khẩu thất bại'));
+      }
+    } catch (err: any) {
+      toast.error(err.message || t('Lỗi đổi mật khẩu'));
+    }
+    setChangingPass(false);
+  };
+
+  const handleStart2FASetup = async (type: 'email' | 'totp') => {
+    setTwoFactorType(type);
+    if (type === 'email') {
+      try {
+        const res = await fetchAPI('users/2fa-enable', {
+          method: 'POST',
+          body: JSON.stringify({ type: 'email' })
+        });
+        if (res.success) {
+          setTwoFactorEnabled(true);
+          updateUser({ two_factor_enabled: 1, two_factor_type: 'email' });
+          toast.success(t('Đã bật xác thực 2 yếu tố qua Email OTP thành công!'));
+        } else {
+          toast.error(res.message || t('Lỗi kích hoạt 2FA'));
+        }
+      } catch (err: any) {
+        toast.error(err.message || t('Lỗi kết nối'));
+      }
+    } else {
+      try {
+        const res = await fetchAPI('users/2fa-setup');
+        if (res.success && res.data) {
+          setSetup2FAData(res.data);
+          setTest2FACode('');
+          setShow2FAConfigModal(true);
+        } else {
+          toast.error(res.message || t('Không thể khởi tạo 2FA Google Authenticator'));
+        }
+      } catch (err: any) {
+        toast.error(err.message || t('Lỗi kết nối'));
+      }
+    }
+  };
+
+  const handleConfirmEnableTOTP = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!test2FACode || test2FACode.length < 6) {
+      toast.error(t('Vui lòng nhập mã 6 chữ số từ app Google Authenticator'));
+      return;
+    }
+    setEnabling2FA(true);
+    try {
+      const res = await fetchAPI('users/2fa-enable', {
+        method: 'POST',
+        body: JSON.stringify({
+          type: 'totp',
+          code: test2FACode.trim(),
+          secret: setup2FAData?.secret,
+          backup_codes: setup2FAData?.backup_codes
+        })
+      });
+      if (res.success) {
+        setTwoFactorEnabled(true);
+        updateUser({ two_factor_enabled: 1, two_factor_type: 'totp' });
+        toast.success(t('Đã kích hoạt 2FA Google Authenticator thành công!'));
+        setShow2FAConfigModal(false);
+      } else {
+        toast.error(res.message || t('Mã xác nhận không đúng'));
+      }
+    } catch (err: any) {
+      toast.error(err.message || t('Lỗi kích hoạt 2FA'));
+    }
+    setEnabling2FA(false);
+  };
+
+  const handleDisable2FA = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!disable2FAPassword) {
+      toast.error(t('Vui lòng nhập mật khẩu hiện tại'));
+      return;
+    }
+    setDisabling2FA(true);
+    try {
+      const res = await fetchAPI('users/2fa-disable', {
+        method: 'POST',
+        body: JSON.stringify({ password: disable2FAPassword })
+      });
+      if (res.success) {
+        setTwoFactorEnabled(false);
+        updateUser({ two_factor_enabled: 0 });
+        toast.success(t('Đã tắt xác thực 2 yếu tố (2FA)'));
+        setShowDisable2FAModal(false);
+        setDisable2FAPassword('');
+      } else {
+        toast.error(res.message || t('Mật khẩu không chính xác'));
+      }
+    } catch (err: any) {
+      toast.error(err.message || t('Lỗi tắt 2FA'));
+    }
+    setDisabling2FA(false);
   };
   const [editWorkplace, setEditWorkplace] = useState('');
   const [editPersonalPhone, setEditPersonalPhone] = useState('');
@@ -10965,6 +11114,150 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                         />
                       </div>
                     </div>
+
+                    {/* Divider */}
+                    <div style={{ height: '1px', background: 'var(--color-border-light)', margin: '0.5rem 0' }} />
+
+                    {/* Change Password Section */}
+                    <form onSubmit={handleChangePasswordSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                      <h4 style={{ fontSize: '0.9rem', fontWeight: 700, margin: 0, display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--color-text)' }}>
+                        <KeyRound size={16} color="var(--color-primary)" />
+                        {t('Đổi mật khẩu tài khoản')}
+                      </h4>
+
+                      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr 1fr', gap: '1rem' }}>
+                        <div className="form-group" style={{ margin: 0 }}>
+                          <label className="form-label" style={{ fontWeight: 600 }}>{t('Mật khẩu hiện tại')}</label>
+                          <input
+                            type="password"
+                            className="form-input"
+                            value={oldPass}
+                            onChange={e => setOldPass(e.target.value)}
+                            placeholder="••••••••"
+                          />
+                        </div>
+                        <div className="form-group" style={{ margin: 0 }}>
+                          <label className="form-label" style={{ fontWeight: 600 }}>{t('Mật khẩu mới')}</label>
+                          <input
+                            type="password"
+                            className="form-input"
+                            value={newPass}
+                            onChange={e => setNewPass(e.target.value)}
+                            placeholder="≥ 6 ký tự"
+                          />
+                        </div>
+                        <div className="form-group" style={{ margin: 0 }}>
+                          <label className="form-label" style={{ fontWeight: 600 }}>{t('Xác nhận mật khẩu mới')}</label>
+                          <input
+                            type="password"
+                            className="form-input"
+                            value={confirmPass}
+                            onChange={e => setConfirmPass(e.target.value)}
+                            placeholder="Nhập lại mật khẩu mới"
+                          />
+                        </div>
+                      </div>
+
+                      <button
+                        type="submit"
+                        className="btn primary sm"
+                        disabled={changingPass || !oldPass || !newPass || !confirmPass}
+                        style={{ width: 'fit-content', alignSelf: 'flex-start' }}
+                      >
+                        {changingPass ? <Loader2 size={14} className="spin" /> : <Save size={14} />}
+                        {t('Lưu mật khẩu mới')}
+                      </button>
+                    </form>
+
+                    {/* Divider */}
+                    <div style={{ height: '1px', background: 'var(--color-border-light)', margin: '0.5rem 0' }} />
+
+                    {/* 2FA Security Section */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <h4 style={{ fontSize: '0.9rem', fontWeight: 700, margin: 0, display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--color-text)' }}>
+                          <Shield size={16} color="var(--color-primary)" />
+                          {t('Xác thực 2 yếu tố (2FA)')}
+                        </h4>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <span style={{ fontSize: '0.8rem', fontWeight: 700, color: twoFactorEnabled ? 'var(--color-success)' : 'var(--color-text-muted)' }}>
+                            {twoFactorEnabled ? t('Đang bật') : t('Đang tắt')}
+                          </span>
+                          {twoFactorEnabled && (
+                            <button
+                              type="button"
+                              onClick={() => setShowDisable2FAModal(true)}
+                              className="btn outline sm danger-text"
+                              style={{ padding: '4px 10px', fontSize: '0.75rem' }}
+                            >
+                              {t('Tắt 2FA')}
+                            </button>
+                          )}
+                        </div>
+                      </div>
+
+                      <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', margin: 0, lineHeight: 1.5 }}>
+                        {t('Tăng cường bảo mật cho tài khoản của bạn bằng cách yêu cầu mã xác thực OTP qua Email hoặc ứng dụng Google Authenticator mỗi khi đăng nhập.')}
+                      </p>
+
+                      {!twoFactorEnabled && (
+                        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '1rem', marginTop: '0.5rem' }}>
+                          {/* Option A: Email OTP */}
+                          <div style={{
+                            padding: '1.25rem',
+                            border: '1.5px solid var(--color-border-light)',
+                            borderRadius: '12px',
+                            background: 'var(--color-bg-alt)',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '12px'
+                          }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                              <Mail size={20} style={{ color: 'var(--color-primary)' }} />
+                              <strong style={{ fontSize: '0.875rem', color: 'var(--color-text)' }}>{t('Mã OTP qua Email')}</strong>
+                            </div>
+                            <p style={{ fontSize: '0.775rem', color: 'var(--color-text-muted)', margin: 0, flex: 1 }}>
+                              {t('Mã xác thực 6 chữ số sẽ được tự động gửi về Email cá nhân của bạn mỗi khi đăng nhập.')}
+                            </p>
+                            <button
+                              type="button"
+                              className="btn outline sm"
+                              onClick={() => handleStart2FASetup('email')}
+                              style={{ width: 'fit-content' }}
+                            >
+                              {t('Bật xác thực Email OTP')}
+                            </button>
+                          </div>
+
+                          {/* Option B: Google Authenticator */}
+                          <div style={{
+                            padding: '1.25rem',
+                            border: '1.5px solid var(--color-border-light)',
+                            borderRadius: '12px',
+                            background: 'var(--color-bg-alt)',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '12px'
+                          }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                              <ShieldCheck size={20} style={{ color: 'var(--color-primary)' }} />
+                              <strong style={{ fontSize: '0.875rem', color: 'var(--color-text)' }}>{t('Google Authenticator (App)')}</strong>
+                            </div>
+                            <p style={{ fontSize: '0.775rem', color: 'var(--color-text-muted)', margin: 0, flex: 1 }}>
+                              {t('Quét mã QR bằng ứng dụng Google Authenticator hoặc Authy trên điện thoại để lấy mã 6 chữ số mọi lúc.')}
+                            </p>
+                            <button
+                              type="button"
+                              className="btn primary sm"
+                              onClick={() => handleStart2FASetup('totp')}
+                              style={{ width: 'fit-content' }}
+                            >
+                              {t('Cấu hình Google Authenticator')}
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
                 </div>
               </div>
             )}
@@ -15321,6 +15614,139 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
         onSave={handleSaveSaleSignature}
         initialSignatureUrl={saleSignatureUrl}
       />
+
+      {/* Google Authenticator Setup Modal */}
+      {show2FAConfigModal && (
+        <CustomModal
+          isOpen={show2FAConfigModal}
+          onClose={() => setShow2FAConfigModal(false)}
+          title={t("Cấu hình Google Authenticator (2FA)")}
+          maxWidth="650px"
+        >
+          <form onSubmit={handleConfirmEnableTOTP} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', padding: '0.5rem 0' }}>
+            <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: '1.5rem', alignItems: 'center' }}>
+              <div style={{ background: 'white', padding: '12px', borderRadius: '12px', border: '1px solid var(--color-border)', boxShadow: 'var(--shadow-sm)', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                <img
+                  src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(setup2FAData?.otpauth_url || '')}`}
+                  alt="2FA QR Code"
+                  style={{ width: '180px', height: '180px', objectFit: 'contain' }}
+                />
+                <span style={{ fontSize: '0.7rem', color: '#64748b', marginTop: '6px' }}>{t("Quét bằng Google Authenticator")}</span>
+              </div>
+
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                <div>
+                  <h5 style={{ margin: '0 0 4px 0', fontSize: '0.875rem', fontWeight: 700 }}>{t("Bước 1: Quét mã QR")}</h5>
+                  <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--color-text-muted)', lineHeight: 1.4 }}>
+                    {t("Mở ứng dụng Google Authenticator/Authy trên điện thoại và quét mã QR bên cạnh.")}
+                  </p>
+                </div>
+
+                <div>
+                  <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{t("Hoặc nhập khóa thủ công:")}</span>
+                  <div style={{ background: 'var(--color-bg-alt)', padding: '6px 12px', borderRadius: '6px', fontFamily: 'monospace', fontWeight: 700, fontSize: '0.9rem', width: 'fit-content', userSelect: 'all', border: '1px solid var(--color-border-light)' }}>
+                    {setup2FAData?.secret}
+                  </div>
+                </div>
+
+                <div>
+                  <h5 style={{ margin: '0 0 6px 0', fontSize: '0.875rem', fontWeight: 700 }}>{t("Bước 2: Nhập mã 6 chữ số để xác nhận")}</h5>
+                  <input
+                    type="text"
+                    className="form-input"
+                    value={test2FACode}
+                    onChange={e => setTest2FACode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                    placeholder="123456"
+                    style={{ textAlign: 'center', fontSize: '1.1rem', letterSpacing: '4px', fontWeight: 700 }}
+                    required
+                  />
+                </div>
+              </div>
+            </div>
+
+            {setup2FAData?.backup_codes && setup2FAData.backup_codes.length > 0 && (
+              <div style={{ background: 'var(--color-bg-light)', padding: '1rem', borderRadius: '10px', border: '1px solid var(--color-border-light)' }}>
+                <strong style={{ fontSize: '0.8rem', color: 'var(--color-danger)', display: 'block', marginBottom: '6px' }}>
+                  ⚠️ {t("Mã dự phòng (Lưu lại ở nơi an toàn phòng khi mất điện thoại):")}
+                </strong>
+                <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(5, 1fr)', gap: '6px' }}>
+                  {setup2FAData.backup_codes.map((code, idx) => (
+                    <span key={idx} style={{ fontFamily: 'monospace', background: 'var(--color-surface)', padding: '4px 8px', borderRadius: '4px', fontSize: '0.8rem', fontWeight: 700, textAlign: 'center', border: '1px solid var(--color-border)' }}>
+                      {code}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+              <button
+                type="button"
+                className="btn outline sm"
+                onClick={() => setShow2FAConfigModal(false)}
+                disabled={enabling2FA}
+              >
+                {t("Hủy")}
+              </button>
+              <button
+                type="submit"
+                className="btn primary sm"
+                disabled={enabling2FA || test2FACode.length < 6}
+              >
+                {enabling2FA ? <Loader2 size={14} className="spin" /> : <CheckCircle2 size={14} />}
+                {t("Kích hoạt Google Authenticator")}
+              </button>
+            </div>
+          </form>
+        </CustomModal>
+      )}
+
+      {/* Disable 2FA Modal */}
+      {showDisable2FAModal && (
+        <CustomModal
+          isOpen={showDisable2FAModal}
+          onClose={() => setShowDisable2FAModal(false)}
+          title={t("Tắt Xác thực 2 yếu tố (2FA)")}
+          maxWidth="500px"
+        >
+          <form onSubmit={handleDisable2FA} style={{ display: 'flex', flexDirection: 'column', gap: '1rem', padding: '0.5rem 0' }}>
+            <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--color-text-muted)' }}>
+              {t("Vui lòng nhập mật khẩu hiện tại của bạn để xác nhận tắt tính năng bảo mật 2FA.")}
+            </p>
+
+            <div className="form-group" style={{ margin: 0 }}>
+              <label className="form-label">{t("Mật khẩu hiện tại")}</label>
+              <input
+                type="password"
+                className="form-input"
+                value={disable2FAPassword}
+                onChange={e => setDisable2FAPassword(e.target.value)}
+                placeholder="••••••••"
+                required
+              />
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '0.5rem' }}>
+              <button
+                type="button"
+                className="btn outline sm"
+                onClick={() => setShowDisable2FAModal(false)}
+                disabled={disabling2FA}
+              >
+                {t("Hủy")}
+              </button>
+              <button
+                type="submit"
+                className="btn danger sm"
+                disabled={disabling2FA || !disable2FAPassword}
+              >
+                {disabling2FA ? <Loader2 size={14} className="spin" /> : <LockIcon size={14} />}
+                {t("Xác nhận tắt 2FA")}
+              </button>
+            </div>
+          </form>
+        </CustomModal>
+      )}
     </div>
   );
 };

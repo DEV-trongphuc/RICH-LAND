@@ -12,6 +12,8 @@ type User = {
   avatar?: string;
   signature_url?: string | null;
   manager_behavior_mode?: string;
+  two_factor_enabled?: number;
+  two_factor_type?: string;
   job_title?: string;
   address?: string;
   erp_profile?: any;

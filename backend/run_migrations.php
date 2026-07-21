@@ -18,8 +18,8 @@ $apply = (isset($_GET['apply']) && $_GET['apply'] === 'true')
       || (isset($_POST['execute_migration']) && $_POST['execute_migration'] === '1')
       || ($isCli && in_array('--apply', $argv));
 
-$targetVersion = 185;
-$currentVersion = 185;
+$targetVersion = 186;
+$currentVersion = 186;
 
 // Query current DB version
 $checkSettings = $conn->query("SHOW TABLES LIKE 'system_settings'");
@@ -166,7 +166,33 @@ try {
     $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('attendance_report_date_mode', 'previous_month')");
     $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('require_checkout', '0')");
 
-    // 5. Update DB version in system_settings
+    // 5. Ensure 2FA columns exist in users table
+    $chk2FA = $conn->query("SHOW COLUMNS FROM users LIKE 'two_factor_enabled'");
+    if (!$chk2FA || $chk2FA->num_rows == 0) {
+        $conn->query("ALTER TABLE users ADD COLUMN two_factor_enabled TINYINT(1) DEFAULT 0 AFTER is_active");
+        $conn->query("ALTER TABLE users ADD COLUMN two_factor_type VARCHAR(20) DEFAULT 'email' AFTER two_factor_enabled");
+        $conn->query("ALTER TABLE users ADD COLUMN two_factor_secret VARCHAR(255) NULL AFTER two_factor_type");
+        $conn->query("ALTER TABLE users ADD COLUMN two_factor_backup_codes TEXT NULL AFTER two_factor_secret");
+        $logMsg("Đã bổ sung các cột 2FA (two_factor_enabled, two_factor_type, two_factor_secret, two_factor_backup_codes) vào bảng users.", "success");
+    }
+
+    // 6. Ensure email_otps table exists
+    $conn->query("
+        CREATE TABLE IF NOT EXISTS `email_otps` (
+          `id` INT(11) AUTO_INCREMENT PRIMARY KEY,
+          `user_id` INT(11) NOT NULL,
+          `email` VARCHAR(255) NOT NULL,
+          `otp_code` VARCHAR(10) NOT NULL,
+          `type` VARCHAR(50) NOT NULL DEFAULT '2fa',
+          `expires_at` DATETIME NOT NULL,
+          `is_used` TINYINT(1) NOT NULL DEFAULT 0,
+          `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+          KEY `idx_email_otp_lookup` (`email`, `otp_code`, `type`, `is_used`),
+          KEY `idx_user_otp` (`user_id`, `type`)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    ");
+
+    // 7. Update DB version in system_settings
     $conn->query("INSERT INTO system_settings (setting_key, setting_value) VALUES ('db_version', '186') ON DUPLICATE KEY UPDATE setting_value = '186'");
     
     $logMsg("Hệ thống đã duy trì cấu trúc Cơ sở dữ liệu ở phiên bản mới nhất: " . $targetVersion, "success");

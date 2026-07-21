@@ -9,6 +9,8 @@ interface CustomModalProps {
   onClose: () => void;
   title?: string;
   width?: string | number;
+  maxWidth?: string | number;
+  size?: 'small' | 'medium' | 'large' | string;
   children: React.ReactNode;
   showCloseIcon?: boolean;
   disableAnimation?: boolean;
