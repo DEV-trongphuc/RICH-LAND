@@ -10,8 +10,13 @@ if (!file_exists($file)) {
     exit;
 }
 
-$content = file_get_contents($file);
-$lines = explode("\n", $content);
-$lastLines = array_slice($lines, -50);
-echo "=== LAST 50 LINES OF $file ===\n\n";
-echo implode("\n", $lastLines);
+$size = filesize($file);
+$fp = fopen($file, 'r');
+if ($size > 20000) {
+    fseek($fp, $size - 20000);
+}
+$content = fread($fp, 20000);
+fclose($fp);
+
+echo "=== LAST 20KB OF $file (Total Size: $size bytes) ===\n\n";
+echo $content;
