@@ -979,16 +979,13 @@ class ActivityController {
             $parentOwnerId = (int)$stmtParent->fetchColumn();
             
             if ($parentOwnerId > 0 && $parentOwnerId !== (int)$auth['user_id'] && !$this->isTaskMuted($id, $parentOwnerId)) {
-                $title = "Bạn có phản hồi mới trong thảo luận";
-                $body = ($auth['full_name'] ?? 'Đồng nghiệp') . " đã trả lời bình luận của bạn trong hoạt động: " . ($activity['subject'] ?? 'Công việc');
-                $type = "info";
-                $link = "/contacts?id=" . ($activity['contact_id'] ?? $activity['related_id'] ?? '') . "&highlight_comment_id=" . $commentId;
-
-                $insertNotif = $this->db->prepare("
-                    INSERT INTO notifications (user_id, tenant_id, title, body, type, link)
-                    VALUES (?, ?, ?, ?, ?, ?)
-                ");
-                $insertNotif->execute([$parentOwnerId, $auth['tenant_id'], $title, $body, $type, $link]);
+                require_once __DIR__ . '/../NotificationService.php';
+                NotificationService::send($this->db, $auth['tenant_id'], 'MENTION_TAGGED', [
+                    'user_id' => $parentOwnerId,
+                    'author_name' => $auth['full_name'] ?? 'Đồng nghiệp',
+                    'comment' => "Đã trả lời bình luận của bạn trong hoạt động: " . ($activity['subject'] ?? 'Công việc'),
+                    'link' => "/contacts?id=" . ($activity['contact_id'] ?? $activity['related_id'] ?? '') . "&highlight_comment_id=" . $commentId
+                ]);
             }
         }
 
@@ -1012,8 +1009,7 @@ class ActivityController {
         }
 
         if (!empty($mentions)) {
-            require_once __DIR__ . '/../mailer.php';
-            $notif = $this->db->prepare("INSERT INTO notifications (user_id, tenant_id, title, body, type, link) VALUES (?,?,?,?,?,?)");
+            require_once __DIR__ . '/../NotificationService.php';
             $targetLink = "/activities/{$id}?comment_id={$commentId}";
             if (!empty($activity['related_type']) && !empty($activity['related_id'])) {
                 if ($activity['related_type'] === 'contact') {
@@ -1024,28 +1020,15 @@ class ActivityController {
             }
             foreach ($mentions as $uid => $userRow) {
                 if ($this->isTaskMuted($id, $uid)) continue;
-                $notif->execute([
-                    $uid, $auth['tenant_id'],
-                    'Bạn được nhắc tên trong bình luận',
-                    $auth['full_name'] . ' đã nhắc tên bạn trong một bình luận hoạt động.',
-                    'mention',
-                    $targetLink
+                NotificationService::send($this->db, $auth['tenant_id'], 'MENTION_TAGGED', [
+                    'user_id' => $uid,
+                    'author_name' => $auth['full_name'] ?? 'Đồng nghiệp',
+                    'comment' => $content,
+                    'link' => $targetLink
                 ]);
-
-                if (!empty($userRow['email'])) {
-                    $emailSubject = "[RICH LAND] Bạn được nhắc tên trong bình luận của " . $auth['full_name'];
-                    $emailTitle = "NHẮC TÊN TRÊN HỆ THỐNG";
-                    $emailContent = "Chào <strong>" . htmlspecialchars($userRow['full_name']) . "</strong>,<br/><br/>" .
-                                    "Bạn đã được nhắc tên bởi <strong>" . htmlspecialchars($auth['full_name']) . "</strong> trong một bình luận của hoạt động.<br/>" .
-                                    "Nội dung:<br/>" .
-                                    "<blockquote style='border-left: 4px solid #eab308; padding-left: 12px; margin: 12px 0; color: #475569;'>" . nl2br(htmlspecialchars($content)) . "</blockquote>" .
-                                    "Vui lòng truy cập hệ thống để biết thêm chi tiết.";
-                    sendEmailNotification($userRow['email'], $emailSubject, $emailTitle, $emailContent, '', false);
-                }
             }
         }
 
-        // Also notify the contact owner if they are not the one commenting or already mentioned
         if ($activity['related_type'] === 'contact' && $activity['related_id']) {
             $stmtOwner = $this->db->prepare("
                 SELECT c.owner_id, u.email, u.full_name 
@@ -1058,27 +1041,12 @@ class ActivityController {
             if ($ownerRow) {
                 $ownerUid = (int)$ownerRow['owner_id'];
                 if ($ownerUid !== (int)$auth['user_id'] && !isset($mentions[$ownerUid]) && !$this->isTaskMuted($id, $ownerUid)) {
-                    // Send notification in database
-                    $notif = $this->db->prepare("INSERT INTO notifications (user_id, tenant_id, title, body, type, link) VALUES (?,?,?,?,?,?)");
-                    $notif->execute([
-                        $ownerUid, $auth['tenant_id'],
-                        'Bình luận mới trên khách hàng của bạn',
-                        $auth['full_name'] . ' đã bình luận trong một hoạt động thuộc khách hàng của bạn.',
-                        'comment',
-                        "/activities/{$id}"
+                    require_once __DIR__ . '/../NotificationService.php';
+                    NotificationService::send($this->db, $auth['tenant_id'], 'CUSTOMER_UPDATE', [
+                        'user_id' => $ownerUid,
+                        'customer_name' => $ownerRow['full_name'] ?? 'Khách hàng',
+                        'content' => ($auth['full_name'] ?? 'Đồng nghiệp') . ' đã bình luận trong một hoạt động thuộc khách hàng của bạn.'
                     ]);
-
-                    if (!empty($ownerRow['email'])) {
-                        require_once __DIR__ . '/../mailer.php';
-                        $emailSubject = "[RICH LAND] Bình luận mới trên khách hàng của bạn bởi " . $auth['full_name'];
-                        $emailTitle = "BÌNH LUẬN MỚI TRÊN KHÁCH HÀNG";
-                        $emailContent = "Chào <strong>" . htmlspecialchars($ownerRow['full_name']) . "</strong>,<br/><br/>" .
-                                        "Có bình luận mới từ <strong>" . htmlspecialchars($auth['full_name']) . "</strong> trên hoạt động thuộc khách hàng của bạn.<br/>" .
-                                        "Nội dung bình luận:<br/>" .
-                                        "<blockquote style='border-left: 4px solid #BD1D2D; padding-left: 12px; margin: 12px 0; color: #475569;'>" . nl2br(htmlspecialchars($content)) . "</blockquote>" .
-                                        "Vui lòng truy cập hệ thống để biết thêm chi tiết.";
-                        sendEmailNotification($ownerRow['email'], $emailSubject, $emailTitle, $emailContent, '', false);
-                    }
                 }
             }
         }
@@ -1340,15 +1308,11 @@ class ActivityController {
             $stmtTenant->execute([$userId]);
             $tenantId = $stmtTenant->fetchColumn() ?: 1;
 
-            // Insert DB notification
-            $notif = $this->db->prepare("INSERT INTO notifications (user_id, tenant_id, title, body, type, link) VALUES (?,?,?,?,?,?)");
-            $notif->execute([
-                $userId,
-                $tenantId,
-                $title,
-                $body,
-                $type,
-                $link
+            require_once __DIR__ . '/../NotificationService.php';
+            NotificationService::send($this->db, $tenantId, 'WORKFLOW_TASK_ASSIGNED', [
+                'user_id' => $userId,
+                'task_title' => $title,
+                'reason' => $body
             ]);
 
             // Send Email

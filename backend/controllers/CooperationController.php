@@ -43,31 +43,13 @@ class CooperationController {
         $uids = array_unique($uids);
         if (empty($uids)) return;
 
-        $inClause = implode(',', array_fill(0, count($uids), '?'));
-        $stmtU = $this->db->prepare("SELECT id, email, full_name FROM users WHERE id IN ($inClause)");
-        $stmtU->execute($uids);
-        $users = $stmtU->fetchAll(PDO::FETCH_ASSOC);
+        require_once __DIR__ . '/../NotificationService.php';
 
-        // Prepare statement for in-app notification insertion
-        $stmtNotif = $this->db->prepare("
-            INSERT INTO notifications (user_id, tenant_id, title, body, type, link) 
-            VALUES (?, ?, ?, ?, 'cooperation_status', ?)
-        ");
-
-        $notifBody = strip_tags(str_replace(['<br/>', '<br>', '<strong>', '</strong>', '<em>', '</em>'], [' ', ' ', '', '', '', ''], $enrichedContent));
-
-        foreach ($users as $u) {
-            // 1. Send Email Notification
-            if (!empty($u['email'])) {
-                sendEmailNotification($u['email'], $enrichedSubject, $title, $enrichedContent, '', false);
-            }
-            // 2. Insert In-App Web Notification
-            $stmtNotif->execute([
-                (int)$u['id'],
-                $tenantId,
-                $enrichedSubject,
-                $notifBody,
-                '/cooperation-slips'
+        foreach ($uids as $uid) {
+            NotificationService::send($this->db, $tenantId, 'COOPERATION_PENDING_APPROVAL', [
+                'user_id' => $uid,
+                'slip_id' => $slip['id'] ?? 0,
+                'reason' => strip_tags($content)
             ]);
         }
     }
@@ -451,42 +433,12 @@ class CooperationController {
             $userRow = $stmtUser->fetch();
             $userName = $userRow['full_name'] ?? 'Nhân viên';
 
-            $stmtMgrs = $this->db->prepare("
-                SELECT id FROM users 
-                WHERE tenant_id = ? AND role IN ('admin', 'superadmin', 'super_admin', 'manager', 'director')
-            ");
-            $stmtMgrs->execute([$auth['tenant_id']]);
-            $mgrs = $stmtMgrs->fetchAll(PDO::FETCH_COLUMN) ?: [];
-
-            $notifTitle = "Yêu cầu thay đổi tỷ lệ hoa hồng";
-            $notifBody = "Nhân viên $userName yêu cầu thay đổi tỷ lệ hoa hồng cho Phiếu hợp tác #$id. Lý do: $reason";
-
-            $stmtNotif = $this->db->prepare("
-                INSERT INTO notifications (user_id, tenant_id, title, body, type, link) 
-                VALUES (?, ?, ?, ?, 'cooperation_change_request', ?)
-            ");
-            foreach ($mgrs as $mgrId) {
-                $stmtNotif->execute([$mgrId, $auth['tenant_id'], $notifTitle, $notifBody, "/cooperation-slips"]);
-            }
-
-            // Asynchronously email managers for approval
-            if (!empty($mgrs)) {
-                require_once __DIR__ . '/../mailer.php';
-                $stmtMgrEmails = $this->db->prepare("SELECT email FROM users WHERE id IN (" . implode(',', array_fill(0, count($mgrs), '?')) . ")");
-                $stmtMgrEmails->execute($mgrs);
-                $mgrEmails = $stmtMgrEmails->fetchAll(PDO::FETCH_COLUMN) ?: [];
-                foreach ($mgrEmails as $mgrEmail) {
-                    if (!empty($mgrEmail)) {
-                        $emailSubject = "[RICH LAND] Yêu cầu phê duyệt thay đổi hoa hồng Phiếu hợp tác #" . $id;
-                        $emailTitle = "PHÊ DUYỆT THAY ĐỔI HOA HỒNG";
-                        $emailContent = "Chào quản trị viên,<br/><br/>" .
-                                        "Nhân viên <strong>" . htmlspecialchars($userName) . "</strong> yêu cầu thay đổi tỷ lệ hoa hồng cho Phiếu hợp tác <strong>#" . $id . "</strong>.<br/>" .
-                                        "Lý do: <em>" . htmlspecialchars($reason) . "</em>.<br/>" .
-                                        "Vui lòng truy cập hệ thống RICH LAND CRM để phê duyệt hoặc từ chối.";
-                        sendEmailNotification($mgrEmail, $emailSubject, $emailTitle, $emailContent, '', false);
-                    }
-                }
-            }
+            require_once __DIR__ . '/../NotificationService.php';
+            NotificationService::send($this->db, $auth['tenant_id'], 'COOPERATION_PENDING_APPROVAL', [
+                'slip_id' => $id,
+                'user_name' => $userName,
+                'reason' => "Yêu cầu thay đổi tỷ lệ hoa hồng cho Phiếu hợp tác #$id. Lý do: $reason"
+            ]);
         } else {
             // Email all shareholders about the change and sign request
             $emailSubject = "[RICH LAND] Yêu cầu ký xác nhận lại Phiếu hợp tác #" . $id;
@@ -609,17 +561,11 @@ class CooperationController {
                                 "Vui lòng truy cập hệ thống để xem chi tiết.";
                 $this->notifyShareholders($id, $shares, $emailSubject, $emailTitle, $emailContent);
             } else { // pending_manager_approval
-                // Fetch manager emails
-                $stmtMgrs = $this->db->prepare("SELECT id, email FROM users WHERE tenant_id = ? AND role IN ('admin', 'superadmin', 'super_admin', 'manager', 'director')");
-                $stmtMgrs->execute([$auth['tenant_id']]);
-                $mgrs = $stmtMgrs->fetchAll(PDO::FETCH_ASSOC) ?: [];
-                
-                if (!empty($mgrs)) {
-                    require_once __DIR__ . '/../NotificationService.php';
-                    NotificationService::send($this->db, $tenantId, 'COOPERATION_PENDING_APPROVAL', [
-                        'slip_id' => $id
-                    ]);
-                }
+                require_once __DIR__ . '/../NotificationService.php';
+                NotificationService::send($this->db, $auth['tenant_id'], 'COOPERATION_PENDING_APPROVAL', [
+                    'slip_id' => $id,
+                    'reason' => "Phiếu hợp tác #$id đã được ký đủ và chờ phê duyệt cuối."
+                ]);
             }
         } else {
             // Find remaining signers
@@ -1533,25 +1479,12 @@ class CooperationController {
                                      (!empty($note) ? "<strong>Lý do/Ghi chú từ quản lý:</strong> <em>" . htmlspecialchars($note) . "</em><br/><br/>" : "") .
                                      "Vui lòng liên hệ ban quản lý để biết thêm chi tiết.";
                     
-                    // In-app
-                    $stmtNotif = $this->db->prepare("
-                        INSERT INTO notifications (user_id, tenant_id, title, body, type, link) 
-                        VALUES (?, ?, ?, ?, 'cooperation_status', ?)
-                    ");
-                    $cleanBody = strip_tags(str_replace(['<br/>', '<br>', '<strong>', '</strong>', '<em>', '</em>'], [' ', ' ', '', '', '', ''], $notifyContent));
-                    $stmtNotif->execute([
-                        $requesterId,
-                        $auth['tenant_id'],
-                        $notifySubject,
-                        $cleanBody,
-                        '/cooperation-slips'
+                    require_once __DIR__ . '/../NotificationService.php';
+                    NotificationService::send($this->db, $auth['tenant_id'], 'COOPERATION_PENDING_APPROVAL', [
+                        'user_id' => $requesterId,
+                        'slip_id' => $id,
+                        'reason' => "Yêu cầu chỉnh sửa tỷ lệ hoa hồng cho Phiếu hợp tác #$id đã bị từ chối. Ghi chú: " . ($note ?? 'Không có')
                     ]);
-
-                    // Email
-                    if (!empty($requester['email'])) {
-                        require_once __DIR__ . '/../mailer.php';
-                        sendEmailNotification($requester['email'], $notifySubject, $notifyTitle, $notifyContent, '', false);
-                    }
                 }
 
                 respond(200, null, 'Từ chối yêu cầu chỉnh sửa tỷ lệ thành công');

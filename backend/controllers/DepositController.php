@@ -427,40 +427,16 @@ class DepositController {
                     $stmtUsers->execute($uIdsToNotify);
                     $usersList = $stmtUsers->fetchAll();
 
-                    $notifySubject = "[RICH LAND] Phê duyệt đợt thanh toán cọc khách hàng: " . $depositData['first_name'] . " " . ($depositData['last_name'] ?? '');
-                    $notifyTitle = "PHÊ DUYỆT ĐỢT THANH TOÁN CỌC";
-                    
-                    $stmtNotif = $this->db->prepare("
-                        INSERT INTO notifications (user_id, tenant_id, title, body, type, link) 
-                        VALUES (?, ?, ?, ?, 'cooperation_status', ?)
-                    ");
-
-                    require_once __DIR__ . '/../mailer.php';
+                    require_once __DIR__ . '/../NotificationService.php';
 
                     foreach ($usersList as $u) {
-                        $notifyContent = "Chào <strong>" . htmlspecialchars($u['full_name']) . "</strong>,<br/><br/>" .
-                                         "Đợt thanh toán <strong>" . htmlspecialchars($mileData['milestone_name']) . "</strong> của khách hàng <strong>" . htmlspecialchars($depositData['first_name'] . " " . ($depositData['last_name'] ?? '')) . "</strong> (Phiếu cọc #" . $id . ") đã được phê duyệt thành công bởi Admin.<br/>" .
-                                         "Số tiền đợt: <strong>" . number_format($total, 0, ',', '.') . " VND</strong>.<br/>" .
-                                         "Hệ thống đã tự động xuất hóa đơn tương ứng.<br/>" .
-                                         "Vui lòng kiểm tra thông tin trên RICH LAND CRM.";
-                        
-                        $cleanBody = strip_tags(str_replace(['<br/>', '<br>', '<strong>', '</strong>', '<em>', '</em>'], [' ', ' ', '', '', '', ''], $notifyContent));
-                        
-                        $stmtNotif->execute([
-                            (int)$u['id'],
-                            $auth['tenant_id'],
-                            $notifySubject,
-                            $cleanBody,
-                            '/deposits'
+                        NotificationService::send($this->db, $auth['tenant_id'], 'MY_DEPOSIT_UPDATE', [
+                            'user_id' => (int)$u['id'],
+                            'deposit_id' => $id,
+                            'customer_name' => trim($depositData['first_name'] . ' ' . ($depositData['last_name'] ?? '')),
+                            'status_text' => 'được duyệt đợt thanh toán ' . ($mileData['milestone_name'] ?? ''),
+                            'reason' => 'Đợt thanh toán ' . number_format($total, 0, ',', '.') . ' VND đã được phê duyệt thành công'
                         ]);
-
-                        if (!empty($u['email'])) {
-                            try {
-                                sendEmailNotification($u['email'], $notifySubject, $notifyTitle, $notifyContent, '', false);
-                            } catch (Exception $mailEx) {
-                                error_log("Error sending email: " . $mailEx->getMessage());
-                            }
-                        }
                     }
                 }
             }
@@ -552,40 +528,17 @@ class DepositController {
                 $stmtUsers->execute($uIdsToNotify);
                 $usersList = $stmtUsers->fetchAll();
 
-                $notifySubject = "[RICH LAND] Từ chối đợt thanh toán cọc khách hàng: " . $depositData['first_name'] . " " . ($depositData['last_name'] ?? '');
-                $notifyTitle = "TỪ CHỐI ĐỢT THANH TOÁN CỌC - YÊU CẦU TẢI LẠI UNC";
-                
-                $stmtNotif = $this->db->prepare("
-                    INSERT INTO notifications (user_id, tenant_id, title, body, type, link) 
-                    VALUES (?, ?, ?, ?, 'cooperation_status', ?)
-                ");
+                    require_once __DIR__ . '/../NotificationService.php';
 
-                require_once __DIR__ . '/../mailer.php';
-
-                foreach ($usersList as $u) {
-                    $notifyContent = "Chào <strong>" . htmlspecialchars($u['full_name']) . "</strong>,<br/><br/>" .
-                                     "Đợt thanh toán <strong>" . htmlspecialchars($mileData['milestone_name']) . "</strong> của khách hàng <strong>" . htmlspecialchars($depositData['first_name'] . " " . ($depositData['last_name'] ?? '')) . "</strong> (Phiếu cọc #" . $id . ") đã bị <strong>từ chối</strong> bởi Admin.<br/>" .
-                                     "Lý do từ chối: <strong>" . htmlspecialchars($reason) . "</strong>.<br/>" .
-                                     "Vui lòng vào cập nhật lại hình ảnh UNC chính xác.";
-                    
-                    $cleanBody = strip_tags(str_replace(['<br/>', '<br>', '<strong>', '</strong>', '<em>', '</em>'], [' ', ' ', '', '', '', ''], $notifyContent));
-                    
-                    $stmtNotif->execute([
-                        (int)$u['id'],
-                        $auth['tenant_id'],
-                        $notifySubject,
-                        $cleanBody,
-                        '/deposits'
-                    ]);
-
-                    if (!empty($u['email'])) {
-                        try {
-                            sendEmailNotification($u['email'], $notifySubject, $notifyTitle, $notifyContent, '', false);
-                        } catch (Exception $mailEx) {
-                            error_log("Error sending email: " . $mailEx->getMessage());
-                        }
+                    foreach ($usersList as $u) {
+                        NotificationService::send($this->db, $auth['tenant_id'], 'MY_DEPOSIT_UPDATE', [
+                            'user_id' => (int)$u['id'],
+                            'deposit_id' => $id,
+                            'customer_name' => trim($depositData['first_name'] . ' ' . ($depositData['last_name'] ?? '')),
+                            'status_text' => 'bị từ chối đợt thanh toán ' . ($mileData['milestone_name'] ?? ''),
+                            'reason' => $reason
+                        ]);
                     }
-                }
             }
 
             // Zalo message to owner
@@ -850,25 +803,15 @@ class DepositController {
                                     $notifyContent .= "- " . htmlspecialchars($u['full_name']) . ": <strong>" . $uPercent . "%</strong> (~ " . number_format($uAmt) . " VND)<br/>";
                                 }
                                 
-                                $stmtNotif = $this->db->prepare("
-                                    INSERT INTO notifications (user_id, tenant_id, title, body, type, link) 
-                                    VALUES (?, ?, ?, ?, 'cooperation_status', ?)
-                                ");
-                                
-                                require_once __DIR__ . '/../mailer.php';
+                                require_once __DIR__ . '/../NotificationService.php';
                                 foreach ($usersList as $u) {
-                                    $cleanBody = strip_tags(str_replace(['<br/>', '<br>', '<strong>', '</strong>', '<em>', '</em>'], [' ', ' ', '', '', '', ''], $notifyContent));
-                                    $stmtNotif->execute([
-                                        (int)$u['id'],
-                                        $tid,
-                                        $notifySubject,
-                                        $cleanBody,
-                                        '/cooperation-slips'
+                                    NotificationService::send($this->db, $tid, 'MY_DEPOSIT_UPDATE', [
+                                        'user_id' => (int)$u['id'],
+                                        'deposit_id' => $id,
+                                        'customer_name' => trim($dep['first_name'] . ' ' . ($dep['last_name'] ?? '')),
+                                        'status_text' => 'duyệt phiếu hợp tác chia sẻ hoa hồng',
+                                        'reason' => 'Phiếu hợp tác đã được phê duyệt thành công'
                                     ]);
-                                    
-                                    if (!empty($u['email'])) {
-                                        sendEmailNotification($u['email'], $notifySubject, $notifyTitle, $notifyContent, '', false);
-                                    }
                                 }
                             }
                         }

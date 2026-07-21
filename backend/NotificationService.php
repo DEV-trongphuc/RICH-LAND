@@ -405,6 +405,33 @@ class NotificationService {
                                     "Vui lòng truy cập CRM để xem xét."
                 ];
 
+            case 'MY_DEPOSIT_UPDATE':
+                $recipients = self::getRecipientById($db, $payload['user_id'] ?? 0);
+                $customerName = $payload['customer_name'] ?? 'Khách hàng';
+                $statusText = $payload['status_text'] ?? 'được cập nhật';
+                $depId = $payload['deposit_id'] ?? '0';
+                return [
+                    'recipients' => $recipients,
+                    'title' => "Cập nhật giao dịch đặt cọc #$depId",
+                    'body' => "Giao dịch cọc cho khách hàng $customerName đã $statusText",
+                    'type' => "deposit",
+                    'link' => "/deposits",
+                    'zalo_msg' => "💳 [ CẬP NHẬT GIAO DỊCH CỌC ]\n\n"
+                        . "Giao dịch cọc #$depId (KH $customerName) đã $statusText.\n"
+                        . (!empty($reason) ? "  • Ghi chú: \"$reason\"\n" : "")
+                        . "\nVui lòng xem chi tiết trên CRM.",
+                    'tg_msg' => "💳 <b>[ CẬP NHẬT GIAO DỊCH CỌC ]</b>\n\n"
+                        . "Giao dịch cọc <b>#$depId</b> (KH <b>" . htmlspecialchars($customerName) . "</b>) đã <b>$statusText</b>.\n"
+                        . (!empty($reason) ? "  • Ghi chú: <i>\"" . htmlspecialchars($reason) . "\"</i>\n" : "")
+                        . "\nVui lòng xem chi tiết trên CRM.",
+                    'email_subject' => "[RICH LAND] Cập nhật giao dịch cọc #$depId - $customerName",
+                    'email_title' => "CẬP NHẬT GIAO DỊCH ĐẶT CỌC",
+                    'email_content' => "Chào bạn,<br/><br/>" .
+                                    "Giao dịch cọc #$depId của khách hàng <strong>" . htmlspecialchars($customerName) . "</strong> đã <strong>$statusText</strong>.<br/>" .
+                                    (!empty($reason) ? "Ghi chú: <em>\"" . htmlspecialchars($reason) . "\"</em><br/>" : "") .
+                                    "Vui lòng kiểm tra trên CRM."
+                ];
+
             case 'NIGHT_SHIFT_BOOKING':
                 $recipients = self::getAdminsAndManagers($db, $tenantId);
                 $shiftDate = $payload['shift_date'] ?? $today;

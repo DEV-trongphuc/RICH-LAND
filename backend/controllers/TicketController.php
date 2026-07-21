@@ -549,17 +549,14 @@ class TicketController {
             $stmtParent->execute([$parentId]);
             $parentOwnerId = (int)$stmtParent->fetchColumn();
 
+            require_once __DIR__ . '/../NotificationService.php';
             if ($parentOwnerId > 0 && $parentOwnerId !== (int)$auth['user_id']) {
-                $title = "Bạn có phản hồi mới trong ticket";
-                $body = ($auth['full_name'] ?? 'Đồng nghiệp') . " đã trả lời bình luận của bạn trong ticket #" . $ticketId;
-                $type = "info";
-                $link = "/tickets?id=" . $ticketId . "&highlight_comment_id=" . $newId;
-
-                $insertNotif = $this->db->prepare("
-                    INSERT INTO notifications (user_id, tenant_id, title, body, type, link)
-                    VALUES (?, ?, ?, ?, ?, ?)
-                ");
-                $insertNotif->execute([$parentOwnerId, $auth['tenant_id'], $title, $body, $type, $link]);
+                NotificationService::send($this->db, $auth['tenant_id'], 'MENTION_TAGGED', [
+                    'user_id' => $parentOwnerId,
+                    'author_name' => $auth['full_name'] ?? 'Đồng nghiệp',
+                    'comment' => "Đã trả lời bình luận của bạn trong ticket #" . $ticketId,
+                    'link' => "/tickets?id=" . $ticketId . "&highlight_comment_id=" . $newId
+                ]);
             }
         }
 
@@ -582,30 +579,16 @@ class TicketController {
             }
         }
 
-        // Send mention notifications (with email)
+        // Send mention notifications via NotificationService
         if (!empty($mentions)) {
-            require_once __DIR__ . '/../mailer.php';
-            $preview = mb_strimwidth($bodyText, 0, 50, "...");
-            $stmtNotif = $this->db->prepare("INSERT INTO notifications (user_id, tenant_id, title, body, type, link) VALUES (?, ?, ?, ?, 'ticket_comment_mention', ?)");
+            require_once __DIR__ . '/../NotificationService.php';
             foreach ($mentions as $mUid => $userRow) {
-                $stmtNotif->execute([
-                    $mUid,
-                    $auth['tenant_id'],
-                    "Bạn được nhắc tên trong ticket hỗ trợ #" . $ticketId,
-                    $auth['full_name'] . " đã nhắc tên bạn trong ghi chú ticket hỗ trợ #" . $ticketId . ": \"" . $preview . "\"",
-                    "/tickets?id=" . $ticketId . "&highlight_comment_id=" . $newId
+                NotificationService::send($this->db, $auth['tenant_id'], 'MENTION_TAGGED', [
+                    'user_id' => $mUid,
+                    'author_name' => $auth['full_name'] ?? 'Đồng nghiệp',
+                    'comment' => $bodyText,
+                    'link' => "/tickets?id=" . $ticketId . "&highlight_comment_id=" . $newId
                 ]);
-
-                if (!empty($userRow['email'])) {
-                    $emailSubject = "[RICH LAND] Bạn được nhắc tên trong ghi chú ticket #" . $ticketId;
-                    $emailTitle = "NHẮC TÊN TRÊN HỆ THỐNG";
-                    $emailContent = "Chào <strong>" . htmlspecialchars($userRow['full_name']) . "</strong>,<br/><br/>" .
-                                    "Bạn đã được nhắc tên bởi <strong>" . htmlspecialchars($auth['full_name']) . "</strong> trong một ghi chú của ticket hỗ trợ <strong>#" . $ticketId . "</strong>.<br/>" .
-                                    "Nội dung:<br/>" .
-                                    "<blockquote style='border-left: 4px solid #eab308; padding-left: 12px; margin: 12px 0; color: #475569;'>" . nl2br(htmlspecialchars($bodyText)) . "</blockquote>" .
-                                    "Vui lòng truy cập hệ thống để biết thêm chi tiết.";
-                    sendEmailNotification($userRow['email'], $emailSubject, $emailTitle, $emailContent, '', false);
-                }
             }
         }
         

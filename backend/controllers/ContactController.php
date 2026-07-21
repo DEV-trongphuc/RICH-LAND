@@ -758,14 +758,15 @@ class ContactController {
                     $type = "info";
                     $link = "/contacts?id=" . $id;
 
-                    $insertNotif = $this->db->prepare("
-                        INSERT INTO notifications (user_id, tenant_id, title, body, type, link)
-                        VALUES (?, ?, ?, ?, ?, ?)
-                    ");
+                    require_once __DIR__ . '/../NotificationService.php';
                     foreach ($addedCollabs as $collabUserId) {
                         $collabUserId = (int)$collabUserId;
                         if ($collabUserId > 0 && $collabUserId !== (int)$auth['user_id']) {
-                            $insertNotif->execute([$collabUserId, $auth['tenant_id'], $title, $body, $type, $link]);
+                            NotificationService::send($this->db, $auth['tenant_id'], 'CUSTOMER_UPDATE', [
+                                'user_id' => $collabUserId,
+                                'customer_name' => $fullName,
+                                'content' => "Bạn đã được sale " . ($auth['full_name'] ?? 'đồng nghiệp') . " thêm làm nhân sự chăm sóc phụ (Co-care) cho khách hàng " . $fullName
+                            ]);
                         }
                     }
                 }
@@ -835,30 +836,12 @@ class ContactController {
         // Notify the owner if modified by another user
         if ($currentContact && !empty($currentContact['owner_id']) && (int)$currentContact['owner_id'] !== (int)$auth['user_id']) {
             $ownerId = (int)$currentContact['owner_id'];
-            $stmtOwner = $this->db->prepare("SELECT email, full_name FROM users WHERE id = ? AND tenant_id = ?");
-            $stmtOwner->execute([$ownerId, $auth['tenant_id']]);
-            $ownerRow = $stmtOwner->fetch(PDO::FETCH_ASSOC);
-            if ($ownerRow) {
-                $notif = $this->db->prepare("INSERT INTO notifications (user_id, tenant_id, title, body, type, link) VALUES (?,?,?,?,?,?)");
-                $notif->execute([
-                    $ownerId, $auth['tenant_id'],
-                    'Khách hàng của bạn được cập nhật',
-                    $auth['full_name'] . ' đã cập nhật thông tin khách hàng "' . $currentContact['first_name'] . ' ' . $currentContact['last_name'] . '".',
-                    'update',
-                    "/contacts/{$id}"
-                ]);
-
-                if (!empty($ownerRow['email'])) {
-                    require_once __DIR__ . '/../mailer.php';
-                    $emailSubject = "[RICH LAND] Cập nhật thông tin khách hàng bởi " . $auth['full_name'];
-                    $emailTitle = "THÔNG TIN KHÁCH HÀNG THAY ĐỔI";
-                    $emailContent = "Chào <strong>" . htmlspecialchars($ownerRow['full_name']) . "</strong>,<br/><br/>" .
-                                    "Nhân viên <strong>" . htmlspecialchars($auth['full_name']) . "</strong> đã cập nhật thông tin khách hàng của bạn:<br/>" .
-                                    "Khách hàng: <strong>" . htmlspecialchars($currentContact['first_name'] . ' ' . $currentContact['last_name']) . "</strong><br/>" .
-                                    "Vui lòng truy cập hệ thống CRM để kiểm tra chi tiết.";
-                    sendEmailNotification($ownerRow['email'], $emailSubject, $emailTitle, $emailContent, '', false);
-                }
-            }
+            require_once __DIR__ . '/../NotificationService.php';
+            NotificationService::send($this->db, $auth['tenant_id'], 'CUSTOMER_UPDATE', [
+                'user_id' => $ownerId,
+                'customer_name' => trim($currentContact['first_name'] . ' ' . ($currentContact['last_name'] ?? '')),
+                'content' => ($auth['full_name'] ?? 'Đồng nghiệp') . ' vừa cập nhật thông tin khách hàng của bạn.'
+            ]);
         }
         
         logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'UPDATE', 'contact', $id, json_encode(['first_name' => $currentContact['first_name'], 'last_name' => $currentContact['last_name'] ?? '']));
@@ -979,30 +962,12 @@ class ContactController {
         // Notify the owner if modified by another user
         if ($currentContact && !empty($currentContact['owner_id']) && (int)$currentContact['owner_id'] !== (int)$auth['user_id']) {
             $ownerId = (int)$currentContact['owner_id'];
-            $stmtOwner = $this->db->prepare("SELECT email, full_name FROM users WHERE id = ? AND tenant_id = ?");
-            $stmtOwner->execute([$ownerId, $auth['tenant_id']]);
-            $ownerRow = $stmtOwner->fetch(PDO::FETCH_ASSOC);
-            if ($ownerRow) {
-                $notif = $this->db->prepare("INSERT INTO notifications (user_id, tenant_id, title, body, type, link) VALUES (?,?,?,?,?,?)");
-                $notif->execute([
-                    $ownerId, $auth['tenant_id'],
-                    'Giai đoạn khách hàng thay đổi',
-                    $auth['full_name'] . ' đã di chuyển khách hàng "' . $currentContact['first_name'] . ' ' . $currentContact['last_name'] . '" sang giai đoạn mới.',
-                    'update',
-                    "/contacts/{$id}"
-                ]);
-
-                if (!empty($ownerRow['email'])) {
-                    require_once __DIR__ . '/../mailer.php';
-                    $emailSubject = "[RICH LAND] Di chuyển giai đoạn khách hàng bởi " . $auth['full_name'];
-                    $emailTitle = "GIAI ĐOẠN KHÁCH HÀNG THAY ĐỔI";
-                    $emailContent = "Chào <strong>" . htmlspecialchars($ownerRow['full_name']) . "</strong>,<br/><br/>" .
-                                    "Nhân viên <strong>" . htmlspecialchars($auth['full_name']) . "</strong> đã di chuyển giai đoạn khách hàng của bạn:<br/>" .
-                                    "Khách hàng: <strong>" . htmlspecialchars($currentContact['first_name'] . ' ' . $currentContact['last_name']) . "</strong><br/>" .
-                                    "Vui lòng truy cập hệ thống CRM để kiểm tra chi tiết.";
-                    sendEmailNotification($ownerRow['email'], $emailSubject, $emailTitle, $emailContent, '', false);
-                }
-            }
+            require_once __DIR__ . '/../NotificationService.php';
+            NotificationService::send($this->db, $auth['tenant_id'], 'CUSTOMER_UPDATE', [
+                'user_id' => $ownerId,
+                'customer_name' => trim($currentContact['first_name'] . ' ' . ($currentContact['last_name'] ?? '')),
+                'content' => ($auth['full_name'] ?? 'Đồng nghiệp') . ' đã chuyển khách hàng "' . $currentContact['first_name'] . ' ' . ($currentContact['last_name'] ?? '') . '" sang giai đoạn mới.'
+            ]);
         }
 
         // Trigger CAPI / Security timer updates on status change

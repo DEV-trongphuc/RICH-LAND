@@ -487,14 +487,11 @@ class ProjectController {
                 $stmtName->execute([$projectId]);
                 $projectName = $stmtName->fetchColumn() ?: "Dự án mới";
 
-                $stmtNotif = $this->db->prepare("INSERT INTO notifications (user_id, tenant_id, title, body, type, link) VALUES (?, ?, ?, ?, 'project_roster', ?)");
+                require_once __DIR__ . '/../NotificationService.php';
                 foreach ($addedUserIds as $newUid) {
-                    $stmtNotif->execute([
-                        (int)$newUid,
-                        $auth['tenant_id'],
-                        "Bạn được phân phối vào dự án mới",
-                        "Bạn đã được thêm vào danh sách nhân sự phân phối (roster) của dự án: " . $projectName,
-                        "/projects?id=" . $projectId
+                    NotificationService::send($this->db, $auth['tenant_id'], 'PROJECT_ROSTER_UPDATE', [
+                        'user_id' => (int)$newUid,
+                        'project_name' => $projectName
                     ]);
                 }
             }
@@ -799,42 +796,28 @@ class ProjectController {
 
         $preview = mb_strimwidth($body, 0, 50, "...");
 
-        // Send mention notifications (with email)
-        if (!empty($mentions)) {
-            require_once __DIR__ . '/../mailer.php';
-            $stmtNotif = $this->db->prepare("INSERT INTO notifications (user_id, tenant_id, title, body, type, link) VALUES (?, ?, ?, ?, 'project_comment_mention', ?)");
-            foreach ($mentions as $mUid => $userRow) {
-                $stmtNotif->execute([
-                    $mUid,
-                    $auth['tenant_id'],
-                    "Bạn được nhắc tên trong dự án " . $projectName,
-                    $auth['full_name'] . " đã nhắc tên bạn trong dự án " . $projectName . ": \"" . $preview . "\"",
-                    "/projects?id=" . $projectId . "&highlight_comment_id=" . $newId
-                ]);
+        require_once __DIR__ . '/../NotificationService.php';
 
-                if (!empty($userRow['email'])) {
-                    $emailSubject = "[RICH LAND] Bạn được nhắc tên trong bình luận dự án " . $projectName;
-                    $emailTitle = "NHẮC TÊN TRÊN HỆ THỐNG";
-                    $emailContent = "Chào <strong>" . htmlspecialchars($userRow['full_name']) . "</strong>,<br/><br/>" .
-                                    "Bạn đã được nhắc tên bởi <strong>" . htmlspecialchars($auth['full_name']) . "</strong> trong một bình luận của dự án <strong>" . htmlspecialchars($projectName) . "</strong>.<br/>" .
-                                    "Nội dung:<br/>" .
-                                    "<blockquote style='border-left: 4px solid #eab308; padding-left: 12px; margin: 12px 0; color: #475569;'>" . nl2br(htmlspecialchars($body)) . "</blockquote>" .
-                                    "Vui lòng truy cập hệ thống để biết thêm chi tiết.";
-                    sendEmailNotification($userRow['email'], $emailSubject, $emailTitle, $emailContent, '', false);
-                }
+        // Send mention notifications
+        if (!empty($mentions)) {
+            foreach ($mentions as $mUid => $userRow) {
+                NotificationService::send($this->db, $auth['tenant_id'], 'MENTION_TAGGED', [
+                    'user_id' => (int)$mUid,
+                    'author_name' => $auth['full_name'] ?? 'Đồng nghiệp',
+                    'comment' => $body,
+                    'link' => "/projects?id=" . $projectId . "&highlight_comment_id=" . $newId
+                ]);
             }
         }
 
         // Send regular notifications
         if (!empty($notifyUids)) {
-            $stmtNotif = $this->db->prepare("INSERT INTO notifications (user_id, tenant_id, title, body, type, link) VALUES (?, ?, ?, ?, 'project_comment', ?)");
             foreach ($notifyUids as $nUid) {
-                $stmtNotif->execute([
-                    $nUid,
-                    $auth['tenant_id'],
-                    "Bình luận mới trong dự án " . $projectName,
-                    $auth['full_name'] . " đã thêm một bình luận mới trong dự án " . $projectName . ": \"" . $preview . "\"",
-                    "/projects?id=" . $projectId . "&highlight_comment_id=" . $newId
+                NotificationService::send($this->db, $auth['tenant_id'], 'MENTION_TAGGED', [
+                    'user_id' => (int)$nUid,
+                    'author_name' => $auth['full_name'] ?? 'Đồng nghiệp',
+                    'comment' => $body,
+                    'link' => "/projects?id=" . $projectId . "&highlight_comment_id=" . $newId
                 ]);
             }
         }
