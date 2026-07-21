@@ -220,6 +220,83 @@ const SettingsInner = () => {
   const [activeTab, setActiveTab] = useState<string>(window.innerWidth <= 768 ? 'menu' : 'business_limits');
   const [showTestEmailModal, setShowTestEmailModal] = useState(false);
 
+  // Settings Live Search State & Index
+  const [settingsSearchQuery, setSettingsSearchQuery] = useState('');
+  const [isSearchFocused, setIsSearchFocused] = useState(false);
+  const searchInputRef = React.useRef<HTMLInputElement>(null);
+
+  // Keyboard shortcut Ctrl+K / Cmd+K to focus search
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        searchInputRef.current?.focus();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
+  // Search Index for Quick Settings Navigation
+  const searchableSettingsItems = [
+    // Phân phối & Nghiệp vụ
+    { id: 'business_limits', tab: 'business_limits', category: t('Phân phối & Nghiệp vụ'), subtab: t('Nghiệp vụ & Hạn mức'), title: t('Số ngày tự động rớt nhiệt (Decay)'), desc: t('Tự động thu hồi lead khi không tương tác quá số ngày quy định'), keywords: ['nhiệt', 'decay', 'thu hồi', 'tương tác', 'ngày'] },
+    { id: 'sla_timeout', tab: 'business_limits', category: t('Phân phối & Nghiệp vụ'), subtab: t('Nghiệp vụ & Hạn mức'), title: t('Thời gian chờ nhận lead & SLA Phản hồi'), desc: t('Quy định số phút chờ tiếp nhận lead giờ hành chính và tăng ca'), keywords: ['sla', 'timeout', 'chờ', 'phản hồi', 'tiếp nhận', 'hành chính'] },
+    { id: 'backpressure', tab: 'business_limits', category: t('Phân phối & Nghiệp vụ'), subtab: t('Nghiệp vụ & Hạn mức'), title: t('Hạn mức chống ôm (Backpressure)'), desc: t('Giới hạn số lead Chưa XĐ tối đa trước khi chặn chia lead mới'), keywords: ['chống ôm', 'backpressure', 'hạn mức', 'chưa xác định'] },
+    { id: 'databank_limits', tab: 'business_limits', category: t('Phân phối & Nghiệp vụ'), subtab: t('Nghiệp vụ & Hạn mức'), title: t('Hạn mức rút data Databank (Giờ/Ngày/Tháng)'), desc: t('Giới hạn số data tối đa Sale được chủ động lấy từ kho data chung'), keywords: ['databank', 'kho data', 'rút data', 'hạn mức kho'] },
+    { id: 'deposit_demote', tab: 'business_limits', category: t('Phân phối & Nghiệp vụ'), subtab: t('Nghiệp vụ & Hạn mức'), title: t('Quy tắc cọc & Bể cọc (Demote status)'), desc: t('Xử lý hạ cấp trạng thái khách hàng khi hủy cọc trước hoặc sau khi có doanh thu'), keywords: ['cọc', 'bể cọc', 'hủy cọc', 'tụt', 'hạ cấp'] },
+
+    // Thời gian & Lịch trình
+    { id: 'work_hours', tab: 'time_schedule', category: t('Phân phối & Nghiệp vụ'), subtab: t('Thời gian & Lịch trình'), title: t('Giờ làm việc chung & Lịch trình tuần'), desc: t('Thiết lập khung giờ hành chính làm việc mặc định cho toàn bộ Sale'), keywords: ['giờ làm việc', 'lịch trình', 'hành chính', 'thứ 2', 'thứ 7'] },
+    { id: 'night_shift', tab: 'time_schedule', category: t('Phân phối & Nghiệp vụ'), subtab: t('Thời gian & Lịch trình'), title: t('Ca trực đêm & Đăng ký trực ca đêm'), desc: t('Cấu hình giờ bắt đầu ca đêm, thời gian đăng ký và tự động duyệt'), keywords: ['trực đêm', 'ca đêm', 'tăng ca', 'đêm', 'duyệt ca đêm'] },
+    { id: 'holidays', tab: 'time_schedule', category: t('Phân phối & Nghiệp vụ'), subtab: t('Thời gian & Lịch trình'), title: t('Lịch nghỉ lễ & Đăng ký trực lễ'), desc: t('Quản lý danh sách ngày lễ, tự động duyệt trực lễ và yêu cầu chấm công'), keywords: ['nghỉ lễ', 'lịch lễ', 'trực lễ', 'tết', 'chấm công lễ'] },
+    { id: 'checkout_req', tab: 'time_schedule', category: t('Phân phối & Nghiệp vụ'), subtab: t('Thời gian & Lịch trình'), title: t('Yêu cầu Chấm công Ra ca (Cuối ca)'), desc: t('Bắt buộc chấm công ra ca khi hết giờ làm việc và nhắc nhở tan làm'), keywords: ['ra ca', 'check out', 'cuối ca', 'tan làm', 'về sớm', 'chấm công'] },
+    { id: 'auto_approve_checkin', tab: 'time_schedule', category: t('Phân phối & Nghiệp vụ'), subtab: t('Thời gian & Lịch trình'), title: t('Tự động duyệt Chấm công (Bỏ qua trễ & về sớm)'), desc: t('Bỏ qua khâu gửi lý do và quản lý phê duyệt khi đi trễ hoặc về sớm'), keywords: ['tự động duyệt', 'chấm công', 'bỏ qua duyệt', 'trễ', 'muộn', 'về sớm'] },
+    { id: 'attendance_report', tab: 'time_schedule', category: t('Phân phối & Nghiệp vụ'), subtab: t('Thời gian & Lịch trình'), title: t('Báo cáo Chấm công & Trực ca tự động gửi Sale'), desc: t('Cấu hình ngày gửi và khoảng dữ liệu gửi tổng kết chấm công qua Ma trận thông báo'), keywords: ['báo cáo', 'chấm công', 'trực ca', 'tự động gửi', 'sale', 'tháng'] },
+
+    // Bù lượt thiếu
+    { id: 'starvation', tab: 'starvation_prevention', category: t('Phân phối & Nghiệp vụ'), subtab: t('Bù lượt thiếu'), title: t('Kích hoạt Bù Lượt Thiếu (Starvation Prevention)'), desc: t('Tự động tích lũy và ưu tiên bù lượt cho Sale khi quay lại ca trực'), keywords: ['bù lượt', 'thiếu', 'starvation', 'ưu tiên', 'lượt bù'] },
+    { id: 'late_checkin_comp', tab: 'starvation_prevention', category: t('Phân phối & Nghiệp vụ'), subtab: t('Bù lượt thiếu'), title: t('Tự động đền bù khi bị thu hồi do trễ check-in'), desc: t('Cộng bù lại lượt cho Sale khi bị thu hồi lead do chưa check-in đúng giờ'), keywords: ['đền bù', 'trễ checkin', 'làm bù', 'thu hồi', 'bù lượt'] },
+    { id: 'leave_comp', tab: 'starvation_prevention', category: t('Phân phối & Nghiệp vụ'), subtab: t('Bù lượt thiếu'), title: t('Tự động đền bù khi bị thu hồi do nghỉ phép'), desc: t('Tính điểm đền bù lượt chia lead cho Sale khi xin nghỉ phép/tạm ngưng'), keywords: ['đền bù', 'nghỉ phép', 'ngưng hoạt động', 'tính điểm', 'thu hồi'] },
+
+    // Xử lý Fallback
+    { id: 'fallback_config', tab: 'fallback', category: t('Phân phối & Nghiệp vụ'), subtab: t('Xử lý Fallback'), title: t('Phân bổ mặc định khi không khớp luật (Fallback)'), desc: t('Chỉ định Vòng mặc định hoặc gán Admin xử lý khi lead không khớp phễu chia'), keywords: ['fallback', 'không khớp', 'quá tải', 'hold', 'admin', 'email cc'] },
+
+    // Vòng đời & Trạng thái
+    { id: 'pipeline_stages', tab: 'pipeline_stages', category: t('Dữ liệu & Vòng đời'), subtab: t('Vòng đời & Trạng thái'), title: t('State Machine Vòng đời & Trạng thái Khách hàng'), desc: t('Thiết lập thứ tự phễu chuyển đổi khách hàng từ Chưa XĐ đến Đóng deal'), keywords: ['state machine', 'vòng đời', 'trạng thái', 'phễu', 'bước', 'đóng deal'] },
+
+    // Nhận diện & Lọc trùng
+    { id: 'duplicate_filter', tab: 'duplicate_filter', category: t('Dữ liệu & Vòng đời'), subtab: t('Nhận diện & Lọc trùng'), title: t('Quy tắc Nhận diện & Lọc trùng Leads'), desc: t('Bảo hộ trùng sđt/email và lọc trùng hàng loạt từ file Excel'), keywords: ['lọc trùng', 'bảo hộ', 'duplicate', 'excel', 'số điện thoại', 'email'] },
+
+    // Blacklist
+    { id: 'blacklist_config', tab: 'blacklist', category: t('Dữ liệu & Vòng đời'), subtab: t('Danh sách đen & Loại trừ'), title: t('Danh sách đen (Blacklist SĐT/Email rác)'), desc: t('Chặn các số điện thoại/email spam hoặc loại trừ khỏi chiến dịch Broadcast'), keywords: ['blacklist', 'danh sách đen', 'rác', 'spam', 'broadcast', 'chặn'] },
+
+    // Giao tiếp & Báo cáo
+    { id: 'email_config', tab: 'email_config', category: t('Giao tiếp & Báo cáo'), subtab: t('Cấu hình Gửi Email'), desc: t('Cấu hình Google Apps Script hoặc Amazon SES SMTP gửi email hệ thống'), keywords: ['email', 'smtp', 'ses', 'gmail', 'appscript', 'test email'] },
+    { id: 'zalo_bot', tab: 'zalo_bot', category: t('Giao tiếp & Báo cáo'), subtab: t('Cấu hình Zalo Bot'), desc: t('Kết nối Zalo OA / Zalo Personal Bot gửi thông báo lead & báo cáo'), keywords: ['zalo', 'bot', 'zalo oa', 'webhook', 'xác thực', 'group chat'] },
+    { id: 'telegram_bot', tab: 'telegram_bot', category: t('Giao tiếp & Báo cáo'), subtab: t('Cấu hình Telegram Bot'), desc: t('Tích hợp Telegram Bot gửi tin nhắn riêng và nhóm Admin'), keywords: ['telegram', 'bot', 'chat id', 'nhóm admin', 'webhook'] },
+    { id: 'reports_config', tab: 'automated_reports', category: t('Giao tiếp & Báo cáo'), subtab: t('Báo cáo tự động'), desc: t('Đặt lịch gửi báo cáo doanh thu & hiệu suất theo ngày/tuần/tháng'), keywords: ['báo cáo tự động', 'báo cáo ngày', 'báo cáo tuần', 'báo cáo tháng'] },
+
+    // Tích hợp & AI
+    { id: 'ai_assistant', tab: 'ai_assistant', category: t('Tích hợp & Hệ thống'), subtab: t('Trợ lý AI (Gemini)'), desc: t('Cấu hình Gemini API Key và AI Screener tự động phân loại lead'), keywords: ['ai', 'gemini', 'api key', 'screener', 'trợ lý', 'phân loại'] },
+    { id: 'workflow_templates', tab: 'workflow_templates', category: t('Tích hợp & Hệ thống'), subtab: t('Mẫu Quy trình'), desc: t('Tạo các mẫu công việc tự động giao cho Sale theo giai đoạn'), keywords: ['workflow', 'mẫu công việc', 'quy trình', 'tự động giao'] },
+    { id: 'database_maintenance', tab: 'database_maintenance', category: t('Tích hợp & Hệ thống'), subtab: t('Bảo trì Database'), desc: t('Bảo trì Database, xóa lịch sử nhập rác và tự đồng bộ cấu trúc'), keywords: ['database', 'bảo trì', 'xóa log', 'tự đồng bộ'] }
+  ];
+
+  // Filtered search items
+  const filteredSearchItems = settingsSearchQuery.trim() === ''
+    ? []
+    : searchableSettingsItems.filter(item => {
+        const query = settingsSearchQuery.toLowerCase().trim();
+        return (
+          item.title.toLowerCase().includes(query) ||
+          item.desc.toLowerCase().includes(query) ||
+          item.subtab.toLowerCase().includes(query) ||
+          item.category.toLowerCase().includes(query) ||
+          item.keywords.some(kw => kw.toLowerCase().includes(query))
+        );
+      });
+
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'instant' });
   }, [activeTab]);
@@ -1922,6 +1999,111 @@ const SettingsInner = () => {
               <p className="page-subtitle" style={{ margin: 0 }}>{t('Cấu hình Email, Webhooks và các tích hợp nâng cao.')}</p>
             )}
           </div>
+
+          {/* Settings Search Bar (Desktop & Mobile Header) */}
+          <div style={{ position: 'relative', minWidth: isMobile ? '100%' : '300px' }}>
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              background: 'var(--color-surface)',
+              border: '1px solid var(--color-border)',
+              borderRadius: '10px',
+              padding: '6px 12px',
+              gap: '8px',
+              boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+              transition: 'all 0.2s'
+            }}>
+              <Search size={15} style={{ color: 'var(--color-primary)', flexShrink: 0 }} />
+              <input
+                ref={searchInputRef}
+                type="text"
+                placeholder={t("Tìm kiếm cài đặt... (Ctrl+K)")}
+                value={settingsSearchQuery}
+                onChange={e => setSettingsSearchQuery(e.target.value)}
+                onFocus={() => setIsSearchFocused(true)}
+                onBlur={() => setTimeout(() => setIsSearchFocused(false), 200)}
+                style={{
+                  border: 'none',
+                  outline: 'none',
+                  background: 'transparent',
+                  fontSize: '0.8125rem',
+                  color: 'var(--color-text)',
+                  width: '100%'
+                }}
+              />
+              {settingsSearchQuery ? (
+                <button
+                  type="button"
+                  onClick={() => setSettingsSearchQuery('')}
+                  style={{ border: 'none', background: 'none', padding: 0, cursor: 'pointer', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center' }}
+                >
+                  <X size={14} />
+                </button>
+              ) : (
+                <kbd style={{ fontSize: '0.65rem', padding: '1px 5px', borderRadius: '4px', background: 'var(--color-bg)', border: '1px solid var(--color-border)', color: 'var(--color-text-muted)', fontFamily: 'monospace' }}>⌘K</kbd>
+              )}
+            </div>
+
+            {/* Live Search Results Dropdown Modal */}
+            {isSearchFocused && settingsSearchQuery.trim() !== '' && (
+              <div style={{
+                position: 'absolute',
+                top: 'calc(100% + 6px)',
+                right: 0,
+                width: isMobile ? '100%' : '380px',
+                maxHeight: '380px',
+                overflowY: 'auto',
+                background: 'var(--color-surface)',
+                border: '1px solid var(--color-border)',
+                borderRadius: '12px',
+                boxShadow: '0 10px 25px -5px rgba(0,0,0,0.18)',
+                zIndex: 100,
+                padding: '6px'
+              }}>
+                {filteredSearchItems.length > 0 ? (
+                  filteredSearchItems.map(item => (
+                    <div
+                      key={item.id}
+                      onMouseDown={() => {
+                        setActiveTab(item.tab);
+                        setSettingsSearchQuery('');
+                        setIsSearchFocused(false);
+                      }}
+                      style={{
+                        padding: '10px 12px',
+                        borderRadius: '8px',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '3px',
+                        transition: 'background 0.15s',
+                        borderBottom: '1px solid var(--color-border-light)'
+                      }}
+                      onMouseEnter={e => e.currentTarget.style.background = 'var(--color-primary-light)'}
+                      onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
+                        <span style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text)' }}>
+                          {item.title}
+                        </span>
+                        <span style={{ fontSize: '0.675rem', fontWeight: 700, padding: '2px 6px', borderRadius: '4px', background: 'var(--color-primary-light)', color: 'var(--color-primary)', whiteSpace: 'nowrap' }}>
+                          {item.subtab}
+                        </span>
+                      </div>
+                      <div style={{ fontSize: '0.725rem', color: 'var(--color-text-muted)', lineHeight: 1.3 }}>
+                        {item.desc}
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div style={{ padding: '16px', textAlign: 'center', fontSize: '0.8125rem', color: 'var(--color-text-muted)' }}>
+                    {t('Không tìm thấy cài đặt phù hợp với từ khóa "{query}"').replace('{query}', settingsSearchQuery)}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
           {!isMobile && (
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
               {showTestEmailButton && (
