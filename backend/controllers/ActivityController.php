@@ -978,7 +978,7 @@ class ActivityController {
             $stmtParent->execute([$parentId]);
             $parentOwnerId = (int)$stmtParent->fetchColumn();
             
-            if ($parentOwnerId > 0 && $parentOwnerId !== (int)$auth['user_id']) {
+            if ($parentOwnerId > 0 && $parentOwnerId !== (int)$auth['user_id'] && !$this->isTaskMuted($id, $parentOwnerId)) {
                 $title = "Bạn có phản hồi mới trong thảo luận";
                 $body = ($auth['full_name'] ?? 'Đồng nghiệp') . " đã trả lời bình luận của bạn trong hoạt động: " . ($activity['subject'] ?? 'Công việc');
                 $type = "info";
@@ -1023,6 +1023,7 @@ class ActivityController {
                 }
             }
             foreach ($mentions as $uid => $userRow) {
+                if ($this->isTaskMuted($id, $uid)) continue;
                 $notif->execute([
                     $uid, $auth['tenant_id'],
                     'Bạn được nhắc tên trong bình luận',
@@ -1056,7 +1057,7 @@ class ActivityController {
             $ownerRow = $stmtOwner->fetch(PDO::FETCH_ASSOC);
             if ($ownerRow) {
                 $ownerUid = (int)$ownerRow['owner_id'];
-                if ($ownerUid !== (int)$auth['user_id'] && !isset($mentions[$ownerUid])) {
+                if ($ownerUid !== (int)$auth['user_id'] && !isset($mentions[$ownerUid]) && !$this->isTaskMuted($id, $ownerUid)) {
                     // Send notification in database
                     $notif = $this->db->prepare("INSERT INTO notifications (user_id, tenant_id, title, body, type, link) VALUES (?,?,?,?,?,?)");
                     $notif->execute([
@@ -1269,8 +1270,66 @@ class ActivityController {
         }
     }
 
-    private function notifyUser(int $userId, string $title, string $body, string $type, string $link): void {
+    public function isTaskMuted(int $taskId, int $userId): bool {
+        if ($taskId <= 0 || $userId <= 0) return false;
         try {
+            $stmt = $this->db->prepare("SELECT 1 FROM task_muted_notifications WHERE task_id = ? AND user_id = ? LIMIT 1");
+            $stmt->execute([$taskId, $userId]);
+            return (bool)$stmt->fetchColumn();
+        } catch (Throwable $e) {
+            return false;
+        }
+    }
+
+    public function getMuteStatus($auth, int $taskId): void {
+        $userId = (int)($auth['user_id'] ?? 0);
+        if ($userId <= 0 || $taskId <= 0) {
+            echo json_encode(['success' => true, 'is_muted' => false]);
+            return;
+        }
+        $isMuted = $this->isTaskMuted($taskId, $userId);
+        echo json_encode(['success' => true, 'is_muted' => $isMuted]);
+    }
+
+    public function toggleMute($auth, int $taskId): void {
+        $userId = (int)($auth['user_id'] ?? 0);
+        $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
+        $mute = isset($input['mute']) ? (bool)$input['mute'] : null;
+
+        if ($userId <= 0 || $taskId <= 0) {
+            echo json_encode(['success' => false, 'message' => 'Thông tin không hợp lệ']);
+            return;
+        }
+
+        if ($mute === null) {
+            $currentlyMuted = $this->isTaskMuted($taskId, $userId);
+            $mute = !$currentlyMuted;
+        }
+
+        try {
+            if ($mute) {
+                $stmt = $this->db->prepare("INSERT IGNORE INTO task_muted_notifications (task_id, user_id, muted_at) VALUES (?, ?, NOW())");
+                $stmt->execute([$taskId, $userId]);
+            } else {
+                $stmt = $this->db->prepare("DELETE FROM task_muted_notifications WHERE task_id = ? AND user_id = ?");
+                $stmt->execute([$taskId, $userId]);
+            }
+
+            echo json_encode([
+                'success' => true,
+                'is_muted' => $mute,
+                'message' => $mute ? 'Đã tắt thông báo cho công việc này' : 'Đã bật lại thông báo cho công việc này'
+            ]);
+        } catch (Throwable $e) {
+            echo json_encode(['success' => false, 'message' => 'Lỗi cập nhật trạng thái: ' . $e->getMessage()]);
+        }
+    }
+
+    private function notifyUser(int $userId, string $title, string $body, string $type, string $link, ?int $taskId = null): void {
+        try {
+            if ($taskId && $this->isTaskMuted($taskId, $userId)) {
+                return;
+            }
             $stmtUser = $this->db->prepare("SELECT email, full_name FROM users WHERE id=?");
             $stmtUser->execute([$userId]);
             $u = $stmtUser->fetch(PDO::FETCH_ASSOC);

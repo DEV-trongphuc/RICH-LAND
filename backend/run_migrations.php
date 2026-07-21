@@ -3044,6 +3044,27 @@ SQL;
             $logMsg("Hoàn thành cập nhật phiên bản 180.", "success");
         }
 
+        if ($currentVersion < 181) {
+            $logMsg("Đang chạy cập nhật phiên bản 181 (Tạo bảng task_muted_notifications)...", "info");
+            try {
+                $conn->query("
+                    CREATE TABLE IF NOT EXISTS `task_muted_notifications` (
+                      `task_id` INT(11) NOT NULL,
+                      `user_id` INT(11) NOT NULL,
+                      `muted_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+                      PRIMARY KEY (`task_id`, `user_id`),
+                      KEY `idx_task_muted_user` (`user_id`, `task_id`)
+                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+                ");
+                $logMsg("Đã tạo bảng task_muted_notifications thành công.", "success");
+            } catch (Throwable $t) {
+                $logMsg("Lỗi khi tạo bảng task_muted_notifications: " . $t->getMessage(), "error");
+            }
+            $conn->query("INSERT INTO system_settings (setting_key, setting_value) VALUES ('db_version', '181') ON DUPLICATE KEY UPDATE setting_value = '181'");
+            $currentVersion = 181;
+            $logMsg("Hoàn thành cập nhật phiên bản 181.", "success");
+        }
+
     $logMsg("Tự sửa đổi cấu trúc hoàn thành thành công.", "success");
 
     $logMsg("Hệ thống đã cập nhật thành công lên phiên bản mới nhất: " . $currentVersion, "success");

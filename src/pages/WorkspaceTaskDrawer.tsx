@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { 
   X, CheckSquare, Check, Paperclip, Link2, MessageSquare, Calendar, User, Clock, 
   Settings, AlertCircle, Trash2, Plus, Send, Share2, FileText, Globe, 
-  Users, RefreshCw, Layers, CheckSquare2, Info, Receipt, Scale, ArrowUpRight, Search, Save
+  Users, RefreshCw, Layers, CheckSquare2, Info, Receipt, Scale, ArrowUpRight, Search, Save, Bell, BellOff
 } from 'lucide-react';
 import api from '../api/axios';
 import toast from 'react-hot-toast';
@@ -73,6 +73,61 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
   const [replyTo, setReplyTo] = useState<{ id: number; userName: string } | null>(null);
   const [uploadingFile, setUploadingFile] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+
+  const [isMuted, setIsMuted] = useState(false);
+  const [loadingMute, setLoadingMute] = useState(false);
+  const [showMuteConfirmModal, setShowMuteConfirmModal] = useState(false);
+
+  useEffect(() => {
+    if (isOpen && task?.id) {
+      setLoadingMute(true);
+      api.get(`/activities/${task.id}/mute-status`)
+        .then(res => {
+          if (res.data && res.data.success) {
+            setIsMuted(!!res.data.is_muted);
+          }
+        })
+        .catch(err => console.error("Lỗi lấy trạng thái thông báo task:", err))
+        .finally(() => setLoadingMute(false));
+    }
+  }, [isOpen, task?.id]);
+
+  const handleBellClick = () => {
+    if (!task?.id) return;
+    if (!isMuted) {
+      setShowMuteConfirmModal(true);
+    } else {
+      setLoadingMute(true);
+      api.post(`/activities/${task.id}/toggle-mute`, { mute: false })
+        .then(res => {
+          if (res.data && res.data.success) {
+            setIsMuted(false);
+            toast.success(res.data.message || t('Đã bật lại thông báo cho công việc này'));
+          }
+        })
+        .catch(err => {
+          toast.error(t('Lỗi cập nhật thông báo: ') + (err.response?.data?.message || err.message));
+        })
+        .finally(() => setLoadingMute(false));
+    }
+  };
+
+  const handleConfirmMute = () => {
+    if (!task?.id) return;
+    setShowMuteConfirmModal(false);
+    setLoadingMute(true);
+    api.post(`/activities/${task.id}/toggle-mute`, { mute: true })
+      .then(res => {
+        if (res.data && res.data.success) {
+          setIsMuted(true);
+          toast.success(res.data.message || t('Đã tắt thông báo cho công việc này'));
+        }
+      })
+      .catch(err => {
+        toast.error(t('Lỗi tắt thông báo: ') + (err.response?.data?.message || err.message));
+      })
+      .finally(() => setLoadingMute(false));
+  };
 
   // Checklist adding state
   const [newSubTitle, setNewSubTitle] = useState('');
@@ -1147,6 +1202,31 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
             >
               {isSaving ? <RefreshCw className="spin" size={14} /> : <Save size={16} />}
               {!isMobileOrTablet && <span>{t('Lưu thay đổi')}</span>}
+            </button>
+
+            {/* Notification Mute Bell Button */}
+            <button
+              type="button"
+              onClick={handleBellClick}
+              disabled={loadingMute}
+              className="hover-lift"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: '36px',
+                height: '36px',
+                borderRadius: '8px',
+                border: isMuted ? '1px solid var(--color-border)' : '1px solid rgba(189, 29, 45, 0.3)',
+                background: isMuted ? 'var(--color-bg)' : 'rgba(189, 29, 45, 0.08)',
+                color: isMuted ? 'var(--color-text-muted)' : '#BD1D2D',
+                cursor: 'pointer',
+                boxShadow: 'var(--shadow-sm)',
+                transition: 'all 0.2s'
+              }}
+              title={isMuted ? t("Thông báo đang tắt (Bấm để bật)") : t("Thông báo đang bật (Bấm để tắt)")}
+            >
+              {isMuted ? <BellOff size={18} /> : <Bell size={18} />}
             </button>
 
             <button 
@@ -3005,6 +3085,103 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
                   >
                     {t('Đóng')}
                   </button>
+                </motion.div>
+              </div>
+            )}
+
+            {/* Mute Confirmation Modal */}
+            {showMuteConfirmModal && (
+              <div 
+                style={{
+                  position: 'fixed',
+                  inset: 0,
+                  backgroundColor: 'rgba(0, 0, 0, 0.5)',
+                  backdropFilter: 'blur(4px)',
+                  zIndex: 100000,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  padding: '1rem'
+                }}
+                onClick={() => setShowMuteConfirmModal(false)}
+              >
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                  onClick={(e) => e.stopPropagation()}
+                  style={{
+                    width: '100%',
+                    maxWidth: '420px',
+                    background: 'var(--color-surface)',
+                    border: '1px solid var(--color-border)',
+                    borderRadius: '16px',
+                    padding: '24px',
+                    boxShadow: '0 20px 40px rgba(0,0,0,0.25)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '16px'
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+                    <div style={{
+                      width: '40px',
+                      height: '40px',
+                      borderRadius: '50%',
+                      background: 'rgba(189, 29, 45, 0.1)',
+                      color: '#BD1D2D',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      flexShrink: 0
+                    }}>
+                      <BellOff size={22} />
+                    </div>
+                    <div>
+                      <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: 'var(--color-text)' }}>
+                        {t('Tắt thông báo cho công việc này?')}
+                      </h3>
+                      <p style={{ margin: '6px 0 0', fontSize: '0.8125rem', color: 'var(--color-text-muted)', lineHeight: 1.5 }}>
+                        {t('Bạn sẽ không còn nhận bất kỳ thông báo nào (bình luận mới, nhắc tên, cập nhật trạng thái...) về công việc này nữa.')}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '8px' }}>
+                    <button
+                      type="button"
+                      onClick={() => setShowMuteConfirmModal(false)}
+                      style={{
+                        padding: '8px 16px',
+                        borderRadius: '8px',
+                        border: '1px solid var(--color-border)',
+                        background: 'transparent',
+                        color: 'var(--color-text)',
+                        fontSize: '0.85rem',
+                        fontWeight: 600,
+                        cursor: 'pointer'
+                      }}
+                    >
+                      {t('Quay lại')}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleConfirmMute}
+                      style={{
+                        padding: '8px 16px',
+                        borderRadius: '8px',
+                        border: 'none',
+                        background: '#BD1D2D',
+                        color: 'white',
+                        fontSize: '0.85rem',
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        boxShadow: 'var(--shadow-sm)'
+                      }}
+                    >
+                      {t('Xác nhận tắt')}
+                    </button>
+                  </div>
                 </motion.div>
               </div>
             )}
