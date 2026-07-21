@@ -1543,41 +1543,135 @@ export default function CooperationSlipsPage() {
                       </h4>
                       {slip.attachment_url ? (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                          {slip.attachment_url.split(',').map((url, urlIdx) => (
-                            <div key={urlIdx} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', background: 'var(--color-bg-light)', borderRadius: '10px', border: '1px solid var(--color-border)', maxWidth: '500px' }}>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
-                                <FileText size={18} color="var(--color-primary)" style={{ flexShrink: 0 }} />
-                                <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
-                                  <a 
-                                    href={`https://open.domation.net/richland/${url}`} 
-                                    target="_blank" 
-                                    rel="noreferrer" 
-                                    style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-primary)', textDecoration: 'underline', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                          {slip.attachment_url.split(',').map((rawUrl, urlIdx) => {
+                            const url = rawUrl.trim();
+                            if (!url) return null;
+                            const fullUrl = url.startsWith('http') ? url : `https://open.domation.net/richland/${url.replace(/^\//, '')}`;
+                            const isImage = /\.(jpg|jpeg|png|webp|gif|bmp|svg)$/i.test(url);
+                            const fileName = url.split('/').pop() || 'Tài liệu đính kèm';
+
+                            if (isImage) {
+                              return (
+                                <div key={urlIdx} style={{ 
+                                  display: 'flex', 
+                                  flexDirection: 'column', 
+                                  borderRadius: '12px', 
+                                  border: '1px solid var(--color-border)', 
+                                  background: 'var(--color-surface)', 
+                                  overflow: 'hidden', 
+                                  maxWidth: '380px',
+                                  boxShadow: '0 2px 8px rgba(0,0,0,0.04)'
+                                }}>
+                                  {/* Top bar with file info and action buttons */}
+                                  <div style={{ 
+                                    display: 'flex', 
+                                    alignItems: 'center', 
+                                    justifyContent: 'space-between', 
+                                    padding: '8px 12px', 
+                                    background: 'var(--color-bg-light)', 
+                                    borderBottom: '1px solid var(--color-border-light)' 
+                                  }}>
+                                    <a
+                                      href={fullUrl}
+                                      target="_blank"
+                                      rel="noreferrer"
+                                      style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text)', display: 'inline-flex', alignItems: 'center', gap: '6px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '200px' }}
+                                      title={fileName}
+                                    >
+                                      <Paperclip size={13} color="var(--color-primary)" />
+                                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{fileName}</span>
+                                      <ExternalLink size={12} style={{ opacity: 0.6, flexShrink: 0 }} />
+                                    </a>
+
+                                    {isApprover && (
+                                      <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+                                        <button 
+                                          className="btn sm outline"
+                                          style={{ padding: '2px 8px', fontSize: '0.675rem', height: '24px', borderRadius: '4px' }}
+                                          onClick={(e) => { e.stopPropagation(); handleRenameCoopAttachment(slip.id, url); }}
+                                        >
+                                          Đổi tên
+                                        </button>
+                                        <button 
+                                          className="btn sm outline text-danger"
+                                          style={{ padding: '2px 8px', fontSize: '0.675rem', height: '24px', borderRadius: '4px', borderColor: 'var(--color-danger)' }}
+                                          onClick={(e) => { e.stopPropagation(); handleRemoveCoopAttachment(slip.id, url); }}
+                                        >
+                                          Xóa
+                                        </button>
+                                      </div>
+                                    )}
+                                  </div>
+
+                                  {/* Image Preview Container */}
+                                  <div 
+                                    onClick={(e) => { e.stopPropagation(); window.open(fullUrl, '_blank'); }}
+                                    style={{ 
+                                      padding: '10px', 
+                                      background: 'var(--color-bg)', 
+                                      display: 'flex', 
+                                      justifyContent: 'center', 
+                                      alignItems: 'center', 
+                                      cursor: 'pointer',
+                                      minHeight: '120px',
+                                      maxHeight: '260px'
+                                    }}
+                                    title="Click để mở ảnh kích thước lớn"
                                   >
-                                    {url.split('/').pop() || 'Xem tài liệu hợp tác đính kèm'}
-                                  </a>
+                                    <img 
+                                      src={fullUrl} 
+                                      alt={fileName} 
+                                      style={{ 
+                                        maxWidth: '100%', 
+                                        maxHeight: '240px', 
+                                        objectFit: 'contain', 
+                                        borderRadius: '8px', 
+                                        border: '1px solid var(--color-border-light)',
+                                        boxShadow: '0 1px 4px rgba(0,0,0,0.05)'
+                                      }} 
+                                    />
+                                  </div>
                                 </div>
+                              );
+                            }
+
+                            // Non-image attachments
+                            return (
+                              <div key={urlIdx} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', background: 'var(--color-bg-light)', borderRadius: '10px', border: '1px solid var(--color-border)', maxWidth: '500px' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
+                                  <FileText size={18} color="var(--color-primary)" style={{ flexShrink: 0 }} />
+                                  <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+                                    <a 
+                                      href={fullUrl} 
+                                      target="_blank" 
+                                      rel="noreferrer" 
+                                      style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-primary)', textDecoration: 'underline', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                                    >
+                                      {fileName}
+                                    </a>
+                                  </div>
+                                </div>
+                                {isApprover && (
+                                  <div style={{ display: 'flex', gap: '6px', alignItems: 'center', marginLeft: '12px' }}>
+                                    <button 
+                                      className="btn sm outline"
+                                      style={{ padding: '4px 8px', fontSize: '0.7rem', height: '26px', borderRadius: '4px' }}
+                                      onClick={(e) => { e.stopPropagation(); handleRenameCoopAttachment(slip.id, url); }}
+                                    >
+                                      Đổi tên
+                                    </button>
+                                    <button 
+                                      className="btn sm outline text-danger"
+                                      style={{ padding: '4px 8px', fontSize: '0.7rem', height: '26px', borderRadius: '4px', borderColor: 'var(--color-danger)' }}
+                                      onClick={(e) => { e.stopPropagation(); handleRemoveCoopAttachment(slip.id, url); }}
+                                    >
+                                      Xóa
+                                    </button>
+                                  </div>
+                                )}
                               </div>
-                              {isApprover && (
-                                <div style={{ display: 'flex', gap: '6px', alignItems: 'center', marginLeft: '12px' }}>
-                                  <button 
-                                    className="btn sm outline"
-                                    style={{ padding: '4px 8px', fontSize: '0.7rem', height: '26px', borderRadius: '4px' }}
-                                    onClick={() => handleRenameCoopAttachment(slip.id, url)}
-                                  >
-                                    Đổi tên
-                                  </button>
-                                  <button 
-                                    className="btn sm outline text-danger"
-                                    style={{ padding: '4px 8px', fontSize: '0.7rem', height: '26px', borderRadius: '4px', borderColor: 'var(--color-danger)' }}
-                                    onClick={() => handleRemoveCoopAttachment(slip.id, url)}
-                                  >
-                                    Xóa
-                                  </button>
-                                </div>
-                              )}
-                            </div>
-                          ))}
+                            );
+                          })}
                           {isApprover && (
                             <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
                               <input
