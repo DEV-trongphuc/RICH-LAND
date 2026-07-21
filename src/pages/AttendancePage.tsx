@@ -751,8 +751,7 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
                             const checkInLate = c.check_in_time > (c.work_start_time || '08:00');
                             const isApproved = c.status === 'approved';
                             const isPending = c.status === 'pending_approval';
-                            const todayStr = new Date().toISOString().slice(0, 10);
-                            const isSupplementary = c.check_in_date < todayStr || c.is_supplementary;
+                            const isSupplementary = !c.selfie_url;
 
                             let bg = isApproved ? (checkInLate ? 'rgba(0, 122, 255, 0.06)' : 'rgba(16, 185, 129, 0.08)') : isPending ? 'rgba(245, 158, 11, 0.06)' : 'rgba(239, 68, 68, 0.06)';
                             let border = isApproved ? (checkInLate ? 'rgba(0, 122, 255, 0.15)' : 'rgba(16, 185, 129, 0.15)') : isPending ? 'rgba(245, 158, 11, 0.2)' : 'rgba(239, 68, 68, 0.2)';
@@ -1644,8 +1643,7 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
 
                           <td style={{ padding: '12px 16px' }}>
                             {(() => {
-                              const todayStr = new Date().toISOString().slice(0, 10);
-                              const isSupplementary = row.check_in_date < todayStr || row.is_supplementary;
+                              const isSupplementary = !row.selfie_url;
 
                               let bg = row.status === 'approved' ? (isLate ? 'rgba(0, 122, 255, 0.08)' : 'var(--color-success-light)') : row.status === 'pending_approval' ? 'var(--color-warning-light)' : 'var(--color-danger-light)';
                               let color = row.status === 'approved' ? (isLate ? '#007aff' : 'var(--color-success)') : row.status === 'pending_approval' ? 'var(--color-warning)' : 'var(--color-danger)';
@@ -2018,12 +2016,11 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
                                 </div>
                               </div>
                               {(() => {
-                                const todayStr = new Date().toISOString().slice(0, 10);
-                                const isSupplementary = row.check_in_date < todayStr || row.is_supplementary;
+                                const isSupplementary = !row.selfie_url;
 
                                 let bg = row.status === 'approved' ? (isLate ? 'rgba(16, 185, 129, 0.1)' : 'var(--color-success-light)') : row.status === 'pending_approval' ? 'var(--color-warning-light)' : 'var(--color-danger-light)';
                                 let color = row.status === 'approved' ? (isLate ? '#10b981' : 'var(--color-success)') : row.status === 'pending_approval' ? 'var(--color-warning)' : 'var(--color-danger)';
-                                let label = row.status === 'approved' ? (isLate ? t('Hợp lệ') : t('Đúng giờ')) : row.status === 'pending_approval' ? t('Chờ duyệt') : t('Bị từ chối');
+                                let label = row.status === 'approved' ? (isLate ? t('Hợp lệ') : t('Đúng giờ')) : row.status === 'pending_approval' ? t('Chờ duyệt đi trễ') : t('Bị từ chối');
 
                                 if (isSupplementary) {
                                   bg = 'rgba(139, 92, 246, 0.1)';
@@ -2053,36 +2050,50 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
                               })()}
                             </div>
 
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px' }}>
-                              <div style={{ fontSize: '0.75rem', color: 'var(--color-text-light)' }}>
-                                <span>{t('Thời gian:')} <strong>{row.check_in_time}</strong></span>
-                                {isLate && <span style={{ color: 'var(--color-danger)', marginLeft: '6px', fontWeight: 600 }}>({t('Trễ')})</span>}
-                              </div>
-                              {row.selfie_url && (
-                                <a
-                                  onClick={() => setPreviewCheckIn(row)}
-                                  style={{
-                                    display: 'inline-flex',
-                                    alignItems: 'center',
-                                    gap: '4px',
-                                    color: 'var(--color-primary)',
-                                    fontSize: '0.75rem',
-                                    fontWeight: 600,
-                                    textDecoration: 'underline',
-                                    cursor: 'pointer'
-                                  }}
-                                >
-                                  <Camera size={14} />
-                                  {t('Ảnh selfie')}
-                                </a>
-                              )}
-                            </div>
+                            {(() => {
+                              const isSupplementary = !row.selfie_url;
+                              return (
+                                <>
+                                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px' }}>
+                                    <div style={{ fontSize: '0.75rem', color: 'var(--color-text-light)' }}>
+                                      <span>{isSupplementary ? t('Thời gian đề xuất:') : t('Thời gian:')} <strong>{row.check_in_time}</strong></span>
+                                      {isLate && !isSupplementary && <span style={{ color: 'var(--color-danger)', marginLeft: '6px', fontWeight: 600 }}>({t('Trễ')})</span>}
+                                    </div>
+                                    {row.selfie_url && (
+                                      <a
+                                        onClick={() => setPreviewCheckIn(row)}
+                                        style={{
+                                          display: 'inline-flex',
+                                          alignItems: 'center',
+                                          gap: '4px',
+                                          color: 'var(--color-primary)',
+                                          fontSize: '0.75rem',
+                                          fontWeight: 600,
+                                          textDecoration: 'underline',
+                                          cursor: 'pointer'
+                                        }}
+                                      >
+                                        <Camera size={14} />
+                                        {t('Ảnh selfie')}
+                                      </a>
+                                    )}
+                                  </div>
 
-                            {row.reason && (
-                              <div style={{ fontSize: '0.7rem', background: 'rgba(245, 158, 11, 0.05)', border: '1px solid rgba(245, 158, 11, 0.1)', padding: '6px 8px', borderRadius: '6px', color: 'var(--color-text-muted)' }}>
-                                <strong>{t('Lý do trễ:')}</strong> {row.reason}
-                              </div>
-                            )}
+                                  {row.reason && (
+                                    <div style={{
+                                      fontSize: '0.7rem',
+                                      background: isSupplementary ? 'rgba(139, 92, 246, 0.05)' : 'rgba(245, 158, 11, 0.05)',
+                                      border: isSupplementary ? '1px solid rgba(139, 92, 246, 0.15)' : '1px solid rgba(245, 158, 11, 0.1)',
+                                      padding: '6px 8px',
+                                      borderRadius: '6px',
+                                      color: 'var(--color-text-muted)'
+                                    }}>
+                                      <strong>{isSupplementary ? t('Lý do cập nhật:') : t('Lý do trễ:')}</strong> {row.reason}
+                                    </div>
+                                  )}
+                                </>
+                              );
+                            })()}
 
                             {row.status === 'pending_approval' && canApprove && (
                               <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', marginTop: '4px' }}>
@@ -2147,6 +2158,7 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
                     const approvedCheckIn = detailCheckIns.find(c => c.status === 'approved');
 
                     if (pendingCheckIn) {
+                      const isSupp = !pendingCheckIn.selfie_url;
                       return (
                         <div style={{
                           display: 'flex',
@@ -2154,20 +2166,23 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
                           alignItems: 'center',
                           justifyContent: 'center',
                           gap: '12px',
-                          background: 'rgba(139, 92, 246, 0.04)',
-                          border: '1px solid rgba(139, 92, 246, 0.2)',
+                          background: isSupp ? 'rgba(139, 92, 246, 0.04)' : 'rgba(245, 158, 11, 0.04)',
+                          border: isSupp ? '1px solid rgba(139, 92, 246, 0.2)' : '1px solid rgba(245, 158, 11, 0.2)',
                           padding: '2.5rem 1.5rem',
                           borderRadius: '12px',
                           textAlign: 'center',
                           height: '100%',
                           minHeight: '220px'
                         }}>
-                          <Clock size={38} color="#8B5CF6" />
-                          <h4 style={{ fontWeight: 700, fontSize: '1rem', color: '#8B5CF6', margin: 0 }}>
-                            {t('Đang chờ cập nhật công')}
+                          {isSupp ? <Clock size={38} color="#8B5CF6" /> : <AlertCircle size={38} color="var(--color-warning)" />}
+                          <h4 style={{ fontWeight: 700, fontSize: '1rem', color: isSupp ? '#8B5CF6' : 'var(--color-warning)', margin: 0 }}>
+                            {isSupp ? t('Đang chờ cập nhật công') : t('Đang chờ duyệt đi trễ')}
                           </h4>
                           <p style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)', margin: 0, maxWidth: '280px', lineHeight: 1.45 }}>
-                            {t('Yêu cầu cập nhật công cho ngày ')}{selectedDateForDetail}{t(' của bạn đang chờ quản trị viên phê duyệt.')}
+                            {isSupp
+                              ? `${t('Yêu cầu cập nhật công cho ngày ')}${selectedDateForDetail}${t(' của bạn đang chờ quản trị viên phê duyệt.')}`
+                              : `${t('Báo cáo đi trễ ngày ')}${selectedDateForDetail}${t(' của bạn đang chờ quản trị viên phê duyệt.')}`
+                            }
                           </p>
                         </div>
                       );
