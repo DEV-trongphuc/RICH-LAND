@@ -192,7 +192,7 @@ class CheckInController {
         $today = trim($b['check_in_date'] ?? date('Y-m-d'));
         $currentTime = trim($b['check_in_time'] ?? date('H:i:s'));
         
-        $isSupplementary = ($today !== date('Y-m-d'));
+        $isSupplementary = ($today !== date('Y-m-d')) || (!empty($b['is_supplementary']));
 
         if (empty($selfieUrl) && !$isSupplementary) {
             respond(422, null, 'Ảnh selfie check-in là bắt buộc', false);

@@ -361,7 +361,8 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
         body: JSON.stringify({
           check_in_date: selectedDateForDetail,
           check_in_time: `${suppTime}:00`,
-          reason: suppReason
+          reason: suppReason,
+          is_supplementary: true
         })
       });
       if (res.success) {
