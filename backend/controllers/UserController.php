@@ -57,7 +57,7 @@ class UserController {
         $whereClause = implode(" AND ", $where);
         
         try {
-            $stmt=$this->db->prepare("SELECT id,email,full_name,role,avatar_url,phone,is_active,last_login_at,created_at,dob,gender,citizen_id,address,bank_name,bank_account,team_id,permissions_json FROM users WHERE $whereClause ORDER BY full_name");
+            $stmt=$this->db->prepare("SELECT id,email,full_name,role,job_title,avatar_url,phone,is_active,last_login_at,created_at,dob,gender,citizen_id,address,bank_name,bank_account,team_id,permissions_json FROM users WHERE $whereClause ORDER BY full_name");
             $stmt->execute($params);
             respond(200,$stmt->fetchAll());
         } catch (PDOException $e) {

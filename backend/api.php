@@ -12884,16 +12884,17 @@ switch ($action) {
             }
 
             if ($stmt->execute()) {
-                // Sync job_title from address payload if available
-                if (!empty($address)) {
+                // Sync job_title from input or address payload if available
+                $jt = $input['job_title'] ?? null;
+                if ($jt === null && !empty($address)) {
                     $arr = json_decode($address, true);
                     $jt = $arr['erp_profile']['job_title'] ?? null;
-                    if ($jt !== null) {
-                        $stmtJ = $conn->prepare("UPDATE users SET job_title = ? WHERE id = ?");
-                        $stmtJ->bind_param("si", $jt, $id);
-                        $stmtJ->execute();
-                        $stmtJ->close();
-                    }
+                }
+                if ($jt !== null) {
+                    $stmtJ = $conn->prepare("UPDATE users SET job_title = ? WHERE id = ?");
+                    $stmtJ->bind_param("si", $jt, $id);
+                    $stmtJ->execute();
+                    $stmtJ->close();
                 }
 
                 // Save manager_behavior_mode if provided
@@ -12966,6 +12967,7 @@ switch ($action) {
         $allowedFields = [
             'name' => ['col' => 'full_name', 'type' => 's'],
             'avatar' => ['col' => 'avatar_url', 'type' => 's'],
+            'job_title' => ['col' => 'job_title', 'type' => 's'],
             'dob' => ['col' => 'dob', 'type' => 's'],
             'gender' => ['col' => 'gender', 'type' => 's'],
             'citizen_id' => ['col' => 'citizen_id', 'type' => 's'],
@@ -13064,7 +13066,7 @@ switch ($action) {
             exit;
         }
 
-        $stmtP = $conn->prepare("SELECT u.id, u.full_name AS name, u.email, a.role, u.status, u.leave_start, u.leave_end, u.work_start_time, u.work_end_time, u.work_schedule, u.avatar_url AS avatar, u.vacation_mode, u.dob, u.gender, u.citizen_id, u.address, u.bank_name, u.bank_account, u.zalo_chat_id, u.telegram_chat_id, u.overtime_mode, u.permissions_json, u.extra_fields_json, u.manager_behavior_mode, u.use_custom_work_hours FROM users u LEFT JOIN accounts a ON u.id = a.id WHERE u.id = ?");
+        $stmtP = $conn->prepare("SELECT u.id, u.full_name AS name, u.email, a.role, u.job_title, u.status, u.leave_start, u.leave_end, u.work_start_time, u.work_end_time, u.work_schedule, u.avatar_url AS avatar, u.vacation_mode, u.dob, u.gender, u.citizen_id, u.address, u.bank_name, u.bank_account, u.zalo_chat_id, u.telegram_chat_id, u.overtime_mode, u.permissions_json, u.extra_fields_json, u.manager_behavior_mode, u.use_custom_work_hours FROM users u LEFT JOIN accounts a ON u.id = a.id WHERE u.id = ?");
         $stmtP->bind_param("i", $targetUserId);
         $stmtP->execute();
         $consultantProfile = $stmtP->get_result()->fetch_assoc();

@@ -106,6 +106,7 @@ class AuthController {
                 'email'       => $user['email'],
                 'full_name'   => $user['full_name'],
                 'role'        => $user['role'],
+                'job_title'   => $user['job_title'] ?? null,
                 'avatar_url'  => $user['avatar_url'],
                 'tenant_id'   => $user['tenant_id'],
                 'tenant_name' => $user['tenant_name'],
@@ -173,7 +174,7 @@ class AuthController {
 
     public function me(array $auth): void {
         $stmt = $this->db->prepare(
-            'SELECT u.id, u.email, u.full_name, u.role, u.avatar_url, u.phone, u.manager_behavior_mode,
+            'SELECT u.id, u.email, u.full_name, u.role, u.job_title, u.avatar_url, u.phone, u.manager_behavior_mode,
                     u.tenant_id, t.name as tenant_name, t.slug as tenant_slug, t.logo_url as tenant_logo
              FROM users u JOIN tenants t ON u.tenant_id = t.id
              WHERE u.id = ? AND u.is_active = 1'
