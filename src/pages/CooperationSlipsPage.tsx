@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { fetchAPI } from '../utils/api';
 import { useAuth } from '../contexts/AuthContext';
-import { FileText, Check, X, ShieldAlert, UserPlus, PenTool, CheckCircle, AlertCircle, ChevronDown, ChevronUp, Trash2, Paperclip, ExternalLink } from 'lucide-react';
+import { FileText, Check, X, ShieldAlert, UserPlus, PenTool, CheckCircle, AlertCircle, ChevronDown, ChevronUp, Trash2, Paperclip, ExternalLink, Search } from 'lucide-react';
 import { PeriodFilter, getDateRange } from '../components/ui/PeriodFilter';
 import type { Period, DateRange } from '../components/ui/PeriodFilter';
 import { CustomSelect } from '../components/ui/CustomSelect';
@@ -906,83 +906,81 @@ export default function CooperationSlipsPage() {
       </div>
 
       {/* Filter Bar */}
-      <div className="card" style={{ padding: '1rem 1.25rem', marginBottom: '1.25rem', display: 'flex', flexWrap: 'wrap', gap: '1rem', alignItems: 'center', background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: '12px' }}>
+      <div className="coop-filter-bar-card">
         {/* Search */}
-        <div style={{ flex: '1 1 240px', position: 'relative' }}>
+        <div className="coop-filter-search-wrap">
+          <Search size={16} className="coop-filter-search-icon" />
           <input
             type="text"
             placeholder="Tìm theo khách hàng, số điện thoại, căn hộ, dự án..."
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
-            style={{
-              width: '100%',
-              padding: '8px 12px',
-              borderRadius: '8px',
-              border: '1px solid var(--color-border)',
-              background: 'var(--color-bg-light)',
-              color: 'var(--color-text)',
-              fontSize: '0.875rem'
-            }}
+            className="coop-filter-search-input"
           />
         </div>
 
-        {/* Filter Time */}
-        <div>
-          <PeriodFilter
-            value={period}
-            onChange={(p, r) => {
-              setPeriod(p);
-              setDateRange(r);
-            }}
-          />
-        </div>
-
-        {/* Filter Status */}
-        <div style={{ width: '225px' }}>
-          <CustomSelect
-            value={statusFilter}
-            onChange={val => setStatusFilter(String(val))}
-            options={[
-              { value: 'all', label: 'Tất cả trạng thái' },
-              { 
-                value: 'pending_me', 
-                label: 'Chờ tôi duyệt / ký',
-                badge: { count: statusCounts.pending_me, color: '#BD1D2D' }
-              },
-              { 
-                value: 'pending_signatures', 
-                label: 'Chờ nhân viên ký',
-                badge: { count: statusCounts.pending_signatures, color: '#BD1D2D' }
-              },
-              isManager && { 
-                value: 'pending_manager', 
-                label: 'Chờ sếp duyệt',
-                badge: { count: statusCounts.pending_manager, color: '#BD1D2D' }
-              },
-              { value: 'approved', label: 'Đã duyệt' },
-              { value: 'rejected', label: 'Bác bỏ' }
-            ].filter(Boolean) as any[]}
-            size="sm"
-          />
-        </div>
-
-        {/* Filter Sale (Only show if Manager/Admin) */}
-        {isManager && (
-          <div style={{ width: '220px' }}>
-            <CustomSelect
-              value={filterSale}
-              onChange={val => setFilterSale(val)}
-              options={[
-                { value: 'all', label: 'Tất cả nhân viên' },
-                ...salesAccounts.map(u => ({ value: String(u.id), label: u.full_name, avatar: (u as any).avatar }))
-              ]}
-              size="sm"
-              showAvatars
-              searchable
-              align="right"
+        {/* Filter Controls Group: On Mobile, Date & Status stay strictly on 1 single row */}
+        <div className="coop-filter-group">
+          {/* Filter Time */}
+          <div className="coop-filter-item">
+            <PeriodFilter
+              value={period}
+              onChange={(p, r) => {
+                setPeriod(p);
+                setDateRange(r);
+              }}
+              style={{ width: '100%' }}
+              buttonStyle={{ width: '100%', height: '38px', justifyContent: 'space-between', padding: '0 12px', fontSize: '0.8125rem' }}
             />
           </div>
-        )}
+
+          {/* Filter Status */}
+          <div className="coop-filter-item">
+            <CustomSelect
+              value={statusFilter}
+              onChange={val => setStatusFilter(String(val))}
+              options={[
+                { value: 'all', label: 'Tất cả trạng thái' },
+                { 
+                  value: 'pending_me', 
+                  label: 'Chờ tôi duyệt / ký',
+                  badge: { count: statusCounts.pending_me, color: '#BD1D2D' }
+                },
+                { 
+                  value: 'pending_signatures', 
+                  label: 'Chờ nhân viên ký',
+                  badge: { count: statusCounts.pending_signatures, color: '#BD1D2D' }
+                },
+                isManager && { 
+                  value: 'pending_manager', 
+                  label: 'Chờ sếp duyệt',
+                  badge: { count: statusCounts.pending_manager, color: '#BD1D2D' }
+                },
+                { value: 'approved', label: 'Đã duyệt' },
+                { value: 'rejected', label: 'Bác bỏ' }
+              ].filter(Boolean) as any[]}
+              size="sm"
+            />
+          </div>
+
+          {/* Filter Sale (Only show if Manager/Admin) */}
+          {isManager && (
+            <div className="coop-filter-item coop-filter-item-sale">
+              <CustomSelect
+                value={filterSale}
+                onChange={val => setFilterSale(val)}
+                options={[
+                  { value: 'all', label: 'Tất cả nhân viên' },
+                  ...salesAccounts.map(u => ({ value: String(u.id), label: u.full_name, avatar: (u as any).avatar }))
+                ]}
+                size="sm"
+                showAvatars
+                searchable
+                align="right"
+              />
+            </div>
+          )}
+        </div>
       </div>
 
       {/* List */}
