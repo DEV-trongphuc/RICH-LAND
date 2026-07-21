@@ -673,7 +673,7 @@ const PersonalAccountInner = () => {
                   </div>
                 )}
               </div>
-          {/* Mobile Log Out Button */}
+            )}
           <div style={{ marginTop: '2rem', paddingTop: '1.5rem', borderTop: '1px solid var(--color-border-light)', display: 'flex', justifyContent: 'center' }}>
             <button
               type="button"
