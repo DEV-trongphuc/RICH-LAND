@@ -233,10 +233,44 @@ class CheckInController {
             }
         }
 
+        $dayOfWeek = (int)date('N', strtotime($today));
+        $isWeekend = ($dayOfWeek >= 6);
+
+        // Fetch system settings for mandatory weekend/holiday check-in
+        $stmtSettings = $this->db->prepare("SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('require_checkin_weekend_lead', 'require_checkin_holiday_lead', 'holiday_schedules')");
+        $stmtSettings->execute();
+        $settingsMap = $stmtSettings->fetchAll(PDO::FETCH_KEY_PAIR);
+
+        $reqWeekend = isset($settingsMap['require_checkin_weekend_lead']) ? (int)$settingsMap['require_checkin_weekend_lead'] : 0;
+        $reqHoliday = isset($settingsMap['require_checkin_holiday_lead']) ? (int)$settingsMap['require_checkin_holiday_lead'] : 0;
+
+        $isHoliday = false;
+        if (!empty($settingsMap['holiday_schedules'])) {
+            try {
+                $holidays = json_decode($settingsMap['holiday_schedules'], true);
+                if (is_array($holidays)) {
+                    foreach ($holidays as $h) {
+                        if (!empty($h['start']) && !empty($h['end'])) {
+                            if ($today >= $h['start'] && $today <= $h['end']) {
+                                $isHoliday = true;
+                                break;
+                            }
+                        }
+                    }
+                }
+            } catch (\Throwable $t) {}
+        }
+
+        $isMandatoryAutoApprove = ($isWeekend && $reqWeekend === 1) || ($isHoliday && $reqHoliday === 1);
+
         $status = 'approved';
         $isLate = false;
         if ($isSupplementary) {
             $status = 'pending_approval';
+        } else if ($isMandatoryAutoApprove) {
+            // Auto-approve check-in on Weekend / Holiday when mandatory check-in is enabled
+            $status = 'approved';
+            $isLate = false;
         } else {
             // Check if late (compare HH:ii format)
             $currentHM = substr($currentTime, 0, 5);

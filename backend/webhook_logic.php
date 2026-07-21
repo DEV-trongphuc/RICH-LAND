@@ -1915,7 +1915,21 @@ function checkConsultantGates($conn, $consultantId, $lead = null)
         }
     }
 
-    $bypassCheckIn = $isWeekendOrHoliday || $isApprovedNightShift;
+    $reqCheckinWeekend = (int) get_system_setting($conn, 'require_checkin_weekend_lead');
+    $reqCheckinHoliday = (int) get_system_setting($conn, 'require_checkin_holiday_lead');
+
+    $dayOfWeekStr = (int) date('N', strtotime($todayStr));
+    $isWeekendDay = ($dayOfWeekStr >= 6);
+    $isHolidayDay = is_holiday_today($conn, $todayStr);
+
+    $mustCheckinOnWeekend = ($isWeekendDay && $reqCheckinWeekend === 1);
+    $mustCheckinOnHoliday = ($isHolidayDay && $reqCheckinHoliday === 1);
+
+    if ($mustCheckinOnWeekend || $mustCheckinOnHoliday) {
+        $bypassCheckIn = $isApprovedNightShift;
+    } else {
+        $bypassCheckIn = $isWeekendOrHoliday || $isApprovedNightShift;
+    }
 
     if (!$bypassCheckIn) {
         $allowPendingCheckin = (int) get_system_setting($conn, 'allow_lead_distribution_on_pending_checkin');

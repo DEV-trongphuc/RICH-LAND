@@ -3160,6 +3160,16 @@ SQL;
             $logMsg("Hoàn thành cập nhật phiên bản 183.", "success");
         }
 
+        // Version 184 (Thêm cấu hình bắt buộc chấm công cuối tuần & ngày lễ để nhận lead)
+        if ($currentVersion < 184) {
+            $logMsg("Đang chạy cập nhật phiên bản 184 (Khởi tạo cấu hình bắt buộc chấm công cuối tuần & ngày lễ)...", "info");
+            $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('require_checkin_weekend_lead', '0')");
+            $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('require_checkin_holiday_lead', '0')");
+            $conn->query("INSERT INTO system_settings (setting_key, setting_value) VALUES ('db_version', '184') ON DUPLICATE KEY UPDATE setting_value = '184'");
+            $currentVersion = 184;
+            $logMsg("Hoàn thành cập nhật phiên bản 184.", "success");
+        }
+
     $logMsg("Tự sửa đổi cấu trúc hoàn thành thành công.", "success");
 
     $logMsg("Hệ thống đã cập nhật thành công lên phiên bản mới nhất: " . $currentVersion, "success");

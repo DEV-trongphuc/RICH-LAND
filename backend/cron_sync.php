@@ -575,10 +575,15 @@ if (!function_exists('releasePendingWorkHoursLeads')) {
                     }
 
                     $isWeekendOrHoliday = (!empty($holidayName) || $isRestDay);
-                    if ($isWeekendOrHoliday) {
-                        $hasCheckIn = $hasReg; // No check-in required for weekend/holiday shift if registered and approved
+                    $reqWknd = (int) get_system_setting($conn, 'require_checkin_weekend_lead');
+                    $reqHoli = (int) get_system_setting($conn, 'require_checkin_holiday_lead');
+                    $mustCheckinWknd = ($isRestDay && $reqWknd === 1);
+                    $mustCheckinHoli = (!empty($holidayName) && $reqHoli === 1);
+
+                    if ($isWeekendOrHoliday && !$mustCheckinWknd && !$mustCheckinHoli) {
+                        $hasCheckIn = $hasReg; // No check-in required for weekend/holiday shift if setting is OFF
                     } else {
-                        // Normal workday - must check check_ins table
+                        // Must check check_ins table
                         $stmtCheck = $conn->prepare("SELECT 1 FROM check_ins WHERE user_id = ? AND check_in_date = ? AND status = 'approved' LIMIT 1");
                         if ($stmtCheck) {
                             $stmtCheck->bind_param("is", $targetUserId, $currDate);
@@ -875,10 +880,15 @@ if (!function_exists('releasePendingWorkHoursLeads')) {
                     }
 
                     $isWeekendOrHoliday = (!empty($holidayName) || $isRestDay);
-                    if ($isWeekendOrHoliday) {
-                        $hasCheckIn = $hasReg; // No check-in required for weekend/holiday shift if registered and approved
+                    $reqWknd = (int) get_system_setting($conn, 'require_checkin_weekend_lead');
+                    $reqHoli = (int) get_system_setting($conn, 'require_checkin_holiday_lead');
+                    $mustCheckinWknd = ($isRestDay && $reqWknd === 1);
+                    $mustCheckinHoli = (!empty($holidayName) && $reqHoli === 1);
+
+                    if ($isWeekendOrHoliday && !$mustCheckinWknd && !$mustCheckinHoli) {
+                        $hasCheckIn = $hasReg; // No check-in required for weekend/holiday shift if setting is OFF
                     } else {
-                        // Normal workday - must check check_ins table
+                        // Must check check_ins table
                         $stmtCheck = $conn->prepare("SELECT 1 FROM check_ins WHERE user_id = ? AND check_in_date = ? AND status = 'approved' LIMIT 1");
                         if ($stmtCheck) {
                             $stmtCheck->bind_param("is", $targetUserId, $currDate);

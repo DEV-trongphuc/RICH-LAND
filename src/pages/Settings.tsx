@@ -252,6 +252,8 @@ const SettingsInner = () => {
   const [allowWeekendShiftRegistration, setAllowWeekendShiftRegistration] = useState<boolean>(true);
   const [autoApproveWeekendShift, setAutoApproveWeekendShift] = useState<boolean>(true);
   const [weekendShiftRegistrationLeadHours, setWeekendShiftRegistrationLeadHours] = useState<number>(0);
+  const [requireCheckinWeekendLead, setRequireCheckinWeekendLead] = useState<boolean>(false);
+  const [requireCheckinHolidayLead, setRequireCheckinHolidayLead] = useState<boolean>(false);
   const [holidaySchedules, setHolidaySchedules] = useState<any[]>([]);
   const [autoApproveHolidayShift, setAutoApproveHolidayShift] = useState<boolean>(false);
   const [shiftHistoryRetentionDays, setShiftHistoryRetentionDays] = useState<number>(90);
@@ -713,6 +715,12 @@ const SettingsInner = () => {
         if (json.data.auto_approve_holiday_shift !== undefined) {
           setAutoApproveHolidayShift(json.data.auto_approve_holiday_shift === '1' || json.data.auto_approve_holiday_shift === 1);
         }
+        if (json.data.require_checkin_weekend_lead !== undefined) {
+          setRequireCheckinWeekendLead(json.data.require_checkin_weekend_lead === '1' || json.data.require_checkin_weekend_lead === 1);
+        }
+        if (json.data.require_checkin_holiday_lead !== undefined) {
+          setRequireCheckinHolidayLead(json.data.require_checkin_holiday_lead === '1' || json.data.require_checkin_holiday_lead === 1);
+        }
         if (json.data.global_work_start_time !== undefined) {
           setGlobalWorkStartTime(json.data.global_work_start_time);
         }
@@ -1172,6 +1180,8 @@ const SettingsInner = () => {
       weekend_shift_registration_lead_hours: weekendShiftRegistrationLeadHours,
       holiday_schedules: JSON.stringify(holidaySchedules),
       auto_approve_holiday_shift: autoApproveHolidayShift ? 1 : 0,
+      require_checkin_weekend_lead: requireCheckinWeekendLead ? 1 : 0,
+      require_checkin_holiday_lead: requireCheckinHolidayLead ? 1 : 0,
       golden_hours_start_time: goldenHoursStartTime,
       golden_hours_end_time: goldenHoursEndTime,
       global_work_start_time: globalWorkStartTime,
@@ -5110,6 +5120,21 @@ function doPost(e) {
                             </div>
                           </div>
 
+                          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '1.5rem', borderTop: '1px dotted var(--color-border-light)', paddingTop: '0.75rem' }}>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)' }}>{t('Bắt buộc chấm công cuối tuần để nhận data')}</div>
+                              <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 4, lineHeight: 1.4 }}>
+                                {t('Nếu bật, vào các ngày cuối tuần (Thứ Bảy, Chủ Nhật), nhân viên phải bấm chấm công thì mới được hệ thống phân phối lead/data. Lượt chấm công ngày cuối tuần sẽ được duyệt tự động ngay lập tức (không cần quản trị viên duyệt).')}
+                              </div>
+                            </div>
+                            <div style={{ flexShrink: 0, marginTop: '2px' }}>
+                              <ToggleSwitch
+                                checked={requireCheckinWeekendLead}
+                                onChange={setRequireCheckinWeekendLead}
+                              />
+                            </div>
+                          </div>
+
                           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem', borderTop: '1px dotted var(--color-border-light)', paddingTop: '0.75rem' }}>
                             <div>
                               <label className="form-label">{t('Yêu cầu đăng ký trước ngày trực (tiếng)')}</label>
@@ -5310,6 +5335,21 @@ function doPost(e) {
                         <ToggleSwitch
                           checked={autoApproveHolidayShift}
                           onChange={setAutoApproveHolidayShift}
+                        />
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '1.5rem', borderTop: '1px dotted var(--color-border-light)', paddingTop: '0.75rem' }}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)' }}>{t('Bắt buộc chấm công ngày lễ để nhận data')}</div>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 4, lineHeight: 1.4 }}>
+                          {t('Nếu bật, vào các ngày nghỉ lễ, nhân viên phải bấm chấm công thì mới được hệ thống phân phối lead/data. Lượt chấm công ngày lễ sẽ được duyệt tự động ngay lập tức (không cần quản trị viên duyệt).')}
+                        </div>
+                      </div>
+                      <div style={{ flexShrink: 0, marginTop: '2px' }}>
+                        <ToggleSwitch
+                          checked={requireCheckinHolidayLead}
+                          onChange={setRequireCheckinHolidayLead}
                         />
                       </div>
                     </div>
