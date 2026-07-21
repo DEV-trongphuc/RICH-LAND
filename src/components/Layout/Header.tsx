@@ -2048,7 +2048,6 @@ export const Header = ({
           <button
             className="floating-checkin-btn"
             onClick={() => {
-              localStorage.setItem('trigger_checkin', '1');
               window.dispatchEvent(new CustomEvent('trigger-checkin-modal'));
             }}
             style={{

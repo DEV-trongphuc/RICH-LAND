@@ -2664,13 +2664,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
     setCheckInSubmitting(false);
   };
 
-  useEffect(() => {
-    // Check localStorage flag for check-in
-    if (localStorage.getItem('trigger_checkin') === '1') {
-      localStorage.removeItem('trigger_checkin');
-      window.dispatchEvent(new CustomEvent('trigger-checkin-modal'));
-    }
-  }, []);
+
 
   useEffect(() => {
     const handleVacationChange = (e: Event) => {
