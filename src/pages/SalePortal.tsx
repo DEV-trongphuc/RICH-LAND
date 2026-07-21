@@ -15714,46 +15714,45 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
           isOpen={show2FAConfigModal}
           onClose={() => setShow2FAConfigModal(false)}
           title={t("Cấu hình Google Authenticator (2FA)")}
-          maxWidth="440px"
+          maxWidth="420px"
         >
-          <form onSubmit={handleConfirmEnableTOTP} style={{ display: 'flex', flexDirection: 'column', gap: '1rem', padding: '0.25rem 0' }}>
-            <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: '1rem', alignItems: 'center' }}>
-              <div style={{ background: 'white', padding: '8px', borderRadius: '12px', border: '1px solid var(--color-border)', boxShadow: 'var(--shadow-sm)', display: 'flex', flexDirection: 'column', alignItems: 'center', flexShrink: 0 }}>
-                <img
-                  src={`https://api.qrserver.com/v1/create-qr-code/?size=135x135&data=${encodeURIComponent(setup2FAData?.otpauth_url || '')}`}
-                  alt="2FA QR Code"
-                  style={{ width: '135px', height: '135px', objectFit: 'contain' }}
-                />
-                <span style={{ fontSize: '0.65rem', color: '#64748b', marginTop: '4px' }}>{t("Quét bằng Google Authenticator")}</span>
-              </div>
+          <form onSubmit={handleConfirmEnableTOTP} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', padding: '0.5rem 0', alignItems: 'center', textAlign: 'center' }}>
+            <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--color-text-muted)', lineHeight: 1.5 }}>
+              {t("Mở ứng dụng Google Authenticator trên điện thoại và quét mã QR bên dưới:")}
+            </p>
 
-              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                <div>
-                  <h5 style={{ margin: '0 0 4px 0', fontSize: '0.825rem', fontWeight: 700 }}>{t("Bước 1: Quét mã QR")}</h5>
-                  <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--color-text-muted)', lineHeight: 1.4 }}>
-                    {t("Mở ứng dụng Google Authenticator/Authy trên điện thoại và quét mã QR bên cạnh.")}
-                  </p>
-                </div>
+            {/* QR Card */}
+            <div style={{ background: 'white', padding: '12px', borderRadius: '16px', border: '1px solid var(--color-border)', boxShadow: 'var(--shadow-sm)', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+              <img
+                src={`https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(setup2FAData?.otpauth_url || '')}`}
+                alt="2FA QR Code"
+                style={{ width: '160px', height: '160px', objectFit: 'contain' }}
+              />
+            </div>
 
-                <div>
-                  <span style={{ fontSize: '0.725rem', color: 'var(--color-text-muted)' }}>{t("Hoặc nhập khóa thủ công:")}</span>
-                  <div style={{ background: 'var(--color-bg-alt)', padding: '4px 10px', borderRadius: '6px', fontFamily: 'monospace', fontWeight: 700, fontSize: '0.85rem', width: 'fit-content', userSelect: 'all', border: '1px solid var(--color-border-light)', marginTop: '2px' }}>
-                    {setup2FAData?.secret}
-                  </div>
-                </div>
-
-                <div>
-                  <h5 style={{ margin: '0 0 4px 0', fontSize: '0.85rem', fontWeight: 700, textAlign: 'left' }}>{t("Bước 2: Nhập mã 6 chữ số để xác nhận")}</h5>
-                  <DigitPinInput
-                    value={test2FACode}
-                    onChange={setTest2FACode}
-                    align="left"
-                  />
-                </div>
+            {/* Manual Secret Key */}
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
+              <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{t("Hoặc nhập khóa thủ công:")}</span>
+              <div style={{ background: 'var(--color-bg-alt)', padding: '6px 14px', borderRadius: '8px', fontFamily: 'monospace', fontWeight: 700, fontSize: '0.9rem', letterSpacing: '1px', userSelect: 'all', border: '1px solid var(--color-border-light)' }}>
+                {setup2FAData?.secret}
               </div>
             </div>
 
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+            <div style={{ width: '100%', height: '1px', background: 'var(--color-border-light)', margin: '0.25rem 0' }} />
+
+            {/* Step 2: 6 Pin Input */}
+            <div style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px' }}>
+              <label style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--color-text)' }}>
+                {t("Nhập mã 6 chữ số từ ứng dụng để xác nhận")}
+              </label>
+              <DigitPinInput
+                value={test2FACode}
+                onChange={setTest2FACode}
+                align="center"
+              />
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', width: '100%', marginTop: '0.25rem' }}>
               <button
                 type="button"
                 className="btn outline sm"
