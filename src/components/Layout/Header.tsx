@@ -964,23 +964,9 @@ export const Header = ({
           </div>
         )}
         
-        {/* Sales widgets for receiving data and check-in */}
+        {/* Sales widgets for check-in */}
         {isSales && (
           <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? '4px' : '8px', marginRight: isMobile ? '2px' : '8px' }}>
-
-            {/* Receiving Data Toggle */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '4px', background: 'var(--color-bg)', border: '1px solid var(--color-border)', borderRadius: '8px', padding: isMobile ? '4px 6px' : '4px 10px', height: isMobile ? '30px' : '36px' }}>
-              {!isMobile && (
-                <span style={{ fontSize: '0.75rem', fontWeight: 700, color: !headerVacationMode ? '#10b981' : '#f59e0b', whiteSpace: 'nowrap' }}>
-                  {!headerVacationMode ? t('Nhận data') : t('Tạm ngưng')}
-                </span>
-              )}
-              <ToggleSwitch
-                checked={!headerVacationMode}
-                onChange={handleToggleHeaderVacation}
-              />
-            </div>
-
             {/* Check-in status / trigger button */}
             {(!headerCheckIn || headerCheckIn.status === 'rejected' || headerCheckIn.status === 'approved') ? null : (
               <div style={{ display: 'flex', alignItems: 'center', gap: '4px', background: 'rgba(245, 158, 11, 0.1)', border: '1px solid rgba(245, 158, 11, 0.2)', color: 'var(--color-warning)', borderRadius: '8px', padding: isMobile ? '4px 6px' : '4px 10px', height: isMobile ? '30px' : '36px', fontSize: '0.72rem', fontWeight: 700, whiteSpace: 'nowrap' }}>

@@ -11615,17 +11615,23 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
 
                       {showWeeklyShiftScheduler && (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '4px' }}>
-                          {/* Grid with 7 days */}
+                          {/* Grid with 7 days in 1 row of compact square boxes */}
                           <div style={{
                             display: 'grid',
-                            gridTemplateColumns: isMobile ? 'repeat(4, 1fr)' : 'repeat(auto-fit, minmax(110px, 1fr))',
-                            gap: '8px',
-                            marginTop: '0.25rem'
+                            gridTemplateColumns: 'repeat(7, 1fr)',
+                            gap: isMobile ? '4px' : '8px',
+                            marginTop: '0.25rem',
+                            width: '100%'
                           }}>
                             {getWeekDates().map((day) => {
-                              const isSelected = weeklyShiftDates.includes(day.date);
                               const reg = weeklyRegistrations.find(r => r.shift_date === day.date);
-                              const isApproved = reg ? (reg.approved === 1 || reg.approved === true) : false;
+                              const isNightRegistered = Boolean(nightShiftRegistered && nightShiftDate === day.date);
+                              const isWeekendRegistered = Boolean(
+                                (day.date === weekendShiftSat?.date && weekendShiftSat?.registered) || 
+                                (day.date === weekendShiftSun?.date && weekendShiftSun?.registered)
+                              );
+                              const isSelected = weeklyShiftDates.includes(day.date) || isNightRegistered || isWeekendRegistered;
+                              const isApproved = reg ? (reg.approved === 1 || reg.approved === true) : (isNightRegistered ? nightShiftApproved : isWeekendRegistered);
 
                               const today = new Date();
                               const todayStr = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0');
@@ -11636,10 +11642,12 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                               let backgroundStyle = 'var(--color-bg-alt)';
                               
                               if (isSelected) {
-                                backgroundStyle = isApproved ? 'rgba(16, 185, 129, 0.04)' : 'rgba(245, 158, 11, 0.04)';
-                                borderStyle = isApproved 
-                                  ? '2px solid var(--color-success)' 
-                                  : '2px solid var(--color-warning)';
+                                backgroundStyle = isNightRegistered 
+                                  ? 'rgba(139, 92, 246, 0.06)' 
+                                  : (isApproved ? 'rgba(16, 185, 129, 0.06)' : 'var(--color-primary-light)');
+                                borderStyle = isNightRegistered
+                                  ? '2px solid #8b5cf6'
+                                  : (isApproved ? '2px solid var(--color-success)' : '2px solid var(--color-primary)');
                               }
 
                               return (
@@ -11656,48 +11664,51 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                                     }
                                   }}
                                   style={{
-                                    padding: isMobile ? '8px 4px' : '12px 10px',
-                                    borderRadius: '12px',
+                                    padding: isMobile ? '6px 2px' : '10px 4px',
+                                    borderRadius: '10px',
                                     border: borderStyle,
                                     background: backgroundStyle,
                                     cursor: isPastDay 
                                       ? 'not-allowed' 
                                       : (['sale', 'manager'].includes(String(effectiveRole).toLowerCase()) ? 'pointer' : 'default'),
-                                    opacity: isPastDay ? 0.5 : 1,
+                                    opacity: isPastDay ? 0.45 : 1,
                                     display: 'flex',
                                     flexDirection: 'column',
                                     alignItems: 'center',
                                     justifyContent: 'center',
-                                    gap: isMobile ? '4px' : '6px',
+                                    gap: '2px',
                                     transition: 'all 0.2s',
                                     textAlign: 'center',
-                                    minHeight: isMobile ? '72px' : '90px',
+                                    aspectRatio: '1',
+                                    minHeight: isMobile ? '56px' : '70px',
+                                    boxSizing: 'border-box',
                                     userSelect: 'none'
                                   }}
                                   className="weekly-date-card"
                                 >
-                                  <span style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--color-text)' }}>
+                                  <span style={{ fontSize: isMobile ? '0.72rem' : '0.8rem', fontWeight: 800, color: 'var(--color-text)', lineHeight: 1 }}>
                                     {isMobile ? day.name.replace('Thứ ', 'T') : day.name}
                                   </span>
-                                  <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>
+                                  <span style={{ fontSize: isMobile ? '0.6rem' : '0.68rem', color: 'var(--color-text-muted)', lineHeight: 1, marginTop: '1px' }}>
                                     {new Date(day.date).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' })}
                                   </span>
                                   
                                   {/* Status badge */}
                                   <span style={{
-                                    fontSize: '0.65rem',
+                                    fontSize: isMobile ? '0.55rem' : '0.62rem',
                                     fontWeight: 700,
-                                    padding: '2px 6px',
+                                    padding: '1px 3px',
                                     borderRadius: '4px',
-                                    marginTop: '4px',
+                                    marginTop: '2px',
+                                    whiteSpace: 'nowrap',
                                     color: isSelected 
-                                      ? (isApproved ? 'var(--color-success)' : 'var(--color-warning)') 
+                                      ? (isNightRegistered ? '#8b5cf6' : (isApproved ? 'var(--color-success)' : 'var(--color-primary)')) 
                                       : 'var(--color-text-muted)',
                                     background: isSelected 
-                                      ? (isApproved ? 'rgba(16, 185, 129, 0.1)' : 'rgba(245, 158, 11, 0.1)') 
+                                      ? (isNightRegistered ? 'rgba(139, 92, 246, 0.12)' : (isApproved ? 'rgba(16, 185, 129, 0.12)' : 'var(--color-primary-light)')) 
                                       : 'rgba(100, 116, 139, 0.08)'
                                   }}>
-                                    {isSelected ? (isApproved ? t('Đã duyệt') : t('Chờ duyệt')) : t('Nghỉ trực')}
+                                    {isSelected ? (isNightRegistered ? t('Trực đêm') : (isApproved ? t('Đã duyệt') : t('Đã chọn'))) : t('Nghỉ')}
                                   </span>
                                 </div>
                               );

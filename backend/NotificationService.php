@@ -895,4 +895,191 @@ class NotificationService {
         $stmt->execute([$tenantId, $teamId, $teamId, $teamId]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
     }
+
+    /**
+     * Smart Enterprise ERP Approval Routing Engine (3-level Escalation Chain)
+     * Level 1: Team Leader / Co-Leader of submitter's Team (if enabled)
+     * Level 2: Designated Roles / Users configured in system_settings
+     * Level 3: Fallback System Admins
+     */
+    public static function getApproversForEvent(PDO $db, int $tenantId, string $moduleKey, ?int $submitterUserId = null, float $amount = 0.0): array {
+        try {
+            $stmt = $db->prepare("SELECT setting_value FROM system_settings WHERE setting_key = 'approval_matrix_config' LIMIT 1");
+            $stmt->execute();
+            $rawJson = $stmt->fetchColumn();
+            $matrixConfig = $rawJson ? (json_decode($rawJson, true) ?: []) : [];
+
+            $modCfg = $matrixConfig[$moduleKey] ?? [];
+
+            // Level 1: Check Team Leader
+            if (!empty($modCfg['enable_team_leader']) && $submitterUserId > 0) {
+                $stmtUser = $db->prepare("SELECT team_id FROM users WHERE id = ? LIMIT 1");
+                $stmtUser->execute([$submitterUserId]);
+                $teamId = $stmtUser->fetchColumn();
+
+                if ($teamId) {
+                    $stmtTeam = $db->prepare("SELECT leader_id, co_leader_ids FROM teams WHERE id = ? LIMIT 1");
+                    $stmtTeam->execute([$teamId]);
+                    $teamRow = $stmtTeam->fetch(PDO::FETCH_ASSOC);
+
+                    if ($teamRow) {
+                        $leaderIds = [];
+                        if (!empty($teamRow['leader_id'])) $leaderIds[] = (int)$teamRow['leader_id'];
+                        if (!empty($teamRow['co_leader_ids'])) {
+                            $coList = explode(',', $teamRow['co_leader_ids']);
+                            foreach ($coList as $cid) {
+                                if (is_numeric(trim($cid))) $leaderIds[] = (int)trim($cid);
+                            }
+                        }
+                        $leaderIds = array_unique(array_filter($leaderIds));
+                        
+                        if (!empty($leaderIds)) {
+                            $inPlace = implode(',', array_fill(0, count($leaderIds), '?'));
+                            $stmtL = $db->prepare("SELECT id, email, zalo_chat_id, telegram_chat_id, full_name FROM users WHERE id IN ($inPlace) AND status = 'active'");
+                            $stmtL->execute(array_values($leaderIds));
+                            $teamApprovers = $stmtL->fetchAll(PDO::FETCH_ASSOC) ?: [];
+                            if (!empty($teamApprovers)) {
+                                return $teamApprovers;
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Level 2: Check Designated Roles / Users
+            $roles = $modCfg['designated_roles'] ?? [];
+            $userIds = $modCfg['designated_user_ids'] ?? [];
+
+            // Money Tiers for Expenses (Dynamic Non-hardcoded Thresholds)
+            if ($moduleKey === 'expense' && !empty($modCfg['money_tiers']) && is_array($modCfg['money_tiers'])) {
+                foreach ($modCfg['money_tiers'] as $tier) {
+                    $maxAmt = $tier['max_amount'] ?? null;
+                    if ($maxAmt === null || (float)$maxAmt <= 0 || $amount <= (float)$maxAmt) {
+                        $appType = $tier['approver_type'] ?? '';
+                        if ($appType === 'team_leader' && $submitterUserId > 0) {
+                            $stmtUser = $db->prepare("SELECT team_id FROM users WHERE id = ? LIMIT 1");
+                            $stmtUser->execute([$submitterUserId]);
+                            $tId = $stmtUser->fetchColumn();
+                            if ($tId) {
+                                $stmtTeam = $db->prepare("SELECT leader_id, co_leader_ids FROM teams WHERE id = ? LIMIT 1");
+                                $stmtTeam->execute([$tId]);
+                                $tRow = $stmtTeam->fetch(PDO::FETCH_ASSOC);
+                                if ($tRow) {
+                                    $lIds = [];
+                                    if (!empty($tRow['leader_id'])) $lIds[] = (int)$tRow['leader_id'];
+                                    if (!empty($tRow['co_leader_ids'])) {
+                                        foreach (explode(',', $tRow['co_leader_ids']) as $cid) {
+                                            if (is_numeric(trim($cid))) $lIds[] = (int)trim($cid);
+                                        }
+                                    }
+                                    if (!empty($lIds)) {
+                                        $inP = implode(',', array_fill(0, count($lIds), '?'));
+                                        $stmtL = $db->prepare("SELECT id, email, zalo_chat_id, telegram_chat_id, full_name FROM users WHERE id IN ($inP) AND status = 'active'");
+                                        $stmtL->execute(array_values($lIds));
+                                        $tApprovers = $stmtL->fetchAll(PDO::FETCH_ASSOC) ?: [];
+                                        if (!empty($tApprovers)) return $tApprovers;
+                                    }
+                                }
+                            }
+                        }
+                        if (!empty($tier['roles'])) $roles = $tier['roles'];
+                        if (!empty($tier['user_ids'])) $userIds = $tier['user_ids'];
+                        break;
+                    }
+                }
+            }
+
+            if (!empty($roles) || !empty($userIds)) {
+                $whereClauses = [];
+                $params = [$tenantId];
+
+                if (!empty($roles)) {
+                    $inRoles = implode(',', array_fill(0, count($roles), '?'));
+                    $whereClauses[] = "role IN ($inRoles)";
+                    foreach ($roles as $r) $params[] = $r;
+                }
+                if (!empty($userIds)) {
+                    $inIds = implode(',', array_fill(0, count($userIds), '?'));
+                    $whereClauses[] = "id IN ($inIds)";
+                    foreach ($userIds as $uid) $params[] = (int)$uid;
+                }
+
+                $whereStr = implode(' OR ', $whereClauses);
+                $sql = "SELECT id, email, zalo_chat_id, telegram_chat_id, full_name FROM users WHERE tenant_id = ? AND status = 'active' AND ($whereStr)";
+                $stmtD = $db->prepare($sql);
+                $stmtD->execute($params);
+                $desigApprovers = $stmtD->fetchAll(PDO::FETCH_ASSOC) ?: [];
+                if (!empty($desigApprovers)) {
+                    return $desigApprovers;
+                }
+            }
+        } catch (\Throwable $e) {
+            error_log("Error resolving approvers: " . $e->getMessage());
+        }
+
+        // Level 3: Fallback System Admins
+        return self::getAdminsAndManagers($db, $tenantId);
+    }
+
+    /**
+     * Verify if a specific user has approval authority for a given module & submitter
+     */
+    public static function canUserApproveModule(PDO $db, int $tenantId, string $moduleKey, int $currentUserId, ?int $submitterUserId = null, float $amount = 0.0): bool {
+        try {
+            // Admin and Super Admin always have approval authority
+            $stmtRole = $db->prepare("SELECT role FROM users WHERE id = ? LIMIT 1");
+            $stmtRole->execute([$currentUserId]);
+            $userRole = strtolower($stmtRole->fetchColumn() ?: '');
+            if (in_array($userRole, ['admin', 'superadmin', 'super_admin'])) {
+                return true;
+            }
+
+            // Exclude non-manager / standard sale staff
+            if (in_array($userRole, ['sale', 'employee', 'staff'])) {
+                return false;
+            }
+
+            // Resolve list of valid approvers for this event
+            $approvers = self::getApproversForEvent($db, $tenantId, $moduleKey, $submitterUserId, $amount);
+            foreach ($approvers as $app) {
+                if ((int)($app['id'] ?? 0) === $currentUserId) {
+                    return true;
+                }
+            }
+
+            // Additional check: If current user is Team Leader of submitter, grant permission when enable_team_leader is active
+            if ($submitterUserId > 0 && $submitterUserId !== $currentUserId) {
+                $stmtJson = $db->prepare("SELECT setting_value FROM system_settings WHERE setting_key = 'approval_matrix_config' LIMIT 1");
+                $stmtJson->execute();
+                $rawJson = $stmtJson->fetchColumn();
+                $matrixConfig = $rawJson ? (json_decode($rawJson, true) ?: []) : [];
+                $modCfg = $matrixConfig[$moduleKey] ?? [];
+
+                if (!empty($modCfg['enable_team_leader'])) {
+                    $stmtUser = $db->prepare("SELECT team_id FROM users WHERE id = ? LIMIT 1");
+                    $stmtUser->execute([$submitterUserId]);
+                    $subTeamId = $stmtUser->fetchColumn();
+
+                    if ($subTeamId) {
+                        $stmtTeam = $db->prepare("SELECT leader_id, co_leader_ids FROM teams WHERE id = ? LIMIT 1");
+                        $stmtTeam->execute([$subTeamId]);
+                        $tRow = $stmtTeam->fetch(PDO::FETCH_ASSOC);
+
+                        if ($tRow) {
+                            if ((int)($tRow['leader_id'] ?? 0) === $currentUserId) return true;
+                            if (!empty($tRow['co_leader_ids'])) {
+                                $coList = array_map('trim', explode(',', $tRow['co_leader_ids']));
+                                if (in_array((string)$currentUserId, $coList)) return true;
+                            }
+                        }
+                    }
+                }
+            }
+
+            return false;
+        } catch (\Throwable $e) {
+            error_log("Error checking user approval permission: " . $e->getMessage());
+            return false;
+        }
+    }
 }

@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useUIStore } from '../store/uiStore';
 import { withRouterFreezer } from '../components/RouterFreezer';
-import { Mail, Settings2, Save, Send, Server, Database, Activity, ChevronDown, ChevronUp, Zap, Shield, MessageCircle, RefreshCw, Settings as SettingsIcon, BarChart2, Clock, Calendar, Users, CheckCircle, Plus, Trash2, Edit2, FileSpreadsheet, Upload, Download, X, Search, UserCheck, FileText, Tag, Scale, Layers, HelpCircle, Filter, Briefcase, GripVertical, Info, ChevronRight, ArrowLeft, ChevronLeft } from 'lucide-react';
+import { Mail, Settings2, Save, Send, Server, Database, Activity, ChevronDown, ChevronUp, Zap, Shield, MessageCircle, RefreshCw, Settings as SettingsIcon, BarChart2, Clock, Calendar, Users, CheckCircle, Plus, Trash2, Edit2, FileSpreadsheet, Upload, Download, X, Search, UserCheck, FileText, Tag, Scale, Layers, HelpCircle, Filter, Briefcase, GripVertical, Info, ChevronRight, ArrowLeft, ChevronLeft, CheckSquare, DollarSign, LifeBuoy } from 'lucide-react';
 import { CustomSelect } from '../components/ui/CustomSelect';
 import { ToggleSwitch } from '../components/ui/ToggleSwitch';
 import { CustomModal } from '../components/ui/CustomModal';
@@ -171,6 +171,7 @@ const SettingsInner = () => {
       items: [
         { value: 'business_limits', label: t('Nghiệp vụ & Hạn mức'), icon: <Clock size={15} /> },
         { value: 'time_schedule', label: t('Thời gian & Lịch trình'), icon: <Calendar size={15} /> },
+        { value: 'approval_rules', label: t('Phân quyền Phê duyệt'), icon: <CheckSquare size={15} /> },
         { value: 'fallback', label: t('Xử lý Fallback'), icon: <RefreshCw size={15} /> },
         { value: 'starvation_prevention', label: t('Bù lượt thiếu'), icon: <Scale size={15} /> }
       ]
@@ -536,6 +537,26 @@ const SettingsInner = () => {
   const [depositCancelDemotedStatus, setDepositCancelDemotedStatus] = useState('da_gap');
   const [depositCancelDemotedBookingStatus, setDepositCancelDemotedBookingStatus] = useState('booking');
   const [capiEventTriggers, setCapiEventTriggers] = useState('');
+
+  // Enterprise Approval Matrix Config
+  const [approvalMatrixConfig, setApprovalMatrixConfig] = useState<Record<string, any>>({
+    attendance: { enable_team_leader: true, designated_roles: ['manager', 'director'], notify_admin: false },
+    leave: { enable_team_leader: true, designated_roles: ['manager', 'director'], notify_admin: false },
+    shift_registration: { enable_team_leader: true, designated_roles: ['manager'], notify_admin: false },
+    cooperation: { enable_team_leader: true, designated_roles: ['director', 'assistant'], notify_admin: false },
+    expense: {
+      enable_team_leader: true,
+      money_tiers: [
+        { max_amount: 5000000, approver_type: 'team_leader' },
+        { max_amount: 20000000, approver_type: 'designated_roles', roles: ['director', 'accountant'] },
+        { max_amount: null, approver_type: 'admin' }
+      ]
+    },
+    deposit: { enable_team_leader: true, designated_roles: ['director', 'accountant'], notify_admin: true },
+    ticket: { enable_team_leader: true, designated_roles: ['manager', 'assistant'], notify_admin: false },
+    lead_transfer: { enable_team_leader: true, designated_roles: ['manager'], notify_admin: false },
+    quote_invoice: { enable_team_leader: true, designated_roles: ['director'], notify_admin: false }
+  });
 
   // Ticket Auto-Approve config
   const [ticketAutoApproveEnabled, setTicketAutoApproveEnabled] = useState(false);
@@ -956,6 +977,18 @@ const SettingsInner = () => {
         } else {
           setAiScreenerManualRules([]);
         }
+        if (json.data.approval_matrix_config) {
+          try {
+            const parsed = typeof json.data.approval_matrix_config === 'string'
+              ? JSON.parse(json.data.approval_matrix_config)
+              : json.data.approval_matrix_config;
+            if (parsed && typeof parsed === 'object') {
+              setApprovalMatrixConfig(prev => ({ ...prev, ...parsed }));
+            }
+          } catch (e) {
+            console.error("Error parsing approval matrix config", e);
+          }
+        }
       }
     } catch (e) {
       console.error(e);
@@ -1337,7 +1370,8 @@ const SettingsInner = () => {
       ai_screener_rounds: aiScreenerRounds.join(','),
       ai_screener_mode: aiScreenerMode,
       ai_screener_manual_action: aiScreenerManualAction,
-      ai_screener_manual_rules: aiScreenerManualRules
+      ai_screener_manual_rules: aiScreenerManualRules,
+      approval_matrix_config: JSON.stringify(approvalMatrixConfig)
     };
 
     Object.keys(securityTimers).forEach(statusSlug => {
@@ -5551,52 +5585,81 @@ function doPost(e) {
                           </div>
 
                           {attendanceReportEnabled && (
-                            <div style={{ background: 'var(--color-bg-secondary)', padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--color-border-light)', marginTop: '4px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                  <span style={{ fontSize: '0.75rem', fontWeight: 600 }}>{t('Ngày gửi trong tháng:')}</span>
-                                  <input
-                                    type="number"
-                                    min={1}
-                                    max={31}
-                                    className="form-input"
-                                    style={{ width: '60px', height: '28px', padding: '2px 6px', fontSize: '0.75rem', textAlign: 'center' }}
-                                    value={attendanceReportTriggerDay}
-                                    onChange={e => setAttendanceReportTriggerDay(Math.min(31, Math.max(1, Number(e.target.value))))}
-                                  />
+                            <div style={{
+                              background: 'var(--color-bg-light)',
+                              padding: '1.25rem',
+                              borderRadius: '12px',
+                              border: '1px solid var(--color-border-light)',
+                              marginTop: '0.75rem',
+                              display: 'flex',
+                              flexDirection: 'column',
+                              gap: '1.25rem',
+                              animation: 'fadeIn 0.2s'
+                            }}>
+                              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '1.25rem' }}>
+                                <div>
+                                  <label className="form-label" style={{ fontWeight: 600, fontSize: '0.8125rem', marginBottom: '6px' }}>
+                                    {t('Ngày gửi tự động hàng tháng')}
+                                  </label>
+                                  <div style={{ display: 'flex', alignItems: 'center', position: 'relative' }}>
+                                    <input
+                                      type="number"
+                                      min={1}
+                                      max={31}
+                                      className="form-input"
+                                      style={{ paddingRight: '6.5rem' }}
+                                      value={attendanceReportTriggerDay}
+                                      onChange={e => setAttendanceReportTriggerDay(Math.min(31, Math.max(1, Number(e.target.value))))}
+                                    />
+                                    <span style={{ position: 'absolute', right: '12px', fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>
+                                      {t('hàng tháng')}
+                                    </span>
+                                  </div>
+                                  <span style={{ fontSize: '0.725rem', color: 'var(--color-text-muted)', marginTop: '4px', display: 'block', lineHeight: 1.4 }}>
+                                    {t('Ví dụ: Đặt là 1 để tự động tổng kết báo cáo chấm công vào ngày 1 của tháng mới.')}
+                                  </span>
                                 </div>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                  <span style={{ fontSize: '0.75rem', fontWeight: 600 }}>{t('Khoảng dữ liệu:')}</span>
-                                  <select
-                                    className="form-select"
-                                    style={{ height: '28px', padding: '2px 8px', fontSize: '0.75rem' }}
+
+                                <div>
+                                  <label className="form-label" style={{ fontWeight: 600, fontSize: '0.8125rem', marginBottom: '6px' }}>
+                                    {t('Khoảng dữ liệu báo cáo')}
+                                  </label>
+                                  <CustomSelect
+                                    options={[
+                                      { value: 'previous_month', label: t('Tháng trước (Mặc định)') },
+                                      { value: 'last_30_days', label: t('30 ngày gần nhất') },
+                                      { value: 'custom', label: t('Khoảng ngày tùy chỉnh') }
+                                    ]}
                                     value={attendanceReportDateMode}
-                                    onChange={e => setAttendanceReportDateMode(e.target.value)}
-                                  >
-                                    <option value="previous_month">{t('Tháng trước (Mặc định)')}</option>
-                                    <option value="last_30_days">{t('30 ngày gần nhất')}</option>
-                                    <option value="custom">{t('Khoảng ngày tùy chỉnh')}</option>
-                                  </select>
+                                    onChange={val => setAttendanceReportDateMode(val.toString())}
+                                    width="100%"
+                                  />
+                                  <span style={{ fontSize: '0.725rem', color: 'var(--color-text-muted)', marginTop: '4px', display: 'block', lineHeight: 1.4 }}>
+                                    {t('Chọn khoảng thời gian lấy số liệu ngày công, đi trễ và trực ca để tổng kết.')}
+                                  </span>
                                 </div>
                               </div>
+
                               {attendanceReportDateMode === 'custom' && (
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px' }}>
-                                  <span style={{ fontSize: '0.725rem' }}>{t('Từ ngày:')}</span>
-                                  <input
-                                    type="date"
-                                    className="form-input"
-                                    style={{ height: '28px', padding: '2px 6px', fontSize: '0.75rem' }}
-                                    value={attendanceReportStartDate}
-                                    onChange={e => setAttendanceReportStartDate(e.target.value)}
-                                  />
-                                  <span style={{ fontSize: '0.725rem' }}>{t('Đến ngày:')}</span>
-                                  <input
-                                    type="date"
-                                    className="form-input"
-                                    style={{ height: '28px', padding: '2px 6px', fontSize: '0.75rem' }}
-                                    value={attendanceReportEndDate}
-                                    onChange={e => setAttendanceReportEndDate(e.target.value)}
-                                  />
+                                <div style={{ borderTop: '1px dashed var(--color-border-light)', paddingTop: '1rem', display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '1.25rem' }}>
+                                  <div>
+                                    <label className="form-label" style={{ fontWeight: 600, fontSize: '0.8125rem', marginBottom: '6px' }}>{t('Từ ngày')}</label>
+                                    <input
+                                      type="date"
+                                      className="form-input"
+                                      value={attendanceReportStartDate}
+                                      onChange={e => setAttendanceReportStartDate(e.target.value)}
+                                    />
+                                  </div>
+                                  <div>
+                                    <label className="form-label" style={{ fontWeight: 600, fontSize: '0.8125rem', marginBottom: '6px' }}>{t('Đến ngày')}</label>
+                                    <input
+                                      type="date"
+                                      className="form-input"
+                                      value={attendanceReportEndDate}
+                                      onChange={e => setAttendanceReportEndDate(e.target.value)}
+                                    />
+                                  </div>
                                 </div>
                               )}
                             </div>
@@ -5771,7 +5834,419 @@ function doPost(e) {
                       </div>
                     </div>
                   </div>
+                </div>
+              </div>
+            </div>
 
+            {/* ===== SUB-TAB: PHÂN QUYỀN PHÊ DUYỆT (APPROVAL MATRIX & SPECIFIC APPROVERS) ===== */}
+            <div style={{ display: activeTab === 'approval_rules' ? 'block' : 'none' }} className="subtab-enter-active">
+              <div className="card" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.5rem', marginTop: 0 }}>
+                <div>
+                  <h3 style={{ fontSize: '1.125rem', fontWeight: 700, margin: 0, color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <CheckSquare size={20} color="var(--color-primary)" />
+                    {t('Cấu hình Quy định Phê duyệt & Người duyệt Ưu tiên')}
+                  </h3>
+                  <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', margin: '4px 0 0' }}>
+                    {t('Chỉ định cụ thể cá nhân (Admin, Quản lý, Nhân sự cụ thể) hoặc Vai trò được ưu tiên phê duyệt cho 9 quy trình nghiệp vụ. Hệ thống tự động đẩy thông báo Zalo/Email cho đúng người có thẩm quyền.')}
+                  </p>
+                </div>
+
+                {renderHelpBanner('approval_rules', t('Giải thích cơ chế Phân quyền Phê duyệt ERP'), (
+                  <ul style={{ paddingLeft: '1.25rem', margin: 0, display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    <li><strong>{t('Chỉ định cá nhân cụ thể:')}</strong> {t('Hỗ trợ tìm kiếm và chọn đích danh từng tài khoản Admin/Manager/Kế toán phê duyệt mà không bị bó hẹp theo vai trò chung.')}</li>
+                    <li><strong>{t('Hạn mức chi phí linh hoạt:')}</strong> {t('Cho phép tùy chỉnh không giới hạn các mức số tiền chi phí (VD: < 5tr, 5tr-20tr, > 20tr) và gán người duyệt riêng cho mỗi mức.')}</li>
+                    <li><strong>{t('Truy vết Audit Trail:')}</strong> {t('Mọi hành vi phê duyệt/từ chối đều được lưu vết chi tiết người thực hiện và ngày giờ.')}</li>
+                  </ul>
+                ))}
+
+                {/* 9 Approval Categories Grid */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                  {(() => {
+                    // Build option list of specific accounts (Manager level & above) + roles
+                    const approverOptions: any[] = [];
+
+                    // Rich Role Badges Mapping
+                    const roleBadges: Record<string, { bg: string; text: string }> = {
+                      role_manager: { bg: 'linear-gradient(135deg, #3b82f6, #1d4ed8)', text: 'QL' },
+                      role_director: { bg: 'linear-gradient(135deg, #8b5cf6, #6d28d9)', text: 'GĐ' },
+                      role_assistant: { bg: 'linear-gradient(135deg, #10b981, #047857)', text: 'TL' },
+                      role_accountant: { bg: 'linear-gradient(135deg, #f59e0b, #b45309)', text: 'KT' },
+                      role_superadmin: { bg: 'linear-gradient(135deg, #ef4444, #b91c1c)', text: 'AD' }
+                    };
+
+                    // 1. Roles section first with rich gradient role badges matching selected avatars
+                    approverOptions.push(
+                      {
+                        value: 'role_manager',
+                        label: t('Tất cả Quản lý (Manager)'),
+                        icon: <div style={{ width: 26, height: 26, borderRadius: '50%', background: roleBadges.role_manager.bg, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '0.7rem' }}>QL</div>
+                      },
+                      {
+                        value: 'role_director',
+                        label: t('Tất cả Giám đốc (Director)'),
+                        icon: <div style={{ width: 26, height: 26, borderRadius: '50%', background: roleBadges.role_director.bg, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '0.7rem' }}>GĐ</div>
+                      },
+                      {
+                        value: 'role_assistant',
+                        label: t('Tất cả Trợ lý (Assistant)'),
+                        icon: <div style={{ width: 26, height: 26, borderRadius: '50%', background: roleBadges.role_assistant.bg, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '0.7rem' }}>TL</div>
+                      },
+                      {
+                        value: 'role_accountant',
+                        label: t('Tất cả Kế toán (Accountant)'),
+                        icon: <div style={{ width: 26, height: 26, borderRadius: '50%', background: roleBadges.role_accountant.bg, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '0.7rem' }}>KT</div>
+                      },
+                      {
+                        value: 'role_superadmin',
+                        label: t('Tất cả Super Admin'),
+                        icon: <div style={{ width: 26, height: 26, borderRadius: '50%', background: roleBadges.role_superadmin.bg, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '0.7rem' }}>AD</div>
+                      }
+                    );
+
+                    // 2. Specific users/accounts - ONLY MANAGER LEVEL AND ABOVE (Filter out regular Sale staff)
+                    if (Array.isArray(accounts) && accounts.length > 0) {
+                      const qualifiedAccounts = accounts.filter((acc: any) => {
+                        const r = (acc.role || '').toLowerCase().trim();
+                        // Exclude non-manager / standard sale staff
+                        return r !== 'sale' && r !== 'employee' && r !== 'staff';
+                      });
+
+                      qualifiedAccounts.forEach((acc: any) => {
+                        const nameStr = acc.name || acc.username || `Tài khoản #${acc.id}`;
+                        const roleStr = acc.role ? ` [${acc.role.toUpperCase()}]` : '';
+                        const avatarUrl = acc.avatar || acc.avatar_url || undefined;
+                        approverOptions.push({
+                          value: `user_${acc.id}`,
+                          label: `${nameStr}${roleStr}`,
+                          avatar: avatarUrl
+                        });
+                      });
+                    }
+
+                    const categories = [
+                      { key: 'attendance', title: t('1. Chấm công, Đi trễ & Làm bổ sung'), desc: t('Duyệt lý do đi trễ, làm bù và cập nhật bổ sung chấm công'), icon: <Clock size={16} /> },
+                      { key: 'leave', title: t('2. Xin nghỉ phép cá nhân'), desc: t('Duyệt đơn xin nghỉ phép, tạm ngưng hoạt động của Sale'), icon: <Calendar size={16} /> },
+                      { key: 'shift_registration', title: t('3. Đăng ký Ca trực (Đêm, Cuối tuần & Lễ)'), desc: t('Phê duyệt ca trực nhận data ngày nghỉ, đêm và dịp lễ/Tết'), icon: <Zap size={16} /> },
+                      { key: 'cooperation', title: t('4. Phiếu Hợp tác & Chia hoa hồng'), desc: t('Duyệt phiếu chia tỷ lệ phần trăm hoa hồng và hợp tác chéo'), icon: <Users size={16} /> },
+                      { key: 'expense', title: t('5. Đề xuất Chi phí & Thu chi'), desc: t('Duyệt đề xuất chi phí dự án, mua sắm phân tầng theo số tiền tùy chỉnh'), icon: <DollarSign size={16} />, isExpense: true },
+                      { key: 'deposit', title: t('6. Duyệt Phiếu Đặt cọc & Giao dịch'), desc: t('Xác nhận thông tin đặt cọc giữ chỗ, đổi căn và phiếu cọc'), icon: <FileText size={16} /> },
+                      { key: 'ticket', title: t('7. Ticket Bù data & Yêu cầu Hỗ trợ'), desc: t('Duyệt ticket khiếu nại data lỗi và cấp bù lượt nhận lead'), icon: <LifeBuoy size={16} /> },
+                      { key: 'lead_transfer', title: t('8. Yêu cầu Nhả Data / Chuyển chủ lead'), desc: t('Duyệt nhả khách hàng về Kho chung hoặc điều chuyển chủ sở hữu'), icon: <RefreshCw size={16} /> },
+                      { key: 'quote_invoice', title: t('9. Báo giá & Hóa đơn giá trị lớn'), desc: t('Duyệt tạo báo giá đặc biệt hoặc hóa đơn điều chỉnh'), icon: <FileSpreadsheet size={16} /> }
+                    ];
+
+                    return categories.map((category) => {
+                      const cfg = approvalMatrixConfig[category.key] || { enable_team_leader: false, designated_roles: ['manager'], notify_admin: false };
+                      const selectedApprovers = cfg.designated_approvers || (cfg.designated_roles ? cfg.designated_roles.map((r: string) => r.startsWith('user_') || r.startsWith('role_') ? r : `role_${r}`) : ['role_manager']);
+
+                      return (
+                        <div
+                          key={category.key}
+                          style={{
+                            background: 'var(--color-bg-light)',
+                            padding: '1.25rem',
+                            borderRadius: '12px',
+                            border: '1px solid var(--color-border-light)',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '1rem'
+                          }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '1rem' }}>
+                            <div>
+                              <div style={{ fontSize: '0.9375rem', fontWeight: 700, color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <span style={{ color: 'var(--color-primary)', display: 'flex' }}>{category.icon}</span>
+                                {category.title}
+                              </div>
+                              <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '2px' }}>
+                                {category.desc}
+                              </div>
+                            </div>
+                          </div>
+
+                          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1.35fr 1fr', gap: '1.25rem', borderTop: '1px dashed var(--color-border-light)', paddingTop: '1rem' }}>
+                            {/* Toggle 1: Enable Team Leader */}
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', background: 'var(--color-surface)', padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--color-border-light)' }}>
+                              <div>
+                                <div style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text)' }}>
+                                  {t('Ưu tiên Trưởng nhóm/Team Leader duyệt')}
+                                </div>
+                                <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', marginTop: '2px' }}>
+                                  {t('Nếu nhân viên thuộc Team, Trưởng nhóm sẽ nhận thông báo & tự động có quyền duyệt')}
+                                </div>
+                              </div>
+                              <ToggleSwitch
+                                checked={Boolean(cfg.enable_team_leader)}
+                                onChange={(val) => {
+                                  setApprovalMatrixConfig(prev => ({
+                                    ...prev,
+                                    [category.key]: { ...(prev[category.key] || {}), enable_team_leader: val }
+                                  }));
+                                }}
+                              />
+                            </div>
+
+                            {/* Specific Approvers Selector with Avatars OUTSIDE + "+ Thêm" button */}
+                            <div style={{ background: 'var(--color-surface)', padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--color-border-light)', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                              <label style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text)' }}>
+                                {t('Cấp duyệt Backup')}
+                              </label>
+
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', minHeight: '34px', paddingTop: '2px' }}>
+                                {/* Render selected avatars OUTSIDE without X badge */}
+                                {approverOptions.filter(o => selectedApprovers.includes(String(o.value))).map(opt => (
+                                  <div
+                                    key={String(opt.value)}
+                                    title={`${t(opt.label)} (${t('Click để xóa')})`}
+                                    onClick={() => {
+                                      const newVal = selectedApprovers.filter(v => String(v) !== String(opt.value));
+                                      setApprovalMatrixConfig(prev => ({
+                                        ...prev,
+                                        [category.key]: {
+                                          ...(prev[category.key] || {}),
+                                          designated_approvers: newVal,
+                                          designated_roles: newVal.filter(v => v.startsWith('role_')).map(v => v.replace('role_', '')),
+                                          designated_user_ids: newVal.filter(v => v.startsWith('user_')).map(v => v.replace('user_', ''))
+                                        }
+                                      }));
+                                    }}
+                                    style={{
+                                      cursor: 'pointer',
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'center',
+                                      transition: 'transform 0.15s, opacity 0.15s'
+                                    }}
+                                    onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.1)'}
+                                    onMouseLeave={e => e.currentTarget.style.transform = 'scale(1.0)'}
+                                  >
+                                    {opt.avatar ? (
+                                      <Avatar src={opt.avatar} name={t(opt.label)} size={32} />
+                                    ) : roleBadges[opt.value] ? (
+                                      <div style={{
+                                        width: 32,
+                                        height: 32,
+                                        borderRadius: '50%',
+                                        background: roleBadges[opt.value].bg,
+                                        color: '#ffffff',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        fontWeight: 800,
+                                        fontSize: '0.725rem',
+                                        letterSpacing: '-0.5px',
+                                        boxShadow: '0 2px 5px rgba(0,0,0,0.15)',
+                                        border: '1.5px solid var(--color-surface, #ffffff)'
+                                      }}>
+                                        {roleBadges[opt.value].text}
+                                      </div>
+                                    ) : (
+                                      <Avatar name={t(opt.label)} size={32} />
+                                    )}
+                                  </div>
+                                ))}
+
+                                {/* + Thêm button trigger */}
+                                <CustomSelect
+                                  options={approverOptions.filter(o => !selectedApprovers.includes(String(o.value)))}
+                                  value=""
+                                  onChange={(addVal: string) => {
+                                    if (addVal) {
+                                      const newVal = [...selectedApprovers, String(addVal)];
+                                      setApprovalMatrixConfig(prev => ({
+                                        ...prev,
+                                        [category.key]: {
+                                          ...(prev[category.key] || {}),
+                                          designated_approvers: newVal,
+                                          designated_roles: newVal.filter(v => v.startsWith('role_')).map(v => v.replace('role_', '')),
+                                          designated_user_ids: newVal.filter(v => v.startsWith('user_')).map(v => v.replace('user_', ''))
+                                        }
+                                      }));
+                                    }
+                                  }}
+                                  placeholder={t('+ Thêm')}
+                                  searchable={true}
+                                  showAvatars={true}
+                                  width="100px"
+                                  size="sm"
+                                />
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Dynamic Non-hardcoded Money Tiers for Expenses */}
+                          {category.isExpense && (
+                            <div style={{ background: 'var(--color-surface)', padding: '14px', borderRadius: '10px', border: '1px solid var(--color-border-light)', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
+                                <div>
+                                  <div style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-primary)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                    <DollarSign size={16} />
+                                    {t('Cấu hình Hạn mức Số tiền & Người duyệt Chi phí (Tùy chỉnh linh hoạt)')}
+                                  </div>
+                                  <div style={{ fontSize: '0.725rem', color: 'var(--color-text-muted)', marginTop: '2px' }}>
+                                    {t('Quy định số tiền tối đa cho từng mức chi phí và chọn người/vai trò duyệt riêng cho mỗi mức.')}
+                                  </div>
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const currentTiers = cfg.money_tiers || [];
+                                    const newTier = {
+                                      id: Date.now(),
+                                      max_amount: 5000000,
+                                      approvers: ['team_leader']
+                                    };
+                                    setApprovalMatrixConfig(prev => ({
+                                      ...prev,
+                                      expense: {
+                                        ...(prev.expense || {}),
+                                        money_tiers: [...currentTiers, newTier]
+                                      }
+                                    }));
+                                  }}
+                                  style={{
+                                    background: 'var(--color-primary-light)',
+                                    color: 'var(--color-primary)',
+                                    border: '1px solid rgba(59, 130, 246, 0.3)',
+                                    padding: '6px 14px',
+                                    borderRadius: '8px',
+                                    fontWeight: 700,
+                                    fontSize: '0.75rem',
+                                    cursor: 'pointer',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: 4
+                                  }}
+                                >
+                                  <Plus size={14} /> {t('Thêm Hạn mức')}
+                                </button>
+                              </div>
+
+                              {/* Dynamic Tiers List */}
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                {(cfg.money_tiers || [
+                                  { id: 1, max_amount: 5000000, approvers: ['team_leader'] },
+                                  { id: 2, max_amount: 20000000, approvers: ['role_director', 'role_accountant'] },
+                                  { id: 3, max_amount: null, approvers: ['role_superadmin'] }
+                                ]).map((tier: any, tIdx: number) => (
+                                  <div
+                                    key={tier.id || tIdx}
+                                    style={{
+                                      background: 'var(--color-bg)',
+                                      padding: '10px 14px',
+                                      borderRadius: '8px',
+                                      border: '1px solid var(--color-border)',
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      gap: '12px',
+                                      flexWrap: isMobile ? 'wrap' : 'nowrap'
+                                    }}
+                                  >
+                                    <div style={{ minWidth: '130px', fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text)' }}>
+                                      {tier.max_amount === null || tier.max_amount === undefined || tier.max_amount === '' ? (
+                                        <span style={{ color: 'var(--color-danger)' }}>Vượt mọi ngưỡng:</span>
+                                      ) : (
+                                        <span>Số tiền ≤ (VNĐ):</span>
+                                      )}
+                                    </div>
+                                    <input
+                                      type="number"
+                                      placeholder={t('Để trống nếu không giới hạn')}
+                                      value={tier.max_amount ?? ''}
+                                      onChange={(e) => {
+                                        const val = e.target.value === '' ? null : Number(e.target.value);
+                                        const currentTiers = cfg.money_tiers || [
+                                          { id: 1, max_amount: 5000000, approvers: ['team_leader'] },
+                                          { id: 2, max_amount: 20000000, approvers: ['role_director', 'role_accountant'] },
+                                          { id: 3, max_amount: null, approvers: ['role_superadmin'] }
+                                        ];
+                                        const updatedTiers = [...currentTiers];
+                                        updatedTiers[tIdx] = { ...updatedTiers[tIdx], max_amount: val };
+                                        setApprovalMatrixConfig(prev => ({
+                                          ...prev,
+                                          expense: { ...(prev.expense || {}), money_tiers: updatedTiers }
+                                        }));
+                                      }}
+                                      style={{
+                                        width: '180px',
+                                        padding: '6px 10px',
+                                        borderRadius: '6px',
+                                        border: '1px solid var(--color-border)',
+                                        fontSize: '0.8125rem',
+                                        fontWeight: 700,
+                                        background: 'var(--color-surface)',
+                                        color: 'var(--color-text)'
+                                      }}
+                                    />
+                                    <div style={{ flex: 1, minWidth: '220px' }}>
+                                      <CustomSelect
+                                        multiple={true}
+                                        searchable={true}
+                                        options={[
+                                          { value: 'team_leader', label: '👑 Trưởng nhóm trực tiếp (Team Leader)' },
+                                          ...approverOptions
+                                        ]}
+                                        value={tier.approvers || (tier.approver_type === 'team_leader' ? ['team_leader'] : (tier.roles ? tier.roles.map((r: string) => `role_${r}`) : ['role_superadmin']))}
+                                        onChange={(val: string[]) => {
+                                          const currentTiers = cfg.money_tiers || [
+                                            { id: 1, max_amount: 5000000, approvers: ['team_leader'] },
+                                            { id: 2, max_amount: 20000000, approvers: ['role_director', 'role_accountant'] },
+                                            { id: 3, max_amount: null, approvers: ['role_superadmin'] }
+                                          ];
+                                          const updatedTiers = [...currentTiers];
+                                          updatedTiers[tIdx] = {
+                                            ...updatedTiers[tIdx],
+                                            approvers: val,
+                                            roles: val.filter(v => v.startsWith('role_')).map(v => v.replace('role_', '')),
+                                            user_ids: val.filter(v => v.startsWith('user_')).map(v => v.replace('user_', '')),
+                                            approver_type: val.includes('team_leader') ? 'team_leader' : 'designated'
+                                          };
+                                          setApprovalMatrixConfig(prev => ({
+                                            ...prev,
+                                            expense: { ...(prev.expense || {}), money_tiers: updatedTiers }
+                                          }));
+                                        }}
+                                        placeholder={t('Chọn người/vai trò duyệt hạn mức này...')}
+                                        width="100%"
+                                      />
+                                    </div>
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        const currentTiers = cfg.money_tiers || [
+                                          { id: 1, max_amount: 5000000, approvers: ['team_leader'] },
+                                          { id: 2, max_amount: 20000000, approvers: ['role_director', 'role_accountant'] },
+                                          { id: 3, max_amount: null, approvers: ['role_superadmin'] }
+                                        ];
+                                        const updatedTiers = currentTiers.filter((_: any, idx: number) => idx !== tIdx);
+                                        setApprovalMatrixConfig(prev => ({
+                                          ...prev,
+                                          expense: { ...(prev.expense || {}), money_tiers: updatedTiers }
+                                        }));
+                                      }}
+                                      style={{
+                                        background: 'transparent',
+                                        color: 'var(--color-danger)',
+                                        border: 'none',
+                                        cursor: 'pointer',
+                                        padding: '6px',
+                                        borderRadius: '6px',
+                                        display: 'flex',
+                                        alignItems: 'center'
+                                      }}
+                                      title={t('Xóa hạn mức')}
+                                    >
+                                      <Trash2 size={16} />
+                                    </button>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    });
+                  })()}
                 </div>
               </div>
             </div>

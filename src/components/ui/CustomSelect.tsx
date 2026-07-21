@@ -30,6 +30,7 @@ interface CustomSelectProps {
   label?: string;
   searchable?: boolean;
   showAvatars?: boolean;
+  avatarsOnly?: boolean;
   width?: string | number;
   direction?: 'up' | 'down';
   multiple?: boolean;
@@ -46,6 +47,7 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
   label,
   searchable = false,
   showAvatars = false,
+  avatarsOnly = false,
   width,
   direction = 'down',
   multiple = false,
@@ -151,27 +153,102 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
       }
       const selectedOpts = options.filter(o => arr.some(v => String(v) === String(o.value)));
       if (selectedOpts.length > 0) {
+        if (avatarsOnly) {
+          return (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap', padding: '2px 0' }}>
+              {selectedOpts.map(opt => (
+                <div
+                  key={String(opt.value)}
+                  title={t(opt.label)}
+                  style={{
+                    position: 'relative',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    cursor: 'pointer'
+                  }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleSelect(opt, e);
+                  }}
+                >
+                  {opt.avatar ? (
+                    <Avatar src={opt.avatar} name={t(opt.label)} size={26} />
+                  ) : opt.icon ? (
+                    <div style={{
+                      width: 26,
+                      height: 26,
+                      borderRadius: '50%',
+                      background: 'var(--color-primary-light, #eff6ff)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      border: '1px solid var(--color-border-light)'
+                    }}>
+                      {opt.icon}
+                    </div>
+                  ) : (
+                    <Avatar name={t(opt.label)} size={26} />
+                  )}
+                  <span
+                    style={{
+                      position: 'absolute',
+                      top: '-3px',
+                      right: '-3px',
+                      width: '14px',
+                      height: '14px',
+                      borderRadius: '50%',
+                      background: '#ef4444',
+                      color: '#ffffff',
+                      fontSize: '10px',
+                      fontWeight: 800,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      border: '1.5px solid var(--color-surface, #ffffff)',
+                      boxShadow: '0 1px 2px rgba(0,0,0,0.15)'
+                    }}
+                  >
+                    ×
+                  </span>
+                </div>
+              ))}
+            </div>
+          );
+        }
+
         return (
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', alignItems: 'center', width: '100%', padding: '2px 0' }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px', alignItems: 'center', width: '100%', padding: '2px 0' }}>
             {selectedOpts.map(opt => (
               <span
                 key={String(opt.value)}
                 style={{
                   display: 'inline-flex',
                   alignItems: 'center',
-                  gap: '4px',
-                  padding: '2px 8px',
-                  borderRadius: '6px',
-                  background: 'var(--color-primary-light)',
-                  color: 'var(--color-primary)',
+                  gap: '6px',
+                  padding: showAvatars ? '2px 10px 2px 4px' : '3px 10px',
+                  borderRadius: '20px',
+                  background: 'var(--color-bg-light, #f8fafc)',
+                  border: '1px solid var(--color-border-light, #e2e8f0)',
+                  color: 'var(--color-text, #0f172a)',
                   fontSize: '0.75rem',
                   fontWeight: 600,
                   whiteSpace: 'nowrap',
-                  lineHeight: 1.4
+                  lineHeight: 1.3,
+                  boxShadow: '0 1px 2px rgba(0,0,0,0.03)'
                 }}
               >
-                {!showAvatars && opt.icon && <span style={{ display: 'flex', fontSize: '12px' }}>{opt.icon}</span>}
-                <span>{t(opt.label)}</span>
+                {showAvatars ? (
+                  opt.avatar ? (
+                    <Avatar src={opt.avatar} name={t(opt.label)} size={20} />
+                  ) : opt.icon ? (
+                    <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{opt.icon}</span>
+                  ) : (
+                    <Avatar name={t(opt.label)} size={20} />
+                  )
+                ) : (
+                  opt.icon && <span style={{ display: 'flex', fontSize: '12px' }}>{opt.icon}</span>
+                )}
+                <span style={{ color: 'var(--color-text, #0f172a)', fontWeight: 600 }}>{t(opt.label)}</span>
                 <span
                   onClick={(e) => {
                     e.stopPropagation();
@@ -179,14 +256,27 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
                   }}
                   style={{
                     cursor: 'pointer',
-                    opacity: 0.7,
+                    color: 'var(--color-text-muted, #64748b)',
                     marginLeft: '2px',
-                    fontSize: '0.85rem',
-                    fontWeight: 800,
-                    lineHeight: 1
+                    fontSize: '0.9rem',
+                    fontWeight: 700,
+                    lineHeight: 1,
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    width: '14px',
+                    height: '14px',
+                    borderRadius: '50%',
+                    transition: 'all 0.15s'
                   }}
-                  onMouseEnter={e => e.currentTarget.style.opacity = '1'}
-                  onMouseLeave={e => e.currentTarget.style.opacity = '0.7'}
+                  onMouseEnter={e => {
+                    e.currentTarget.style.color = 'var(--color-danger)';
+                    e.currentTarget.style.background = 'rgba(239, 68, 68, 0.1)';
+                  }}
+                  onMouseLeave={e => {
+                    e.currentTarget.style.color = 'var(--color-text-muted, #64748b)';
+                    e.currentTarget.style.background = 'transparent';
+                  }}
                 >
                   ×
                 </span>
@@ -304,11 +394,13 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
                     {showAvatars ? (
                       option.value === '' ? (
                         <div style={{ width: 24, height: 24, borderRadius: '50%', background: 'var(--color-border-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)', flexShrink: 0 }}>?</div>
+                      ) : option.icon ? (
+                        <span style={{ display: 'flex', flexShrink: 0 }}>{option.icon}</span>
                       ) : (
                         <Avatar src={option.avatar} name={t(option.label)} size="sm" />
                       )
                     ) : (
-                      option.icon && <span style={{ display: 'flex' }}>{option.icon}</span>
+                      option.icon && <span style={{ display: 'flex', flexShrink: 0 }}>{option.icon}</span>
                     )}
                     <div className={styles.optionText} style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 6, width: '100%', justifyContent: 'space-between', flex: 1 }}>
                       <div style={{ display: 'flex', flexDirection: 'column' }}>

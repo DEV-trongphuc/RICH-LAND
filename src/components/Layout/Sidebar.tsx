@@ -4,6 +4,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { useEffect, useState, useRef, Fragment } from 'react';
 import { fetchAPI } from '../../utils/api';
+import { hasModuleApprovalAccess } from '../../utils/approvalPermissions';
 
 export interface SidebarItem {
   name: string;
@@ -236,10 +237,31 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileC
         { name: 'Kho Databank', href: '/databank', icon: Layers, hideForRoles: ['viewer'] }
       ];
     }
+    const getModuleKeyForHref = (href: string): string | null => {
+      if (href.startsWith('/attendance')) return 'attendance';
+      if (href.startsWith('/expenses')) return 'expense';
+      if (href.startsWith('/deposits')) return 'deposit';
+      if (href.startsWith('/cooperation-slips')) return 'cooperation';
+      if (href.startsWith('/quotes') || href.startsWith('/invoices')) return 'quote_invoice';
+      if (href.startsWith('/tickets')) return 'ticket';
+      return null;
+    };
+
     const filteredItems = items.filter((item: any) => {
       const role = user?.role as string;
       const isAdmin = role === 'admin' || role === 'superadmin' || role === 'super_admin';
       const isManagerOrAdmin = isAdmin || role === 'manager' || role === 'director';
+
+      // For Admin and Director, hide personal 'Chấm công' item (they only need 'Quản lý chấm công')
+      if (item.name === 'Chấm công' && ['admin', 'superadmin', 'super_admin', 'director'].includes(role)) {
+        return false;
+      }
+
+      // Dynamic Unlocking for Approvers / Team Leaders
+      const moduleKey = getModuleKeyForHref(item.href);
+      if (moduleKey && hasModuleApprovalAccess(user, moduleKey)) {
+        return true;
+      }
 
       if (item.adminOnly && !isManagerOrAdmin) {
         return false;

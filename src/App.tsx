@@ -11,6 +11,7 @@ import { getDefaultDateFilter } from './utils/api';
 import { GlobalConfirmModal } from './components/ui/GlobalConfirmModal';
 import { QRCodeCallModal } from './components/ui/QRCodeCallModal';
 import { ProfileModal } from './components/ProfileModal';
+import { hasModuleApprovalAccess } from './utils/approvalPermissions';
 
 
 // Lazy load all pages for Code Splitting
@@ -95,23 +96,35 @@ const AppTabs = () => {
       return <Navigate to="/" replace />;
     }
   } else if (currentPath === '/consultants') {
-    if (!['admin', 'superadmin', 'super_admin', 'manager', 'director', 'assistant', 'sale', 'sales'].includes(user?.role || '')) {
+    if (!['admin', 'superadmin', 'super_admin', 'manager', 'director', 'assistant', 'sale', 'sales'].includes(user?.role || '') && !hasModuleApprovalAccess(user, 'attendance')) {
       return <Navigate to="/" replace />;
     }
-  } else if (currentPath === '/invoices' || currentPath === '/deposits' || currentPath === '/attendance') {
-    if ((user?.role as string) === 'viewer') {
+  } else if (currentPath === '/attendance') {
+    if ((user?.role as string) === 'viewer' && !hasModuleApprovalAccess(user, 'attendance')) {
+      return <Navigate to="/" replace />;
+    }
+  } else if (currentPath === '/deposits') {
+    if ((user?.role as string) === 'viewer' && !hasModuleApprovalAccess(user, 'deposit')) {
+      return <Navigate to="/" replace />;
+    }
+  } else if (currentPath === '/cooperation-slips') {
+    if ((user?.role as string) === 'viewer' && !hasModuleApprovalAccess(user, 'cooperation')) {
+      return <Navigate to="/" replace />;
+    }
+  } else if (currentPath === '/invoices') {
+    if ((user?.role as string) === 'viewer' && !hasModuleApprovalAccess(user, 'quote_invoice')) {
       return <Navigate to="/" replace />;
     }
   } else if (currentPath === '/quotes') {
-    if (!['admin', 'superadmin', 'super_admin', 'manager', 'director', 'assistant', 'sale'].includes(user?.role || '')) {
+    if (!['admin', 'superadmin', 'super_admin', 'manager', 'director', 'assistant', 'sale'].includes(user?.role || '') && !hasModuleApprovalAccess(user, 'quote_invoice')) {
       return <Navigate to="/" replace />;
     }
   } else if (currentPath === '/expenses') {
-    if (!['admin', 'superadmin', 'super_admin', 'manager', 'director', 'assistant', 'sale', 'sales'].includes(user?.role || '')) {
+    if (!['admin', 'superadmin', 'super_admin', 'manager', 'director', 'assistant', 'sale', 'sales'].includes(user?.role || '') && !hasModuleApprovalAccess(user, 'expense')) {
       return <Navigate to="/" replace />;
     }
   } else if (currentPath === '/tickets') {
-    if (!['admin', 'superadmin', 'super_admin', 'manager', 'director', 'assistant', 'sale', 'sales'].includes(user?.role || '')) {
+    if (!['admin', 'superadmin', 'super_admin', 'manager', 'director', 'assistant', 'sale', 'sales'].includes(user?.role || '') && !hasModuleApprovalAccess(user, 'ticket')) {
       return <Navigate to="/" replace />;
     }
   } else if (currentPath === '/fair-share') {
