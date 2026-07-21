@@ -347,11 +347,21 @@ class CheckInController {
                     $insertNotif->execute([$adminId, $auth['tenant_id'], $title, $body, $type, $link]);
                 }
 
-                // Fetch Admin/Manager details for notification sending
+                // Fetch Admin/Manager details and group settings
                 $inPlaceholders = implode(',', array_fill(0, count($admins), '?'));
                 $stmtDetails = $this->db->prepare("SELECT email, zalo_chat_id, telegram_chat_id, full_name FROM users WHERE id IN ($inPlaceholders)");
                 $stmtDetails->execute($admins);
                 $adminDetails = $stmtDetails->fetchAll(PDO::FETCH_ASSOC);
+
+                $stmtGroupSettings = $this->db->prepare("SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('zalo_admin_group_chat_id', 'zalo_notify_only_group', 'telegram_admin_group_chat_id', 'telegram_notify_only_group')");
+                $stmtGroupSettings->execute();
+                $gSettings = $stmtGroupSettings->fetchAll(PDO::FETCH_KEY_PAIR);
+
+                $zaloGroupChatId = trim((string)($gSettings['zalo_admin_group_chat_id'] ?? ''));
+                $zaloOnlyGroup = ($gSettings['zalo_notify_only_group'] ?? '0') === '1';
+
+                $tgGroupChatId = trim((string)($gSettings['telegram_admin_group_chat_id'] ?? ''));
+                $tgOnlyGroup = ($gSettings['telegram_notify_only_group'] ?? '0') === '1';
 
                 // ==================== CHANNEL 1: ZALO BOT (INDEPENDENT) ====================
                 try {
@@ -362,17 +372,14 @@ class CheckInController {
 
                     if ($botToken) {
                         $zaloChatIds = [];
-                        // Group Chat ID
-                        $stmtZaloGroup = $this->db->prepare("SELECT setting_value FROM system_settings WHERE setting_key IN ('zalo_admin_group_chat_id', 'zalo_group_chat_id') LIMIT 1");
-                        $stmtZaloGroup->execute();
-                        $zaloGroupChatId = trim((string)$stmtZaloGroup->fetchColumn());
                         if (!empty($zaloGroupChatId)) {
                             $zaloChatIds[] = $zaloGroupChatId;
                         }
-                        // Individual Chat IDs
-                        foreach ($adminDetails as $adm) {
-                            if (!empty($adm['zalo_chat_id'])) {
-                                $zaloChatIds[] = trim($adm['zalo_chat_id']);
+                        if (!$zaloOnlyGroup) {
+                            foreach ($adminDetails as $adm) {
+                                if (!empty($adm['zalo_chat_id'])) {
+                                    $zaloChatIds[] = trim($adm['zalo_chat_id']);
+                                }
                             }
                         }
 
@@ -417,17 +424,14 @@ class CheckInController {
 
                     if ($tgToken) {
                         $tgChatIds = [];
-                        // Group Chat ID
-                        $stmtTgGroup = $this->db->prepare("SELECT setting_value FROM system_settings WHERE setting_key = 'telegram_admin_group_chat_id' LIMIT 1");
-                        $stmtTgGroup->execute();
-                        $tgGroupChatId = trim((string)$stmtTgGroup->fetchColumn());
                         if (!empty($tgGroupChatId)) {
                             $tgChatIds[] = $tgGroupChatId;
                         }
-                        // Individual Chat IDs
-                        foreach ($adminDetails as $adm) {
-                            if (!empty($adm['telegram_chat_id'])) {
-                                $tgChatIds[] = trim($adm['telegram_chat_id']);
+                        if (!$tgOnlyGroup) {
+                            foreach ($adminDetails as $adm) {
+                                if (!empty($adm['telegram_chat_id'])) {
+                                    $tgChatIds[] = trim($adm['telegram_chat_id']);
+                                }
                             }
                         }
 
@@ -617,8 +621,8 @@ class CheckInController {
 
                     if ($botToken) {
                         $zTargets = [];
-                        // Group Chat ID
-                        $stmtZGroup = $this->db->prepare("SELECT setting_value FROM system_settings WHERE setting_key IN ('zalo_admin_group_chat_id', 'zalo_group_chat_id', 'zalo_group') AND setting_value IS NOT NULL AND TRIM(setting_value) != '' LIMIT 1");
+                        // Group Chat ID (only if set)
+                        $stmtZGroup = $this->db->prepare("SELECT setting_value FROM system_settings WHERE setting_key IN ('zalo_admin_group_chat_id', 'zalo_group_chat_id') AND setting_value IS NOT NULL AND TRIM(setting_value) != '' LIMIT 1");
                         $stmtZGroup->execute();
                         $zGroupChatId = trim((string)$stmtZGroup->fetchColumn());
                         if (!empty($zGroupChatId)) {
