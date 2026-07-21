@@ -10,6 +10,7 @@ import { SIDEBAR_GROUPS } from './Sidebar';
 import { Avatar } from '../ui/Avatar';
 import { useNavigate } from 'react-router-dom';
 import { CustomModal } from '../ui/CustomModal';
+import { NotificationSettingsModal } from '../ui/NotificationSettingsModal';
 import { fetchAPI } from '../../utils/api';
 import vnFlag from '../../assets/vn.svg';
 import usFlag from '../../assets/us.svg';
@@ -211,6 +212,7 @@ export const Header = ({
   const [notifFilter, setNotifFilter] = useState<'all' | 'unread' | 'read'>('all');
 
   const [showNotifSettings, setShowNotifSettings] = useState(false);
+  const [isMatrixModalOpen, setIsMatrixModalOpen] = useState(false);
   const [notifPrefs, setNotifPrefs] = useState<any>({
     email_warning: 1,
     email_mention: 1,
@@ -2153,6 +2155,62 @@ export const Header = ({
               </div>
               
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', overflowY: 'auto', maxHeight: '55vh', paddingRight: '4px' }} className="custom-scrollbar">
+                {/* Advanced Matrix Control Button */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsNotifModalOpen(false);
+                    setIsMatrixModalOpen(true);
+                  }}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    padding: '14px 16px',
+                    borderRadius: '12px',
+                    background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)',
+                    color: 'white',
+                    border: '1px solid #334155',
+                    gap: '1rem',
+                    boxShadow: '0 4px 12px rgba(15, 23, 42, 0.15)',
+                    marginBottom: '6px',
+                    cursor: 'pointer',
+                    width: '100%'
+                  }}
+                >
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', textAlign: 'left' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span style={{ fontSize: '0.9rem', fontWeight: 700, color: '#f8fafc' }}>
+                        🎛️ Ma Trận Cấu Hình Kênh Thông Báo
+                      </span>
+                      <span style={{
+                        fontSize: '0.625rem',
+                        fontWeight: 700,
+                        color: '#38bdf8',
+                        background: 'rgba(56, 189, 248, 0.15)',
+                        padding: '2px 6px',
+                        borderRadius: '10px',
+                        textTransform: 'uppercase'
+                      }}>
+                        Nâng cao
+                      </span>
+                    </div>
+                    <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>
+                      Cài đặt nguồn tổng và tùy chỉnh từng sự kiện nhận qua Zalo, Tele hay Email
+                    </span>
+                  </div>
+                  <span style={{
+                    fontSize: '0.75rem',
+                    fontWeight: 700,
+                    background: '#38bdf8',
+                    color: '#0f172a',
+                    padding: '6px 12px',
+                    borderRadius: '8px',
+                    whiteSpace: 'nowrap'
+                  }}>
+                    Mở Ma Trận
+                  </span>
+                </button>
                 {/* Browser Notifications Preference */}
                 <div
                   style={{
@@ -2760,6 +2818,12 @@ export const Header = ({
           )}
         </div>
       </CustomModal>
+
+      {/* Advanced Matrix Notification Settings Modal */}
+      <NotificationSettingsModal
+        isOpen={isMatrixModalOpen}
+        onClose={() => setIsMatrixModalOpen(false)}
+      />
     </header>
   );
 };

@@ -46,6 +46,37 @@ class NotificationService {
                 error_log("NotificationService Bell Error: " . $bellEx->getMessage());
             }
 
+            // Fetch recipients' matrix configurations from database
+            $recipientIds = array_filter(array_map(fn($r) => (int)($r['id'] ?? 0), $recipients));
+            $userConfigs = [];
+            if (!empty($recipientIds)) {
+                try {
+                    $inPlace = implode(',', array_fill(0, count($recipientIds), '?'));
+                    $stmtCfg = $db->prepare("SELECT user_id, matrix_config FROM user_notification_settings WHERE user_id IN ($inPlace)");
+                    $stmtCfg->execute(array_values($recipientIds));
+                    while ($cRow = $stmtCfg->fetch(PDO::FETCH_ASSOC)) {
+                        if (!empty($cRow['matrix_config'])) {
+                            $userConfigs[(int)$cRow['user_id']] = json_decode($cRow['matrix_config'], true);
+                        }
+                    }
+                } catch (\Throwable $cfgEx) {}
+            }
+
+            // Helper lambda to check if a specific channel is enabled for a user for this eventType
+            $isChannelEnabled = function(int $userId, string $channel) use ($userConfigs, $eventType): bool {
+                if (!isset($userConfigs[$userId][$eventType])) {
+                    return true; // Default behavior: Enabled
+                }
+                $evtCfg = $userConfigs[$userId][$eventType];
+                if (isset($evtCfg['master']) && !$evtCfg['master']) {
+                    return false; // Master switch OFF for this event
+                }
+                if (isset($evtCfg[$channel])) {
+                    return (bool)$evtCfg[$channel];
+                }
+                return true;
+            };
+
             // Fetch system settings for Zalo and Telegram group configuration
             $stmtGSettings = $db->prepare("SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('zalo_admin_group_chat_id', 'zalo_notify_only_group', 'telegram_admin_group_chat_id', 'telegram_notify_only_group', 'zalo_bot_token', 'telegram_bot_token')");
             $stmtGSettings->execute();
@@ -69,10 +100,11 @@ class NotificationService {
                     if (!empty($zaloGroupChatId)) {
                         $zaloChatIds[] = $zaloGroupChatId;
                     }
-                    // Individual Chat IDs (if not strictly only_group)
+                    // Individual Chat IDs (if not strictly only_group and channel enabled by user)
                     if (!$zaloOnlyGroup) {
                         foreach ($recipients as $rec) {
-                            if (!empty($rec['zalo_chat_id'])) {
+                            $rId = (int)($rec['id'] ?? 0);
+                            if (!empty($rec['zalo_chat_id']) && $isChannelEnabled($rId, 'zalo')) {
                                 $zaloChatIds[] = trim($rec['zalo_chat_id']);
                             }
                         }
@@ -102,10 +134,11 @@ class NotificationService {
                     if (!empty($tgGroupChatId)) {
                         $tgChatIds[] = $tgGroupChatId;
                     }
-                    // Individual Chat IDs (if not strictly only_group)
+                    // Individual Chat IDs (if not strictly only_group and channel enabled by user)
                     if (!$tgOnlyGroup) {
                         foreach ($recipients as $rec) {
-                            if (!empty($rec['telegram_chat_id'])) {
+                            $rId = (int)($rec['id'] ?? 0);
+                            if (!empty($rec['telegram_chat_id']) && $isChannelEnabled($rId, 'telegram')) {
                                 $tgChatIds[] = trim($rec['telegram_chat_id']);
                             }
                         }
@@ -130,7 +163,8 @@ class NotificationService {
                 if (!empty($emailSubject) && !empty($emailContent)) {
                     require_once __DIR__ . '/mailer.php';
                     foreach ($recipients as $rec) {
-                        if (!empty($rec['email'])) {
+                        $rId = (int)($rec['id'] ?? 0);
+                        if (!empty($rec['email']) && $isChannelEnabled($rId, 'email')) {
                             try {
                                 sendEmailNotification($rec['email'], $emailSubject, $emailTitle, $emailContent, '', true);
                             } catch (\Throwable $ee) {

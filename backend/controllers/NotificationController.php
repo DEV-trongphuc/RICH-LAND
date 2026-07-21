@@ -53,32 +53,58 @@ class NotificationController {
     }
 
     public function getSettings(array $auth): void {
+        // Ensure matrix_config column exists in user_notification_settings table
+        try {
+            $this->db->exec("ALTER TABLE user_notification_settings ADD COLUMN matrix_config LONGTEXT NULL");
+        } catch (\Throwable $e) {}
+
+        // Fetch user account linking information
+        $stmtUser = $this->db->prepare("SELECT email, zalo_chat_id, telegram_chat_id FROM users WHERE id = ? LIMIT 1");
+        $stmtUser->execute([$auth['user_id']]);
+        $userInfo = $stmtUser->fetch(PDO::FETCH_ASSOC) ?: [];
+
         $stmt = $this->db->prepare("SELECT * FROM user_notification_settings WHERE user_id = ? AND tenant_id = ?");
         $stmt->execute([$auth['user_id'], $auth['tenant_id']]);
-        $settings = $stmt->fetch();
-        
-        if (!$settings) {
-            $settings = [
-                'email_warning' => 1,
-                'email_mention' => 1,
-                'email_approval_request' => 1,
-                'email_project_document' => 0,
-                'email_project_comment' => 0,
-                'email_project_roster' => 0,
-                'email_info' => 0
-            ];
-        } else {
-            foreach ($settings as $k => $v) {
-                if (str_starts_with($k, 'email_')) {
-                    $settings[$k] = (int)$v;
-                }
-            }
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        $matrixConfig = null;
+        if (!empty($row['matrix_config'])) {
+            $matrixConfig = json_decode($row['matrix_config'], true);
         }
-        respond(200, $settings);
+
+        respond(200, [
+            'settings' => $row ?: [],
+            'matrix_config' => $matrixConfig,
+            'user_info' => [
+                'email' => $userInfo['email'] ?? '',
+                'zalo_chat_id' => $userInfo['zalo_chat_id'] ?? '',
+                'telegram_chat_id' => $userInfo['telegram_chat_id'] ?? '',
+                'has_zalo' => !empty(trim((string)($userInfo['zalo_chat_id'] ?? ''))),
+                'has_telegram' => !empty(trim((string)($userInfo['telegram_chat_id'] ?? ''))),
+                'has_email' => !empty(trim((string)($userInfo['email'] ?? '')))
+            ]
+        ]);
     }
 
     public function updateSettings(array $auth): void {
         $b = getBody();
+
+        // Ensure matrix_config column exists in user_notification_settings table
+        try {
+            $this->db->exec("ALTER TABLE user_notification_settings ADD COLUMN matrix_config LONGTEXT NULL");
+        } catch (\Throwable $e) {}
+
+        if (isset($b['matrix_config'])) {
+            $matrixConfig = json_encode($b['matrix_config'], JSON_UNESCAPED_UNICODE);
+            $stmt = $this->db->prepare("
+                INSERT INTO user_notification_settings (user_id, tenant_id, matrix_config)
+                VALUES (?, ?, ?)
+                ON DUPLICATE KEY UPDATE matrix_config = VALUES(matrix_config)
+            ");
+            $stmt->execute([$auth['user_id'], $auth['tenant_id'], $matrixConfig]);
+            respond(200, null, 'Cập nhật ma trận cấu hình thông báo thành công');
+            return;
+        }
         
         $email_warning = isset($b['email_warning']) ? (int)$b['email_warning'] : 1;
         $email_mention = isset($b['email_mention']) ? (int)$b['email_mention'] : 1;
