@@ -13,6 +13,7 @@ import { Pagination } from '../components/ui/Pagination';
 import { CopyButton } from '../components/ui/CopyButton';
 import { CardSkeleton } from '../components/ui/Skeleton';
 import { getModulePermissionScope } from '../store/authStore';
+import { compressToWebP } from '../utils/imageCompress';
 import { CurrencyInput } from '../components/ui/CurrencyInput';
 
 interface CooperationSlip {
@@ -487,8 +488,11 @@ export default function CooperationSlipsPage() {
   };
 
   const handleCoopAttachmentUpload = async (slipId: number, e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    const rawFile = e.target.files?.[0];
+    if (!rawFile) return;
+    
+    // Automatically compress and convert image files to WebP format before uploading
+    const file = await compressToWebP(rawFile);
     
     const fd = new FormData();
     fd.append('file', file);
