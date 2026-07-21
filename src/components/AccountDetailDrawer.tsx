@@ -119,7 +119,7 @@ const resolveAttachmentUrl = (path: string) => {
 
 export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account, onSaveSuccess, readOnly = false }) => {
   const { t } = useLanguage();
-  const { user: currentUser } = useAuth();
+  const { user: currentUser, updateUser } = useAuth();
   const isSuperAdmin = currentUser?.role === 'superadmin' || (currentUser?.role as string) === 'super_admin';
   const isAdmin = currentUser?.role === 'admin' || isSuperAdmin;
   const isManager = currentUser?.role === 'manager';
@@ -892,6 +892,10 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
 
       if (!resProfile.success) {
         throw new Error(resProfile.message || t('Lỗi lưu thông tin hồ sơ chi tiết.'));
+      }
+
+      if (account && String(account.id) === String(currentUser?.id)) {
+        updateUser({ job_title: jobTitle });
       }
 
       toast.success(account ? t('Cập nhật nhân sự thành công!') : t('Thêm mới nhân sự thành công!'));

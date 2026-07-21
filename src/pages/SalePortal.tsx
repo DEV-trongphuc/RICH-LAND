@@ -6572,12 +6572,16 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                     letterSpacing: '0.6px'
                   }}>
                     {(() => {
-                      const u = displayUser as any;
-                      const jt = u?.job_title || u?.erp_profile?.job_title;
+                      const matched = data.consultants?.find((c: any) => 
+                        (c.user_id && String(c.user_id) === String(displayUser?.id)) || 
+                        (c.id && String(c.id) === String(displayUser?.consultant_id)) ||
+                        (c.id && String(c.id) === String(displayUser?.id))
+                      );
+                      const jt = (displayUser as any)?.job_title || matched?.job_title || (displayUser as any)?.erp_profile?.job_title;
                       if (jt) return jt;
-                      if (u?.address) {
+                      if ((displayUser as any)?.address) {
                         try {
-                          const p = typeof u.address === 'string' ? JSON.parse(u.address) : u.address;
+                          const p = typeof (displayUser as any).address === 'string' ? JSON.parse((displayUser as any).address) : (displayUser as any).address;
                           if (p?.erp_profile?.job_title) return p.erp_profile.job_title;
                         } catch(e) {}
                       }
@@ -6716,12 +6720,16 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                     letterSpacing: '0.6px'
                   }}>
                     {(() => {
-                      const u = displayUser as any;
-                      const jt = u?.job_title || u?.erp_profile?.job_title;
+                      const matched = data.consultants?.find((c: any) => 
+                        (c.user_id && String(c.user_id) === String(displayUser?.id)) || 
+                        (c.id && String(c.id) === String(displayUser?.consultant_id)) ||
+                        (c.id && String(c.id) === String(displayUser?.id))
+                      );
+                      const jt = (displayUser as any)?.job_title || matched?.job_title || (displayUser as any)?.erp_profile?.job_title;
                       if (jt) return jt;
-                      if (u?.address) {
+                      if ((displayUser as any)?.address) {
                         try {
-                          const p = typeof u.address === 'string' ? JSON.parse(u.address) : u.address;
+                          const p = typeof (displayUser as any).address === 'string' ? JSON.parse((displayUser as any).address) : (displayUser as any).address;
                           if (p?.erp_profile?.job_title) return p.erp_profile.job_title;
                         } catch(e) {}
                       }
@@ -12930,16 +12938,20 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                   <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--color-text)' }}>{displayUser?.name || 'User'}</span>
                   <span style={{ fontSize: '0.7rem', color: 'var(--color-text-light)' }}>
                     {(() => {
-                      const u = displayUser as any;
-                      const jt = u?.job_title || u?.erp_profile?.job_title;
+                      const matched = data.consultants?.find((c: any) => 
+                        (c.user_id && String(c.user_id) === String(displayUser?.id)) || 
+                        (c.id && String(c.id) === String(displayUser?.consultant_id)) ||
+                        (c.id && String(c.id) === String(displayUser?.id))
+                      );
+                      const jt = (displayUser as any)?.job_title || matched?.job_title || (displayUser as any)?.erp_profile?.job_title;
                       if (jt) return jt;
-                      if (u?.address) {
+                      if ((displayUser as any)?.address) {
                         try {
-                          const p = typeof u.address === 'string' ? JSON.parse(u.address) : u.address;
+                          const p = typeof (displayUser as any).address === 'string' ? JSON.parse((displayUser as any).address) : (displayUser as any).address;
                           if (p?.erp_profile?.job_title) return p.erp_profile.job_title;
                         } catch(e) {}
                       }
-                      return displayUser?.email || '';
+                      return displayUser?.role === 'sale' ? t('Tư vấn viên') : displayUser?.role === 'sales' ? t('Tư vấn viên') : displayUser?.role;
                     })()}
                   </span>
                 </div>
