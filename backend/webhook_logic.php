@@ -1615,8 +1615,8 @@ function sendDirectSaleLeadNotification($conn, $leadId, $assignedToId, $roundId 
     if (!$leadId || !$assignedToId) return;
 
     try {
-        // 1. Get Sale info (zalo_chat_id, email, name)
-        $saleStmt = $conn->prepare("SELECT id, name, email, zalo_chat_id FROM users WHERE id = ?");
+        // 1. Get Sale info (zalo_chat_id, email, telegram_chat_id, name)
+        $saleStmt = $conn->prepare("SELECT id, name, email, zalo_chat_id, telegram_chat_id FROM users WHERE id = ?");
         if (!$saleStmt) return;
         $saleStmt->bind_param("i", $assignedToId);
         $saleStmt->execute();
@@ -1677,6 +1677,25 @@ function sendDirectSaleLeadNotification($conn, $leadId, $assignedToId, $roundId 
         if (!empty($sale['email'])) {
             require_once __DIR__ . '/mailer.php';
             sendEmailNotification($sale['email'], $emailSubj, 'Phân bổ Lead mới', $emailBody, '');
+        }
+
+        // 7. Send Telegram if configured
+        $teleBotToken = get_system_setting($conn, 'telegram_bot_token');
+        if (!empty($teleBotToken) && !empty($sale['telegram_chat_id'])) {
+            require_once __DIR__ . '/telegram_bot.php';
+            $teleMsg = "🚨 <b>[ CÓ LEAD MỚI ĐƯỢC PHÂN BỔ CHO BẠN! ]</b> 🚨\n"
+                . "━━━━━━━━━━━━━━━━━━━━\n"
+                . "👤 <b>Khách hàng:</b> " . htmlspecialchars($custName) . "\n"
+                . "📞 <b>Số ĐT:</b> " . htmlspecialchars($custPhone) . "\n"
+                . "✉️ <b>Email:</b> " . htmlspecialchars($custEmail) . "\n"
+                . "🌐 <b>Nguồn:</b> " . htmlspecialchars($lead['source'] ?? 'Không có') . "\n"
+                . "📋 <b>Phân loại:</b> " . htmlspecialchars($lead['type'] ?? 'Không có') . "\n"
+                . "📝 <b>Ghi chú:</b> " . htmlspecialchars($lead['note'] ?? 'Không có') . "\n\n"
+                . "⏰ <i>Vui lòng truy cập hệ thống CRM để TIẾP NHẬN LEAD NGAY!</i>";
+            
+            if (function_exists('sendTelegramMessage')) {
+                sendTelegramMessage($teleBotToken, $sale['telegram_chat_id'], $teleMsg, (int)$leadId);
+            }
         }
 
     } catch (Exception $e) {
