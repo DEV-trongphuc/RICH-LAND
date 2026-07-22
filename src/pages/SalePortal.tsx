@@ -5031,41 +5031,90 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
           const totalDueTodayCount = workspaceStats.dueToday || 0;
           const teamHighPriorityTask = (wsTasks || []).find((t: any) => t.status !== 'done' && (t.priority === 'high' || t.priority === 'urgent'));
 
-          let aiMessage = '';
-          if (myOverdueCount > 0) {
-            aiMessage = `Hôm nay bạn có ${myOverdueCount} công việc quá hạn cần xử lý gấp. Bạn nên ưu tiên hoàn thành trước để đảm bảo tiến độ!`;
-          } else if (myHighPriorityTask) {
-            aiMessage = `Bạn có 1 công việc ưu tiên cao (${myHighPriorityTask.subject || 'Nhiệm vụ quan trọng'}) cần tập trung xử lý ngay.`;
-          } else if (myDueTodayCount > 0) {
-            aiMessage = `Hôm nay bạn có ${myDueTodayCount} công việc đến hạn cần hoàn thành đúng kế hoạch.`;
-          } else if (totalOverdueCount > 0) {
-            aiMessage = `Toàn đội ngũ hiện có ${totalOverdueCount} công việc quá hạn cần đôn đốc xử lý.`;
-          } else if (teamHighPriorityTask) {
-            aiMessage = `Hệ thống có 1 công việc ưu tiên cao (${teamHighPriorityTask.subject || 'Nhiệm vụ quan trọng'}) cần theo dõi.`;
-          } else if (totalDueTodayCount > 0) {
-            aiMessage = `Hôm nay toàn đội ngũ có ${totalDueTodayCount} công việc đến hạn cần hoàn thành.`;
-          } else {
-            aiMessage = `Hệ thống vận hành tối ưu. Các công việc hiện được sắp xếp đúng kế hoạch.`;
-          }
+          const renderAiMessage = () => {
+            let count = 0;
+            let label = '';
+            let fullPrefix = '';
+            let fullSuffix = '';
 
-          let mobileAiMessage = '';
-          if (myOverdueCount > 0) {
-            mobileAiMessage = `${myOverdueCount} việc quá hạn cần làm`;
-          } else if (myHighPriorityTask) {
-            mobileAiMessage = `1 việc ưu tiên cao`;
-          } else if (myDueTodayCount > 0) {
-            mobileAiMessage = `${myDueTodayCount} việc đến hạn`;
-          } else if (totalOverdueCount > 0) {
-            mobileAiMessage = `${totalOverdueCount} việc quá hạn đội ngũ`;
-          } else if (teamHighPriorityTask) {
-            mobileAiMessage = `1 việc ưu tiên cao`;
-          } else if (totalDueTodayCount > 0) {
-            mobileAiMessage = `${totalDueTodayCount} việc đến hạn`;
-          } else {
-            mobileAiMessage = `0 việc cần làm`;
-          }
+            if (myOverdueCount > 0) {
+              count = myOverdueCount;
+              fullPrefix = 'Hôm nay bạn có ';
+              fullSuffix = ' công việc quá hạn cần xử lý gấp.';
+              label = 'việc quá hạn cần làm';
+            } else if (myHighPriorityTask) {
+              count = 1;
+              fullPrefix = 'Bạn có ';
+              fullSuffix = ` công việc ưu tiên cao (${myHighPriorityTask.subject || 'Nhiệm vụ quan trọng'}) cần tập trung xử lý ngay.`;
+              label = 'việc ưu tiên cao';
+            } else if (myDueTodayCount > 0) {
+              count = myDueTodayCount;
+              fullPrefix = 'Hôm nay bạn có ';
+              fullSuffix = ' công việc đến hạn cần hoàn thành đúng kế hoạch.';
+              label = 'việc đến hạn';
+            } else if (totalOverdueCount > 0) {
+              count = totalOverdueCount;
+              fullPrefix = 'Toàn đội ngũ hiện có ';
+              fullSuffix = ' công việc quá hạn cần đôn đốc xử lý.';
+              label = 'việc quá hạn đội ngũ';
+            } else if (teamHighPriorityTask) {
+              count = 1;
+              fullPrefix = 'Hệ thống có ';
+              fullSuffix = ` công việc ưu tiên cao (${teamHighPriorityTask.subject || 'Nhiệm vụ quan trọng'}) cần theo dõi.`;
+              label = 'việc ưu tiên cao';
+            } else if (totalDueTodayCount > 0) {
+              count = totalDueTodayCount;
+              fullPrefix = 'Hôm nay toàn đội ngũ có ';
+              fullSuffix = ' công việc đến hạn cần hoàn thành.';
+              label = 'việc đến hạn';
+            } else {
+              count = 0;
+              label = 'việc cần làm';
+              fullPrefix = 'Hệ thống vận hành tối ưu. Các công việc hiện được sắp xếp đúng kế hoạch.';
+            }
+
+            if (isMobile) {
+              return (
+                <>
+                  <span style={{ color: 'var(--color-primary, #BD1D2D)', fontWeight: 800 }}>{count}</span> {label}
+                </>
+              );
+            }
+
+            if (count > 0) {
+              return (
+                <>
+                  {fullPrefix}
+                  <span style={{ color: 'var(--color-primary, #BD1D2D)', fontWeight: 800 }}>{count}</span>
+                  {fullSuffix}
+                </>
+              );
+            }
+
+            return fullPrefix;
+          };
 
           const meetingCount = upcomingMeetingsList.length;
+
+          const renderMeetingMessage = () => {
+            if (isMobile) {
+              return (
+                <>
+                  <span style={{ color: '#2563EB', fontWeight: 800 }}>{meetingCount}</span> {meetingCount > 0 ? 'cuộc hẹn' : 'cuộc hẹn'}
+                </>
+              );
+            }
+
+            if (meetingCount > 0) {
+              return (
+                <>
+                  Có <span style={{ color: '#2563EB', fontWeight: 800 }}>{meetingCount}</span> cuộc hẹn gặp khách hàng đã được lên lịch trong kế hoạch.
+                </>
+              );
+            }
+
+            return t('Chưa có lịch hẹn');
+          };
 
           return (
             <div style={{
@@ -5104,8 +5153,8 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                     <span style={{ fontSize: isMobile ? '0.6rem' : '0.725rem', fontWeight: 800, color: 'var(--color-primary, #BD1D2D)', textTransform: 'uppercase', letterSpacing: '0.4px', display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', lineHeight: 1.15 }}>
                       {isMobile ? t('GỢI Ý AI') : t('GỢI Ý ƯU TIÊN TỪ AI')}
                     </span>
-                    <span style={{ fontSize: isMobile ? '0.725rem' : '0.85rem', fontWeight: 700, color: 'var(--color-text)', overflow: 'hidden', textOverflow: 'ellipsis', display: 'block', whiteSpace: 'nowrap', marginTop: '1px', lineHeight: 1.15 }}>
-                      {isMobile ? mobileAiMessage : aiMessage}
+                    <span style={{ fontSize: isMobile ? '0.725rem' : '0.85rem', fontWeight: 500, color: 'var(--color-text)', overflow: 'hidden', textOverflow: 'ellipsis', display: 'block', whiteSpace: 'nowrap', marginTop: '1px', lineHeight: 1.15 }}>
+                      {renderAiMessage()}
                     </span>
                   </div>
                 </div>
@@ -5165,10 +5214,8 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                     <span style={{ fontSize: isMobile ? '0.6rem' : '0.725rem', fontWeight: 800, color: '#2563EB', textTransform: 'uppercase', letterSpacing: '0.4px', display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', lineHeight: 1.15 }}>
                       {isMobile ? t('LỊCH HẸN') : t('LỊCH HẸN GẶP SẮP DIỄN RA')}
                     </span>
-                    <span style={{ fontSize: isMobile ? '0.725rem' : '0.85rem', fontWeight: 700, color: 'var(--color-text)', overflow: 'hidden', textOverflow: 'ellipsis', display: 'block', whiteSpace: 'nowrap', marginTop: '1px', lineHeight: 1.15 }}>
-                      {meetingCount > 0 
-                        ? (isMobile ? `${meetingCount} cuộc hẹn` : `Có ${meetingCount} cuộc hẹn gặp khách hàng đã được lên lịch trong kế hoạch.`)
-                        : (isMobile ? `0 cuộc hẹn` : t('Chưa có lịch hẹn'))}
+                    <span style={{ fontSize: isMobile ? '0.725rem' : '0.85rem', fontWeight: 500, color: 'var(--color-text)', overflow: 'hidden', textOverflow: 'ellipsis', display: 'block', whiteSpace: 'nowrap', marginTop: '1px', lineHeight: 1.15 }}>
+                      {renderMeetingMessage()}
                     </span>
                   </div>
                 </div>
