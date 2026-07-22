@@ -2182,6 +2182,7 @@ function checkConsultantGates($conn, $consultantId, $lead = null)
         SELECT COUNT(*) as cnt 
         FROM contacts c
         WHERE c.owner_id = ? 
+          AND c.deleted_at IS NULL
           AND c.status != 'rejected'
           AND c.pipeline_status IN ('chua_xac_dinh', 'quan_tam')
           AND NOT EXISTS (
