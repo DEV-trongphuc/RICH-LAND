@@ -108,6 +108,18 @@ function numberToVietnameseWords(num: number): string {
   return (result.charAt(0).toUpperCase() + result.slice(1) + ' phần trăm').trim();
 }
 
+const resolveFileUrl = (path: string) => {
+  if (!path) return '';
+  if (path.startsWith('http://') || path.startsWith('https://') || path.startsWith('data:')) {
+    return path;
+  }
+  const cleanPath = path.replace(/^\/+/, '');
+  if (cleanPath.startsWith('uploads/')) {
+    return `${import.meta.env.VITE_API_URL || '/backend'}/${cleanPath}`;
+  }
+  return `${import.meta.env.VITE_API_URL || '/backend'}/uploads/${cleanPath}`;
+};
+
 export default function CooperationSlipsPage() {
   const { addToast, showConfirm } = useUIStore();
   const { user, updateUser } = useAuth();
@@ -1602,7 +1614,7 @@ export default function CooperationSlipsPage() {
                             {sh.signed && (sh as any).signature_img && (
                               <div style={{ marginTop: '8px', borderTop: '1px dashed var(--color-border-light)', paddingTop: '6px', textAlign: 'center' }}>
                                 <img 
-                                  src={(sh as any).signature_img.startsWith('http') || (sh as any).signature_img.startsWith('data:') ? (sh as any).signature_img : `https://open.domation.net/richland/${(sh as any).signature_img.replace(/^\/+/, '')}`} 
+                                  src={resolveFileUrl((sh as any).signature_img)} 
                                   style={{ height: '40px', objectFit: 'contain', display: 'inline-block' }} 
                                   alt="Chữ ký" 
                                 />
@@ -1623,7 +1635,7 @@ export default function CooperationSlipsPage() {
                           {slip.attachment_url.split(',').map((rawUrl, urlIdx) => {
                             const url = rawUrl.trim();
                             if (!url) return null;
-                            const fullUrl = url.startsWith('http') ? url : `https://open.domation.net/richland/${url.replace(/^\//, '')}`;
+                            const fullUrl = resolveFileUrl(url);
                             const isImage = /\.(jpg|jpeg|png|webp|gif|bmp|svg)$/i.test(url);
                             const fileName = url.split('/').pop() || 'Tài liệu đính kèm';
 
@@ -1888,7 +1900,7 @@ export default function CooperationSlipsPage() {
                               {item.name}
                             </p>
                             <a 
-                              href={item.path.startsWith('http') ? item.path : `https://open.domation.net/richland/${item.path}`} 
+                              href={resolveFileUrl(item.path)} 
                               target="_blank" 
                               rel="noreferrer" 
                               style={{ fontSize: '0.75rem', color: 'var(--color-primary)', fontWeight: 600, textDecoration: 'underline', marginTop: '2px', display: 'inline-block' }}
@@ -1958,7 +1970,7 @@ export default function CooperationSlipsPage() {
                     flexShrink: 0
                   }}>
                     <img 
-                      src={user.signature_url.startsWith('http') || user.signature_url.startsWith('data:') ? user.signature_url : `https://open.domation.net/richland/${user.signature_url.replace(/^\/+/, '')}`} 
+                      src={resolveFileUrl(user.signature_url)} 
                       alt="Chữ ký mẫu" 
                       style={{ maxHeight: '35px', objectFit: 'contain' }} 
                     />

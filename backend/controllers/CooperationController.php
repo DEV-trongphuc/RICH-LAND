@@ -177,11 +177,6 @@ class CooperationController {
             $params[] = (int)$_GET['contact_id'];
         }
 
-        if (isset($_GET['deposit_slip_id'])) {
-            $sql .= " AND cs.deposit_slip_id = ?";
-            $params[] = (int)$_GET['deposit_slip_id'];
-        }
-
         $sql .= " ORDER BY cs.created_at DESC";
 
         $stmt = $this->db->prepare($sql);
@@ -216,6 +211,50 @@ class CooperationController {
         }
 
         foreach ($slips as &$s) {
+            // Find all cloud files for this contact_id that contain "cọc", "unc", "hợp tác" or are in milestone categories
+            $stmtDocs = $this->db->prepare("
+                SELECT file_path 
+                FROM cloud_files 
+                WHERE contact_id = ? AND tenant_id = ?
+            ");
+            $stmtDocs->execute([$s['contact_id'], $tid]);
+            $docs = $stmtDocs->fetchAll(PDO::FETCH_ASSOC) ?: [];
+
+            // Find all deposit milestones for this contact_id that have unc_file_path
+            $stmtMilestones = $this->db->prepare("
+                SELECT dm.unc_file_path 
+                FROM deposit_milestones dm
+                JOIN deposits d ON dm.deposit_id = d.id
+                JOIN contacts c ON d.contact_id = c.id
+                WHERE d.contact_id = ? AND c.tenant_id = ? AND dm.unc_file_path IS NOT NULL AND dm.unc_file_path != ''
+            ");
+            $stmtMilestones->execute([$s['contact_id'], $tid]);
+            $milestones = $stmtMilestones->fetchAll(PDO::FETCH_ASSOC) ?: [];
+
+            // Collect all unique paths
+            $allPaths = [];
+            if (!empty($s['attachment_url'])) {
+                $allPaths = array_filter(array_map('trim', explode(',', $s['attachment_url'])));
+            }
+
+            foreach ($docs as $d) {
+                $p = $d['file_path'];
+                if (empty($p)) continue;
+                $pLower = strtolower($p);
+                if (strpos($pLower, 'deposits') !== false || strpos($pLower, 'unc') !== false || strpos($pLower, 'cọc') !== false || strpos($pLower, 'hợp đồng') !== false) {
+                    $allPaths[] = $p;
+                }
+            }
+
+            foreach ($milestones as $m) {
+                if (!empty($m['unc_file_path'])) {
+                    $allPaths[] = $m['unc_file_path'];
+                }
+            }
+
+            $allPaths = array_values(array_unique(array_filter($allPaths)));
+            $s['attachment_url'] = implode(',', $allPaths);
+
             $shares = json_decode($s['shares_json'] ?? '[]', true) ?: [];
             $signatures = json_decode($s['signatures_json'] ?? '[]', true) ?: [];
             
