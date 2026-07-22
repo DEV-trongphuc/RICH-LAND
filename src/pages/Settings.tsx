@@ -6920,17 +6920,11 @@ function doPost(e) {
                                   <ToggleSwitch
                                     checked={coopEligibleStatuses.split(',').map((s: string) => s.trim()).filter(Boolean).includes(status)}
                                     onChange={checked => {
-                                      const currentList = coopEligibleStatuses.split(',').map((s: string) => s.trim()).filter(Boolean);
-                                      let newList;
                                       if (checked) {
-                                        if (!currentList.includes(status)) {
-                                          currentList.push(status);
-                                        }
-                                        newList = currentList;
+                                        setCoopEligibleStatuses(status);
                                       } else {
-                                        newList = currentList.filter(s => s !== status);
+                                        setCoopEligibleStatuses('');
                                       }
-                                      setCoopEligibleStatuses(newList.join(','));
                                     }}
                                   />
                                   <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 600, userSelect: 'none' }}>
@@ -7013,17 +7007,11 @@ function doPost(e) {
                                   <ToggleSwitch
                                     checked={coopEligibleStatuses.split(',').map((s: string) => s.trim()).filter(Boolean).includes(status)}
                                     onChange={checked => {
-                                      const currentList = coopEligibleStatuses.split(',').map((s: string) => s.trim()).filter(Boolean);
-                                      let newList;
                                       if (checked) {
-                                        if (!currentList.includes(status)) {
-                                          currentList.push(status);
-                                        }
-                                        newList = currentList;
+                                        setCoopEligibleStatuses(status);
                                       } else {
-                                        newList = currentList.filter(s => s !== status);
+                                        setCoopEligibleStatuses('');
                                       }
-                                      setCoopEligibleStatuses(newList.join(','));
                                     }}
                                   />
                                   <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 600, userSelect: 'none' }}>

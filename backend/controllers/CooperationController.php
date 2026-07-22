@@ -114,7 +114,10 @@ class CooperationController {
                    dep.unit_code, proj.name as project_name, dep.expected_commission
             FROM cooperation_slips cs
             JOIN contacts c ON cs.contact_id = c.id
-            LEFT JOIN deposits dep ON cs.deposit_slip_id = dep.id
+            LEFT JOIN deposits dep ON (
+                cs.deposit_slip_id = dep.id 
+                OR (cs.deposit_slip_id IS NULL AND dep.id = (SELECT id FROM deposits WHERE contact_id = cs.contact_id ORDER BY id DESC LIMIT 1))
+            )
             LEFT JOIN projects proj ON dep.project_id = proj.id
             WHERE c.tenant_id = ?
         ";
@@ -761,9 +764,23 @@ class CooperationController {
         }
 
         $collaborators = $b['collaborators'] ?? [];
+        $customSharesInput = $b['shares'] ?? [];
         $shares = [];
 
-        if (!empty($collaborators)) {
+        if (!empty($customSharesInput) && is_array($customSharesInput)) {
+            $sum = 0;
+            foreach ($customSharesInput as $uid => $pct) {
+                $uInt = (int)$uid;
+                $pInt = (int)$pct;
+                if ($uInt > 0 && $pInt >= 0) {
+                    $shares[$uInt] = $pInt;
+                    $sum += $pInt;
+                }
+            }
+            if ($sum !== 100) {
+                respond(422, null, 'Tổng tỷ lệ chia sẻ hoa hồng phải bằng đúng 100% (Hiện tại là ' . $sum . '%)', false);
+            }
+        } else if (!empty($collaborators)) {
             // Validate that collaborators does not include the owner
             $collaboratorIds = array_map('intval', $collaborators);
             $collaboratorIds = array_values(array_filter($collaboratorIds, function($id) use ($ownerId) {
@@ -1153,7 +1170,7 @@ class CooperationController {
 
     public function syncCollaboratorsToContact(int $contactId, string $sharesJson): void {
         $shares = json_decode($sharesJson, true) ?: [];
-        $stmt = $this->db->prepare("SELECT owner_id, collaborator_ids FROM contacts WHERE id = ?");
+        $stmt = $this->db->prepare("SELECT tenant_id, owner_id, collaborator_ids, first_name, last_name FROM contacts WHERE id = ?");
         $stmt->execute([$contactId]);
         $contact = $stmt->fetch(PDO::FETCH_ASSOC);
         if (!$contact) return;
@@ -1176,6 +1193,32 @@ class CooperationController {
         $collaboratorsStr = !empty($mergedIds) ? implode(',', $mergedIds) : null;
         $stmtUpd = $this->db->prepare("UPDATE contacts SET collaborator_ids = ? WHERE id = ?");
         $stmtUpd->execute([$collaboratorsStr, $contactId]);
+
+        // Send notifications to newly added collaborators
+        $addedIds = array_diff($mergedIds, $existingIds);
+        if (!empty($addedIds)) {
+            require_once __DIR__ . '/../NotificationService.php';
+            $custFullName = trim(($contact['first_name'] ?? '') . ' ' . ($contact['last_name'] ?? ''));
+            
+            // Fetch owner name
+            $stmtOwner = $this->db->prepare("SELECT full_name FROM users WHERE id = ?");
+            $stmtOwner->execute([$ownerId]);
+            $ownerName = $stmtOwner->fetchColumn() ?: 'đồng nghiệp';
+
+            foreach ($addedIds as $collabUid) {
+                $collabUidInt = (int)$collabUid;
+                if ($collabUidInt > 0 && $collabUidInt !== $ownerId) {
+                    $pct = isset($shares[$collabUidInt]) ? $shares[$collabUidInt] : (isset($shares[(string)$collabUidInt]) ? $shares[(string)$collabUidInt] : null);
+                    NotificationService::send($this->db, (int)$contact['tenant_id'], 'COOP_INVITATION', [
+                        'user_id' => $collabUidInt,
+                        'customer_name' => $custFullName,
+                        'inviter_name' => $ownerName,
+                        'share_pct' => $pct,
+                        'contact_id' => $contactId
+                    ]);
+                }
+            }
+        }
     }
 
     public function createAdjustmentSlip(array $auth, int $id): void {

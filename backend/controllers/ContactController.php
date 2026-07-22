@@ -781,10 +781,11 @@ class ContactController {
                             }
 
                             if ($targetUserId > 0 && $targetUserId !== (int)$auth['user_id']) {
-                                NotificationService::send($this->db, $auth['tenant_id'], 'CUSTOMER_UPDATE', [
+                                NotificationService::send($this->db, $auth['tenant_id'], 'COOP_INVITATION', [
                                     'user_id' => $targetUserId,
                                     'customer_name' => $fullName,
-                                    'content' => "Bạn đã được sale " . ($auth['full_name'] ?? 'đồng nghiệp') . " thêm làm nhân sự chăm sóc phụ (Co-care) cho khách hàng " . $fullName
+                                    'inviter_name' => $auth['full_name'] ?? 'đồng nghiệp',
+                                    'contact_id' => $id
                                 ]);
                             }
                         }

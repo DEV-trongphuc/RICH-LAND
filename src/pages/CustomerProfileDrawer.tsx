@@ -16,6 +16,7 @@ import { CreateExpenseModal } from '../components/ui/CreateExpenseModal';
 import { QuoteEditorModal } from '../components/ui/QuoteEditorModal';
 import { Avatar } from '../components/ui/Avatar';
 import { CustomModal } from '../components/ui/CustomModal';
+import { SignaturePadModal } from '../components/ui/SignaturePadModal';
 import { compressToWebP } from '../utils/imageCompress';
 import { TicketDrawer } from './TicketDrawer';
 import { WorkspaceTaskDrawer } from './WorkspaceTaskDrawer';
@@ -1299,6 +1300,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
   ]);
   const [depositUncFile, setDepositUncFile] = useState<File | null>(null);
   const [pendingPipelineTransition, setPendingPipelineTransition] = useState<{ targetId: string; targetLabel: string; note: string } | null>(null);
+  const [depositCoopShares, setDepositCoopShares] = useState<Record<string, string>>({});
 
   useEffect(() => {
     if (selectedDepForManage) {
@@ -1723,6 +1725,72 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
   const [suggestedSales, setSuggestedSales] = useState<any[]>([]);
   const [loadingSuggestions, setLoadingSuggestions] = useState(false);
   const [collabSearchQuery, setCollabSearchQuery] = useState('');
+
+  const getCoopCollaboratorIds = useCallback(() => {
+    const ownerId = String(contact?.owner_id || formData?.owner_id || currentUser?.id || '');
+    let ids: string[] = [];
+
+    const rawCollab = formData?.collaborator_ids ?? contact?.collaborator_ids;
+    if (Array.isArray(rawCollab)) {
+      ids.push(...rawCollab.map(x => String(x).trim()));
+    } else if (typeof rawCollab === 'string') {
+      ids.push(...rawCollab.split(',').map(x => x.trim()));
+    } else if (rawCollab) {
+      ids.push(String(rawCollab).trim());
+    }
+
+    if (Array.isArray(selectedCollaborators)) {
+      ids.push(...selectedCollaborators.map(x => String(x).trim()));
+    }
+
+    if (coopSlip) {
+      if (coopSlip.shares_json) {
+        try {
+          const parsed = typeof coopSlip.shares_json === 'string' ? JSON.parse(coopSlip.shares_json) : coopSlip.shares_json;
+          if (parsed && typeof parsed === 'object') {
+            ids.push(...Object.keys(parsed).map(x => String(x).trim()));
+          }
+        } catch (e) {}
+      }
+      if (Array.isArray(coopSlip.shareholders)) {
+        ids.push(...coopSlip.shareholders.map((s: any) => String(s.user_id || s.id).trim()));
+      }
+    }
+
+    return Array.from(new Set(ids)).filter(id => Boolean(id) && id !== ownerId && id !== '0');
+  }, [contact, formData, selectedCollaborators, coopSlip, currentUser?.id]);
+
+  useEffect(() => {
+    if (showDealModal && contact) {
+      const ownerId = String(contact.owner_id || formData?.owner_id || currentUser?.id || '');
+      const collabList = getCoopCollaboratorIds();
+      const allMemberIds = Array.from(new Set([ownerId, ...collabList].filter(Boolean)));
+
+      if (allMemberIds.length > 1) {
+        let existingShares: Record<string, string> = {};
+        if (coopSlip?.shares_json) {
+          try {
+            const parsed = typeof coopSlip.shares_json === 'string' ? JSON.parse(coopSlip.shares_json) : coopSlip.shares_json;
+            if (parsed && typeof parsed === 'object') {
+              Object.entries(parsed).forEach(([uid, pct]) => {
+                existingShares[uid] = String(pct);
+              });
+            }
+          } catch (e) {}
+        }
+
+        const basePct = Math.floor(100 / allMemberIds.length);
+        const remainder = 100 - (basePct * allMemberIds.length);
+        const initial: Record<string, string> = {};
+        allMemberIds.forEach((uid, idx) => {
+          initial[uid] = existingShares[uid] || String(idx === 0 ? basePct + remainder : basePct);
+        });
+        setDepositCoopShares(initial);
+      } else {
+        setDepositCoopShares({ [ownerId]: '100' });
+      }
+    }
+  }, [showDealModal, contact, formData?.collaborator_ids, selectedCollaborators, coopSlip, currentUser?.id, getCoopCollaboratorIds]);
 
   const handleToggleCollaborator = (userId: string) => {
     setSelectedCollaborators(prev => {
@@ -2983,33 +3051,32 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
 
         // Fetch and include deposit milestone payment proofs (UNC) dynamically
         try {
-          const resDep = await fetchAPI('deposits');
-          if (resDep.success) {
-            const customerDeposits = (resDep.data || []).filter((d: any) => Number(d.contact_id) === Number(contact.id));
-            customerDeposits.forEach((dep: any) => {
-              const milestones = dep.milestones || [];
-              milestones.forEach((m: any) => {
-                const fileUrl = m.unc_file_path || m.attachment_url;
-                if (fileUrl) {
-                  const filename = fileUrl.split('/').pop() || `${m.name}_UNC`;
-                  const fileExt = filename.split('.').pop() || 'png';
-                  const exists = mappedDocs.some((d: any) => d.path === fileUrl);
-                  if (!exists) {
-                    mappedDocs.push({
-                      id: `milestone_attachment_${m.id}`,
-                      name: `${m.name || 'Cọc giữ chỗ'} - UNC.${fileExt}`,
-                      date: m.updated_at ? new Date(m.updated_at).toLocaleDateString('vi-VN') : new Date().toLocaleDateString('vi-VN'),
-                      size: '—',
-                      type: fileExt,
-                      path: fileUrl,
-                      category: 'Đặt cọc',
-                      isMilestoneAttachment: true
-                    });
-                  }
+          const resDep = await api.get(`/deposits?contact_id=${contact.id}`);
+          const customerDeposits = resDep.data?.data || [];
+          (Array.isArray(customerDeposits) ? customerDeposits : []).forEach((dep: any) => {
+            const milestones = dep.milestones || [];
+            milestones.forEach((m: any) => {
+              const fileUrl = m.unc_file_path || m.attachment_url;
+              if (fileUrl) {
+                const filename = fileUrl.split('/').pop() || `${m.name || 'Cọc'}_UNC`;
+                const fileExt = filename.split('.').pop() || 'png';
+                const exists = mappedDocs.some((d: any) => d.path === fileUrl);
+                if (!exists) {
+                  mappedDocs.push({
+                    id: `milestone_attachment_${m.id}`,
+                    name: `${m.name || m.milestone_name || 'Cọc giữ chỗ'} - UNC.${fileExt}`,
+                    date: m.updated_at ? new Date(m.updated_at).toLocaleDateString('vi-VN') : new Date().toLocaleDateString('vi-VN'),
+                    size: '—',
+                    type: fileExt,
+                    path: fileUrl,
+                    category: 'Đặt cọc',
+                    folder: 'Đặt cọc',
+                    isMilestoneAttachment: true
+                  });
                 }
-              });
+              }
             });
-          }
+          });
         } catch (depErr) {
           console.error("Lỗi khi tải thông tin cọc cho tài liệu:", depErr);
         }
@@ -3988,7 +4055,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
     }
   };
 
-  const handleSaveDeposit = async () => {
+  const handleSaveDeposit = async (createCoopSlipChoice: boolean = false) => {
     if (!depositProjectId || !depositUnitCode || !depositPrice) {
       addToast('Vui lòng nhập đầy đủ Dự án, Mã căn hộ và Giá bán', 'error');
       return;
@@ -4013,6 +4080,17 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
       return;
     }
 
+    const collabListCheck = getCoopCollaboratorIds();
+    const hasCoopSalesCheck = collabListCheck.length > 0;
+
+    if (hasCoopSalesCheck && createCoopSlipChoice) {
+      const sumPct = Object.values(depositCoopShares).reduce((acc, p) => acc + (parseFloat(p) || 0), 0);
+      if (sumPct !== 100) {
+        addToast(`Tổng tỷ lệ chia sẻ hoa hồng phải đúng 100% (Hiện tại là ${sumPct}%). Vui lòng điều chỉnh lại!`, 'error');
+        return;
+      }
+    }
+
     setIsSubmitting(true);
     try {
       // 1. Create the deposit slip and milestones
@@ -4022,7 +4100,9 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
         unit_code: depositUnitCode,
         price: parseFloat(depositPrice),
         expected_commission: parseFloat(depositExpectedCommission) || 0,
-        milestones: depositMilestones
+        milestones: depositMilestones,
+        create_coop_slip: createCoopSlipChoice,
+        shares: depositCoopShares
       });
 
       const responseData = res.data?.data || res.data;
@@ -4077,7 +4157,12 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
         setPendingPipelineTransition(null);
       }
 
-      addToast('Tạo phiếu cọc và tải lên UNC thành công!', 'success');
+      if (hasCoopSalesCheck && createCoopSlipChoice) {
+        addToast('Tạo phiếu cọc và tự động khởi tạo Phiếu hợp tác phân chia hoa hồng thành công!', 'success');
+      } else {
+        addToast('Tạo phiếu cọc và tải lên UNC thành công!', 'success');
+      }
+
       confetti({ particleCount: 150, spread: 80, origin: { y: 0.6 } });
       setShowDealModal(false);
 
@@ -4092,16 +4177,8 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
       fetchData();
       await fetchCoopSlip();
 
-      const rawCollab = formData.collaborator_ids || contact?.collaborator_ids || selectedCollaborators;
-      const collabStr = Array.isArray(rawCollab) ? rawCollab.join(',') : String(rawCollab || '');
-      const hasCoopSales = Boolean(collabStr.split(',').filter(Boolean).length > 0);
-
-      if (hasCoopSales) {
+      if (hasCoopSalesCheck && createCoopSlipChoice) {
         setActiveTab('cooperation');
-        setTimeout(() => {
-          handleCreateCoopSlip();
-        }, 300);
-        addToast('Phát hiện có Sale hợp tác! Vui lòng kiểm tra và bấm xác nhận tỷ lệ % hoa hồng.', 'info');
       }
     } catch (e: any) {
       addToast(e?.response?.data?.message || e.message || 'Lỗi khi tạo phiếu cọc', 'error');
@@ -10894,7 +10971,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                     const targetLabel = pipelineModal.targetLabel;
                     const note = pipelineModal.note;
                     
-                     if (coopEligibleStatuses.includes(targetId)) {
+                    if (targetId === 'dat_coc' || targetId === 'da_coc') {
                       setDepositProjectId('');
                       setDepositUnitCode('');
                       const defaultPrice = String(formData.expected_revenue || contact?.expected_revenue || '');
@@ -11367,12 +11444,126 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                   </div>
                 </div>
 
+                {/* Multi-sale Co-op Commission Allocation Section */}
+                {(() => {
+                  const ownerId = String(contact?.owner_id || formData?.owner_id || currentUser?.id || '');
+                  const collabList = getCoopCollaboratorIds();
+                  const hasCoopSales = collabList.length > 0;
+                  if (!hasCoopSales) return null;
+
+                  const allUids = Array.from(new Set([ownerId, ...collabList].filter(Boolean)));
+                  const expCommission = parseFloat(depositExpectedCommission) || 0;
+                  const totalPctSum = Object.values(depositCoopShares).reduce((a, b) => a + (parseFloat(b) || 0), 0);
+
+                  return (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', paddingTop: '1.25rem', borderTop: '1px solid var(--color-border-light)', marginTop: '1.75rem' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div>
+                          <h4 style={{ fontSize: '0.875rem', fontWeight: 700, margin: 0, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <Users size={16} style={{ color: 'var(--color-primary)' }} />
+                            Phân chia hoa hồng Sale Hợp tác (Co-care)
+                          </h4>
+                          <p style={{ fontSize: '0.725rem', color: 'var(--color-text-muted)', margin: '2px 0 0 0' }}>
+                            Nhập tỷ lệ % để tự động khởi tạo phiếu hợp tác hoặc chọn chuyển cọc không tạo phiếu hợp tác.
+                          </p>
+                        </div>
+                        <div style={{ fontSize: '0.75rem', fontWeight: 700 }}>
+                          {totalPctSum === 100 ? (
+                            <span style={{ color: '#10b981' }}>✓ Tổng 100%</span>
+                          ) : (
+                            <span style={{ color: '#ef4444' }}>
+                              Tổng: {totalPctSum}% (Cần đúng 100%)
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        {allUids.map(uid => {
+                          const uObj = salesUsers.find(u => String(u.id) === String(uid)) || users.find(u => String(u.id) === String(uid));
+                          const uName = uObj?.full_name || uObj?.name || (uid === ownerId ? 'Sale chính' : `Sale ID #${uid}`);
+                          const uAvatar = uObj?.avatar_url || uObj?.avatar;
+                          const isOwner = String(uid) === ownerId;
+                          const pctVal = depositCoopShares[uid] || '0';
+                          const calcVnd = Math.round((expCommission * (parseFloat(pctVal) || 0)) / 100);
+
+                          return (
+                            <div key={uid} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', background: 'var(--color-bg-light)', borderRadius: '10px', border: '1px solid var(--color-border)' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: 1, minWidth: 0 }}>
+                                <Avatar src={uAvatar} name={uName} size={32} />
+                                <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                    <span style={{ fontWeight: 700, fontSize: '0.85rem', color: 'var(--color-text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                      {uName}
+                                    </span>
+                                    <span className={`badge ${isOwner ? 'primary' : 'info'}`} style={{ fontSize: '0.65rem', padding: '2px 6px' }}>
+                                      {isOwner ? 'Sale chính' : 'Sale Co.op'}
+                                    </span>
+                                  </div>
+                                  <span style={{ fontSize: '0.725rem', color: 'var(--color-primary)', fontWeight: 600, marginTop: '2px' }}>
+                                    Hoa hồng dự kiến: {calcVnd > 0 ? `${calcVnd.toLocaleString('vi-VN')} VND` : '0 VND'}
+                                  </span>
+                                </div>
+                              </div>
+
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                <input
+                                  type="number"
+                                  min="0"
+                                  max="100"
+                                  value={pctVal}
+                                  onChange={e => {
+                                    const newVal = e.target.value;
+                                    setDepositCoopShares(prev => ({ ...prev, [uid]: newVal }));
+                                  }}
+                                  className="form-input"
+                                  style={{ width: '70px', height: '34px', textAlign: 'center', fontWeight: 700 }}
+                                />
+                                <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--color-text-muted)' }}>%</span>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })()}
+
               </div>
-              <div className="modal-footer">
+              <div className="modal-footer" style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
                 <button className="btn outline" onClick={() => setShowDealModal(false)} disabled={isSubmitting}>Hủy</button>
-                <button className="btn primary" onClick={handleSaveDeposit} disabled={isSubmitting}>
-                  {isSubmitting ? 'Đang tạo...' : 'Tạo phiếu cọc'}
-                </button>
+                {(() => {
+                  const ownerId = String(contact?.owner_id || formData?.owner_id || currentUser?.id || '');
+                  const collabList = getCoopCollaboratorIds();
+                  const hasCoopSales = collabList.length > 0;
+                  if (hasCoopSales) {
+                    return (
+                      <>
+                        <button 
+                          className="btn outline" 
+                          style={{ borderColor: '#f59e0b', color: '#d97706', fontWeight: 700 }} 
+                          onClick={() => handleSaveDeposit(false)} 
+                          disabled={isSubmitting}
+                          title="Chuyển cọc không tạo phiếu hợp tác (100% hoa hồng cho Sale chính)"
+                        >
+                          {isSubmitting ? 'Đang lưu...' : 'Chuyển cọc KHÔNG tạo Phiếu HT'}
+                        </button>
+                        <button 
+                          className="btn primary" 
+                          onClick={() => handleSaveDeposit(true)} 
+                          disabled={isSubmitting}
+                        >
+                          {isSubmitting ? 'Đang lưu...' : 'Tạo cọc & Tạo Phiếu Hợp tác'}
+                        </button>
+                      </>
+                    );
+                  }
+                  return (
+                    <button className="btn primary" onClick={() => handleSaveDeposit(false)} disabled={isSubmitting}>
+                      {isSubmitting ? 'Đang tạo...' : 'Tạo phiếu cọc'}
+                    </button>
+                  );
+                })()}
               </div>
             </motion.div>
           </div>
@@ -11614,203 +11805,15 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
         users={users}
       />
 
-      {/* Signature Modal */}
-      {isSignModalOpen && coopSlip && createPortal(
-        <div style={{ position: 'fixed', inset: 0, zIndex: 9999999, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0, 0, 0, 0.6)', backdropFilter: 'blur(4px)', padding: '1rem' }}>
-          <div className="card animate-fade" style={{ maxWidth: '800px', width: '100%', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem', maxHeight: '90vh', overflowY: 'auto' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--color-border)', paddingBottom: '0.5rem' }}>
-              <h2 style={{ fontSize: '1.25rem', fontWeight: 700 }}>Đọc tài liệu &amp; Ký xác nhận điện tử</h2>
-              <button onClick={() => { setIsSignModalOpen(false); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-light)', display: 'flex', alignItems: 'center' }}><X size={20} /></button>
-            </div>
-
-            {/* Document Reader Area */}
-            <div>
-              <h3 style={{ fontSize: '0.875rem', fontWeight: 700, marginBottom: '0.5rem', color: 'var(--color-text)' }}>1. Đọc tài liệu đính kèm:</h3>
-              {coopSlip.attachment_url ? (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                  {coopSlip.attachment_url.split(',').map((url: string, urlIdx: number) => (
-                    <div key={urlIdx} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 16px', background: 'var(--color-bg-light)', borderRadius: '10px', border: '1px solid var(--color-border)' }}>
-                      <FileText size={24} style={{ color: 'var(--color-primary)' }} />
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <p style={{ fontSize: '0.825rem', fontWeight: 700, margin: 0, color: 'var(--color-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                          {url.includes('deposits/') || url.includes('_UNC') || url.includes('1784734208') ? 'UNC - Chứng từ Ủy nhiệm chi Đặt cọc Đợt 1' : (url.split('/').pop() || 'Tài liệu hợp tác đính kèm')}
-                        </p>
-                        <a 
-                          href={`https://open.domation.net/richland/${url}`} 
-                          target="_blank" 
-                          rel="noreferrer" 
-                          style={{ fontSize: '0.75rem', color: 'var(--color-primary)', fontWeight: 600, textDecoration: 'underline', marginTop: '2px', display: 'inline-block' }}
-                        >
-                          Bấm để mở xem tài liệu ở tab mới ↗
-                        </a>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div style={{ padding: '1rem', textAlign: 'center', background: 'var(--color-bg-light)', border: '1px solid var(--color-border)', borderRadius: '8px', color: 'var(--color-text-muted)', fontSize: '0.8125rem' }}>
-                  Phiếu hợp tác này không đính kèm tệp tài liệu bổ sung. Vui lòng kiểm tra tỷ lệ phân chia bên dưới.
-                </div>
-              )}
-            </div>
-
-            {/* Shares info recap */}
-            <div style={{ padding: '12px 16px', background: 'var(--color-bg-light)', borderRadius: '10px', border: '1px solid var(--color-border)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)' }}>Tỷ lệ phân chia của các thành viên:</span>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                {coopSlip.shareholders?.map((sh: any) => (
-                  <div key={sh.user_id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', background: 'var(--color-surface)', borderRadius: '8px', border: '1px solid var(--color-border-light)' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                      <Avatar src={sh.avatar} name={sh.name} size="md" />
-                      <div style={{ display: 'flex', flexDirection: 'column' }}>
-                        <span style={{ fontWeight: 700, fontSize: '0.875rem', color: 'var(--color-text)' }}>{sh.name}</span>
-                        <span style={{ fontSize: '0.725rem', color: 'var(--color-text-muted)', fontStyle: 'italic', marginTop: '2px' }}>
-                          {numberToVietnameseWords(sh.percentage)}
-                        </span>
-                      </div>
-                    </div>
-                    <div style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--color-text)' }}>
-                      {sh.percentage}%
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Signature Area Selector & Component */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-              <div style={{ display: 'flex', gap: '10px', borderBottom: '1px solid var(--color-border)', paddingBottom: '0.75rem' }}>
-                <button
-                  type="button"
-                  className={`btn sm ${signatureMethod === 'saved' ? 'primary' : 'outline'}`}
-                  style={{ flex: 1, height: '36px', fontSize: '0.8125rem', fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
-                  onClick={() => setSignatureMethod('saved')}
-                >
-                  <UserCheck size={14} /> Chữ ký cá nhân đã lưu
-                </button>
-                <button
-                  type="button"
-                  className={`btn sm ${signatureMethod === 'draw' ? 'primary' : 'outline'}`}
-                  style={{ flex: 1, height: '36px', fontSize: '0.8125rem', fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
-                  onClick={() => setSignatureMethod('draw')}
-                >
-                  <PenTool size={14} /> Vẽ chữ ký tay
-                </button>
-                <button
-                  type="button"
-                  className={`btn sm ${signatureMethod === 'upload' ? 'primary' : 'outline'}`}
-                  style={{ flex: 1, height: '36px', fontSize: '0.8125rem', fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
-                  onClick={() => setSignatureMethod('upload')}
-                >
-                  <Paperclip size={14} /> Tải file ảnh chữ ký
-                </button>
-              </div>
-
-              {signatureMethod === 'saved' ? (
-                <div>
-                  <h3 style={{ fontSize: '0.875rem', fontWeight: 700, marginBottom: '0.5rem', color: 'var(--color-text)' }}>2. Chữ ký Điện tử Cá nhân đã đăng ký:</h3>
-                  {currentUser?.signature_url ? (
-                    <div style={{ padding: '1.25rem', border: '2px dashed var(--color-primary-light, var(--color-border))', borderRadius: '10px', background: 'var(--color-bg-light)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '0.75rem' }}>
-                      <img 
-                        src={currentUser.signature_url.startsWith('http') || currentUser.signature_url.startsWith('data:') ? currentUser.signature_url : `/${currentUser.signature_url}`} 
-                        alt="Chữ ký cá nhân mẫu" 
-                        style={{ maxHeight: '130px', objectFit: 'contain' }} 
-                      />
-                      <div style={{ textAlign: 'center' }}>
-                        <p style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text)', margin: 0 }}>Chữ ký điện tử của {currentUser.name}</p>
-                        <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>Chữ ký mẫu chuẩn đã thiết lập trong Quản lý Tài khoản</span>
-                      </div>
-                    </div>
-                  ) : (
-                    <div style={{ padding: '1.25rem', border: '1px dashed var(--color-border)', borderRadius: '10px', background: 'var(--color-bg-light)', textAlign: 'center', color: 'var(--color-text-muted)', fontSize: '0.8125rem' }}>
-                      Bạn chưa thiết lập chữ ký mẫu cá nhân trong <strong>Quản lý tài khoản → Thông tin cá nhân</strong>. Vui lòng chuyển sang tab <strong>Vẽ chữ ký tay</strong> hoặc <strong>Tải file ảnh</strong>.
-                    </div>
-                  )}
-                </div>
-              ) : signatureMethod === 'draw' ? (
-                <div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-                    <h3 style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)' }}>2. Vẽ chữ ký của bạn lên khung dưới đây:</h3>
-                    <button 
-                      onClick={clearCanvas} 
-                      style={{ fontSize: '0.75rem', color: 'var(--color-danger)', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 700 }}
-                    >
-                      Xóa vẽ lại
-                    </button>
-                  </div>
-                  <canvas
-                    ref={canvasRef}
-                    width={750}
-                    height={220}
-                    onMouseDown={startDrawing}
-                    onMouseMove={draw}
-                    onMouseUp={stopDrawing}
-                    onMouseLeave={stopDrawing}
-                    onTouchStart={startDrawing}
-                    onTouchMove={draw}
-                    onTouchEnd={stopDrawing}
-                    style={{
-                      border: '2px dashed var(--color-border)',
-                      borderRadius: '8px',
-                      background: 'var(--color-bg-light)',
-                      cursor: 'crosshair',
-                      display: 'block',
-                      touchAction: 'none',
-                      width: '100%',
-                      height: '220px'
-                    }}
-                  />
-                </div>
-              ) : (
-                <div>
-                  <h3 style={{ fontSize: '0.875rem', fontWeight: 700, marginBottom: '0.5rem', color: 'var(--color-text)' }}>2. Chọn file ảnh chữ ký từ máy tính của bạn:</h3>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file) {
-                        const reader = new FileReader();
-                        reader.onload = (event) => {
-                          setUploadedSignatureImg(event.target?.result as string);
-                        };
-                        reader.readAsDataURL(file);
-                      }
-                    }}
-                    style={{ display: 'block', width: '100%', padding: '10px', border: '1px solid var(--color-border)', borderRadius: '6px', background: 'var(--color-bg-light)', fontSize: '0.8125rem', cursor: 'pointer' }}
-                  />
-                  {uploadedSignatureImg && (
-                    <div style={{ marginTop: '1rem', padding: '1rem', border: '1px solid var(--color-border)', borderRadius: '8px', background: 'var(--color-surface)', display: 'flex', justifyContent: 'center', alignItems: 'center', boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.02)' }}>
-                      <img src={uploadedSignatureImg} alt="Preview Chữ ký" style={{ maxHeight: '150px', objectFit: 'contain' }} />
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-
-            {/* Sticky Action Footer Buttons */}
-            <div style={{ position: 'sticky', bottom: 0, background: 'var(--color-surface, #ffffff)', paddingTop: '12px', paddingBottom: '4px', marginTop: '12px', borderTop: '1px solid var(--color-border)', zIndex: 20, display: 'flex', gap: '12px' }}>
-              <button 
-                className="btn outline" 
-                style={{ flex: 1, height: '48px', fontSize: '0.95rem', fontWeight: 700, borderRadius: '10px' }} 
-                onClick={() => { setIsSignModalOpen(false); }}
-                disabled={coopLoading}
-              >
-                Hủy
-              </button>
-              <button 
-                className="btn primary" 
-                style={{ flex: 1 }} 
-                onClick={handleSubmitSignature}
-                disabled={coopLoading}
-              >
-                {coopLoading ? 'Đang gửi...' : 'Ký số điện tử'}
-              </button>
-            </div>
-          </div>
-        </div>,
-        document.body
-      )}
+      {/* Shared Signature Modal */}
+      <SignaturePadModal
+        isOpen={isSignModalOpen}
+        onClose={() => setIsSignModalOpen(false)}
+        onSave={async (signatureUrl) => {
+          await handleSignCoopSlip(signatureUrl);
+        }}
+        initialSignatureUrl={currentUser?.signature_url}
+      />
 
       {reschedulingMeeting && (
         <CustomModal

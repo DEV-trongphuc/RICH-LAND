@@ -49,20 +49,14 @@ if ($LASTEXITCODE -ne 0) {
     exit $LASTEXITCODE
 }
 
-# 3. Commit and push changes to Git
-Write-Host "3. Staging and pushing changes to Git repository..." -ForegroundColor Yellow
-git add .
-$gitChanges = git status --porcelain
-if ($gitChanges) {
-    git commit -m "deploy: automated deployment and push"
-    git push origin main
-    if ($LASTEXITCODE -ne 0) {
-        Write-Host "ERROR: Failed to push to Git repository." -ForegroundColor Red
-        exit $LASTEXITCODE
-    }
-} else {
-    Write-Host "No pending local changes to push to Git." -ForegroundColor Gray
-}
+# 3. Commit and push changes to Git (DISABLED per user request)
+# Write-Host "3. Staging and pushing changes to Git repository..." -ForegroundColor Yellow
+# git add .
+# $gitChanges = git status --porcelain
+# if ($gitChanges) {
+#     git commit -m "deploy: automated deployment and push"
+#     git push origin main
+# }
 
 # 4. Trigger GC to free process memory
 [System.GC]::Collect()

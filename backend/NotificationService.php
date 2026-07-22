@@ -29,23 +29,6 @@ class NotificationService {
             $emailTitle = $resolved['email_title'] ?? '';
             $emailContent = $resolved['email_content'] ?? '';
 
-            // ==================== CHANNEL 1: IN-APP NOTIFICATION BELL ====================
-            try {
-                if (!empty($recipients)) {
-                    $insertNotif = $db->prepare("
-                        INSERT INTO notifications (user_id, tenant_id, title, body, type, link)
-                        VALUES (?, ?, ?, ?, ?, ?)
-                    ");
-                    foreach ($recipients as $rec) {
-                        if (!empty($rec['id'])) {
-                            $insertNotif->execute([$rec['id'], $tenantId, $title, $body, $type, $link]);
-                        }
-                    }
-                }
-            } catch (\Throwable $bellEx) {
-                error_log("NotificationService Bell Error: " . $bellEx->getMessage());
-            }
-
             // Fetch recipients' matrix configurations from database
             $recipientIds = array_filter(array_map(fn($r) => (int)($r['id'] ?? 0), $recipients));
             $userConfigs = [];
@@ -77,6 +60,24 @@ class NotificationService {
                 return true;
             };
 
+            // ==================== CHANNEL 1: IN-APP NOTIFICATION BELL ====================
+            try {
+                if (!empty($recipients)) {
+                    $insertNotif = $db->prepare("
+                        INSERT INTO notifications (user_id, tenant_id, title, body, type, link)
+                        VALUES (?, ?, ?, ?, ?, ?)
+                    ");
+                    foreach ($recipients as $rec) {
+                        $rId = (int)($rec['id'] ?? 0);
+                        if ($rId > 0 && $isChannelEnabled($rId, 'bell') && $isChannelEnabled($rId, 'master')) {
+                            $insertNotif->execute([$rId, $tenantId, $title, $body, $type, $link]);
+                        }
+                    }
+                }
+            } catch (\Throwable $bellEx) {
+                error_log("NotificationService Bell Error: " . $bellEx->getMessage());
+            }
+
             // Fetch system settings for Zalo and Telegram group configuration
             $stmtGSettings = $db->prepare("SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('zalo_admin_group_chat_id', 'zalo_notify_only_group', 'telegram_admin_group_chat_id', 'telegram_notify_only_group', 'zalo_bot_token', 'telegram_bot_token')");
             $stmtGSettings->execute();
@@ -97,92 +98,98 @@ class NotificationService {
                 'MONTHLY_ATTENDANCE_REPORT'
             ], true);
 
-            // ==================== CHANNEL 2: ZALO BOT (INDEPENDENT) ====================
-            try {
-                if ($zaloBotToken && !empty($zaloMsg)) {
-                    require_once __DIR__ . '/zalo_bot.php';
+            // Defer heavy external network dispatches (Zalo, Telegram, Email) to shutdown function so API responds instantly to user UI!
+            register_shutdown_function(function() use (
+                $zaloBotToken, $zaloMsg, $zaloGroupChatId, $zaloOnlyGroup, $isAdminBroadcastEvent,
+                $tgBotToken, $tgMsg, $tgGroupChatId, $tgOnlyGroup,
+                $emailSubject, $emailTitle, $emailContent,
+                $recipients, $isChannelEnabled
+            ) {
+                if (function_exists('fastcgi_finish_request')) {
+                    @fastcgi_finish_request();
+                }
 
-                    $zaloChatIds = [];
-                    // Group Chat ID (only for Admin Broadcast events)
-                    if (!empty($zaloGroupChatId) && $isAdminBroadcastEvent) {
-                        $zaloChatIds[] = $zaloGroupChatId;
-                    }
-                    // Individual Chat IDs (if not strictly only_group and channel enabled by user)
-                    if (!$zaloOnlyGroup || !$isAdminBroadcastEvent) {
-                        foreach ($recipients as $rec) {
-                            $rId = (int)($rec['id'] ?? 0);
-                            if (!empty($rec['zalo_chat_id']) && $isChannelEnabled($rId, 'zalo')) {
-                                $zaloChatIds[] = trim($rec['zalo_chat_id']);
+                // ==================== CHANNEL 2: ZALO BOT (INDEPENDENT) ====================
+                try {
+                    if ($zaloBotToken && !empty($zaloMsg)) {
+                        require_once __DIR__ . '/zalo_bot.php';
+
+                        $zaloChatIds = [];
+                        if (!empty($zaloGroupChatId) && $isAdminBroadcastEvent) {
+                            $zaloChatIds[] = $zaloGroupChatId;
+                        }
+                        if (!$zaloOnlyGroup || !$isAdminBroadcastEvent) {
+                            foreach ($recipients as $rec) {
+                                $rId = (int)($rec['id'] ?? 0);
+                                if (!empty($rec['zalo_chat_id']) && $isChannelEnabled($rId, 'zalo')) {
+                                    $zaloChatIds[] = trim($rec['zalo_chat_id']);
+                                }
                             }
                         }
-                    }
+                        $zaloChatIds = array_unique(array_filter($zaloChatIds));
 
-                    $zaloChatIds = array_unique(array_filter($zaloChatIds));
-
-                    foreach ($zaloChatIds as $zId) {
-                        try {
-                            sendZaloMessage($zaloBotToken, $zId, $zaloMsg, true);
-                        } catch (\Throwable $ze) {
-                            error_log("NotificationService Zalo send error ($zId): " . $ze->getMessage());
-                        }
-                    }
-                }
-            } catch (\Throwable $zEx) {
-                error_log("NotificationService Zalo Channel Error: " . $zEx->getMessage());
-            }
-
-            // ==================== CHANNEL 3: TELEGRAM BOT (INDEPENDENT) ====================
-            try {
-                if ($tgBotToken && !empty($tgMsg)) {
-                    require_once __DIR__ . '/telegram_bot.php';
-
-                    $tgChatIds = [];
-                    // Group Chat ID (only for Admin Broadcast events)
-                    if (!empty($tgGroupChatId) && $isAdminBroadcastEvent) {
-                        $tgChatIds[] = $tgGroupChatId;
-                    }
-                    // Individual Chat IDs (if not strictly only_group and channel enabled by user)
-                    if (!$tgOnlyGroup || !$isAdminBroadcastEvent) {
-                        foreach ($recipients as $rec) {
-                            $rId = (int)($rec['id'] ?? 0);
-                            if (!empty($rec['telegram_chat_id']) && $isChannelEnabled($rId, 'telegram')) {
-                                $tgChatIds[] = trim($rec['telegram_chat_id']);
-                            }
-                        }
-                    }
-
-                    $tgChatIds = array_unique(array_filter($tgChatIds));
-
-                    foreach ($tgChatIds as $cId) {
-                        try {
-                            sendTelegramMessage($tgBotToken, $cId, $tgMsg);
-                        } catch (\Throwable $tge) {
-                            error_log("NotificationService Telegram send error ($cId): " . $tge->getMessage());
-                        }
-                    }
-                }
-            } catch (\Throwable $tgEx) {
-                error_log("NotificationService Telegram Channel Error: " . $tgEx->getMessage());
-            }
-
-            // ==================== CHANNEL 4: EMAIL SMTP (INDEPENDENT VIA MAIL QUEUE) ====================
-            try {
-                if (!empty($emailSubject) && !empty($emailContent)) {
-                    require_once __DIR__ . '/mailer.php';
-                    foreach ($recipients as $rec) {
-                        $rId = (int)($rec['id'] ?? 0);
-                        if (!empty($rec['email']) && $isChannelEnabled($rId, 'email')) {
+                        foreach ($zaloChatIds as $zId) {
                             try {
-                                sendEmailNotification($rec['email'], $emailSubject, $emailTitle, $emailContent, '', 0, false);
-                            } catch (\Throwable $ee) {
-                                error_log("NotificationService Email send error (" . $rec['email'] . "): " . $ee->getMessage());
+                                sendZaloMessage($zaloBotToken, $zId, $zaloMsg, true);
+                            } catch (\Throwable $ze) {
+                                error_log("NotificationService Zalo send error ($zId): " . $ze->getMessage());
                             }
                         }
                     }
+                } catch (\Throwable $zEx) {
+                    error_log("NotificationService Zalo Channel Error: " . $zEx->getMessage());
                 }
-            } catch (\Throwable $emEx) {
-                error_log("NotificationService Email Channel Error: " . $emEx->getMessage());
-            }
+
+                // ==================== CHANNEL 3: TELEGRAM BOT (INDEPENDENT) ====================
+                try {
+                    if ($tgBotToken && !empty($tgMsg)) {
+                        require_once __DIR__ . '/telegram_bot.php';
+
+                        $tgChatIds = [];
+                        if (!empty($tgGroupChatId) && $isAdminBroadcastEvent) {
+                            $tgChatIds[] = $tgGroupChatId;
+                        }
+                        if (!$tgOnlyGroup || !$isAdminBroadcastEvent) {
+                            foreach ($recipients as $rec) {
+                                $rId = (int)($rec['id'] ?? 0);
+                                if (!empty($rec['telegram_chat_id']) && $isChannelEnabled($rId, 'telegram')) {
+                                    $tgChatIds[] = trim($rec['telegram_chat_id']);
+                                }
+                            }
+                        }
+                        $tgChatIds = array_unique(array_filter($tgChatIds));
+
+                        foreach ($tgChatIds as $cId) {
+                            try {
+                                sendTelegramMessage($tgBotToken, $cId, $tgMsg);
+                            } catch (\Throwable $tge) {
+                                error_log("NotificationService Telegram send error ($cId): " . $tge->getMessage());
+                            }
+                        }
+                    }
+                } catch (\Throwable $tgEx) {
+                    error_log("NotificationService Telegram Channel Error: " . $tgEx->getMessage());
+                }
+
+                // ==================== CHANNEL 4: EMAIL SMTP (INDEPENDENT VIA MAIL QUEUE) ====================
+                try {
+                    if (!empty($emailSubject) && !empty($emailContent)) {
+                        require_once __DIR__ . '/mailer.php';
+                        foreach ($recipients as $rec) {
+                            $rId = (int)($rec['id'] ?? 0);
+                            if (!empty($rec['email']) && $isChannelEnabled($rId, 'email')) {
+                                try {
+                                    sendEmailNotification($rec['email'], $emailSubject, $emailTitle, $emailContent, '', 0, false);
+                                } catch (\Throwable $ee) {
+                                    error_log("NotificationService Email send error (" . $rec['email'] . "): " . $ee->getMessage());
+                                }
+                            }
+                        }
+                    }
+                } catch (\Throwable $emEx) {
+                    error_log("NotificationService Email Channel Error: " . $emEx->getMessage());
+                }
+            });
 
         } catch (\Throwable $outerEx) {
             error_log("NotificationService Global Dispatch Error: " . $outerEx->getMessage());
@@ -605,6 +612,37 @@ class NotificationService {
                                     "Hệ thống vừa phân bổ 1 khách hàng mới cho bạn.<br/>" .
                                     "Vì lý do bảo mật dữ liệu, thông tin chi tiết và SĐT đầy đủ chỉ hiển thị khi bạn đăng nhập vào CRM.<br/>" .
                                     "Vui lòng truy cập <strong>Sale Portal</strong> trên CRM để nhận khách hàng."
+                ];
+
+            case 'COOP_INVITATION':
+                $recipients = self::getRecipientById($db, $payload['user_id'] ?? 0);
+                $custName = $payload['customer_name'] ?? 'Khách hàng';
+                $inviterName = $payload['inviter_name'] ?? 'Đồng nghiệp';
+                $sharePct = isset($payload['share_pct']) && $payload['share_pct'] !== '' ? ($payload['share_pct'] . '%') : '';
+                $shareText = !empty($sharePct) ? " (Tỷ lệ hoa hồng: $sharePct)" : "";
+
+                return [
+                    'recipients' => $recipients,
+                    'title' => "🤝 Lời mời hợp tác chăm sóc (Co-care)",
+                    'body' => "Sale $inviterName vừa mời bạn hợp tác chăm sóc khách hàng $custName$shareText.",
+                    'type' => "cooperation",
+                    'link' => "/contacts?id=" . ($payload['contact_id'] ?? ''),
+                    'zalo_msg' => "🤝 [ LỜI MỜI HỢP TÁC CHĂM SÓC ]\n\n"
+                        . "Sale $inviterName vừa thêm bạn làm nhân sự hợp tác (Co-care):\n"
+                        . "  • Khách hàng: $custName\n"
+                        . (!empty($sharePct) ? "  • Tỷ lệ chia: $sharePct\n" : "")
+                        . "\nVui lòng truy cập CRM để xem chi tiết khách hàng.",
+                    'tg_msg' => "🤝 <b>[ LỜI MỜI HỢP TÁC CHĂM SÓC ]</b>\n\n"
+                        . "Sale <b>" . htmlspecialchars($inviterName) . "</b> vừa thêm bạn làm nhân sự hợp tác (Co-care):\n"
+                        . "  • Khách hàng: <b>" . htmlspecialchars($custName) . "</b>\n"
+                        . (!empty($sharePct) ? "  • Tỷ lệ chia: <b>$sharePct</b>\n" : "")
+                        . "\nVui lòng truy cập CRM để xem chi tiết khách hàng.",
+                    'email_subject' => "[RICH LAND] Lời mời hợp tác chăm sóc khách hàng $custName",
+                    'email_title' => "LỜI MỜI HỢP TÁC CHĂM SÓC (CO-CARE)",
+                    'email_content' => "Chào bạn,<br/><br/>" .
+                                    "Sale <strong>" . htmlspecialchars($inviterName) . "</strong> vừa mời bạn hợp tác chăm sóc (Co-care) khách hàng: <strong>" . htmlspecialchars($custName) . "</strong>.<br/>" .
+                                    (!empty($sharePct) ? "Tỷ lệ chia sẻ hoa hồng: <strong>$sharePct</strong>.<br/>" : "") .
+                                    "Vui lòng đăng nhập CRM để xem thông tin chi tiết."
                 ];
 
             case 'CUSTOMER_UPDATE':

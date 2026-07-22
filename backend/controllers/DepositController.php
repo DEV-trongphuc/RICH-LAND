@@ -23,9 +23,15 @@ class DepositController {
         $params = [$tid];
 
         if ($auth['role'] === 'sales' || $auth['role'] === 'sale') {
-            $sql .= " AND (d.created_by = ? OR c.owner_id = ? OR d.contact_id IN (SELECT contact_id FROM quyen_truy_cap WHERE user_id = ?))";
+            $sql .= " AND (
+                d.created_by = ? 
+                OR c.owner_id = ? 
+                OR FIND_IN_SET(?, c.collaborator_ids) 
+                OR d.contact_id IN (SELECT contact_id FROM quyen_truy_cap WHERE user_id = ?)
+            )";
             $params[] = $auth['user_id'];
             $params[] = $auth['user_id'];
+            $params[] = (string)$auth['user_id'];
             $params[] = $auth['user_id'];
         } else if ($auth['role'] === 'manager') {
             $sql .= " AND (d.created_by = ? OR c.owner_id = ? OR d.created_by IN (SELECT id FROM users WHERE team_id IN (SELECT id FROM teams WHERE leader_id = ?)) OR c.owner_id IN (SELECT id FROM users WHERE team_id IN (SELECT id FROM teams WHERE leader_id = ?)))";
@@ -205,51 +211,62 @@ class DepositController {
                 return $uid > 0 && $uid !== $ownerUid;
             }));
 
-            // Build initial shares distribution
-            if (!empty($coopSales)) {
-                $totalCount = 1 + count($coopSales);
-                $basePercent = floor(100 / $totalCount);
-                $remainder = 100 - ($basePercent * $totalCount);
+            $createCoopSlip = isset($b['create_coop_slip']) ? (bool)$b['create_coop_slip'] : false;
 
-                $customShares = [$ownerUid => (int)($basePercent + $remainder)];
-                foreach ($coopSales as $cid) {
-                    $customShares[$cid] = (int)$basePercent;
+            // ONLY create or update a cooperation slip if there is multi-sale co-care (!empty($coopSales)) AND createCoopSlip is true.
+            // If solo sale (chỉ có 1 sale, không có ai co.op), DO NOT CREATE ANY COOPERATION SLIP AT ALL!
+            if ($createCoopSlip && !empty($coopSales)) {
+                // Build shares distribution using custom shares if provided by frontend
+                if (!empty($b['shares']) && (is_array($b['shares']) || is_object($b['shares']))) {
+                    $customShares = [];
+                    foreach ($b['shares'] as $uid => $pct) {
+                        $customShares[(int)$uid] = (int)$pct;
+                    }
+                } else {
+                    $totalCount = 1 + count($coopSales);
+                    $basePercent = floor(100 / $totalCount);
+                    $remainder = 100 - ($basePercent * $totalCount);
+
+                    $customShares = [$ownerUid => (int)($basePercent + $remainder)];
+                    foreach ($coopSales as $cid) {
+                        $customShares[$cid] = (int)$basePercent;
+                    }
                 }
-            } else {
-                $customShares = [$ownerUid => 100];
-            }
 
-            // Check if there is an unlinked cooperation slip for this contact
-            $stmtCheckCoop = $this->db->prepare("SELECT id FROM cooperation_slips WHERE contact_id = ? AND deposit_slip_id IS NULL ORDER BY created_at DESC LIMIT 1");
-            $stmtCheckCoop->execute([$contactId]);
-            $existingCoop = $stmtCheckCoop->fetch();
+                // Check if there is an unlinked cooperation slip for this contact
+                $stmtCheckCoop = $this->db->prepare("SELECT id FROM cooperation_slips WHERE contact_id = ? AND deposit_slip_id IS NULL ORDER BY created_at DESC LIMIT 1");
+                $stmtCheckCoop->execute([$contactId]);
+                $existingCoop = $stmtCheckCoop->fetch();
 
-            require_once __DIR__ . '/CooperationController.php';
-            $coopCtrl = new CooperationController($this->db);
+                require_once __DIR__ . '/CooperationController.php';
+                $coopCtrl = new CooperationController($this->db);
 
-            if ($existingCoop) {
-                // Link pre-existing cooperation slip and update its shares to current collaborators
-                $sharesJson = json_encode($customShares);
-                $stmtLink = $this->db->prepare("UPDATE cooperation_slips SET deposit_slip_id = ?, shares_json = ? WHERE id = ?");
-                $stmtLink->execute([$depositId, $sharesJson, (int)$existingCoop['id']]);
+                if ($existingCoop) {
+                    // Link pre-existing cooperation slip and update its shares
+                    $sharesJson = json_encode($customShares);
+                    $stmtLink = $this->db->prepare("UPDATE cooperation_slips SET deposit_slip_id = ?, shares_json = ? WHERE id = ?");
+                    $stmtLink->execute([$depositId, $sharesJson, (int)$existingCoop['id']]);
 
-                $isSingleShareholder = count($customShares) === 1;
-                $status = $isSingleShareholder ? 'approved' : 'pending_signatures';
-                $sigs = [];
-                if ($isSingleShareholder) {
-                    $sigs[$ownerUid] = true;
-                }
-                $signaturesJson = json_encode($sigs);
+                    $status = 'pending_signatures';
+                    $signaturesJson = json_encode([]);
 
-                $stmtUpdateStatus = $this->db->prepare("UPDATE cooperation_slips SET status = ?, signatures_json = ? WHERE id = ?");
-                $stmtUpdateStatus->execute([$status, $signaturesJson, (int)$existingCoop['id']]);
+                    $stmtUpdateStatus = $this->db->prepare("UPDATE cooperation_slips SET status = ?, signatures_json = ? WHERE id = ?");
+                    $stmtUpdateStatus->execute([$status, $signaturesJson, (int)$existingCoop['id']]);
 
-                $coopCtrl->syncCollaboratorsToContact((int)$contactId, $sharesJson);
-            } else {
-                // Auto-generate new cooperation slip ONLY if multi-sale co-care exists (!empty($coopSales))
-                // If solo sale (làm 1 mình), no cooperation slip is required or created.
-                if (!empty($coopSales)) {
+                    $coopCtrl->syncCollaboratorsToContact((int)$contactId, $sharesJson);
+                } else {
                     $coopCtrl->autoGenerateSlip($contactId, $depositId, $auth['user_id'], $customShares);
+                }
+            } else {
+                // Solo sale (làm 1 mình) or user opted out of creating a coop slip.
+                // Absolutely NO new cooperation slip is created!
+                // If an unlinked existing coop slip was already in DB, just link it to deposit if present.
+                $stmtCheckCoop = $this->db->prepare("SELECT id FROM cooperation_slips WHERE contact_id = ? AND deposit_slip_id IS NULL ORDER BY created_at DESC LIMIT 1");
+                $stmtCheckCoop->execute([$contactId]);
+                $existingCoop = $stmtCheckCoop->fetch();
+                if ($existingCoop) {
+                    $stmtLink = $this->db->prepare("UPDATE cooperation_slips SET deposit_slip_id = ? WHERE id = ?");
+                    $stmtLink->execute([$depositId, (int)$existingCoop['id']]);
                 }
             }
 

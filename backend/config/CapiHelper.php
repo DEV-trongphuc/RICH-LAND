@@ -162,43 +162,46 @@ class CapiHelper {
             $payloadJson = json_encode($payload);
             $payloadHash = hash('sha256', $payloadJson);
 
-            // Execute Meta Graph API cURL request
-            $url = "https://graph.facebook.com/v19.0/$pixelId/events?access_token=$token";
-            
-            $ch = curl_init();
-            curl_setopt($ch, CURLOPT_URL, $url);
-            curl_setopt($ch, CURLOPT_POST, true);
-            curl_setopt($ch, CURLOPT_POSTFIELDS, $payloadJson);
-            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-            curl_setopt($ch, CURLOPT_HTTPHEADER, [
-                'Content-Type: application/json'
-            ]);
-            curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 1);
-            curl_setopt($ch, CURLOPT_TIMEOUT, 2);
-            
-            $response = curl_exec($ch);
-            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-            curl_close($ch);
+            // Defer Meta Graph API cURL request to background shutdown execution
+            register_shutdown_function(function() use ($db, $pixelId, $token, $payloadJson, $payloadHash, $leadId, $contactId, $eventName) {
+                if (function_exists('fastcgi_finish_request')) {
+                    @fastcgi_finish_request();
+                }
 
-            // Insert into capi_logs for audit auditing
-            $stmtLog = $db->prepare("
-                INSERT INTO capi_logs (lead_id, contact_id, event_name, payload_hash, sent_payload, response_status, response_body)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
-            ");
-            $stmtLog->execute([
-                $leadId,
-                $contactId,
-                $eventName,
-                $payloadHash,
-                $payloadJson,
-                $httpCode,
-                $response
-            ]);
+                $url = "https://graph.facebook.com/v19.0/$pixelId/events?access_token=$token";
+                
+                $ch = curl_init();
+                curl_setopt($ch, CURLOPT_URL, $url);
+                curl_setopt($ch, CURLOPT_POST, true);
+                curl_setopt($ch, CURLOPT_POSTFIELDS, $payloadJson);
+                curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+                curl_setopt($ch, CURLOPT_HTTPHEADER, [
+                    'Content-Type: application/json'
+                ]);
+                curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 1);
+                curl_setopt($ch, CURLOPT_TIMEOUT, 2);
+                
+                $response = curl_exec($ch);
+                $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+                curl_close($ch);
 
-            if ($httpCode !== 200) {
-                error_log("Meta CAPI failure: HTTP $httpCode - Response: $response");
-                return false;
-            }
+                // Insert into capi_logs for audit auditing
+                try {
+                    $stmtLog = $db->prepare("
+                        INSERT INTO capi_logs (lead_id, contact_id, event_name, payload_hash, sent_payload, response_status, response_body)
+                        VALUES (?, ?, ?, ?, ?, ?, ?)
+                    ");
+                    $stmtLog->execute([
+                        $leadId,
+                        $contactId,
+                        $eventName,
+                        $payloadHash,
+                        $payloadJson,
+                        $httpCode,
+                        $response
+                    ]);
+                } catch (\Throwable $e) {}
+            });
 
             return true;
         } catch (Exception $e) {

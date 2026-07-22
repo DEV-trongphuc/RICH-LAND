@@ -42,6 +42,12 @@ const EVENT_CATEGORIES = [
         icon: '👤'
       },
       {
+        key: 'COOP_INVITATION',
+        name: 'Lời mời Hợp tác Chăm sóc (Co-care)',
+        desc: 'Khi sale khác thêm bạn làm nhân sự hợp tác chăm sóc khách hàng hoặc tạo phiếu chia hoa hồng',
+        icon: '🤝'
+      },
+      {
         key: 'SECURITY_DEADLINE_WARNING',
         name: 'Cảnh báo Hạn bảo mật Lead / Data',
         desc: 'Nhắc nhở trước khi khách hàng tiềm năng bị giải phóng ra Kho Data chung do hết hạn chăm sóc',
@@ -297,6 +303,7 @@ const DEFAULT_EVENT_CONFIGS: Record<string, EventConfig> = {
   ATTENDANCE_UPDATE: { master: true, zalo: false, telegram: false, email: true },
   TICKET_NEW: { master: true, zalo: false, telegram: false, email: true },
   LEAVE_REQUEST: { master: true, zalo: false, telegram: false, email: true },
+  COOP_INVITATION: { master: true, zalo: true, telegram: true, email: true },
   PROJECT_ROSTER_UPDATE: { master: true, zalo: false, telegram: false, email: true },
   MONTHLY_ATTENDANCE_REPORT: { master: true, zalo: false, telegram: false, email: true },
   HOLIDAY_ROSTER_OPEN: { master: true, zalo: false, telegram: false, email: true },
