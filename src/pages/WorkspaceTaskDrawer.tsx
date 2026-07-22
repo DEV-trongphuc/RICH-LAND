@@ -2280,7 +2280,7 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
                       onClick={handlePostComment}
                       disabled={isSubmittingComment || uploadingFile || (!newCommentText.trim() && commentAttachments.length === 0)}
                       className="btn primary sm"
-                      style={{ padding: '6px 18px', fontSize: '0.78rem', borderRadius: '20px', display: 'flex', alignItems: 'center', gap: '5px', background: '#db2777', borderColor: '#db2777', color: '#fff' }}
+                      style={{ padding: '6px 18px', fontSize: '0.78rem', borderRadius: '20px', display: 'flex', alignItems: 'center', gap: '5px', background: 'var(--color-primary)', borderColor: 'var(--color-primary)', color: '#fff' }}
                     >
                       {isSubmittingComment ? <RefreshCw className="spin" size={13} /> : <Send size={13} />}
                       <span>{t('Gửi')}</span>
@@ -2435,18 +2435,164 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
             
             {/* Tiến độ công việc */}
             <div className="card" style={cardStyle}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontSize: '0.78rem', fontWeight: 800, color: 'var(--color-text)' }}>{t('Tiến độ công việc')}</span>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '2px' }}>
+              {formData.type === 'meeting' ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  <span style={{ fontSize: '0.78rem', fontWeight: 800, color: 'var(--color-text)' }}>{t('Trạng thái lịch hẹn')}</span>
+                  
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>{t('Trạng thái hiện tại:')}</span>
+                    <span 
+                      style={{ 
+                        fontSize: '0.75rem', 
+                        fontWeight: 700, 
+                        padding: '2px 8px', 
+                        borderRadius: '4px', 
+                        background: formData.status === 'done' 
+                          ? 'rgba(16, 185, 129, 0.08)' 
+                          : (formData.status === 'cancelled' ? 'rgba(239, 68, 68, 0.08)' : 'rgba(245, 158, 11, 0.08)'),
+                        color: formData.status === 'done' 
+                          ? 'var(--color-success)' 
+                          : (formData.status === 'cancelled' ? 'var(--color-danger)' : 'var(--color-warning)')
+                      }}
+                    >
+                      {formData.status === 'done' ? t('Đã gặp') : (formData.status === 'cancelled' ? t('Đã hủy') : t('Chưa gặp'))}
+                    </span>
+                  </div>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '4px' }}>
+                    {/* Đã gặp Button */}
+                    <button 
+                      className="btn success" 
+                      style={{ 
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', 
+                        padding: '8px 12px', fontSize: '0.8rem', fontWeight: 700, borderRadius: '8px', border: 'none', cursor: 'pointer',
+                        background: formData.status === 'done' ? 'var(--color-success)' : 'rgba(16, 185, 129, 0.08)',
+                        color: formData.status === 'done' ? '#fff' : 'var(--color-success)',
+                        transition: 'all 0.2s'
+                      }}
+                      onClick={async () => {
+                        try {
+                          const payload = { status: 'done', progress: 100 };
+                          await api.put(`/activities/${task.id}`, payload);
+                          setFormData((prev: any) => ({ ...prev, status: 'done', progress: 100 }));
+                          onUpdate();
+                          toast.success(t('Đã cập nhật trạng thái lịch hẹn thành công'));
+                        } catch (e) {
+                          toast.error(t('Lỗi khi cập nhật trạng thái lịch hẹn'));
+                        }
+                      }}
+                    >
+                      <CheckCircle2 size={14} /> {t('Đã gặp')}
+                    </button>
+
+                    {/* Hủy Button */}
+                    <button 
+                      className="btn danger" 
+                      style={{ 
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', 
+                        padding: '8px 12px', fontSize: '0.8rem', fontWeight: 700, borderRadius: '8px', border: 'none', cursor: 'pointer',
+                        background: formData.status === 'cancelled' ? 'var(--color-danger)' : 'rgba(239, 68, 68, 0.08)',
+                        color: formData.status === 'cancelled' ? '#fff' : 'var(--color-danger)',
+                        transition: 'all 0.2s'
+                      }}
+                      onClick={async () => {
+                        try {
+                          const payload = { status: 'cancelled', progress: 0 };
+                          await api.put(`/activities/${task.id}`, payload);
+                          setFormData((prev: any) => ({ ...prev, status: 'cancelled', progress: 0 }));
+                          onUpdate();
+                          toast.success(t('Đã hủy lịch hẹn thành công'));
+                        } catch (e) {
+                          toast.error(t('Lỗi khi hủy lịch hẹn'));
+                        }
+                      }}
+                    >
+                      <XCircle size={14} /> {t('Hủy lịch hẹn')}
+                    </button>
+
+                    {/* Dời lịch Button & Input */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', borderTop: '1px dashed var(--color-border-light)', paddingTop: '10px', marginTop: '4px' }}>
+                      <span style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <Calendar size={12} /> {t('Dời lịch hẹn sang:')}
+                      </span>
+                      <input 
+                        type="datetime-local" 
+                        value={formData.due_date ? formData.due_date.slice(0, 16) : ''}
+                        onChange={async (e) => {
+                          const newDate = e.target.value;
+                          if (newDate) {
+                            const formatted = new Date(newDate).toISOString();
+                            try {
+                              const payload = { due_date: formatted, status: 'open', progress: 0 };
+                              await api.put(`/activities/${task.id}`, payload);
+                              setFormData((prev: any) => ({ ...prev, due_date: formatted, status: 'open', progress: 0 }));
+                              onUpdate();
+                              toast.success(t('Đã dời lịch hẹn thành công'));
+                            } catch (err) {
+                              toast.error(t('Lỗi khi dời lịch hẹn'));
+                            }
+                          }
+                        }}
+                        style={{ 
+                          width: '100%', 
+                          fontSize: '0.8rem', 
+                          padding: '6px 10px', 
+                          borderRadius: '8px', 
+                          border: '1px solid var(--color-border)',
+                          background: 'var(--color-surface)',
+                          color: 'var(--color-text)'
+                        }}
+                      />
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontSize: '0.78rem', fontWeight: 800, color: 'var(--color-text)' }}>{t('Tiến độ công việc')}</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '2px' }}>
+                      <input
+                        type="number"
+                        min="0"
+                        max="100"
+                        value={formData.progress ?? 0}
+                        onChange={(e) => {
+                          let val = Number(e.target.value);
+                          if (isNaN(val)) val = 0;
+                          val = Math.min(100, Math.max(0, val));
+                          setFormData((prev: any) => {
+                            const next: any = { ...prev, progress: val };
+                            if (val === 100 && prev.require_approval === 1 && prev.approver_id) {
+                              next.approval_status = 'pending';
+                            } else if (val < 100) {
+                              next.approval_status = null;
+                            }
+                            return next;
+                          });
+                        }}
+                        style={{
+                          width: '45px',
+                          height: '24px',
+                          fontSize: '0.8rem',
+                          fontWeight: 800,
+                          textAlign: 'center',
+                          color: 'var(--color-primary)',
+                          border: '1px solid var(--color-border-light)',
+                          borderRadius: '4px',
+                          background: 'var(--color-surface)',
+                          padding: 0
+                        }}
+                      />
+                      <span style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--color-primary)' }}>%</span>
+                    </div>
+                  </div>
                   <input
-                    type="number"
+                    type="range"
                     min="0"
                     max="100"
-                    value={formData.progress ?? 0}
+                    value={formData.progress || 0}
                     onChange={(e) => {
-                      let val = Number(e.target.value);
-                      if (isNaN(val)) val = 0;
-                      val = Math.min(100, Math.max(0, val));
+                      const val = Number(e.target.value);
                       setFormData((prev: any) => {
                         const next: any = { ...prev, progress: val };
                         if (val === 100 && prev.require_approval === 1 && prev.approver_id) {
@@ -2457,51 +2603,20 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
                         return next;
                       });
                     }}
+                    className="progress-slider"
                     style={{
-                      width: '45px',
-                      height: '24px',
-                      fontSize: '0.8rem',
-                      fontWeight: 800,
-                      textAlign: 'center',
-                      color: 'var(--color-primary)',
-                      border: '1px solid var(--color-border-light)',
-                      borderRadius: '4px',
-                      background: 'var(--color-surface)',
-                      padding: 0
+                      background: (formData.progress || 0) === 100
+                        ? 'var(--color-success)'
+                        : 'linear-gradient(to right, #BD1D2D 0%, #F97316 ' + (formData.progress || 0) + '%, var(--color-border-light) ' + (formData.progress || 0) + '%, var(--color-border-light) 100%)'
                     }}
                   />
-                  <span style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--color-primary)' }}>%</span>
-                </div>
-              </div>
-              <input
-                type="range"
-                min="0"
-                max="100"
-                value={formData.progress || 0}
-                onChange={(e) => {
-                  const val = Number(e.target.value);
-                  setFormData((prev: any) => {
-                    const next: any = { ...prev, progress: val };
-                    if (val === 100 && prev.require_approval === 1 && prev.approver_id) {
-                      next.approval_status = 'pending';
-                    } else if (val < 100) {
-                      next.approval_status = null;
-                    }
-                    return next;
-                  });
-                }}
-                className="progress-slider"
-                style={{
-                  background: (formData.progress || 0) === 100
-                    ? 'var(--color-success)'
-                    : 'linear-gradient(to right, #BD1D2D 0%, #F97316 ' + (formData.progress || 0) + '%, var(--color-border-light) ' + (formData.progress || 0) + '%, var(--color-border-light) 100%)'
-                }}
-              />
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.68rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>
-                <span>0%</span>
-                <span>50%</span>
-                <span>100%</span>
-              </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.68rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>
+                    <span>0%</span>
+                    <span>50%</span>
+                    <span>100%</span>
+                  </div>
+                </>
+              )}
             </div>
 
             {/* Khách hàng liên quan */}
