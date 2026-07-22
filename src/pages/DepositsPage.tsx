@@ -5,7 +5,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useUIStore } from '../store/uiStore';
 import { CustomModal } from '../components/ui/CustomModal';
 import { CustomSelect } from '../components/ui/CustomSelect';
-import { CreditCard, Plus, Check, X, Upload, AlertCircle, Trash2, Calendar, FileText, Ban, ChevronLeft, ChevronRight, Info, Eye, Edit } from 'lucide-react';
+import { CreditCard, Plus, Check, X, Upload, AlertCircle, Trash2, Calendar, FileText, Ban, ChevronLeft, ChevronRight, Info, Eye, Edit, Loader2 } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { EmptyCard } from '../components/ui/EmptyCard';
 import { Avatar } from '../components/ui/Avatar';

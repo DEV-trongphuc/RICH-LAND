@@ -1282,6 +1282,8 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
   const [selectedDepForManage, setSelectedDepForManage] = useState<any | null>(null);
   const [tempMilestones, setTempMilestones] = useState<any[]>([]);
   const [isSavingMilestones, setIsSavingMilestones] = useState(false);
+  const [actioningMilestoneId, setActioningMilestoneId] = useState<any>(null);
+  const [actioningType, setActioningType] = useState<'approve' | 'reject' | null>(null);
   const [sharesData, setSharesData] = useState<any[]>([]);
   
   const [tempExpectedCommission, setTempExpectedCommission] = useState<number>(0);
@@ -4253,6 +4255,8 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
 
   const handleApproveFromModal = async (index: number) => {
     const m = tempMilestones[index];
+    setActioningMilestoneId(m.id);
+    setActioningType('approve');
     try {
       const res = await api.post(`/deposits/${selectedDepForManage.id}/milestones/${m.id}/approve`);
       if (res.data?.success || res.data) {
@@ -4268,11 +4272,16 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
       }
     } catch (err: any) {
       addToast(err?.response?.data?.message || err.message || 'Lỗi kết nối', 'error');
+    } finally {
+      setActioningMilestoneId(null);
+      setActioningType(null);
     }
   };
 
   const handleRejectFromModal = async (index: number) => {
     const m = tempMilestones[index];
+    setActioningMilestoneId(m.id);
+    setActioningType('reject');
     try {
       const res = await api.post(`/deposits/${selectedDepForManage.id}/milestones/${m.id}/reject`);
       if (res.data?.success || res.data) {
@@ -4288,6 +4297,9 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
       }
     } catch (err: any) {
       addToast(err?.response?.data?.message || err.message || 'Lỗi kết nối', 'error');
+    } finally {
+      setActioningMilestoneId(null);
+      setActioningType(null);
     }
   };
 
@@ -12466,12 +12478,14 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
       <CustomModal
         isOpen={isCreateCoopModalOpen}
         onClose={() => setIsCreateCoopModalOpen(false)}
-        title="Thiết lập hợp tác hoa hồng"
+        title={selectedCollaborators.length === 0 ? "Khởi tạo phiếu đặt cọc" : "Thiết lập hợp tác hoa hồng"}
         zIndex={1000020}
       >
         <div style={{ padding: '0.5rem 0' }}>
           <p style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', marginBottom: '1.25rem' }}>
-            Hợp tác là bắt buộc đối với phiếu hợp tác. Bạn có thể chọn tối đa <strong>2 nhân sự</strong> để cùng chăm sóc khách hàng này.
+            {selectedCollaborators.length === 0 
+              ? "Bạn đang tạo phiếu đặt cọc cho giao dịch độc lập (không có nhân sự hợp tác hỗ trợ)." 
+              : "Hợp tác là bắt buộc đối với phiếu hợp tác. Bạn có thể chọn tối đa 2 nhân sự để cùng chăm sóc khách hàng này."}
           </p>
 
           {/* Search bar */}
@@ -12609,11 +12623,11 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                     })
                   });
                   if (res.success) {
-                    addToast('Đã khởi tạo phiếu hợp tác hoa hồng thành công!', 'success');
+                    addToast(selectedCollaborators.length === 0 ? 'Đã khởi tạo phiếu đặt cọc thành công!' : 'Đã khởi tạo phiếu hợp tác hoa hồng thành công!', 'success');
                     setIsCreateCoopModalOpen(false);
                     await fetchCoopSlip();
                   } else {
-                    addToast(res.message || 'Không thể tạo phiếu hợp tác', 'error');
+                    addToast(res.message || (selectedCollaborators.length === 0 ? 'Không thể tạo phiếu đặt cọc' : 'Không thể tạo phiếu hợp tác'), 'error');
                   }
                 } catch (e: any) {
                   addToast(e.message, 'error');
@@ -12622,7 +12636,9 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                 }
               }}
             >
-              Tạo phiếu hợp tác
+              {coopLoading 
+                ? (selectedCollaborators.length === 0 ? 'Đang tạo phiếu đặt cọc...' : 'Đang tạo phiếu hợp tác...') 
+                : (selectedCollaborators.length === 0 ? 'Tạo phiếu đặt cọc' : 'Tạo phiếu hợp tác')}
             </button>
           </div>
 
@@ -13455,6 +13471,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                             <>
                               <button
                                 onClick={() => handleApproveFromModal(idx)}
+                                disabled={actioningMilestoneId !== null}
                                 style={{
                                   padding: '0 8px',
                                   height: '30px',
@@ -13465,16 +13482,23 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                   display: 'inline-flex',
                                   alignItems: 'center',
                                   justifyContent: 'center',
-                                  cursor: 'pointer',
+                                  cursor: actioningMilestoneId !== null ? 'not-allowed' : 'pointer',
                                   fontSize: '0.7rem',
-                                  fontWeight: 700
+                                  fontWeight: 700,
+                                  opacity: actioningMilestoneId !== null ? 0.6 : 1
                                 }}
                                 title="Phê duyệt đợt tiền này"
                               >
-                                <Check size={13} style={{ marginRight: 2 }} /> Duyệt
+                                {actioningMilestoneId === m.id && actioningType === 'approve' ? (
+                                  <Loader2 size={13} className="animate-spin" style={{ marginRight: 2 }} />
+                                ) : (
+                                  <Check size={13} style={{ marginRight: 2 }} />
+                                )}
+                                Duyệt
                               </button>
                               <button
                                 onClick={() => handleRejectFromModal(idx)}
+                                disabled={actioningMilestoneId !== null}
                                 style={{
                                   padding: '0 8px',
                                   height: '30px',
@@ -13485,13 +13509,19 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                   display: 'inline-flex',
                                   alignItems: 'center',
                                   justifyContent: 'center',
-                                  cursor: 'pointer',
+                                  cursor: actioningMilestoneId !== null ? 'not-allowed' : 'pointer',
                                   fontSize: '0.7rem',
-                                  fontWeight: 700
+                                  fontWeight: 700,
+                                  opacity: actioningMilestoneId !== null ? 0.6 : 1
                                 }}
                                 title="Bác bỏ minh chứng"
                               >
-                                <X size={13} style={{ marginRight: 2 }} /> Bác bỏ
+                                {actioningMilestoneId === m.id && actioningType === 'reject' ? (
+                                  <Loader2 size={13} className="animate-spin" style={{ marginRight: 2 }} />
+                                ) : (
+                                  <X size={13} style={{ marginRight: 2 }} />
+                                )}
+                                Bác bỏ
                               </button>
                             </>
                           )}
