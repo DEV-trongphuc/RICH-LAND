@@ -170,6 +170,8 @@ class CooperationController {
                       AND NOT (cs.signatures_json IS NOT NULL AND JSON_VALID(cs.signatures_json) AND JSON_CONTAINS(JSON_KEYS(cs.signatures_json), JSON_QUOTE(CAST(? AS CHAR))))";
             $params[] = $auth['user_id'];
             $params[] = $auth['user_id'];
+        }
+
         if (isset($_GET['contact_id'])) {
             $sql .= " AND cs.contact_id = ?";
             $params[] = (int)$_GET['contact_id'];

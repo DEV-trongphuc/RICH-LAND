@@ -748,8 +748,39 @@ export default function CooperationSlipsPage() {
     }
   };
 
-  const handleApproveSlip = (slip: CooperationSlip) => {
+  const handleApproveSlip = async (slip: CooperationSlip) => {
     setApprovalSlip(slip);
+    setModalDocs([]);
+    setModalDeals([]);
+    if (slip.contact_id) {
+      try {
+        const [resDocs, resDeposits] = await Promise.all([
+          api.get(`/cloud-files?contact_id=${slip.contact_id}&limit=1000`).catch(() => ({ data: { data: { items: [] } } })),
+          api.get(`/deposits?contact_id=${slip.contact_id}`).catch(() => ({ data: { data: [] } }))
+        ]);
+        
+        const docsData = resDocs?.data?.data?.items || [];
+        const mappedDocs = docsData.map((d: any) => ({
+          id: d.id,
+          name: d.name,
+          category: d.category || d.folder || 'general',
+          folder: d.folder || d.category || 'general',
+          path: d.file_path,
+          isMilestoneAttachment: false
+        }));
+
+        const depositsData = resDeposits?.data?.data || [];
+        const depositsList = (Array.isArray(depositsData) ? depositsData : []).map((d: any) => ({
+          id: d.id,
+          milestones: d.milestones || []
+        }));
+
+        setModalDocs(mappedDocs);
+        setModalDeals(depositsList);
+      } catch (err) {
+        console.error("Error fetching approval docs:", err);
+      }
+    }
   };
 
   const handleRejectSlip = async (slipId: number) => {
@@ -2228,36 +2259,92 @@ export default function CooperationSlipsPage() {
               </div>
 
               {/* Documents & Files */}
-              <div>
-                <h4 style={{ fontSize: '0.725rem', fontWeight: 800, color: 'var(--color-text-light)', marginBottom: '10px', textTransform: 'uppercase', letterSpacing: '1px', borderLeft: '3px solid var(--color-primary)', paddingLeft: '8px' }}>
-                  Tài liệu đính kèm ({approvalSlip.attachment_url ? approvalSlip.attachment_url.split(',').filter(Boolean).length : 0})
-                </h4>
-                {approvalSlip.attachment_url ? (
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '10px' }}>
-                    {approvalSlip.attachment_url.split(',').filter(Boolean).map((url, index) => (
-                      <div key={index} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px', background: 'var(--color-bg-light)', borderRadius: '12px', border: '1px solid var(--color-border)', transition: 'all 0.2s' }} className="hover-lift">
-                        <FileText size={20} color="var(--color-primary)" style={{ flexShrink: 0 }} />
-                        <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0, flex: 1 }}>
-                          <a 
-                            href={`https://open.domation.net/richland/${url}`} 
-                            target="_blank" 
-                            rel="noreferrer" 
-                            style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-primary)', textDecoration: 'none', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
-                            className="hover-underline"
-                          >
-                            {url.split('/').pop() || `Tài liệu đính kèm ${index + 1}`}
-                          </a>
-                        </div>
-                        <ExternalLink size={12} color="var(--color-text-muted)" style={{ flexShrink: 0 }} />
+              {(() => {
+                const modalAttachmentsList: { name: string; path: string }[] = [];
+                const addedPaths = new Set<string>();
+
+                if (approvalSlip?.attachment_url) {
+                  approvalSlip.attachment_url.split(',').map((s: string) => s.trim()).filter(Boolean).forEach((fileUrl: string) => {
+                    if (!addedPaths.has(fileUrl)) {
+                      addedPaths.add(fileUrl);
+                      const filename = fileUrl.split('/').pop() || 'Tài liệu hợp tác';
+                      modalAttachmentsList.push({ name: filename, path: fileUrl });
+                    }
+                  });
+                }
+
+                if (Array.isArray(modalDocs)) {
+                  modalDocs.forEach((d: any) => {
+                    const p = d.path || d.file_path;
+                    if (p && !addedPaths.has(p)) {
+                      const cat = (d.category || d.folder || '').toLowerCase();
+                      const nameLower = (d.name || '').toLowerCase();
+                      if (cat.includes('cọc') || cat.includes('unc') || d.isMilestoneAttachment || nameLower.includes('unc') || p.toLowerCase().includes('deposits')) {
+                        addedPaths.add(p);
+                        modalAttachmentsList.push({ name: d.name || p.split('/').pop() || 'UNC Đặt cọc', path: p });
+                      }
+                    }
+                  });
+                }
+
+                if (Array.isArray(modalDeals)) {
+                  modalDeals.forEach((dep: any) => {
+                    (dep.milestones || []).forEach((m: any) => {
+                      const fileUrl = m.unc_file_path || m.attachment_url;
+                      if (fileUrl && !addedPaths.has(fileUrl)) {
+                        addedPaths.add(fileUrl);
+                        const filename = (() => {
+                          const base = fileUrl.split('/').pop() || `${m.name || 'Cọc giữ chỗ'} - UNC.${fileUrl.split('.').pop() || 'png'}`;
+                          try { return decodeURIComponent(base); } catch (e) { return base; }
+                        })();
+                        modalAttachmentsList.push({ name: filename, path: fileUrl });
+                      }
+                    });
+                  });
+                }
+
+                return (
+                  <div>
+                    <h4 style={{ fontSize: '0.725rem', fontWeight: 800, color: 'var(--color-text-light)', marginBottom: '10px', textTransform: 'uppercase', letterSpacing: '1px', borderLeft: '3px solid var(--color-primary)', paddingLeft: '8px' }}>
+                      Tài liệu đính kèm ({modalAttachmentsList.length})
+                    </h4>
+                    {modalAttachmentsList.length > 0 ? (
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '10px' }}>
+                        {modalAttachmentsList.map((file, index) => {
+                          const isAbsolute = file.path.startsWith('http://') || file.path.startsWith('https://');
+                          const downloadUrl = isAbsolute
+                            ? file.path
+                            : file.path.startsWith('uploads/') 
+                              ? `${import.meta.env.VITE_API_URL || '/backend'}/${file.path}` 
+                              : `${import.meta.env.VITE_API_URL || '/backend'}/uploads/${file.path}`;
+
+                          return (
+                            <div key={index} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px', background: 'var(--color-bg-light)', borderRadius: '12px', border: '1px solid var(--color-border)', transition: 'all 0.2s' }} className="hover-lift">
+                              <FileText size={20} color="var(--color-primary)" style={{ flexShrink: 0 }} />
+                              <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0, flex: 1 }}>
+                                <a 
+                                  href={downloadUrl} 
+                                  target="_blank" 
+                                  rel="noreferrer" 
+                                  style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-primary)', textDecoration: 'none', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                                  className="hover-underline"
+                                >
+                                  {file.name}
+                                </a>
+                              </div>
+                              <ExternalLink size={12} color="var(--color-text-muted)" style={{ flexShrink: 0 }} />
+                            </div>
+                          );
+                        })}
                       </div>
-                    ))}
+                    ) : (
+                      <div style={{ textAlign: 'center', padding: '20px', border: '1px dashed var(--color-border)', borderRadius: '12px', color: 'var(--color-text-muted)', fontSize: '0.75rem', background: 'var(--color-bg-light)' }}>
+                        Không có tệp đính kèm nào.
+                      </div>
+                    )}
                   </div>
-                ) : (
-                  <div style={{ textAlign: 'center', padding: '20px', border: '1px dashed var(--color-border)', borderRadius: '12px', color: 'var(--color-text-muted)', fontSize: '0.75rem', background: 'var(--color-bg-light)' }}>
-                    Không có tệp đính kèm nào.
-                  </div>
-                )}
-              </div>
+                );
+              })()}
             </div>
 
             {/* Footer Actions - Large, Intuitive Buttons */}
