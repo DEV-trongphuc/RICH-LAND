@@ -90,18 +90,25 @@ class NotificationService {
             $tgGroupChatId = trim((string)($gSettings['telegram_admin_group_chat_id'] ?? ''));
             $tgOnlyGroup = ($gSettings['telegram_notify_only_group'] ?? '0') === '1';
 
+            $isAdminBroadcastEvent = in_array($eventType, [
+                'CHECKIN_LATE', 'ATTENDANCE_UPDATE', 'EXPENSE_REQUEST', 'TICKET_NEW', 
+                'COOPERATION_PENDING_APPROVAL', 'DEPOSIT_NEW', 'NIGHT_SHIFT_BOOKING', 
+                'LEAVE_REQUEST', 'HOLIDAY_REGISTRATION_OPENED', 'HOLIDAY_UPDATE', 
+                'MONTHLY_ATTENDANCE_REPORT'
+            ], true);
+
             // ==================== CHANNEL 2: ZALO BOT (INDEPENDENT) ====================
             try {
                 if ($zaloBotToken && !empty($zaloMsg)) {
                     require_once __DIR__ . '/zalo_bot.php';
 
                     $zaloChatIds = [];
-                    // Group Chat ID (only if set in settings)
-                    if (!empty($zaloGroupChatId)) {
+                    // Group Chat ID (only for Admin Broadcast events)
+                    if (!empty($zaloGroupChatId) && $isAdminBroadcastEvent) {
                         $zaloChatIds[] = $zaloGroupChatId;
                     }
                     // Individual Chat IDs (if not strictly only_group and channel enabled by user)
-                    if (!$zaloOnlyGroup) {
+                    if (!$zaloOnlyGroup || !$isAdminBroadcastEvent) {
                         foreach ($recipients as $rec) {
                             $rId = (int)($rec['id'] ?? 0);
                             if (!empty($rec['zalo_chat_id']) && $isChannelEnabled($rId, 'zalo')) {
@@ -130,12 +137,12 @@ class NotificationService {
                     require_once __DIR__ . '/telegram_bot.php';
 
                     $tgChatIds = [];
-                    // Group Chat ID (only if set in settings)
-                    if (!empty($tgGroupChatId)) {
+                    // Group Chat ID (only for Admin Broadcast events)
+                    if (!empty($tgGroupChatId) && $isAdminBroadcastEvent) {
                         $tgChatIds[] = $tgGroupChatId;
                     }
                     // Individual Chat IDs (if not strictly only_group and channel enabled by user)
-                    if (!$tgOnlyGroup) {
+                    if (!$tgOnlyGroup || !$isAdminBroadcastEvent) {
                         foreach ($recipients as $rec) {
                             $rId = (int)($rec['id'] ?? 0);
                             if (!empty($rec['telegram_chat_id']) && $isChannelEnabled($rId, 'telegram')) {
@@ -859,8 +866,14 @@ class NotificationService {
 
     private static function getRecipientById(PDO $db, int $userId): array {
         if ($userId <= 0) return [];
-        $stmt = $db->prepare("SELECT id, email, zalo_chat_id, telegram_chat_id, full_name FROM users WHERE id = ? LIMIT 1");
-        $stmt->execute([$userId]);
+        $stmt = $db->prepare("
+            SELECT u.id, u.email, u.zalo_chat_id, u.telegram_chat_id, u.full_name 
+            FROM users u
+            LEFT JOIN consultants c ON (u.email = c.email OR u.id = c.user_id)
+            WHERE u.id = ? OR c.id = ?
+            LIMIT 1
+        ");
+        $stmt->execute([$userId, $userId]);
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
         return $row ? [$row] : [];
     }

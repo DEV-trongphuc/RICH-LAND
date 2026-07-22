@@ -765,14 +765,28 @@ class ContactController {
                     $link = "/contacts?id=" . $id;
 
                     require_once __DIR__ . '/../NotificationService.php';
-                    foreach ($addedCollabs as $collabUserId) {
-                        $collabUserId = (int)$collabUserId;
-                        if ($collabUserId > 0 && $collabUserId !== (int)$auth['user_id']) {
-                            NotificationService::send($this->db, $auth['tenant_id'], 'CUSTOMER_UPDATE', [
-                                'user_id' => $collabUserId,
-                                'customer_name' => $fullName,
-                                'content' => "Bạn đã được sale " . ($auth['full_name'] ?? 'đồng nghiệp') . " thêm làm nhân sự chăm sóc phụ (Co-care) cho khách hàng " . $fullName
-                            ]);
+                    foreach ($addedCollabs as $collabRawId) {
+                        $collabRawId = (int)$collabRawId;
+                        if ($collabRawId > 0) {
+                            $targetUserId = $collabRawId;
+                            $stmtMap = $this->db->prepare("
+                                SELECT u.id FROM users u 
+                                LEFT JOIN consultants c ON (u.email = c.email OR u.id = c.user_id) 
+                                WHERE c.id = ? OR u.id = ? 
+                                LIMIT 1
+                            ");
+                            $stmtMap->execute([$collabRawId, $collabRawId]);
+                            if ($mappedUId = $stmtMap->fetchColumn()) {
+                                $targetUserId = (int)$mappedUId;
+                            }
+
+                            if ($targetUserId > 0 && $targetUserId !== (int)$auth['user_id']) {
+                                NotificationService::send($this->db, $auth['tenant_id'], 'CUSTOMER_UPDATE', [
+                                    'user_id' => $targetUserId,
+                                    'customer_name' => $fullName,
+                                    'content' => "Bạn đã được sale " . ($auth['full_name'] ?? 'đồng nghiệp') . " thêm làm nhân sự chăm sóc phụ (Co-care) cho khách hàng " . $fullName
+                                ]);
+                            }
                         }
                     }
                 }
