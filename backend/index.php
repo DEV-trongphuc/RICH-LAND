@@ -412,6 +412,8 @@ $method        = $_SERVER['REQUEST_METHOD'];
 if ($method === 'POST') {
     if (isset($_SERVER['HTTP_X_HTTP_METHOD_OVERRIDE'])) {
         $method = strtoupper($_SERVER['HTTP_X_HTTP_METHOD_OVERRIDE']);
+    } elseif (isset($_REQUEST['_method'])) {
+        $method = strtoupper($_REQUEST['_method']);
     } elseif (isset($_GET['_method'])) {
         $method = strtoupper($_GET['_method']);
     }
@@ -686,7 +688,7 @@ switch ($resource) {
         elseif (!$resourceId && $method === 'GET')    { requireRole($auth, ['admin', 'super_admin', 'superadmin', 'manager', 'sales', 'sale', 'director']); $ctrl->index($auth); }
         elseif (!$resourceId && $method === 'POST')   { requireRole($auth, ['admin', 'super_admin', 'director']); $ctrl->store($auth); }
         elseif ($resourceId  && $method === 'GET')    $ctrl->show($auth, (int)$resourceId);
-        elseif ($resourceId  && $method === 'PUT')    $ctrl->update($auth, (int)$resourceId);
+        elseif ($resourceId  && ($method === 'PUT' || $method === 'PATCH'))    $ctrl->update($auth, (int)$resourceId);
         elseif ($resourceId  && $method === 'DELETE') { requireRole($auth, ['admin', 'super_admin', 'director']); $ctrl->destroy($auth, (int)$resourceId); }
         else respond(404, null, 'Route không tồn tại', false);
         break;

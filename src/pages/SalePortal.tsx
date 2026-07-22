@@ -10338,16 +10338,29 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                   <User size={16} color="var(--color-primary)" /> {t('Thông tin cá nhân')}
                 </h3>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                    <div className="form-group">
-                      <label className="form-label" style={{ fontWeight: 600 }}>{t('Họ và tên')}</label>
-                      <input
-                        type="text"
-                        className="form-input"
-                        value={editName}
-                        onChange={(e) => setEditName(e.target.value)}
-                        placeholder={t('Nhập tên đầy đủ')}
-                        style={{ fontWeight: 600 }}
-                      />
+                    <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: isMobile ? '0.75rem' : '1rem' }}>
+                      <div className="form-group">
+                        <label className="form-label" style={{ fontWeight: 600, fontSize: isMobile ? '0.75rem' : '0.875rem' }}>{t('Họ và tên')}</label>
+                        <input
+                          type="text"
+                          className="form-input"
+                          value={editName}
+                          onChange={(e) => setEditName(e.target.value)}
+                          placeholder={t('Nhập tên đầy đủ')}
+                          style={{ fontWeight: 600, fontSize: isMobile ? '0.8125rem' : '0.875rem', height: isMobile ? '36px' : '40px' }}
+                        />
+                      </div>
+                      <div className="form-group">
+                        <label className="form-label" style={{ fontWeight: 600, fontSize: isMobile ? '0.75rem' : '0.875rem' }}>{t('Email cá nhân')}</label>
+                        <input
+                          type="email"
+                          className="form-input"
+                          value={editPersonalEmail}
+                          onChange={(e) => setEditPersonalEmail(e.target.value)}
+                          placeholder={t('VD: email@gmail.com')}
+                          style={{ fontSize: isMobile ? '0.8125rem' : '0.875rem', height: isMobile ? '36px' : '40px' }}
+                        />
+                      </div>
                     </div>
 
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
@@ -10376,19 +10389,18 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                       </div>
                     </div>
 
-                    <div className="form-group">
-                      <label className="form-label" style={{ fontWeight: 600, fontSize: isMobile ? '0.75rem' : '0.875rem' }}>{t('Số CMND/CCCD')}</label>
-                      <input
-                        type="text"
-                        className="form-input"
-                        value={editCitizenId}
-                        onChange={(e) => setEditCitizenId(e.target.value)}
-                        placeholder={t('Nhập số CMND hoặc CCCD')}
-                        style={{ fontSize: isMobile ? '0.8125rem' : '0.875rem', height: isMobile ? '36px' : '40px' }}
-                      />
-                    </div>
-
                     <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: isMobile ? '0.75rem' : '1rem' }}>
+                      <div className="form-group">
+                        <label className="form-label" style={{ fontWeight: 600, fontSize: isMobile ? '0.75rem' : '0.875rem' }}>{t('Số CMND/CCCD')}</label>
+                        <input
+                          type="text"
+                          className="form-input"
+                          value={editCitizenId}
+                          onChange={(e) => setEditCitizenId(e.target.value)}
+                          placeholder={t('Nhập số CMND hoặc CCCD')}
+                          style={{ fontSize: isMobile ? '0.8125rem' : '0.875rem', height: isMobile ? '36px' : '40px' }}
+                        />
+                      </div>
                       <div className="form-group">
                         <label className="form-label" style={{ fontWeight: 600, fontSize: isMobile ? '0.75rem' : '0.875rem' }}>{t('Quốc tịch')}</label>
                         <input
@@ -10400,32 +10412,21 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                           style={{ fontSize: isMobile ? '0.8125rem' : '0.875rem', height: isMobile ? '36px' : '40px' }}
                         />
                       </div>
-                      <div className="form-group">
-                        <label className="form-label" style={{ fontWeight: 600, fontSize: isMobile ? '0.75rem' : '0.875rem' }}>{t('Tình trạng hôn nhân')}</label>
-                        <CustomSelect
-                          options={[
-                            { value: '', label: `-- ${t('Chọn tình trạng')} --` },
-                            { value: 'single', label: t('Độc thân') },
-                            { value: 'married', label: t('Đã kết hôn') },
-                            { value: 'divorced', label: t('Đã ly hôn') },
-                            { value: 'other', label: t('Khác') }
-                          ]}
-                          value={editMaritalStatus}
-                          onChange={val => setEditMaritalStatus(String(val))}
-                          placeholder={t('Chọn tình trạng...')}
-                        />
-                      </div>
                     </div>
 
                     <div className="form-group">
-                      <label className="form-label" style={{ fontWeight: 600, fontSize: isMobile ? '0.75rem' : '0.875rem' }}>{t('Email cá nhân')}</label>
-                      <input
-                        type="email"
-                        className="form-input"
-                        value={editPersonalEmail}
-                        onChange={(e) => setEditPersonalEmail(e.target.value)}
-                        placeholder={t('VD: email@gmail.com')}
-                        style={{ fontSize: isMobile ? '0.8125rem' : '0.875rem', height: isMobile ? '36px' : '40px' }}
+                      <label className="form-label" style={{ fontWeight: 600, fontSize: isMobile ? '0.75rem' : '0.875rem' }}>{t('Tình trạng hôn nhân')}</label>
+                      <CustomSelect
+                        options={[
+                          { value: '', label: `-- ${t('Chọn tình trạng')} --` },
+                          { value: 'single', label: t('Độc thân') },
+                          { value: 'married', label: t('Đã kết hôn') },
+                          { value: 'divorced', label: t('Đã ly hôn') },
+                          { value: 'other', label: t('Khác') }
+                        ]}
+                        value={editMaritalStatus}
+                        onChange={val => setEditMaritalStatus(String(val))}
+                        placeholder={t('Chọn tình trạng...')}
                       />
                     </div>
 
