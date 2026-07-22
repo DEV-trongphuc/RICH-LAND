@@ -501,7 +501,7 @@ class CooperationController {
         }
 
         // Backend check for mandatory files before allowing signature
-        $stmtDocs = $this->db->prepare("SELECT name, file_path, category, folder FROM cloud_files WHERE contact_id = ? AND tenant_id = ?");
+        $stmtDocs = $this->db->prepare("SELECT name, file_path, category FROM cloud_files WHERE contact_id = ? AND tenant_id = ?");
         $stmtDocs->execute([$slip['contact_id'], $auth['tenant_id']]);
         $docs = $stmtDocs->fetchAll(PDO::FETCH_ASSOC) ?: [];
 
@@ -537,7 +537,7 @@ class CooperationController {
             // 2. Check profile docs (cloud_files)
             foreach ($docs as $doc) {
                 $name = strtolower($doc['name'] ?? '');
-                $cat = strtolower($doc['category'] ?? $doc['folder'] ?? '');
+                $cat = strtolower($doc['category'] ?? '');
                 $path = strtolower($doc['file_path'] ?? '');
                 if ($cleanKeyword === 'unc' || $cleanKeyword === 'uy nhiem chi' || $cleanKeyword === 'ủy nhiệm chi') {
                     if (strpos($name, 'unc') !== false || strpos($name, 'cọc') !== false || strpos($name, 'đặt cọc') !== false || strpos($name, 'uy nhiem chi') !== false || strpos($name, 'ủy nhiệm chi') !== false || strpos($cat, 'đặt cọc') !== false || strpos($cat, 'unc') !== false || strpos($path, 'deposits') !== false) {
@@ -1276,15 +1276,31 @@ class CooperationController {
 
             foreach ($addedIds as $collabUid) {
                 $collabUidInt = (int)$collabUid;
-                if ($collabUidInt > 0 && $collabUidInt !== $ownerId) {
-                    $pct = isset($shares[$collabUidInt]) ? $shares[$collabUidInt] : (isset($shares[(string)$collabUidInt]) ? $shares[(string)$collabUidInt] : null);
-                    NotificationService::send($this->db, (int)$contact['tenant_id'], 'COOP_INVITATION', [
-                        'user_id' => $collabUidInt,
-                        'customer_name' => $custFullName,
-                        'inviter_name' => $ownerName,
-                        'share_pct' => $pct,
-                        'contact_id' => $contactId
-                    ]);
+                if ($collabUidInt > 0) {
+                    // Map consultant ID to user ID
+                    $targetUserId = $collabUidInt;
+                    $stmtMap = $this->db->prepare("
+                        SELECT u.id FROM users u 
+                        LEFT JOIN consultants c ON (u.email = c.email OR u.id = c.id) 
+                        WHERE c.id = ? OR u.id = ? 
+                        LIMIT 1
+                    ");
+                    $stmtMap->execute([$collabUidInt, $collabUidInt]);
+                    if ($mappedUId = $stmtMap->fetchColumn()) {
+                        $targetUserId = (int)$mappedUId;
+                    }
+
+                    // Only send notification if collaborator user ID is not the owner (inviter)
+                    if ($targetUserId > 0 && $targetUserId !== $ownerId) {
+                        $pct = isset($shares[$collabUidInt]) ? $shares[$collabUidInt] : (isset($shares[(string)$collabUidInt]) ? $shares[(string)$collabUidInt] : null);
+                        NotificationService::send($this->db, (int)$contact['tenant_id'], 'COOP_INVITATION', [
+                            'user_id' => $targetUserId,
+                            'customer_name' => $custFullName,
+                            'inviter_name' => $ownerName,
+                            'share_pct' => $pct,
+                            'contact_id' => $contactId
+                        ]);
+                    }
                 }
             }
         }

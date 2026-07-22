@@ -4490,6 +4490,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
           if (effectiveRole !== 'sale') return null; // Admin / Manager do not receive or accept lead offers
           const pendingLeads = (data.leads || []).filter((l: any) => {
             if (Number(l.is_accepted)) return false;
+            if (dismissedLeadIds.includes(Number(l.lead_id || l.id))) return false;
             const status = String(l.status || l.distribution_status || '').toLowerCase();
             if (status === 'pending_work_hours' || status === 'pending_approval' || status === 'silent' || status === 'duplicate') {
               return false;
@@ -4597,25 +4598,43 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                           )}
                         </div>
 
-                        <button 
-                          onClick={() => handleAcceptLead(lead.lead_id)} 
-                          disabled={isOverdue}
-                          className="btn primary sm hover-lift"
-                          style={{
-                            height: '32px',
-                            borderRadius: '8px',
-                            fontWeight: 700,
-                            padding: '0 14px',
-                            background: isOverdue ? '#cbd5e1' : 'var(--color-primary)',
-                            color: isOverdue ? '#64748b' : '#fff',
-                            fontSize: '0.8rem',
-                            cursor: isOverdue ? 'not-allowed' : 'pointer',
-                            pointerEvents: isOverdue ? 'none' : 'auto',
-                            border: 'none'
-                          }}
-                        >
-                          {isOverdue ? t('Quá hạn') : t('Tiếp nhận')}
-                        </button>
+                        {isOverdue ? (
+                          <button 
+                            onClick={() => setDismissedLeadIds(prev => [...prev, Number(lead.lead_id || lead.id)])}
+                            className="btn outline danger sm hover-lift"
+                            style={{
+                              height: '32px',
+                              borderRadius: '8px',
+                              fontWeight: 700,
+                              padding: '0 14px',
+                              fontSize: '0.8rem',
+                              cursor: 'pointer',
+                              border: '1px solid var(--color-danger)',
+                              color: 'var(--color-danger)',
+                              background: 'transparent'
+                            }}
+                          >
+                            {t('Xóa')}
+                          </button>
+                        ) : (
+                          <button 
+                            onClick={() => handleAcceptLead(lead.lead_id)} 
+                            className="btn primary sm hover-lift"
+                            style={{
+                              height: '32px',
+                              borderRadius: '8px',
+                              fontWeight: 700,
+                              padding: '0 14px',
+                              background: 'var(--color-primary)',
+                              color: '#fff',
+                              fontSize: '0.8rem',
+                              cursor: 'pointer',
+                              border: 'none'
+                            }}
+                          >
+                            {t('Tiếp nhận')}
+                          </button>
+                        )}
                       </div>
                     </div>
                   );
@@ -16610,7 +16629,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                   className="form-input"
                   value={dbTimerDaGap}
                   onChange={e => setDbTimerDaGap(e.target.value)}
-                  placeholder="Ví dụ: +5 days"
+placeholder="Ví dụ: +5 days"
                   style={{ height: '34px' }}
                 />
               </div>
@@ -16777,7 +16796,6 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
         }}
         isFocusSessionActive={isFocusSessionActive}
         focusTaskIndex={focusTaskIndex}
-        focusTasksCount={focusTasksList.length}
         onNextFocusTask={handleNextFocusTask}
       />
 
@@ -16786,19 +16804,18 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
         <CustomModal
           isOpen={true}
           onClose={() => {
-            // No close event on backdrop click
+            setDismissedLeadIds(prev => [...prev, Number(activeIncomingOffer.lead.lead_id)]);
           }}
-          showCloseIcon={false}
+          showCloseIcon={true}
           title={t('CÓ LEAD MỚI ĐƯỢC PHÂN BỔ!')}
-          width="400px"
+          width="460px"
         >
           <div style={{
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
-            gap: '1.5rem',
-            padding: '1.5rem 1rem',
-            textAlign: 'center',
+            gap: '1.25rem',
+            padding: '1rem 0.25rem 0.25rem 0.25rem',
             position: 'relative'
           }}>
             <style>{`
@@ -16807,92 +16824,47 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                 -webkit-backdrop-filter: none !important;
                 background-color: rgba(15, 23, 42, 0.8) !important;
               }
-              @keyframes rippleEffect {
-                0% { transform: scale(1); opacity: 0.8; }
-                100% { transform: scale(1.5); opacity: 0; }
-              }
-              @keyframes bellWobble {
-                0%, 100% { transform: rotate(0); }
-                15% { transform: rotate(12deg); }
-                30% { transform: rotate(-12deg); }
-                45% { transform: rotate(8deg); }
-                60% { transform: rotate(-8deg); }
-                75% { transform: rotate(4deg); }
-              }
             `}</style>
 
-            {/* Ringing Bell Icon */}
+            {/* Horizontal Split Body */}
             <div style={{
-              position: 'relative',
               display: 'flex',
+              flexDirection: 'row',
               alignItems: 'center',
-              justifyContent: 'center',
-              width: '80px',
-              height: '80px',
-              borderRadius: '50%',
-              background: 'rgba(189, 29, 45, 0.08)',
-              marginBottom: '-0.5rem'
+              justifyContent: 'space-between',
+              gap: '1.75rem',
+              width: '100%',
+              flexWrap: 'wrap'
             }}>
+              {/* Left Column: Rectangular Premium Timer Card */}
               <div style={{
-                position: 'absolute',
-                width: '100%',
-                height: '100%',
-                borderRadius: '50%',
-                border: '2px solid rgba(189, 29, 45, 0.4)',
-                animation: 'rippleEffect 2s infinite ease-out'
-              }} />
-              <div style={{
-                position: 'absolute',
-                width: '100%',
-                height: '100%',
-                borderRadius: '50%',
-                border: '2px solid rgba(189, 29, 45, 0.2)',
-                animation: 'rippleEffect 2s infinite ease-out 0.6s'
-              }} />
-              <Bell size={36} color="#BD1D2D" style={{ animation: 'bellWobble 1.5s infinite ease-in-out' }} />
-            </div>
-
-            {/* Countdown Circular Ring & Text */}
-            <div style={{ position: 'relative', width: '120px', height: '120px' }}>
-              <svg width="120" height="120" style={{ transform: 'rotate(-90deg)', filter: 'drop-shadow(0px 4px 8px rgba(189, 29, 45, 0.15))' }}>
-                <circle
-                  cx="60"
-                  cy="60"
-                  r="52"
-                  stroke="var(--color-border-light)"
-                  strokeWidth="6"
-                  fill="transparent"
-                />
-                <circle
-                  cx="60"
-                  cy="60"
-                  r="52"
-                  stroke="#BD1D2D"
-                  strokeWidth="8"
-                  fill="transparent"
-                  strokeDasharray={2 * Math.PI * 52}
-                  strokeDashoffset={
-                    (2 * Math.PI * 52) * 
-                    (1 - Math.max(0, activeIncomingOffer.remainingMs) / (Number(activeIncomingOffer.lead.lead_recall_minutes || 2) * 60 * 1000))
-                  }
-                  strokeLinecap="round"
-                  style={{ transition: 'stroke-dashoffset 0.1s linear' }}
-                />
-              </svg>
-              <div style={{
-                position: 'absolute',
-                inset: 0,
                 display: 'flex',
+                flexDirection: 'column',
                 alignItems: 'center',
                 justifyContent: 'center',
-                flexDirection: 'column'
+                width: '150px',
+                padding: '1.25rem 1rem',
+                background: 'rgba(189, 29, 45, 0.03)',
+                border: '1px solid rgba(189, 29, 45, 0.12)',
+                borderRadius: '16px',
+                flexShrink: 0,
+                margin: '0 auto',
+                boxShadow: 'inset 0 1px 2px rgba(189, 29, 45, 0.05)'
               }}>
+                <span style={{ fontSize: '0.62rem', fontWeight: 800, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '4px' }}>
+                  {t('Thời gian')}
+                </span>
+                
+                {/* Big Digital Clock */}
                 <span style={{
-                  fontSize: '1.75rem',
+                  fontSize: '2.4rem',
                   fontWeight: 900,
                   fontFamily: 'monospace',
                   color: '#BD1D2D',
-                  letterSpacing: '-0.5px'
+                  letterSpacing: '-1px',
+                  lineHeight: 1,
+                  margin: '4px 0',
+                  textShadow: '0 2px 4px rgba(189, 29, 45, 0.1)'
                 }}>
                   {(() => {
                     const totalSecs = Math.max(0, Math.floor(activeIncomingOffer.remainingMs / 1000));
@@ -16901,76 +16873,110 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                     return `${mins}:${String(secs).padStart(2, '0')}`;
                   })()}
                 </span>
-                <span style={{ fontSize: '0.6rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginTop: '-2px' }}>
+                
+                {/* Linear Depleting Progress Bar */}
+                <div style={{
+                  width: '100%',
+                  height: '6px',
+                  background: 'rgba(189, 29, 45, 0.1)',
+                  borderRadius: '10px',
+                  overflow: 'hidden',
+                  margin: '8px 0 4px 0'
+                }}>
+                  <div style={{
+                    width: `${Math.max(0, Math.min(100, (activeIncomingOffer.remainingMs / (Number(activeIncomingOffer.lead.lead_recall_minutes || 2) * 60 * 1000)) * 100))}%`,
+                    height: '100%',
+                    background: '#BD1D2D',
+                    borderRadius: '10px',
+                    transition: 'width 0.1s linear'
+                  }} />
+                </div>
+
+                <span style={{ fontSize: '0.55rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginTop: '2px' }}>
                   {t('Còn lại')}
                 </span>
               </div>
-            </div>
 
-            {/* Lead Details Card */}
-            <div style={{
-              width: '100%',
-              padding: '1.25rem',
-              borderRadius: '12px',
-              background: 'var(--color-bg)',
-              border: '1px solid var(--color-border-light)',
-              textAlign: 'left'
-            }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>
-                  {t('Thông tin khách hàng')}
-                </span>
-                <span style={{
-                  padding: '3px 8px',
-                  borderRadius: '8px',
-                  fontSize: '0.68rem',
-                  fontWeight: 700,
-                  background: 'rgba(189, 29, 45, 0.08)',
-                  color: '#BD1D2D',
-                  border: '1px solid rgba(189, 29, 45, 0.15)'
+              {/* Right Column: Lead Details */}
+              <div style={{
+                flex: 1,
+                minWidth: '200px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '12px',
+                textAlign: 'left'
+              }}>
+                <h4 style={{ fontSize: '1.3rem', fontWeight: 800, color: 'var(--color-text)', margin: 0, lineHeight: 1.2 }}>
+                  {t('Khách hàng mới')}
+                </h4>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span style={{
+                    padding: '3px 8px',
+                    borderRadius: '6px',
+                    fontSize: '0.68rem',
+                    fontWeight: 700,
+                    background: 'rgba(100, 116, 139, 0.08)',
+                    color: '#475569',
+                    border: '1px solid rgba(100, 116, 139, 0.15)'
+                  }}>
+                    {t('Nguồn:')} {activeIncomingOffer.lead.source || 'Facebook CAPI'}
+                  </span>
+                </div>
+                
+                {/* Bottom metadata row: Warning on left, Assigned Time on right */}
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  marginTop: 'auto',
+                  flexWrap: 'wrap',
+                  gap: '8px',
+                  borderTop: '1px dashed var(--color-border-light)',
+                  paddingTop: '8px'
                 }}>
-                  {activeIncomingOffer.lead.source || 'Facebook CAPI'}
-                </span>
+                  <p style={{
+                    fontSize: '0.75rem',
+                    color: '#BD1D2D',
+                    fontWeight: 700,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    margin: 0
+                  }}>
+                    <AlertTriangle size={12} style={{ animation: 'pulse 1s infinite' }} /> 
+                    {t('Sẽ bị thu hồi khi hết giờ!')}
+                  </p>
+                  
+                  <span style={{
+                    fontSize: '0.75rem',
+                    color: 'var(--color-text-muted)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px'
+                  }}>
+                    <Clock size={12} /> {t('Được chia lúc:')} {activeIncomingOffer.lead.last_interaction_date ? new Date(activeIncomingOffer.lead.last_interaction_date).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) : ''}
+                  </span>
+                </div>
               </div>
-              <h4 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--color-text)', margin: '0 0 4px 0' }}>
-                {activeIncomingOffer.lead.full_name || t('Khách hàng mới')}
-              </h4>
-              <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', margin: 0, display: 'flex', alignItems: 'center', gap: '4px' }}>
-                <Clock size={12} /> {t('Phân bổ lúc:')} {activeIncomingOffer.lead.last_interaction_date ? new Date(activeIncomingOffer.lead.last_interaction_date).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) : ''}
-              </p>
             </div>
 
-            {/* Warning Message */}
-            <p style={{
-              fontSize: '0.75rem',
-              color: '#BD1D2D',
-              fontWeight: 750,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '6px',
-              margin: '0'
-            }}>
-              <AlertTriangle size={14} style={{ animation: 'pulse 1s infinite' }} /> 
-              {t('Vui lòng tiếp nhận ngay. Lead sẽ bị thu hồi khi hết giờ!')}
-            </p>
-
-            {/* Action Button */}
+            {/* Brand Action Button */}
             <button
               onClick={() => handleAcceptLead(activeIncomingOffer.lead.lead_id)}
               className="btn danger"
               style={{
                 width: '100%',
                 height: '48px',
-                borderRadius: '10px',
+                borderRadius: '8px',
                 fontSize: '1rem',
                 fontWeight: 800,
                 background: '#BD1D2D',
                 color: '#fff',
                 border: 'none',
-                boxShadow: '0 4px 15px rgba(189, 29, 45, 0.35)',
+                boxShadow: '0 4px 15px rgba(189, 29, 45, 0.3)',
                 cursor: 'pointer',
                 transition: 'all 0.2s ease',
+                marginTop: '0.5rem'
               }}
             >
               {t('TIẾP NHẬN LEAD NGAY')}
