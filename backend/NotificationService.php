@@ -897,7 +897,6 @@ class NotificationService {
             SELECT u.id, u.email, 
                    COALESCE(
                      NULLIF(NULLIF(TRIM(u.zalo_chat_id), 'chưa liên kết'), 'Chưa liên kết'), 
-                     NULLIF(NULLIF(TRIM(u.zalo_id), 'chưa liên kết'), 'Chưa liên kết'), 
                      NULLIF(NULLIF(TRIM(c.zalo_chat_id), 'chưa liên kết'), 'Chưa liên kết')
                    ) AS zalo_chat_id,
                    COALESCE(
@@ -920,7 +919,6 @@ class NotificationService {
             SELECT u.id, u.email, 
                    COALESCE(
                      NULLIF(NULLIF(TRIM(u.zalo_chat_id), 'chưa liên kết'), 'Chưa liên kết'), 
-                     NULLIF(NULLIF(TRIM(u.zalo_id), 'chưa liên kết'), 'Chưa liên kết'), 
                      NULLIF(NULLIF(TRIM(c.zalo_chat_id), 'chưa liên kết'), 'Chưa liên kết')
                    ) AS zalo_chat_id,
                    COALESCE(
@@ -944,7 +942,6 @@ class NotificationService {
             SELECT u.id, u.email, 
                    COALESCE(
                      NULLIF(NULLIF(TRIM(u.zalo_chat_id), 'chưa liên kết'), 'Chưa liên kết'), 
-                     NULLIF(NULLIF(TRIM(u.zalo_id), 'chưa liên kết'), 'Chưa liên kết'), 
                      NULLIF(NULLIF(TRIM(c.zalo_chat_id), 'chưa liên kết'), 'Chưa liên kết')
                    ) AS zalo_chat_id,
                    COALESCE(
