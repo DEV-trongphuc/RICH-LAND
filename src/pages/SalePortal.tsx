@@ -15721,18 +15721,8 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
         zIndex={2000000}
       >
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', padding: '4px 0' }}>
-          {/* Scope Tag & Subtitle */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
-            <span style={{
-              padding: '4px 12px',
-              borderRadius: '20px',
-              fontSize: '0.75rem',
-              fontWeight: 700,
-              background: isUserAdminRole ? 'rgba(239, 68, 68, 0.1)' : isUserManagerRole ? 'rgba(59, 130, 246, 0.1)' : 'rgba(16, 185, 129, 0.1)',
-              color: isUserAdminRole ? '#ef4444' : isUserManagerRole ? '#3b82f6' : '#10b981'
-            }}>
-              {isUserAdminRole ? t('Phạm vi: Toàn hệ thống (Admin)') : isUserManagerRole ? t('Phạm vi: Quản lý Team (Manager)') : t('Phạm vi: Cá nhân (Sale)')}
-            </span>
+          {/* Subtitle / Count Header */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '1rem' }}>
             <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>
               {t('Hiển thị')} {filteredUpcomingMeetingsModalList.length} / {upcomingMeetingsList.length} {t('cuộc hẹn')}
             </span>
