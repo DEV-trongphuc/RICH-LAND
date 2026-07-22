@@ -500,11 +500,34 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
 
   const [showUpcomingMeetingsModal, setShowUpcomingMeetingsModal] = useState(false);
   const [meetingSearchText, setMeetingSearchText] = useState('');
-  const [meetingFilterStatus, setMeetingFilterStatus] = useState<'all' | 'planned' | 'done'>('all');
+  const [meetingFilterStatus, setMeetingFilterStatus] = useState<'all' | 'planned' | 'overdue' | 'done'>('all');
 
   const isUserAdminRole = ['admin', 'superadmin', 'assistant', 'super_admin'].includes(String(currentUser?.role).toLowerCase());
   const isUserManagerRole = String(currentUser?.role).toLowerCase() === 'manager';
   const currentUidVal = currentUser?.id ? Number(currentUser.id) : 0;
+
+  const checkMeetingIsDone = (t: any) => {
+    if (!t) return false;
+    const statusStr = String(t.status || '').toLowerCase();
+    const textContent = (String(t.note || '') + ' ' + String(t.description || '') + ' ' + String(t.subject || '') + ' ' + String(t.title || '')).toLowerCase();
+    return (
+      statusStr === 'done' ||
+      statusStr === 'completed' ||
+      statusStr === 'da_gap' ||
+      t.progress === 100 ||
+      textContent.includes('đã gặp') ||
+      textContent.includes('hoàn thành gặp')
+    );
+  };
+
+  const checkMeetingIsOverdue = (t: any) => {
+    if (!t || checkMeetingIsDone(t)) return false;
+    const dueStr = t.due_date || t.shift_date;
+    if (!dueStr) return false;
+    const dueDate = new Date(dueStr);
+    const now = new Date();
+    return dueDate < now;
+  };
 
   const upcomingMeetingsList = useMemo(() => {
     if (!wsTasks || !Array.isArray(wsTasks)) return [];
@@ -539,9 +562,11 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
   const filteredUpcomingMeetingsModalList = useMemo(() => {
     let list = upcomingMeetingsList;
     if (meetingFilterStatus === 'planned') {
-      list = list.filter(t => t.status !== 'done');
+      list = list.filter(t => !checkMeetingIsDone(t) && !checkMeetingIsOverdue(t));
+    } else if (meetingFilterStatus === 'overdue') {
+      list = list.filter(t => !checkMeetingIsDone(t) && checkMeetingIsOverdue(t));
     } else if (meetingFilterStatus === 'done') {
-      list = list.filter(t => t.status === 'done');
+      list = list.filter(t => checkMeetingIsDone(t));
     }
     if (meetingSearchText.trim()) {
       const q = meetingSearchText.toLowerCase().trim();
@@ -549,7 +574,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
         const cName = String(t.contact_name || t.lead_name || t.related_name || t.customer_name || '').toLowerCase();
         const cPhone = String(t.phone || t.contact_phone || t.lead_phone || '').toLowerCase();
         const sName = String(t.assignee_name || t.user_name || t.created_by_name || t.sale_name || '').toLowerCase();
-        const subj = String(t.subject || t.title || '').toLowerCase();
+        const subj = String(t.subject || t.title || t.note || '').toLowerCase();
         return cName.includes(q) || cPhone.includes(q) || sName.includes(q) || subj.includes(q);
       });
     }
@@ -15555,453 +15580,275 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
 
 
       {/* Upcoming Meetings List Modal */}
-      {showUpcomingMeetingsModal && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          zIndex: 9999,
-          background: 'rgba(15, 23, 42, 0.65)',
-          backdropFilter: 'blur(8px)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          padding: '1.25rem'
-        }}
-        onClick={(e) => {
-          if (e.target === e.currentTarget) setShowUpcomingMeetingsModal(false);
-        }}>
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95, y: 15 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: 15 }}
-            transition={{ duration: 0.2 }}
-            style={{
-              background: 'var(--color-bg-surface, #ffffff)',
+      <CustomModal
+        isOpen={showUpcomingMeetingsModal}
+        onClose={() => setShowUpcomingMeetingsModal(false)}
+        title={t('Danh Sách Cuộc Hẹn Sắp Diễn Ra')}
+        maxWidth={860}
+        zIndex={2000000}
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', padding: '4px 0' }}>
+          {/* Scope Tag & Subtitle */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
+            <span style={{
+              padding: '4px 12px',
               borderRadius: '20px',
-              width: '100%',
-              maxWidth: '880px',
-              maxHeight: '88vh',
-              display: 'flex',
-              flexDirection: 'column',
-              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.35)',
-              border: '1px solid var(--color-border, #e2e8f0)',
-              overflow: 'hidden'
-            }}
-          >
-            {/* Modal Header */}
-            <div style={{
-              padding: '1.25rem 1.75rem',
-              borderBottom: '1px solid var(--color-border, #f1f5f9)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              background: 'linear-gradient(135deg, rgba(37, 99, 235, 0.05) 0%, rgba(99, 102, 241, 0.05) 100%)'
+              fontSize: '0.75rem',
+              fontWeight: 700,
+              background: isUserAdminRole ? 'rgba(239, 68, 68, 0.1)' : isUserManagerRole ? 'rgba(59, 130, 246, 0.1)' : 'rgba(16, 185, 129, 0.1)',
+              color: isUserAdminRole ? '#ef4444' : isUserManagerRole ? '#3b82f6' : '#10b981'
             }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <div style={{
-                  width: '42px',
-                  height: '42px',
-                  borderRadius: '12px',
-                  background: 'linear-gradient(135deg, #2563EB 0%, #4F46E5 100%)',
-                  color: '#fff',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  boxShadow: '0 4px 12px rgba(37, 99, 235, 0.3)'
-                }}>
-                  <Calendar size={22} />
-                </div>
-                <div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 800, color: 'var(--color-text, #0f172a)' }}>
-                      {t('Danh Sách Cuộc Hẹn Sắp Diễn Ra')}
-                    </h3>
-                    <span style={{
-                      padding: '3px 9px',
-                      borderRadius: '20px',
-                      fontSize: '0.725rem',
-                      fontWeight: 700,
-                      background: isUserAdminRole ? 'rgba(239, 68, 68, 0.1)' : isUserManagerRole ? 'rgba(59, 130, 246, 0.1)' : 'rgba(16, 185, 129, 0.1)',
-                      color: isUserAdminRole ? '#ef4444' : isUserManagerRole ? '#3b82f6' : '#10b981'
-                    }}>
-                      {isUserAdminRole ? t('Toàn hệ thống (Admin)') : isUserManagerRole ? t('Quản lý Team (Manager)') : t('Cá nhân (Sale)')}
-                    </span>
-                  </div>
-                  <p style={{ margin: '2px 0 0 0', fontSize: '0.825rem', color: 'var(--color-text-muted, #64748b)' }}>
-                    {t('Quản lý chi tiết danh sách khách hàng hẹn gặp, thời gian, vị trí và nhân sự phụ trách.')}
-                  </p>
-                </div>
-              </div>
+              {isUserAdminRole ? t('Phạm vi: Toàn hệ thống (Admin)') : isUserManagerRole ? t('Phạm vi: Quản lý Team (Manager)') : t('Phạm vi: Cá nhân (Sale)')}
+            </span>
+            <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>
+              {t('Hiển thị')} {filteredUpcomingMeetingsModalList.length} / {upcomingMeetingsList.length} {t('cuộc hẹn')}
+            </span>
+          </div>
 
-              <button
-                onClick={() => setShowUpcomingMeetingsModal(false)}
-                style={{
-                  background: 'rgba(0,0,0,0.05)',
-                  border: 'none',
-                  borderRadius: '10px',
-                  width: '34px',
-                  height: '34px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  cursor: 'pointer',
-                  color: 'var(--color-text-muted, #64748b)'
-                }}
-              >
-                <X size={18} />
-              </button>
-            </div>
-
-            {/* Filter & Search Toolbar */}
-            <div style={{
-              padding: '1rem 1.75rem',
-              background: 'var(--color-bg-subtle, #f8fafc)',
-              borderBottom: '1px solid var(--color-border, #e2e8f0)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              gap: '1rem',
-              flexWrap: 'wrap'
-            }}>
-              <div style={{
-                position: 'relative',
-                flex: 1,
-                minWidth: '240px'
-              }}>
-                <Search size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
-                <input
-                  type="text"
-                  placeholder={t('Tìm theo tên khách hàng, SĐT, tiêu đề hoặc TVV...')}
-                  value={meetingSearchText}
-                  onChange={e => setMeetingSearchText(e.target.value)}
-                  style={{
-                    width: '100%',
-                    padding: '8px 12px 8px 36px',
-                    fontSize: '0.85rem',
-                    borderRadius: '10px',
-                    border: '1px solid var(--color-border, #cbd5e1)',
-                    outline: 'none',
-                    background: '#ffffff'
-                  }}
-                />
-                {meetingSearchText && (
-                  <button
-                    onClick={() => setMeetingSearchText('')}
-                    style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', border: 'none', background: 'transparent', cursor: 'pointer', color: '#94a3b8' }}
-                  >
-                    <X size={14} />
-                  </button>
-                )}
-              </div>
-
-              {/* Filter Status Pills */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'var(--color-border, #e2e8f0)', padding: '3px', borderRadius: '10px' }}>
+          {/* Toolbar: Search + Filter Pills */}
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: '0.75rem',
+            flexWrap: 'wrap'
+          }}>
+            <div style={{ position: 'relative', flex: 1, minWidth: '220px' }}>
+              <Search size={15} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-muted)' }} />
+              <input
+                type="text"
+                placeholder={t('Tìm theo tên khách hàng, SĐT, tiêu đề hoặc TVV...')}
+                value={meetingSearchText}
+                onChange={e => setMeetingSearchText(e.target.value)}
+                className="form-input"
+                style={{ paddingLeft: '34px', fontSize: '0.825rem', height: '36px' }}
+              />
+              {meetingSearchText && (
                 <button
-                  onClick={() => setMeetingFilterStatus('all')}
-                  style={{
-                    padding: '5px 12px',
-                    borderRadius: '8px',
-                    fontSize: '0.775rem',
-                    fontWeight: 700,
-                    border: 'none',
-                    cursor: 'pointer',
-                    background: meetingFilterStatus === 'all' ? '#ffffff' : 'transparent',
-                    color: meetingFilterStatus === 'all' ? '#2563EB' : 'var(--color-text-muted)',
-                    boxShadow: meetingFilterStatus === 'all' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none'
-                  }}
+                  onClick={() => setMeetingSearchText('')}
+                  style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--color-text-muted)' }}
                 >
-                  {t('Tất cả')} ({upcomingMeetingsList.length})
+                  <X size={14} />
                 </button>
-                <button
-                  onClick={() => setMeetingFilterStatus('planned')}
-                  style={{
-                    padding: '5px 12px',
-                    borderRadius: '8px',
-                    fontSize: '0.775rem',
-                    fontWeight: 700,
-                    border: 'none',
-                    cursor: 'pointer',
-                    background: meetingFilterStatus === 'planned' ? '#ffffff' : 'transparent',
-                    color: meetingFilterStatus === 'planned' ? '#2563EB' : 'var(--color-text-muted)',
-                    boxShadow: meetingFilterStatus === 'planned' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none'
-                  }}
-                >
-                  {t('Sắp diễn ra')} ({upcomingMeetingsList.filter(t => t.status !== 'done').length})
-                </button>
-                <button
-                  onClick={() => setMeetingFilterStatus('done')}
-                  style={{
-                    padding: '5px 12px',
-                    borderRadius: '8px',
-                    fontSize: '0.775rem',
-                    fontWeight: 700,
-                    border: 'none',
-                    cursor: 'pointer',
-                    background: meetingFilterStatus === 'done' ? '#ffffff' : 'transparent',
-                    color: meetingFilterStatus === 'done' ? '#10b981' : 'var(--color-text-muted)',
-                    boxShadow: meetingFilterStatus === 'done' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none'
-                  }}
-                >
-                  {t('Đã gặp')} ({upcomingMeetingsList.filter(t => t.status === 'done').length})
-                </button>
-              </div>
-            </div>
-
-            {/* List Body */}
-            <div style={{
-              padding: '1.25rem 1.75rem',
-              overflowY: 'auto',
-              flex: 1,
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '12px'
-            }}>
-              {filteredUpcomingMeetingsModalList.length === 0 ? (
-                <div style={{
-                  padding: '3rem 1rem',
-                  textAlign: 'center',
-                  color: 'var(--color-text-muted, #94a3b8)',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  gap: '12px'
-                }}>
-                  <div style={{
-                    width: '56px',
-                    height: '56px',
-                    borderRadius: '50%',
-                    background: 'rgba(37, 99, 235, 0.08)',
-                    color: '#2563EB',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center'
-                  }}>
-                    <Calendar size={28} />
-                  </div>
-                  <div>
-                    <span style={{ fontSize: '0.95rem', fontWeight: 700, display: 'block', color: 'var(--color-text)' }}>
-                      {t('Không có cuộc hẹn gặp nào')}
-                    </span>
-                    <span style={{ fontSize: '0.825rem', color: 'var(--color-text-muted)' }}>
-                      {meetingSearchText ? t('Không tìm thấy cuộc hẹn phù hợp với từ khóa tìm kiếm.') : t('Hiện chưa có lịch hẹn gặp khách hàng nào trong khoảng thời gian này.')}
-                    </span>
-                  </div>
-                </div>
-              ) : (
-                filteredUpcomingMeetingsModalList.map((item: any, idx: number) => {
-                  const customerName = item.contact_name || item.lead_name || item.related_name || item.customer_name || 'Khách hàng';
-                  const customerPhone = item.phone || item.contact_phone || item.lead_phone || '';
-                  const customerAvatar = item.contact_avatar || item.avatar || '';
-                  
-                  const saleName = item.assignee_name || item.user_name || item.created_by_name || item.sale_name || 'Tư vấn viên';
-                  const saleAvatar = item.assignee_avatar || item.user_avatar || '';
-
-                  const meetingTitle = item.subject || item.title || t('Lịch hẹn gặp mặt tư vấn');
-                  const dueDateRaw = item.due_date || item.shift_date || item.created_at || '';
-
-                  const isDone = item.status === 'done';
-                  const isToday = dueDateRaw && dueDateRaw.slice(0, 10) === new Date().toISOString().slice(0, 10);
-
-                  return (
-                    <motion.div
-                      key={item.id || idx}
-                      whileHover={{ scale: 1.008, translateY: -1 }}
-                      transition={{ duration: 0.15 }}
-                      style={{
-                        background: 'var(--color-bg-card, #ffffff)',
-                        border: '1px solid var(--color-border, #e2e8f0)',
-                        borderRadius: '14px',
-                        padding: '1rem 1.25rem',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        gap: '1rem',
-                        flexWrap: 'wrap',
-                        boxShadow: '0 2px 6px rgba(0,0,0,0.03)',
-                        cursor: 'pointer'
-                      }}
-                      onClick={() => handleOpenCustomerFromMeetingModal(item)}
-                    >
-                      {/* Left: Customer Info */}
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: '220px', flex: 1 }}>
-                        <div style={{
-                          width: '44px',
-                          height: '44px',
-                          borderRadius: '50%',
-                          overflow: 'hidden',
-                          background: 'linear-gradient(135deg, #2563EB 0%, #3B82F6 100%)',
-                          color: '#ffffff',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          fontWeight: 800,
-                          fontSize: '1rem',
-                          flexShrink: 0,
-                          boxShadow: '0 2px 8px rgba(37, 99, 235, 0.25)'
-                        }}>
-                          {customerAvatar ? (
-                            <img src={customerAvatar} alt={customerName} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                          ) : (
-                            customerName.charAt(0).toUpperCase()
-                          )}
-                        </div>
-                        <div>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                            <span style={{ fontSize: '0.95rem', fontWeight: 800, color: 'var(--color-text, #0f172a)' }}>
-                              {customerName}
-                            </span>
-                            <span style={{
-                              padding: '2px 7px',
-                              borderRadius: '12px',
-                              fontSize: '0.675rem',
-                              fontWeight: 700,
-                              background: 'rgba(37, 99, 235, 0.08)',
-                              color: '#2563EB'
-                            }}>
-                              {t('Khách hàng')}
-                            </span>
-                          </div>
-                          {customerPhone && (
-                            <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted, #64748b)', display: 'flex', alignItems: 'center', gap: '4px', marginTop: '2px' }}>
-                              <Phone size={12} />
-                              {customerPhone}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Middle: Sale Staff Info */}
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: '170px' }}>
-                        <div style={{
-                          width: '32px',
-                          height: '32px',
-                          borderRadius: '50%',
-                          overflow: 'hidden',
-                          background: 'var(--color-bg-subtle, #f1f5f9)',
-                          color: 'var(--color-text)',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          fontWeight: 700,
-                          fontSize: '0.8rem',
-                          border: '1px solid var(--color-border)',
-                          flexShrink: 0
-                        }}>
-                          {saleAvatar ? (
-                            <img src={saleAvatar} alt={saleName} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                          ) : (
-                            saleName.charAt(0).toUpperCase()
-                          )}
-                        </div>
-                        <div>
-                          <span style={{ fontSize: '0.725rem', color: 'var(--color-text-muted)', display: 'block', fontWeight: 600 }}>
-                            {t('Sale phụ trách')}
-                          </span>
-                          <span style={{ fontSize: '0.825rem', fontWeight: 700, color: 'var(--color-text)' }}>
-                            {saleName}
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* Time & Title Info */}
-                      <div style={{ minWidth: '200px', flex: 1 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                          <Clock size={13} style={{ color: isToday ? '#ef4444' : '#2563EB' }} />
-                          <span style={{ fontSize: '0.825rem', fontWeight: 800, color: isToday ? '#ef4444' : 'var(--color-text)' }}>
-                            {dueDateRaw ? dueDateRaw.replace('T', ' ').slice(0, 16) : t('Chưa xếp giờ')}
-                          </span>
-                          {isToday && (
-                            <span style={{ padding: '1px 6px', borderRadius: '4px', fontSize: '0.65rem', fontWeight: 800, background: '#ef4444', color: '#fff' }}>
-                              {t('HÔM NAY')}
-                            </span>
-                          )}
-                        </div>
-                        <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--color-text-muted)', display: 'block', marginTop: '2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '240px' }}>
-                          {meetingTitle}
-                        </span>
-                      </div>
-
-                      {/* Status & Action */}
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                        <span style={{
-                          padding: '4px 10px',
-                          borderRadius: '20px',
-                          fontSize: '0.75rem',
-                          fontWeight: 700,
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '5px',
-                          background: isDone ? 'rgba(16, 185, 129, 0.1)' : 'rgba(37, 99, 235, 0.1)',
-                          color: isDone ? '#10b981' : '#2563EB'
-                        }}>
-                          {isDone ? <CheckCircle2 size={13} /> : <Clock size={13} />}
-                          {isDone ? t('Đã gặp') : t('Sắp diễn ra')}
-                        </span>
-
-                        <button
-                          className="btn sm"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleOpenCustomerFromMeetingModal(item);
-                          }}
-                          style={{
-                            background: 'var(--color-bg-subtle, #f1f5f9)',
-                            border: '1px solid var(--color-border, #cbd5e1)',
-                            borderRadius: '8px',
-                            padding: '5px 10px',
-                            fontSize: '0.775rem',
-                            fontWeight: 700,
-                            color: 'var(--color-text)',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '4px',
-                            cursor: 'pointer'
-                          }}
-                        >
-                          <UserCheck size={13} />
-                          <span>{t('Xem hồ sơ')}</span>
-                        </button>
-                      </div>
-                    </motion.div>
-                  );
-                })
               )}
             </div>
 
-            {/* Modal Footer */}
-            <div style={{
-              padding: '0.875rem 1.75rem',
-              borderTop: '1px solid var(--color-border, #e2e8f0)',
-              background: 'var(--color-bg-subtle, #f8fafc)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between'
-            }}>
-              <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>
-                {t('Hiển thị')} {filteredUpcomingMeetingsModalList.length} / {upcomingMeetingsList.length} {t('cuộc hẹn')}
-              </span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '4px', background: 'var(--color-bg-subtle, rgba(0,0,0,0.03))', padding: '3px', borderRadius: '10px', border: '1px solid var(--color-border)' }}>
               <button
-                className="btn"
-                onClick={() => setShowUpcomingMeetingsModal(false)}
+                onClick={() => setMeetingFilterStatus('all')}
                 style={{
-                  padding: '6px 16px',
-                  borderRadius: '8px',
-                  fontSize: '0.8rem',
+                  padding: '4px 10px',
+                  borderRadius: '7px',
+                  fontSize: '0.775rem',
                   fontWeight: 700,
-                  border: '1px solid var(--color-border)',
-                  background: '#ffffff',
-                  cursor: 'pointer'
+                  border: 'none',
+                  cursor: 'pointer',
+                  background: meetingFilterStatus === 'all' ? 'var(--color-surface, #ffffff)' : 'transparent',
+                  color: meetingFilterStatus === 'all' ? 'var(--color-primary, #BD1D2D)' : 'var(--color-text-muted)',
+                  boxShadow: meetingFilterStatus === 'all' ? 'var(--shadow-sm)' : 'none'
                 }}
               >
-                {t('Đóng')}
+                {t('Tất cả')} ({upcomingMeetingsList.length})
+              </button>
+              <button
+                onClick={() => setMeetingFilterStatus('planned')}
+                style={{
+                  padding: '4px 10px',
+                  borderRadius: '7px',
+                  fontSize: '0.775rem',
+                  fontWeight: 700,
+                  border: 'none',
+                  cursor: 'pointer',
+                  background: meetingFilterStatus === 'planned' ? 'var(--color-surface, #ffffff)' : 'transparent',
+                  color: meetingFilterStatus === 'planned' ? '#2563EB' : 'var(--color-text-muted)',
+                  boxShadow: meetingFilterStatus === 'planned' ? 'var(--shadow-sm)' : 'none'
+                }}
+              >
+                {t('Sắp diễn ra')} ({upcomingMeetingsList.filter(t => !checkMeetingIsDone(t) && !checkMeetingIsOverdue(t)).length})
+              </button>
+              <button
+                onClick={() => setMeetingFilterStatus('overdue')}
+                style={{
+                  padding: '4px 10px',
+                  borderRadius: '7px',
+                  fontSize: '0.775rem',
+                  fontWeight: 700,
+                  border: 'none',
+                  cursor: 'pointer',
+                  background: meetingFilterStatus === 'overdue' ? 'var(--color-surface, #ffffff)' : 'transparent',
+                  color: meetingFilterStatus === 'overdue' ? '#f59e0b' : 'var(--color-text-muted)',
+                  boxShadow: meetingFilterStatus === 'overdue' ? 'var(--shadow-sm)' : 'none'
+                }}
+              >
+                {t('Quá giờ hẹn')} ({upcomingMeetingsList.filter(t => !checkMeetingIsDone(t) && checkMeetingIsOverdue(t)).length})
+              </button>
+              <button
+                onClick={() => setMeetingFilterStatus('done')}
+                style={{
+                  padding: '4px 10px',
+                  borderRadius: '7px',
+                  fontSize: '0.775rem',
+                  fontWeight: 700,
+                  border: 'none',
+                  cursor: 'pointer',
+                  background: meetingFilterStatus === 'done' ? 'var(--color-surface, #ffffff)' : 'transparent',
+                  color: meetingFilterStatus === 'done' ? '#10b981' : 'var(--color-text-muted)',
+                  boxShadow: meetingFilterStatus === 'done' ? 'var(--shadow-sm)' : 'none'
+                }}
+              >
+                {t('Đã gặp')} ({upcomingMeetingsList.filter(t => checkMeetingIsDone(t)).length})
               </button>
             </div>
-          </motion.div>
+          </div>
+
+          {/* Meeting Cards List */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', maxHeight: '58vh', overflowY: 'auto', paddingRight: '4px' }}>
+            {filteredUpcomingMeetingsModalList.length === 0 ? (
+              <div style={{
+                padding: '2.5rem 1rem',
+                textAlign: 'center',
+                color: 'var(--color-text-muted)',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: '10px',
+                background: 'var(--color-bg-subtle)',
+                borderRadius: '12px',
+                border: '1px border-dashed var(--color-border)'
+              }}>
+                <Calendar size={32} style={{ color: 'var(--color-text-muted)' }} />
+                <span style={{ fontSize: '0.9rem', fontWeight: 600 }}>{t('Không có cuộc hẹn gặp nào trong danh sách')}</span>
+              </div>
+            ) : (
+              filteredUpcomingMeetingsModalList.map((item: any, idx: number) => {
+                const customerName = item.contact_name || item.lead_name || item.related_name || item.customer_name || 'Khách hàng';
+                const customerPhone = item.phone || item.contact_phone || item.lead_phone || '';
+                const customerAvatar = item.contact_avatar || item.customer_avatar || item.lead_avatar || item.avatar_url || item.avatar || '';
+
+                const saleName = item.assignee_name || item.user_name || item.created_by_name || item.sale_name || 'Tư vấn viên';
+                const saleAvatar = item.assignee_avatar || item.user_avatar || item.sale_avatar || item.created_by_avatar || '';
+
+                const meetingTitle = item.subject || item.title || t('Lịch hẹn gặp mặt tư vấn');
+                const dueDateRaw = item.due_date || item.shift_date || item.created_at || '';
+
+                const isDone = checkMeetingIsDone(item);
+                const isOverdue = checkMeetingIsOverdue(item);
+                const isToday = dueDateRaw && dueDateRaw.slice(0, 10) === new Date().toISOString().slice(0, 10);
+
+                return (
+                  <motion.div
+                    key={item.id || idx}
+                    whileHover={{ translateY: -1 }}
+                    transition={{ duration: 0.15 }}
+                    style={{
+                      background: 'var(--color-surface)',
+                      border: '1px solid var(--color-border)',
+                      borderRadius: '12px',
+                      padding: '0.875rem 1.125rem',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: '1rem',
+                      flexWrap: 'wrap',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s'
+                    }}
+                    onClick={() => handleOpenCustomerFromMeetingModal(item)}
+                  >
+                    {/* Customer Info */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: '210px', flex: 1 }}>
+                      <Avatar name={customerName} src={customerAvatar} size={38} />
+                      <div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <span style={{ fontSize: '0.9rem', fontWeight: 800, color: 'var(--color-text)' }}>
+                            {customerName}
+                          </span>
+                          <span style={{
+                            padding: '2px 7px',
+                            borderRadius: '12px',
+                            fontSize: '0.675rem',
+                            fontWeight: 700,
+                            background: 'rgba(37, 99, 235, 0.08)',
+                            color: '#2563EB'
+                          }}>
+                            {t('Khách hàng')}
+                          </span>
+                        </div>
+                        {customerPhone && (
+                          <span style={{ fontSize: '0.785rem', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: '4px', marginTop: '2px' }}>
+                            <Phone size={11} />
+                            {customerPhone}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Sale Info */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: '160px' }}>
+                      <Avatar name={saleName} src={saleAvatar} size={28} />
+                      <div>
+                        <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', display: 'block', fontWeight: 600 }}>
+                          {t('Sale phụ trách')}
+                        </span>
+                        <span style={{ fontSize: '0.825rem', fontWeight: 700, color: 'var(--color-text)' }}>
+                          {saleName}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Time & Title */}
+                    <div style={{ minWidth: '190px', flex: 1 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <Clock size={13} style={{ color: isDone ? '#10b981' : isOverdue ? '#f59e0b' : '#2563EB' }} />
+                        <span style={{ fontSize: '0.825rem', fontWeight: 800, color: isDone ? '#10b981' : isOverdue ? '#f59e0b' : 'var(--color-text)' }}>
+                          {dueDateRaw ? dueDateRaw.replace('T', ' ').slice(0, 16) : t('Chưa xếp giờ')}
+                        </span>
+                        {isToday && !isDone && (
+                          <span style={{ padding: '1px 6px', borderRadius: '4px', fontSize: '0.65rem', fontWeight: 800, background: '#ef4444', color: '#fff' }}>
+                            {t('HÔM NAY')}
+                          </span>
+                        )}
+                      </div>
+                      <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--color-text-muted)', display: 'block', marginTop: '2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '220px' }}>
+                        {meetingTitle}
+                      </span>
+                    </div>
+
+                    {/* Status & Action */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      {isDone ? (
+                        <span style={{ padding: '4px 10px', borderRadius: '20px', fontSize: '0.75rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '5px', background: 'rgba(16, 185, 129, 0.1)', color: '#10b981' }}>
+                          <CheckCircle2 size={13} /> {t('Đã gặp')}
+                        </span>
+                      ) : isOverdue ? (
+                        <span style={{ padding: '4px 10px', borderRadius: '20px', fontSize: '0.75rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '5px', background: 'rgba(245, 158, 11, 0.15)', color: '#f59e0b' }}>
+                          <AlertCircle size={13} /> {t('Quá giờ hẹn')}
+                        </span>
+                      ) : (
+                        <span style={{ padding: '4px 10px', borderRadius: '20px', fontSize: '0.75rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '5px', background: 'rgba(37, 99, 235, 0.1)', color: '#2563EB' }}>
+                          <Clock size={13} /> {t('Sắp diễn ra')}
+                        </span>
+                      )}
+
+                      <button
+                        className="btn sm secondary"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleOpenCustomerFromMeetingModal(item);
+                        }}
+                        style={{ padding: '5px 10px', fontSize: '0.775rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }}
+                      >
+                        <UserCheck size={13} />
+                        <span>{t('Xem hồ sơ')}</span>
+                      </button>
+                    </div>
+                  </motion.div>
+                );
+              })
+            )}
+          </div>
         </div>
-      )}
+      </CustomModal>
 
       <CustomerProfileDrawer
         isOpen={!!profileContact}
