@@ -24,6 +24,8 @@ if (!defined('UPLOAD_DIR')) define('UPLOAD_DIR', __DIR__ . '/uploads');
 if (!function_exists('deleteServerFile')) {
     /**
      * Safely deletes a physical file from the server's uploads storage
+     * @param string|null $fileUrl
+     * @return bool
      */
     function deleteServerFile(?string $fileUrl): bool {
         if (empty($fileUrl)) return false;
@@ -59,6 +61,7 @@ if (!function_exists('deleteServerFile')) {
 if (!function_exists('deleteAttachmentFiles')) {
     /**
      * Extracts all file URLs from a string (JSON/markdown/raw text) or array, and physically deletes them from disk.
+     * @param string|array|null $input
      */
     function deleteAttachmentFiles($input): void {
         if (empty($input)) return;
