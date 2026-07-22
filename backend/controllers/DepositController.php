@@ -518,24 +518,7 @@ class DepositController {
                 }
             }
 
-            // Zalo message if bot token and chat ID are configured
-            if ($depositData && !empty($depositData['owner_zalo_chat_id'])) {
-                try {
-                    $stmtToken = $this->db->query("SELECT setting_value FROM system_settings WHERE setting_key = 'zalo_bot_token' LIMIT 1");
-                    $botToken = $stmtToken ? $stmtToken->fetchColumn() : '';
-                    if (!empty($botToken)) {
-                        require_once __DIR__ . '/../zalo_bot.php';
-                        $zaloMsg = "✅ [ DUYỆT ĐỢT THANH TOÁN CỌC ]\n\n"
-                            . "Chào " . $depositData['owner_name'] . ", đợt thanh toán " . $mileData['milestone_name'] . " của khách hàng " . $depositData['first_name'] . " " . ($depositData['last_name'] ?? '') . " đã được phê duyệt thành công.\n"
-                            . "• Số tiền: " . number_format($total, 0, ',', '.') . " VND\n"
-                            . "• Trạng thái phiếu cọc: " . ($remaining === 0 ? "Đã duyệt hoàn tất (Approved)" : "Đang chờ thanh toán tiếp (Pending)") . "\n\n"
-                            . "Hệ thống đã tự động xuất hóa đơn tương ứng.";
-                        sendZaloMessage($botToken, $depositData['owner_zalo_chat_id'], $zaloMsg, false);
-                    }
-                } catch (Exception $zaloEx) {
-                    error_log("Error sending deposit milestone approval Zalo: " . $zaloEx->getMessage());
-                }
-            }
+
 
             respond(200, null, 'Phê duyệt đợt thanh toán cọc thành công');
         } catch (Exception $e) {
@@ -618,23 +601,7 @@ class DepositController {
                     }
             }
 
-            // Zalo message to owner
-            if (!empty($depositData['owner_zalo_chat_id'])) {
-                try {
-                    $stmtToken = $this->db->query("SELECT setting_value FROM system_settings WHERE setting_key = 'zalo_bot_token' LIMIT 1");
-                    $botToken = $stmtToken ? $stmtToken->fetchColumn() : '';
-                    if (!empty($botToken)) {
-                        require_once __DIR__ . '/../zalo_bot.php';
-                        $zaloMsg = "❌ [ TỪ CHỐI ĐỢT THANH TOÁN CỌC ]\n\n"
-                            . "Chào " . $depositData['owner_name'] . ", đợt thanh toán " . $mileData['milestone_name'] . " của khách hàng " . $depositData['first_name'] . " " . ($depositData['last_name'] ?? '') . " đã bị từ chối.\n"
-                            . "• Lý do: " . $reason . "\n"
-                            . "• Yêu cầu: Vui lòng kiểm tra và tải lại ảnh UNC chính xác trên RICH LAND CRM.";
-                        sendZaloMessage($botToken, $depositData['owner_zalo_chat_id'], $zaloMsg, false);
-                    }
-                } catch (Exception $zaloEx) {
-                    error_log("Error sending Zalo message: " . $zaloEx->getMessage());
-                }
-            }
+
         }
 
         respond(200, null, 'Đã từ chối và yêu cầu tải lại UNC');
