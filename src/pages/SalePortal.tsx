@@ -1569,6 +1569,8 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
   const [consultantDocs, setConsultantDocs] = useState<any[]>([]);
   const [uploadingDoc, setUploadingDoc] = useState(false);
   const [dismissedLeadIds, setDismissedLeadIds] = useState<number[]>([]);
+  const [hideOfferModal, setHideOfferModal] = useState(false);
+  const [lastOfferedLeadId, setLastOfferedLeadId] = useState<number | null>(null);
 
   // Impersonation role calculation for admin viewing sale
   const impersonatedSale = ((user?.role === 'admin' || user?.role === 'superadmin') && saleIdFilter)
@@ -1641,6 +1643,18 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
     const timer = setInterval(() => setNow(Date.now()), intervalMs);
     return () => clearInterval(timer);
   }, [activeIncomingOffer]);
+
+  useEffect(() => {
+    if (activeIncomingOffer) {
+      const currentId = Number(activeIncomingOffer.lead.lead_id || activeIncomingOffer.lead.id);
+      if (currentId !== lastOfferedLeadId) {
+        setLastOfferedLeadId(currentId);
+        setHideOfferModal(false);
+      }
+    } else {
+      setLastOfferedLeadId(null);
+    }
+  }, [activeIncomingOffer, lastOfferedLeadId]);
 
   // Tickets states & loading logic
   const [tickets, setTickets] = useState<any[]>([]);
@@ -16800,11 +16814,11 @@ placeholder="Ví dụ: +5 days"
       />
 
       {/* 2-Minute Lead Offer Countdown Modal */}
-      {activeIncomingOffer && (
+      {activeIncomingOffer && !hideOfferModal && (
         <CustomModal
           isOpen={true}
           onClose={() => {
-            setDismissedLeadIds(prev => [...prev, Number(activeIncomingOffer.lead.lead_id)]);
+            setHideOfferModal(true);
           }}
           showCloseIcon={true}
           title={t('CÓ LEAD MỚI ĐƯỢC PHÂN BỔ!')}
@@ -16814,8 +16828,8 @@ placeholder="Ví dụ: +5 days"
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
-            gap: '1.25rem',
-            padding: '1rem 0.25rem 0.25rem 0.25rem',
+            gap: '1rem',
+            padding: '0.25rem 0.25rem 0.25rem 0.25rem',
             position: 'relative'
           }}>
             <style>{`
@@ -16836,65 +16850,66 @@ placeholder="Ví dụ: +5 days"
               width: '100%',
               flexWrap: 'wrap'
             }}>
-              {/* Left Column: Rectangular Premium Timer Card */}
-              <div style={{
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                justifyContent: 'center',
-                width: '150px',
-                padding: '1.25rem 1rem',
-                background: 'rgba(189, 29, 45, 0.03)',
-                border: '1px solid rgba(189, 29, 45, 0.12)',
-                borderRadius: '16px',
+              {/* Left Column: Circular Timer */}
+              <div style={{ 
+                position: 'relative', 
+                width: '130px', 
+                height: '130px', 
                 flexShrink: 0,
-                margin: '0 auto',
-                boxShadow: 'inset 0 1px 2px rgba(189, 29, 45, 0.05)'
+                margin: '0 auto'
               }}>
-                <span style={{ fontSize: '0.62rem', fontWeight: 800, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '4px' }}>
-                  {t('Thời gian')}
-                </span>
-                
-                {/* Big Digital Clock */}
-                <span style={{
-                  fontSize: '2.4rem',
-                  fontWeight: 900,
-                  fontFamily: 'monospace',
-                  color: '#BD1D2D',
-                  letterSpacing: '-1px',
-                  lineHeight: 1,
-                  margin: '4px 0',
-                  textShadow: '0 2px 4px rgba(189, 29, 45, 0.1)'
-                }}>
-                  {(() => {
-                    const totalSecs = Math.max(0, Math.floor(activeIncomingOffer.remainingMs / 1000));
-                    const mins = Math.floor(totalSecs / 60);
-                    const secs = totalSecs % 60;
-                    return `${mins}:${String(secs).padStart(2, '0')}`;
-                  })()}
-                </span>
-                
-                {/* Linear Depleting Progress Bar */}
+                <svg width="130" height="130" style={{ transform: 'rotate(-90deg)', filter: 'drop-shadow(0px 4px 8px rgba(189, 29, 45, 0.15))' }}>
+                  <circle
+                    cx="65"
+                    cy="65"
+                    r="56"
+                    stroke="var(--color-border-light)"
+                    strokeWidth="5"
+                    fill="transparent"
+                  />
+                  <circle
+                    cx="65"
+                    cy="65"
+                    r="56"
+                    stroke="#BD1D2D"
+                    strokeWidth="7"
+                    fill="transparent"
+                    strokeDasharray={2 * Math.PI * 56}
+                    strokeDashoffset={
+                      (2 * Math.PI * 56) * 
+                      (1 - Math.max(0, activeIncomingOffer.remainingMs) / (Number(activeIncomingOffer.lead.lead_recall_minutes || 2) * 60 * 1000))
+                    }
+                    strokeLinecap="round"
+                    style={{ transition: 'stroke-dashoffset 0.1s linear' }}
+                  />
+                </svg>
                 <div style={{
-                  width: '100%',
-                  height: '6px',
-                  background: 'rgba(189, 29, 45, 0.1)',
-                  borderRadius: '10px',
-                  overflow: 'hidden',
-                  margin: '8px 0 4px 0'
+                  position: 'absolute',
+                  inset: 0,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexDirection: 'column'
                 }}>
-                  <div style={{
-                    width: `${Math.max(0, Math.min(100, (activeIncomingOffer.remainingMs / (Number(activeIncomingOffer.lead.lead_recall_minutes || 2) * 60 * 1000)) * 100))}%`,
-                    height: '100%',
-                    background: '#BD1D2D',
-                    borderRadius: '10px',
-                    transition: 'width 0.1s linear'
-                  }} />
+                  <span style={{
+                    fontSize: '1.7rem',
+                    fontWeight: 900,
+                    fontFamily: 'monospace',
+                    color: '#BD1D2D',
+                    letterSpacing: '-0.5px',
+                    lineHeight: 1
+                  }}>
+                    {(() => {
+                      const totalSecs = Math.max(0, Math.floor(activeIncomingOffer.remainingMs / 1000));
+                      const mins = Math.floor(totalSecs / 60);
+                      const secs = totalSecs % 60;
+                      return `${mins}:${String(secs).padStart(2, '0')}`;
+                    })()}
+                  </span>
+                  <span style={{ fontSize: '0.55rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginTop: '4px' }}>
+                    {t('Còn lại')}
+                  </span>
                 </div>
-
-                <span style={{ fontSize: '0.55rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginTop: '2px' }}>
-                  {t('Còn lại')}
-                </span>
               </div>
 
               {/* Right Column: Lead Details */}
