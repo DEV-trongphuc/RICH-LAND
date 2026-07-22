@@ -16795,88 +16795,121 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
           <div style={{
             display: 'flex',
             flexDirection: 'column',
-            alignItems: 'stretch',
-            gap: '1.25rem',
-            padding: '1.25rem 0.5rem 0.5rem 0.5rem',
+            alignItems: 'center',
+            gap: '1.5rem',
+            padding: '1.5rem 1rem',
             textAlign: 'center',
-            position: 'relative',
+            position: 'relative'
           }}>
-            {/* Global style overrides to disable backdrop blur */}
             <style>{`
               div[class*="CustomModal_backdrop"] {
                 backdrop-filter: none !important;
                 -webkit-backdrop-filter: none !important;
                 background-color: rgba(15, 23, 42, 0.8) !important;
               }
-              
-              @keyframes progressPulse {
-                0%, 100% { opacity: 0.85; }
-                50% { opacity: 1; }
+              @keyframes rippleEffect {
+                0% { transform: scale(1); opacity: 0.8; }
+                100% { transform: scale(1.5); opacity: 0; }
               }
-
-              @keyframes pulseCircle {
-                0% { transform: scale(0.98); box-shadow: 0 0 0 0 rgba(189, 29, 45, 0.2); }
-                70% { transform: scale(1); box-shadow: 0 0 0 8px rgba(189, 29, 45, 0); }
-                100% { transform: scale(0.98); box-shadow: 0 0 0 0 rgba(189, 29, 45, 0); }
+              @keyframes bellWobble {
+                0%, 100% { transform: rotate(0); }
+                15% { transform: rotate(12deg); }
+                30% { transform: rotate(-12deg); }
+                45% { transform: rotate(8deg); }
+                60% { transform: rotate(-8deg); }
+                75% { transform: rotate(4deg); }
               }
             `}</style>
 
-            {/* Top Linear Smooth Progress Bar */}
+            {/* Ringing Bell Icon */}
             <div style={{
-              width: '100%',
-              height: '6px',
-              background: 'var(--color-border-light)',
-              borderRadius: '3px',
-              overflow: 'hidden',
-              marginTop: '-1rem',
-              marginBottom: '0.5rem'
-            }}>
-              <div style={{
-                height: '100%',
-                width: `${Math.max(0, Math.min(100, (activeIncomingOffer.remainingMs / (Number(activeIncomingOffer.lead.lead_recall_minutes || 2) * 60 * 1000)) * 100))}%`,
-                background: 'linear-gradient(90deg, #BD1D2D 0%, #e11d48 100%)',
-                transition: 'width 0.1s linear',
-                borderRadius: '3px',
-                animation: 'progressPulse 2s infinite ease-in-out'
-              }} />
-            </div>
-
-            {/* Giant Digital Counter Box */}
-            <div style={{
+              position: 'relative',
               display: 'flex',
-              flexDirection: 'column',
               alignItems: 'center',
               justifyContent: 'center',
-              padding: '0.75rem',
-              borderRadius: '10px',
-              background: 'rgba(189, 29, 45, 0.04)',
-              border: '1px solid rgba(189, 29, 45, 0.12)',
-              margin: '0 auto',
-              width: '180px',
-              animation: 'pulseCircle 2s infinite ease-in-out'
+              width: '80px',
+              height: '80px',
+              borderRadius: '50%',
+              background: 'rgba(189, 29, 45, 0.08)',
+              marginBottom: '-0.5rem'
             }}>
-              <span style={{ fontSize: '0.72rem', fontWeight: 700, color: '#BD1D2D', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '2px' }}>
-                {t('Thời gian tiếp nhận')}
-              </span>
-              <span style={{
-                fontSize: '2rem',
-                fontWeight: 900,
-                fontFamily: 'monospace',
-                color: '#BD1D2D',
-                letterSpacing: '-0.5px',
-                lineHeight: 1
+              <div style={{
+                position: 'absolute',
+                width: '100%',
+                height: '100%',
+                borderRadius: '50%',
+                border: '2px solid rgba(189, 29, 45, 0.4)',
+                animation: 'rippleEffect 2s infinite ease-out'
+              }} />
+              <div style={{
+                position: 'absolute',
+                width: '100%',
+                height: '100%',
+                borderRadius: '50%',
+                border: '2px solid rgba(189, 29, 45, 0.2)',
+                animation: 'rippleEffect 2s infinite ease-out 0.6s'
+              }} />
+              <Bell size={36} color="#BD1D2D" style={{ animation: 'bellWobble 1.5s infinite ease-in-out' }} />
+            </div>
+
+            {/* Countdown Circular Ring & Text */}
+            <div style={{ position: 'relative', width: '120px', height: '120px' }}>
+              <svg width="120" height="120" style={{ transform: 'rotate(-90deg)', filter: 'drop-shadow(0px 4px 8px rgba(189, 29, 45, 0.15))' }}>
+                <circle
+                  cx="60"
+                  cy="60"
+                  r="52"
+                  stroke="var(--color-border-light)"
+                  strokeWidth="6"
+                  fill="transparent"
+                />
+                <circle
+                  cx="60"
+                  cy="60"
+                  r="52"
+                  stroke="#BD1D2D"
+                  strokeWidth="8"
+                  fill="transparent"
+                  strokeDasharray={2 * Math.PI * 52}
+                  strokeDashoffset={
+                    (2 * Math.PI * 52) * 
+                    (1 - Math.max(0, activeIncomingOffer.remainingMs) / (Number(activeIncomingOffer.lead.lead_recall_minutes || 2) * 60 * 1000))
+                  }
+                  strokeLinecap="round"
+                  style={{ transition: 'stroke-dashoffset 0.1s linear' }}
+                />
+              </svg>
+              <div style={{
+                position: 'absolute',
+                inset: 0,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexDirection: 'column'
               }}>
-                {(() => {
-                  const totalSecs = Math.max(0, Math.floor(activeIncomingOffer.remainingMs / 1000));
-                  const mins = Math.floor(totalSecs / 60);
-                  const secs = totalSecs % 60;
-                  return `${mins}:${String(secs).padStart(2, '0')}`;
-                })()}
-              </span>
+                <span style={{
+                  fontSize: '1.75rem',
+                  fontWeight: 900,
+                  fontFamily: 'monospace',
+                  color: '#BD1D2D',
+                  letterSpacing: '-0.5px'
+                }}>
+                  {(() => {
+                    const totalSecs = Math.max(0, Math.floor(activeIncomingOffer.remainingMs / 1000));
+                    const mins = Math.floor(totalSecs / 60);
+                    const secs = totalSecs % 60;
+                    return `${mins}:${String(secs).padStart(2, '0')}`;
+                  })()}
+                </span>
+                <span style={{ fontSize: '0.6rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginTop: '-2px' }}>
+                  {t('Còn lại')}
+                </span>
+              </div>
             </div>
 
             {/* Lead Details Card */}
             <div style={{
+              width: '100%',
               padding: '1.25rem',
               borderRadius: '12px',
               background: 'var(--color-bg)',
@@ -16911,7 +16944,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
             <p style={{
               fontSize: '0.75rem',
               color: '#BD1D2D',
-              fontWeight: 700,
+              fontWeight: 750,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -16919,7 +16952,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
               margin: '0'
             }}>
               <AlertTriangle size={14} style={{ animation: 'pulse 1s infinite' }} /> 
-              {t('Lead sẽ tự động bị thu hồi khi hết giờ!')}
+              {t('Vui lòng tiếp nhận ngay. Lead sẽ bị thu hồi khi hết giờ!')}
             </p>
 
             {/* Action Button */}
@@ -16928,7 +16961,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
               className="btn danger"
               style={{
                 width: '100%',
-                height: '50px',
+                height: '48px',
                 borderRadius: '10px',
                 fontSize: '1rem',
                 fontWeight: 800,
@@ -16940,7 +16973,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                 transition: 'all 0.2s ease',
               }}
             >
-              {t('TIẾP NHẬN KHÁCH HÀNG')}
+              {t('TIẾP NHẬN LEAD NGAY')}
             </button>
           </div>
         </CustomModal>
