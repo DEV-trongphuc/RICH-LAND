@@ -722,5 +722,5 @@ export const POSModal: React.FC<{ onClose: () => void; defaultContact?: Contact 
       </motion.div>
     </div>,
     document.body
-  ) : null;
+  );
 };
