@@ -47,6 +47,7 @@ export const TicketsPage: React.FC = () => {
     subject: '', 
     priority: 'medium', 
     customer_name: '', 
+    contact_id: null as number | null,
     description: '',
     related_contacts: [] as string[],
     related_users: [] as string[]
@@ -185,8 +186,10 @@ export const TicketsPage: React.FC = () => {
       status: 'open',
       priority: createForm.priority,
       customer_name: createForm.customer_name,
+      contact_id: createForm.contact_id,
+      customer_id: createForm.contact_id,
       description: createForm.description,
-      related_contacts: createForm.related_contacts,
+      related_contacts: createForm.contact_id ? [String(createForm.contact_id), ...createForm.related_contacts] : createForm.related_contacts,
       related_users: createForm.related_users
     };
     setSaving(true);
@@ -195,7 +198,7 @@ export const TicketsPage: React.FC = () => {
       const newTicket = r.data.data || { ...payload, id: Date.now(), assignee_name: 'Admin', created_at: new Date().toISOString(), due_date: new Date(Date.now() + 86400000).toISOString() };
       setTickets([newTicket, ...tickets]);
       setShowCreateModal(false);
-      setCreateForm({ subject: '', priority: 'medium', customer_name: '', description: '', related_contacts: [], related_users: [] });
+      setCreateForm({ subject: '', priority: 'medium', customer_name: '', contact_id: null, description: '', related_contacts: [], related_users: [] });
       addToast('Đã tạo Ticket thành công', 'success');
     } catch (e: any) {
       addToast(e.response?.data?.message || 'Không thể tạo Ticket do lỗi mạng', 'error');
@@ -379,21 +382,31 @@ export const TicketsPage: React.FC = () => {
                   <CustomSelect 
                     searchable 
                     showAvatars
+                    placeholder="Chọn khách hàng..."
                     options={contacts.map(c => ({ 
-                      value: `${c.last_name || ''} ${c.first_name}`.trim(), 
+                      value: String(c.id), 
                       label: `${c.last_name || ''} ${c.first_name}`.trim(),
                       sublabel: c.phone || c.email,
                       avatar: c.avatar_url
                     }))}
-                    value={createForm.customer_name} 
-                    onChange={val => setCreateForm({...createForm, customer_name: val.toString()})} 
+                    value={createForm.contact_id ? String(createForm.contact_id) : ''} 
+                    onChange={val => {
+                      const cId = Number(val);
+                      const matched = contacts.find(c => c.id === cId);
+                      setCreateForm({
+                        ...createForm, 
+                        contact_id: cId,
+                        customer_name: matched ? `${matched.last_name || ''} ${matched.first_name}`.trim() : ''
+                      });
+                    }} 
                   />
-                  {!createForm.customer_name && (
+                  {!createForm.contact_id && (
                     <input 
                       className="form-input" 
                       style={{ marginTop: '0.5rem' }}
                       placeholder="Hoặc nhập tên khách hàng mới..." 
-                      onChange={e => setCreateForm({...createForm, customer_name: e.target.value})} 
+                      value={createForm.customer_name}
+                      onChange={e => setCreateForm({...createForm, customer_name: e.target.value, contact_id: null})} 
                     />
                   )}
                 </div>

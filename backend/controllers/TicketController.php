@@ -194,6 +194,16 @@ class TicketController {
             $validContacts = $sC->fetchAll(PDO::FETCH_COLUMN);
         }
 
+        // Check direct contact_id/customer_id parameter in payload as fallback
+        $rawContactId = $data['contact_id'] ?? $data['customer_id'] ?? null;
+        if ($rawContactId && (empty($validContacts) || !in_array((int)$rawContactId, $validContacts, true))) {
+            $checkC = $this->db->prepare("SELECT id FROM contacts WHERE id=? AND tenant_id=?");
+            $checkC->execute([(int)$rawContactId, $auth['tenant_id']]);
+            if ($checkC->fetch()) {
+                $validContacts[] = (int)$rawContactId;
+            }
+        }
+
         // Báo lỗi data business rule check
         if ($data['subject'] === 'Báo lỗi data' && !empty($validContacts)) {
             $contactId = (int)$validContacts[0];
@@ -236,15 +246,18 @@ class TicketController {
             $validUsers = $sU->fetchAll(PDO::FETCH_COLUMN);
         }
 
+        $contactId = !empty($validContacts) ? (int)$validContacts[0] : null;
+
         $stmt = $this->db->prepare("
-            INSERT INTO tickets (tenant_id, created_by, assignee_id, subject, customer_name, description, status, priority, due_date, related_contacts, related_users)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO tickets (tenant_id, created_by, assignee_id, contact_id, subject, customer_name, description, status, priority, due_date, related_contacts, related_users)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ");
         $due_date = empty($data['due_date']) ? date('Y-m-d H:i:s', strtotime('+1 day')) : $data['due_date'];
         $stmt->execute([
             $auth['tenant_id'],
             $auth['user_id'],
             $assigneeId,
+            $contactId,
             $data['subject'],
             $data['customer_name'],
             $data['description'] ?? null,
@@ -346,6 +359,13 @@ class TicketController {
             }
             $sets[] = 'related_contacts=?'; 
             $params[] = !empty($validContacts) ? json_encode($validContacts) : null; 
+            
+            // Sync contact_id column to the first contact in related_contacts
+            $sets[] = 'contact_id=?';
+            $params[] = !empty($validContacts) ? (int)$validContacts[0] : null;
+        } else if (isset($data['contact_id'])) {
+            $sets[] = 'contact_id=?';
+            $params[] = $data['contact_id'] ? (int)$data['contact_id'] : null;
         }
         
         if (isset($data['related_users'])) { 
