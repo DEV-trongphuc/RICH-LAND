@@ -771,7 +771,7 @@ class ContactController {
                             $targetUserId = $collabRawId;
                             $stmtMap = $this->db->prepare("
                                 SELECT u.id FROM users u 
-                                LEFT JOIN consultants c ON (u.email = c.email OR u.id = c.user_id) 
+                                LEFT JOIN consultants c ON (u.email = c.email OR u.id = c.id) 
                                 WHERE c.id = ? OR u.id = ? 
                                 LIMIT 1
                             ");

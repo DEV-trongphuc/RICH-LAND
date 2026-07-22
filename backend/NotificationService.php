@@ -869,7 +869,7 @@ class NotificationService {
         $stmt = $db->prepare("
             SELECT u.id, u.email, u.zalo_chat_id, u.telegram_chat_id, u.full_name 
             FROM users u
-            LEFT JOIN consultants c ON (u.email = c.email OR u.id = c.user_id)
+            LEFT JOIN consultants c ON (u.email = c.email OR u.id = c.id)
             WHERE u.id = ? OR c.id = ?
             LIMIT 1
         ");
