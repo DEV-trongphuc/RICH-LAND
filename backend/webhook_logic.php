@@ -871,6 +871,18 @@ function hasApprovedShiftForDate($conn, $userId, $date)
     $isHoliday = !empty($holidayName);
     $isRestDay = isRestDayForUser($conn, $userId, $date);
 
+    // Check night_shift_registrations first - if registered for night shift, it's valid regardless of holiday or rest day
+    $stmt = $conn->prepare("SELECT 1 FROM night_shift_registrations WHERE user_id = ? AND shift_date = ? AND approved = 1 LIMIT 1");
+    if ($stmt) {
+        $stmt->bind_param("is", $userId, $date);
+        $stmt->execute();
+        $res = $stmt->get_result()->fetch_assoc();
+        $stmt->close();
+        if ($res !== null) {
+            return true;
+        }
+    }
+
     // If it's a holiday, we check holiday_shift_registrations
     if ($isHoliday) {
         $stmt = $conn->prepare("SELECT 1 FROM holiday_shift_registrations WHERE user_id = ? AND shift_date = ? AND approved = 1 LIMIT 1");
@@ -896,18 +908,6 @@ function hasApprovedShiftForDate($conn, $userId, $date)
             if ($res !== null) {
                 return true;
             }
-        }
-    }
-
-    // If it's not a holiday and not a rest day, we check night_shift_registrations
-    if (!$isHoliday && !$isRestDay) {
-        $stmt = $conn->prepare("SELECT 1 FROM night_shift_registrations WHERE user_id = ? AND shift_date = ? AND approved = 1 LIMIT 1");
-        if ($stmt) {
-            $stmt->bind_param("is", $userId, $date);
-            $stmt->execute();
-            $res = $stmt->get_result()->fetch_assoc();
-            $stmt->close();
-            return ($res !== null);
         }
     }
 
