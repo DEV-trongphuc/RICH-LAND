@@ -11,8 +11,10 @@ require_once __DIR__ . '/db_connect.php';
  * @param string $text
  * @return bool
  */
-function sendTelegramMessage($botToken, $chatId, $text)
+function sendTelegramMessage($botToken, $chatId, $text, $leadId = 0)
 {
+    global $conn;
+
     if (empty($botToken) || empty($chatId) || empty($text) || strtolower(trim($chatId)) === 'chưa liên kết') {
         return false;
     }
@@ -32,8 +34,8 @@ function sendTelegramMessage($botToken, $chatId, $text)
     curl_setopt($ch, CURLOPT_HTTPHEADER, [
         "Content-Type: application/json"
     ]);
-    curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 1);
-    curl_setopt($ch, CURLOPT_TIMEOUT, 2);
+    curl_setopt($ch, CURLOPT_CONNECTTIMEOUT_MS, 800);
+    curl_setopt($ch, CURLOPT_TIMEOUT_MS, 1500);
 
     $response = curl_exec($ch);
     $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
@@ -51,7 +53,15 @@ function sendTelegramMessage($botToken, $chatId, $text)
     }
     @file_put_contents($logFile, $logMsg, FILE_APPEND | LOCK_EX);
 
-    return ($httpCode === 200);
+    $isSent = ($httpCode === 200);
+    $newStatus = $isSent ? 'sent' : 'failed';
+    $errorMessage = $isSent ? null : ("HTTP Code: " . $httpCode . ", Response: " . ($response ?: 'NO RESPONSE'));
+
+    if (function_exists('log_communication')) {
+        log_communication($conn ?? null, $leadId, 'telegram', $chatId, $newStatus, $errorMessage);
+    }
+
+    return $isSent;
 }
 
 /**
@@ -103,7 +113,7 @@ function sendLeadAssignedTelegramMessageToSale($consultantId, $consultantName, $
         $text .= " • <b>Ghi chú:</b> <i>" . htmlspecialchars($leadNote) . "</i>\n";
     }
     
-    $res = sendTelegramMessage($botToken, $chatId, $text);
+    $res = sendTelegramMessage($botToken, $chatId, $text, $leadId);
     if ($res && $leadId > 0) {
         $stmtUpdate = $conn->prepare("UPDATE leads SET telegram_notify_status = 'sent', telegram_notify_sent_at = NOW() WHERE id = ?");
         if ($stmtUpdate) {
@@ -165,7 +175,7 @@ function sendLeadReminderTelegramMessageToSale($consultantId, $consultantName, $
         $text .= " • <b>Ghi chú:</b> <i>" . htmlspecialchars($leadNote) . "</i>\n";
     }
 
-    $res = sendTelegramMessage($botToken, $chatId, $text);
+    $res = sendTelegramMessage($botToken, $chatId, $text, $leadId);
     if ($res && $leadId > 0) {
         $stmtUpdate = $conn->prepare("UPDATE leads SET telegram_notify_status = 'sent', telegram_notify_sent_at = NOW() WHERE id = ?");
         if ($stmtUpdate) {
@@ -209,7 +219,7 @@ function sendLeadAssignedTelegramMessageToAdmin($adminChatId, $adminName, $leadN
     }
     $text .= "━━━━━━━━━━━━━━━━━━━━━";
 
-    return sendTelegramMessage($botToken, $adminChatId, $text);
+    return sendTelegramMessage($botToken, $adminChatId, $text, $leadId);
 }
 
 /**

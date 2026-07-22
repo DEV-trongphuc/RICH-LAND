@@ -502,7 +502,7 @@ export const Login = () => {
                 Manager
               </button>
               <button
-                onClick={() => handleQuickLogin('dom.marketing.vn@gmail.com', 'sale123', 'Sale')}
+                onClick={() => handleQuickLogin('dom.marketing.vn@gmail.com', '123456', 'Sale')}
                 style={{ height: '36px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(15, 23, 42, 0.6)', color: '#cbd5e1', cursor: 'pointer', fontSize: '12px', fontWeight: 600 }}
               >
                 Sale

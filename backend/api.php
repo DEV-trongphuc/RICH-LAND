@@ -14471,14 +14471,15 @@ switch ($action) {
         $chartMetric = $_GET['chart_metric'] ?? 'lead';
         $chartData = [];
 
-        if ($chartMetric === 'zalo' || $chartMetric === 'email') {
+        if ($chartMetric === 'zalo' || $chartMetric === 'email' || $chartMetric === 'telegram') {
             $type = $chartMetric;
             $dateConditionSent = str_replace('received_at', 'sent_at', $dateCondition);
+            $managerFilterLeadsComm = !empty($managerFilterLeads) ? " AND (cl.lead_id IS NULL OR cl.lead_id = 0 OR 1=1 $managerFilterLeads) " : "";
             if ($chartMode === 'heatmap') {
                 $heatmapSql = "SELECT WEEKDAY(cl.sent_at) as wday, HOUR(cl.sent_at) as h, COUNT(*) as vol 
                                FROM communication_logs cl 
-                               JOIN leads l ON cl.lead_id = l.id
-                               WHERE cl.type = '$type' AND cl.status = 'sent' AND $dateConditionSent $managerFilterLeads
+                               LEFT JOIN leads l ON cl.lead_id = l.id
+                               WHERE cl.type = '$type' AND cl.status = 'sent' AND $dateConditionSent $managerFilterLeadsComm
                                GROUP BY WEEKDAY(cl.sent_at), HOUR(cl.sent_at) 
                                ORDER BY wday ASC, h ASC";
                 $res = $conn->query($heatmapSql);
@@ -14496,8 +14497,8 @@ switch ($action) {
                 if ($useHourly) {
                     $hourlySql = "SELECT HOUR(cl.sent_at) as h, COUNT(*) as vol 
                                   FROM communication_logs cl 
-                                  JOIN leads l ON cl.lead_id = l.id
-                                  WHERE cl.type = '$type' AND cl.status = 'sent' AND $dateConditionSent $managerFilterLeads
+                                  LEFT JOIN leads l ON cl.lead_id = l.id
+                                  WHERE cl.type = '$type' AND cl.status = 'sent' AND $dateConditionSent $managerFilterLeadsComm
                                   GROUP BY HOUR(cl.sent_at) 
                                   ORDER BY h ASC";
                     $res = $conn->query($hourlySql);
@@ -14514,8 +14515,8 @@ switch ($action) {
                 } else {
                     $dailySql = "SELECT DATE(cl.sent_at) as d, COUNT(*) as vol 
                                  FROM communication_logs cl 
-                                 JOIN leads l ON cl.lead_id = l.id
-                                 WHERE cl.type = '$type' AND cl.status = 'sent' AND $dateConditionSent $managerFilterLeads
+                                 LEFT JOIN leads l ON cl.lead_id = l.id
+                                 WHERE cl.type = '$type' AND cl.status = 'sent' AND $dateConditionSent $managerFilterLeadsComm
                                  GROUP BY DATE(cl.sent_at) 
                                  ORDER BY d ASC";
                     $res = $conn->query($dailySql);
@@ -14947,19 +14948,42 @@ switch ($action) {
             $aiEnabled = (int) $row['setting_value'];
         }
 
-        // Query communication stats (Zalo/Email/Tokens) for dashboard modal
+        // Query communication stats (Zalo/Email/Telegram/Tokens) for dashboard modal
         $dateConditionSent = str_replace('received_at', 'sent_at', $dateCondition);
+        $managerFilterLeadsComm = !empty($managerFilterLeads) ? " AND (cl.lead_id IS NULL OR cl.lead_id = 0 OR 1=1 $managerFilterLeads) " : "";
         
         $totalZaloSent = 0;
-        $zaloSentRes = $conn->query("SELECT COUNT(cl.id) as cnt FROM communication_logs cl JOIN leads l ON cl.lead_id = l.id WHERE cl.type = 'zalo' AND cl.status = 'sent' AND $dateConditionSent $managerFilterLeads");
+        $zaloSentRes = $conn->query("SELECT COUNT(cl.id) as cnt FROM communication_logs cl LEFT JOIN leads l ON cl.lead_id = l.id WHERE cl.type = 'zalo' AND cl.status = 'sent' AND $dateConditionSent $managerFilterLeadsComm");
         if ($zaloSentRes && $row = $zaloSentRes->fetch_assoc()) {
             $totalZaloSent = (int)$row['cnt'];
         }
+        $dateConditionLeadsCreated = str_replace('received_at', 'created_at', $dateCondition);
+        $dateConditionLeadsSentAt = str_replace('received_at', 'zalo_notify_sent_at', $dateCondition);
+        $zaloLeadRes = $conn->query("SELECT COUNT(l.id) as cnt FROM leads l WHERE l.zalo_notify_status = 'sent' AND (($dateConditionLeadsSentAt) OR (l.zalo_notify_sent_at IS NULL AND $dateConditionLeadsCreated)) $managerFilterLeads");
+        if ($zaloLeadRes && $r = $zaloLeadRes->fetch_assoc()) {
+            $totalZaloSent = max($totalZaloSent, (int)$r['cnt']);
+        }
 
         $totalEmailsSent = 0;
-        $emailsSentRes = $conn->query("SELECT COUNT(cl.id) as cnt FROM communication_logs cl JOIN leads l ON cl.lead_id = l.id WHERE cl.type = 'email' AND cl.status = 'sent' AND $dateConditionSent $managerFilterLeads");
+        $emailsSentRes = $conn->query("SELECT COUNT(cl.id) as cnt FROM communication_logs cl LEFT JOIN leads l ON cl.lead_id = l.id WHERE cl.type = 'email' AND cl.status = 'sent' AND $dateConditionSent $managerFilterLeadsComm");
         if ($emailsSentRes && $row = $emailsSentRes->fetch_assoc()) {
             $totalEmailsSent = (int)$row['cnt'];
+        }
+        $dateConditionEmailSentAt = str_replace('received_at', 'email_notify_sent_at', $dateCondition);
+        $emailLeadRes = $conn->query("SELECT COUNT(l.id) as cnt FROM leads l WHERE l.email_notify_status = 'sent' AND (($dateConditionEmailSentAt) OR (l.email_notify_sent_at IS NULL AND $dateConditionLeadsCreated)) $managerFilterLeads");
+        if ($emailLeadRes && $r = $emailLeadRes->fetch_assoc()) {
+            $totalEmailsSent = max($totalEmailsSent, (int)$r['cnt']);
+        }
+
+        $totalTelegramSent = 0;
+        $telegramSentRes = $conn->query("SELECT COUNT(cl.id) as cnt FROM communication_logs cl LEFT JOIN leads l ON cl.lead_id = l.id WHERE cl.type = 'telegram' AND cl.status = 'sent' AND $dateConditionSent $managerFilterLeadsComm");
+        if ($telegramSentRes && $row = $telegramSentRes->fetch_assoc()) {
+            $totalTelegramSent = (int)$row['cnt'];
+        }
+        $dateConditionTgSentAt = str_replace('received_at', 'telegram_notify_sent_at', $dateCondition);
+        $tgLeadRes = $conn->query("SELECT COUNT(l.id) as cnt FROM leads l WHERE l.telegram_notify_status = 'sent' AND (($dateConditionTgSentAt) OR (l.telegram_notify_sent_at IS NULL AND $dateConditionLeadsCreated)) $managerFilterLeads");
+        if ($tgLeadRes && $r = $tgLeadRes->fetch_assoc()) {
+            $totalTelegramSent = max($totalTelegramSent, (int)$r['cnt']);
         }
 
         $totalTokensUsed = 0;
@@ -14985,6 +15009,7 @@ switch ($action) {
                 'db_needs_migration' => $GLOBALS['db_needs_migration'] ?? false,
                 'total_zalo_sent' => $totalZaloSent,
                 'total_emails_sent' => $totalEmailsSent,
+                'total_telegram_sent' => $totalTelegramSent,
                 'total_tokens_used' => $totalTokensUsed,
                 'total_prompt_tokens_used' => $totalPromptTokensUsed,
                 'total_completion_tokens_used' => $totalCompletionTokensUsed,

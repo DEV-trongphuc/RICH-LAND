@@ -166,7 +166,7 @@ class NotificationService {
                         $rId = (int)($rec['id'] ?? 0);
                         if (!empty($rec['email']) && $isChannelEnabled($rId, 'email')) {
                             try {
-                                sendEmailNotification($rec['email'], $emailSubject, $emailTitle, $emailContent, '', false);
+                                sendEmailNotification($rec['email'], $emailSubject, $emailTitle, $emailContent, '', 0, false);
                             } catch (\Throwable $ee) {
                                 error_log("NotificationService Email send error (" . $rec['email'] . "): " . $ee->getMessage());
                             }
@@ -1080,6 +1080,24 @@ class NotificationService {
         } catch (\Throwable $e) {
             error_log("Error checking user approval permission: " . $e->getMessage());
             return false;
+        }
+    }
+
+    /**
+     * Helper: Fetch all active users for tenant
+     */
+    public static function getAllActiveUsers(PDO $db, int $tenantId): array {
+        try {
+            $stmt = $db->prepare("
+                SELECT id, email, full_name, role, zalo_chat_id, telegram_chat_id 
+                FROM users 
+                WHERE (is_active = 1 OR status = 'active') AND (tenant_id = ? OR ? = 0)
+            ");
+            $stmt->execute([$tenantId, $tenantId]);
+            return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+        } catch (\Throwable $e) {
+            error_log("Error in getAllActiveUsers: " . $e->getMessage());
+            return [];
         }
     }
 }

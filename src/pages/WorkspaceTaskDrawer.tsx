@@ -1100,16 +1100,18 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
         }
       }
 
+      const commentText = newCommentText.trim();
+      setNewCommentText('');
+      setCommentAttachments([]);
+      setReplyTo(null);
+
       const res = await api.post(`/activities/${task.id}/comments`, {
-        content: newCommentText.trim(),
+        content: commentText,
         attachments: uploadedUrls,
         parent_id: replyTo ? replyTo.id : null
       });
 
       if (res.data && res.data.success) {
-        setNewCommentText('');
-        setCommentAttachments([]);
-        setReplyTo(null);
         loadComments(task.id);
         toast.success(t('Đã thêm bình luận!'));
       }

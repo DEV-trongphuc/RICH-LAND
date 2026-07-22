@@ -461,6 +461,10 @@ const ConsultantsInner = () => {
       }
 
       let finalBody = newTeamCommentText.trim();
+      setNewTeamCommentText('');
+      setTeamReplyTo(null);
+      setTeamCommentAttachments([]);
+
       if (processedAttachments.length > 0) {
         const attachmentLines = processedAttachments.map(att => `📎 [${att.name}](${att.url})`).join('\n');
         finalBody = finalBody ? `${finalBody}\n${attachmentLines}` : attachmentLines;
@@ -471,9 +475,6 @@ const ConsultantsInner = () => {
         parent_id: teamReplyTo ? teamReplyTo.id : null
       });
 
-      setNewTeamCommentText('');
-      setTeamReplyTo(null);
-      setTeamCommentAttachments([]);
       toast.success(t('Đã gửi bình luận thành công'));
       fetchTeamComments(teamId);
     } catch (e: any) {

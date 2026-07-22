@@ -546,14 +546,7 @@ const ActivityComments: React.FC<{
         uploadedUrl = res.data.data?.url ?? '';
       }
 
-      const payload = { 
-        content: text, 
-        attachments: uploadedUrl ? [uploadedUrl] : [],
-        parent_id: replyTo ? replyTo.id : null
-      };
-      await api.post(`/activities/${activityId}/comments`, payload);
-      
-      await fetchComments();
+      const commentText = text;
       setText('');
       setReplyTo(null);
       if (attachmentPreview) {
@@ -561,6 +554,14 @@ const ActivityComments: React.FC<{
       }
       setAttachmentFile(null);
       setAttachmentPreview(null);
+
+      const payload = { 
+        content: commentText, 
+        attachments: uploadedUrl ? [uploadedUrl] : [],
+        parent_id: replyTo ? replyTo.id : null
+      };
+      await api.post(`/activities/${activityId}/comments`, payload);
+      fetchComments();
     } catch (e: any) {
       addToast(e.response?.data?.message || 'Lỗi khi gửi bình luận', 'error');
     } finally {

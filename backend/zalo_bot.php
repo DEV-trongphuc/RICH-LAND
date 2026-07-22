@@ -52,8 +52,8 @@ function sendZaloMessage($botToken, $chatId, $text, $sync = true, $leadId = 0)
     curl_setopt($ch, CURLOPT_POSTFIELDS, $payload);
     curl_setopt($ch, CURLOPT_HTTPHEADER, array('Content-Type: application/json; charset=utf-8'));
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 1);
-    curl_setopt($ch, CURLOPT_TIMEOUT, 2);
+    curl_setopt($ch, CURLOPT_CONNECTTIMEOUT_MS, 800);
+    curl_setopt($ch, CURLOPT_TIMEOUT_MS, 1500);
     curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
 
     $result = curl_exec($ch);
@@ -76,11 +76,21 @@ function sendZaloMessage($botToken, $chatId, $text, $sync = true, $leadId = 0)
     $errorMessage = null;
     if ($httpCode >= 200 && $httpCode < 300 && $result) {
         $resObj = json_decode($result, true);
-        if (isset($resObj['ok']) && $resObj['ok'] === true) {
-            $isSent = true;
+        if (is_array($resObj)) {
+            if (
+                (isset($resObj['ok']) && $resObj['ok'] === true) ||
+                (isset($resObj['error']) && ((int)$resObj['error'] === 0)) ||
+                (isset($resObj['error_code']) && ((int)$resObj['error_code'] === 0)) ||
+                (isset($resObj['code']) && ((int)$resObj['code'] === 200 || (int)$resObj['code'] === 0)) ||
+                (!isset($resObj['error']) && !isset($resObj['error_code']) && !isset($resObj['err']) && !isset($resObj['message']))
+            ) {
+                $isSent = true;
+            } else {
+                $errorMessage = $result;
+                error_log("Zalo Bot Error: " . $result);
+            }
         } else {
-            $errorMessage = $result;
-            error_log("Zalo Bot Error: " . $result);
+            $isSent = true;
         }
     } else {
         $errorMessage = "HTTP Code: " . $httpCode . ", Response: " . ($result ?: 'NO RESPONSE');
@@ -90,7 +100,7 @@ function sendZaloMessage($botToken, $chatId, $text, $sync = true, $leadId = 0)
     $newStatus = $isSent ? 'sent' : 'failed';
     
     // Ghi nhận nhật ký giao tiếp Zalo
-    log_communication($conn, $leadId, 'zalo', $chatId, $newStatus, $errorMessage);
+    log_communication($conn ?? null, $leadId, 'zalo', $chatId, $newStatus, $errorMessage);
 
     if ($leadId > 0) {
         $sentAtExpr = $isSent ? ", zalo_notify_sent_at = NOW()" : "";
@@ -166,11 +176,20 @@ function sendZaloMessageToMultiple($botToken, $chatIdsArray, $text, $sync = true
         }
     } while ($running > 0);
 
-    // Dọn dẹp memory
+    // Dọn dẹp memory và log communication
+    $index = 0;
     foreach ($curlHandles as $ch) {
-        // Tùy chọn: Log lỗi nếu muốn curl_getinfo($ch, CURLINFO_HTTP_CODE)
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $chatId = $chatIdsArray[$index] ?? '';
+        $isSent = ($httpCode >= 200 && $httpCode < 300);
+        $status = $isSent ? 'sent' : 'failed';
+        $err = $isSent ? null : "HTTP $httpCode";
+        if (function_exists('log_communication') && !empty($chatId)) {
+            log_communication($conn ?? null, $leadId, 'zalo', $chatId, $status, $err);
+        }
         curl_multi_remove_handle($multiHandle, $ch);
         curl_close($ch);
+        $index++;
     }
     curl_multi_close($multiHandle);
 

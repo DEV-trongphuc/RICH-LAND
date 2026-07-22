@@ -19,9 +19,13 @@ $conn->set_charset("utf8mb4");
 // BUG-FIX: Đảm bảo MySQL chạy cùng múi giờ với PHP để hàm NOW(), CURDATE() thống kê chính xác
 $conn->query("SET time_zone = '+07:00'");
 
-// Global helper: Log Zalo/Email communications to database
+// Global helper: Log Zalo/Email/Telegram communications to database
 if (!function_exists('log_communication')) {
-    function log_communication($conn, $leadId, $type, $recipient, $status, $errorMessage = null) {
+    function log_communication($conn = null, $leadId = 0, $type = '', $recipient = '', $status = '', $errorMessage = null) {
+        if (!$conn || !($conn instanceof mysqli)) {
+            $conn = $GLOBALS['conn'] ?? null;
+        }
+        if (!$conn || !($conn instanceof mysqli)) return;
         $stmt = $conn->prepare("INSERT INTO communication_logs (lead_id, type, recipient, status, error_message) VALUES (?, ?, ?, ?, ?)");
         if ($stmt) {
             $leadIdVal = !empty($leadId) ? (int)$leadId : null;

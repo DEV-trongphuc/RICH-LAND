@@ -93,7 +93,7 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
   const [connections, setConnections] = useState<any[]>([]);
   const [showHealthModal, setShowHealthModal] = useState(false);
   const [healthModalTab, setHealthModalTab] = useState<'stats' | 'connections'>('stats');
-  const [healthChartMetric, setHealthChartMetric] = useState<'zalo' | 'email' | 'token'>('zalo');
+  const [healthChartMetric, setHealthChartMetric] = useState<'zalo' | 'email' | 'telegram' | 'token'>('zalo');
   const [modalChartLoading, setModalChartLoading] = useState(false);
   const [consultantPage, setConsultantPage] = useState(1);
   const CONSULTANTS_PER_PAGE = 8;
@@ -149,6 +149,8 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
         return t('Số tin Zalo');
       case 'email':
         return t('Số Mail');
+      case 'telegram':
+        return t('Số tin Telegram');
       case 'token':
         return t('Số Token AI');
       default:
@@ -3034,7 +3036,7 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
             setHealthChartMetric('zalo');
           }}
           title={t("Thống kê & Kết nối hệ thống")}
-          width={isMobile ? "100%" : "960px"}
+          width={isMobile ? "100%" : "1060px"}
         >
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', padding: '0.5rem 0' }}>
 
@@ -3096,102 +3098,160 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
 
                 <div style={{
                   display: 'grid',
-                  gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr 1fr',
-                  gap: '0.75rem',
+                  gridTemplateColumns: isMobile ? '1fr' : 'repeat(4, 1fr)',
+                  gap: '0.875rem',
                   alignItems: 'stretch'
                 }}>
                   {/* Zalo Card */}
                   <div style={{
-                    padding: '12px 14px',
+                    padding: '14px 16px',
                     background: 'var(--color-surface)',
-                    borderRadius: 14,
+                    borderRadius: 16,
                     border: '1px solid var(--color-border)',
                     display: 'flex',
                     flexDirection: 'column',
                     justifyContent: 'space-between',
-                    gap: 10,
-                    boxShadow: '0 2px 4px rgba(0,0,0,0.02)',
+                    gap: 12,
+                    boxShadow: '0 2px 6px rgba(0,0,0,0.03)',
                     height: '100%'
                   }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                        <div style={{ width: 38, height: 38, borderRadius: '50%', background: 'var(--color-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                          <img src="https://stc-zpl.zdn.vn/favicon.ico" style={{ width: 22, height: 22 }} alt="Zalo" />
-                        </div>
-                        <div style={{ display: 'flex', flexDirection: 'column' }}>
-                          <span style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)' }}>{t("Zalo Bot nhắn đi")}</span>
-                          <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{t("Phân bổ & thông báo Sale")}</span>
-                        </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <div style={{ width: 36, height: 36, borderRadius: '10px', background: 'rgba(0, 104, 255, 0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        <img src="https://stc-zpl.zdn.vn/favicon.ico" style={{ width: 20, height: 20 }} alt="Zalo" />
                       </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+                        <span style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{t("Zalo Bot")}</span>
+                        <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{t("Phân bổ & thông báo")}</span>
+                      </div>
+                    </div>
+                    
+                    <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px', margin: '4px 0' }}>
                       <span
                         title={(stats?.total_zalo_sent ?? 0).toLocaleString()}
-                        style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--color-success)', whiteSpace: 'nowrap' }}
+                        style={{ fontSize: '1.625rem', fontWeight: 800, color: '#0068ff', lineHeight: 1 }}
                       >
                         {formatNumberCompact(stats?.total_zalo_sent ?? 0)}
                       </span>
+                      <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>{t("tin")}</span>
                     </div>
+
                     <div style={{
-                      fontSize: '0.6875rem',
+                      fontSize: '0.7rem',
                       color: 'var(--color-text-muted)',
                       borderTop: '1px dashed var(--color-border-light)',
                       paddingTop: '8px',
                       display: 'flex',
+                      alignItems: 'center',
                       justifyContent: 'space-between',
                       fontWeight: 500
                     }}>
-                      <span>{t("Chi phí ước tính:")}</span>
-                      <span style={{ color: 'var(--color-text)', fontWeight: 600 }}>
-                        {t("Miễn phí / Tích hợp")}
+                      <span>{t("Chi phí:")}</span>
+                      <span style={{ color: '#059669', fontWeight: 600, background: 'rgba(16, 185, 129, 0.1)', padding: '2px 6px', borderRadius: 4, fontSize: '0.6875rem' }}>
+                        {t("Miễn phí")}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Telegram Card */}
+                  <div style={{
+                    padding: '14px 16px',
+                    background: 'var(--color-surface)',
+                    borderRadius: 16,
+                    border: '1px solid var(--color-border)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    justifyContent: 'space-between',
+                    gap: 12,
+                    boxShadow: '0 2px 6px rgba(0,0,0,0.03)',
+                    height: '100%'
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <div style={{ width: 36, height: 36, borderRadius: '10px', background: 'rgba(0, 136, 204, 0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        <img src="https://upload.wikimedia.org/wikipedia/commons/8/82/Telegram_logo.svg" style={{ width: 20, height: 20 }} alt="Telegram" />
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+                        <span style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{t("Telegram Bot")}</span>
+                        <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{t("Thông báo & Alert")}</span>
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px', margin: '4px 0' }}>
+                      <span
+                        title={(stats?.total_telegram_sent ?? 0).toLocaleString()}
+                        style={{ fontSize: '1.625rem', fontWeight: 800, color: '#0088cc', lineHeight: 1 }}
+                      >
+                        {formatNumberCompact(stats?.total_telegram_sent ?? 0)}
+                      </span>
+                      <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>{t("tin")}</span>
+                    </div>
+
+                    <div style={{
+                      fontSize: '0.7rem',
+                      color: 'var(--color-text-muted)',
+                      borderTop: '1px dashed var(--color-border-light)',
+                      paddingTop: '8px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      fontWeight: 500
+                    }}>
+                      <span>{t("Chi phí:")}</span>
+                      <span style={{ color: '#0088cc', fontWeight: 600, background: 'rgba(0, 136, 204, 0.1)', padding: '2px 6px', borderRadius: 4, fontSize: '0.6875rem' }}>
+                        {t("Miễn phí")}
                       </span>
                     </div>
                   </div>
 
                   {/* Email Card */}
                   <div style={{
-                    padding: '12px 14px',
+                    padding: '14px 16px',
                     background: 'var(--color-surface)',
-                    borderRadius: 14,
+                    borderRadius: 16,
                     border: '1px solid var(--color-border)',
                     display: 'flex',
                     flexDirection: 'column',
                     justifyContent: 'space-between',
-                    gap: 10,
-                    boxShadow: '0 2px 4px rgba(0,0,0,0.02)',
+                    gap: 12,
+                    boxShadow: '0 2px 6px rgba(0,0,0,0.03)',
                     height: '100%'
                   }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                        <div style={{ width: 38, height: 38, borderRadius: '50%', background: 'var(--color-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                          <img src="https://www.gstatic.com/images/branding/product/1x/gmail_2020q4_32dp.png" style={{ width: 22, height: 22 }} alt="Gmail" />
-                        </div>
-                        <div style={{ display: 'flex', flexDirection: 'column' }}>
-                          <span style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)' }}>{t("Email gửi đi")}</span>
-                          <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{t("Báo cáo & bàn giao Lead")}</span>
-                        </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <div style={{ width: 36, height: 36, borderRadius: '10px', background: 'rgba(234, 67, 53, 0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        <img src="https://www.gstatic.com/images/branding/product/1x/gmail_2020q4_32dp.png" style={{ width: 20, height: 20 }} alt="Gmail" />
                       </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+                        <span style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{t("Email gửi đi")}</span>
+                        <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{t("Báo cáo & bàn giao")}</span>
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px', margin: '4px 0' }}>
                       <span
                         title={(stats?.total_emails_sent ?? 0).toLocaleString()}
-                        style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--color-info)', whiteSpace: 'nowrap' }}
+                        style={{ fontSize: '1.625rem', fontWeight: 800, color: '#ea4335', lineHeight: 1 }}
                       >
                         {formatNumberCompact(stats?.total_emails_sent ?? 0)}
                       </span>
+                      <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>{t("mail")}</span>
                     </div>
+
                     <div style={{
-                      fontSize: '0.6875rem',
+                      fontSize: '0.7rem',
                       color: 'var(--color-text-muted)',
                       borderTop: '1px dashed var(--color-border-light)',
                       paddingTop: '8px',
                       display: 'flex',
+                      alignItems: 'center',
                       justifyContent: 'space-between',
                       fontWeight: 500
                     }}>
-                      <span>{t("Chi phí ước tính:")}</span>
-                      <span style={{ color: 'var(--color-text)', fontWeight: 600 }}>
+                      <span>{t("Chi phí:")}</span>
+                      <span style={{ color: 'var(--color-text)', fontWeight: 600, fontSize: '0.7rem' }}>
                         {(() => {
                           const sentEmails = stats?.total_emails_sent ?? 0;
                           const costUsd = (sentEmails * 0.10) / 1000;
                           const costVnd = costUsd * 25400;
-                          return `~$${costUsd.toFixed(4)} USD (~${Math.round(costVnd).toLocaleString('vi-VN')} VNĐ)`;
+                          return `~$${costUsd.toFixed(3)} (~${Math.round(costVnd)}đ)`;
                         })()}
                       </span>
                     </div>
@@ -3199,94 +3259,62 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
 
                   {/* Tokens Card */}
                   <div style={{
-                    padding: '12px 14px',
+                    padding: '14px 16px',
                     background: 'var(--color-surface)',
-                    borderRadius: 14,
+                    borderRadius: 16,
                     border: '1px solid var(--color-border)',
                     display: 'flex',
                     flexDirection: 'column',
                     justifyContent: 'space-between',
-                    gap: 10,
-                    boxShadow: '0 2px 4px rgba(0,0,0,0.02)',
+                    gap: 12,
+                    boxShadow: '0 2px 6px rgba(0,0,0,0.03)',
                     height: '100%'
                   }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                        <div style={{ width: 38, height: 38, borderRadius: '50%', background: 'var(--color-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                          <img src="https://www.gstatic.com/lamda/images/gemini_sparkle_aurora_33f86dc0c0257da337c63.svg" style={{ width: 22, height: 22 }} alt="Gemini" />
-                        </div>
-                        <div style={{ display: 'flex', flexDirection: 'column' }}>
-                          <span style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)' }}>{t("Token AI sử dụng")}</span>
-                          <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{t("Gemini model screening")}</span>
-                        </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <div style={{ width: 36, height: 36, borderRadius: '10px', background: 'rgba(142, 68, 173, 0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        <img src="https://www.gstatic.com/lamda/images/gemini_sparkle_aurora_33f86dc0c0257da337c63.svg" style={{ width: 20, height: 20 }} alt="Gemini" />
                       </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+                        <span style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{t("Token AI sử dụng")}</span>
+                        <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{t("Gemini pre-screening")}</span>
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px', margin: '4px 0' }}>
                       <span
                         title={(stats?.total_tokens_used ?? 0).toLocaleString()}
-                        style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--color-primary)', whiteSpace: 'nowrap' }}
+                        style={{ fontSize: '1.625rem', fontWeight: 800, color: '#8e44ad', lineHeight: 1 }}
                       >
                         {formatNumberCompact(stats?.total_tokens_used ?? 0)}
                       </span>
+                      <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>{t("token")}</span>
                     </div>
-                    <div>
-                      <div style={{
-                        fontSize: '0.6875rem',
-                        color: 'var(--color-text-muted)',
-                        borderTop: '1px dashed var(--color-border-light)',
-                        paddingTop: '8px',
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        fontWeight: 500
-                      }}>
-                        <span>{t("Chi phí ước tính:")}</span>
-                        <span style={{ color: 'var(--color-text)', fontWeight: 600 }}>
-                          {(() => {
-                            const promptT = stats?.total_prompt_tokens_used ?? 0;
-                            const compT = stats?.total_completion_tokens_used ?? 0;
-                            let costUsd = 0;
-                            if (promptT > 0 || compT > 0) {
-                              costUsd = (promptT * 0.10 + compT * 0.40) / 1000000;
-                            } else {
-                              costUsd = (stats?.total_tokens_used ?? 0) * 0.0000001336;
-                            }
-                            const costVnd = costUsd * 25400;
-                            return `~$${costUsd.toFixed(4)} USD (~${Math.round(costVnd).toLocaleString('vi-VN')} VNĐ)`;
-                          })()}
-                        </span>
-                      </div>
-                      <div style={{
-                        display: 'flex',
-                        justifyContent: 'flex-end',
-                        borderTop: '1px solid var(--color-border-light)',
-                        paddingTop: '8px',
-                        marginTop: '8px'
-                      }}>
-                        <button
-                          onClick={() => {
-                            setShowHealthModal(false);
-                            setHealthChartMetric('zalo');
-                            navigate(`/gatekeeper?open_tokens=true`);
-                          }}
-                          style={{
-                            background: 'transparent',
-                            border: 'none',
-                            color: 'var(--color-primary)',
-                            fontSize: '0.75rem',
-                            fontWeight: 600,
-                            cursor: 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '4px',
-                            padding: '4px 8px',
-                            borderRadius: '6px',
-                            transition: 'background-color 0.2s'
-                          }}
-                          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--color-bg-hover)'}
-                          onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
-                        >
-                          <ExternalLink size={12} />
-                          {t("Xem chi tiết log sử dụng")}
-                        </button>
-                      </div>
+
+                    <div style={{
+                      fontSize: '0.7rem',
+                      color: 'var(--color-text-muted)',
+                      borderTop: '1px dashed var(--color-border-light)',
+                      paddingTop: '8px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      fontWeight: 500
+                    }}>
+                      <span>{t("Chi phí:")}</span>
+                      <span style={{ color: 'var(--color-text)', fontWeight: 600, fontSize: '0.7rem' }}>
+                        {(() => {
+                          const promptT = stats?.total_prompt_tokens_used ?? 0;
+                          const compT = stats?.total_completion_tokens_used ?? 0;
+                          let costUsd = 0;
+                          if (promptT > 0 || compT > 0) {
+                            costUsd = (promptT * 0.10 + compT * 0.40) / 1000000;
+                          } else {
+                            costUsd = (stats?.total_tokens_used ?? 0) * 0.0000001336;
+                          }
+                          const costVnd = costUsd * 25400;
+                          return `~$${costUsd.toFixed(3)} (~${Math.round(costVnd)}đ)`;
+                        })()}
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -3330,6 +3358,7 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
                         }}>
                           {[
                             { id: 'zalo', label: t('Zalo Bot'), icon: <img src="https://stc-zpl.zdn.vn/favicon.ico" style={{ width: 13, height: 13, borderRadius: '50%' }} alt="Zalo" /> },
+                            { id: 'telegram', label: t('Telegram Bot'), icon: <img src="https://upload.wikimedia.org/wikipedia/commons/8/82/Telegram_logo.svg" style={{ width: 13, height: 13 }} alt="Telegram" /> },
                             { id: 'email', label: t('Email gửi'), icon: <img src="https://www.gstatic.com/images/branding/product/1x/gmail_2020q4_32dp.png" style={{ width: 13, height: 13 }} alt="Gmail" /> },
                             { id: 'token', label: t('Token AI'), icon: <img src="https://www.gstatic.com/lamda/images/gemini_sparkle_aurora_33f86dc0c0257da337c63.svg" style={{ width: 13, height: 13 }} alt="Gemini" /> }
                           ].map((item) => {

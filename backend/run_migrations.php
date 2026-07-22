@@ -71,7 +71,15 @@ if ($lockStmt) {
     $lockStmt->close();
 }
 
-$logMsg("Bắt đầu tự đồng bộ cấu trúc cơ sở dữ liệu (Self-healing check)...", "info");
+$isForce = isset($_GET['force']) || (isset($_GET['run']) && $_GET['run'] === 'force') || ($isCli && in_array('--force', $argv));
+
+if ($currentVersion >= $targetVersion && !$isForce) {
+    $logMsg("Cơ sở dữ liệu đã ở phiên bản mới nhất (v{$currentVersion}). Đã bỏ qua các nhiệm vụ nâng cấp cũ.", "success");
+    if (!$isCli) echo "</body></html>";
+    return;
+}
+
+$logMsg("Bắt đầu tự đồng bộ cấu trúc cơ sở dữ liệu (Version $currentVersion -> $targetVersion)...", "info");
 
 try {
     // 1. Synchronize Views (accounts & consultants) with complete columns

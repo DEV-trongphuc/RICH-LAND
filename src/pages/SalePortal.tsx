@@ -7849,12 +7849,12 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                   width: 40, 
                   height: 40, 
                   borderRadius: '10px', 
-                  background: 'linear-gradient(135deg, #3f3f46 0%, #18181b 100%)', 
+                  background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', 
                   display: 'flex', 
                   justifyContent: 'center', 
                   alignItems: 'center', 
-                  color: '#e4e4e7',
-                  border: '1px solid rgba(255, 255, 255, 0.1)',
+                  color: '#ffffff',
+                  boxShadow: '0 4px 14px rgba(16, 185, 129, 0.4)',
                   flexShrink: 0
                 }}>
                   <CheckCircle2 size={20} />

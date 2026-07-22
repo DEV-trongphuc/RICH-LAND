@@ -653,20 +653,22 @@ export default function ProjectsPage() {
         }
       }
 
+      const commentText = newCommentText.trim();
+      setNewCommentText('');
+      setCommentAttachments([]);
+      setReplyTo(null);
+
       const res = await fetchAPI(`${entityType}s/${entityId}/comments`, {
         method: 'POST',
         body: JSON.stringify({ 
-          body: newCommentText.trim(),
+          body: commentText,
           attachments: uploadedUrls,
           parent_id: replyTo ? replyTo.id : null
         }),
         headers: { 'Content-Type': 'application/json' }
       });
       if (res.success || res.id) {
-        setNewCommentText('');
-        setCommentAttachments([]);
-        setReplyTo(null);
- loadDetailComments(entityType, entityId);
+        loadDetailComments(entityType, entityId);
         addToast('Đã đăng bình luận!', 'success');
       } else {
         addToast(res.message || 'Lỗi khi gửi bình luận', 'error');
