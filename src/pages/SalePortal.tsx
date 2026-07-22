@@ -501,6 +501,14 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
   const [showUpcomingMeetingsModal, setShowUpcomingMeetingsModal] = useState(false);
   const [meetingSearchText, setMeetingSearchText] = useState('');
   const [meetingFilterStatus, setMeetingFilterStatus] = useState<'all' | 'planned' | 'overdue' | 'done'>('all');
+  const [meetingPage, setMeetingPage] = useState(1);
+  const [meetingFilterTeamId, setMeetingFilterTeamId] = useState('all');
+  const [meetingFilterSaleId, setMeetingFilterSaleId] = useState('all');
+
+  const [showMeetingTeamDropdown, setShowMeetingTeamDropdown] = useState(false);
+  const [showMeetingSaleDropdown, setShowMeetingSaleDropdown] = useState(false);
+  const [meetingTeamSearchText, setMeetingTeamSearchText] = useState('');
+  const [meetingSaleSearchText, setMeetingSaleSearchText] = useState('');
 
   const isUserAdminRole = ['admin', 'superadmin', 'assistant', 'super_admin'].includes(String(currentUser?.role).toLowerCase());
   const isUserManagerRole = String(currentUser?.role).toLowerCase() === 'manager';
@@ -527,6 +535,25 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
     const dueDate = new Date(dueStr);
     const now = new Date();
     return dueDate < now;
+  };
+
+  const getRelativeDateLabel = (dueDateRaw: string) => {
+    if (!dueDateRaw) return '';
+    const due = new Date(dueDateRaw);
+    if (isNaN(due.getTime())) return '';
+
+    const now = new Date();
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const dueStart = new Date(due.getFullYear(), due.getMonth(), due.getDate());
+
+    const diffMs = dueStart.getTime() - todayStart.getTime();
+    const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24));
+
+    if (diffDays === 0) return 'Hôm nay';
+    if (diffDays === 1) return 'Ngày mai';
+    if (diffDays === -1) return 'Hôm qua';
+    if (diffDays > 1) return `${diffDays} ngày tới`;
+    return `${Math.abs(diffDays)} ngày trước`;
   };
 
   const upcomingMeetingsList = useMemo(() => {
@@ -559,6 +586,28 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
     });
   }, [wsTasks, currentUser, isUserAdminRole, isUserManagerRole, wsTeamId, currentUidVal]);
 
+  const meetingSalesOptions = useMemo(() => {
+    const map = new Map<string, string>();
+    upcomingMeetingsList.forEach((item: any) => {
+      const uid = String(item.assignee_id || item.user_id || item.owner_id || item.created_by || '');
+      const name = item.assignee_name || item.user_name || item.created_by_name || item.sale_name;
+      if (uid && uid !== '0' && name) {
+        map.set(uid, name);
+      }
+    });
+    return Array.from(map.entries()).map(([id, name]) => ({ id, name }));
+  }, [upcomingMeetingsList]);
+
+  const selectedFilterTeam = useMemo(() => {
+    if (meetingFilterTeamId === 'all') return null;
+    return teamsList.find((t: any) => String(t.id) === String(meetingFilterTeamId));
+  }, [teamsList, meetingFilterTeamId]);
+
+  const selectedFilterSale = useMemo(() => {
+    if (meetingFilterSaleId === 'all') return null;
+    return meetingSalesOptions.find((s: any) => String(s.id) === String(meetingFilterSaleId));
+  }, [meetingSalesOptions, meetingFilterSaleId]);
+
   const filteredUpcomingMeetingsModalList = useMemo(() => {
     let list = upcomingMeetingsList;
     if (meetingFilterStatus === 'planned') {
@@ -568,6 +617,18 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
     } else if (meetingFilterStatus === 'done') {
       list = list.filter(t => checkMeetingIsDone(t));
     }
+
+    if (meetingFilterTeamId !== 'all') {
+      list = list.filter(t => String(t.team_id || '') === String(meetingFilterTeamId));
+    }
+
+    if (meetingFilterSaleId !== 'all') {
+      list = list.filter(t => {
+        const uid = String(t.assignee_id || t.user_id || t.owner_id || '');
+        return uid === String(meetingFilterSaleId);
+      });
+    }
+
     if (meetingSearchText.trim()) {
       const q = meetingSearchText.toLowerCase().trim();
       list = list.filter(t => {
@@ -579,7 +640,15 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
       });
     }
     return list;
-  }, [upcomingMeetingsList, meetingFilterStatus, meetingSearchText]);
+  }, [upcomingMeetingsList, meetingFilterStatus, meetingFilterTeamId, meetingFilterSaleId, meetingSearchText]);
+
+  const MEETINGS_PER_PAGE = 20;
+  const totalMeetingPages = Math.ceil(filteredUpcomingMeetingsModalList.length / MEETINGS_PER_PAGE) || 1;
+
+  const paginatedUpcomingMeetingsList = useMemo(() => {
+    const start = (meetingPage - 1) * MEETINGS_PER_PAGE;
+    return filteredUpcomingMeetingsModalList.slice(start, start + MEETINGS_PER_PAGE);
+  }, [filteredUpcomingMeetingsModalList, meetingPage]);
 
   const handleOpenCustomerFromMeetingModal = (meetingItem: any) => {
     setShowUpcomingMeetingsModal(false);
@@ -15605,27 +15674,34 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
             </span>
           </div>
 
-          {/* Toolbar: Search + Filter Pills */}
+          {/* Toolbar: Search + Team Filter + Sale Filter + Status Pills */}
           <div style={{
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            gap: '0.75rem',
+            gap: '0.65rem',
             flexWrap: 'wrap'
           }}>
-            <div style={{ position: 'relative', flex: 1, minWidth: '260px' }}>
+            {/* Compact Search Input */}
+            <div style={{ position: 'relative', width: '260px', flex: '0 0 auto' }}>
               <input
                 type="text"
-                placeholder={t('Tìm theo tên khách hàng, SĐT, tiêu đề hoặc TVV...')}
+                placeholder={t('Tìm tên khách, SĐT, TVV...')}
                 value={meetingSearchText}
-                onChange={e => setMeetingSearchText(e.target.value)}
+                onChange={e => {
+                  setMeetingSearchText(e.target.value);
+                  setMeetingPage(1);
+                }}
                 className="form-input"
-                style={{ paddingLeft: '14px', paddingRight: '36px', fontSize: '0.825rem', height: '36px' }}
+                style={{ paddingLeft: '14px', paddingRight: '34px', fontSize: '0.825rem', height: '36px' }}
               />
               {meetingSearchText ? (
                 <button
-                  onClick={() => setMeetingSearchText('')}
-                  style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--color-text-muted)' }}
+                  onClick={() => {
+                    setMeetingSearchText('');
+                    setMeetingPage(1);
+                  }}
+                  style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--color-text-muted)' }}
                 >
                   <X size={14} />
                 </button>
@@ -15634,9 +15710,261 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
               )}
             </div>
 
+            {/* Custom Team Filter Dropdown (Admin / Manager) */}
+            {(isUserAdminRole || isUserManagerRole) && (
+              <div style={{ position: 'relative', display: 'inline-block' }}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowMeetingTeamDropdown(!showMeetingTeamDropdown);
+                    setShowMeetingSaleDropdown(false);
+                  }}
+                  style={{
+                    height: '36px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    borderRadius: '20px',
+                    padding: '3px 12px 3px 5px',
+                    border: meetingFilterTeamId !== 'all' ? '1.5px solid var(--color-primary, #BD1D2D)' : '1px solid var(--color-border)',
+                    background: 'var(--color-surface)',
+                    color: 'var(--color-text)',
+                    cursor: 'pointer',
+                    fontWeight: 700,
+                    fontSize: '0.8rem',
+                    boxShadow: 'var(--shadow-xs)'
+                  }}
+                >
+                  <div style={{
+                    width: '24px',
+                    height: '24px',
+                    borderRadius: '50%',
+                    overflow: 'hidden',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    background: selectedFilterTeam ? 'linear-gradient(135deg, #3B82F6 0%, #1D4ED8 100%)' : 'linear-gradient(135deg, #BD1D2D 0%, #a31422 100%)',
+                    color: '#ffffff',
+                    fontSize: '0.65rem',
+                    fontWeight: 800,
+                    border: (selectedFilterTeam?.avatar_url || selectedFilterTeam?.avatar) ? '1px solid var(--color-border-light)' : 'none',
+                    flexShrink: 0
+                  }}>
+                    {(selectedFilterTeam?.avatar_url || selectedFilterTeam?.avatar) ? (
+                      <img src={selectedFilterTeam.avatar_url || selectedFilterTeam.avatar} alt="Team" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    ) : (
+                      selectedFilterTeam ? (selectedFilterTeam.name?.[0] || 'T') : 'ALL'
+                    )}
+                  </div>
+                  <span>{selectedFilterTeam ? selectedFilterTeam.name : t('Tất cả các Nhóm')}</span>
+                  <ChevronDown size={14} style={{ opacity: 0.7 }} />
+                </button>
+
+                {showMeetingTeamDropdown && (
+                  <div style={{
+                    position: 'absolute',
+                    top: '100%',
+                    left: 0,
+                    marginTop: '6px',
+                    width: '260px',
+                    background: 'var(--color-surface)',
+                    border: '1px solid var(--color-border)',
+                    borderRadius: '12px',
+                    boxShadow: 'var(--shadow-lg)',
+                    zIndex: 1000,
+                    padding: '8px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '6px'
+                  }}>
+                    <input
+                      type="text"
+                      className="form-input"
+                      placeholder={t('Tìm kiếm nhóm...')}
+                      value={meetingTeamSearchText}
+                      onChange={e => setMeetingTeamSearchText(e.target.value)}
+                      style={{ width: '100%', fontSize: '0.78rem', padding: '6px 10px', height: '32px', borderRadius: '6px' }}
+                    />
+                    <div style={{ maxHeight: '200px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '2px' }} className="custom-scrollbar">
+                      <div
+                        onClick={() => {
+                          setMeetingFilterTeamId('all');
+                          setShowMeetingTeamDropdown(false);
+                          setMeetingTeamSearchText('');
+                          setMeetingPage(1);
+                        }}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '8px',
+                          padding: '6px 8px',
+                          borderRadius: '6px',
+                          cursor: 'pointer',
+                          background: meetingFilterTeamId === 'all' ? 'rgba(189, 29, 45, 0.08)' : 'transparent',
+                          fontWeight: meetingFilterTeamId === 'all' ? 700 : 500
+                        }}
+                        className="hover-bg-light"
+                      >
+                        <div style={{ width: '22px', height: '22px', borderRadius: '50%', background: 'linear-gradient(135deg, #BD1D2D 0%, #a31422 100%)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.65rem', fontWeight: 800 }}>ALL</div>
+                        <span style={{ fontSize: '0.8rem', color: 'var(--color-text)' }}>{t('Tất cả các Nhóm')}</span>
+                      </div>
+
+                      {teamsList.filter((tm: any) => (tm.name || '').toLowerCase().includes(meetingTeamSearchText.toLowerCase())).map((tm: any) => (
+                        <div
+                          key={tm.id}
+                          onClick={() => {
+                            setMeetingFilterTeamId(String(tm.id));
+                            setShowMeetingTeamDropdown(false);
+                            setMeetingTeamSearchText('');
+                            setMeetingPage(1);
+                          }}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px',
+                            padding: '6px 8px',
+                            borderRadius: '6px',
+                            cursor: 'pointer',
+                            background: String(meetingFilterTeamId) === String(tm.id) ? 'rgba(59, 130, 246, 0.1)' : 'transparent',
+                            fontWeight: String(meetingFilterTeamId) === String(tm.id) ? 700 : 500
+                          }}
+                          className="hover-bg-light"
+                        >
+                          <div style={{ width: '22px', height: '22px', borderRadius: '50%', background: '#3B82F6', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.65rem', fontWeight: 800 }}>
+                            {tm.name?.[0] || 'T'}
+                          </div>
+                          <span style={{ fontSize: '0.8rem', color: 'var(--color-text)' }}>{tm.name}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Custom Sale / TVV Filter Dropdown (Admin / Manager) */}
+            {(isUserAdminRole || isUserManagerRole) && (
+              <div style={{ position: 'relative', display: 'inline-block' }}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowMeetingSaleDropdown(!showMeetingSaleDropdown);
+                    setShowMeetingTeamDropdown(false);
+                  }}
+                  style={{
+                    height: '36px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    borderRadius: '20px',
+                    padding: '3px 12px 3px 5px',
+                    border: meetingFilterSaleId !== 'all' ? '1.5px solid #2563EB' : '1px solid var(--color-border)',
+                    background: 'var(--color-surface)',
+                    color: 'var(--color-text)',
+                    cursor: 'pointer',
+                    fontWeight: 700,
+                    fontSize: '0.8rem',
+                    boxShadow: 'var(--shadow-xs)'
+                  }}
+                >
+                  <div style={{ width: '24px', height: '24px', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    {selectedFilterSale ? (
+                      <Avatar name={selectedFilterSale.name} src="" size={24} />
+                    ) : (
+                      <div style={{ width: '24px', height: '24px', borderRadius: '50%', background: 'linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.65rem', fontWeight: 800 }}>ALL</div>
+                    )}
+                  </div>
+                  <span>{selectedFilterSale ? selectedFilterSale.name : t('Tất cả Sale / TVV')}</span>
+                  <ChevronDown size={14} style={{ opacity: 0.7 }} />
+                </button>
+
+                {showMeetingSaleDropdown && (
+                  <div style={{
+                    position: 'absolute',
+                    top: '100%',
+                    left: 0,
+                    marginTop: '6px',
+                    width: '260px',
+                    background: 'var(--color-surface)',
+                    border: '1px solid var(--color-border)',
+                    borderRadius: '12px',
+                    boxShadow: 'var(--shadow-lg)',
+                    zIndex: 1000,
+                    padding: '8px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '6px'
+                  }}>
+                    <input
+                      type="text"
+                      className="form-input"
+                      placeholder={t('Tìm kiếm Sale / TVV...')}
+                      value={meetingSaleSearchText}
+                      onChange={e => setMeetingSaleSearchText(e.target.value)}
+                      style={{ width: '100%', fontSize: '0.78rem', padding: '6px 10px', height: '32px', borderRadius: '6px' }}
+                    />
+                    <div style={{ maxHeight: '200px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '2px' }} className="custom-scrollbar">
+                      <div
+                        onClick={() => {
+                          setMeetingFilterSaleId('all');
+                          setShowMeetingSaleDropdown(false);
+                          setMeetingSaleSearchText('');
+                          setMeetingPage(1);
+                        }}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '8px',
+                          padding: '6px 8px',
+                          borderRadius: '6px',
+                          cursor: 'pointer',
+                          background: meetingFilterSaleId === 'all' ? 'rgba(37, 99, 235, 0.08)' : 'transparent',
+                          fontWeight: meetingFilterSaleId === 'all' ? 700 : 500
+                        }}
+                        className="hover-bg-light"
+                      >
+                        <div style={{ width: '22px', height: '22px', borderRadius: '50%', background: 'linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.65rem', fontWeight: 800 }}>ALL</div>
+                        <span style={{ fontSize: '0.8rem', color: 'var(--color-text)' }}>{t('Tất cả Sale / TVV')}</span>
+                      </div>
+
+                      {meetingSalesOptions.filter((s: any) => (s.name || '').toLowerCase().includes(meetingSaleSearchText.toLowerCase())).map((s: any) => (
+                        <div
+                          key={s.id}
+                          onClick={() => {
+                            setMeetingFilterSaleId(String(s.id));
+                            setShowMeetingSaleDropdown(false);
+                            setMeetingSaleSearchText('');
+                            setMeetingPage(1);
+                          }}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px',
+                            padding: '6px 8px',
+                            borderRadius: '6px',
+                            cursor: 'pointer',
+                            background: String(meetingFilterSaleId) === String(s.id) ? 'rgba(37, 99, 235, 0.1)' : 'transparent',
+                            fontWeight: String(meetingFilterSaleId) === String(s.id) ? 700 : 500
+                          }}
+                          className="hover-bg-light"
+                        >
+                          <Avatar name={s.name} src="" size={22} />
+                          <span style={{ fontSize: '0.8rem', color: 'var(--color-text)' }}>{s.name}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Status Pills */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '4px', background: 'var(--color-bg-subtle, rgba(0,0,0,0.03))', padding: '3px', borderRadius: '10px', border: '1px solid var(--color-border)' }}>
               <button
-                onClick={() => setMeetingFilterStatus('all')}
+                onClick={() => {
+                  setMeetingFilterStatus('all');
+                  setMeetingPage(1);
+                }}
                 style={{
                   padding: '5px 12px',
                   borderRadius: '7px',
@@ -15652,7 +15980,10 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                 {t('Tất cả')} ({upcomingMeetingsList.length})
               </button>
               <button
-                onClick={() => setMeetingFilterStatus('planned')}
+                onClick={() => {
+                  setMeetingFilterStatus('planned');
+                  setMeetingPage(1);
+                }}
                 style={{
                   padding: '5px 12px',
                   borderRadius: '7px',
@@ -15668,7 +15999,10 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                 {t('Sắp diễn ra')} ({upcomingMeetingsList.filter(t => !checkMeetingIsDone(t) && !checkMeetingIsOverdue(t)).length})
               </button>
               <button
-                onClick={() => setMeetingFilterStatus('overdue')}
+                onClick={() => {
+                  setMeetingFilterStatus('overdue');
+                  setMeetingPage(1);
+                }}
                 style={{
                   padding: '5px 12px',
                   borderRadius: '7px',
@@ -15684,7 +16018,10 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                 {t('Quá giờ hẹn')} ({upcomingMeetingsList.filter(t => !checkMeetingIsDone(t) && checkMeetingIsOverdue(t)).length})
               </button>
               <button
-                onClick={() => setMeetingFilterStatus('done')}
+                onClick={() => {
+                  setMeetingFilterStatus('done');
+                  setMeetingPage(1);
+                }}
                 style={{
                   padding: '5px 12px',
                   borderRadius: '7px',
@@ -15725,7 +16062,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
           </div>
 
           {/* Meeting Cards List */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '56vh', overflowY: 'auto', paddingRight: '4px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '52vh', overflowY: 'auto', paddingRight: '4px' }}>
             {filteredUpcomingMeetingsModalList.length === 0 ? (
               <div style={{
                 padding: '2.5rem 1rem',
@@ -15743,7 +16080,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                 <span style={{ fontSize: '0.9rem', fontWeight: 600 }}>{t('Không có cuộc hẹn gặp nào trong danh sách')}</span>
               </div>
             ) : (
-              filteredUpcomingMeetingsModalList.map((item: any, idx: number) => {
+              paginatedUpcomingMeetingsList.map((item: any, idx: number) => {
                 const customerName = item.contact_name || item.lead_name || item.related_name || item.customer_name || 'Khách hàng';
                 const customerPhone = item.phone || item.contact_phone || item.lead_phone || '';
                 // Only use explicit customer avatar fields, do not fallback to item.avatar which is sale's photo!
@@ -15780,22 +16117,9 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: '1.4', minWidth: '220px' }}>
                       <Avatar name={customerName} src={customerAvatar} size={36} />
                       <div style={{ minWidth: 0 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                          <span style={{ fontSize: '0.875rem', fontWeight: 800, color: 'var(--color-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                            {customerName}
-                          </span>
-                          <span style={{
-                            padding: '1px 6px',
-                            borderRadius: '10px',
-                            fontSize: '0.65rem',
-                            fontWeight: 700,
-                            background: 'rgba(37, 99, 235, 0.08)',
-                            color: '#2563EB',
-                            flexShrink: 0
-                          }}>
-                            {t('Khách')}
-                          </span>
-                        </div>
+                        <span style={{ fontSize: '0.875rem', fontWeight: 800, color: 'var(--color-text)', display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {customerName}
+                        </span>
                         {customerPhone && (
                           <span style={{ fontSize: '0.775rem', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: '4px', marginTop: '1px' }}>
                             <Phone size={11} />
@@ -15818,12 +16142,19 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                       </div>
                     </div>
 
-                    {/* Col 3: Clean Time */}
-                    <div style={{ flex: '1.2', minWidth: '170px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <Clock size={13} style={{ color: 'var(--color-text-muted)' }} />
-                      <span style={{ fontSize: '0.825rem', fontWeight: 600, color: 'var(--color-text)' }}>
-                        {dueDateRaw ? dueDateRaw.replace('T', ' ').slice(0, 16) : t('Chưa xếp giờ')}
-                      </span>
+                    {/* Col 3: Clean Time with relative date label above */}
+                    <div style={{ flex: '1.2', minWidth: '170px', display: 'flex', flexDirection: 'column' }}>
+                      {getRelativeDateLabel(dueDateRaw) && (
+                        <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', fontWeight: 600, display: 'block', lineHeight: 1.2 }}>
+                          {t(getRelativeDateLabel(dueDateRaw))}
+                        </span>
+                      )}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '5px', marginTop: '1px' }}>
+                        <Clock size={12} style={{ color: 'var(--color-text-muted)' }} />
+                        <span style={{ fontSize: '0.825rem', fontWeight: 700, color: 'var(--color-text)' }}>
+                          {dueDateRaw ? dueDateRaw.replace('T', ' ').slice(0, 16) : t('Chưa xếp giờ')}
+                        </span>
+                      </div>
                     </div>
 
                     {/* Col 4: Status */}
@@ -15862,6 +16193,62 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
               })
             )}
           </div>
+
+          {/* Pagination Bar (20 items / page) */}
+          {totalMeetingPages > 1 && (
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: '10px 14px',
+              background: 'var(--color-bg-subtle, rgba(0,0,0,0.02))',
+              border: '1px solid var(--color-border)',
+              borderRadius: '10px',
+              marginTop: '4px'
+            }}>
+              <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>
+                {t('Trang')} {meetingPage} / {totalMeetingPages} ({filteredUpcomingMeetingsModalList.length} {t('cuộc hẹn')})
+              </span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <button
+                  disabled={meetingPage <= 1}
+                  onClick={() => setMeetingPage(prev => Math.max(prev - 1, 1))}
+                  className="btn sm secondary"
+                  style={{ padding: '4px 10px', fontSize: '0.775rem', cursor: meetingPage <= 1 ? 'not-allowed' : 'pointer', opacity: meetingPage <= 1 ? 0.5 : 1 }}
+                >
+                  ‹ {t('Trang trước')}
+                </button>
+
+                {Array.from({ length: totalMeetingPages }, (_, i) => i + 1).map(p => (
+                  <button
+                    key={p}
+                    onClick={() => setMeetingPage(p)}
+                    style={{
+                      padding: '3px 9px',
+                      borderRadius: '6px',
+                      fontSize: '0.775rem',
+                      fontWeight: p === meetingPage ? 800 : 600,
+                      border: '1px solid var(--color-border)',
+                      background: p === meetingPage ? 'var(--color-primary, #BD1D2D)' : 'var(--color-surface)',
+                      color: p === meetingPage ? '#ffffff' : 'var(--color-text)',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    {p}
+                  </button>
+                ))}
+
+                <button
+                  disabled={meetingPage >= totalMeetingPages}
+                  onClick={() => setMeetingPage(prev => Math.min(prev + 1, totalMeetingPages))}
+                  className="btn sm secondary"
+                  style={{ padding: '4px 10px', fontSize: '0.775rem', cursor: meetingPage >= totalMeetingPages ? 'not-allowed' : 'pointer', opacity: meetingPage >= totalMeetingPages ? 0.5 : 1 }}
+                >
+                  {t('Trang sau')} ›
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </CustomModal>
 
