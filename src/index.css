@@ -4695,36 +4695,36 @@ div[role="status"] {
     text-align: left !important;
   }
 
-  /* Force flex containers to justify start (left-align) except toggle rows and item headers */
-  .subtab-enter-active div[style*="display: flex"],
-  .subtab-enter-active div[style*="display:flex"] {
+  /* Scope settings form rules to .settings-tab-content to avoid breaking other pages */
+  .settings-tab-content .subtab-enter-active div[style*="display: flex"],
+  .settings-tab-content .subtab-enter-active div[style*="display:flex"] {
     justify-content: flex-start !important;
   }
 
   /* Restore space-between for toggle switches and header actions */
-  .subtab-enter-active div[style*="justify-content: space-between"],
-  .subtab-enter-active div[style*="justify-content:space-between"],
-  .subtab-enter-active div[style*="justifyContent: 'space-between'"],
-  .subtab-enter-active div[style*="justifyContent:'space-between'"] {
+  .settings-tab-content .subtab-enter-active div[style*="justify-content: space-between"],
+  .settings-tab-content .subtab-enter-active div[style*="justify-content:space-between"],
+  .settings-tab-content .subtab-enter-active div[style*="justifyContent: 'space-between'"],
+  .settings-tab-content .subtab-enter-active div[style*="justifyContent:'space-between'"] {
     justify-content: space-between !important;
   }
 
   /* Stack grid layouts vertically on mobile (restricted to inner settings card fields) */
-  .subtab-enter-active .card:not(.calendar-card) div[style*="grid-template-columns"],
-  .subtab-enter-active .card:not(.calendar-card) div[style*="gridTemplateColumns"] {
+  .settings-tab-content .subtab-enter-active .card:not(.calendar-card) div[style*="grid-template-columns"],
+  .settings-tab-content .subtab-enter-active .card:not(.calendar-card) div[style*="gridTemplateColumns"] {
     grid-template-columns: 1fr !important;
     gap: 12px !important;
   }
 
   /* Input fields should take full width on mobile unless they are inside a flex-row with checkbox */
-  .subtab-enter-active input.form-input,
-  .subtab-enter-active select.form-input,
-  .subtab-enter-active textarea {
+  .settings-tab-content .subtab-enter-active input.form-input,
+  .settings-tab-content .subtab-enter-active select.form-input,
+  .settings-tab-content .subtab-enter-active textarea {
     width: 100% !important;
   }
 
   /* Except for time inputs and small fields in schedule rows */
-  .subtab-enter-active input[type="time"] {
+  .settings-tab-content .subtab-enter-active input[type="time"] {
     width: auto !important;
   }
 }
