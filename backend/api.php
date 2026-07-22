@@ -1451,7 +1451,7 @@ function processManualLead($conn, $leadData, $override_round_id, $override_consu
                         $whEnd = $whRow['work_end_time'] ?? '23:59';
                         $workSchedule = $whRow['work_schedule'] ?? null;
                         $currentTime = date('H:i');
-                        if ($decodedUser['role'] !== 'sale' && !isConsultantInWorkHours($currentTime, $whStart, $whEnd, $workSchedule)) {
+                        if ($decodedUser['role'] !== 'sale' && !isConsultantInWorkHours($currentTime, $whStart, $whEnd, $workSchedule, $consultantId, $conn)) {
                             $status = 'pending_work_hours';
                             $isOutsideWorkHours = true;
                             $assignedConsultantId = null;
@@ -10375,7 +10375,7 @@ switch ($action) {
                         $whEnd = $whRow['work_end_time'] ?? '23:59';
                         $workSchedule = $whRow['work_schedule'] ?? null;
                         $currentTime = date('H:i');
-                        if (!isConsultantInWorkHours($currentTime, $whStart, $whEnd, $workSchedule)) {
+                        if (!isConsultantInWorkHours($currentTime, $whStart, $whEnd, $workSchedule, $assignedConsultantId, $conn)) {
                             $status = 'pending_work_hours';
                             $message .= ' (Trì hoãn: ngoài khung giờ làm việc)';
                         }
@@ -10646,7 +10646,7 @@ switch ($action) {
                         $whEnd = $whRow['work_end_time'] ?? '23:59';
                         $workSchedule = $whRow['work_schedule'] ?? null;
                         $currentTime = date('H:i');
-                        if (!isConsultantInWorkHours($currentTime, $whStart, $whEnd, $workSchedule)) {
+                        if (!isConsultantInWorkHours($currentTime, $whStart, $whEnd, $workSchedule, $assignedConsultantId, $conn)) {
                             $status = 'pending_work_hours';
                             $message .= ' (Trì hoãn: ngoài khung giờ làm việc)';
                         }

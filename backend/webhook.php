@@ -733,7 +733,7 @@ try {
                 $whEnd = $whRow['work_end_time'] ?? '23:59';
                 $workSchedule = $whRow['work_schedule'] ?? null;
                 $currentTime = date('H:i');
-                if (!isConsultantInWorkHours($currentTime, $whStart, $whEnd, $workSchedule)) {
+                if (!isConsultantInWorkHours($currentTime, $whStart, $whEnd, $workSchedule, $assignedConsultantId, $conn)) {
                     $status = 'pending_work_hours';
                     $message .= ' (Trì hoãn: ngoài khung giờ làm việc)';
                     $assignedConsultantId = null; // Do NOT pre-assign to any sale! Hold by system!

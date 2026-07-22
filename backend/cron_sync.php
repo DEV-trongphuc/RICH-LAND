@@ -1197,7 +1197,7 @@ if (!function_exists('recallInactiveLeads')) {
                         
                         // Check working hours
                         $currentTime = date('H:i');
-                        if (!isConsultantInWorkHours($currentTime, $ncRow['work_start_time'], $ncRow['work_end_time'], $ncRow['work_schedule'])) {
+                        if (!isConsultantInWorkHours($currentTime, $ncRow['work_start_time'], $ncRow['work_end_time'], $ncRow['work_schedule'], $newConsultantId, $conn)) {
                             $newStatus = 'pending_work_hours';
                         }
                     }
@@ -2027,7 +2027,7 @@ foreach ($connections as $connItem) {
                                     $whEnd = $whRow['work_end_time'] ?? '23:59';
                                     $workSchedule = $whRow['work_schedule'] ?? null;
                                     $currentTime = date('H:i');
-                                    if (!isConsultantInWorkHours($currentTime, $whStart, $whEnd, $workSchedule)) {
+                                    if (!isConsultantInWorkHours($currentTime, $whStart, $whEnd, $workSchedule, $assignedConsultantId, $conn)) {
                                         $cronStatus = 'pending_work_hours';
                                         $cronMessage .= ' (Trì hoãn: ngoài khung giờ làm việc)';
                                     }

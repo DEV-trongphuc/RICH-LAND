@@ -303,7 +303,7 @@ function distributeLeadAfterAI($conn, $leadId, $targetRoundId, $aiScreenerResult
                 $whStmt->close();
             }
             $currentTime = date('H:i');
-            if (!isConsultantInWorkHours($currentTime, $whStart, $whEnd, $workSchedule)) {
+            if (!isConsultantInWorkHours($currentTime, $whStart, $whEnd, $workSchedule, $assignedConsultantId, $conn)) {
                 $status = 'pending_work_hours';
                 $message .= ' (Trì hoãn: ngoài khung giờ làm việc)';
                 $assignedConsultantId = null;
