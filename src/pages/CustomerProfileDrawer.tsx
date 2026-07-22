@@ -5771,7 +5771,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                               <TrendingUp size={16} />
                             </div>
                           </div>
-                          <span style={{ fontSize: isMobileOrTablet ? '1.1rem' : '1.25rem', fontWeight: 800, color: 'var(--color-text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{FMT(formData.expected_revenue || 0)}</span>
+                          <span style={{ fontSize: isMobileOrTablet ? '0.95rem' : '1.25rem', fontWeight: 800, color: 'var(--color-text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{FMT(formData.expected_revenue || 0)}</span>
                           <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}><span style={{ color: '#3b82f6', fontWeight: 700 }}>{formData.win_probability || 0}%</span> xác suất</span>
                         </div>
 
@@ -5799,7 +5799,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                               <CheckCircle2 size={16} />
                             </div>
                           </div>
-                          <span style={{ fontSize: isMobileOrTablet ? '1.1rem' : '1.25rem', fontWeight: 800, color: '#10b981', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{FMT(formData.actual_revenue || 0)}</span>
+                          <span style={{ fontSize: isMobileOrTablet ? '0.95rem' : '1.25rem', fontWeight: 800, color: '#10b981', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{FMT(formData.actual_revenue || 0)}</span>
                           <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}><span style={{ color: '#10b981', fontWeight: 700 }}>{formData.paid_invoice_count || 0}</span> hóa đơn</span>
                         </div>
 
@@ -5827,7 +5827,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                               <Wallet size={16} />
                             </div>
                           </div>
-                          <span style={{ fontSize: isMobileOrTablet ? '1.1rem' : '1.25rem', fontWeight: 800, color: 'var(--color-text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{FMT(formData.total_spent || 0)}</span>
+                          <span style={{ fontSize: isMobileOrTablet ? '0.95rem' : '1.25rem', fontWeight: 800, color: 'var(--color-text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{FMT(formData.total_spent || 0)}</span>
                           <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}><span style={{ color: '#f59e0b', fontWeight: 700 }}>{formData.expense_count || 0}</span> khoản chi</span>
                         </div>
 
@@ -5855,7 +5855,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                               <Clock size={16} />
                             </div>
                           </div>
-                          <span style={{ fontSize: isMobileOrTablet ? '1.1rem' : '1.25rem', fontWeight: 800, color: 'var(--color-text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          <span style={{ fontSize: isMobileOrTablet ? '0.95rem' : '1.25rem', fontWeight: 800, color: 'var(--color-text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                             {formData.last_contact ? new Date(formData.last_contact).toLocaleDateString('vi-VN') : 'Chưa có'}
                           </span>
                           <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>

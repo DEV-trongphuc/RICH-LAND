@@ -5,7 +5,7 @@ import { fetchAPI } from '../utils/api';
 import api from '../api/axios';
 import { useAuth } from '../contexts/AuthContext';
 import { useUIStore } from '../store/uiStore';
-import { Building2, Users, FileText, Plus, Trash2, Edit, X, Upload, Download, Check, AlertCircle, Layers, FileSpreadsheet, Link2, Globe, Search, Folder, ExternalLink, MessageSquare, Paperclip, RefreshCw, Calendar, CheckSquare, HardDrive, Info, MapPin, Briefcase, AlignLeft, Filter, History, Megaphone } from 'lucide-react';
+import { Building2, Users, FileText, Plus, Trash2, Edit, X, Upload, Download, Check, AlertCircle, Layers, FileSpreadsheet, Link2, Globe, Search, Folder, ExternalLink, MessageSquare, Paperclip, RefreshCw, Calendar, CheckSquare, HardDrive, Info, MapPin, Briefcase, AlignLeft, Filter, History, Megaphone, Eye, Settings, ShieldAlert, Zap } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { EmptyCard } from '../components/ui/EmptyCard';
 import { compressToWebP } from '../utils/imageCompress';
@@ -239,6 +239,20 @@ export default function ProjectsPage() {
   const [developers, setDevelopers] = useState<any[]>([]);
   const [allFiles, setAllFiles] = useState<any[]>([]);
   const [users, setUsers] = useState<any[]>([]);
+  const [allRounds, setAllRounds] = useState<any[]>([]);
+  const [selectedRoundForModal, setSelectedRoundForModal] = useState<any | null>(null);
+  const [isRoundDetailModalOpen, setIsRoundDetailModalOpen] = useState(false);
+
+  useEffect(() => {
+    fetchAPI('get_rounds')
+      .then(res => {
+        if (res && res.success && Array.isArray(res.data)) {
+          setAllRounds(res.data);
+        }
+      })
+      .catch(err => console.error('Failed to fetch distribution rounds', err));
+  }, []);
+
   const [quickUserCard, setQuickUserCard] = useState<{ id: number; name: string; role: string; email?: string; phone?: string; vacationMode?: number; avatarUrl?: string; visible: boolean; x: number; y: number } | null>(null);
   const [projectModalMode, setProjectModalMode] = useState<'view' | 'edit' | 'create'>('view');
   const [campaignModalMode, setCampaignModalMode] = useState<'view' | 'edit' | 'create'>('view');
@@ -1918,6 +1932,9 @@ export default function ProjectsPage() {
                   </div>
                 </div>
 
+                {/* Vòng phân bổ (Fair-Share Round) */}
+                {editingProject && renderLinkedRoundsSection('project', Number(editingProject.id))}
+
                 {/* Section: Đường dẫn Folder liên kết */}
                 <div style={{
                   background: 'var(--color-surface)',
@@ -2279,6 +2296,196 @@ export default function ProjectsPage() {
                 ))}
               </div>
             )}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const renderLinkedRoundsSection = (targetType: 'project' | 'campaign', targetId: number) => {
+    const canEditRound = ['admin', 'superadmin', 'super_admin', 'manager', 'director'].includes(String(user?.role || '').toLowerCase());
+
+    const matchedRounds = allRounds.filter((r: any) => {
+      if (targetType === 'project') {
+        if (Number(r.project_id) === Number(targetId)) return true;
+        if (r.campaign_id && campaigns.length > 0) {
+          const camp = campaigns.find(c => Number(c.id) === Number(r.campaign_id));
+          if (camp && Number(camp.project_id) === Number(targetId)) return true;
+        }
+        return false;
+      } else {
+        if (Number(r.campaign_id) === Number(targetId)) return true;
+        return false;
+      }
+    });
+
+    return (
+      <div style={{
+        background: 'var(--color-surface)',
+        border: '1px solid var(--color-border-light)',
+        borderRadius: '16px',
+        padding: '1.25rem 1.5rem',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '1rem',
+        boxShadow: 'var(--shadow-sm)'
+      }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <div style={{
+              padding: '8px',
+              background: 'rgba(189, 29, 45, 0.08)',
+              borderRadius: '10px',
+              color: 'var(--color-primary)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}>
+              <Layers size={16} />
+            </div>
+            <div>
+              <h4 style={{ margin: 0, fontSize: '0.9rem', fontWeight: 800, color: 'var(--color-primary)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                Vòng phân bổ (Fair-Share Round)
+              </h4>
+              <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>
+                Định tuyến &amp; chia số tự động theo Round-Robin
+              </span>
+            </div>
+          </div>
+
+          {canEditRound && (
+            <button
+              type="button"
+              onClick={() => navigate('/rounds')}
+              className="btn outline sm"
+              style={{ fontSize: '0.75rem', padding: '4px 10px', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '4px', fontWeight: 700 }}
+            >
+              <Settings size={12} /> Quản lý Vòng
+            </button>
+          )}
+        </div>
+
+        {matchedRounds.length === 0 ? (
+          <div style={{
+            padding: '0.75rem 1rem',
+            background: 'var(--color-bg-light)',
+            border: '1px dashed var(--color-border-light)',
+            borderRadius: '12px',
+            fontSize: '0.8rem',
+            color: 'var(--color-text-muted)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px'
+          }}>
+            <Info size={14} style={{ opacity: 0.6 }} />
+            <span>Chưa có Vòng phân bổ nào liên kết trực tiếp với {targetType === 'campaign' ? 'chiến dịch' : 'dự án'} này.</span>
+          </div>
+        ) : (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '0.875rem' }}>
+            {matchedRounds.map((round: any) => {
+              const consultantsList = round.consultants ? round.consultants.split(',').filter(Boolean) : [];
+              const isActive = Boolean(round.is_active);
+
+              return (
+                <div
+                  key={round.id}
+                  style={{
+                    background: 'var(--color-bg-light)',
+                    border: '1px solid var(--color-border-light)',
+                    borderRadius: '12px',
+                    padding: '1rem',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '8px',
+                    transition: 'all 0.2s ease'
+                  }}
+                  className="hover-lift"
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px' }}>
+                    <div style={{ fontWeight: 800, fontSize: '0.875rem', color: 'var(--color-text)' }}>
+                      {round.round_name}
+                    </div>
+                    <span style={{
+                      fontSize: '0.65rem',
+                      fontWeight: 800,
+                      padding: '2px 8px',
+                      borderRadius: '100px',
+                      background: isActive ? 'rgba(16, 185, 129, 0.1)' : 'rgba(100, 116, 139, 0.1)',
+                      color: isActive ? '#10b981' : '#64748b'
+                    }}>
+                      {isActive ? 'Đang chạy' : 'Tạm dừng'}
+                    </span>
+                  </div>
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                      <Users size={12} />
+                      <span><strong>{consultantsList.length}</strong> Sales</span>
+                    </div>
+                    {round.is_fallback ? (
+                      <span style={{ fontSize: '0.65rem', padding: '1px 6px', borderRadius: '4px', background: 'rgba(245,158,11,0.1)', color: 'var(--color-warning)', fontWeight: 700 }}>
+                        Fallback
+                      </span>
+                    ) : null}
+                  </div>
+
+                  {/* Lượt vừa chia & Lượt sắp tới */}
+                  <div style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '4px',
+                    fontSize: '0.72rem',
+                    padding: '6px 10px',
+                    background: 'var(--color-surface)',
+                    borderRadius: '8px',
+                    border: '1px solid var(--color-border-light)',
+                    margin: '2px 0'
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <span style={{ color: 'var(--color-text-muted)' }}>Lượt vừa chia:</span>
+                      <strong style={{ color: 'var(--color-text)', fontWeight: 700 }}>
+                        {round.last_assigned_name || 'Chưa phát sinh'}
+                      </strong>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <span style={{ color: 'var(--color-text-muted)' }}>Lượt sắp tới:</span>
+                      <strong style={{ color: 'var(--color-primary)', fontWeight: 800 }}>
+                        {round.next_assigned_name || 'Chưa xác định'}
+                      </strong>
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '4px', paddingTop: '8px', borderTop: '1px dotted var(--color-border-light)' }}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedRoundForModal(round);
+                        setIsRoundDetailModalOpen(true);
+                      }}
+                      className="btn secondary sm"
+                      style={{ fontSize: '0.72rem', height: '28px', padding: '0 10px', borderRadius: '6px', display: 'flex', alignItems: 'center', gap: '4px', fontWeight: 700 }}
+                    >
+                      <Eye size={12} /> Xem chi tiết
+                    </button>
+
+                    {canEditRound ? (
+                      <button
+                        type="button"
+                        onClick={() => navigate(`/rounds?id=${round.id}`)}
+                        className="btn primary sm"
+                        style={{ fontSize: '0.72rem', height: '28px', padding: '0 10px', borderRadius: '6px', background: 'var(--color-primary)', borderColor: 'var(--color-primary)', display: 'flex', alignItems: 'center', gap: '4px', fontWeight: 700 }}
+                      >
+                        <Edit size={12} /> Chỉnh sửa
+                      </button>
+                    ) : (
+                      <span style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)', fontStyle: 'italic' }}>
+                        Chỉ đọc
+                      </span>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
           </div>
         )}
       </div>
@@ -2774,6 +2981,9 @@ export default function ProjectsPage() {
                     );
                   })()}
                 </div>
+
+                {/* Vòng phân bổ (Fair-Share Round) */}
+                {editingCampaign && renderLinkedRoundsSection('campaign', Number(editingCampaign.id))}
 
                 {/* Linked Tasks */}
                 <div style={{
@@ -7417,6 +7627,222 @@ export default function ProjectsPage() {
             </div>
           )}
         </div>
+      </CustomModal>
+
+      {/* Round Detail View Modal (Matches Rounds.tsx layout) */}
+      <CustomModal
+        isOpen={isRoundDetailModalOpen}
+        onClose={() => {
+          setIsRoundDetailModalOpen(false);
+          setSelectedRoundForModal(null);
+        }}
+        title={`Cấu hình Vòng Phân Bổ: ${selectedRoundForModal?.round_name || ''}`}
+        width="850px"
+      >
+        {selectedRoundForModal && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', maxHeight: '75vh', overflowY: 'auto' }}>
+            {(() => {
+              const canEditRound = ['admin', 'superadmin', 'super_admin', 'manager', 'director'].includes(String(user?.role || '').toLowerCase());
+              const consultantsList = selectedRoundForModal.consultants ? selectedRoundForModal.consultants.split(',').filter(Boolean) : [];
+
+              return (
+                <>
+                  {/* Top Subtabs & Permission Bar */}
+                  <div style={{
+                    padding: '0.75rem 1rem',
+                    borderRadius: '12px',
+                    background: canEditRound ? 'rgba(16, 185, 129, 0.08)' : 'rgba(59, 130, 246, 0.08)',
+                    border: canEditRound ? '1px solid rgba(16, 185, 129, 0.2)' : '1px solid rgba(59, 130, 246, 0.2)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    fontSize: '0.8rem',
+                    fontWeight: 700,
+                    color: canEditRound ? '#10b981' : '#3b82f6'
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <ShieldAlert size={15} />
+                      <span>{canEditRound ? 'Quyền hạn: Quản trị (Có quyền chỉnh sửa Vòng)' : 'Quyền hạn: Chỉ đọc (Xem chi tiết Vòng)'}</span>
+                    </div>
+                    <span style={{
+                      padding: '2px 8px',
+                      borderRadius: '100px',
+                      background: selectedRoundForModal.is_active ? 'var(--color-success)' : 'var(--color-text-muted)',
+                      color: '#fff',
+                      fontSize: '0.7rem'
+                    }}>
+                      {selectedRoundForModal.is_active ? 'Đang hoạt động' : 'Tạm dừng'}
+                    </span>
+                  </div>
+
+                  {/* 2-Column Grid matching Rounds.tsx */}
+                  <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '1.5rem' }}>
+                    {/* LEFT COLUMN: General Settings */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                      <div className="form-group">
+                        <label className="form-label" style={{ fontWeight: 700, fontSize: '0.8rem', color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Tên Vòng</label>
+                        <input
+                          className="form-input"
+                          value={selectedRoundForModal.round_name || ''}
+                          readOnly
+                          style={{ background: 'var(--color-bg)', fontWeight: 700, color: 'var(--color-text)' }}
+                        />
+                      </div>
+
+                      <div className="form-group">
+                        <label className="form-label" style={{ fontWeight: 700, fontSize: '0.8rem', color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Phạm vi áp dụng (Dự án / Chiến dịch)</label>
+                        <input
+                          className="form-input"
+                          value={selectedRoundForModal.project_name || selectedRoundForModal.campaign_name || 'Độc lập (Tất cả data)'}
+                          readOnly
+                          style={{ background: 'var(--color-bg)', fontWeight: 600, color: 'var(--color-text)' }}
+                        />
+                      </div>
+
+                      {/* Lượt vừa chia & Lượt sắp tới Highlights */}
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', padding: '1rem', background: 'var(--color-bg-light)', border: '1px solid var(--color-border-light)', borderRadius: '12px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                          <span style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>Lượt vừa chia:</span>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <Avatar name={selectedRoundForModal.last_assigned_name || 'N/A'} size={18} />
+                            <strong style={{ fontSize: '0.85rem', color: 'var(--color-text)' }}>
+                              {selectedRoundForModal.last_assigned_name || 'Chưa phát sinh'}
+                            </strong>
+                          </div>
+                        </div>
+
+                        <div style={{ borderTop: '1px dotted var(--color-border-light)', paddingTop: '8px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                          <span style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>Lượt sắp tới (Kế tiếp):</span>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '2px 8px', background: 'rgba(189, 29, 45, 0.08)', borderRadius: '100px', border: '1px solid rgba(189, 29, 45, 0.15)' }}>
+                            <Zap size={13} color="var(--color-primary)" />
+                            <Avatar name={selectedRoundForModal.next_assigned_name || 'N/A'} size={18} />
+                            <strong style={{ fontSize: '0.85rem', color: 'var(--color-primary)' }}>
+                              {selectedRoundForModal.next_assigned_name || 'Chưa xác định'}
+                            </strong>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="form-group">
+                        <label className="form-label" style={{ fontWeight: 700, fontSize: '0.8rem', color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                          Vòng mặc định (Fallback)
+                        </label>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <span className={`badge ${selectedRoundForModal.is_fallback ? 'warning' : 'secondary'}`} style={{ fontSize: '0.75rem', padding: '4px 10px', borderRadius: '100px', fontWeight: 700 }}>
+                            {selectedRoundForModal.is_fallback ? 'Có (Vòng Fallback)' : 'Không'}
+                          </span>
+                        </div>
+                      </div>
+
+                      {selectedRoundForModal.cc_emails && (
+                        <div className="form-group">
+                          <label className="form-label" style={{ fontWeight: 700, fontSize: '0.8rem', color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>CC Email Admin</label>
+                          <input
+                            className="form-input"
+                            value={selectedRoundForModal.cc_emails}
+                            readOnly
+                            style={{ background: 'var(--color-bg)', fontSize: '0.8rem' }}
+                          />
+                        </div>
+                      )}
+                    </div>
+
+                    {/* RIGHT COLUMN: Sales in Round */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <label className="form-label" style={{ fontWeight: 800, fontSize: '0.85rem', color: 'var(--color-primary)', textTransform: 'uppercase', letterSpacing: '0.04em', margin: 0 }}>
+                          Danh sách Sales trong Vòng ({consultantsList.length})
+                        </label>
+                      </div>
+
+                      {consultantsList.length === 0 ? (
+                        <div style={{ padding: '2rem 1rem', textAlign: 'center', color: 'var(--color-text-muted)', fontStyle: 'italic', fontSize: '0.85rem', background: 'var(--color-bg-light)', borderRadius: '12px', border: '1px dashed var(--color-border)' }}>
+                          Chưa có tư vấn viên nào được gán vào vòng phân bổ này.
+                        </div>
+                      ) : (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '380px', overflowY: 'auto', paddingRight: '4px' }}>
+                          {consultantsList.map((name: string, index: number) => {
+                            const isNext = selectedRoundForModal.next_assigned_name === name;
+                            const isLast = selectedRoundForModal.last_assigned_name === name;
+
+                            return (
+                              <div
+                                key={index}
+                                style={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'space-between',
+                                  padding: '10px 14px',
+                                  borderRadius: '12px',
+                                  background: isNext ? 'rgba(189, 29, 45, 0.05)' : 'var(--color-surface)',
+                                  border: isNext ? '1.5px solid var(--color-primary)' : '1px solid var(--color-border-light)',
+                                  transition: 'all 0.15s ease'
+                                }}
+                              >
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                  <Avatar name={name} size={28} />
+                                  <div>
+                                    <span style={{ fontWeight: isNext ? 800 : 700, fontSize: '0.875rem', color: isNext ? 'var(--color-primary)' : 'var(--color-text)', display: 'block' }}>
+                                      {name}
+                                    </span>
+                                    <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>
+                                      Tư vấn viên #{index + 1}
+                                    </span>
+                                  </div>
+                                </div>
+
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                  {isNext && (
+                                    <span style={{ fontSize: '0.68rem', fontWeight: 800, padding: '2px 8px', borderRadius: '100px', background: 'var(--color-primary)', color: '#fff', display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
+                                      <Zap size={10} /> Lượt tới
+                                    </span>
+                                  )}
+                                  {isLast && !isNext && (
+                                    <span style={{ fontSize: '0.68rem', fontWeight: 700, padding: '2px 8px', borderRadius: '100px', background: 'rgba(100, 116, 139, 0.1)', color: '#64748b' }}>
+                                      Vừa chia
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Modal Actions Footer */}
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', paddingTop: '1rem', borderTop: '1px solid var(--color-border-light)', marginTop: '0.5rem' }}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsRoundDetailModalOpen(false);
+                        setSelectedRoundForModal(null);
+                      }}
+                      className="btn secondary sm"
+                      style={{ borderRadius: '8px', fontWeight: 700, padding: '6px 16px' }}
+                    >
+                      Đóng
+                    </button>
+                    {canEditRound && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsRoundDetailModalOpen(false);
+                          navigate(`/rounds?id=${selectedRoundForModal.id}`);
+                        }}
+                        className="btn primary sm"
+                        style={{ borderRadius: '8px', fontWeight: 700, background: 'var(--color-primary)', borderColor: 'var(--color-primary)', display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 16px' }}
+                      >
+                        <Edit size={14} /> Chỉnh sửa Vòng phân bổ
+                      </button>
+                    )}
+                  </div>
+                </>
+              );
+            })()}
+          </div>
+        )}
       </CustomModal>
 
       <WorkspaceTaskDrawer

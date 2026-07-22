@@ -1653,15 +1653,16 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
                             background: '#f8fafc',
                             border: '1px solid #e2e8f0',
                             borderRadius: '8px',
-                            padding: '12px',
+                            padding: '16px',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
-                            maxHeight: '100px',
+                            minHeight: '120px',
+                            maxHeight: '150px',
                             backgroundImage: 'radial-gradient(#cbd5e1 1px, transparent 1px)',
                             backgroundSize: '12px 12px'
                           }}>
-                            <img src={signatureUrl} alt="Chữ ký mẫu" style={{ maxHeight: '75px', objectFit: 'contain' }} />
+                            <img src={signatureUrl} alt="Chữ ký mẫu" style={{ maxHeight: '110px', objectFit: 'contain' }} />
                           </div>
                         ) : (
                           <div
@@ -1669,12 +1670,18 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
                             style={{
                               border: '2px dashed var(--color-border)',
                               borderRadius: '8px',
-                              padding: '16px',
+                              padding: '32px 20px',
+                              minHeight: '120px',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
                               textAlign: 'center',
                               color: 'var(--color-text-muted)',
-                              fontSize: '0.8125rem',
+                              fontSize: '0.875rem',
+                              fontWeight: 500,
                               cursor: readOnly ? 'default' : 'pointer',
-                              background: 'var(--color-bg-light)'
+                              background: 'var(--color-bg-light)',
+                              transition: 'all 0.2s ease'
                             }}
                           >
                             {t('Chưa thiết lập chữ ký mẫu. Bấm vào đây để vẽ hoặc tải ảnh chữ ký.')}

@@ -200,7 +200,44 @@ try {
         $logMsg("Đã bổ sung các cột 2FA (two_factor_enabled, two_factor_type, two_factor_secret, two_factor_backup_codes) vào bảng users.", "success");
     }
 
-    // 6. Ensure email_otps table exists
+    // 6. Ensure extended CRM columns exist in contacts and leads tables
+    $extendedCols = [
+        'phone2' => "VARCHAR(50) NULL COMMENT 'Số điện thoại 2 / phụ'",
+        'gender' => "VARCHAR(20) NULL COMMENT 'Giới tính'",
+        'dob' => "DATE NULL COMMENT 'Ngày sinh'",
+        'citizen_id' => "VARCHAR(50) NULL COMMENT 'Số CCCD / CMND'",
+        'district' => "VARCHAR(100) NULL COMMENT 'Quận / Huyện'",
+        'company' => "VARCHAR(200) NULL COMMENT 'Công ty làm việc'",
+        'tax_code' => "VARCHAR(50) NULL COMMENT 'Mã số thuế'",
+        'budget' => "DECIMAL(15,2) NULL DEFAULT 0.00 COMMENT 'Ngân sách tài chính'",
+        'demand_type' => "VARCHAR(100) NULL COMMENT 'Mục đích nhu cầu (Ở/Đầu tư/Cho thuê)'",
+        'property_type' => "VARCHAR(100) NULL COMMENT 'Loại BĐS quan tâm'",
+        'bedroom_count' => "VARCHAR(50) NULL COMMENT 'Số phòng ngủ mong muốn'",
+        'preferred_location' => "VARCHAR(255) NULL COMMENT 'Khu vực / Dự án quan tâm'",
+        'utm_campaign' => "VARCHAR(255) NULL COMMENT 'Tên chiến dịch Ads (UTM Campaign)'",
+        'utm_medium' => "VARCHAR(255) NULL COMMENT 'Hình thức Ads (UTM Medium)'",
+        'utm_content' => "VARCHAR(255) NULL COMMENT 'Mẫu QC / Adset (UTM Content)'",
+        'utm_term' => "VARCHAR(255) NULL COMMENT 'Từ khóa Ads (UTM Term)'",
+        'platform' => "VARCHAR(100) NULL COMMENT 'Nền tảng Data (Meta/Google/TikTok/Zalo)'",
+        'form_name' => "VARCHAR(255) NULL COMMENT 'Tên Form / Landing Page'",
+        'zalo_phone' => "VARCHAR(50) NULL COMMENT 'Số Zalo / Link Zalo'",
+        'facebook_link' => "VARCHAR(255) NULL COMMENT 'Link Facebook cá nhân'"
+    ];
+
+    foreach (['contacts', 'leads'] as $tbl) {
+        $tblCheck = $conn->query("SHOW TABLES LIKE '$tbl'");
+        if ($tblCheck && $tblCheck->num_rows > 0) {
+            foreach ($extendedCols as $colName => $colDef) {
+                $colCheck = $conn->query("SHOW COLUMNS FROM `$tbl` LIKE '$colName'");
+                if (!$colCheck || $colCheck->num_rows == 0) {
+                    $conn->query("ALTER TABLE `$tbl` ADD COLUMN `$colName` $colDef");
+                    $logMsg("Đã tự động bổ sung cột $colName vào bảng $tbl.", "success");
+                }
+            }
+        }
+    }
+
+    // 7. Ensure email_otps table exists
     $conn->query("
         CREATE TABLE IF NOT EXISTS `email_otps` (
           `id` INT(11) AUTO_INCREMENT PRIMARY KEY,

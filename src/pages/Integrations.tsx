@@ -9,12 +9,44 @@ import { ConfirmModal } from '../components/ui/ConfirmModal';
 import { ToggleSwitch } from '../components/ui/ToggleSwitch';
 
 const SYSTEM_FIELDS = [
-  { value: 'phone', label: 'Số Điện Thoại' },
+  // --- Thông tin Cá nhân & Liên hệ ---
+  { value: 'phone', label: 'Số Điện Thoại chính' },
+  { value: 'phone2', label: 'Số Điện Thoại 2 / Phụ' },
   { value: 'name', label: 'Họ Tên' },
   { value: 'email', label: 'Email' },
+  { value: 'gender', label: 'Giới tính' },
+  { value: 'dob', label: 'Ngày sinh' },
+  { value: 'citizen_id', label: 'Số CCCD / CMND' },
+  { value: 'address', label: 'Địa chỉ thường trú / tạm trú' },
+  { value: 'city', label: 'Tỉnh / Thành phố' },
+  { value: 'district', label: 'Quận / Huyện' },
+  { value: 'company', label: 'Công ty / Đơn vị làm việc' },
+  { value: 'job_title', label: 'Nghề nghiệp / Chức danh' },
+  { value: 'tax_code', label: 'Mã số thuế cá nhân' },
+
+  // --- Nguồn Data & Tracking (UTM) ---
   { value: 'source', label: 'Nguồn Data' },
   { value: 'type', label: 'Loại Data' },
-  { value: 'note', label: 'Ghi Chú' },
+  { value: 'platform', label: 'Nền tảng Data (Meta / Google / TikTok / Zalo)' },
+  { value: 'utm_campaign', label: 'Tên Chiến dịch Ads (UTM Campaign)' },
+  { value: 'utm_medium', label: 'Hình thức Ads (UTM Medium)' },
+  { value: 'utm_content', label: 'Mẫu Quảng cáo / Adset (UTM Content)' },
+  { value: 'utm_term', label: 'Từ khóa Ads (UTM Term)' },
+  { value: 'form_name', label: 'Tên Mẫu Lead Form / Landing Page' },
+
+  // --- Nhu cầu & Tài chính ---
+  { value: 'budget', label: 'Ngân sách tài chính / Doanh thu dự kiến' },
+  { value: 'demand_type', label: 'Mục đích nhu cầu (Ở / Đầu tư / Cho thuê)' },
+  { value: 'property_type', label: 'Loại BĐS quan tâm (Căn hộ / Nhà phố / Biệt thự)' },
+  { value: 'bedroom_count', label: 'Số phòng ngủ mong muốn' },
+  { value: 'preferred_location', label: 'Khu vực / Dự án quan tâm' },
+
+  // --- Mạng Xã Hội & Khác ---
+  { value: 'zalo_phone', label: 'Số Zalo / Link Zalo' },
+  { value: 'facebook_link', label: 'Link Facebook cá nhân' },
+  { value: 'note', label: 'Ghi Chú bổ sung' },
+
+  // --- Phân bổ & Quản lý ---
   { value: 'assigned_to', label: 'Sale phụ trách (Trùng số nhắc lại)' },
   { value: 'saleperson', label: 'Salesperson (Tên/Email Sale)' },
 ];
@@ -375,22 +407,36 @@ const IntegrationsInner = () => {
   const [masterSheetName, setMasterSheetName] = useState('');
   const [isSavingMaster, setIsSavingMaster] = useState(false);
   const [isTestingMaster, setIsTestingMaster] = useState(false);
+  const [customSystemFields, setCustomSystemFields] = useState<any[]>([]);
 
   const getSelectFields = () => {
     const isSyncActive = selected?.sync_saleperson || (showEditConn && editSyncSaleperson) || (showAddConn && syncSaleperson);
-    if (isSyncActive) {
-      return SYSTEM_FIELDS;
+    const baseFields = isSyncActive ? SYSTEM_FIELDS : SYSTEM_FIELDS.filter(f => f.value !== 'saleperson');
+    if (customSystemFields.length > 0) {
+      return [...baseFields, ...customSystemFields];
     }
-    return SYSTEM_FIELDS.filter(f => f.value !== 'saleperson');
+    return baseFields;
   };
 
   const fetchData = async () => {
     try {
-      const [connRes, mapRes, settingsRes] = await Promise.all([
+      const [connRes, mapRes, settingsRes, customRes] = await Promise.all([
         fetchAPI('get_connections'),
         fetchAPI('get_mappings'),
-        fetchAPI('get_settings')
+        fetchAPI('get_settings'),
+        fetchAPI('custom_fields').catch(() => null)
       ]);
+
+      if (customRes) {
+        const cFields = Array.isArray(customRes) ? customRes : (customRes.data || []);
+        if (cFields.length > 0) {
+          const formattedCF = cFields.map((cf: any) => ({
+            value: `cf_${cf.id}`,
+            label: `✨ ${cf.field_name || cf.name || 'Trường tùy chỉnh'} (${cf.field_type || 'Custom'})`
+          }));
+          setCustomSystemFields(formattedCF);
+        }
+      }
       if (connRes.success && mapRes.success) {
         const conns = connRes.data.map((c: any) => ({
           ...c,
@@ -2049,7 +2095,7 @@ fetch("${webhookUrl(selected.webhook_token)}", {
                           <span style={{ color: '#94a3b8', fontSize: '0.75rem', fontStyle: 'italic' }}>{t('Mặc định')}</span>
                         )}
                       </div>
-                      <div style={{ color: 'var(--color-primary)', fontSize: '0.875rem', fontWeight: 700 }}>{t(SYSTEM_FIELDS.find(f => f.value === m.sys_field)?.label || m.sys_field)}</div>
+                      <div style={{ color: 'var(--color-text-secondary, #475569)', fontSize: '0.875rem', fontWeight: 700 }}>{t(SYSTEM_FIELDS.find(f => f.value === m.sys_field)?.label || m.sys_field)}</div>
                       <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
                         <button onClick={() => setTempMappings(tempMappings.filter((_, i) => i !== idx))} style={{ color: 'var(--color-danger)', background: 'var(--color-danger-light)', border: 'none', width: 28, height: 28, borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
                           <Trash2 size={14} />

@@ -1135,17 +1135,17 @@ const RoundsInner = ({ isActive }: { isActive: boolean }) => {
                       )
                     )}
                   </div>
-                  <div style={{ borderTop: '1px solid var(--color-border-light)', paddingTop: '0.75rem', display: 'flex', gap: '0.75rem' }}>
-                    <button className="btn outline sm" onClick={() => openEditModal(r)} style={{ flex: 1.5, padding: '0.375rem 0.5rem' }}>
-                      <Info size={13} /> {isReadOnly ? t("Xem chi tiết") : t("Chi tiết")}
+                  <div style={{ borderTop: '1px solid var(--color-border-light)', paddingTop: '0.75rem', display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                    <button className="btn outline sm" onClick={() => openEditModal(r)} style={{ flex: 1, padding: '0.375rem 0.5rem', justifyContent: 'center' }}>
+                      <Info size={14} /> {isReadOnly ? t("Xem chi tiết") : t("Chi tiết")}
                     </button>
                     {!isReadOnly && (
-                      <button className="btn secondary sm" onClick={() => openCompModal(r)} style={{ flex: 1, padding: '0.375rem 0.5rem' }}>
-                        <Zap size={13} /> {t("Bù")}
+                      <button className="btn secondary sm" onClick={() => openCompModal(r)} title={t("Bù Data")} style={{ padding: '0.375rem', width: 34, height: 32, flexShrink: 0, justifyContent: 'center' }}>
+                        <Zap size={14} />
                       </button>
                     )}
                     {!isReadOnly && (
-                      <button className="btn outline sm" onClick={() => { setDeleteId(r.id); setConfirmDeleteOpen(true); }} style={{ padding: '0 0.75rem', color: 'var(--color-text-muted)', borderColor: 'var(--color-border)' }}>
+                      <button className="btn outline sm" onClick={() => { setDeleteId(r.id); setConfirmDeleteOpen(true); }} title={t("Xóa vòng")} style={{ padding: '0.375rem', width: 34, height: 32, flexShrink: 0, justifyContent: 'center', color: 'var(--color-text-muted)', borderColor: 'var(--color-border)' }}>
                         <Trash2 size={14} />
                       </button>
                     )}
@@ -1366,17 +1366,17 @@ const RoundsInner = ({ isActive }: { isActive: boolean }) => {
                   )}
                 </div>
 
-                <div className="mobile-round-actions" style={{ padding: '1.25rem', borderTop: '1px solid var(--color-border)', display: 'flex', gap: '0.75rem' }}>
-                  <button onClick={() => openEditModal(r)} className="btn outline" style={{ flex: 1, padding: '0.625rem' }}>
+                <div className="mobile-round-actions" style={{ padding: '1.25rem', borderTop: '1px solid var(--color-border)', display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                  <button onClick={() => openEditModal(r)} className="btn outline" style={{ flex: 1, padding: '0.625rem', justifyContent: 'center' }}>
                     <Info size={16} /> {isReadOnly ? t("Xem chi tiết") : t("Chi tiết")}
                   </button>
                   {!isReadOnly && (
-                    <button onClick={() => openCompModal(r)} className="btn secondary" style={{ flex: 1, padding: '0.625rem' }}>
-                      <Zap size={16} /> {t("Bù Data")}
+                    <button onClick={() => openCompModal(r)} className="btn secondary" title={t("Bù Data")} style={{ padding: '0.625rem', width: 42, height: 40, flexShrink: 0, justifyContent: 'center' }}>
+                      <Zap size={16} />
                     </button>
                   )}
                   {!isReadOnly && (
-                    <button onClick={() => { setDeleteId(r.id); setConfirmDeleteOpen(true); }} className="btn outline" style={{ padding: '0.625rem', width: 42, flexShrink: 0, justifyContent: 'center' }}>
+                    <button onClick={() => { setDeleteId(r.id); setConfirmDeleteOpen(true); }} className="btn outline" title={t("Xóa vòng")} style={{ padding: '0.625rem', width: 42, height: 40, flexShrink: 0, justifyContent: 'center', color: 'var(--color-text-muted)', borderColor: 'var(--color-border)' }}>
                       <Trash2 size={16} />
                     </button>
                   )}

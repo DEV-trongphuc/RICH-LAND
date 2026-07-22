@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useLanguage } from '../../contexts/LanguageContext';
-import { Send, X, Database, Sparkles, LayoutGrid, Search, ChevronRight, RefreshCw, ChevronLeft } from 'lucide-react';
+import { useAuth } from '../../contexts/AuthContext';
+import { Send, X, Database, Sparkles, LayoutGrid, Search, ChevronRight, RefreshCw, ChevronLeft, FileText } from 'lucide-react';
 import { fetchAPI } from '../../utils/api';
 
 interface Message {
@@ -12,13 +13,39 @@ interface Message {
 
 export const AIChatbot: React.FC = () => {
   const { t } = useLanguage();
+  const { user } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
+
+  const getGreetingText = (userName?: string) => {
+    const name = userName ? ` ${userName}` : '';
+    const hour = new Date().getHours();
+    let timeStr = 'Chào buổi sáng';
+    if (hour >= 12 && hour < 18) timeStr = 'Chào buổi chiều';
+    else if (hour >= 18) timeStr = 'Chào buổi tối';
+
+    const greetings = [
+      `${timeStr}${name}! 🌟 Tôi là Trợ lý AI Rich Land. Hôm nay tôi có thể hỗ trợ gì cho bạn về dữ liệu, hệ thống CRM hay cấu hình Zalo/Telegram?`,
+      `Xin chào${name}! 👋 Rất vui được đồng hành cùng bạn. Bạn cần tra cứu chỉ số data hôm nay, kiểm tra ticket hay giải đáp thắc mắc nghiệp vụ nào không?`,
+      `${timeStr}${name}! ✨ Tôi đã sẵn sàng hỗ trợ. Hãy đặt câu hỏi về quy tắc chia số, blacklist, báo cáo hoặc thông tin dự án nhé!`
+    ];
+    return greetings[Math.floor(Math.random() * greetings.length)];
+  };
+
+  const getEntityWelcomeMessage = (entity: { name: string; type: 'project' | 'campaign' }, docCount: number) => {
+    const docInfo = docCount > 0 ? ` (đã tìm thấy **${docCount} tài liệu** đính kèm)` : '';
+    if (entity.type === 'project') {
+      return `🏢 **Tôi đã nạp dữ liệu cho Dự án ${entity.name}!**${docInfo}\n\nBạn có thể hỏi tôi về vị trí, tiến độ, pháp lý, chủ đầu tư hoặc chọn **Tài liệu cụ thể** ở menu bên trên để tôi trả lời chính xác nhất nhé!`;
+    } else {
+      return `🎯 **Tôi đã sẵn sàng giải đáp về Chiến dịch ${entity.name}!**${docInfo}\n\nHãy đặt câu hỏi về ngân sách, mục tiêu, thời gian chạy hoặc tài liệu thuộc chiến dịch này!`;
+    }
+  };
+
   const [messages, setMessages] = useState<Message[]>([
     {
       id: 'welcome',
       sender: 'bot',
-      text: t('Xin chào! Tôi là Trợ lý AI hỗ trợ hệ thống quản trị Rich Land.\n\nTôi có thể trả lời các câu hỏi về chỉ số thống kê hôm nay, cách cấu hình Zalo Bot, thiết lập Blacklist, quy tắc chia số, hoặc Ticket báo lỗi đền bù.\n\nBạn cần tôi hỗ trợ gì hôm nay?'),
+      text: getGreetingText(user?.name),
       timestamp: new Date()
     }
   ]);
@@ -36,6 +63,12 @@ export const AIChatbot: React.FC = () => {
   const [selectedEntity, setSelectedEntity] = useState<any | null>(null);
   const [entityContext, setEntityContext] = useState<string>('');
   const [loadingContext, setLoadingContext] = useState(false);
+  const [entityDocs, setEntityDocs] = useState<any[]>([]);
+  const [selectedDocId, setSelectedDocId] = useState<number | 'all'>('all');
+  const [rawDetails, setRawDetails] = useState<any>(null);
+  const [parentProj, setParentProj] = useState<any>(null);
+  const [showDocSelectModal, setShowDocSelectModal] = useState(false);
+  const [docSearchQuery, setDocSearchQuery] = useState('');
 
   const loadEntities = async () => {
     setLoadingEntities(true);
@@ -129,32 +162,94 @@ export const AIChatbot: React.FC = () => {
     return text;
   };
 
+  const handleSelectDocFilter = (docId: number | 'all', docs: any[], details: any, pProj: any, entityType: 'project' | 'campaign') => {
+    setSelectedDocId(docId);
+    if (!details) return;
+
+    if (docId === 'all') {
+      if (entityType === 'project') {
+        setEntityContext(formatProjectContext(details, docs));
+      } else {
+        setEntityContext(formatCampaignContext(details, pProj, docs));
+      }
+    } else {
+      const selectedDoc = docs.find(d => Number(d.id) === Number(docId));
+      if (selectedDoc) {
+        let text = `=== BẠN ĐANG ĐƯỢC CHỈ ĐỊNH TẬP TRUNG HỎI VỀ TÀI LIỆU CỤ THỂ DƯỚI ĐÂY ===\n`;
+        text += `TÊN TÀI LIỆU: ${selectedDoc.name || selectedDoc.file_name || 'Tài liệu đính kèm'}\n`;
+        text += `LOẠI TÀI LIỆU / ĐỊNH DẠNG: ${selectedDoc.mime_type || selectedDoc.file_type || 'Tài liệu'}\n`;
+        const absoluteUrl = selectedDoc.file_path ? (selectedDoc.file_path.startsWith('http') ? selectedDoc.file_path : `${window.location.origin}${selectedDoc.file_path}`) : '';
+        if (absoluteUrl) text += `ĐƯỜNG DẪN TẢI FILE TRỰC TIẾP: [Xem/Tải file tài liệu](${absoluteUrl})\n`;
+        if (selectedDoc.description) text += `MÔ TẢ VÀ GHI CHÚ TÀI LIỆU: ${selectedDoc.description}\n`;
+        
+        text += `\n=== THÔNG TIN DỰ ÁN / CHIẾN DỊCH LIÊN QUAN ===\n`;
+        if (entityType === 'project') {
+          text += `DỰ ÁN: ${details.name || '—'} (Mã: ${details.code || '—'})\n`;
+          text += `CHỦ ĐẦU TƯ: ${details.developer || '—'} | VỊ TRÍ: ${details.location || '—'}\n`;
+          text += `PHÁP LÝ & TIẾN ĐỘ: ${details.legal_status || '—'} / ${details.construction_status || '—'}\n`;
+        } else {
+          text += `CHIẾN DỊCH: ${details.name || '—'} (Mã: ${details.code || '—'})\n`;
+          text += `MỤC TIÊU / NGÂN SÁCH: ${details.target_leads || '—'} / ${details.budget ? Number(details.budget).toLocaleString('vi-VN') + ' VND' : '—'}\n`;
+          if (pProj) {
+            text += `DỰ ÁN LIÊN QUAN: ${pProj.name || '—'} (Chủ đầu tư: ${pProj.developer || '—'})\n`;
+          }
+        }
+        setEntityContext(text);
+      }
+    }
+  };
+
   const handleSelectEntity = async (entity: { id: number; name: string; type: 'project' | 'campaign'; project_id?: number }) => {
     setSelectedEntity(entity);
     setLoadingContext(true);
     setEntityContext('');
+    setEntityDocs([]);
+    setSelectedDocId('all');
+    setRawDetails(null);
+    setParentProj(null);
+
     try {
       let contextText = '';
+      let docs: any[] = [];
+      let details: any = null;
+      let parentProject: any = null;
+
       if (entity.type === 'project') {
         const detailsRes = await fetchAPI(`projects/${entity.id}`).catch(() => null);
-        const details = detailsRes?.data || detailsRes;
+        details = detailsRes?.data || detailsRes;
         const docsRes = await fetchAPI(`projects/${entity.id}/documents`).catch(() => null);
-        const docs = Array.isArray(docsRes) ? docsRes : (docsRes?.data || []);
+        docs = Array.isArray(docsRes) ? docsRes : (docsRes?.data || []);
+        
+        setRawDetails(details);
+        setEntityDocs(docs);
         contextText = formatProjectContext(details, docs);
       } else {
         const detailsRes = await fetchAPI(`campaigns/${entity.id}`).catch(() => null);
-        const details = detailsRes?.data || detailsRes;
-        let parentProject = null;
-        let parentDocs = [];
+        details = detailsRes?.data || detailsRes;
+        let parentDocs: any[] = [];
         if (details && details.project_id) {
           const parentProjRes = await fetchAPI(`projects/${details.project_id}`).catch(() => null);
           parentProject = parentProjRes?.data || parentProjRes;
           const parentDocsRes = await fetchAPI(`projects/${details.project_id}/documents`).catch(() => null);
           parentDocs = Array.isArray(parentDocsRes) ? parentDocsRes : (parentDocsRes?.data || []);
         }
+        docs = parentDocs;
+        setRawDetails(details);
+        setParentProj(parentProject);
+        setEntityDocs(parentDocs);
         contextText = formatCampaignContext(details, parentProject, parentDocs);
       }
       setEntityContext(contextText);
+
+      // Set dynamic welcome message for selected entity
+      setMessages([
+        {
+          id: 'welcome_entity_' + Date.now(),
+          sender: 'bot',
+          text: getEntityWelcomeMessage(entity, docs.length),
+          timestamp: new Date()
+        }
+      ]);
     } catch (err) {
       console.error("Lỗi khi tải ngữ cảnh dự án/chiến dịch:", err);
       setEntityContext(`Lỗi tải dữ liệu cho thực thể ${entity.name}`);
@@ -1001,48 +1096,89 @@ Bạn có thể gõ rõ từ khóa hoặc click vào các gợi ý bên dưới 
             <>
               {chatMode === 'project_campaign' && selectedEntity && (
                 <div style={{
-                  padding: '6px 14px',
-                  background: 'rgba(163, 20, 34, 0.05)',
+                  padding: '8px 14px',
+                  background: 'rgba(163, 20, 34, 0.04)',
                   borderBottom: '1px solid var(--chatbot-window-border)',
                   display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  gap: '8px'
+                  flexDirection: 'column',
+                  gap: '6px'
                 }}>
-                  <button
-                    type="button"
-                    title={t('Quay lại chọn dự án / chiến dịch')}
-                    onClick={() => {
-                      setSelectedEntity(null);
-                      setEntityContext('');
-                    }}
-                    style={{
-                      background: 'transparent',
-                      border: 'none',
-                      color: '#a31422',
-                      cursor: 'pointer',
-                      padding: '4px',
-                      borderRadius: '6px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      flexShrink: 0,
-                      transition: 'all 0.2s'
-                    }}
-                    onMouseEnter={e => {
-                      e.currentTarget.style.background = 'rgba(163, 20, 34, 0.12)';
-                    }}
-                    onMouseLeave={e => {
-                      e.currentTarget.style.background = 'transparent';
-                    }}
-                  >
-                    <ChevronLeft size={16} style={{ color: '#a31422' }} />
-                  </button>
+                  {/* Top Row: < on far left, Đang hỏi về: <Name> on far right */}
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', gap: '8px' }}>
+                    <button
+                      type="button"
+                      title={t('Quay lại chọn dự án / chiến dịch')}
+                      onClick={() => {
+                        setSelectedEntity(null);
+                        setEntityContext('');
+                        setEntityDocs([]);
+                        setSelectedDocId('all');
+                      }}
+                      style={{
+                        background: 'transparent',
+                        border: 'none',
+                        color: '#a31422',
+                        cursor: 'pointer',
+                        padding: '4px',
+                        borderRadius: '6px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        flexShrink: 0,
+                        transition: 'all 0.2s'
+                      }}
+                      onMouseEnter={e => e.currentTarget.style.background = 'rgba(163, 20, 34, 0.12)'}
+                      onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                    >
+                      <ChevronLeft size={18} style={{ color: '#a31422' }} />
+                    </button>
 
-                  <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#a31422', display: 'flex', alignItems: 'center', gap: '4px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginLeft: 'auto' }}>
-                    <span>{t('Đang hỏi về')}:</span>
-                    <strong style={{ color: 'var(--chatbot-text)', fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{selectedEntity.name}</strong>
-                    {loadingContext && <span style={{ fontSize: '0.7rem', color: 'var(--chatbot-text-muted)', flexShrink: 0 }}>({t('Đang nạp...')})</span>}
+                    <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#a31422', display: 'flex', alignItems: 'center', gap: '4px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginLeft: 'auto' }}>
+                      <span>{t('Đang hỏi về')}:</span>
+                      <strong style={{ color: 'var(--chatbot-text)', fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{selectedEntity.name}</strong>
+                      {loadingContext && <span style={{ fontSize: '0.7rem', color: 'var(--chatbot-text-muted)', flexShrink: 0 }}>({t('Đang nạp...')})</span>}
+                    </div>
+                  </div>
+
+                  {/* Bottom Row: Document selector trigger button -> opens Modal */}
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '2px', gap: '8px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <FileText size={13} style={{ color: '#a31422', flexShrink: 0 }} />
+                      <span style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--chatbot-text-muted)', flexShrink: 0 }}>
+                        {t('Tài liệu hỏi AI:')}
+                      </span>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => setShowDocSelectModal(true)}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        fontSize: '0.75rem',
+                        fontWeight: 700,
+                        padding: '4px 10px',
+                        borderRadius: '8px',
+                        border: '1px solid var(--chatbot-window-border)',
+                        background: 'var(--chatbot-card-bg)',
+                        color: selectedDocId === 'all' ? 'var(--chatbot-text)' : '#a31422',
+                        cursor: 'pointer',
+                        outline: 'none',
+                        maxWidth: '220px',
+                        boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+                        transition: 'all 0.2s'
+                      }}
+                      onMouseEnter={e => e.currentTarget.style.borderColor = '#a31422'}
+                      onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--chatbot-window-border)'}
+                    >
+                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {selectedDocId === 'all'
+                          ? `📂 ${t('Tất cả tài liệu')} (${entityDocs.length})`
+                          : `📄 ${entityDocs.find(d => Number(d.id) === Number(selectedDocId))?.name || 'Tài liệu đã chọn'}`}
+                      </span>
+                      <ChevronRight size={12} style={{ flexShrink: 0, opacity: 0.6 }} />
+                    </button>
                   </div>
                 </div>
               )}
@@ -1181,6 +1317,164 @@ Bạn có thể gõ rõ từ khóa hoặc click vào các gợi ý bên dưới 
               <Send size={15} />
             </button>
           </form>
+
+          {/* Document Selection Modal Overlay */}
+          {showDocSelectModal && (
+            <div style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              background: 'rgba(0, 0, 0, 0.55)',
+              backdropFilter: 'blur(3px)',
+              zIndex: 100,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '16px'
+            }}>
+              <div style={{
+                width: '100%',
+                maxHeight: '85%',
+                background: 'var(--chatbot-window-bg, #ffffff)',
+                borderRadius: '16px',
+                border: '1px solid var(--chatbot-window-border)',
+                boxShadow: '0 20px 40px rgba(0, 0, 0, 0.25)',
+                display: 'flex',
+                flexDirection: 'column',
+                overflow: 'hidden',
+                animation: 'fadeIn 0.2s ease-out'
+              }}>
+                {/* Modal Header */}
+                <div style={{
+                  padding: '12px 16px',
+                  borderBottom: '1px solid var(--chatbot-window-border)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  background: 'var(--chatbot-sidebar-bg)'
+                }}>
+                  <div style={{ fontSize: '0.875rem', fontWeight: 800, color: '#a31422', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <FileText size={16} />
+                    {t('Chọn tài liệu để hỏi AI')}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowDocSelectModal(false)}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      color: 'var(--chatbot-text-muted)',
+                      cursor: 'pointer',
+                      padding: '4px'
+                    }}
+                  >
+                    <X size={16} />
+                  </button>
+                </div>
+
+                {/* Modal Search Bar */}
+                <div style={{ padding: '10px 16px', borderBottom: '1px solid var(--chatbot-window-border)' }}>
+                  <div style={{ position: 'relative' }}>
+                    <input
+                      type="text"
+                      placeholder={t('Tìm kiếm tài liệu...')}
+                      value={docSearchQuery}
+                      onChange={e => setDocSearchQuery(e.target.value)}
+                      style={{
+                        width: '100%',
+                        padding: '6px 28px 6px 10px',
+                        borderRadius: '8px',
+                        border: '1px solid var(--chatbot-window-border)',
+                        fontSize: '0.78rem',
+                        background: 'var(--chatbot-card-bg)',
+                        color: 'var(--chatbot-text)',
+                        outline: 'none',
+                        boxSizing: 'border-box'
+                      }}
+                    />
+                    <Search size={13} style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', opacity: 0.5 }} />
+                  </div>
+                </div>
+
+                {/* Modal Document List */}
+                <div style={{ flex: 1, overflowY: 'auto', padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: '8px' }} className="custom-scrollbar">
+                  {/* Option 1: All Documents */}
+                  <div
+                    onClick={() => {
+                      handleSelectDocFilter('all', entityDocs, rawDetails, parentProj, selectedEntity.type);
+                      setShowDocSelectModal(false);
+                    }}
+                    style={{
+                      padding: '10px 12px',
+                      borderRadius: '10px',
+                      border: selectedDocId === 'all' ? '2px solid #a31422' : '1px solid var(--chatbot-window-border)',
+                      background: selectedDocId === 'all' ? 'rgba(163, 20, 34, 0.06)' : 'var(--chatbot-card-bg)',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      transition: 'all 0.15s'
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span style={{ fontSize: '1.1rem' }}>📂</span>
+                      <div>
+                        <div style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--chatbot-text)', textAlign: 'left' }}>
+                          {t('Tất cả tài liệu dự án')} ({entityDocs.length})
+                        </div>
+                        <div style={{ fontSize: '0.68rem', color: 'var(--chatbot-text-muted)', textAlign: 'left' }}>
+                          {t('AI sẽ tổng hợp câu trả lời từ tất cả tài liệu đính kèm')}
+                        </div>
+                      </div>
+                    </div>
+                    {selectedDocId === 'all' && <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#a31422' }} />}
+                  </div>
+
+                  {/* Option 2...N: Individual Documents */}
+                  {entityDocs
+                    .filter(d => (d.name || d.file_name || '').toLowerCase().includes(docSearchQuery.toLowerCase()))
+                    .map((doc: any) => {
+                      const isSelected = selectedDocId === doc.id;
+                      return (
+                        <div
+                          key={doc.id}
+                          onClick={() => {
+                            handleSelectDocFilter(doc.id, entityDocs, rawDetails, parentProj, selectedEntity.type);
+                            setShowDocSelectModal(false);
+                          }}
+                          style={{
+                            padding: '10px 12px',
+                            borderRadius: '10px',
+                            border: isSelected ? '2px solid #a31422' : '1px solid var(--chatbot-window-border)',
+                            background: isSelected ? 'rgba(163, 20, 34, 0.06)' : 'var(--chatbot-card-bg)',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            transition: 'all 0.15s'
+                          }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', overflow: 'hidden' }}>
+                            <FileText size={16} style={{ color: isSelected ? '#a31422' : 'var(--chatbot-text-muted)', flexShrink: 0 }} />
+                            <div style={{ overflow: 'hidden', textAlign: 'left' }}>
+                              <div style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--chatbot-text)', textOverflow: 'ellipsis', whiteSpace: 'nowrap', overflow: 'hidden' }}>
+                                {doc.name || doc.file_name || `Tài liệu #${doc.id}`}
+                              </div>
+                              <div style={{ fontSize: '0.68rem', color: 'var(--chatbot-text-muted)' }}>
+                                {doc.mime_type || 'Tài liệu'} {doc.description ? `• ${doc.description}` : ''}
+                              </div>
+                            </div>
+                          </div>
+                          {isSelected && <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#a31422', flexShrink: 0 }} />}
+                        </div>
+                      );
+                    })}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

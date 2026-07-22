@@ -3,7 +3,7 @@ import {
   X, CheckSquare, Check, Paperclip, Link2, MessageSquare, Calendar, User, Clock, 
   Settings, AlertCircle, Trash2, Plus, Send, Share2, FileText, Globe, 
   Users, RefreshCw, Layers, CheckSquare2, Info, Receipt, Scale, ArrowUpRight, Search, Save, Bell, BellOff,
-  Eye, ExternalLink, UserPlus, UserCheck, Edit3
+  Eye, ExternalLink, UserPlus, UserCheck, Edit3, Play, Sparkles, ArrowRight
 } from 'lucide-react';
 import api from '../api/axios';
 import toast from 'react-hot-toast';
@@ -30,6 +30,10 @@ interface WorkspaceTaskDrawerProps {
   users: any[];
   onOpenContact?: (contactId: number) => void;
   embedMode?: boolean;
+  isFocusSessionActive?: boolean;
+  focusTaskIndex?: number;
+  focusTasksCount?: number;
+  onNextFocusTask?: () => void;
 }
 
 export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({ 
@@ -39,7 +43,11 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
   onUpdate, 
   users,
   onOpenContact,
-  embedMode = false
+  embedMode = false,
+  isFocusSessionActive = false,
+  focusTaskIndex = 0,
+  focusTasksCount = 1,
+  onNextFocusTask
 }) => {
   const { t } = useLanguage();
   const { startUpload, updateProgress, finishUpload } = useUploadProgress();

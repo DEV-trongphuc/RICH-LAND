@@ -170,8 +170,15 @@ function extractMappedValues($mappingsArray, $systemField, $data) {
             $values[] = $label . ': ' . $data[$colName];
         }
     }
-    // For unique/specific system fields, return the raw value directly of the first matched non-empty column to keep it clean and prevent corruption.
-    if (in_array($systemField, ['phone', 'email', 'name', 'source', 'type', 'assigned_to', 'saleperson'])) {
+    // For unique/specific system fields & custom fields, return the raw value directly of the first matched non-empty column
+    $knownSingleFields = [
+        'phone', 'phone2', 'name', 'email', 'source', 'type', 'assigned_to', 'saleperson',
+        'gender', 'dob', 'citizen_id', 'address', 'city', 'district', 'company', 'job_title', 'tax_code',
+        'budget', 'demand_type', 'property_type', 'bedroom_count', 'preferred_location',
+        'utm_campaign', 'utm_medium', 'utm_content', 'utm_term', 'platform', 'form_name',
+        'zalo_phone', 'facebook_link'
+    ];
+    if (in_array($systemField, $knownSingleFields) || strpos($systemField, 'cf_') === 0 || strpos($systemField, 'custom_field_') === 0) {
         foreach ($mappingsArray[$systemField] as $mapItem) {
             $colName = $mapItem['sheet_column'];
             if (isset($data[$colName]) && $data[$colName] !== '') {
@@ -752,6 +759,10 @@ try {
         $leadId = updateLead($conn, $phone, $email, $assignedConsultantId, $source, $type, $note, $connectionId, null, $name);
     } else {
         $leadId = insertLead($conn, $data, $assignedConsultantId, $phone, $email, $name, $source, $type, $note, $connectionId);
+    }
+
+    if ($leadId && !empty($mappings)) {
+        saveMappedExtendedFields($conn, $leadId, $data, $mappings);
     }
     
     // Save AI screening result if evaluated

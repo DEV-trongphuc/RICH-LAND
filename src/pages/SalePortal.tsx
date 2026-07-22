@@ -8,7 +8,8 @@ import {
   Clock3, GitBranch, ArrowUpRight, ShieldAlert, Send, ArrowLeft,
   Sun, Moon, ChevronDown, ChevronUp, AlertTriangle, ChevronLeft, ChevronRight,
   LayoutDashboard, Database, Ticket, Calendar, RefreshCw, Menu, Tag, Server, Scale, Settings, Info, Cpu,
-  Camera, Video, Layers, Plus, Receipt, CreditCard, Building2, Users, User, UserCheck, UserPlus, Trash2, CheckSquare, X, Paperclip, LifeBuoy, Fingerprint, LayoutGrid, Monitor, Tv, Phone, Save, Award, Ban, RotateCcw, MoreHorizontal, Check, KeyRound, Loader2, Shield, Mail, ShieldCheck, Lock as LockIcon
+  Camera, Video, Layers, Plus, Receipt, CreditCard, Building2, Users, User, UserCheck, UserPlus, Trash2, CheckSquare, X, Paperclip, LifeBuoy, Fingerprint, LayoutGrid, Monitor, Tv, Phone, Save, Award, Ban, RotateCcw, MoreHorizontal, Check, KeyRound, Loader2, Shield, Mail, ShieldCheck, Lock as LockIcon,
+  Play, Sparkles, ArrowRight
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { createPortal } from 'react-dom';
@@ -496,6 +497,52 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
   const [checklist, setChecklist] = useState<Array<{ text: string; checked: boolean }>>([]);
   const [wsTasksPage, setWsTasksPage] = useState(1);
   const [wsTasksPageSize, setWsTasksPageSize] = useState(12);
+
+  const [isFocusSessionActive, setIsFocusSessionActive] = useState(false);
+  const [focusTasksList, setFocusTasksList] = useState<any[]>([]);
+  const [focusTaskIndex, setFocusTaskIndex] = useState(0);
+
+  const handleStartFocusSession = () => {
+    const currentTasks = wsTasks || [];
+    const focusList = currentTasks.filter((t: any) => {
+      if (t.status === 'completed' || t.status === 'done') return false;
+      const dueDate = t.due_date ? new Date(t.due_date) : null;
+      const today = new Date();
+      today.setHours(23, 59, 59, 999);
+      const isOverdueOrToday = dueDate ? dueDate <= today : false;
+      const isHighPriority = t.priority === 'high' || t.priority === 'urgent';
+      return isOverdueOrToday || isHighPriority;
+    }).sort((a: any, b: any) => {
+      const priorityWeight: any = { urgent: 3, high: 2, medium: 1, low: 0 };
+      const pA = priorityWeight[a.priority] || 0;
+      const pB = priorityWeight[b.priority] || 0;
+      if (pB !== pA) return pB - pA;
+      return new Date(a.due_date || 0).getTime() - new Date(b.due_date || 0).getTime();
+    });
+
+    if (focusList.length === 0) {
+      alert(t('Tuyệt vời! Bạn không có công việc nào tồn đọng hoặc quá hạn hôm nay.'));
+      return;
+    }
+
+    setFocusTasksList(focusList);
+    setFocusTaskIndex(0);
+    setIsFocusSessionActive(true);
+    setWsViewMode('focus');
+    handleSelectTask(focusList[0]);
+  };
+
+  const handleNextFocusTask = () => {
+    if (focusTaskIndex < focusTasksList.length - 1) {
+      const nextIdx = focusTaskIndex + 1;
+      setFocusTaskIndex(nextIdx);
+      setSelectedTaskForDetails(focusTasksList[nextIdx]);
+    } else {
+      setIsFocusSessionActive(false);
+      setSelectedTaskForDetails(null);
+      alert(t('Chúc mừng! Bạn đã hoàn thành tất cả công việc trong phiên làm việc tập trung.'));
+    }
+  };
 
   useEffect(() => {
     setWsTasksPage(1);
@@ -4126,35 +4173,62 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
             </p>
           </div>
           {!isMobile && (
-            <button 
-              className="btn primary" 
-              onClick={() => {
-                setSelectedTaskForDetails({
-                  id: 'new',
-                  subject: '',
-                  priority: 'medium',
-                  due_date: new Date().toISOString().slice(0, 10),
-                  description: '',
-                  link: '',
-                  user_id: String(user?.id || ''),
-                  progress: 0,
-                  require_approval: 0,
-                  approver_id: '',
-                  tags: wsSubTab === 'personal' ? 'personal_task' : '',
-                  internal_type: wsSubTab === 'team' ? 'task' : '',
-                  scope: wsSubTab === 'team' ? 'team' : '',
-                  participant_ids: '',
-                  related_contact_ids: [],
-                  checklist: [],
-                  project_id: '',
-                  campaign_id: '',
-                  team_id: '',
-                  campaign_target: ''
-                });
-              }}
-            >
-              <Plus size={16} /> {t('Tạo công việc')}
-            </button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <button
+                className="btn secondary"
+                onClick={handleStartFocusSession}
+                style={{
+                  background: 'rgba(189, 29, 45, 0.06)',
+                  border: '1px solid rgba(189, 29, 45, 0.25)',
+                  color: 'var(--color-primary, #BD1D2D)',
+                  fontWeight: 700,
+                  fontSize: '0.85rem',
+                  borderRadius: '10px',
+                  padding: '8px 14px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s'
+                }}
+                onMouseEnter={e => { e.currentTarget.style.background = 'rgba(189, 29, 45, 0.12)'; }}
+                onMouseLeave={e => { e.currentTarget.style.background = 'rgba(189, 29, 45, 0.06)'; }}
+              >
+                <Play size={14} />
+                <span>{t('Bắt đầu Phiên Làm Việc')}</span>
+              </button>
+
+              <button 
+                className="btn primary" 
+                style={{ background: 'var(--color-primary, #BD1D2D)', borderColor: 'var(--color-primary, #BD1D2D)' }}
+                onClick={() => {
+                  setSelectedTaskForDetails({
+                    id: 'new',
+                    subject: '',
+                    priority: 'medium',
+                    due_date: new Date().toISOString().slice(0, 10),
+                    description: '',
+                    link: '',
+                    user_id: String(user?.id || ''),
+                    progress: 0,
+                    require_approval: 0,
+                    approver_id: '',
+                    tags: wsSubTab === 'personal' ? 'personal_task' : '',
+                    internal_type: wsSubTab === 'team' ? 'task' : '',
+                    scope: wsSubTab === 'team' ? 'team' : '',
+                    participant_ids: '',
+                    related_contact_ids: [],
+                    checklist: [],
+                    project_id: '',
+                    campaign_id: '',
+                    team_id: '',
+                    campaign_target: ''
+                  });
+                }}
+              >
+                <Plus size={16} /> {t('Tạo công việc')}
+              </button>
+            </div>
           )}
         </div>
 
@@ -4701,158 +4775,234 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
           </motion.div>
         )}
 
-        {/* Statistics Cards Row */}
+        {/* AI Priority Assistant Banner */}
+        {(() => {
+          const overdueCount = workspaceStats.overdue || 0;
+          const dueTodayCount = workspaceStats.dueToday || 0;
+          const highPriorityTask = (wsTasks || []).find((t: any) => t.priority === 'high' || t.priority === 'urgent');
+
+          if (overdueCount === 0 && dueTodayCount === 0 && !highPriorityTask) return null;
+
+          let aiMessage = '';
+          if (overdueCount > 0) {
+            aiMessage = `Hôm nay bạn có ${overdueCount} công việc quá hạn cần xử lý gấp. Bạn nên ưu tiên hoàn thành trước để đảm bảo tiến độ!`;
+          } else if (highPriorityTask) {
+            aiMessage = `Bạn có 1 công việc ưu tiên cao (${highPriorityTask.subject || 'Nhiệm vụ quan trọng'}) cần tập trung xử lý ngay.`;
+          } else {
+            aiMessage = `Hôm nay bạn có ${dueTodayCount} công việc đến hạn cần hoàn thành đúng kế hoạch.`;
+          }
+
+          return (
+            <div style={{
+              background: 'linear-gradient(135deg, rgba(189, 29, 45, 0.04) 0%, rgba(189, 29, 45, 0.08) 100%)',
+              border: '1px solid rgba(189, 29, 45, 0.18)',
+              borderRadius: '14px',
+              padding: '0.875rem 1.25rem',
+              marginBottom: '1rem',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: '1rem',
+              flexWrap: 'wrap'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: 1, minWidth: '260px' }}>
+                <div style={{
+                  width: '36px',
+                  height: '36px',
+                  borderRadius: '10px',
+                  background: 'rgba(189, 29, 45, 0.12)',
+                  color: 'var(--color-primary, #BD1D2D)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0
+                }}>
+                  <Sparkles size={18} />
+                </div>
+                <div>
+                  <span style={{ fontSize: '0.725rem', fontWeight: 800, color: 'var(--color-primary, #BD1D2D)', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block' }}>
+                    {t('GỢI Ý ƯU TIÊN TỪ AI')}
+                  </span>
+                  <p style={{ margin: '2px 0 0 0', fontSize: '0.85rem', fontWeight: 600, color: 'var(--color-text)' }}>
+                    {aiMessage}
+                  </p>
+                </div>
+              </div>
+              <button
+                className="btn primary"
+                onClick={handleStartFocusSession}
+                style={{
+                  background: 'var(--color-primary, #BD1D2D)',
+                  border: 'none',
+                  color: '#fff',
+                  padding: '6px 14px',
+                  fontSize: '0.8rem',
+                  fontWeight: 700,
+                  borderRadius: '8px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  cursor: 'pointer',
+                  boxShadow: '0 2px 8px rgba(189, 29, 45, 0.25)'
+                }}
+              >
+                <Play size={13} />
+                <span>{t('Xử lý ngay')}</span>
+              </button>
+            </div>
+          );
+        })()}
+
+        {/* Compact KPI Ribbon Bar */}
         <div style={{
-          display: 'grid',
-          gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)',
-          gap: isMobile ? '0.5rem' : '0.75rem',
-          marginBottom: '1.25rem'
+          display: 'flex',
+          alignItems: 'center',
+          gap: '0.625rem',
+          marginBottom: '1rem',
+          flexWrap: 'wrap'
         }}>
-          {/* Card 1: Overdue */}
+          {/* Overdue Pill */}
           <div 
             onClick={() => {
               setWsDatePreset('overdue');
               setWsStatus('planned');
               setWsTaskFilter('all');
             }}
-            className="stat-card"
             style={{
-              padding: '0.75rem 1rem',
-              borderRadius: 'var(--radius-lg)',
+              padding: '6px 14px',
+              borderRadius: '20px',
               border: wsDatePreset === 'overdue' ? '1.5px solid var(--color-danger)' : '1px solid var(--color-border)',
-              background: wsDatePreset === 'overdue' ? 'rgba(239, 68, 68, 0.04)' : 'var(--color-surface)',
+              background: wsDatePreset === 'overdue' ? 'rgba(239, 68, 68, 0.1)' : 'var(--color-surface)',
+              color: 'var(--color-danger)',
               cursor: 'pointer',
               display: 'flex',
-              flexDirection: 'column',
-              justifyContent: 'space-between',
-              minHeight: isMobile ? '82px' : '96px',
+              alignItems: 'center',
+              gap: '6px',
+              fontSize: '0.8rem',
+              fontWeight: 700,
               transition: 'all 0.15s ease'
             }}
           >
-            <div className="decor-svg" style={{ color: 'var(--color-danger)' }}>
-              <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: '100%', height: '100%' }}>
-                <circle cx="50" cy="50" r="30" stroke="currentColor" strokeWidth="2" />
-                <path d="M50 30 V 50 H 65" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-                <path d="M25 25 L 15 35 M 75 25 L 85 35" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
-              </svg>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
-              <span className="stat-label" style={{ fontSize: '0.6875rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('Quá hạn')}</span>
-              <div className="stat-icon" style={{ color: 'var(--color-danger)', opacity: 0.8 }}><Clock size={16} /></div>
-            </div>
-            <div className="stat-value" style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--color-danger)', margin: '4px 0 0', lineHeight: 1.1 }}>
+            <Clock size={14} />
+            <span>{t('Quá hạn')}</span>
+            <span style={{ background: 'var(--color-danger)', color: '#fff', borderRadius: '10px', padding: '1px 7px', fontSize: '0.725rem', fontWeight: 800 }}>
               {workspaceStats.overdue}
-            </div>
+            </span>
           </div>
 
-          {/* Card 2: Due today */}
+          {/* Due Today Pill */}
           <div 
             onClick={() => {
               setWsDatePreset('today');
               setWsStatus('planned');
               setWsTaskFilter('all');
             }}
-            className="stat-card"
             style={{
-              padding: '0.75rem 1rem',
-              borderRadius: 'var(--radius-lg)',
+              padding: '6px 14px',
+              borderRadius: '20px',
               border: wsDatePreset === 'today' ? '1.5px solid var(--color-warning)' : '1px solid var(--color-border)',
-              background: wsDatePreset === 'today' ? 'rgba(245, 158, 11, 0.04)' : 'var(--color-surface)',
+              background: wsDatePreset === 'today' ? 'rgba(245, 158, 11, 0.1)' : 'var(--color-surface)',
+              color: 'var(--color-warning)',
               cursor: 'pointer',
               display: 'flex',
-              flexDirection: 'column',
-              justifyContent: 'space-between',
-              minHeight: isMobile ? '82px' : '96px',
+              alignItems: 'center',
+              gap: '6px',
+              fontSize: '0.8rem',
+              fontWeight: 700,
               transition: 'all 0.15s ease'
             }}
           >
-            <div className="decor-svg" style={{ color: 'var(--color-warning)' }}>
-              <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: '100%', height: '100%' }}>
-                <rect x="25" y="25" width="50" height="50" rx="5" stroke="currentColor" strokeWidth="2" />
-                <path d="M25 40 H 75 M 40 20 V 30 M 60 20 V 30" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-                <circle cx="50" cy="55" r="4" fill="currentColor" />
-              </svg>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
-              <span className="stat-label" style={{ fontSize: '0.6875rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('Đến hạn')}</span>
-              <div className="stat-icon" style={{ color: 'var(--color-warning)', opacity: 0.8 }}><Calendar size={16} /></div>
-            </div>
-            <div className="stat-value" style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--color-warning)', margin: '4px 0 0', lineHeight: 1.1 }}>
+            <Calendar size={14} />
+            <span>{t('Đến hạn')}</span>
+            <span style={{ background: 'var(--color-warning)', color: '#fff', borderRadius: '10px', padding: '1px 7px', fontSize: '0.725rem', fontWeight: 800 }}>
               {workspaceStats.dueToday}
-            </div>
+            </span>
           </div>
 
-          {/* Card 3: Upcoming */}
+          {/* Upcoming Pill */}
           <div 
             onClick={() => {
               setWsDatePreset('tomorrow');
               setWsStatus('planned');
               setWsTaskFilter('all');
             }}
-            className="stat-card"
             style={{
-              padding: '0.75rem 1rem',
-              borderRadius: 'var(--radius-lg)',
+              padding: '6px 14px',
+              borderRadius: '20px',
               border: wsDatePreset === 'tomorrow' ? '1.5px solid var(--color-info)' : '1px solid var(--color-border)',
-              background: wsDatePreset === 'tomorrow' ? 'rgba(59, 130, 246, 0.04)' : 'var(--color-surface)',
+              background: wsDatePreset === 'tomorrow' ? 'rgba(59, 130, 246, 0.1)' : 'var(--color-surface)',
+              color: 'var(--color-info)',
               cursor: 'pointer',
               display: 'flex',
-              flexDirection: 'column',
-              justifyContent: 'space-between',
-              minHeight: isMobile ? '82px' : '96px',
+              alignItems: 'center',
+              gap: '6px',
+              fontSize: '0.8rem',
+              fontWeight: 700,
               transition: 'all 0.15s ease'
             }}
           >
-            <div className="decor-svg" style={{ color: 'var(--color-info)' }}>
-              <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: '100%', height: '100%' }}>
-                <path d="M30 70 L 70 30 M 50 30 H 70 V 50" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
-                <circle cx="30" cy="70" r="6" fill="currentColor" />
-              </svg>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
-              <span className="stat-label" style={{ fontSize: '0.6875rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('Sắp đến hạn')}</span>
-              <div className="stat-icon" style={{ color: 'var(--color-info)', opacity: 0.8 }}><ArrowUpRight size={16} /></div>
-            </div>
-            <div className="stat-value" style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--color-info)', margin: '4px 0 0', lineHeight: 1.1 }}>
+            <ArrowUpRight size={14} />
+            <span>{t('Sắp đến hạn')}</span>
+            <span style={{ background: 'var(--color-info)', color: '#fff', borderRadius: '10px', padding: '1px 7px', fontSize: '0.725rem', fontWeight: 800 }}>
               {workspaceStats.upcoming}
-            </div>
+            </span>
           </div>
 
-          {/* Card 4: Waiting for my approval */}
+          {/* Waiting Approval Pill */}
           <div 
             onClick={() => {
               setWsTaskFilter('approve_by_me');
               setWsStatus('all');
               setWsDatePreset('all');
             }}
-            className="stat-card"
             style={{
-              padding: '0.75rem 1rem',
-              borderRadius: 'var(--radius-lg)',
+              padding: '6px 14px',
+              borderRadius: '20px',
               border: wsTaskFilter === 'approve_by_me' ? '1.5px solid #8b5cf6' : '1px solid var(--color-border)',
-              background: wsTaskFilter === 'approve_by_me' ? 'rgba(139, 92, 246, 0.04)' : 'var(--color-surface)',
+              background: wsTaskFilter === 'approve_by_me' ? 'rgba(139, 92, 246, 0.1)' : 'var(--color-surface)',
+              color: '#8b5cf6',
               cursor: 'pointer',
               display: 'flex',
-              flexDirection: 'column',
-              justifyContent: 'space-between',
-              minHeight: isMobile ? '82px' : '96px',
+              alignItems: 'center',
+              gap: '6px',
+              fontSize: '0.8rem',
+              fontWeight: 700,
               transition: 'all 0.15s ease'
             }}
           >
-            <div className="decor-svg" style={{ color: '#8b5cf6' }}>
-              <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: '100%', height: '100%' }}>
-                <path d="M50 20 L 75 30 V 55 C 75 70 50 80 50 80 C 50 80 25 70 25 55 V 30 Z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
-                <path d="M40 50 L 47 57 L 62 42" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
-              <span className="stat-label" style={{ fontSize: '0.6875rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('Chờ tôi duyệt')}</span>
-              <div className="stat-icon" style={{ color: '#8b5cf6', opacity: 0.8 }}><UserCheck size={16} /></div>
-            </div>
-            <div className="stat-value" style={{ fontSize: '1.5rem', fontWeight: 800, color: '#8b5cf6', margin: '4px 0 0', lineHeight: 1.1 }}>
+            <UserCheck size={14} />
+            <span>{t('Chờ tôi duyệt')}</span>
+            <span style={{ background: '#8b5cf6', color: '#fff', borderRadius: '10px', padding: '1px 7px', fontSize: '0.725rem', fontWeight: 800 }}>
               {workspaceStats.pendingApproval}
-            </div>
+            </span>
           </div>
+
+          {/* Team Selector Dropdown Pill */}
+          {isAdminOrManager && teamsList.length > 0 && (
+            <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <select
+                value={wsTeamId || 'all_teams_bypass'}
+                onChange={e => setWsTeamId(e.target.value)}
+                className="form-select"
+                style={{
+                  height: '32px',
+                  fontSize: '0.8rem',
+                  fontWeight: 700,
+                  borderRadius: '20px',
+                  padding: '0 12px',
+                  border: '1px solid var(--color-border)',
+                  background: 'var(--color-surface)',
+                  color: 'var(--color-text)',
+                  cursor: 'pointer'
+                }}
+              >
+                <option value="all_teams_bypass">{t('Tất cả các Nhóm')}</option>
+                {teamsList.map((tm: any) => (
+                  <option key={tm.id} value={String(tm.id)}>{tm.name}</option>
+                ))}
+              </select>
+            </div>
+          )}
         </div>
 
         <div style={{
@@ -5059,36 +5209,6 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                     }}
                   >
                     <Layers size={16} />
-                  </button>
-                  <button
-                    onClick={() => {
-                      setWsViewMode('focus');
-                      if (filteredWsTasks.length > 0) {
-                        handleSelectTask(filteredWsTasks[0]);
-                      }
-                    }}
-                    title={t('Chế độ Focus')}
-                    style={{
-                      width: isMobile ? '32px' : 'auto',
-                      height: '28px',
-                      borderRadius: '6px',
-                      border: 'none',
-                      cursor: 'pointer',
-                      transition: 'all 0.2s',
-                      background: (wsViewMode as string) === 'focus' ? 'var(--color-surface)' : 'transparent',
-                      color: (wsViewMode as string) === 'focus' ? 'var(--color-text)' : 'var(--color-text-light)',
-                      boxShadow: (wsViewMode as string) === 'focus' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      padding: isMobile ? 0 : '0 8px',
-                      gap: '4px',
-                      outline: 'none',
-                      transform: 'none'
-                    }}
-                  >
-                    <Monitor size={16} />
-                    {!isMobile && <span style={{ fontSize: '0.72rem', fontWeight: 700 }}>FOCUS</span>}
                   </button>
                 </div>
               )}
@@ -5484,17 +5604,14 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                   <>
                     <div style={{ width: '1px', height: '24px', background: 'var(--color-border)', flexShrink: 0 }} />
 
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                      <div style={{ width: '40px', height: '40px', borderRadius: '12px', background: 'rgba(189, 29, 45, 0.08)', color: 'var(--color-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid rgba(189, 29, 45, 0.12)', flexShrink: 0 }}>
-                        <Users size={20} />
-                      </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                       <div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <span style={{ fontSize: '0.725rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{t('Đang xem nhóm')}</span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <span style={{ fontSize: isMobile ? '0.65rem' : '0.725rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{t('Đang xem nhóm')}</span>
                           <span style={{ width: '4px', height: '4px', borderRadius: '50%', background: 'var(--color-primary)' }} />
-                          <span style={{ fontSize: '0.725rem', fontWeight: 700, color: 'var(--color-primary)' }}>{t('Nội bộ')}</span>
+                          <span style={{ fontSize: isMobile ? '0.65rem' : '0.725rem', fontWeight: 700, color: 'var(--color-primary)' }}>{t('Nội bộ')}</span>
                         </div>
-                        <h4 style={{ fontSize: '1.05rem', fontWeight: 800, color: 'var(--color-text)', margin: '2px 0 0 0' }}>
+                        <h4 style={{ fontSize: isMobile ? '0.85rem' : '1.05rem', fontWeight: 800, color: 'var(--color-text)', margin: '1px 0 0 0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: isMobile ? '180px' : 'none' }}>
                           {wsTeamId === 'all_teams_bypass' ? t('Tất cả các Nhóm') : (teamsList.find(t => String(t.id) === wsTeamId)?.name || wsTeamId)}
                         </h4>
                       </div>
@@ -6207,7 +6324,11 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                     <button
-                      onClick={() => setWsViewMode('grid')}
+                      onClick={() => {
+                        setWsViewMode('grid');
+                        setSelectedTaskForDetails(null);
+                        setIsFocusSessionActive(false);
+                      }}
                       style={{
                         border: 'none',
                         background: 'transparent',
@@ -6218,7 +6339,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                         alignItems: 'center',
                         justifyContent: 'center',
                         borderRadius: '6px',
-                        transition: 'background-0.2s'
+                        transition: 'background 0.2s'
                       }}
                       className="hover-bg-light"
                       title={t('Quay lại')}
@@ -6230,7 +6351,11 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                     </span>
                   </div>
                   <button 
-                    onClick={() => setWsViewMode('grid')}
+                    onClick={() => {
+                      setWsViewMode('grid');
+                      setSelectedTaskForDetails(null);
+                      setIsFocusSessionActive(false);
+                    }}
                     style={{
                       border: 'none',
                       background: 'rgba(239, 68, 68, 0.08)',
@@ -6253,6 +6378,144 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.72rem', color: 'var(--color-text-muted)' }}>
                   <span>{t('DANH SÁCH CÔNG VIỆC')} ({filteredWsTasks.length})</span>
                 </div>
+              </div>
+
+              {/* Filter Ribbon Pills inside Focus Mode Left Panel */}
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                overflowX: 'auto',
+                padding: '8px 10px',
+                borderBottom: '1px solid var(--color-border-light)',
+                background: 'var(--color-bg-light)',
+                scrollbarWidth: 'none'
+              }}>
+                <button
+                  type="button"
+                  onClick={() => { setWsDatePreset('all'); setWsStatus('planned'); setWsTaskFilter('all'); }}
+                  style={{
+                    padding: '4px 9px',
+                    borderRadius: '16px',
+                    border: wsDatePreset === 'all' && wsTaskFilter === 'all' ? '1.5px solid var(--color-primary)' : '1px solid var(--color-border)',
+                    background: wsDatePreset === 'all' && wsTaskFilter === 'all' ? 'rgba(189, 29, 45, 0.08)' : 'var(--color-surface)',
+                    color: wsDatePreset === 'all' && wsTaskFilter === 'all' ? 'var(--color-primary)' : 'var(--color-text-muted)',
+                    fontSize: '0.72rem',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    whiteSpace: 'nowrap',
+                    flexShrink: 0
+                  }}
+                >
+                  <span>{t('Tất cả')}</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => { setWsDatePreset('overdue'); setWsStatus('planned'); setWsTaskFilter('all'); }}
+                  style={{
+                    padding: '4px 9px',
+                    borderRadius: '16px',
+                    border: wsDatePreset === 'overdue' ? '1.5px solid var(--color-danger)' : '1px solid var(--color-border)',
+                    background: wsDatePreset === 'overdue' ? 'var(--color-danger-light)' : 'var(--color-surface)',
+                    color: 'var(--color-danger)',
+                    fontSize: '0.72rem',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    whiteSpace: 'nowrap',
+                    flexShrink: 0
+                  }}
+                >
+                  <Clock size={11} />
+                  <span>{t('Quá hạn')}</span>
+                  <span style={{ background: 'var(--color-danger)', color: '#fff', borderRadius: '10px', padding: '0 5px', fontSize: '0.65rem', fontWeight: 800 }}>
+                    {workspaceStats.overdue}
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => { setWsDatePreset('today'); setWsStatus('planned'); setWsTaskFilter('all'); }}
+                  style={{
+                    padding: '4px 9px',
+                    borderRadius: '16px',
+                    border: wsDatePreset === 'today' ? '1.5px solid var(--color-warning)' : '1px solid var(--color-border)',
+                    background: wsDatePreset === 'today' ? 'rgba(245, 158, 11, 0.1)' : 'var(--color-surface)',
+                    color: 'var(--color-warning)',
+                    fontSize: '0.72rem',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    whiteSpace: 'nowrap',
+                    flexShrink: 0
+                  }}
+                >
+                  <Calendar size={11} />
+                  <span>{t('Đến hạn')}</span>
+                  <span style={{ background: 'var(--color-warning)', color: '#fff', borderRadius: '10px', padding: '0 5px', fontSize: '0.65rem', fontWeight: 800 }}>
+                    {workspaceStats.dueToday}
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => { setWsDatePreset('tomorrow'); setWsStatus('planned'); setWsTaskFilter('all'); }}
+                  style={{
+                    padding: '4px 9px',
+                    borderRadius: '16px',
+                    border: wsDatePreset === 'tomorrow' ? '1.5px solid var(--color-info)' : '1px solid var(--color-border)',
+                    background: wsDatePreset === 'tomorrow' ? 'rgba(59, 130, 246, 0.1)' : 'var(--color-surface)',
+                    color: 'var(--color-info)',
+                    fontSize: '0.72rem',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    whiteSpace: 'nowrap',
+                    flexShrink: 0
+                  }}
+                >
+                  <ArrowUpRight size={11} />
+                  <span>{t('Sắp đến hạn')}</span>
+                  <span style={{ background: 'var(--color-info)', color: '#fff', borderRadius: '10px', padding: '0 5px', fontSize: '0.65rem', fontWeight: 800 }}>
+                    {workspaceStats.upcoming}
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => { setWsTaskFilter('approve_by_me'); setWsStatus('all'); setWsDatePreset('all'); }}
+                  style={{
+                    padding: '4px 9px',
+                    borderRadius: '16px',
+                    border: wsTaskFilter === 'approve_by_me' ? '1.5px solid #8b5cf6' : '1px solid var(--color-border)',
+                    background: wsTaskFilter === 'approve_by_me' ? 'rgba(139, 92, 246, 0.1)' : 'var(--color-surface)',
+                    color: '#8b5cf6',
+                    fontSize: '0.72rem',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    whiteSpace: 'nowrap',
+                    flexShrink: 0
+                  }}
+                >
+                  <UserCheck size={11} />
+                  <span>{t('Chờ tôi duyệt')}</span>
+                  <span style={{ background: '#8b5cf6', color: '#fff', borderRadius: '10px', padding: '0 5px', fontSize: '0.65rem', fontWeight: 800 }}>
+                    {workspaceStats.pendingApproval}
+                  </span>
+                </button>
               </div>
               {/* Gamification Progress Bar */}
               {(filteredWsTasks.length > 0 || completedCallsCount > 0) && (
@@ -10493,15 +10756,16 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                           background: '#f8fafc',
                           border: '1px solid #e2e8f0',
                           borderRadius: '8px',
-                          padding: '12px',
+                          padding: '16px',
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
-                          maxHeight: '100px',
+                          minHeight: '120px',
+                          maxHeight: '150px',
                           backgroundImage: 'radial-gradient(#cbd5e1 1px, transparent 1px)',
                           backgroundSize: '12px 12px'
                         }}>
-                          <img src={saleSignatureUrl} alt="Chữ ký mẫu" style={{ maxHeight: '75px', objectFit: 'contain' }} />
+                          <img src={saleSignatureUrl} alt="Chữ ký mẫu" style={{ maxHeight: '110px', objectFit: 'contain' }} />
                         </div>
                       ) : (
                         <div
@@ -10509,12 +10773,18 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                           style={{
                             border: '2px dashed var(--color-border)',
                             borderRadius: '8px',
-                            padding: '16px',
+                            padding: '32px 20px',
+                            minHeight: '120px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
                             textAlign: 'center',
                             color: 'var(--color-text-muted)',
-                            fontSize: '0.8125rem',
+                            fontSize: '0.875rem',
+                            fontWeight: 500,
                             cursor: 'pointer',
-                            background: 'var(--color-bg-light)'
+                            background: 'var(--color-bg-light)',
+                            transition: 'all 0.2s ease'
                           }}
                         >
                           {t('Chưa thiết lập chữ ký mẫu. Bấm vào đây để vẽ hoặc tải ảnh chữ ký.')}
@@ -15440,7 +15710,10 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
       {/* Task Details Drawer */}
       <WorkspaceTaskDrawer
         isOpen={!!selectedTaskForDetails && wsViewMode !== 'focus'}
-        onClose={() => setSelectedTaskForDetails(null)}
+        onClose={() => {
+          setSelectedTaskForDetails(null);
+          setIsFocusSessionActive(false);
+        }}
         task={selectedTaskForDetails}
         onUpdate={() => {
           fetchPortalTasks();
@@ -15452,6 +15725,10 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
           setSelectedTaskForDetails(null);
           handleOpenContactProfile(contactId);
         }}
+        isFocusSessionActive={isFocusSessionActive}
+        focusTaskIndex={focusTaskIndex}
+        focusTasksCount={focusTasksList.length}
+        onNextFocusTask={handleNextFocusTask}
       />
 
       {/* 2-Minute Lead Offer Countdown Modal */}

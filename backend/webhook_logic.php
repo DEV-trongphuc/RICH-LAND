@@ -1407,8 +1407,101 @@ function insertLead($conn, $data, $assignedConsultantId, $phone, $email, $name, 
         } catch (Exception $e) {
             // silent catch
         }
+if (!function_exists('saveMappedExtendedFields')) {
+    function saveMappedExtendedFields($conn, $leadId, $data, $mappings) {
+        if (!$leadId || empty($mappings) || !is_array($mappings)) return;
+
+        $extendedCols = [
+            'phone2', 'gender', 'dob', 'citizen_id', 'address', 'city', 'district',
+            'company', 'job_title', 'tax_code', 'budget', 'demand_type', 'property_type',
+            'bedroom_count', 'preferred_location', 'utm_campaign', 'utm_medium', 'utm_content',
+            'utm_term', 'platform', 'form_name', 'zalo_phone', 'facebook_link'
+        ];
+
+        // 1. Update extended fields in leads table
+        $leadUpdates = [];
+        $leadTypes = "";
+        $leadParams = [];
+
+        foreach ($extendedCols as $col) {
+            $val = extractMappedValues($mappings, $col, $data);
+            if (!empty($val)) {
+                $leadUpdates[] = "`$col` = ?";
+                $leadTypes .= ($col === 'budget') ? "d" : "s";
+                $leadParams[] = ($col === 'budget') ? (float)$val : $val;
+            }
+        }
+
+        if (!empty($leadUpdates)) {
+            $sql = "UPDATE leads SET " . implode(", ", $leadUpdates) . " WHERE id = ?";
+            $leadTypes .= "i";
+            $leadParams[] = (int)$leadId;
+
+            $stmt = $conn->prepare($sql);
+            if ($stmt) {
+                $stmt->bind_param($leadTypes, ...$leadParams);
+                $stmt->execute();
+                $stmt->close();
+            }
+        }
+
+        // 2. Also update extended fields in contacts table if linked
+        $chkContact = $conn->query("SELECT phone, email FROM leads WHERE id = " . (int)$leadId);
+        if ($chkContact && $cRow = $chkContact->fetch_assoc()) {
+            $cPhone = $cRow['phone'];
+            $cEmail = $cRow['email'];
+            if (!empty($cPhone) || !empty($cEmail)) {
+                $cUpdates = [];
+                $cTypes = "";
+                $cParams = [];
+
+                foreach ($extendedCols as $col) {
+                    $val = extractMappedValues($mappings, $col, $data);
+                    if (!empty($val)) {
+                        $cUpdates[] = "`$col` = ?";
+                        $cTypes .= ($col === 'budget') ? "d" : "s";
+                        $cParams[] = ($col === 'budget') ? (float)$val : $val;
+                    }
+                }
+
+                if (!empty($cUpdates)) {
+                    $cSql = "UPDATE contacts SET " . implode(", ", $cUpdates) . " WHERE (phone IS NOT NULL AND phone = ?) OR (email IS NOT NULL AND email = ?)";
+                    $cTypes .= "ss";
+                    $cParams[] = $cPhone;
+                    $cParams[] = $cEmail;
+
+                    $cStmt = $conn->prepare($cSql);
+                    if ($cStmt) {
+                        $cStmt->bind_param($cTypes, ...$cParams);
+                        $cStmt->execute();
+                        $cStmt->close();
+                    }
+                }
+            }
+        }
+
+        // 3. Save custom field values to custom_field_values table
+        foreach ($mappings as $sysField => $items) {
+            if (strpos($sysField, 'cf_') === 0 || strpos($sysField, 'custom_field_') === 0) {
+                $cfId = (int)str_replace(['cf_', 'custom_field_'], '', $sysField);
+                if ($cfId > 0) {
+                    $val = extractMappedValues($mappings, $sysField, $data);
+                    if ($val !== '') {
+                        $upsertStmt = $conn->prepare("
+                            INSERT INTO custom_field_values (custom_field_id, entity_id, value_text)
+                            VALUES (?, ?, ?)
+                            ON DUPLICATE KEY UPDATE value_text = VALUES(value_text)
+                        ");
+                        if ($upsertStmt) {
+                            $upsertStmt->bind_param("iis", $cfId, $leadId, $val);
+                            $upsertStmt->execute();
+                            $upsertStmt->close();
+                        }
+                    }
+                }
+            }
+        }
     }
-    return $id;
 }
 
 function updateLead($conn, $phone, $email, $assignedConsultantId, $source, $type, $note, $connectionId = null, $customDate = null, $name = null, $onlyUpdateDate = false, $preserveInteractionDate = false)
