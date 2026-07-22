@@ -379,11 +379,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  useEffect(() => {
-    const intervalMs = activeIncomingOffer ? 100 : 10000;
-    const timer = setInterval(() => setNow(Date.now()), intervalMs);
-    return () => clearInterval(timer);
-  }, [activeIncomingOffer]);
+
 
   const [search, setSearch] = useState(getInitialSearch());
   const [searchInput, setSearchInput] = useState(getInitialSearch());
@@ -1639,6 +1635,12 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
     activeOffers.sort((a, b) => a.remainingMs - b.remainingMs);
     return activeOffers[0];
   }, [data.leads, effectiveRole, now, dismissedLeadIds]);
+
+  useEffect(() => {
+    const intervalMs = activeIncomingOffer ? 100 : 10000;
+    const timer = setInterval(() => setNow(Date.now()), intervalMs);
+    return () => clearInterval(timer);
+  }, [activeIncomingOffer]);
 
   // Tickets states & loading logic
   const [tickets, setTickets] = useState<any[]>([]);
