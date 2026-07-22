@@ -319,15 +319,19 @@ class NoteController {
     public function destroy(array $auth, int $id): void {
         if ($auth['role'] === 'viewer') respond(403, null, 'Bạn không có quyền xóa ghi chú', false);
         // 1. Verify existence and permission
-        $check = $this->db->prepare("SELECT entity_type, entity_id FROM notes WHERE id=? AND tenant_id=?" . (!in_array($auth['role'], ['admin', 'superadmin', 'super_admin', 'manager', 'director'], true) ? " AND user_id=?" : ""));
+        $check = $this->db->prepare("SELECT entity_type, entity_id, body, attachments FROM notes WHERE id=? AND tenant_id=?" . (!in_array($auth['role'], ['admin', 'superadmin', 'super_admin', 'manager', 'director'], true) ? " AND user_id=?" : ""));
         $cp = [$id, $auth['tenant_id']];
-        if (!in_array($auth['role'], ['admin', 'superadmin', 'super_admin', 'manager', 'director'], true)) $cp[] = $auth['user_id'];
+        if (!in_array($auth['role'], ['admin', 'superadmin', 'super_admin', 'director'], true)) $cp[] = $auth['user_id'];
         $check->execute($cp);
         $noteRow = $check->fetch(PDO::FETCH_ASSOC);
         if (!$noteRow) respond(404, null, 'Không tìm thấy ghi chú hoặc không có quyền', false);
 
         $this->db->beginTransaction();
         try {
+            // Delete physical attachment files from disk
+            if (!empty($noteRow['attachments'])) deleteAttachmentFiles($noteRow['attachments']);
+            if (!empty($noteRow['body'])) deleteAttachmentFiles($noteRow['body']);
+
             // 2. Delete the note
             $this->db->prepare("DELETE FROM notes WHERE id=?")->execute([$id]);
             

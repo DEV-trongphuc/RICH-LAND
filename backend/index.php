@@ -700,6 +700,8 @@ switch ($resource) {
         if     ($resourceId === 'leave' && $method === 'POST') $ctrl->leave($auth);
         elseif ($resourceId && $subResource === 'comments' && $method === 'GET') $ctrl->getComments($auth, (int)$resourceId);
         elseif ($resourceId && $subResource === 'comments' && $method === 'POST') $ctrl->addComment($auth, (int)$resourceId);
+        elseif ($resourceId && $subResource === 'comments' && isset($segments[3]) && $method === 'DELETE') $ctrl->deleteComment($auth, (int)$segments[3]);
+        elseif ($resourceId === 'comments' && $subResource && $method === 'DELETE') $ctrl->deleteComment($auth, (int)$subResource);
         elseif (!$resourceId && $method === 'GET')    $ctrl->index($auth);
         elseif (!$resourceId && $method === 'POST')   $ctrl->store($auth);
         elseif ($resourceId  && $method === 'GET')    $ctrl->show($auth, (int)$resourceId);
@@ -814,6 +816,8 @@ switch ($resource) {
         $ctrl = new TicketController($db);
         if ($subResource === 'comments' && $method === 'GET') $ctrl->getComments($auth, (int)$resourceId);
         elseif ($subResource === 'comments' && $method === 'POST') $ctrl->addComment($auth, (int)$resourceId);
+        elseif ($subResource === 'comments' && isset($segments[3]) && $method === 'DELETE') $ctrl->deleteComment($auth, (int)$resourceId, (int)$segments[3]);
+        elseif ($resourceId === 'comments' && $subResource && $method === 'DELETE') $ctrl->deleteComment($auth, 0, (int)$subResource);
         elseif (!$resourceId && $method === 'GET')    $ctrl->index($auth);
         elseif (!$resourceId && $method === 'POST')   $ctrl->store($auth);
         elseif ($resourceId  && $method === 'GET')    $ctrl->show($auth, (int)$resourceId);

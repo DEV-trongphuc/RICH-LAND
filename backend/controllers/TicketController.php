@@ -604,4 +604,34 @@ class TicketController {
         
         $this->getComments($auth, $ticketId);
     }
+
+    public function deleteComment(array $auth, int $ticketId, int $commentId): void {
+        $stmt = $this->db->prepare("SELECT * FROM ticket_comments WHERE id = ? AND ticket_id = ?");
+        $stmt->execute([$commentId, $ticketId]);
+        $comment = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$comment) {
+            respond(404, null, 'Bình luận không tồn tại', false);
+        }
+
+        $userRole = strtolower($auth['role'] ?? '');
+        $isAdmin = in_array($userRole, ['admin', 'superadmin', 'super_admin', 'director'], true);
+        $isOwner = (int)$comment['user_id'] === (int)$auth['user_id'];
+
+        if (!$isAdmin && !$isOwner) {
+            respond(403, null, 'Bạn không có quyền xóa bình luận này', false);
+        }
+
+        $fetchStmt = $this->db->prepare("SELECT body FROM ticket_comments WHERE id = ? OR parent_id = ?");
+        $fetchStmt->execute([$commentId, $commentId]);
+        $rows = $fetchStmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+        foreach ($rows as $r) {
+            if (!empty($r['body'])) deleteAttachmentFiles($r['body']);
+        }
+
+        $delStmt = $this->db->prepare("DELETE FROM ticket_comments WHERE id = ? OR parent_id = ?");
+        $delStmt->execute([$commentId, $commentId]);
+
+        respond(200, null, 'Xóa bình luận ticket thành công');
+    }
 }

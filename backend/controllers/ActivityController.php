@@ -1165,24 +1165,19 @@ class ActivityController {
             respond(403, null, 'Bạn không có quyền xóa bình luận của người khác', false);
         }
 
-        // Delete physical attachments from disk if they exist
-        if (!empty($comment['attachments'])) {
-            $files = json_decode($comment['attachments'], true);
-            if (is_array($files)) {
-                $uploadDirBase = defined('UPLOAD_DIR') ? UPLOAD_DIR : (__DIR__ . '/../uploads');
-                foreach ($files as $fileUrl) {
-                    $filename = basename($fileUrl);
-                    $filePath = $uploadDirBase . "/tenant_" . $auth['tenant_id'] . "/" . $filename;
-                    if (file_exists($filePath) && is_file($filePath)) {
-                        @unlink($filePath);
-                    }
-                }
-            }
+        // Fetch target comment + child replies to delete physical attachment files from disk
+        $fetchStmt = $this->db->prepare("SELECT attachments, content FROM activity_comments WHERE (id = ? OR parent_id = ?) AND tenant_id = ?");
+        $fetchStmt->execute([$commentId, $commentId, $auth['tenant_id']]);
+        $rows = $fetchStmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+
+        foreach ($rows as $r) {
+            if (!empty($r['attachments'])) deleteAttachmentFiles($r['attachments']);
+            if (!empty($r['content'])) deleteAttachmentFiles($r['content']);
         }
 
-        // Delete DB record
-        $deleteStmt = $this->db->prepare("DELETE FROM activity_comments WHERE id = ? AND tenant_id = ?");
-        $deleteStmt->execute([$commentId, $auth['tenant_id']]);
+        // Delete DB record for comment & child replies
+        $deleteStmt = $this->db->prepare("DELETE FROM activity_comments WHERE (id = ? OR parent_id = ?) AND tenant_id = ?");
+        $deleteStmt->execute([$commentId, $commentId, $auth['tenant_id']]);
 
         logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'DELETE_COMMENT', 'activity_comment', $commentId);
         respond(200, null, 'Đã xóa bình luận thành công');

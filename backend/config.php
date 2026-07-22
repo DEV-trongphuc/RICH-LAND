@@ -20,8 +20,84 @@ if (!defined('ALLOWED_ORIGINS'))
 // Storage
 if (!defined('UPLOAD_DIR')) define('UPLOAD_DIR', __DIR__ . '/uploads');
 
+// Global File Cleanup Helpers
+if (!function_exists('deleteServerFile')) {
+    /**
+     * Safely deletes a physical file from the server's uploads storage
+     */
+    function deleteServerFile(?string $fileUrl): bool {
+        if (empty($fileUrl)) return false;
+        
+        $fileUrl = trim($fileUrl);
+
+        // Strip domain or protocol if absolute URL
+        if (preg_match('/uploads\/(.+)$/i', $fileUrl, $matches)) {
+            $relativePath = 'uploads/' . $matches[1];
+        } else {
+            $relativePath = ltrim($fileUrl, '/');
+        }
+
+        $baseUploadDir = defined('UPLOAD_DIR') ? UPLOAD_DIR : (__DIR__ . '/uploads');
+        
+        $candidatePaths = [
+            __DIR__ . '/' . $relativePath,
+            $baseUploadDir . '/' . (strpos($relativePath, 'uploads/') === 0 ? substr($relativePath, 8) : $relativePath),
+            __DIR__ . '/storage/' . $relativePath,
+            __DIR__ . '/public/' . $relativePath
+        ];
+
+        foreach ($candidatePaths as $path) {
+            if ($path && file_exists($path) && is_file($path)) {
+                return @unlink($path);
+            }
+        }
+
+        return false;
+    }
+}
+
+if (!function_exists('deleteAttachmentFiles')) {
+    /**
+     * Extracts all file URLs from a string (JSON/markdown/raw text) or array, and physically deletes them from disk.
+     */
+    function deleteAttachmentFiles($input): void {
+        if (empty($input)) return;
+
+        $urls = [];
+
+        if (is_string($input)) {
+            $decoded = json_decode($input, true);
+            if (is_array($decoded)) {
+                $input = $decoded;
+            } else {
+                preg_match_all('/(?:uploads\/[^\s\)\"\'>]+|https?:\/\/[^\s\)\"\'>]+)/i', $input, $matches);
+                if (!empty($matches[0])) {
+                    $urls = $matches[0];
+                } else {
+                    $urls = [$input];
+                }
+            }
+        }
+
+        if (is_array($input)) {
+            foreach ($input as $item) {
+                if (is_string($item)) {
+                    $urls[] = $item;
+                } elseif (is_array($item)) {
+                    if (!empty($item['url'])) $urls[] = $item['url'];
+                    if (!empty($item['file_path'])) $urls[] = $item['file_path'];
+                }
+            }
+        }
+
+        foreach (array_unique($urls) as $url) {
+            deleteServerFile($url);
+        }
+    }
+}
+
 // Environment
 if (!defined('APP_ENV')) define('APP_ENV', 'development');
 
 // Backend Version (auto-increments on backend edits)
-if (!defined('BACKEND_VERSION')) define('BACKEND_VERSION', '1.5.3.1');
+if (!defined('BACKEND_VERSION')) define('BACKEND_VERSION', '1.5.4.0');

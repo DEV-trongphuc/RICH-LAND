@@ -137,6 +137,16 @@ class UserController {
             }
         }
 
+        // Fetch current user row to check for old avatar and signature
+        $oldUserStmt = $this->db->prepare("SELECT avatar_url, signature_url FROM users WHERE id = ? AND tenant_id = ?");
+        $oldUserStmt->execute([$id, $auth['tenant_id']]);
+        $oldUser = $oldUserStmt->fetch(PDO::FETCH_ASSOC);
+
+        // Delete old physical signature if new signature URL or base64 is provided
+        if (!empty($b['signature_url']) && $oldUser && !empty($oldUser['signature_url']) && $oldUser['signature_url'] !== $b['signature_url']) {
+            deleteServerFile($oldUser['signature_url']);
+        }
+
         // Save base64 signature as image file if provided
         if (!empty($b['signature_url']) && strpos($b['signature_url'], 'data:image/') === 0) {
             if (preg_match('/^data:image\/(\w+);base64,/', $b['signature_url'])) {
@@ -154,6 +164,11 @@ class UserController {
                     }
                 }
             }
+        }
+
+        // Delete old physical avatar file if new avatar_url is provided and differs
+        if (array_key_exists('avatar_url', $b) && $oldUser && !empty($oldUser['avatar_url']) && $oldUser['avatar_url'] !== $b['avatar_url']) {
+            deleteServerFile($oldUser['avatar_url']);
         }
 
         $sets=[];$params=[];
@@ -174,6 +189,15 @@ class UserController {
         if (!in_array($auth['role'], ['admin', 'super_admin', 'superadmin', 'director'], true)) respond(403, null, 'Quyền admin là bắt buộc', false);
         if($id===$auth['user_id']) respond(403,null,'Không thể xóa tài khoản của chính mình',false);
         try {
+            // Delete user's physical avatar and signature files
+            $oldStmt = $this->db->prepare("SELECT avatar_url, signature_url FROM users WHERE id = ? AND tenant_id = ?");
+            $oldStmt->execute([$id, $auth['tenant_id']]);
+            $oldUser = $oldStmt->fetch(PDO::FETCH_ASSOC);
+            if ($oldUser) {
+                if (!empty($oldUser['avatar_url'])) deleteServerFile($oldUser['avatar_url']);
+                if (!empty($oldUser['signature_url'])) deleteServerFile($oldUser['signature_url']);
+            }
+
             $this->db->prepare("DELETE FROM users WHERE id=? AND tenant_id=?")->execute([$id,$auth['tenant_id']]);
             logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'DELETE', 'user', $id);
             respond(200,null,'Đã xóa người dùng');

@@ -997,6 +997,16 @@ class ProjectController {
             respond(403, null, 'Bạn không có quyền xóa bình luận này', false);
         }
 
+        // Fetch all comments to be deleted (target comment + child replies) to clean up files
+        $fetchStmt = $this->db->prepare("SELECT attachments, body FROM comments WHERE (id = ? OR parent_id = ?) AND tenant_id = ?");
+        $fetchStmt->execute([$commentId, $commentId, $auth['tenant_id']]);
+        $commentsToDelete = $fetchStmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+
+        foreach ($commentsToDelete as $c) {
+            if (!empty($c['attachments'])) deleteAttachmentFiles($c['attachments']);
+            if (!empty($c['body'])) deleteAttachmentFiles($c['body']);
+        }
+
         $delStmt = $this->db->prepare("DELETE FROM comments WHERE (id = ? OR parent_id = ?) AND tenant_id = ?");
         $delStmt->execute([$commentId, $commentId, $auth['tenant_id']]);
 

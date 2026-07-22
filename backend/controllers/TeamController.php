@@ -461,4 +461,35 @@ class TeamController
 
         respond(200, ['id' => $newId], 'Đăng bình luận thành công');
     }
+
+    public function deleteComment(array $auth, int $commentId): void {
+        $stmt = $this->db->prepare("SELECT * FROM comments WHERE id = ? AND tenant_id = ?");
+        $stmt->execute([$commentId, $auth['tenant_id']]);
+        $comment = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$comment) {
+            respond(404, null, 'Bình luận không tồn tại', false);
+        }
+
+        $userRole = strtolower($auth['role'] ?? '');
+        $isAdmin = in_array($userRole, ['admin', 'superadmin', 'super_admin', 'director'], true);
+        $isOwner = (int)$comment['user_id'] === (int)$auth['user_id'];
+
+        if (!$isAdmin && !$isOwner) {
+            respond(403, null, 'Bạn không có quyền xóa bình luận này', false);
+        }
+
+        $fetchStmt = $this->db->prepare("SELECT attachments, body FROM comments WHERE (id = ? OR parent_id = ?) AND tenant_id = ?");
+        $fetchStmt->execute([$commentId, $commentId, $auth['tenant_id']]);
+        $rows = $fetchStmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+        foreach ($rows as $r) {
+            if (!empty($r['attachments'])) deleteAttachmentFiles($r['attachments']);
+            if (!empty($r['body'])) deleteAttachmentFiles($r['body']);
+        }
+
+        $delStmt = $this->db->prepare("DELETE FROM comments WHERE (id = ? OR parent_id = ?) AND tenant_id = ?");
+        $delStmt->execute([$commentId, $commentId, $auth['tenant_id']]);
+
+        respond(200, null, 'Xóa bình luận nhóm thành công');
+    }
 }
