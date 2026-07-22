@@ -1503,7 +1503,7 @@ const RoundsInner = ({ isActive }: { isActive: boolean }) => {
                                 gap: '4px'
                               }}
                             >
-                              <Building2 size={13} /> {t("Theo Dự Án")}
+                              <Building2 size={13} /> {t("Dự Án")}
                             </button>
                             <button
                               type="button"
@@ -1529,7 +1529,7 @@ const RoundsInner = ({ isActive }: { isActive: boolean }) => {
                                 gap: '4px'
                               }}
                             >
-                              <Layers size={13} /> {t("Theo Chiến Dịch")}
+                              <Layers size={13} /> {t("Chiến Dịch")}
                             </button>
                           </div>
                         </div>

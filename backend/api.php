@@ -6881,7 +6881,9 @@ switch ($action) {
                     $stmtCheckProj = $conn->prepare("SELECT project_id FROM distribution_rounds WHERE id = ?");
                     $stmtCheckProj->bind_param("i", $id);
                     $stmtCheckProj->execute();
-                    $rProjId = $stmtCheckProj->get_result()->fetch_column();
+                    $resCheckProj = $stmtCheckProj->get_result();
+                    $rRow = $resCheckProj ? $resCheckProj->fetch_assoc() : null;
+                    $rProjId = $rRow ? $rRow['project_id'] : null;
                     $stmtCheckProj->close();
                     if (!$rProjId || !in_array((int)$rProjId, $projIds, true)) {
                         throw new Exception("Bạn không có quyền chỉnh sửa Vòng phân bổ thuộc dự án khác.");
@@ -7005,7 +7007,7 @@ switch ($action) {
                 }
             }
 
-            logAdminAction($conn, $decodedUser['id'], 'EDIT_ROUND', ['id' => $id, 'round_name' => $name, 'consultants' => $consultants]);
+            logAdminAction($conn, $userId, 'EDIT_ROUND', ['id' => $id, 'round_name' => $name, 'consultants' => $consultants]);
             $conn->commit();
             echo json_encode(['success' => true]);
         } catch (Exception $e) {
