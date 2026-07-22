@@ -354,12 +354,25 @@ class CheckInController {
 
         $inTimeStr = $today . ' ' . $currentTime;
 
-        // Insert check-in log
-        $insert = $this->db->prepare("
-            INSERT INTO check_ins (user_id, check_in_date, check_in_time, late_minutes, selfie_url, status, reason)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-        ");
-        $insert->execute([$auth['user_id'], $today, $inTimeStr, $lateMinutes, $selfieUrl ?: null, $status, $reason ?: null]);
+        // Insert check-in log with self-healing schema check
+        try {
+            $insert = $this->db->prepare("
+                INSERT INTO check_ins (user_id, check_in_date, check_in_time, late_minutes, selfie_url, status, reason)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            ");
+            $insert->execute([$auth['user_id'], $today, $inTimeStr, $lateMinutes, $selfieUrl ?: null, $status, $reason ?: null]);
+        } catch (\Throwable $e) {
+            // Auto-heal check_ins table if columns are missing in DB schema
+            try { $this->db->exec("ALTER TABLE check_ins ADD COLUMN late_minutes INT DEFAULT 0 AFTER check_in_time"); } catch (\Throwable $ex) {}
+            try { $this->db->exec("ALTER TABLE check_ins ADD COLUMN selfie_url TEXT NULL AFTER late_minutes"); } catch (\Throwable $ex) {}
+            try { $this->db->exec("ALTER TABLE check_ins ADD COLUMN reason TEXT NULL AFTER status"); } catch (\Throwable $ex) {}
+            
+            $insert = $this->db->prepare("
+                INSERT INTO check_ins (user_id, check_in_date, check_in_time, late_minutes, selfie_url, status, reason)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            ");
+            $insert->execute([$auth['user_id'], $today, $inTimeStr, $lateMinutes, $selfieUrl ?: null, $status, $reason ?: null]);
+        }
         
         $newId = (int)$this->db->lastInsertId();
 

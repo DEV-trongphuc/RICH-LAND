@@ -151,13 +151,37 @@ try {
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
     ");
 
-    // 3. Ensure check_ins table has check-out and early leave columns
+    // 3. Ensure check_ins table has all necessary columns (late_minutes, selfie_url, reason, check_out_time, early_minutes, check_out_status)
+    $chkColLM = $conn->query("SHOW COLUMNS FROM check_ins LIKE 'late_minutes'");
+    if (!$chkColLM || $chkColLM->num_rows == 0) {
+        $conn->query("ALTER TABLE check_ins ADD COLUMN late_minutes INT DEFAULT 0 COMMENT 'Số phút đi trễ' AFTER check_in_time");
+        $logMsg("Đã bổ sung cột late_minutes vào bảng check_ins.", "success");
+    }
+    $chkColSelfie = $conn->query("SHOW COLUMNS FROM check_ins LIKE 'selfie_url'");
+    if (!$chkColSelfie || $chkColSelfie->num_rows == 0) {
+        $conn->query("ALTER TABLE check_ins ADD COLUMN selfie_url TEXT NULL COMMENT 'Ảnh selfie chấm công' AFTER late_minutes");
+        $logMsg("Đã bổ sung cột selfie_url vào bảng check_ins.", "success");
+    }
+    $chkColReason = $conn->query("SHOW COLUMNS FROM check_ins LIKE 'reason'");
+    if (!$chkColReason || $chkColReason->num_rows == 0) {
+        $conn->query("ALTER TABLE check_ins ADD COLUMN reason TEXT NULL COMMENT 'Lý do đi trễ / bổ sung' AFTER status");
+        $logMsg("Đã bổ sung cột reason vào bảng check_ins.", "success");
+    }
     $chkColCO = $conn->query("SHOW COLUMNS FROM check_ins LIKE 'check_out_time'");
     if (!$chkColCO || $chkColCO->num_rows == 0) {
         $conn->query("ALTER TABLE check_ins ADD COLUMN check_out_time DATETIME NULL COMMENT 'Thời gian chấm công ra ca' AFTER check_in_time");
         $conn->query("ALTER TABLE check_ins ADD COLUMN early_minutes INT DEFAULT 0 COMMENT 'Số phút về sớm' AFTER late_minutes");
         $conn->query("ALTER TABLE check_ins ADD COLUMN check_out_status VARCHAR(50) DEFAULT NULL COMMENT 'Trạng thái ra ca (on_time, early)' AFTER status");
         $logMsg("Đã bổ sung các cột chấm công ra ca (check_out_time, early_minutes, check_out_status) vào bảng check_ins.", "success");
+    }
+
+    // Ensure signature_url in users table is LONGTEXT to support Base64 images or long URLs safely
+    $chkSigCol = $conn->query("SHOW COLUMNS FROM users LIKE 'signature_url'");
+    if (!$chkSigCol || $chkSigCol->num_rows == 0) {
+        $conn->query("ALTER TABLE users ADD COLUMN signature_url LONGTEXT NULL COMMENT 'Chữ ký mẫu cá nhân'");
+        $logMsg("Đã bổ sung cột signature_url vào bảng users.", "success");
+    } else {
+        $conn->query("ALTER TABLE users MODIFY COLUMN signature_url LONGTEXT NULL COMMENT 'Chữ ký mẫu cá nhân'");
     }
 
     // 4. Ensure default system settings exist for advanced features

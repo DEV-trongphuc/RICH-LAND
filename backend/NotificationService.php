@@ -276,7 +276,7 @@ class NotificationService {
                         . "Yêu cầu của $userName ngày $today đã được $statusText bởi quản trị viên.\n"
                         . (!empty($reason) ? "  • Ghi chú: \"$reason\"\n" : ""),
                     'tg_msg' => "✅ <b>[ KẾT QUẢ DUYỆT " . ($isSupplementary ? "CẬP NHẬT CÔNG" : "ĐI TRỄ") . " ]</b>\n\n"
-                        . "Yêu cầu của <b>" . htmlspecialchars($userName) . "</b> ngày <code>$today</code> đã được <b>$statusText</b> bởi quản trị viên.\n"
+                        . "Yêu cầu của <b>" . htmlspecialchars($userName) . "</b> ngày <code>$today</code> đã được <b>$statusText</b> bởi quản trị viên.\n",
                     'email_subject' => "[RICH LAND] Phê duyệt " . ($isSupplementary ? "cập nhật công" : "đi trễ") . " - Ngày " . $today,
                     'email_title' => "KẾT QUẢ PHÊ DUYỆT CHẤM CÔNG",
                     'email_content' => "Chào <strong>" . htmlspecialchars($userName) . "</strong>,<br/><br/>" .

@@ -481,6 +481,30 @@ function parse_telegram_direct_logs($logFile, $conn = null) {
     return $logs;
 }
 
+if (!function_exists('saveSignatureBase64ToFile')) {
+    function saveSignatureBase64ToFile($sigVal, $userId) {
+        if (empty($sigVal) || strpos($sigVal, 'data:image/') !== 0) {
+            return $sigVal;
+        }
+        if (preg_match('/^data:image\/(\w+);base64,/', $sigVal)) {
+            $base64Data = substr($sigVal, strpos($sigVal, ',') + 1);
+            $decoded = base64_decode($base64Data);
+            if ($decoded !== false) {
+                $sigDir = __DIR__ . '/uploads/signatures/';
+                if (!file_exists($sigDir)) {
+                    @mkdir($sigDir, 0755, true);
+                }
+                $filename = 'sig_' . (int)$userId . '_' . time() . '_' . substr(md5(uniqid()), 0, 6) . '.png';
+                $filePath = $sigDir . $filename;
+                if (@file_put_contents($filePath, $decoded)) {
+                    return 'uploads/signatures/' . $filename;
+                }
+            }
+        }
+        return $sigVal;
+    }
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit(0);
 }
@@ -12998,8 +13022,9 @@ switch ($action) {
 
                 // Save signature_url if provided
                 if (isset($input['signature_url'])) {
+                    $sigPath = saveSignatureBase64ToFile($input['signature_url'], $id);
                     $stmtSig = $conn->prepare("UPDATE users SET signature_url = ? WHERE id = ?");
-                    $stmtSig->bind_param("si", $input['signature_url'], $id);
+                    $stmtSig->bind_param("si", $sigPath, $id);
                     $stmtSig->execute();
                     $stmtSig->close();
                 }
@@ -13089,6 +13114,8 @@ switch ($action) {
                     }
                 } elseif ($key === 'avatar' && trim((string)$val) === '') {
                     $val = null;
+                } elseif ($key === 'signature_url' && !empty($val)) {
+                    $val = saveSignatureBase64ToFile($val, $userId);
                 } elseif ($val === '') {
                     $val = null;
                 }
@@ -13363,6 +13390,9 @@ switch ($action) {
         // 1. Update users table
         if (isset($input['signature_url'])) {
             $sigVal = !empty($input['signature_url']) ? trim($input['signature_url']) : null;
+            if (!empty($sigVal)) {
+                $sigVal = saveSignatureBase64ToFile($sigVal, $targetUserId);
+            }
             $stmtSig = $conn->prepare("UPDATE users SET signature_url = ? WHERE id = ?");
             $stmtSig->bind_param("si", $sigVal, $targetUserId);
             $stmtSig->execute();

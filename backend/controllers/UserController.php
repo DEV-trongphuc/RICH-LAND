@@ -121,7 +121,7 @@ class UserController {
         if (!in_array($auth['role'], ['admin', 'super_admin', 'superadmin', 'director'], true) && (int)$auth['user_id'] !== (int)$id) respond(403, null, 'Không có quyền cập nhật thông tin người khác', false);
         
         $b = getBody();
-        $fields = ['email', 'full_name', 'phone', 'avatar_url', 'is_active', 'dob', 'gender', 'citizen_id', 'address', 'bank_name', 'bank_account', 'permissions_json'];
+        $fields = ['email', 'full_name', 'phone', 'avatar_url', 'signature_url', 'is_active', 'dob', 'gender', 'citizen_id', 'address', 'bank_name', 'bank_account', 'permissions_json'];
         if (in_array($auth['role'], ['admin', 'super_admin', 'superadmin', 'director'], true)) {
             $fields[] = 'role';
             $fields[] = 'is_active';
@@ -134,6 +134,25 @@ class UserController {
             }
             if (isset($b['is_active']) && !$b['is_active']) {
                 respond(403, null, 'Bạn không thể tự khóa tài khoản của chính mình', false);
+            }
+        }
+
+        // Save base64 signature as image file if provided
+        if (!empty($b['signature_url']) && strpos($b['signature_url'], 'data:image/') === 0) {
+            if (preg_match('/^data:image\/(\w+);base64,/', $b['signature_url'])) {
+                $base64Data = substr($b['signature_url'], strpos($b['signature_url'], ',') + 1);
+                $decoded = base64_decode($base64Data);
+                if ($decoded !== false) {
+                    $sigDir = __DIR__ . '/../uploads/signatures/';
+                    if (!file_exists($sigDir)) {
+                        @mkdir($sigDir, 0755, true);
+                    }
+                    $sigFileName = 'sig_' . (int)$id . '_' . time() . '_' . substr(md5(uniqid()), 0, 6) . '.png';
+                    $sigPath = $sigDir . $sigFileName;
+                    if (@file_put_contents($sigPath, $decoded)) {
+                        $b['signature_url'] = 'uploads/signatures/' . $sigFileName;
+                    }
+                }
             }
         }
 
