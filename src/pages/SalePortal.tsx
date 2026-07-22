@@ -5048,6 +5048,23 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
             aiMessage = `Hệ thống vận hành tối ưu. Các công việc hiện được sắp xếp đúng kế hoạch.`;
           }
 
+          let mobileAiMessage = '';
+          if (myOverdueCount > 0) {
+            mobileAiMessage = `${myOverdueCount} việc quá hạn cần làm`;
+          } else if (myHighPriorityTask) {
+            mobileAiMessage = `1 việc ưu tiên cao`;
+          } else if (myDueTodayCount > 0) {
+            mobileAiMessage = `${myDueTodayCount} việc đến hạn`;
+          } else if (totalOverdueCount > 0) {
+            mobileAiMessage = `${totalOverdueCount} việc quá hạn đội ngũ`;
+          } else if (teamHighPriorityTask) {
+            mobileAiMessage = `1 việc ưu tiên cao`;
+          } else if (totalDueTodayCount > 0) {
+            mobileAiMessage = `${totalDueTodayCount} việc đến hạn`;
+          } else {
+            mobileAiMessage = `0 việc cần làm`;
+          }
+
           const meetingCount = upcomingMeetingsList.length;
 
           return (
@@ -5069,26 +5086,27 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                 gap: isMobile ? '6px' : '1rem',
                 boxShadow: 'var(--shadow-xs)'
               }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? '6px' : '10px', flex: 1, minWidth: 0 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? '8px' : '10px', flex: 1, minWidth: 0 }}>
                   <div style={{
-                    width: isMobile ? '28px' : '38px',
-                    height: isMobile ? '28px' : '38px',
+                    width: isMobile ? '32px' : '38px',
+                    height: isMobile ? '32px' : '38px',
                     borderRadius: isMobile ? '8px' : '10px',
                     background: 'rgba(189, 29, 45, 0.08)',
                     color: 'var(--color-primary, #BD1D2D)',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    flexShrink: 0
+                    flexShrink: 0,
+                    alignSelf: 'center'
                   }}>
-                    <Sparkles size={isMobile ? 14 : 18} />
+                    <Sparkles size={isMobile ? 15 : 18} />
                   </div>
-                  <div style={{ minWidth: 0 }}>
-                    <span style={{ fontSize: isMobile ? '0.65rem' : '0.725rem', fontWeight: 800, color: 'var(--color-primary, #BD1D2D)', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  <div style={{ minWidth: 0, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                    <span style={{ fontSize: isMobile ? '0.62rem' : '0.725rem', fontWeight: 800, color: 'var(--color-primary, #BD1D2D)', textTransform: 'uppercase', letterSpacing: '0.4px', display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', lineHeight: 1.2 }}>
                       {isMobile ? t('GỢI Ý AI') : t('GỢI Ý ƯU TIÊN TỪ AI')}
                     </span>
-                    <p style={{ margin: '1px 0 0 0', fontSize: isMobile ? '0.75rem' : '0.85rem', fontWeight: 600, color: 'var(--color-text)', overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: isMobile ? 1 : 2, WebkitBoxOrient: 'vertical' }}>
-                      {aiMessage}
+                    <p style={{ margin: '2px 0 0 0', fontSize: isMobile ? '0.75rem' : '0.85rem', fontWeight: 700, color: 'var(--color-text)', overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: isMobile ? 1 : 2, WebkitBoxOrient: 'vertical', lineHeight: 1.2 }}>
+                      {isMobile ? mobileAiMessage : aiMessage}
                     </p>
                   </div>
                 </div>
@@ -5100,15 +5118,16 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                     border: '1px solid rgba(189, 29, 45, 0.2)',
                     color: 'var(--color-primary, #BD1D2D)',
                     padding: isMobile ? '4px 8px' : '7px 14px',
-                    fontSize: isMobile ? '0.725rem' : '0.8rem',
+                    fontSize: isMobile ? '0.7rem' : '0.8rem',
                     fontWeight: 700,
-                    borderRadius: '8px',
+                    borderRadius: '6px',
                     display: 'flex',
                     alignItems: 'center',
                     gap: '4px',
                     cursor: 'pointer',
                     whiteSpace: 'nowrap',
                     flexShrink: 0,
+                    alignSelf: 'center',
                     transition: 'all 0.2s'
                   }}
                   className="hover-bg-light"
@@ -5130,28 +5149,29 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                 gap: isMobile ? '6px' : '1rem',
                 boxShadow: 'var(--shadow-xs)'
               }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? '6px' : '10px', flex: 1, minWidth: 0 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? '8px' : '10px', flex: 1, minWidth: 0 }}>
                   <div style={{
-                    width: isMobile ? '28px' : '38px',
-                    height: isMobile ? '28px' : '38px',
+                    width: isMobile ? '32px' : '38px',
+                    height: isMobile ? '32px' : '38px',
                     borderRadius: isMobile ? '8px' : '10px',
                     background: 'rgba(37, 99, 235, 0.08)',
                     color: '#2563EB',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    flexShrink: 0
+                    flexShrink: 0,
+                    alignSelf: 'center'
                   }}>
-                    <Calendar size={isMobile ? 14 : 18} />
+                    <Calendar size={isMobile ? 15 : 18} />
                   </div>
-                  <div style={{ minWidth: 0 }}>
-                    <span style={{ fontSize: isMobile ? '0.65rem' : '0.725rem', fontWeight: 800, color: '#2563EB', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  <div style={{ minWidth: 0, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                    <span style={{ fontSize: isMobile ? '0.62rem' : '0.725rem', fontWeight: 800, color: '#2563EB', textTransform: 'uppercase', letterSpacing: '0.4px', display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', lineHeight: 1.2 }}>
                       {isMobile ? t('LỊCH HẸN') : t('LỊCH HẸN GẶP SẮP DIỄN RA')}
                     </span>
-                    <p style={{ margin: '1px 0 0 0', fontSize: isMobile ? '0.75rem' : '0.85rem', fontWeight: 600, color: 'var(--color-text)', overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: isMobile ? 1 : 2, WebkitBoxOrient: 'vertical' }}>
+                    <p style={{ margin: '2px 0 0 0', fontSize: isMobile ? '0.75rem' : '0.85rem', fontWeight: 700, color: 'var(--color-text)', overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: isMobile ? 1 : 2, WebkitBoxOrient: 'vertical', lineHeight: 1.2 }}>
                       {meetingCount > 0 
-                        ? (isMobile ? `${meetingCount} cuộc hẹn gặp` : `Có ${meetingCount} cuộc hẹn gặp khách hàng đã được lên lịch trong kế hoạch.`)
-                        : t('Chưa có lịch hẹn')}
+                        ? (isMobile ? `${meetingCount} cuộc hẹn` : `Có ${meetingCount} cuộc hẹn gặp khách hàng đã được lên lịch trong kế hoạch.`)
+                        : (isMobile ? `0 cuộc hẹn` : t('Chưa có lịch hẹn'))}
                     </p>
                   </div>
                 </div>
@@ -5163,15 +5183,16 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                     border: '1px solid rgba(37, 99, 235, 0.2)',
                     color: '#2563EB',
                     padding: isMobile ? '4px 8px' : '7px 14px',
-                    fontSize: isMobile ? '0.725rem' : '0.8rem',
+                    fontSize: isMobile ? '0.7rem' : '0.8rem',
                     fontWeight: 700,
-                    borderRadius: '8px',
+                    borderRadius: '6px',
                     display: 'flex',
                     alignItems: 'center',
                     gap: '4px',
                     cursor: 'pointer',
                     whiteSpace: 'nowrap',
                     flexShrink: 0,
+                    alignSelf: 'center',
                     transition: 'all 0.2s'
                   }}
                   className="hover-bg-light"
