@@ -10505,7 +10505,8 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                           value={editEmployeeId}
                           onChange={(e) => setEditEmployeeId(e.target.value)}
                           placeholder="VD: RL-2026-089"
-                          style={{ fontWeight: 600, color: 'var(--color-primary)', fontSize: isMobile ? '0.8125rem' : '0.875rem', height: isMobile ? '36px' : '40px' }}
+                          disabled={!canEditUserAssets}
+                          style={{ fontWeight: 600, color: 'var(--color-primary)', fontSize: isMobile ? '0.8125rem' : '0.875rem', height: isMobile ? '36px' : '40px', opacity: !canEditUserAssets ? 0.7 : 1, cursor: !canEditUserAssets ? 'not-allowed' : 'text' }}
                         />
                       </div>
                       <div className="form-group">
@@ -10516,7 +10517,8 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                           value={editDepartment}
                           onChange={(e) => setEditDepartment(e.target.value)}
                           placeholder="VD: Phòng Kinh doanh 1"
-                          style={{ fontSize: isMobile ? '0.8125rem' : '0.875rem', height: isMobile ? '36px' : '40px' }}
+                          disabled={!canEditUserAssets}
+                          style={{ fontSize: isMobile ? '0.8125rem' : '0.875rem', height: isMobile ? '36px' : '40px', opacity: !canEditUserAssets ? 0.7 : 1, cursor: !canEditUserAssets ? 'not-allowed' : 'text' }}
                         />
                       </div>
                     </div>
@@ -10530,7 +10532,8 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                           value={editJobTitle}
                           onChange={(e) => setEditJobTitle(e.target.value)}
                           placeholder="VD: Chuyên viên Tư vấn"
-                          style={{ fontSize: isMobile ? '0.8125rem' : '0.875rem', height: isMobile ? '36px' : '40px' }}
+                          disabled={!canEditUserAssets}
+                          style={{ fontSize: isMobile ? '0.8125rem' : '0.875rem', height: isMobile ? '36px' : '40px', opacity: !canEditUserAssets ? 0.7 : 1, cursor: !canEditUserAssets ? 'not-allowed' : 'text' }}
                         />
                       </div>
                       <div className="form-group">
@@ -10546,6 +10549,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                           value={editContractType}
                           onChange={val => setEditContractType(String(val))}
                           placeholder={t('Chọn loại hợp đồng...')}
+                          disabled={!canEditUserAssets}
                         />
                       </div>
                     </div>
@@ -10558,7 +10562,8 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                           className="form-input"
                           value={editDateJoined}
                           onChange={(e) => setEditDateJoined(e.target.value)}
-                          style={{ fontSize: isMobile ? '0.8125rem' : '0.875rem', height: isMobile ? '36px' : '40px' }}
+                          disabled={!canEditUserAssets}
+                          style={{ fontSize: isMobile ? '0.8125rem' : '0.875rem', height: isMobile ? '36px' : '40px', opacity: !canEditUserAssets ? 0.7 : 1, cursor: !canEditUserAssets ? 'not-allowed' : 'text' }}
                         />
                       </div>
                       <div className="form-group">
@@ -10583,6 +10588,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                           placeholder={t('Chọn người quản lý trực tiếp...')}
                           searchable
                           showAvatars
+                          disabled={!canEditUserAssets}
                         />
                       </div>
                     </div>
