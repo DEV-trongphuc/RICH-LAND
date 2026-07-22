@@ -2715,9 +2715,10 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
                         type="button" 
                         disabled={loadingViewProject}
                         onClick={() => openProjectDetail(erpMeta.project_id)} 
-                        style={{ background: 'none', border: 'none', color: 'var(--color-primary)', fontSize: '0.725rem', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', padding: 0 }}
+                        style={{ background: 'none', border: 'none', color: 'var(--color-text-muted)', fontSize: '0.725rem', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', padding: 0 }}
+                        className="hover-opacity"
                       >
-                        {loadingViewProject ? <Loader2 size={12} className="spin" /> : <Eye size={12} />} {t('Xem dự án')}
+                        {loadingViewProject ? <Loader2 size={12} className="spin" /> : <Eye size={13} style={{ color: 'var(--color-text-muted)' }} />} {t('Xem dự án')}
                       </button>
                     )}
                   </div>
@@ -2753,9 +2754,10 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
                         type="button" 
                         disabled={loadingViewCampaign}
                         onClick={() => openCampaignDetail(erpMeta.campaign_id)} 
-                        style={{ background: 'none', border: 'none', color: 'var(--color-primary)', fontSize: '0.725rem', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', padding: 0 }}
+                        style={{ background: 'none', border: 'none', color: 'var(--color-text-muted)', fontSize: '0.725rem', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', padding: 0 }}
+                        className="hover-opacity"
                       >
-                        {loadingViewCampaign ? <Loader2 size={12} className="spin" /> : <Eye size={12} />} {t('Xem chiến dịch')}
+                        {loadingViewCampaign ? <Loader2 size={12} className="spin" /> : <Eye size={13} style={{ color: 'var(--color-text-muted)' }} />} {t('Xem chiến dịch')}
                       </button>
                     )}
                   </div>

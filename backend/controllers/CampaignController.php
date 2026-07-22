@@ -143,6 +143,38 @@ class CampaignController {
         }
     }
 
+    public function show(array $auth, int $id): void {
+        $stmt = $this->db->prepare("
+            SELECT mc.*, 
+                   (SELECT name FROM projects WHERE id = mc.project_id) as project_name, 
+                   (SELECT code FROM projects WHERE id = mc.project_id) as project_code 
+            FROM marketing_campaigns mc 
+            WHERE mc.id = ?
+        ");
+        $stmt->execute([$id]);
+        $campaign = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$campaign) {
+            respond(404, null, 'Chiến dịch không tồn tại', false);
+        }
+
+        // Fetch roster members if user_ids exist
+        $roster = [];
+        if (!empty($campaign['user_ids'])) {
+            $uIds = array_filter(array_map('intval', explode(',', $campaign['user_ids'])));
+            if (!empty($uIds)) {
+                $in = implode(',', $uIds);
+                try {
+                    $uStmt = $this->db->query("SELECT id, name as full_name, email, role, avatar_url FROM users WHERE id IN ($in)");
+                    $roster = $uStmt->fetchAll(PDO::FETCH_ASSOC);
+                } catch (Exception $e) {}
+            }
+        }
+        $campaign['roster'] = $roster;
+
+        respond(200, $campaign, 'Lấy chi tiết chiến dịch thành công');
+    }
+
     public function store(array $auth): void {
         $b = getBody();
         $name = trim($b['name'] ?? '');

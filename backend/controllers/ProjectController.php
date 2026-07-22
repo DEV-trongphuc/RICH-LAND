@@ -207,6 +207,49 @@ class ProjectController {
         }
     }
 
+    public function show(array $auth, int $id): void {
+        $this->ensureColumnsExist();
+        $tenantId = getTenantId($auth);
+
+        $stmt = $this->db->prepare("SELECT p.* FROM projects p WHERE p.id = ?");
+        $stmt->execute([$id]);
+        $project = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$project) {
+            respond(404, null, 'Dự án không tồn tại', false);
+        }
+
+        // Fetch roster
+        try {
+            $rStmt = $this->db->prepare("
+                SELECT u.id, u.name as full_name, u.email, u.role, u.avatar_url
+                FROM users u
+                JOIN project_roster pr ON u.id = pr.user_id
+                WHERE pr.project_id = ?
+            ");
+            $rStmt->execute([$id]);
+            $project['roster'] = $rStmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (Exception $e) {
+            $project['roster'] = [];
+        }
+
+        // Fetch documents
+        try {
+            $dStmt = $this->db->prepare("
+                SELECT id, name, file_path, file_size, mime_type, created_at
+                FROM project_documents
+                WHERE project_id = ?
+                ORDER BY created_at DESC
+            ");
+            $dStmt->execute([$id]);
+            $project['documents'] = $dStmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (Exception $e) {
+            $project['documents'] = [];
+        }
+
+        respond(200, $project, 'Lấy chi tiết dự án thành công');
+    }
+
     private function generateUniqueCode(string $projectName): string {
         // Lấy chữ cái đầu của các từ
         $words = explode(' ', preg_replace('/\s+/', ' ', trim($projectName)));
