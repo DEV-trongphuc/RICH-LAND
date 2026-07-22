@@ -1846,8 +1846,14 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
   }, [coopSlip?.attachment_url]);
 
   const [isSignModalOpen, setIsSignModalOpen] = useState(false);
-  const [signatureMethod, setSignatureMethod] = useState<'draw' | 'upload'>('draw');
+  const [signatureMethod, setSignatureMethod] = useState<'draw' | 'upload' | 'saved'>(() => (user?.signature_url || currentUser?.signature_url) ? 'saved' : 'draw');
   const [uploadedSignatureImg, setUploadedSignatureImg] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (isSignModalOpen && (user?.signature_url || currentUser?.signature_url)) {
+      setSignatureMethod('saved');
+    }
+  }, [isSignModalOpen, user?.signature_url, currentUser?.signature_url]);
   const canvasRef = React.useRef<HTMLCanvasElement | null>(null);
   const isDrawing = React.useRef(false);
 
@@ -2277,7 +2283,14 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
   };
 
   const handleSubmitSignature = () => {
-    if (signatureMethod === 'upload') {
+    if (signatureMethod === 'saved') {
+      const mySavedSig = user?.signature_url || currentUser?.signature_url;
+      if (!mySavedSig) {
+        addToast('Bạn chưa thiết lập Chữ ký Điện tử Cá nhân trong Quản lý Tài khoản.', 'error');
+        return;
+      }
+      handleSignCoopSlip(mySavedSig);
+    } else if (signatureMethod === 'upload') {
       if (!uploadedSignatureImg) {
         addToast('Vui lòng tải file ảnh chữ ký của bạn lên trước khi xác nhận', 'error');
         return;
@@ -11568,6 +11581,14 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
               <div style={{ display: 'flex', gap: '10px', borderBottom: '1px solid var(--color-border)', paddingBottom: '0.75rem' }}>
                 <button
                   type="button"
+                  className={`btn sm ${signatureMethod === 'saved' ? 'primary' : 'outline'}`}
+                  style={{ flex: 1, height: '36px', fontSize: '0.8125rem', fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+                  onClick={() => setSignatureMethod('saved')}
+                >
+                  <UserCheck size={14} /> Chữ ký cá nhân đã lưu
+                </button>
+                <button
+                  type="button"
                   className={`btn sm ${signatureMethod === 'draw' ? 'primary' : 'outline'}`}
                   style={{ flex: 1, height: '36px', fontSize: '0.8125rem', fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
                   onClick={() => setSignatureMethod('draw')}
@@ -11584,7 +11605,28 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                 </button>
               </div>
 
-              {signatureMethod === 'draw' ? (
+              {signatureMethod === 'saved' ? (
+                <div>
+                  <h3 style={{ fontSize: '0.875rem', fontWeight: 700, marginBottom: '0.5rem', color: 'var(--color-text)' }}>2. Chữ ký Điện tử Cá nhân đã đăng ký:</h3>
+                  {(user?.signature_url || currentUser?.signature_url) ? (
+                    <div style={{ padding: '1.25rem', border: '2px dashed var(--color-primary-light, var(--color-border))', borderRadius: '10px', background: 'var(--color-bg-light)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '0.75rem' }}>
+                      <img 
+                        src={(user?.signature_url || currentUser?.signature_url)?.startsWith('http') || (user?.signature_url || currentUser?.signature_url)?.startsWith('data:') ? (user?.signature_url || currentUser?.signature_url)! : `/${user?.signature_url || currentUser?.signature_url}`} 
+                        alt="Chữ ký cá nhân mẫu" 
+                        style={{ maxHeight: '130px', objectFit: 'contain' }} 
+                      />
+                      <div style={{ textAlign: 'center' }}>
+                        <p style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text)', margin: 0 }}>Chữ ký điện tử của {user?.name || currentUser?.full_name}</p>
+                        <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>Chữ ký mẫu chuẩn đã thiết lập trong Quản lý Tài khoản</span>
+                      </div>
+                    </div>
+                  ) : (
+                    <div style={{ padding: '1.25rem', border: '1px dashed var(--color-border)', borderRadius: '10px', background: 'var(--color-bg-light)', textAlign: 'center', color: 'var(--color-text-muted)', fontSize: '0.8125rem' }}>
+                      Bạn chưa thiết lập chữ ký mẫu cá nhân trong <strong>Quản lý tài khoản → Thông tin cá nhân</strong>. Vui lòng chuyển sang tab <strong>Vẽ chữ ký tay</strong> hoặc <strong>Tải file ảnh</strong>.
+                    </div>
+                  )}
+                </div>
+              ) : signatureMethod === 'draw' ? (
                 <div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
                     <h3 style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)' }}>2. Vẽ chữ ký của bạn lên khung dưới đây:</h3>

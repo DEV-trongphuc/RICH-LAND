@@ -46,6 +46,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       ...u,
       name: u.full_name || u.name || u.username || '',
       avatar: u.avatar || u.avatar_url || '',
+      signature_url: u.signature_url !== undefined ? u.signature_url : (u.signature_img || null),
       role
     };
   };
@@ -95,13 +96,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             const data = res.data.data || res.data;
             const latestAvatar = data.avatar_url || data.avatar;
             const latestName = data.full_name || data.name;
+            const latestSignatureUrl = data.signature_url !== undefined ? data.signature_url : (data.signature_img || user.signature_url);
             const latestJobTitle = data.job_title || (data.address ? (() => { try { return JSON.parse(data.address)?.erp_profile?.job_title; } catch(e) { return null; } })() : null);
             if (
               (latestAvatar && latestAvatar !== user.avatar) || 
               (latestName && latestName !== user.name) ||
-              (latestJobTitle !== undefined && latestJobTitle !== user.job_title)
+              (latestJobTitle !== undefined && latestJobTitle !== user.job_title) ||
+              (latestSignatureUrl !== undefined && latestSignatureUrl !== user.signature_url)
             ) {
-              updateUser({ avatar: latestAvatar, name: latestName, job_title: latestJobTitle || '' });
+              updateUser({ avatar: latestAvatar, name: latestName, job_title: latestJobTitle || '', signature_url: latestSignatureUrl });
             }
           }
         } catch (err) {
