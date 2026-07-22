@@ -56,7 +56,8 @@ if (!function_exists('runRecurringTasksCron')) {
             if ($pattern === 'daily') {
                 $shouldGenerate = true;
             } elseif ($pattern === 'weekly') {
-                if (in_array($todayDayOfWeek, $weeklyDays)) {
+                $weeklyDaysInt = array_map('intval', (array)$weeklyDays);
+                if (in_array($todayDayOfWeek, $weeklyDaysInt, true)) {
                     $shouldGenerate = true;
                 }
             } elseif ($pattern === 'monthly') {
@@ -151,7 +152,7 @@ if (!function_exists('runRecurringTasksCron')) {
                 $link = $row['link'] ?: null;
 
                 $stmtInsert->bind_param(
-                    "iiisssssssiiis",
+                    "iiissssssisiiis",
                     $tenantId,
                     $userId,
                     $createdBy,

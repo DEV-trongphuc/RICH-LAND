@@ -2694,6 +2694,67 @@ function checkCheckInSlaEscalation($conn) {
     }
 }
 
+function checkTaskDueSlaAlerts($conn) {
+    logSync("Running checkTaskDueSlaAlerts...");
+    
+    $sql = "SELECT id, tenant_id, user_id, created_by, subject, due_date, body 
+            FROM activities 
+            WHERE type = 'task' 
+              AND status = 'planned' 
+              AND deleted_at IS NULL 
+              AND due_date IS NOT NULL 
+              AND due_date <= NOW()
+              AND (body NOT LIKE '%\"due_sla_notified\":true%' OR body IS NULL)
+            LIMIT 50";
+            
+    $res = $conn->query($sql);
+    if ($res && $res->num_rows > 0) {
+        $notifStmt = $conn->prepare("
+            INSERT INTO notifications (user_id, tenant_id, title, body, type, link)
+            VALUES (?, ?, ?, ?, 'task_overdue', ?)
+        ");
+        
+        while ($row = $res->fetch_assoc()) {
+            $taskId = (int)$row['id'];
+            $tenantId = (int)$row['tenant_id'];
+            $userId = !empty($row['user_id']) ? (int)$row['user_id'] : null;
+            $createdBy = !empty($row['created_by']) ? (int)$row['created_by'] : null;
+            $subject = $row['subject'];
+            $dueDate = $row['due_date'];
+            
+            $title = "CẢNH BÁO SLA: Công việc quá hạn";
+            $body = "Công việc \"" . $subject . "\" đã quá hạn xử lý (thời hạn: " . date('H:i d/m/Y', strtotime($dueDate)) . ")!";
+            $link = "/activities";
+
+            $recipients = array_filter(array_unique([$userId, $createdBy]));
+            foreach ($recipients as $targetUid) {
+                if ($notifStmt && $targetUid) {
+                    $notifStmt->bind_param("iisss", $targetUid, $tenantId, $title, $body, $link);
+                    $notifStmt->execute();
+                }
+            }
+
+            // Mark task as notified
+            $bodyData = !empty($row['body']) ? json_decode($row['body'], true) : [];
+            if (!is_array($bodyData)) $bodyData = [];
+            $bodyData['due_sla_notified'] = true;
+            $newBodyJson = json_encode($bodyData, JSON_UNESCAPED_UNICODE);
+
+            $upd = $conn->prepare("UPDATE activities SET body = ? WHERE id = ?");
+            if ($upd) {
+                $upd->bind_param("si", $newBodyJson, $taskId);
+                $upd->execute();
+                $upd->close();
+            }
+
+            logSync("Sent Task Overdue SLA Alert for Task #$taskId ($subject)");
+        }
+        if ($notifStmt) {
+            $notifStmt->close();
+        }
+    }
+}
+
 function checkCapiStuckAlert($conn) {
     logSync("Running checkCapiStuckAlert...");
     $thresholdHours = (int) get_system_setting($conn, 'capi_stuck_alert_threshold_hours') ?: 24;
@@ -3263,6 +3324,13 @@ if (!defined('DIAG_TOKEN')) {
         checkCheckInSlaEscalation($conn);
     } catch (Exception $e) {
         logSync("Error running checkCheckInSlaEscalation: " . $e->getMessage());
+    }
+
+    // --- Chạy kiểm tra cảnh báo SLA thời hạn công việc quá hạn ---
+    try {
+        checkTaskDueSlaAlerts($conn);
+    } catch (Exception $e) {
+        logSync("Error running checkTaskDueSlaAlerts: " . $e->getMessage());
     }
 
     // --- Chạy kiểm tra cảnh báo tắc nghẽn Meta CAPI ---

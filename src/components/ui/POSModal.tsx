@@ -628,7 +628,7 @@ export const POSModal: React.FC<{ onClose: () => void; defaultContact?: Contact 
                 {/* Shipping Fee */}
                 <div style={{ marginBottom: '0.875rem', padding: '0.75rem 0.875rem', background: 'var(--color-bg)', borderRadius: '12px', border: '1px solid var(--color-border-light)' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-                    <span style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--color-text-muted)' }}>CHI PHÍ DỊCH VỤ PHÁT SINH</span>
+                    <span style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--color-text-muted)' }}>CHI PHÍ PHÁT SINH</span>
                     <div style={{ display: 'flex', background: 'var(--color-surface)', padding: '2px', borderRadius: '6px', border: '1px solid var(--color-border-light)' }}>
                       <button 
                         type="button"
