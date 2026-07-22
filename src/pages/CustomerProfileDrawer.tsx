@@ -12066,32 +12066,65 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
             {/* Document Reader Area */}
             <div>
               <h3 style={{ fontSize: '0.875rem', fontWeight: 700, marginBottom: '0.5rem', color: 'var(--color-text)' }}>1. Đọc tài liệu đính kèm:</h3>
-              {coopSlip.attachment_url ? (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                  {coopSlip.attachment_url.split(',').map((url: string, urlIdx: number) => (
-                    <div key={urlIdx} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 16px', background: 'var(--color-bg-light)', borderRadius: '10px', border: '1px solid var(--color-border)' }}>
-                      <FileText size={24} style={{ color: 'var(--color-primary)' }} />
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <p style={{ fontSize: '0.825rem', fontWeight: 700, margin: 0, color: 'var(--color-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                          {url.includes('deposits/') || url.includes('_UNC') || url.includes('1784734208') ? 'UNC - Chứng từ Ủy nhiệm chi Đặt cọc Đợt 1' : (url.split('/').pop() || 'Tài liệu hợp tác đính kèm')}
-                        </p>
-                        <a 
-                          href={`https://open.domation.net/richland/${url}`} 
-                          target="_blank" 
-                          rel="noreferrer" 
-                          style={{ fontSize: '0.75rem', color: 'var(--color-primary)', fontWeight: 600, textDecoration: 'underline', marginTop: '2px', display: 'inline-block' }}
-                        >
-                          Bấm để mở xem tài liệu ở tab mới ↗
-                        </a>
-                      </div>
+              {(() => {
+                const modalAttachmentsList: { name: string; path: string }[] = [];
+                const addedPaths = new Set<string>();
+
+                if (coopSlip?.attachment_url) {
+                  coopSlip.attachment_url.split(',').map((s: string) => s.trim()).filter(Boolean).forEach((fileUrl: string) => {
+                    if (!addedPaths.has(fileUrl)) {
+                      addedPaths.add(fileUrl);
+                      const filename = fileUrl.split('/').pop() || 'Tài liệu hợp tác';
+                      modalAttachmentsList.push({ name: filename, path: fileUrl });
+                    }
+                  });
+                }
+
+                if (Array.isArray(docs)) {
+                  docs.forEach((d: any) => {
+                    const p = d.path || d.file_path;
+                    if (p && !addedPaths.has(p)) {
+                      const cat = (d.category || d.folder || '').toLowerCase();
+                      const nameLower = (d.name || '').toLowerCase();
+                      if (cat.includes('cọc') || cat.includes('unc') || d.isMilestoneAttachment || nameLower.includes('unc') || p.toLowerCase().includes('deposits')) {
+                        addedPaths.add(p);
+                        modalAttachmentsList.push({ name: d.name || p.split('/').pop() || 'UNC Đặt cọc', path: p });
+                      }
+                    }
+                  });
+                }
+
+                if (modalAttachmentsList.length > 0) {
+                  return (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                      {modalAttachmentsList.map((item, urlIdx) => (
+                        <div key={urlIdx} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 16px', background: 'var(--color-bg-light)', borderRadius: '10px', border: '1px solid var(--color-border)' }}>
+                          <FileText size={24} style={{ color: 'var(--color-primary)' }} />
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <p style={{ fontSize: '0.825rem', fontWeight: 700, margin: 0, color: 'var(--color-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              {item.name}
+                            </p>
+                            <a 
+                              href={item.path.startsWith('http') ? item.path : `https://open.domation.net/richland/${item.path}`} 
+                              target="_blank" 
+                              rel="noreferrer" 
+                              style={{ fontSize: '0.75rem', color: 'var(--color-primary)', fontWeight: 600, textDecoration: 'underline', marginTop: '2px', display: 'inline-block' }}
+                            >
+                              Bấm để mở xem tài liệu ở tab mới ↗
+                            </a>
+                          </div>
+                        </div>
+                      ))}
                     </div>
-                  ))}
-                </div>
-              ) : (
-                <div style={{ padding: '1rem', textAlign: 'center', background: 'var(--color-bg-light)', border: '1px solid var(--color-border)', borderRadius: '8px', color: 'var(--color-text-muted)', fontSize: '0.8125rem' }}>
-                  Phiếu hợp tác này không đính kèm tệp tài liệu bổ sung. Vui lòng kiểm tra tỷ lệ phân chia bên dưới.
-                </div>
-              )}
+                  );
+                }
+
+                return (
+                  <div style={{ padding: '1rem', textAlign: 'center', background: 'var(--color-bg-light)', border: '1px solid var(--color-border)', borderRadius: '8px', color: 'var(--color-text-muted)', fontSize: '0.8125rem' }}>
+                    Phiếu hợp tác này không đính kèm tệp tài liệu bổ sung. Vui lòng kiểm tra tỷ lệ phân chia bên dưới.
+                  </div>
+                );
+              })()}
             </div>
 
             {/* Shares info recap */}
@@ -12127,9 +12160,10 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
-                gap: '12px'
+                gap: '16px',
+                flexWrap: 'wrap'
               }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: '1 1 auto', minWidth: '240px' }}>
                   <div style={{
                     background: 'white',
                     border: '1px solid var(--color-border)',
@@ -12137,7 +12171,8 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                     padding: '4px 8px',
                     maxHeight: '45px',
                     display: 'flex',
-                    alignItems: 'center'
+                    alignItems: 'center',
+                    flexShrink: 0
                   }}>
                     <img 
                       src={currentUser.signature_url.startsWith('http') || currentUser.signature_url.startsWith('data:') ? currentUser.signature_url : `https://open.domation.net/richland/${currentUser.signature_url.replace(/^\/+/, '')}`} 
@@ -12145,11 +12180,11 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                       style={{ maxHeight: '35px', objectFit: 'contain' }} 
                     />
                   </div>
-                  <div>
-                    <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--color-text)' }}>
+                  <div style={{ flex: '1' }}>
+                    <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--color-text)', lineHeight: 1.3 }}>
                       Chữ ký mẫu đã lưu của bạn
                     </div>
-                    <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '2px', lineHeight: 1.3 }}>
                       Điền chữ ký cá nhân chính chủ chỉ với 1-click
                     </div>
                   </div>
@@ -12171,7 +12206,10 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                     whiteSpace: 'nowrap',
                     display: 'flex',
                     alignItems: 'center',
-                    gap: '6px'
+                    gap: '6px',
+                    flex: '1 0 auto',
+                    justifyContent: 'center',
+                    maxWidth: '100%'
                   }}
                 >
                   <Zap size={15} />
