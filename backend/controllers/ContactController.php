@@ -401,6 +401,40 @@ class ContactController {
             }
         }
 
+        // Send co-care invitation notification to collaborators added during creation
+        if (!empty($b['collaborator_ids'])) {
+            $newCollabs = array_filter(array_map('trim', explode(',', $b['collaborator_ids'] ?? '')));
+            if (!empty($newCollabs)) {
+                $fullName = trim($b['first_name'] . ' ' . ($b['last_name'] ?? ''));
+                require_once __DIR__ . '/../NotificationService.php';
+                foreach ($newCollabs as $collabRawId) {
+                    $collabRawId = (int)$collabRawId;
+                    if ($collabRawId > 0) {
+                        $targetUserId = $collabRawId;
+                        $stmtMap = $this->db->prepare("
+                            SELECT u.id FROM users u 
+                            LEFT JOIN consultants c ON (u.email = c.email OR u.id = c.id) 
+                            WHERE c.id = ? OR u.id = ? 
+                            LIMIT 1
+                        ");
+                        $stmtMap->execute([$collabRawId, $collabRawId]);
+                        if ($mappedUId = $stmtMap->fetchColumn()) {
+                            $targetUserId = (int)$mappedUId;
+                        }
+
+                        if ($targetUserId > 0 && $targetUserId !== (int)$auth['user_id']) {
+                            NotificationService::send($this->db, $auth['tenant_id'], 'COOP_INVITATION', [
+                                'user_id' => $targetUserId,
+                                'customer_name' => $fullName,
+                                'inviter_name' => $auth['full_name'] ?? 'đồng nghiệp',
+                                'contact_id' => $id
+                            ]);
+                        }
+                    }
+                }
+            }
+        }
+
         if (isset($b['custom_fields']) && is_array($b['custom_fields'])) {
             saveCustomFields($this->db, $auth['tenant_id'], $id, 'contact', $b['custom_fields']);
         }
