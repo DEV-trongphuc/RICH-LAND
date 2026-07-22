@@ -94,40 +94,17 @@ $tasks = [
 
 require_once __DIR__ . '/db_connect.php';
 
-// Get golden hours settings
-$goldenHoursStart = get_system_setting($conn, 'golden_hours_start_time') ?: '06:00';
-$goldenHoursEnd = get_system_setting($conn, 'golden_hours_end_time') ?: '08:30';
-
-$currentTime = date('H:i');
-$isGoldenHour = false;
-if ($goldenHoursStart < $goldenHoursEnd) {
-    $isGoldenHour = ($currentTime >= $goldenHoursStart && $currentTime <= $goldenHoursEnd);
-} else {
-    $isGoldenHour = ($currentTime >= $goldenHoursStart || $currentTime <= $goldenHoursEnd);
-}
-
-$iterations = $isGoldenHour ? 3 : 1;
-
-for ($iter = 0; $iter < $iterations; $iter++) {
-    if ($iter > 0) {
-        echo "[" . date('Y-m-d H:i:s') . "] Sleeping 20 seconds (Golden Hour scan iteration " . ($iter + 1) . " of $iterations)...\n";
-        sleep(20);
-        if (isset($conn) && method_exists($conn, 'ping')) {
-            $conn->ping();
-        }
-    }
-
-    foreach ($tasks as $task) {
-        $taskPath = __DIR__ . '/' . $task;
-        if (file_exists($taskPath)) {
-            echo "[" . date('Y-m-d H:i:s') . "] >>> [Iteration " . ($iter + 1) . "] Executing: $task...\n";
-            $output = [];
-            $returnVar = 0;
-            
-            // Thực thi lệnh php chạy độc lập để tránh tràn bộ nhớ hoặc xung đột tài nguyên
-            exec('"' . $phpBin . '" "' . $taskPath . '" 2>&1', $output, $returnVar);
-            
-            foreach ($output as $line) {
+foreach ($tasks as $task) {
+    $taskPath = __DIR__ . '/' . $task;
+    if (file_exists($taskPath)) {
+        echo "[" . date('Y-m-d H:i:s') . "] >>> Executing: $task...\n";
+        $output = [];
+        $returnVar = 0;
+        
+        // Thực thi lệnh php chạy độc lập để tránh tràn bộ nhớ hoặc xung đột tài nguyên
+        exec('"' . $phpBin . '" "' . $taskPath . '" 2>&1', $output, $returnVar);
+        
+        foreach ($output as $line) {
                 echo "    $line\n";
             }
             echo "[" . date('Y-m-d H:i:s') . "] <<< Finished $task with exit code $returnVar\n";
@@ -135,7 +112,6 @@ for ($iter = 0; $iter < $iterations; $iter++) {
             echo "[" . date('Y-m-d H:i:s') . "] WARNING: Task file not found: $taskPath\n";
         }
     }
-}
 
 if (isset($conn) && method_exists($conn, 'close')) {
     $conn->close();
