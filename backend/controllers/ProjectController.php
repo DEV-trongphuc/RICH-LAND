@@ -60,6 +60,9 @@ class ProjectController {
         try {
             $this->db->exec("ALTER TABLE comments ADD COLUMN parent_id INT NULL DEFAULT NULL");
         } catch (Exception $e) {}
+        try {
+            $this->db->exec("ALTER TABLE comments ADD COLUMN attachments JSON NULL DEFAULT NULL");
+        } catch (Exception $e) {}
     }
 
     private function requireProjectAccess(array $auth, int $projectId): void {
@@ -747,23 +750,34 @@ class ProjectController {
             ORDER BY c.created_at DESC
         ");
         $stmt->execute([$projectId, $auth['tenant_id']]);
-        respond(200, $stmt->fetchAll(), 'Lấy danh sách bình luận thành công');
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $comments = array_map(function($row) {
+            if (!empty($row['attachments'])) {
+                $decoded = json_decode($row['attachments'], true);
+                $row['attachments'] = is_array($decoded) ? $decoded : [];
+            } else {
+                $row['attachments'] = [];
+            }
+            return $row;
+        }, $rows);
+        respond(200, $comments, 'Lấy danh sách bình luận thành công');
     }
 
     public function addComment(array $auth, int $projectId): void {
         $this->requireProjectAccess($auth, $projectId);
         $b = getBody();
         $body = trim($b['body'] ?? '');
-        if (!$body) {
-            respond(422, null, 'Nội dung bình luận là bắt buộc', false);
+        $attachments = !empty($b['attachments']) && is_array($b['attachments']) ? json_encode($b['attachments'], JSON_UNESCAPED_UNICODE) : null;
+        if (!$body && !$attachments) {
+            respond(422, null, 'Nội dung hoặc tệp đính kèm bình luận là bắt buộc', false);
         }
         $parentId = !empty($b['parent_id']) ? (int)$b['parent_id'] : null;
 
         $stmt = $this->db->prepare("
-            INSERT INTO comments (tenant_id, entity_type, entity_id, user_id, body, parent_id) 
-            VALUES (?, 'project', ?, ?, ?, ?)
+            INSERT INTO comments (tenant_id, entity_type, entity_id, user_id, body, attachments, parent_id) 
+            VALUES (?, 'project', ?, ?, ?, ?, ?)
         ");
-        $stmt->execute([$auth['tenant_id'], $projectId, $auth['user_id'], $body, $parentId]);
+        $stmt->execute([$auth['tenant_id'], $projectId, $auth['user_id'], $body, $attachments, $parentId]);
         $newId = $this->db->lastInsertId();
 
         if ($parentId > 0) {
@@ -964,5 +978,28 @@ class ProjectController {
             'total_leads' => $totalLeads,
             'logs' => $logs
         ], 'Lấy thống kê dự án thành công');
+    }
+
+    public function deleteComment(array $auth, int $commentId): void {
+        $stmt = $this->db->prepare("SELECT * FROM comments WHERE id = ? AND tenant_id = ?");
+        $stmt->execute([$commentId, $auth['tenant_id']]);
+        $comment = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$comment) {
+            respond(404, null, 'Bình luận không tồn tại', false);
+        }
+
+        $userRole = strtolower($auth['role'] ?? '');
+        $isAdmin = in_array($userRole, ['admin', 'superadmin', 'super_admin', 'director'], true);
+        $isOwner = (int)$comment['user_id'] === (int)$auth['user_id'];
+
+        if (!$isAdmin && !$isOwner) {
+            respond(403, null, 'Bạn không có quyền xóa bình luận này', false);
+        }
+
+        $delStmt = $this->db->prepare("DELETE FROM comments WHERE (id = ? OR parent_id = ?) AND tenant_id = ?");
+        $delStmt->execute([$commentId, $commentId, $auth['tenant_id']]);
+
+        respond(200, null, 'Xóa bình luận thành công');
     }
 }

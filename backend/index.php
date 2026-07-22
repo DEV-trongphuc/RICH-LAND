@@ -935,6 +935,8 @@ switch ($resource) {
         elseif ($resourceId && $subResource === 'documents' && $segments[3] && $method === 'GET') $ctrl->downloadDocument($auth, (int)$resourceId, (int)$segments[3]); // fallback direct link download
         elseif ($resourceId && $subResource === 'comments' && $method === 'GET') $ctrl->getComments($auth, (int)$resourceId);
         elseif ($resourceId && $subResource === 'comments' && $method === 'POST') $ctrl->addComment($auth, (int)$resourceId);
+        elseif ($resourceId && $subResource === 'comments' && isset($segments[3]) && $method === 'DELETE') $ctrl->deleteComment($auth, (int)$segments[3]);
+        elseif ($resourceId === 'comments' && $subResource && $method === 'DELETE') $ctrl->deleteComment($auth, (int)$subResource);
         elseif ($resourceId && $subResource === 'stats' && $method === 'GET') $ctrl->getStats($auth, (int)$resourceId);
         elseif (!$resourceId && $method === 'GET')    $ctrl->index($auth);
         elseif (!$resourceId && $method === 'POST')   $ctrl->store($auth);
@@ -951,6 +953,8 @@ switch ($resource) {
         $ctrl = new CampaignController($db);
         if ($resourceId && $subResource === 'comments' && $method === 'GET') $ctrl->getComments($auth, (int)$resourceId);
         elseif ($resourceId && $subResource === 'comments' && $method === 'POST') $ctrl->addComment($auth, (int)$resourceId);
+        elseif ($resourceId && $subResource === 'comments' && isset($segments[3]) && $method === 'DELETE') $ctrl->deleteComment($auth, (int)$segments[3]);
+        elseif ($resourceId === 'comments' && $subResource && $method === 'DELETE') $ctrl->deleteComment($auth, (int)$subResource);
         elseif ($resourceId && $subResource === 'stats' && $method === 'GET') $ctrl->getStats($auth, (int)$resourceId);
         elseif (!$resourceId && $method === 'GET')    $ctrl->index($auth);
         elseif (!$resourceId && $method === 'POST')   $ctrl->store($auth);
