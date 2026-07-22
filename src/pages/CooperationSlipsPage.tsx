@@ -611,16 +611,10 @@ export default function CooperationSlipsPage() {
     if (signIdParam && slips.length > 0) {
       const match = slips.find((s: any) => String(s.id) === String(signIdParam));
       if (match) {
-        const sh = match.shareholders?.find((x: any) => String(x.user_id) === String(user?.id));
-        if (sh && !sh.signed) {
-          setSigningSlip(match);
-          setIsSignModalOpen(true);
-        } else {
-          navigate(location.pathname, { replace: true });
-        }
+        setExpandedSlips(prev => ({ ...prev, [match.id]: true }));
       }
     }
-  }, [location.search, slips, user?.id, location.pathname, navigate]);
+  }, [location.search, slips]);
 
   const handleOpenUpdateShares = (slip: CooperationSlip) => {
     setSelectedSlipId(slip.id);

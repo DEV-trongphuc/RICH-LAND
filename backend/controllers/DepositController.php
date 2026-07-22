@@ -192,6 +192,13 @@ class DepositController {
             $validHelpers = $stmtQ->fetchAll(PDO::FETCH_COLUMN) ?: [];
             $validHelpers = array_map('intval', $validHelpers);
 
+            // Also check contact's collaborator_ids column
+            $collabStr = trim($contact['collaborator_ids'] ?? '');
+            if (!empty($collabStr)) {
+                $cIds = array_map('intval', array_filter(explode(',', $collabStr)));
+                $validHelpers = array_values(array_unique(array_merge($validHelpers, $cIds)));
+            }
+
             $ownerUid = (int)($contact['owner_id'] ?: $auth['user_id']);
             $coopSales = array_values(array_filter($validHelpers, function($uid) use ($ownerUid) {
                 return $uid > 0 && $uid !== $ownerUid;

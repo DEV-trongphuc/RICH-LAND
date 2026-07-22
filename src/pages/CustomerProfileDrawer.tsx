@@ -3942,6 +3942,14 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
       setDepositUncFile(null);
       
       fetchData();
+      await fetchCoopSlip();
+
+      const hasCoopSales = Boolean((formData.collaborator_ids || contact?.collaborator_ids || '').trim());
+      if (hasCoopSales) {
+        setActiveTab('cooperation');
+        setIsRequestingChange(true);
+        addToast('Đã tự động khởi tạo Phiếu hợp tác. Vui lòng kiểm tra và điều chỉnh tỷ lệ % hoa hồng.', 'info');
+      }
     } catch (e: any) {
       addToast(e?.response?.data?.message || e.message || 'Lỗi khi tạo phiếu cọc', 'error');
     } finally {
