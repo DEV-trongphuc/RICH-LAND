@@ -541,15 +541,19 @@ class ProjectController {
         $safeName = time() . '_' . preg_replace('/[^a-zA-Z0-9_.-]/', '_', $fileName);
         $destPath = $uploadDir . '/' . $safeName;
 
-        if (move_uploaded_file($file['tmp_name'], $destPath)) {
+        require_once __DIR__ . '/../config/ImageHelper.php';
+        $res = ImageHelper::saveUploadedFile($file['tmp_name'], $destPath, $file['name']);
+
+        if ($res['success']) {
+            $savedName = $res['filename'];
             $stmt = $this->db->prepare("
                 INSERT INTO project_documents (project_id, name, file_path, file_size, mime_type, uploaded_by) 
                 VALUES (?, ?, ?, ?, ?, ?)
             ");
             $stmt->execute([
-                $projectId, 
-                $fileName, 
-                'projects/' . $projectId . '/' . $safeName, 
+                $projectId,
+                $file['name'],
+                'projects/' . $projectId . '/' . $savedName, 
                 $file['size'], 
                 $file['type'], 
                 $auth['user_id']

@@ -365,6 +365,7 @@ export const SmartCheckInModal: React.FC<SmartCheckInModalProps> = ({
       onClose={onClose}
       title={isSuccessScreen ? '' : t("CHẤM CÔNG HÀNG NGÀY")}
       width="100%"
+      maxWidth="500px"
       fullScreenOnMobile={true}
       modalClassName="checkin-modal-dark"
     >

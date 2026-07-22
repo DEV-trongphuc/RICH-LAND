@@ -313,13 +313,17 @@ class DepositController {
         $safeName = $milestoneId . '_' . time() . '_' . preg_replace('/[^a-zA-Z0-9_.-]/', '_', $fileName);
         $destPath = $uploadDir . '/' . $safeName;
 
-        if (move_uploaded_file($file['tmp_name'], $destPath)) {
+        require_once __DIR__ . '/../config/ImageHelper.php';
+        $res = ImageHelper::saveUploadedFile($file['tmp_name'], $destPath, $file['name']);
+
+        if ($res['success']) {
+            $savedName = $res['filename'];
             $stmt = $this->db->prepare("
                 UPDATE deposit_milestones 
                 SET unc_file_path = ?, status = 'paid' 
                 WHERE id = ? AND deposit_id = ?
             ");
-            $stmt->execute(['deposits/' . $id . '/' . $safeName, $milestoneId, $id]);
+            $stmt->execute(['deposits/' . $id . '/' . $savedName, $milestoneId, $id]);
 
             logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'UPLOAD_DEPOSIT_UNC', 'deposit_milestone', $milestoneId, "Tải lên UNC cho đợt thanh toán ID: $milestoneId");
             respond(200, [

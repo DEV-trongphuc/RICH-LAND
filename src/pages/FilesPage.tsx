@@ -17,12 +17,15 @@ import { CustomSelect } from '../components/ui/CustomSelect';
 import { Pagination } from '../components/ui/Pagination';
 import { useAuthStore } from '../store/authStore';
 
+import { useUploadProgress } from '../contexts/UploadProgressContext';
+
 interface FilesPageProps {
   embedProjectId?: string;
   isEmbedded?: boolean;
 }
 
 export const FilesPage: React.FC<FilesPageProps> = ({ embedProjectId, isEmbedded = false }) => {
+  const { startUpload, updateProgress, finishUpload } = useUploadProgress();
   const { addToast, showConfirm } = useUIStore();
   const userRole = useAuthStore.getState().user?.role;
   const isSale = userRole === 'sale';
@@ -176,8 +179,15 @@ export const FilesPage: React.FC<FilesPageProps> = ({ embedProjectId, isEmbedded
   const confirmUpload = async () => {
     if (!selectedFile || loading) return;
     setLoading(true);
+
+    const sizeStr = (selectedFile.size / (1024 * 1024)).toFixed(1) + ' MB';
+    const taskId = startUpload(selectedFile.name, sizeStr);
+
     try {
+      updateProgress(taskId, 10, 'compressing');
       const compressedFile = await compressToWebP(selectedFile);
+      updateProgress(taskId, 25, 'uploading');
+
       const formData = new FormData();
       formData.append('file', compressedFile);
       formData.append('name', uploadFormData.name);
@@ -191,15 +201,23 @@ export const FilesPage: React.FC<FilesPageProps> = ({ embedProjectId, isEmbedded
       }
 
       await api.post('/cloud-files', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
+        headers: { 'Content-Type': 'multipart/form-data' },
+        onUploadProgress: (progressEvent) => {
+          if (progressEvent.total) {
+            const percent = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+            updateProgress(taskId, percent, percent === 100 ? 'processing' : 'uploading');
+          }
+        }
       });
       
+      finishUpload(taskId, true);
       addToast('Đã tải tệp lên thành công', 'success');
       setShowUploadModal(false);
       setSelectedFile(null);
       setUploadFormData({ name: '', category: 'general', project_id: embedProjectId || '', campaign_id: '' });
       fetchFiles();
     } catch (e: any) {
+      finishUpload(taskId, false, e.message || 'Lỗi khi tải tệp lên');
       addToast('Lỗi khi tải tệp lên', 'error');
     } finally {
       setLoading(false);

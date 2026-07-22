@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { X, RefreshCw, Upload, Edit3, Trash2, Check, FileText } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useLanguage } from '../../contexts/LanguageContext';
@@ -184,14 +185,14 @@ export const SignaturePadModal: React.FC<SignaturePadModalProps> = ({
 
   if (!isOpen) return null;
 
-  return (
+  return createPortal(
     <div 
       style={{
         position: 'fixed',
         inset: 0,
-        backgroundColor: 'rgba(0, 0, 0, 0.55)',
-        backdropFilter: 'blur(4px)',
-        zIndex: 100000,
+        backgroundColor: 'rgba(0, 0, 0, 0.65)',
+        backdropFilter: 'blur(5px)',
+        zIndex: 1000090,
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -206,7 +207,7 @@ export const SignaturePadModal: React.FC<SignaturePadModalProps> = ({
         onClick={(e) => e.stopPropagation()}
         style={{
           width: '100%',
-          maxWidth: '520px',
+          maxWidth: '680px',
           background: 'var(--color-surface)',
           border: '1px solid var(--color-border)',
           borderRadius: '16px',
@@ -303,8 +304,8 @@ export const SignaturePadModal: React.FC<SignaturePadModalProps> = ({
             }}>
               <canvas
                 ref={canvasRef}
-                width={470}
-                height={160}
+                width={630}
+                height={220}
                 onMouseDown={startDrawing}
                 onMouseMove={draw}
                 onMouseUp={stopDrawing}
@@ -312,7 +313,7 @@ export const SignaturePadModal: React.FC<SignaturePadModalProps> = ({
                 onTouchStart={startDrawing}
                 onTouchMove={draw}
                 onTouchEnd={stopDrawing}
-                style={{ width: '100%', height: '160px', cursor: 'crosshair', display: 'block', borderRadius: '10px' }}
+                style={{ width: '100%', height: '220px', cursor: 'crosshair', display: 'block', borderRadius: '10px' }}
               />
               {!hasDrawn && (
                 <div style={{
@@ -473,6 +474,7 @@ export const SignaturePadModal: React.FC<SignaturePadModalProps> = ({
           </button>
         </div>
       </motion.div>
-    </div>
+    </div>,
+    document.body
   );
 };

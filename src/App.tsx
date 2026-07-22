@@ -489,6 +489,8 @@ const KeyboardShortcutsController = () => {
   );
 };
 
+import { UploadProgressProvider } from './contexts/UploadProgressContext';
+
 export default function App() {
   useEffect(() => {
     const localTheme = localStorage.getItem('richland_theme') as 'light' | 'dark';
@@ -504,26 +506,28 @@ export default function App() {
     <ErrorBoundary>
       <LanguageProvider>
         <AuthProvider>
-          <Toaster position="top-right" containerStyle={{ zIndex: 999999999, top: 76 }} toastOptions={{ className: 'custom-toast' }} />
-          <Router>
-            <Suspense fallback={<PageLoader />}>
-              <Routes>
-                <Route path="/login" element={<Login />} />
-                <Route path="/report-data" element={<ReportData />} />
-                <Route path="/demo" element={<DemoEntry />} />
-                <Route path="/download" element={<DownloadPage />} />
-                
-                {/* All authenticated users (sharing a single persistent AppTabs instance) */}
-                <Route element={<ProtectedRoute />}>
-                  <Route path="/*" element={<AppTabs />} />
-                </Route>
-              </Routes>
-              <KeyboardShortcutsController />
-            </Suspense>
-          </Router>
-          <GlobalConfirmModal />
-          <QRCodeCallModal />
-          <ProfileModal />
+          <UploadProgressProvider>
+            <Toaster position="top-right" containerStyle={{ zIndex: 999999999, top: 76 }} toastOptions={{ className: 'custom-toast' }} />
+            <Router>
+              <Suspense fallback={<PageLoader />}>
+                <Routes>
+                  <Route path="/login" element={<Login />} />
+                  <Route path="/report-data" element={<ReportData />} />
+                  <Route path="/demo" element={<DemoEntry />} />
+                  <Route path="/download" element={<DownloadPage />} />
+                  
+                  {/* All authenticated users (sharing a single persistent AppTabs instance) */}
+                  <Route element={<ProtectedRoute />}>
+                    <Route path="/*" element={<AppTabs />} />
+                  </Route>
+                </Routes>
+                <KeyboardShortcutsController />
+              </Suspense>
+            </Router>
+            <GlobalConfirmModal />
+            <QRCodeCallModal />
+            <ProfileModal />
+          </UploadProgressProvider>
         </AuthProvider>
 
       </LanguageProvider>

@@ -11,6 +11,7 @@ import { useDebounce } from '../hooks/useDebounce';
 import { CustomSelect } from '../components/ui/CustomSelect';
 import { Pagination } from '../components/ui/Pagination';
 import { EmptyCard } from '../components/ui/EmptyCard';
+import { PasteDropzoneArea } from '../components/ui/PasteDropzoneArea';
 
 const TICKET_STATUSES = [
   { id: 'open', label: 'Mới mở', color: '#3b82f6' },
@@ -492,6 +493,35 @@ export const TicketsPage: React.FC = () => {
                 <div className="form-group">
                   <label className="form-label">Mô tả chi tiết</label>
                   <textarea className="form-input" placeholder="Nhập chi tiết về lỗi hoặc yêu cầu hỗ trợ..." rows={4} value={createForm.description} onChange={e => setCreateForm({...createForm, description: e.target.value})} style={{ resize: 'none' }} />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Ảnh chụp màn hình / Tài liệu đính kèm (Nhấn Ctrl+V để dán)</label>
+                  <PasteDropzoneArea
+                    compact={true}
+                    placeholder="Kéo thả tệp hoặc nhấn Ctrl+V để dán ảnh màn hình lỗi"
+                    subtext="Chụp ảnh màn hình lỗi (Ctrl+V) dán trực tiếp tại đây"
+                    onConfirmUpload={async (item) => {
+                      if (item.file) {
+                        const fd = new FormData();
+                        fd.append('file', item.file);
+                        try {
+                          const res = await api.post('/upload', fd);
+                          const url = res.data?.data?.url || res.data?.url;
+                          if (url) {
+                            setCreateForm(prev => ({
+                              ...prev,
+                              description: (prev.description || '') + (prev.description ? '\n\n' : '') + `![${item.label}](${url})`
+                            }));
+                          }
+                        } catch (err) {}
+                      } else if (item.url) {
+                        setCreateForm(prev => ({
+                          ...prev,
+                          description: (prev.description || '') + (prev.description ? '\n\n' : '') + `[${item.label}](${item.url})`
+                        }));
+                      }
+                    }}
+                  />
                 </div>
               </div>
               <div className="modal-footer" style={{ padding: '1.25rem 1.5rem', display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', borderTop: '1px solid var(--color-border)' }}>

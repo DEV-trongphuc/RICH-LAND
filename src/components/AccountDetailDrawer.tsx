@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   X, Camera, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Save, Trash2, Download, 
   Paperclip, Loader2, Eye, EyeOff, User, Shield, Info, Send, 
-  Link2Off, RefreshCw, KeyRound, Building2, Calendar, Clock, Plus, FileText,
+  Link2Off, RefreshCw, KeyRound, Building2, Calendar, Clock, Plus, FileText, Package,
   CreditCard, PhoneCall, Lock, Search, Check, Award, AlertCircle, Edit3
 } from 'lucide-react';
 import { fetchAPI } from '../utils/api';
@@ -16,6 +16,7 @@ import { Avatar } from './ui/Avatar';
 import { CustomModal } from './ui/CustomModal';
 import { ToggleSwitch } from './ui/ToggleSwitch';
 import { SignaturePadModal } from './ui/SignaturePadModal';
+import { AssignedAssetsSection, type AssignedAsset } from './ui/AssignedAssetsSection';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import styles from '../pages/EntityDrawer.module.css';
@@ -150,10 +151,11 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  const [activeTab, setActiveTab] = useState<'personal' | 'erp' | 'account' | 'bank' | 'emergency' | 'schedule' | 'documents' | 'certificates' | 'hr_records' | ''>(() => window.innerWidth <= 1024 ? '' : 'personal');
+  const [activeTab, setActiveTab] = useState<'personal' | 'erp' | 'assets' | 'account' | 'bank' | 'emergency' | 'schedule' | 'documents' | 'certificates' | 'hr_records' | ''>(() => window.innerWidth <= 1024 ? '' : 'personal');
   const [addressTemporary, setAddressTemporary] = useState('');
   const [certificates, setCertificates] = useState<{ id: string, name: string, code: string, issuer: string, link: string, image: string, issuedDate: string, expiryDate: string }[]>([]);
   const [hrRecords, setHrRecords] = useState<{ id: string, type: 'award' | 'warning' | 'discipline', title: string, date: string, amount: string, reason: string, decisionNumber: string, documentLink: string }[]>([]);
+  const [assignedAssets, setAssignedAssets] = useState<AssignedAsset[]>([]);
 
   // Collapsible sections
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
@@ -433,18 +435,21 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
                 setHometown('');
                 setCertificates(erp.certificates || []);
                 setHrRecords(erp.hr_records || []);
+                setAssignedAssets(erp.assigned_assets || []);
                 setBankBranch(erp.bank_branch || '');
               } else {
                 setAddress(addressPayload);
                 setAddressTemporary('');
                 setCertificates([]);
                 setHrRecords([]);
+                setAssignedAssets([]);
               }
             } catch (e) {
               setAddress(addressPayload);
               setAddressTemporary('');
               setCertificates([]);
               setHrRecords([]);
+              setAssignedAssets([]);
             }
 
             if (d.work_schedule && typeof d.work_schedule === 'object') {
@@ -500,6 +505,7 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
       setAddressTemporary('');
       setCertificates([]);
       setHrRecords([]);
+      setAssignedAssets([]);
 
       setEmployeeId('');
       setDepartment('');
@@ -842,6 +848,7 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
           emergency_contacts: emergencyContacts,
           certificates: certificates,
           hr_records: hrRecords,
+          assigned_assets: assignedAssets,
           tax_id: taxId,
           insurance_id: insuranceId,
           broker_license: brokerLicense,
@@ -1422,6 +1429,15 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
                       </button>
                       <button
                         type="button"
+                        className={`${styles.sidebarTabBtn} ${activeTab === 'assets' ? styles.sidebarTabActive : ''}`}
+                        onClick={() => setActiveTab('assets')}
+                        style={{ padding: '8px 0.75rem', fontSize: '0.825rem', display: 'flex', alignItems: 'center', gap: '12px', width: '100%', border: 'none', background: activeTab === 'assets' ? 'var(--color-bg-light)' : 'transparent', borderRadius: '8px', cursor: 'pointer', textAlign: 'left', fontWeight: activeTab === 'assets' ? 700 : 500 }}
+                      >
+                        {renderColoredIcon(Package, '#8b5cf6')}
+                        <span style={{ whiteSpace: 'nowrap' }}>{t('Tài sản cấp phát')}</span>
+                      </button>
+                      <button
+                        type="button"
                         className={`${styles.sidebarTabBtn} ${activeTab === 'certificates' ? styles.sidebarTabActive : ''}`}
                         onClick={() => setActiveTab('certificates')}
                         style={{ padding: '8px 0.75rem', fontSize: '0.825rem', display: 'flex', alignItems: 'center', gap: '12px', width: '100%', border: 'none', background: activeTab === 'certificates' ? 'var(--color-bg-light)' : 'transparent', borderRadius: '8px', cursor: 'pointer', textAlign: 'left', fontWeight: activeTab === 'certificates' ? 700 : 500 }}
@@ -1565,8 +1581,8 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
                   </div>
 
                   <div style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-                    {/* Grid A: Standard inputs */}
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem' }}>
+                    {/* Grid A: Standard inputs (2 per row on desktop) */}
+                    <div style={{ display: 'grid', gridTemplateColumns: isMobileOrTablet ? '1fr' : '1fr 1fr', gap: '1rem' }}>
                       <div className="form-group">
                         <label className="form-label">{t('Họ và tên')} <span style={{ color: 'var(--color-danger)' }}>*</span></label>
                         <input className="form-input" value={name} onChange={e => setName(e.target.value)} placeholder={t('Nguyễn Văn A')} required />
@@ -1587,7 +1603,7 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
                         <label className="form-label">{t('Email cá nhân')}</label>
                         <input type="email" className="form-input" value={personalEmail} onChange={e => setPersonalEmail(e.target.value)} placeholder="a@gmail.com" />
                       </div>
-                      <div className="form-group" style={{ gridColumn: isMobileOrTablet ? 'span 1' : 'span 3', marginTop: '0.5rem', paddingTop: '1rem', borderTop: '1px solid var(--color-border-light)' }}>
+                      <div className="form-group" style={{ gridColumn: isMobileOrTablet ? 'span 1' : 'span 2', marginTop: '0.5rem', paddingTop: '1rem', borderTop: '1px solid var(--color-border-light)' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
                           <label className="form-label" style={{ fontWeight: 600, margin: 0 }}>{t('Chữ ký Điện tử Cá nhân')}</label>
                           {!readOnly && (
@@ -1645,7 +1661,7 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
                           </div>
                         )}
                       </div>
-                      <div className="form-group" style={{ gridColumn: isMobileOrTablet ? 'span 1' : 'span 3' }}>
+                      <div className="form-group" style={{ gridColumn: isMobileOrTablet ? 'span 1' : 'span 2' }}>
                         <div style={{ display: 'grid', gridTemplateColumns: isMobileOrTablet ? '1fr' : '1fr 1fr', gap: '1rem' }}>
                           <div className="form-group" style={{ margin: 0 }}>
                             <AddressSelect
@@ -1924,7 +1940,23 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
                       </div>
                     </div>
                   </div>
+
+                  {/* TÀI SẢN ĐƯỢC CẤP PHÁT SECTION */}
+                  <AssignedAssetsSection
+                    assets={assignedAssets}
+                    onChange={setAssignedAssets}
+                    readOnly={readOnly}
+                  />
                 </div>
+              )}
+
+              {/* CARD: TÀI SẢN CẤP PHÁT TAB */}
+              {activeTab === 'assets' && (
+                <AssignedAssetsSection
+                  assets={assignedAssets}
+                  onChange={setAssignedAssets}
+                  readOnly={readOnly}
+                />
               )}
 
               {/* CARD 3: THÔNG TIN LIÊN HỆ */}

@@ -14,8 +14,11 @@ interface ImportExportModalProps {
   onExport?: (format: 'csv'|'excel') => void;
 }
 
+import { useUploadProgress } from '../../contexts/UploadProgressContext';
+
 export const ImportExportModal: React.FC<ImportExportModalProps> = ({ isOpen, onClose, entityName, onImport, onExport }) => {
   const { addToast } = useUIStore();
+  const { startUpload, updateProgress, finishUpload } = useUploadProgress();
   const [tab, setTab] = useState<'import' | 'export'>('import');
   
   // Mapping entity names to backend types
@@ -31,7 +34,7 @@ export const ImportExportModal: React.FC<ImportExportModalProps> = ({ isOpen, on
   // Import states
   const [file, setFile] = useState<File | null>(null);
   const [importing, setImporting] = useState(false);
-  const [results, setResults] = useState<{ imported: number, errors: number, error_log: string[] } | null>(null);
+  const [results, setResults] = useState<any>(null);
   const [step, setStep] = useState<1 | 2>(1); // 1: Upload, 2: Result
 
   if (!isOpen) return null;
@@ -42,21 +45,34 @@ export const ImportExportModal: React.FC<ImportExportModalProps> = ({ isOpen, on
     setFile(f);
     
     setImporting(true);
+    const sizeStr = (f.size / (1024 * 1024)).toFixed(2) + ' MB';
+    const taskId = startUpload(f.name, sizeStr);
+
     const formData = new FormData();
     formData.append('file', f);
     formData.append('type', type);
 
     try {
+      updateProgress(taskId, 20, 'uploading');
       const res = await api.post('/import/process', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
+        headers: { 'Content-Type': 'multipart/form-data' },
+        onUploadProgress: (progressEvent) => {
+          if (progressEvent.total) {
+            const percent = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+            updateProgress(taskId, percent, percent === 100 ? 'processing' : 'uploading');
+          }
+        }
       });
+      finishUpload(taskId, true);
       setResults(res.data.data);
       setStep(2);
       addToast('Xử lý file hoàn tất', 'success');
     } catch (err: any) {
+      finishUpload(taskId, false, err.response?.data?.message || 'Lỗi khi import file');
       addToast(err.response?.data?.message || 'Lỗi khi import file', 'error');
     } finally {
       setImporting(false);
+      e.target.value = '';
     }
   };
 

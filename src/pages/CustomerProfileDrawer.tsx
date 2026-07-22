@@ -27,6 +27,8 @@ import { useUIStore } from '../store/uiStore';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import api from '../api/axios';
 import { useAuth } from '../contexts/AuthContext';
+import { useUploadProgress } from '../contexts/UploadProgressContext';
+import { PasteDropzoneArea } from '../components/ui/PasteDropzoneArea';
 import { fetchAPI } from '../utils/api';
 import styles from './EntityDrawer.module.css';
 import { Tooltip } from '../components/ui/Tooltip';
@@ -11177,7 +11179,11 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                   </div>
                   <div>
                     <h3 style={{ fontWeight: 800 }}>Tạo Ticket hỗ trợ</h3>
-                    <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2 }}>Khách hàng: <strong>{fullName}</strong></p>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: 2 }}>
+                      <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>Khách hàng:</span>
+                      <Avatar name={fullName} size={22} />
+                      <strong style={{ fontSize: '0.8125rem', color: 'var(--color-text)' }}>{fullName}</strong>
+                    </div>
                   </div>
                 </div>
                 <button className="btn-icon sm" onClick={() => setShowTicketModal(false)}><X size={18} /></button>
@@ -11205,6 +11211,35 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                 <div className="form-group">
                   <label className="form-label">Mô tả chi tiết</label>
                   <textarea className="form-input" rows={4} placeholder="Nội dung chi tiết..." value={ticketForm.description || ''} onChange={e => setTicketForm({ ...ticketForm, description: e.target.value })} style={{ resize: 'none' }} />
+                </div>
+                <div className="form-group" style={{ marginTop: '0.75rem' }}>
+                  <label className="form-label">Ảnh chụp màn hình / Tài liệu đính kèm</label>
+                  <PasteDropzoneArea
+                    compact={true}
+                    placeholder="Kéo thả tệp hoặc nhấn Ctrl+V để dán ảnh màn hình lỗi"
+                    subtext="Chụp ảnh màn hình lỗi (Ctrl+V) dán trực tiếp tại đây"
+                    onConfirmUpload={async (item) => {
+                      if (item.file) {
+                        const fd = new FormData();
+                        fd.append('file', item.file);
+                        try {
+                          const res = await api.post('/upload', fd);
+                          const url = res.data?.data?.url || res.data?.url;
+                          if (url) {
+                            setTicketForm(prev => ({
+                              ...prev,
+                              description: (prev.description || '') + (prev.description ? '\n\n' : '') + `![${item.label}](${url})`
+                            }));
+                          }
+                        } catch (err) {}
+                      } else if (item.url) {
+                        setTicketForm(prev => ({
+                          ...prev,
+                          description: (prev.description || '') + (prev.description ? '\n\n' : '') + `[${item.label}](${item.url})`
+                        }));
+                      }
+                    }}
+                  />
                 </div>
               </div>
               <div className="modal-footer">

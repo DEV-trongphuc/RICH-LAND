@@ -5256,6 +5256,7 @@ a,
   color: var(--color-text) !important;
   border: 1px solid rgba(189, 29, 45, 0.12) !important;
   box-shadow: 0 25px 60px rgba(189, 29, 45, 0.1) !important;
+  max-width: 500px !important;
 }
 
 .checkin-modal-dark h3 {

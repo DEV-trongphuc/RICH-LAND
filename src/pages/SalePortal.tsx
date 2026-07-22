@@ -12107,12 +12107,15 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                           }}>
                             {getWeekDates().map((day) => {
                               const reg = weeklyRegistrations.find(r => r.shift_date === day.date);
-                              const isNightRegistered = Boolean(nightShiftRegistered && nightShiftDate === day.date);
+                              const isNightRegistered = Boolean(
+                                (reg && (reg.shift_type === 'night' || reg.is_night === 1 || reg.is_night === true || String(reg.note || '').toLowerCase().includes('đêm'))) ||
+                                (nightShiftRegistered && nightShiftDate === day.date)
+                              );
                               const isWeekendRegistered = Boolean(
                                 (day.date === weekendShiftSat?.date && weekendShiftSat?.registered) || 
                                 (day.date === weekendShiftSun?.date && weekendShiftSun?.registered)
                               );
-                              const isSelected = weeklyShiftDates.includes(day.date) || isNightRegistered || isWeekendRegistered;
+                              const isSelected = weeklyShiftDates.includes(day.date) || isNightRegistered || isWeekendRegistered || Boolean(reg);
                               const isApproved = reg ? (reg.approved === 1 || reg.approved === true) : (isNightRegistered ? nightShiftApproved : isWeekendRegistered);
 
                               const today = new Date();
@@ -12134,14 +12137,28 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                               // Determine background, border and text colors based on state
                               let borderStyle = '1px solid var(--color-border-light)';
                               let backgroundStyle = 'var(--color-bg-alt)';
-                              
-                              if (isSelected) {
-                                backgroundStyle = isNightRegistered 
-                                  ? 'rgba(139, 92, 246, 0.06)' 
-                                  : (isApproved ? 'rgba(16, 185, 129, 0.06)' : 'var(--color-primary-light)');
-                                borderStyle = isNightRegistered
-                                  ? '2px solid #8b5cf6'
-                                  : (isApproved ? '2px solid var(--color-success)' : '2px solid var(--color-primary)');
+                              let statusText = t('Nghỉ');
+                              let statusColor = 'var(--color-text-muted)';
+                              let statusBg = 'rgba(100, 116, 139, 0.08)';
+
+                              if (isNightRegistered) {
+                                backgroundStyle = 'rgba(139, 92, 246, 0.06)';
+                                borderStyle = '2px solid #8b5cf6';
+                                statusText = isPastDay ? t('Đã trực đêm') : t('Trực đêm');
+                                statusColor = '#8b5cf6';
+                                statusBg = 'rgba(139, 92, 246, 0.12)';
+                              } else if (isSelected || reg) {
+                                backgroundStyle = isApproved ? 'rgba(16, 185, 129, 0.06)' : 'var(--color-primary-light)';
+                                borderStyle = isApproved ? '2px solid var(--color-success)' : '2px solid var(--color-primary)';
+                                if (isApproved) {
+                                  statusText = isPastDay ? t('Đã làm') : t('Đã duyệt');
+                                  statusColor = 'var(--color-success)';
+                                  statusBg = 'rgba(16, 185, 129, 0.12)';
+                                } else {
+                                  statusText = isPastDay ? t('Đã làm') : t('Đã chọn');
+                                  statusColor = 'var(--color-primary)';
+                                  statusBg = 'var(--color-primary-light)';
+                                }
                               }
 
                               return (
@@ -12167,7 +12184,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                                     cursor: isPastDay 
                                       ? 'not-allowed' 
                                       : (['sale', 'manager'].includes(String(effectiveRole).toLowerCase()) ? 'pointer' : 'default'),
-                                    opacity: isPastDay ? 0.45 : 1,
+                                    opacity: isPastDay ? 0.75 : 1,
                                     display: 'flex',
                                     flexDirection: 'column',
                                     alignItems: 'center',
@@ -12198,14 +12215,10 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                                     whiteSpace: 'nowrap',
                                     lineHeight: 1,
                                     letterSpacing: isMobile ? '-0.02em' : 'normal',
-                                    color: isSelected 
-                                      ? (isNightRegistered ? '#8b5cf6' : (isApproved ? 'var(--color-success)' : 'var(--color-primary)')) 
-                                      : 'var(--color-text-muted)',
-                                    background: isSelected 
-                                      ? (isNightRegistered ? 'rgba(139, 92, 246, 0.12)' : (isApproved ? 'rgba(16, 185, 129, 0.12)' : 'var(--color-primary-light)')) 
-                                      : 'rgba(100, 116, 139, 0.08)'
+                                    color: statusColor,
+                                    background: statusBg
                                   }}>
-                                    {isSelected ? (isNightRegistered ? t('Trực đêm') : (isApproved ? t('Đã duyệt') : t('Đã chọn'))) : t('Nghỉ')}
+                                    {statusText}
                                   </span>
                                 </div>
                               );

@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useLanguage } from '../contexts/LanguageContext';
-import { User, Key, Eye, EyeOff, Save, ShieldAlert, Mail, Activity, Clock, Settings, ChevronDown, ChevronUp, LogOut, Edit3 } from 'lucide-react';
+import { User, Key, Eye, EyeOff, Save, ShieldAlert, Mail, Activity, Clock, Settings, ChevronDown, ChevronUp, LogOut, Edit3, Package } from 'lucide-react';
 import { SignaturePadModal } from '../components/ui/SignaturePadModal';
+import { AssignedAssetsSection, type AssignedAsset } from '../components/ui/AssignedAssetsSection';
 import { fetchAPI } from '../utils/api';
 import { compressToWebP } from '../utils/imageCompress';
 import { useAuth } from '../contexts/AuthContext';
@@ -21,7 +22,7 @@ const PersonalAccountInner = () => {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
   
-  const [activeTab, setActiveTab] = useState<'profile' | 'password' | 'activity'>('profile');
+  const [activeTab, setActiveTab] = useState<'profile' | 'assets' | 'password' | 'activity'>('profile');
   const [loading, setLoading] = useState(false);
   
   // Profile State
@@ -44,6 +45,7 @@ const PersonalAccountInner = () => {
 
   const [signatureUrl, setSignatureUrl] = useState<string | null>(user?.signature_url || null);
   const [showSignatureModal, setShowSignatureModal] = useState(false);
+  const [myAssets, setMyAssets] = useState<AssignedAsset[]>([]);
 
   useEffect(() => {
     if (user) {
@@ -53,6 +55,22 @@ const PersonalAccountInner = () => {
         avatar: user.avatar || ''
       });
       setSignatureUrl(user.signature_url || null);
+
+      let parsedAssets: AssignedAsset[] = [];
+      const u = user as any;
+      if (Array.isArray(u?.assigned_assets)) {
+        parsedAssets = u.assigned_assets;
+      } else if (u?.extra_fields_json) {
+        try {
+          const extra = typeof u.extra_fields_json === 'string' ? JSON.parse(u.extra_fields_json) : u.extra_fields_json;
+          if (extra.erp_profile?.assigned_assets) {
+            parsedAssets = extra.erp_profile.assigned_assets;
+          } else if (extra.assigned_assets) {
+            parsedAssets = extra.assigned_assets;
+          }
+        } catch (e) {}
+      }
+      setMyAssets(parsedAssets);
     }
   }, [user]);
 
@@ -341,6 +359,17 @@ const PersonalAccountInner = () => {
               <span>{t('Thông tin hồ sơ')}</span>
             </button>
             <button
+              onClick={() => setActiveTab('assets')}
+              className={`${styles.sidebarTabBtn} ${activeTab === 'assets' ? styles.active : ''}`}
+              style={{
+                width: isMobile ? 'auto' : '100%', textAlign: 'left', display: 'flex', alignItems: 'center', gap: '10px',
+                padding: '10px 14px', borderRadius: '8px', fontSize: '0.8125rem', whiteSpace: 'nowrap', flexShrink: 0
+              }}
+            >
+              <Package size={16} />
+              <span>{t('Tài sản cấp phát')}</span>
+            </button>
+            <button
               onClick={() => setActiveTab('password')}
               className={`${styles.sidebarTabBtn} ${activeTab === 'password' ? styles.active : ''}`}
               style={{
@@ -375,30 +404,32 @@ const PersonalAccountInner = () => {
             {/* Tab 1: Profile */}
             {activeTab === 'profile' && (
               <form onSubmit={handleUpdateProfile} style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                <div className="form-group">
-                  <label className="form-label" style={{ fontWeight: 600 }}>{t('Tên hiển thị')}</label>
-                  <input
-                    type="text"
-                    className="form-input"
-                    value={profileData.name}
-                    onChange={e => setProfileData({ ...profileData, name: e.target.value })}
-                    placeholder={t("Nhập họ và tên...")}
-                    style={{ height: '40px' }}
-                  />
-                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '1rem' }}>
+                  <div className="form-group">
+                    <label className="form-label" style={{ fontWeight: 600 }}>{t('Tên hiển thị')}</label>
+                    <input
+                      type="text"
+                      className="form-input"
+                      value={profileData.name}
+                      onChange={e => setProfileData({ ...profileData, name: e.target.value })}
+                      placeholder={t("Nhập họ và tên...")}
+                      style={{ height: '40px' }}
+                    />
+                  </div>
 
-                <div className="form-group">
-                  <label className="form-label" style={{ fontWeight: 600 }}>{t('Email / Tên đăng nhập')}</label>
-                  <input
-                    type="text"
-                    className="form-input"
-                    value={profileData.email}
-                    disabled
-                    style={{ height: '40px', cursor: 'not-allowed', backgroundColor: 'var(--color-bg-light)', color: 'var(--color-text-muted)' }}
-                  />
-                  <small style={{ color: 'var(--color-text-muted)', fontSize: '0.75rem', marginTop: '4px', display: 'block' }}>
-                    {t('Tên đăng nhập không thể thay đổi sau khi tạo để bảo mật vết hệ thống.')}
-                  </small>
+                  <div className="form-group">
+                    <label className="form-label" style={{ fontWeight: 600 }}>{t('Email / Tên đăng nhập')}</label>
+                    <input
+                      type="text"
+                      className="form-input"
+                      value={profileData.email}
+                      disabled
+                      style={{ height: '40px', cursor: 'not-allowed', backgroundColor: 'var(--color-bg-light)', color: 'var(--color-text-muted)' }}
+                    />
+                    <small style={{ color: 'var(--color-text-muted)', fontSize: '0.75rem', marginTop: '4px', display: 'block' }}>
+                      {t('Tên đăng nhập không thể thay đổi sau khi tạo để bảo mật vết hệ thống.')}
+                    </small>
+                  </div>
                 </div>
                 <div className="form-group" style={{ marginTop: '1.5rem', paddingTop: '1.5rem', borderTop: '1px solid var(--color-border-light)' }}>
                   <label className="form-label" style={{ fontWeight: 600, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -462,7 +493,23 @@ const PersonalAccountInner = () => {
                     <Save size={16} /> {loading ? t('Đang lưu...') : t('Lưu thay đổi')}
                   </button>
                 </div>
+
+                {/* TÀI SẢN ĐƯỢC CẤP PHÁT SECTION (READ-ONLY FOR EMPLOYEE) */}
+                <AssignedAssetsSection
+                  assets={myAssets}
+                  onChange={() => {}}
+                  readOnly={true}
+                />
               </form>
+            )}
+
+            {/* Tab: Assets */}
+            {activeTab === 'assets' && (
+              <AssignedAssetsSection
+                assets={myAssets}
+                onChange={() => {}}
+                readOnly={true}
+              />
             )}
 
             {/* Tab 2: Password */}

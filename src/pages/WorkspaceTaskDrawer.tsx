@@ -17,6 +17,8 @@ import { createPortal } from 'react-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useUIStore } from '../store/uiStore';
+import { useUploadProgress } from '../contexts/UploadProgressContext';
+import { PasteDropzoneArea } from '../components/ui/PasteDropzoneArea';
 
 interface WorkspaceTaskDrawerProps {
   isOpen: boolean;
@@ -38,6 +40,7 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
   embedMode = false
 }) => {
   const { t } = useLanguage();
+  const { startUpload, updateProgress, finishUpload } = useUploadProgress();
   const [searchParams, setSearchParams] = useSearchParams();
   const { user: currentUser } = useAuth();
   const { showConfirm, closeConfirm } = useUIStore();
@@ -862,13 +865,26 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
     if (!file) return;
 
     setUploadingFile(true);
+    const sizeStr = (file.size / (1024 * 1024)).toFixed(1) + ' MB';
+    const taskId = startUpload(file.name, sizeStr);
+
     const fd = new FormData();
     fd.append('file', file);
 
     try {
-      const res = await api.post('/upload', fd);
+      updateProgress(taskId, 20, 'uploading');
+      const res = await api.post('/upload', fd, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+        onUploadProgress: (progressEvent) => {
+          if (progressEvent.total) {
+            const percent = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+            updateProgress(taskId, percent, percent === 100 ? 'processing' : 'uploading');
+          }
+        }
+      });
       const fileUrl = res.data?.data?.url || res.data?.url;
       if (res.data && res.data.success && fileUrl) {
+        finishUpload(taskId, true);
         // Add to resources links
         const newResource = {
           label: file.name,
@@ -880,12 +896,75 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
         handleSaveMeta(updatedMeta);
         toast.success(t('Tải lên tài liệu thành công!'));
       } else {
+        finishUpload(taskId, false, res.data?.message || t('Lỗi tải tệp lên'));
         toast.error(res.data?.message || t('Lỗi tải tệp lên'));
       }
     } catch (err: any) {
+      finishUpload(taskId, false, err.message || t('Lỗi kết nối tải tệp'));
       toast.error(t('Lỗi kết nối tải tệp: ') + err.message);
     } finally {
       setUploadingFile(false);
+      e.target.value = '';
+    }
+  };
+
+  const handlePasteDropzoneUpload = async (item: { file?: File; url?: string; label: string }) => {
+    if (item.url) {
+      const newResource = {
+        label: item.label || item.url,
+        url: item.url,
+        is_file: false
+      };
+      const newLinks = [...(erpMeta.links || []), newResource];
+      const updatedMeta = { ...erpMeta, links: newLinks };
+      handleSaveMeta(updatedMeta);
+      toast.success(t('Thêm liên kết đính kèm thành công!'));
+      return;
+    }
+
+    if (item.file) {
+      const file = item.file;
+      setUploadingFile(true);
+      const sizeStr = (file.size / (1024 * 1024)).toFixed(1) + ' MB';
+      const taskId = startUpload(item.label || file.name, sizeStr);
+
+      const fd = new FormData();
+      fd.append('file', file);
+
+      try {
+        updateProgress(taskId, 20, 'uploading');
+        const res = await api.post('/upload', fd, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+          onUploadProgress: (progressEvent) => {
+            if (progressEvent.total) {
+              const percent = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+              updateProgress(taskId, percent, percent === 100 ? 'processing' : 'uploading');
+            }
+          }
+        });
+
+        const fileUrl = res.data?.data?.url || res.data?.url;
+        if (res.data && res.data.success && fileUrl) {
+          finishUpload(taskId, true);
+          const newResource = {
+            label: item.label || file.name,
+            url: fileUrl,
+            is_file: true
+          };
+          const newLinks = [...(erpMeta.links || []), newResource];
+          const updatedMeta = { ...erpMeta, links: newLinks };
+          handleSaveMeta(updatedMeta);
+          toast.success(t('Tải lên đính kèm thành công!'));
+        } else {
+          finishUpload(taskId, false, res.data?.message || t('Lỗi tải tệp lên'));
+          toast.error(res.data?.message || t('Lỗi tải tệp lên'));
+        }
+      } catch (err: any) {
+        finishUpload(taskId, false, err.message || t('Lỗi kết nối tải tệp'));
+        toast.error(t('Lỗi kết nối tải tệp: ') + err.message);
+      } finally {
+        setUploadingFile(false);
+      }
     }
   };
 
@@ -895,20 +974,37 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
     if (!file) return;
 
     setUploadingFile(true);
+    const sizeStr = (file.size / (1024 * 1024)).toFixed(1) + ' MB';
+    const taskId = startUpload(file.name, sizeStr);
+
     const fd = new FormData();
     fd.append('file', file);
 
     try {
-      const res = await api.post('/upload', fd);
+      updateProgress(taskId, 20, 'uploading');
+      const res = await api.post('/upload', fd, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+        onUploadProgress: (progressEvent) => {
+          if (progressEvent.total) {
+            const percent = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+            updateProgress(taskId, percent, percent === 100 ? 'processing' : 'uploading');
+          }
+        }
+      });
       const fileUrl = res.data?.data?.url || res.data?.url;
       if (res.data && res.data.success && fileUrl) {
+        finishUpload(taskId, true);
         setCommentAttachments(prev => [...prev, { name: file.name, url: fileUrl }]);
         toast.success(t('Tải lên đính kèm thành công!'));
+      } else {
+        finishUpload(taskId, false, res.data?.message || t('Lỗi tải tệp lên'));
       }
     } catch (err: any) {
+      finishUpload(taskId, false, err.message || t('Lỗi tải đính kèm'));
       toast.error(t('Lỗi tải đính kèm: ') + err.message);
     } finally {
       setUploadingFile(false);
+      e.target.value = '';
     }
   };
 
@@ -1661,13 +1757,15 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
               )}
 
               {/* Attached list */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                {(!erpMeta.links || erpMeta.links.length === 0) ? (
-                  <div style={{ textAlign: 'center', padding: '0.75rem', color: 'var(--color-text-muted)', fontSize: '0.75rem' }}>
-                    {t('Chưa có tệp đính kèm.')}
-                  </div>
-                ) : (
-                  erpMeta.links.map((link: any, idx: number) => (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <PasteDropzoneArea
+                  onConfirmUpload={handlePasteDropzoneUpload}
+                  compact={true}
+                  placeholder="Kéo thả tệp tin hoặc nhấn Ctrl+V để dán ảnh/link tại đây"
+                  subtext="Xem trước ảnh/tệp tin trước khi tải lên (Hỗ trợ Ctrl+V từ Clipboard)"
+                />
+
+                {erpMeta.links && erpMeta.links.map((link: any, idx: number) => (
                     <div
                       key={idx}
                       style={{
@@ -1707,8 +1805,7 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
                         <Trash2 size={13} />
                       </button>
                     </div>
-                  ))
-                )}
+                  ))}
               </div>
             </div>
 

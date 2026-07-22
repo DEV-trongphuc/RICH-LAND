@@ -5375,8 +5375,11 @@ switch ($action) {
             $newFilename = 'avatar_' . uniqid() . '.' . $extension;
             $destination = $uploadDir . $newFilename;
 
-            if (move_uploaded_file($file['tmp_name'], $destination)) {
-                $relativeUrl = 'uploads/avatars/' . $newFilename;
+            require_once __DIR__ . '/config/ImageHelper.php';
+            $res = ImageHelper::saveUploadedFile($file['tmp_name'], $destination, $file['name']);
+
+            if ($res['success']) {
+                $relativeUrl = 'uploads/avatars/' . $res['filename'];
 
                 // Xóa ảnh cũ nếu có
                 $oldAvatar = $_GET['old_avatar'] ?? '';

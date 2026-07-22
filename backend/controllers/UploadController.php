@@ -67,7 +67,11 @@ class UploadController {
         $filename = uniqid('img_', true) . '.' . $ext;
         $targetPath = $storageDir . $filename;
 
-        if (move_uploaded_file($file['tmp_name'], $targetPath)) {
+        require_once __DIR__ . '/../config/ImageHelper.php';
+        $res = ImageHelper::saveUploadedFile($file['tmp_name'], $targetPath, $file['name']);
+
+        if ($res['success']) {
+            $savedFilename = $res['filename'];
             // Delete old file if requested (strictly within tenant dir)
             $oldUrl = $_POST['previous_url'] ?? null;
             if ($oldUrl && (strpos($oldUrl, "/uploads/tenant_{$tid}/") !== false || strpos($oldUrl, "/storage/uploads/tenant_{$tid}/") !== false)) {
@@ -85,7 +89,7 @@ class UploadController {
             }
 
             // Return relative URL
-            $url = "uploads/tenant_{$tid}/" . $filename;
+            $url = "uploads/tenant_{$tid}/" . $savedFilename;
             respond(200, ['url' => $url], 'Tải lên thành công');
         } else {
             respond(500, null, 'Không thể lưu file trên server');

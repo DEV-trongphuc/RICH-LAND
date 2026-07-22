@@ -151,12 +151,14 @@ class CloudFileController {
         $safeName = preg_replace('/[^a-zA-Z0-9_-]/', '_', pathinfo($name, PATHINFO_FILENAME));
         $fileName = time() . '_' . $safeName . '.' . $ext;
         $targetPath = $targetDir . '/' . $fileName;
-        $dbPath = "uploads/cloud/$tid/$fileName";
-
-        // 3. Move file
-        if (!move_uploaded_file($file['tmp_name'], $targetPath)) {
+        // 3. Move file with automatic WebP compression for images
+        require_once __DIR__ . '/../config/ImageHelper.php';
+        $res = ImageHelper::saveUploadedFile($file['tmp_name'], $targetPath, $file['name']);
+        if (!$res['success']) {
             respond(500, null, 'Không thể lưu tệp tin vào thư mục đích', false);
         }
+        $fileName = $res['filename'];
+        $dbPath = "uploads/cloud/$tid/$fileName";
 
         // 4. Save to DB
         $stmt = $this->db->prepare("

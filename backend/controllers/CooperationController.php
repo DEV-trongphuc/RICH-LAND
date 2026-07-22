@@ -857,11 +857,13 @@ class CooperationController {
         $safeName = preg_replace('/[^a-zA-Z0-9_-]/', '_', pathinfo($file['name'], PATHINFO_FILENAME));
         $fileName = time() . '_' . $safeName . '.' . $ext;
         $targetPath = $targetDir . '/' . $fileName;
-        $dbPath = "uploads/cooperation/$tid/$fileName";
-
-        if (!move_uploaded_file($file['tmp_name'], $targetPath)) {
+        require_once __DIR__ . '/../config/ImageHelper.php';
+        $res = ImageHelper::saveUploadedFile($file['tmp_name'], $targetPath, $file['name']);
+        if (!$res['success']) {
             respond(500, null, 'Không thể di chuyển tệp đã tải lên vào thư mục đích', false);
         }
+        $fileName = $res['filename'];
+        $dbPath = "uploads/cooperation/$tid/$fileName";
 
         $stmtCur = $this->db->prepare("SELECT attachment_url FROM cooperation_slips WHERE id = ?");
         $stmtCur->execute([$id]);
