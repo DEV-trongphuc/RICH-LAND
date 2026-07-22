@@ -4058,43 +4058,95 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
                             </div>
                           </div>
 
-                          {/* Card 2: Chiến dịch liên kết */}
-                          <div style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border-light)', borderRadius: '20px', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem', boxShadow: '0 4px 16px rgba(0,0,0,0.03)' }}>
+                          {/* Card 2: Chiến dịch liên kết (100% Matching Screenshot) */}
+                          <div style={{ background: '#ffffff', border: '1px solid var(--color-border-light)', borderRadius: '20px', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem', boxShadow: '0 4px 16px rgba(0,0,0,0.03)' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                              <Megaphone size={18} style={{ color: 'var(--color-primary)' }} />
-                              <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 800, color: 'var(--color-text)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>CHIẾN DỊCH LIÊN KẾT</h4>
+                              <Megaphone size={20} style={{ color: '#b91c1c' }} />
+                              <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 800, color: '#991b1b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>CHIẾN DỊCH LIÊN KẾT</h4>
                             </div>
-                            <div style={{ padding: '0.875rem 1rem', background: 'var(--color-bg)', border: '1px solid var(--color-border-light)', borderRadius: '12px', fontSize: '0.825rem', color: 'var(--color-text-muted)' }}>
-                              {viewProjectModal.campaign_ids ? viewProjectModal.campaign_ids : 'Chưa liên kết chiến dịch'}
+                            <div style={{ padding: '1rem 1.25rem', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '14px', fontSize: '0.875rem', color: '#64748b' }}>
+                              {viewProjectModal.campaign_ids ? (
+                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                                  {String(viewProjectModal.campaign_ids).split(',').map((cName: string, idx: number) => {
+                                    const trimmed = cName.trim();
+                                    if (!trimmed) return null;
+                                    return (
+                                      <button
+                                        key={idx}
+                                        type="button"
+                                        onClick={async () => {
+                                          try {
+                                            const res: any = await api.get(`campaigns?search=${encodeURIComponent(trimmed)}`);
+                                            if (res.data && res.data.success && res.data.data && res.data.data.length > 0) {
+                                              setViewCampaignModal(res.data.data[0]);
+                                            } else {
+                                              setViewCampaignModal({ id: Date.now(), name: trimmed, status: 'active', project_name: viewProjectModal.name });
+                                            }
+                                          } catch (e) {
+                                            setViewCampaignModal({ id: Date.now(), name: trimmed, status: 'active', project_name: viewProjectModal.name });
+                                          }
+                                        }}
+                                        style={{ background: '#ffffff', border: '1px solid #cbd5e1', padding: '6px 12px', borderRadius: '8px', fontSize: '0.825rem', fontWeight: 700, color: '#334155', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}
+                                      >
+                                        <Megaphone size={14} color="#0284c7" />
+                                        {trimmed}
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                              ) : (
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#94a3b8' }}>
+                                  <Info size={16} />
+                                  <span>Chưa liên kết chiến dịch</span>
+                                </div>
+                              )}
                             </div>
                           </div>
 
-                          {/* Card 3: Vòng phân bổ (Fair-Share Round) */}
-                          <div style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border-light)', borderRadius: '20px', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem', boxShadow: '0 4px 16px rgba(0,0,0,0.03)' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                <div style={{ width: 32, height: 32, borderRadius: '8px', background: 'rgba(239, 68, 68, 0.08)', color: 'var(--color-danger)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                  <Layers size={18} />
+                          {/* Card 3: Vòng phân bổ (Fair-Share Round) (100% Matching Screenshot) */}
+                          <div style={{ background: '#ffffff', border: '1px solid var(--color-border-light)', borderRadius: '20px', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem', boxShadow: '0 4px 16px rgba(0,0,0,0.03)' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                <div style={{ width: 36, height: 36, borderRadius: '10px', background: '#fef2f2', color: '#dc2626', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                  <Layers size={20} />
                                 </div>
                                 <div>
-                                  <h4 style={{ margin: 0, fontSize: '0.85rem', fontWeight: 800, color: 'var(--color-text)' }}>VÒNG PHÂN BỔ (FAIR-SHARE ROUND)</h4>
-                                  <p style={{ margin: 0, fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>Định tuyến &amp; chia số tự động theo Round-Robin</p>
+                                  <h4 style={{ margin: 0, fontSize: '0.9rem', fontWeight: 800, color: '#991b1b' }}>VÒNG PHÂN BỔ (FAIR-SHARE ROUND)</h4>
+                                  <p style={{ margin: '2px 0 0 0', fontSize: '0.725rem', color: '#64748b' }}>Định tuyến &amp; chia số tự động theo Round-Robin</p>
                                 </div>
                               </div>
+                              <button type="button" className="btn outline sm" style={{ height: '30px', fontSize: '0.725rem', borderRadius: '8px', fontWeight: 700, color: '#475569', borderColor: '#cbd5e1' }}>
+                                <Settings size={12} /> Quản lý Vòng
+                              </button>
                             </div>
 
-                            <div style={{ padding: '1rem', borderRadius: '14px', background: 'var(--color-bg)', border: '1px solid var(--color-border-light)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                            <div style={{ padding: '1.15rem', borderRadius: '16px', background: '#f8fafc', border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', gap: '10px' }}>
                               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                <span style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--color-text)' }}>Chiến dịch {viewProjectModal.name}</span>
-                                <span className="badge success" style={{ fontSize: '0.65rem', padding: '2px 8px', borderRadius: '100px', fontWeight: 700 }}>Đang chạy</span>
+                                <span style={{ fontSize: '0.9rem', fontWeight: 800, color: '#0f172a' }}>Chiến dịch {viewProjectModal.name}</span>
+                                <span className="badge success" style={{ fontSize: '0.65rem', padding: '3px 10px', borderRadius: '100px', fontWeight: 800, background: '#dcfce7', color: '#15803d' }}>Đang chạy</span>
                               </div>
-                              <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', display: 'flex', justifyContent: 'space-between', marginTop: '4px' }}>
+
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.775rem', color: '#64748b' }}>
+                                <Users size={14} />
+                                <span><strong>0</strong> Sales</span>
+                              </div>
+
+                              <div style={{ fontSize: '0.775rem', color: '#64748b', display: 'flex', justifyContent: 'space-between', marginTop: '2px' }}>
                                 <span>Lượt vừa chia:</span>
-                                <strong style={{ color: 'var(--color-danger)' }}>Chưa phát sinh</strong>
+                                <strong style={{ color: '#dc2626', fontWeight: 800 }}>Chưa phát sinh</strong>
                               </div>
-                              <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', display: 'flex', justifyContent: 'space-between' }}>
+                              <div style={{ fontSize: '0.775rem', color: '#64748b', display: 'flex', justifyContent: 'space-between' }}>
                                 <span>Lượt sắp tới:</span>
-                                <strong style={{ color: 'var(--color-danger)' }}>Chưa xác định</strong>
+                                <strong style={{ color: '#dc2626', fontWeight: 800 }}>Chưa xác định</strong>
+                              </div>
+
+                              <div style={{ display: 'flex', justifyContent: 'space-between', gap: '10px', marginTop: '8px', paddingTop: '10px', borderTop: '1px solid #e2e8f0' }}>
+                                <button type="button" className="btn outline sm" style={{ flex: 1, height: '32px', fontSize: '0.75rem', fontWeight: 700, borderRadius: '8px', color: '#334155', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
+                                  <Eye size={13} /> Xem chi tiết
+                                </button>
+                                <button type="button" className="btn primary sm" style={{ flex: 1, height: '32px', fontSize: '0.75rem', fontWeight: 700, borderRadius: '8px', background: '#dc2626', borderColor: '#dc2626', color: '#ffffff', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
+                                  <Edit3 size={13} /> Chỉnh sửa
+                                </button>
                               </div>
                             </div>
                           </div>
