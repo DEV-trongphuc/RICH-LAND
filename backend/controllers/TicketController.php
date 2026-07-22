@@ -451,7 +451,17 @@ class TicketController {
             if (isset($data['status']) && $data['status'] !== $oldTicket['status']) {
                 $newStatusVal = $data['status'];
                 $notifUids = array_unique([(int)$oldTicket['created_by'], (int)$oldTicket['assignee_id']]);
+                require_once __DIR__ . '/../NotificationService.php';
                 foreach ($notifUids as $nUid) {
+                    if ($nUid <= 0 || $nUid === (int)$auth['user_id']) continue;
+                    
+                    $statusLabel = $newStatusVal === 'in_progress' ? 'Đã tiếp nhận' : ($newStatusVal === 'closed' ? 'Đã đóng' : $newStatusVal);
+                    NotificationService::send($this->db, $auth['tenant_id'], 'WORKFLOW_TASK_ASSIGNED', [
+                        'user_id' => $nUid,
+                        'task_title' => "Cập nhật Ticket #{$id}: {$statusLabel}",
+                        'reason' => "Ticket #{$id} [{$oldTicket['subject']}] đã được chuyển sang trạng thái: {$statusLabel}"
+                    ]);
+
                     $stmtUser = $this->db->prepare("SELECT email, full_name FROM users WHERE id=?");
                     $stmtUser->execute([$nUid]);
                     $notifRow = $stmtUser->fetch();
@@ -460,7 +470,7 @@ class TicketController {
                         $emailTitle = "CẬP NHẬT TRẠNG THÁI TICKET";
                         $emailContent = "Chào <strong>" . htmlspecialchars($notifRow['full_name']) . "</strong>,<br/><br/>" .
                                         "Ticket <strong>" . htmlspecialchars($oldTicket['subject']) . "</strong> đã được cập nhật trạng thái mới.<br/>" .
-                                        "Trạng thái mới: <strong style='color: #ea580c;'>" . htmlspecialchars($newStatusVal) . "</strong>.<br/>" .
+                                        "Trạng thái mới: <strong style='color: #ea580c;'>" . htmlspecialchars($statusLabel) . "</strong>.<br/>" .
                                         "Người cập nhật: <strong>" . htmlspecialchars($auth['full_name']) . "</strong>.<br/>" .
                                         "Vui lòng truy cập hệ thống để xem chi tiết.";
                         sendEmailNotification($notifRow['email'], $emailSubject, $emailTitle, $emailContent, '', false);

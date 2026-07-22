@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSearchParams } from 'react-router-dom';
-import { X, MessageSquare, Clock, AlertCircle, User, Paperclip, Send, CheckCircle2, MoreHorizontal, Loader2, Lock } from 'lucide-react';
+import { 
+  X, MessageSquare, Clock, AlertCircle, User, Paperclip, Send, CheckCircle2, 
+  XCircle, Inbox, Image as ImageIcon, FileText, ExternalLink, Loader2, Lock, Eye, Calendar
+} from 'lucide-react';
 import { Avatar } from '../components/ui/Avatar';
-import { CustomSelect } from '../components/ui/CustomSelect';
 import { useUIStore } from '../store/uiStore';
 import { useAuth } from '../contexts/AuthContext';
 import api from '../api/axios';
@@ -18,15 +20,8 @@ interface Props {
   onUpdate?: (data: any) => void;
   contacts?: any[];
   users?: any[];
+  onOpenContact?: (contact: any) => void;
 }
-
-const TICKET_STATUSES = [
-  { id: 'open', label: 'Mới mở', color: '#3b82f6' },
-  { id: 'in_progress', label: 'Đang xử lý', color: '#f59e0b' },
-  { id: 'waiting', label: 'Chờ phản hồi', color: '#BD1D2D' },
-  { id: 'resolved', label: 'Đã giải quyết', color: '#10b981' },
-  { id: 'closed', label: 'Đã đóng', color: '#6b7280' },
-];
 
 const PRIORITIES = [
   { id: 'low', label: 'Thấp', color: '#10b981' },
@@ -35,7 +30,7 @@ const PRIORITIES = [
   { id: 'urgent', label: 'Khẩn cấp', color: '#ef4444' },
 ];
 
-export const TicketDrawer: React.FC<Props> = ({ isOpen, onClose, ticket, onUpdate, contacts = [], users = [] }) => {
+export const TicketDrawer: React.FC<Props> = ({ isOpen, onClose, ticket, onUpdate, contacts = [], users = [], onOpenContact }) => {
   const [isMobile, setIsMobile] = useState(false);
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth <= 768);
@@ -54,56 +49,19 @@ export const TicketDrawer: React.FC<Props> = ({ isOpen, onClose, ticket, onUpdat
     if (isNaN(d.getTime())) return '—';
     return d.toLocaleDateString('vi-VN');
   };
+
   const [searchParams, setSearchParams] = useSearchParams();
   const [formData, setFormData] = useState<any>({});
   const [comments, setComments] = useState<any[]>([]);
   const [newComment, setNewComment] = useState('');
   const [replyTo, setReplyTo] = useState<{ id: number; userName: string } | null>(null);
-  const [isInternal, setIsInternal] = useState(false);
-
-  useEffect(() => {
-    if (isOpen && comments.length > 0) {
-      const highlightCommentId = searchParams.get('highlight_comment_id');
-      if (highlightCommentId) {
-        setTimeout(() => {
-          const element = document.getElementById(`ticket-comment-${highlightCommentId}`);
-          if (element) {
-            element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            // Flash highlight the inner bubble
-            const bubble = element.querySelector('div > div > div:nth-child(2)') as HTMLElement;
-            if (bubble) {
-              const originalBg = bubble.style.background;
-              bubble.style.backgroundColor = '#fef08a'; // yellow-200
-              bubble.style.transition = 'all 0.5s ease';
-              setTimeout(() => {
-                bubble.style.background = originalBg;
-              }, 2500);
-            }
-            
-            // Clean URL parameters
-            const newParams = new URLSearchParams(searchParams);
-            newParams.delete('highlight_comment_id');
-            setSearchParams(newParams, { replace: true });
-          }
-        }, 300);
-      }
-    }
-  }, [isOpen, comments, searchParams, setSearchParams]);
-
-  useEffect(() => {
-    if (isOpen) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = '';
-    }
-    return () => {
-      document.body.style.overflow = '';
-    };
-  }, [isOpen]);
-
   const [loading, setLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [prevTicketId, setPrevTicketId] = useState<number | null>(null);
+
+  const [showRejectModal, setShowRejectModal] = useState(false);
+  const [rejectReason, setRejectReason] = useState('');
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
 
   if (isOpen && ticket?.id && ticket.id !== prevTicketId && !loading) {
     setLoading(true);
@@ -129,6 +87,43 @@ export const TicketDrawer: React.FC<Props> = ({ isOpen, onClose, ticket, onUpdat
       fetchComments();
     }
   }, [ticket]);
+
+  useEffect(() => {
+    if (isOpen && comments.length > 0) {
+      const highlightCommentId = searchParams.get('highlight_comment_id');
+      if (highlightCommentId) {
+        setTimeout(() => {
+          const element = document.getElementById(`ticket-comment-${highlightCommentId}`);
+          if (element) {
+            element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            const bubble = element.querySelector('div > div > div:nth-child(2)') as HTMLElement;
+            if (bubble) {
+              const originalBg = bubble.style.background;
+              bubble.style.backgroundColor = '#fef08a';
+              bubble.style.transition = 'all 0.5s ease';
+              setTimeout(() => {
+                bubble.style.background = originalBg;
+              }, 2500);
+            }
+            const newParams = new URLSearchParams(searchParams);
+            newParams.delete('highlight_comment_id');
+            setSearchParams(newParams, { replace: true });
+          }
+        }, 300);
+      }
+    }
+  }, [isOpen, comments, searchParams, setSearchParams]);
+
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [isOpen]);
 
   const [isVisible, setIsVisible] = useState(isOpen);
   const [animateIn, setAnimateIn] = useState(isOpen);
@@ -166,22 +161,98 @@ export const TicketDrawer: React.FC<Props> = ({ isOpen, onClose, ticket, onUpdat
     }
   };
 
-  const handleStatusChange = (newStatus: string) => {
-    const oldStatus = formData.status;
-    setFormData((prev: any) => ({ ...prev, status: newStatus }));
-    onUpdate?.({ ...formData, status: newStatus });
+  const handleAcceptTicket = async () => {
+    if (isSubmitting) return;
+    setIsSubmitting(true);
+    try {
+      const updated = { ...formData, status: 'in_progress' };
+      await api.put(`/tickets/${ticket.id}`, { status: 'in_progress' });
+      setFormData(updated);
+      onUpdate?.(updated);
+      addToast('Đã tiếp nhận ticket và gửi thông báo cho người tạo', 'success');
+    } catch (err: any) {
+      addToast('Lỗi khi tiếp nhận ticket', 'error');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleResolveTicket = async () => {
+    if (isSubmitting) return;
+    setIsSubmitting(true);
+    try {
+      const updated = { ...formData, status: 'closed', resolution_status: 'resolved' };
+      await api.put(`/tickets/${ticket.id}`, { status: 'closed', resolution_status: 'resolved' });
+      setFormData(updated);
+      onUpdate?.(updated);
+      addToast('Đã hoàn thành và đóng ticket', 'success');
+    } catch (err: any) {
+      addToast('Lỗi khi đóng ticket', 'error');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleRejectTicket = async () => {
+    if (!rejectReason.trim() || isSubmitting) return;
+    setIsSubmitting(true);
+    try {
+      const updated = { ...formData, status: 'closed', resolution_status: 'rejected', rejection_reason: rejectReason };
+      await api.put(`/tickets/${ticket.id}`, { status: 'closed', resolution_status: 'rejected', rejection_reason: rejectReason });
+      
+      await api.post(`/tickets/${ticket.id}/comments`, { 
+        body: `[Từ chối Hỗ trợ]: ${rejectReason}`
+      });
+      
+      fetchComments();
+      setFormData(updated);
+      onUpdate?.(updated);
+      setShowRejectModal(false);
+      setRejectReason('');
+      addToast('Đã từ chối và đóng ticket', 'success');
+    } catch (err: any) {
+      addToast('Lỗi khi từ chối ticket', 'error');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const getAttachedImages = (data: any) => {
+    const list: { label: string; url: string }[] = [];
+    if (!data) return list;
     
-    addToast('Đã cập nhật trạng thái', 'success', {
-      label: 'Undo',
-      onClick: () => {
-        setFormData((prev: any) => ({ ...prev, status: oldStatus }));
-        onUpdate?.({ ...formData, status: oldStatus });
+    const text = (data.description || '') + ' ' + (typeof data.attachments === 'string' ? data.attachments : JSON.stringify(data.attachments || []));
+    
+    const mdImgRegex = /!\[(.*?)\]\((https?:\/\/[^\s)]+)\)/g;
+    let m;
+    while ((m = mdImgRegex.exec(text)) !== null) {
+      list.push({ label: m[1] || 'Ảnh đính kèm', url: m[2] });
+    }
+
+    const mdLinkRegex = /\[(.*?)\]\((https?:\/\/[^\s)]+\.(?:png|jpg|jpeg|gif|webp|svg)[^\s)]*)\)/gi;
+    while ((m = mdLinkRegex.exec(text)) !== null) {
+      if (!list.some(item => item.url === m![2])) {
+        list.push({ label: m[1] || 'Ảnh đính kèm', url: m[2] });
       }
-    });
+    }
+
+    const rawUrlRegex = /(https?:\/\/[^\s<"']+(?:\/uploads\/|\.(?:png|jpg|jpeg|gif|webp|svg))[^\s<"']*)/gi;
+    while ((m = rawUrlRegex.exec(text)) !== null) {
+      if (!list.some(item => item.url === m![1])) {
+        list.push({ label: 'Ảnh đính kèm', url: m[1] });
+      }
+    }
+
+    return list;
   };
 
   if (!isVisible) return null;
   if (typeof document === 'undefined') return null;
+
+  const attachedImages = getAttachedImages(formData);
+  const matchedAssignee = (users || []).find(u => Number(u.id) === Number(formData.assignee_id));
+  const assigneeName = formData.assignee_name || matchedAssignee?.full_name || 'Hệ thống / Admin';
+  const assigneeAvatar = formData.assignee_avatar || matchedAssignee?.avatar_url;
 
   return createPortal(
     <>
@@ -203,317 +274,429 @@ export const TicketDrawer: React.FC<Props> = ({ isOpen, onClose, ticket, onUpdat
           willChange: 'transform'
         }}
       >
-            {/* ── Header ── */}
-            <div className={styles.header}>
-              <div className={styles.headerProfile}>
-                <div className="avatar-placeholder lg" style={{ background: PRIORITIES.find(p => p.id === formData.priority)?.color || 'var(--color-primary)' }}>
-                  <AlertCircle size={24} color="white" />
-                </div>
-                <div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-                    <span style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--color-text-light)' }}>#{formData.id}</span>
-                    <span className="badge" style={{ background: PRIORITIES.find(p => p.id === formData.priority)?.color + '20', color: PRIORITIES.find(p => p.id === formData.priority)?.color }}>
-                      {PRIORITIES.find(p => p.id === formData.priority)?.label}
-                    </span>
-                  </div>
-                  <h2 className={styles.title} style={{ fontSize: '1.25rem' }}>{formData.subject}</h2>
-                  <p className={styles.subtitle} style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px' }}>
-                    <User size={14} /> {formData.customer_name} • Mở lúc: {formData.created_at ? new Date(formData.created_at).toLocaleString('vi-VN') : '—'}
-                  </p>
-                </div>
-              </div>
-              <div className={styles.headerActions}>
-                <div style={{ width: 140 }}>
-                  <CustomSelect 
-                    options={TICKET_STATUSES.map(s => ({ value: s.id, label: s.label }))} 
-                    value={formData.status} 
-                    onChange={val => handleStatusChange(val.toString())} 
-                    disabled={!isAdminOrManager}
-                  />
-                </div>
-                <button className={styles.closeBtn} onClick={onClose}><X size={20} /></button>
-              </div>
+        {/* Header */}
+        <div className={styles.header}>
+          <div className={styles.headerProfile}>
+            <div className="avatar-placeholder lg" style={{ background: PRIORITIES.find(p => p.id === formData.priority)?.color || 'var(--color-primary)' }}>
+              <AlertCircle size={24} color="white" />
             </div>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                <span style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--color-text-light)' }}>#{formData.id}</span>
+                <span className="badge" style={{ background: PRIORITIES.find(p => p.id === formData.priority)?.color + '20', color: PRIORITIES.find(p => p.id === formData.priority)?.color }}>
+                  {PRIORITIES.find(p => p.id === formData.priority)?.label}
+                </span>
 
-            {/* ── Content Split ── */}
-            <div className={styles.drawerBody} style={{ background: 'var(--color-bg)' }}>
+                {/* Status Badge */}
+                {formData.status === 'open' || formData.status === 'new' || !formData.status ? (
+                  <span className="badge info" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '3px 8px', borderRadius: '6px', fontWeight: 700, fontSize: '0.75rem' }}>
+                    <Inbox size={12} /> Mới tạo
+                  </span>
+                ) : formData.status === 'in_progress' ? (
+                  <span className="badge warning" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '3px 8px', borderRadius: '6px', fontWeight: 700, fontSize: '0.75rem' }}>
+                    <Clock size={12} /> Đã tiếp nhận
+                  </span>
+                ) : formData.resolution_status === 'rejected' ? (
+                  <span className="badge danger" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '3px 8px', borderRadius: '6px', fontWeight: 700, fontSize: '0.75rem' }}>
+                    <XCircle size={12} /> Từ chối
+                  </span>
+                ) : (
+                  <span className="badge success" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '3px 8px', borderRadius: '6px', fontWeight: 700, fontSize: '0.75rem' }}>
+                    <CheckCircle2 size={12} /> Đã hoàn thành
+                  </span>
+                )}
+              </div>
+              <h2 className={styles.title} style={{ fontSize: '1.25rem' }}>{formData.subject}</h2>
+              <p className={styles.subtitle} style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px' }}>
+                <User size={14} /> {formData.created_by_name || formData.customer_name || 'Người gửi'} • Mở lúc: {formData.created_at ? new Date(formData.created_at).toLocaleString('vi-VN') : '—'}
+              </p>
+            </div>
+          </div>
+
+          <div className={styles.headerActions} style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+            {/* Operational Action Buttons */}
+            {isAdminOrManager && (
+              <>
+                {(formData.status === 'open' || formData.status === 'new' || !formData.status) && (
+                  <button 
+                    type="button"
+                    className="btn primary sm"
+                    onClick={handleAcceptTicket}
+                    disabled={isSubmitting}
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontWeight: 700 }}
+                  >
+                    {isSubmitting ? <Loader2 size={14} className="spin" /> : <Inbox size={14} />}
+                    Tiếp nhận Ticket
+                  </button>
+                )}
+
+                {formData.status === 'in_progress' && (
+                  <>
+                    <button 
+                      type="button"
+                      className="btn success sm"
+                      onClick={handleResolveTicket}
+                      disabled={isSubmitting}
+                      style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: '#10b981', color: '#fff', fontWeight: 700, border: 'none' }}
+                    >
+                      {isSubmitting ? <Loader2 size={14} className="spin" /> : <CheckCircle2 size={14} />}
+                      Hoàn thành & Đóng
+                    </button>
+                    <button 
+                      type="button"
+                      className="btn danger sm outline"
+                      onClick={() => setShowRejectModal(true)}
+                      disabled={isSubmitting}
+                      style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontWeight: 700 }}
+                    >
+                      <XCircle size={14} />
+                      Từ chối & Đóng
+                    </button>
+                  </>
+                )}
+              </>
+            )}
+
+            <button className={styles.closeBtn} onClick={onClose}><X size={20} /></button>
+          </div>
+        </div>
+
+        {/* Content Split */}
+        <div className={styles.drawerBody} style={{ background: 'var(--color-bg)' }}>
+          
+          {/* Left: Content & Activity Thread */}
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', borderRight: isMobile ? 'none' : '1px solid var(--color-border)', borderBottom: isMobile ? '1px dashed var(--color-border)' : 'none' }}>
+            <div style={{ flex: 1, overflow: 'auto', padding: isMobile ? '0.75rem 0.5rem 100px 0.5rem' : '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
               
-              {/* Left: Activity Thread */}
-              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', borderRight: isMobile ? 'none' : '1px solid var(--color-border)', borderBottom: isMobile ? '1px dashed var(--color-border)' : 'none' }}>
-                <div style={{ flex: 1, overflow: 'auto', padding: isMobile ? '0.75rem 0.5rem 100px 0.5rem' : '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                  {loading ? (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                      <StatRowSkeleton />
-                      <StatRowSkeleton />
-                      <StatRowSkeleton />
-                    </div>
-                  ) : comments.length === 0 ? (
-                    <div style={{ 
-                      display: 'flex', 
-                      flexDirection: 'column', 
-                      alignItems: 'center', 
-                      justifyContent: 'center', 
-                      padding: '3rem', 
-                      color: 'var(--color-text-muted)', 
-                      background: 'var(--color-surface)', 
-                      borderRadius: '16px', 
-                      border: '1px dashed var(--color-border)' 
-                    }}>
-                      <MessageSquare size={32} style={{ marginBottom: '1rem', opacity: 0.3 }} />
-                      <span style={{ fontSize: '0.875rem' }}>Chưa có ghi chú nào. Hãy bắt đầu thảo luận!</span>
-                    </div>
-                  ) : (
-                    (() => {
-                      const rootComments = comments.filter((c: any) => !c.parent_id);
-                      const getReplies = (parentId: number) => {
-                        return comments
-                          .filter((c: any) => Number(c.parent_id) === Number(parentId))
-                          .sort((a: any, b: any) => new Date(a.created_at || a.time).getTime() - new Date(b.created_at || b.time).getTime());
-                      };
-
-                      const renderSingleComment = (msg: any, isReply: boolean = false) => {
-                        const isSelf = currentUser && String(msg.user_id) === String(currentUser.id);
-                        return (
-                          <div 
-                            key={msg.id} 
-                            id={`ticket-comment-${msg.id}`}
-                            style={{ 
-                              display: 'flex', 
-                              gap: '1rem', 
-                              flexDirection: isSelf ? 'row-reverse' : 'row', 
-                              alignSelf: isSelf ? 'flex-end' : 'flex-start',
-                              width: '100%',
-                              marginTop: isReply ? '4px' : '0'
-                            }}
-                          >
-                            <Avatar name={msg.user_name || msg.user} src={msg.avatar_url} size={isReply ? 24 : 32} />
-                            <div style={{ maxWidth: '85%', display: 'flex', flexDirection: 'column', alignItems: isSelf ? 'flex-end' : 'flex-start' }}>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px', flexDirection: isSelf ? 'row-reverse' : 'row' }}>
-                                <span style={{ fontSize: isReply ? '0.75rem' : '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>{msg.user_name || msg.user}</span>
-                                <span style={{ fontSize: '0.75rem', color: 'var(--color-text-light)' }}>{(msg.created_at || msg.time) ? new Date(msg.created_at || msg.time).toLocaleString('vi-VN') : ''}</span>
-                              </div>
-                              <div style={{ 
-                                padding: isReply ? '0.625rem 1rem' : '0.875rem 1.25rem', 
-                                borderRadius: '16px', 
-                                borderTopLeftRadius: isSelf ? '16px' : '4px',
-                                borderTopRightRadius: isSelf ? '4px' : '16px',
-                                background: isSelf ? 'rgba(201, 24, 43, 0.08)' : (msg.is_internal ? 'var(--color-warning-light)' : 'var(--color-surface)'),
-                                border: isSelf ? '1px solid rgba(201, 24, 43, 0.15)' : '1px solid var(--color-border)',
-                                color: 'var(--color-text)',
-                                fontSize: isReply ? '0.85rem' : '0.9375rem', 
-                                lineHeight: 1.5,
-                                wordBreak: 'break-word'
-                              }}>
-                                {msg.body || msg.text}
-                              </div>
-                              {!isReply && (
-                                <button
-                                  onClick={() => setReplyTo({ id: msg.id, userName: msg.user_name || msg.user || 'Đồng nghiệp' })}
-                                  style={{ background: 'transparent', border: 'none', color: 'var(--color-primary)', fontSize: '0.7rem', padding: '4px 0 0 0', cursor: 'pointer', fontWeight: 700 }}
-                                  className="hover-lift"
-                                >
-                                  Phản hồi
-                                </button>
-                              )}
-                            </div>
-                          </div>
-                        );
-                      };
-
-                      return rootComments.map((rootComment: any) => {
-                        const replies = getReplies(rootComment.id);
-                        const isSelfRoot = currentUser && String(rootComment.user_id) === String(currentUser.id);
-                        return (
-                          <div key={rootComment.id} style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                            {renderSingleComment(rootComment, false)}
-                            {replies.length > 0 && (
-                              <div style={{ 
-                                marginLeft: isSelfRoot ? '0' : '2.5rem', 
-                                marginRight: isSelfRoot ? '2.5rem' : '0', 
-                                display: 'flex', 
-                                flexDirection: 'column', 
-                                gap: '8px', 
-                                borderLeft: isSelfRoot ? 'none' : '2px solid var(--color-border-light)', 
-                                borderRight: isSelfRoot ? '2px solid var(--color-border-light)' : 'none', 
-                                paddingLeft: isSelfRoot ? '0' : '12px', 
-                                paddingRight: isSelfRoot ? '12px' : '0', 
-                                marginTop: '4px' 
-                              }}>
-                                {replies.map((reply: any) => renderSingleComment(reply, true))}
-                              </div>
-                            )}
-                          </div>
-                        );
-                      });
-                    })()
-                  )}
+              {/* Ticket Initial Description & Attached Media Card */}
+              <div style={{ background: 'var(--color-surface)', borderRadius: '14px', padding: '1.25rem', border: '1px solid var(--color-border-light)', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
+                <h4 style={{ fontSize: '0.85rem', fontWeight: 800, textTransform: 'uppercase', color: 'var(--color-text-muted)', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <FileText size={15} style={{ color: 'var(--color-primary)' }} /> Nội dung yêu cầu hỗ trợ
+                </h4>
+                <div style={{ fontSize: '0.925rem', color: 'var(--color-text)', lineHeight: 1.65, whiteSpace: 'pre-wrap' }}>
+                  {formData.description ? formData.description.replace(/!\[.*?\]\(.*?\)/g, '').trim() || formData.description : 'Không có mô tả chi tiết.'}
                 </div>
 
-                {/* Reply Box */}
-                {ticket.status === 'closed' ? (
-                  <div style={{ padding: '1.5rem', background: 'var(--color-bg-light)', borderTop: '1px solid var(--color-border)', textAlign: 'center', color: 'var(--color-text-muted)', fontSize: '0.875rem', fontWeight: 600 }}>
-                    <Lock size={16} style={{ display: 'inline-block', marginRight: '6px', verticalAlign: 'middle', color: 'var(--color-text-muted)' }} />
-                    Ticket đã đóng, không thể thêm phản hồi hoặc cập nhật.
-                  </div>
-                ) : (
-                  <div style={{ padding: '1.5rem', background: 'var(--color-surface)', borderTop: '1px solid var(--color-border)' }}>
-                    {replyTo && (
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(201, 24, 43, 0.08)', padding: '6px 12px', borderRadius: '8px', fontSize: '0.72rem', color: '#c9182b', fontWeight: 700, marginBottom: '8px' }}>
-                        <span>Đang trả lời {replyTo.userName}</span>
-                        <button onClick={() => setReplyTo(null)} style={{ border: 'none', background: 'transparent', color: '#c9182b', cursor: 'pointer', fontWeight: 800, fontSize: '0.9rem', padding: '0 4px' }}>×</button>
-                      </div>
-                    )}
-                    <div style={{ position: 'relative' }}>
-                      <textarea 
-                        className="form-input" 
-                        placeholder="Thêm ghi chú, cập nhật tiến độ xử lý..."
-                        value={newComment}
-                        onChange={e => setNewComment(e.target.value)}
-                        style={{ minHeight: '100px', paddingBottom: '3rem', resize: 'none' }}
-                      />
-                      <div style={{ position: 'absolute', bottom: '12px', left: '12px', display: 'flex', gap: '8px' }}>
-                        <button className="btn-icon sm"><Paperclip size={16} /></button>
-                      </div>
-                      <button 
-                        className="btn primary sm"
-                        style={{ position: 'absolute', bottom: '12px', right: '12px', display: 'flex', alignItems: 'center', gap: '6px' }}
-                        onClick={handleSend}
-                        disabled={isSubmitting || !newComment.trim()}
-                      >
-                        {isSubmitting ? <Loader2 size={14} className="spin" /> : <CheckCircle2 size={14} />}
-                        {isSubmitting ? 'Đang cập nhật' : 'Cập nhật'}
-                      </button>
+                {attachedImages.length > 0 && (
+                  <div style={{ marginTop: '1rem', paddingTop: '0.75rem', borderTop: '1px dashed var(--color-border-light)' }}>
+                    <p style={{ fontSize: '0.775rem', fontWeight: 700, color: 'var(--color-text-muted)', marginBottom: '0.625rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <ImageIcon size={14} style={{ color: 'var(--color-primary)' }} /> Hình ảnh / Tài liệu đính kèm ({attachedImages.length}):
+                    </p>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: '10px' }}>
+                      {attachedImages.map((img, idx) => (
+                        <div 
+                          key={idx}
+                          onClick={() => setPreviewImage(img.url)}
+                          style={{
+                            position: 'relative',
+                            borderRadius: '8px',
+                            overflow: 'hidden',
+                            border: '1px solid var(--color-border)',
+                            aspectRatio: '1',
+                            cursor: 'pointer',
+                            background: 'var(--color-bg)'
+                          }}
+                          className="hover-lift"
+                        >
+                          <img src={img.url} alt={img.label} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                          <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, background: 'rgba(0,0,0,0.65)', color: 'white', padding: '3px 4px', fontSize: '0.65rem', textAlign: 'center', textOverflow: 'ellipsis', whiteSpace: 'nowrap', overflow: 'hidden' }}>
+                            {img.label}
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   </div>
                 )}
               </div>
 
-              {/* Right: Info Panel */}
-              <div style={{ width: isMobile ? '100%' : '320px', background: 'var(--color-surface)', padding: isMobile ? '0.75rem 0.5rem 100px 0.5rem' : '1.5rem', overflow: 'auto' }}>
-                <h4 style={{ fontSize: '0.875rem', fontWeight: 800, textTransform: 'uppercase', color: 'var(--color-text-light)', marginBottom: '1rem' }}>Thông tin Ticket</h4>
-                
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '2rem' }}>
-                  {isAdminOrManager ? (
-                    <>
-                      <div>
-                        <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginBottom: '4px' }}>Người phụ trách</p>
-                        <CustomSelect
-                          options={(users || []).map(u => ({ value: String(u.id), label: u.full_name }))}
-                          value={String(formData.assignee_id || '')}
-                          onChange={val => {
-                            const uid = val ? Number(val) : null;
-                            const matchedUser = (users || []).find(u => Number(u.id) === uid);
-                            const updated = { ...formData, assignee_id: uid, assignee_name: matchedUser ? matchedUser.full_name : '' };
-                            setFormData(updated);
-                            onUpdate?.(updated);
-                            addToast('Đã chuyển giao ticket thành công', 'success');
-                          }}
-                          placeholder="-- Chọn người phụ trách --"
-                        />
-                      </div>
-                      <div>
-                        <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginBottom: '4px' }}>Độ ưu tiên</p>
-                        <CustomSelect
-                          options={PRIORITIES.map(p => ({ value: p.id, label: p.label }))}
-                          value={formData.priority}
-                          onChange={val => {
-                            const updated = { ...formData, priority: val as string };
-                            setFormData(updated);
-                            onUpdate?.(updated);
-                            addToast('Đã cập nhật độ ưu tiên', 'success');
-                          }}
-                        />
-                      </div>
-                      <div>
-                        <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginBottom: '4px' }}>Thời hạn (SLA)</p>
-                        <input
-                          type="date"
-                          className="form-input"
-                          style={{ height: '38px', fontSize: '0.85rem', fontWeight: 600, borderRadius: '8px' }}
-                          value={formData.due_date ? formData.due_date.substring(0, 10) : ''}
-                          onChange={e => {
-                            const val = e.target.value;
-                            const updated = { ...formData, due_date: val ? `${val} 23:59:59` : null };
-                            setFormData(updated);
-                            onUpdate?.(updated);
-                            addToast('Đã cập nhật thời hạn xử lý', 'success');
-                          }}
-                        />
-                      </div>
-                    </>
-                  ) : (
-                    <>
-                      <div>
-                        <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginBottom: '2px' }}>Người phụ trách</p>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <Avatar name={formData.assignee_name} src={formData.assignee_avatar} size={24} />
-                          <span style={{ fontWeight: 600, fontSize: '0.875rem' }}>{formData.assignee_name || 'Admin'}</span>
+              {/* Comments Thread */}
+              <h4 style={{ fontSize: '0.85rem', fontWeight: 800, textTransform: 'uppercase', color: 'var(--color-text-muted)', margin: 0, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <MessageSquare size={15} style={{ color: 'var(--color-primary)' }} /> Nhật ký trao đổi ({comments.length})
+              </h4>
+
+              {loading ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  <StatRowSkeleton />
+                  <StatRowSkeleton />
+                  <StatRowSkeleton />
+                </div>
+              ) : comments.length === 0 ? (
+                <div style={{ 
+                  display: 'flex', 
+                  flexDirection: 'column', 
+                  alignItems: 'center', 
+                  justifyContent: 'center', 
+                  padding: '2.5rem', 
+                  color: 'var(--color-text-muted)', 
+                  background: 'var(--color-surface)', 
+                  borderRadius: '16px', 
+                  border: '1px dashed var(--color-border)' 
+                }}>
+                  <MessageSquare size={32} style={{ marginBottom: '0.75rem', opacity: 0.3 }} />
+                  <span style={{ fontSize: '0.875rem' }}>Chưa có ghi chú nào. Hãy bắt đầu thảo luận!</span>
+                </div>
+              ) : (
+                (() => {
+                  const rootComments = comments.filter((c: any) => !c.parent_id);
+                  const getReplies = (parentId: number) => {
+                    return comments
+                      .filter((c: any) => Number(c.parent_id) === Number(parentId))
+                      .sort((a: any, b: any) => new Date(a.created_at || a.time).getTime() - new Date(b.created_at || b.time).getTime());
+                  };
+
+                  const renderSingleComment = (msg: any, isReply: boolean = false) => {
+                    const isSelf = currentUser && String(msg.user_id) === String(currentUser.id);
+                    return (
+                      <div 
+                        key={msg.id} 
+                        id={`ticket-comment-${msg.id}`}
+                        style={{ 
+                          display: 'flex', 
+                          gap: '1rem', 
+                          flexDirection: isSelf ? 'row-reverse' : 'row', 
+                          alignSelf: isSelf ? 'flex-end' : 'flex-start',
+                          width: '100%',
+                          marginTop: isReply ? '4px' : '0'
+                        }}
+                      >
+                        <Avatar name={msg.user_name || msg.user} src={msg.avatar_url} size={isReply ? 24 : 32} />
+                        <div style={{ maxWidth: '85%', display: 'flex', flexDirection: 'column', alignItems: isSelf ? 'flex-end' : 'flex-start' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px', flexDirection: isSelf ? 'row-reverse' : 'row' }}>
+                            <span style={{ fontSize: isReply ? '0.75rem' : '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>{msg.user_name || msg.user}</span>
+                            <span style={{ fontSize: '0.75rem', color: 'var(--color-text-light)' }}>{(msg.created_at || msg.time) ? new Date(msg.created_at || msg.time).toLocaleString('vi-VN') : ''}</span>
+                          </div>
+                          <div style={{ 
+                            padding: isReply ? '0.625rem 1rem' : '0.875rem 1.25rem', 
+                            borderRadius: '16px', 
+                            borderTopLeftRadius: isSelf ? '16px' : '4px',
+                            borderTopRightRadius: isSelf ? '4px' : '16px',
+                            background: isSelf ? 'rgba(201, 24, 43, 0.08)' : (msg.is_internal ? 'var(--color-warning-light)' : 'var(--color-surface)'),
+                            border: isSelf ? '1px solid rgba(201, 24, 43, 0.15)' : '1px solid var(--color-border)',
+                            color: 'var(--color-text)',
+                            fontSize: isReply ? '0.85rem' : '0.9375rem', 
+                            lineHeight: 1.5,
+                            wordBreak: 'break-word'
+                          }}>
+                            {msg.body || msg.text}
+                          </div>
+                          {!isReply && (
+                            <button
+                              onClick={() => setReplyTo({ id: msg.id, userName: msg.user_name || msg.user || 'Đồng nghiệp' })}
+                              style={{ background: 'transparent', border: 'none', color: 'var(--color-primary)', fontSize: '0.7rem', padding: '4px 0 0 0', cursor: 'pointer', fontWeight: 700 }}
+                              className="hover-lift"
+                            >
+                              Phản hồi
+                            </button>
+                          )}
                         </div>
                       </div>
-                      <div>
-                        <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginBottom: '2px' }}>Thời hạn (SLA)</p>
-                        <p style={{ fontWeight: 600, fontSize: '0.875rem', color: 'var(--color-danger)', display: 'flex', alignItems: 'center', gap: '4px' }}><Clock size={14}/> {formatSlaDate(formData.due_date)}</p>
-                      </div>
-                    </>
-                  )}
-                </div>
+                    );
+                  };
 
-                <h4 style={{ fontSize: '0.875rem', fontWeight: 800, textTransform: 'uppercase', color: 'var(--color-text-light)', marginBottom: '1rem' }}>Thông tin khách hàng</h4>
-                <div className="card" style={{ padding: '1rem', background: 'var(--color-bg)', border: 'none' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '0.75rem' }}>
-                    <Avatar name={formData.customer_name} size={40} />
-                    <div>
-                      <p style={{ fontWeight: 700, fontSize: '0.9rem' }}>{formData.customer_name}</p>
-                      <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>Khách hàng chính</p>
-                    </div>
+                  return rootComments.map((rootComment: any) => {
+                    const replies = getReplies(rootComment.id);
+                    const isSelfRoot = currentUser && String(rootComment.user_id) === String(currentUser.id);
+                    return (
+                      <div key={rootComment.id} style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                        {renderSingleComment(rootComment, false)}
+                        {replies.length > 0 && (
+                          <div style={{ 
+                            marginLeft: isSelfRoot ? '0' : '2.5rem', 
+                            marginRight: isSelfRoot ? '2.5rem' : '0', 
+                            display: 'flex', 
+                            flexDirection: 'column', 
+                            gap: '8px', 
+                            borderLeft: isSelfRoot ? 'none' : '2px solid var(--color-border-light)', 
+                            borderRight: isSelfRoot ? '2px solid var(--color-border-light)' : 'none', 
+                            paddingLeft: isSelfRoot ? '0' : '12px', 
+                            paddingRight: isSelfRoot ? '12px' : '0', 
+                            marginTop: '4px' 
+                          }}>
+                            {replies.map((reply: any) => renderSingleComment(reply, true))}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  });
+                })()
+              )}
+            </div>
+
+            {/* Reply Box */}
+            {formData.status === 'closed' ? (
+              <div style={{ padding: '1.25rem', background: 'var(--color-bg-light)', borderTop: '1px solid var(--color-border)', textAlign: 'center', color: 'var(--color-text-muted)', fontSize: '0.875rem', fontWeight: 600 }}>
+                <Lock size={16} style={{ display: 'inline-block', marginRight: '6px', verticalAlign: 'middle', color: 'var(--color-text-muted)' }} />
+                Ticket đã đóng, không thể thêm phản hồi hoặc cập nhật.
+              </div>
+            ) : (
+              <div style={{ padding: '1.25rem', background: 'var(--color-surface)', borderTop: '1px solid var(--color-border)' }}>
+                {replyTo && (
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(201, 24, 43, 0.08)', padding: '6px 12px', borderRadius: '8px', fontSize: '0.72rem', color: '#c9182b', fontWeight: 700, marginBottom: '8px' }}>
+                    <span>Đang trả lời {replyTo.userName}</span>
+                    <button onClick={() => setReplyTo(null)} style={{ border: 'none', background: 'transparent', color: '#c9182b', cursor: 'pointer', fontWeight: 800, fontSize: '0.9rem', padding: '0 4px' }}>×</button>
+                  </div>
+                )}
+                <div style={{ position: 'relative' }}>
+                  <textarea 
+                    className="form-input" 
+                    placeholder="Thêm ghi chú, cập nhật tiến độ xử lý..."
+                    value={newComment}
+                    onChange={e => setNewComment(e.target.value)}
+                    style={{ minHeight: '90px', paddingBottom: '3rem', resize: 'none' }}
+                  />
+                  <div style={{ position: 'absolute', bottom: '12px', left: '12px', display: 'flex', gap: '8px' }}>
+                    <button className="btn-icon sm" type="button"><Paperclip size={16} /></button>
+                  </div>
+                  <button 
+                    className="btn primary sm"
+                    style={{ position: 'absolute', bottom: '12px', right: '12px', display: 'flex', alignItems: 'center', gap: '6px' }}
+                    onClick={handleSend}
+                    disabled={isSubmitting || !newComment.trim()}
+                  >
+                    {isSubmitting ? <Loader2 size={14} className="spin" /> : <CheckCircle2 size={14} />}
+                    {isSubmitting ? 'Đang cập nhật' : 'Cập nhật'}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Right: Info Panel */}
+          <div style={{ width: isMobile ? '100%' : '320px', background: 'var(--color-surface)', padding: isMobile ? '0.75rem 0.5rem 100px 0.5rem' : '1.5rem', overflow: 'auto' }}>
+            
+            {/* Assignee Card (Read-only) */}
+            <h4 style={{ fontSize: '0.85rem', fontWeight: 800, textTransform: 'uppercase', color: 'var(--color-text-light)', marginBottom: '0.75rem' }}>Người phụ trách</h4>
+            <div className="card" style={{ padding: '0.875rem 1rem', background: 'var(--color-bg)', border: '1px solid var(--color-border-light)', borderRadius: '12px', marginBottom: '1.5rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <Avatar name={assigneeName} src={assigneeAvatar} size={38} />
+                <div>
+                  <p style={{ fontWeight: 700, fontSize: '0.875rem', color: 'var(--color-text)', margin: 0 }}>{assigneeName}</p>
+                  <p style={{ fontSize: '0.725rem', color: 'var(--color-text-muted)', margin: 0 }}>Phụ trách xử lý Ticket</p>
+                </div>
+              </div>
+            </div>
+
+            {/* SLA Date */}
+            <h4 style={{ fontSize: '0.85rem', fontWeight: 800, textTransform: 'uppercase', color: 'var(--color-text-light)', marginBottom: '0.75rem' }}>Thời hạn xử lý (SLA)</h4>
+            <div className="card" style={{ padding: '0.75rem 1rem', background: 'var(--color-bg)', border: '1px solid var(--color-border-light)', borderRadius: '12px', marginBottom: '1.5rem' }}>
+              <p style={{ fontWeight: 700, fontSize: '0.875rem', color: 'var(--color-danger)', display: 'flex', alignItems: 'center', gap: '6px', margin: 0 }}>
+                <Clock size={15}/> {formatSlaDate(formData.due_date)}
+              </p>
+            </div>
+
+            {/* Customer Info Card (Clickable to open CustomerProfileDrawer) */}
+            <h4 style={{ fontSize: '0.85rem', fontWeight: 800, textTransform: 'uppercase', color: 'var(--color-text-light)', marginBottom: '0.75rem' }}>Thông tin khách hàng</h4>
+            <div 
+              onClick={() => {
+                const cid = formData.customer_id || (formData.related_contacts && formData.related_contacts[0]);
+                if (cid) {
+                  onOpenContact?.({ id: Number(cid), name: formData.customer_name });
+                } else {
+                  addToast('Không tìm thấy thông tin ID khách hàng', 'error');
+                }
+              }}
+              className="card hover-lift" 
+              style={{ 
+                padding: '1rem', 
+                background: 'var(--color-bg)', 
+                border: '1px solid var(--color-border-light)', 
+                borderRadius: '12px',
+                cursor: 'pointer',
+                transition: 'all 0.15s ease'
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <Avatar name={formData.customer_name || 'Khách hàng'} size={40} />
+                  <div>
+                    <p style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--color-text)', margin: 0 }}>{formData.customer_name || 'Chưa cập nhật'}</p>
+                    <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', margin: 0 }}>Khách hàng liên quan</p>
                   </div>
                 </div>
-
-                {formData.related_contacts?.length > 0 && (
-                  <>
-                    <h4 style={{ fontSize: '0.875rem', fontWeight: 800, textTransform: 'uppercase', color: 'var(--color-text-light)', marginTop: '1.5rem', marginBottom: '1rem' }}>Khách hàng liên quan</h4>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                      {formData.related_contacts.map((cid: any) => {
-                        const c = (contacts || []).find(x => String(x.id) === String(cid));
-                        if (!c) return null;
-                        return (
-                          <div key={cid} style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                            <Avatar src={c.avatar_url} name={`${c.last_name} ${c.first_name}`} size={28} />
-                            <div style={{ fontSize: '0.8125rem' }}>
-                              <p style={{ fontWeight: 600 }}>{c.last_name} {c.first_name}</p>
-                              <p style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>{c.phone}</p>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </>
-                )}
-
-                {formData.related_users?.length > 0 && (
-                  <>
-                    <h4 style={{ fontSize: '0.875rem', fontWeight: 800, textTransform: 'uppercase', color: 'var(--color-text-light)', marginTop: '1.5rem', marginBottom: '1rem' }}>Nhân viên liên quan</h4>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                      {formData.related_users.map((uid: any) => {
-                        const u = (users || []).find(x => String(x.id) === String(uid));
-                        if (!u) return null;
-                        return (
-                          <div key={uid} style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                            <Avatar src={u.avatar_url} name={u.full_name} size={28} />
-                            <div style={{ fontSize: '0.8125rem' }}>
-                              <p style={{ fontWeight: 600 }}>{u.full_name}</p>
-                              <p style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>{u.role}</p>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </>
-                )}
+                <ExternalLink size={16} style={{ color: 'var(--color-primary)' }} />
               </div>
-
             </div>
+
+            {formData.related_contacts?.length > 0 && (
+              <>
+                <h4 style={{ fontSize: '0.85rem', fontWeight: 800, textTransform: 'uppercase', color: 'var(--color-text-light)', marginTop: '1.5rem', marginBottom: '0.75rem' }}>Khách hàng liên quan khác</h4>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                  {formData.related_contacts.map((cid: any) => {
+                    const c = (contacts || []).find(x => String(x.id) === String(cid));
+                    if (!c) return null;
+                    return (
+                      <div 
+                        key={cid} 
+                        onClick={() => onOpenContact?.(c)}
+                        style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', padding: '6px 8px', borderRadius: '8px', background: 'var(--color-bg)' }}
+                        className="hover-lift"
+                      >
+                        <Avatar src={c.avatar_url} name={`${c.last_name} ${c.first_name}`} size={28} />
+                        <div style={{ fontSize: '0.8125rem' }}>
+                          <p style={{ fontWeight: 600, margin: 0 }}>{c.last_name} {c.first_name}</p>
+                          <p style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', margin: 0 }}>{c.phone}</p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </>
+            )}
+          </div>
+
+        </div>
       </div>
+
+      {/* Reject Reason Modal */}
+      {showRejectModal && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
+          <div style={{ background: 'var(--color-surface)', width: '100%', maxWidth: '440px', borderRadius: '16px', padding: '1.5rem', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)' }}>
+            <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--color-text)', marginBottom: '0.5rem' }}>Từ chối & Đóng Ticket</h3>
+            <p style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', marginBottom: '1rem' }}>
+              Vui lòng nhập lý do từ chối hỗ trợ ticket này. Lý do sẽ được thông báo trực tiếp cho người tạo ticket.
+            </p>
+            <textarea
+              className="form-input"
+              rows={3}
+              placeholder="Nhập lý do từ chối hỗ trợ..."
+              value={rejectReason}
+              onChange={e => setRejectReason(e.target.value)}
+              style={{ width: '100%', resize: 'none', marginBottom: '1.25rem' }}
+            />
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+              <button className="btn outline sm" onClick={() => { setShowRejectModal(false); setRejectReason(''); }}>Hủy bỏ</button>
+              <button 
+                className="btn danger sm" 
+                onClick={handleRejectTicket} 
+                disabled={isSubmitting || !rejectReason.trim()}
+              >
+                {isSubmitting ? <Loader2 size={14} className="spin" /> : <XCircle size={14} />}
+                Xác nhận Từ chối
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Image Preview Lightbox Modal */}
+      {previewImage && (
+        <div 
+          onClick={() => setPreviewImage(null)}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 1200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem', cursor: 'pointer' }}
+        >
+          <div style={{ position: 'relative', maxWidth: '90vw', maxHeight: '90vh' }} onClick={e => e.stopPropagation()}>
+            <img src={previewImage} alt="Preview" style={{ maxWidth: '90vw', maxHeight: '85vh', objectFit: 'contain', borderRadius: '8px' }} />
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '10px' }}>
+              <a href={previewImage} target="_blank" rel="noopener noreferrer" style={{ color: 'white', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <ExternalLink size={14} /> Mở ảnh trong tab mới
+              </a>
+              <button className="btn outline sm" onClick={() => setPreviewImage(null)} style={{ color: 'white', borderColor: 'white' }}>
+                Đóng
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>,
     document.body
   );

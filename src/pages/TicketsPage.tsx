@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { Plus, Search, Filter, LifeBuoy, AlertCircle, Clock, X, Save } from 'lucide-react';
 import { useUIStore } from '../store/uiStore';
 import { TicketDrawer } from './TicketDrawer';
+import { CustomerProfileDrawer } from './CustomerProfileDrawer';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Avatar } from '../components/ui/Avatar';
 import api from '../api/axios';
@@ -36,6 +37,7 @@ export const TicketsPage: React.FC = () => {
   const [filterStatus, setFilterStatus] = useState('all');
   const [viewMode, setViewMode] = useState<'list' | 'kanban'>('list');
   const [selectedTicket, setSelectedTicket] = useState<any>(null);
+  const [selectedContactForDrawer, setSelectedContactForDrawer] = useState<any>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -540,6 +542,12 @@ export const TicketsPage: React.FC = () => {
         onUpdate={handleUpdate}
         contacts={contacts}
         users={users}
+        onOpenContact={(contactData) => setSelectedContactForDrawer(contactData)}
+      />
+      <CustomerProfileDrawer
+        isOpen={!!selectedContactForDrawer}
+        onClose={() => setSelectedContactForDrawer(null)}
+        contact={selectedContactForDrawer}
       />
     </div>
   );
