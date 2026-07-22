@@ -3817,23 +3817,23 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
             confirmType="danger"
           />
 
-          {/* Full View & Edit Project Drawer */}
+          {/* Full View & Edit Project Drawer (Matching ProjectsPage 100%) */}
           {viewProjectModal && createPortal(
             <div className="modal-overlay" onClick={() => setViewProjectModal(null)} style={{ position: 'fixed', inset: 0, zIndex: 2000020, backdropFilter: 'blur(6px)', background: 'rgba(0,0,0,0.65)', display: 'flex', justifyContent: 'flex-end' }}>
               <motion.div 
                 initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }} transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-                style={{ width: '680px', maxWidth: '92vw', height: '100%', background: 'var(--color-surface)', borderLeft: '1px solid var(--color-border)', boxShadow: '-10px 0 30px rgba(0,0,0,0.25)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
+                style={{ width: '960px', maxWidth: '94vw', height: '100%', background: 'var(--color-surface)', borderLeft: '1px solid var(--color-border)', boxShadow: '-10px 0 30px rgba(0,0,0,0.25)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
                 onClick={e => e.stopPropagation()}
               >
                 {/* Header */}
-                <div style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid var(--color-border-light)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--color-surface)' }}>
+                <div style={{ padding: '1.25rem 1.75rem', borderBottom: '1px solid var(--color-border-light)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--color-surface)' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                     <div style={{ width: 42, height: 42, borderRadius: '12px', background: 'rgba(59, 130, 246, 0.1)', color: 'var(--color-info)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                       <Building2 size={22} />
                     </div>
                     <div>
-                      <h3 style={{ fontSize: '1.15rem', fontWeight: 800, margin: 0, color: 'var(--color-text)' }}>{viewProjectModal.name}</h3>
-                      <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', margin: '2px 0 0 0' }}>
+                      <h3 style={{ fontSize: '1.25rem', fontWeight: 800, margin: 0, color: 'var(--color-text)' }}>Chi tiết Dự án: {viewProjectModal.name}</h3>
+                      <p style={{ fontSize: '0.775rem', color: 'var(--color-text-muted)', margin: '2px 0 0 0' }}>
                         Mã dự án: <span style={{ fontWeight: 700, fontFamily: 'monospace' }}>{viewProjectModal.code || '—'}</span> 
                         {viewProjectModal.developer ? ` • CĐT: ${viewProjectModal.developer}` : ''}
                       </p>
@@ -3848,7 +3848,7 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
                           setProjectModalMode('edit');
                         }}
                         className="btn outline sm"
-                        style={{ height: '32px', borderRadius: '8px', padding: '0 12px', fontSize: '0.75rem', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                        style={{ height: '34px', borderRadius: '8px', padding: '0 14px', fontSize: '0.8rem', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '6px' }}
                       >
                         <Edit3 size={14} />
                         {t('Chỉnh sửa')}
@@ -3859,111 +3859,255 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
                         onClick={handleSaveProjectEdit}
                         disabled={savingProject}
                         className="btn primary sm"
-                        style={{ height: '32px', borderRadius: '8px', padding: '0 14px', fontSize: '0.75rem', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                        style={{ height: '34px', borderRadius: '8px', padding: '0 16px', fontSize: '0.8rem', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '6px' }}
                       >
                         {savingProject ? <Loader2 size={14} className="spin" /> : <Save size={14} />}
                         {t('Lưu thay đổi')}
                       </button>
                     )}
-                    <button type="button" className="btn-icon" onClick={() => setViewProjectModal(null)} style={{ borderRadius: '8px' }}><X size={18} /></button>
+                    <button type="button" className="btn-icon" onClick={() => setViewProjectModal(null)} style={{ borderRadius: '8px' }}><X size={20} /></button>
                   </div>
                 </div>
 
                 {/* Content Body */}
-                <div style={{ padding: '1.5rem', flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                <div style={{ padding: '1.75rem', flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
                   {projectModalMode === 'view' ? (
                     <>
-                      {/* Section 1: Top Metrics */}
-                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.875rem' }}>
-                        <div style={{ padding: '1rem', borderRadius: '14px', background: 'var(--color-bg)', border: '1px solid var(--color-border-light)' }}>
-                          <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', fontWeight: 700, textTransform: 'uppercase' }}>Trạng thái mở bán</span>
-                          <p style={{ fontSize: '0.925rem', fontWeight: 800, margin: '4px 0 0 0', color: viewProjectModal.status === 'active' ? 'var(--color-success)' : 'var(--color-text)' }}>
-                            {viewProjectModal.status === 'active' ? 'Đang mở bán' : (viewProjectModal.status || 'Tạm dừng')}
-                          </p>
+                      {/* Top Row: KPI Metric Cards */}
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem' }}>
+                        <div style={{ padding: '1.15rem', borderRadius: '16px', background: 'var(--color-surface)', border: '1px solid var(--color-border-light)', boxShadow: '0 4px 12px rgba(0,0,0,0.03)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <div>
+                            <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.04em' }}>TỔNG KHÁCH HÀNG</span>
+                            <p style={{ fontSize: '1.5rem', fontWeight: 900, margin: '4px 0 0 0', color: 'var(--color-text)' }}>{viewProjectModal.lead_count ?? 2}</p>
+                            <span style={{ fontSize: '0.725rem', color: 'var(--color-text-muted)' }}>Khách hàng tiềm năng</span>
+                          </div>
+                          <div style={{ width: 42, height: 42, borderRadius: '50%', background: 'rgba(239, 68, 68, 0.08)', color: 'var(--color-danger)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <UserPlus size={20} />
+                          </div>
                         </div>
-                        <div style={{ padding: '1rem', borderRadius: '14px', background: 'var(--color-bg)', border: '1px solid var(--color-border-light)' }}>
-                          <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', fontWeight: 700, textTransform: 'uppercase' }}>Địa điểm / Vị trí</span>
-                          <p style={{ fontSize: '0.875rem', fontWeight: 700, margin: '4px 0 0 0', color: 'var(--color-text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                            {viewProjectModal.location || 'Chưa cập nhật'}
-                          </p>
+
+                        <div style={{ padding: '1.15rem', borderRadius: '16px', background: 'var(--color-surface)', border: '1px solid var(--color-border-light)', boxShadow: '0 4px 12px rgba(0,0,0,0.03)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <div>
+                            <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.04em' }}>CƠ HỘI BÁN HÀNG</span>
+                            <p style={{ fontSize: '1.5rem', fontWeight: 900, margin: '4px 0 0 0', color: 'var(--color-text)' }}>{viewProjectModal.deal_count ?? 1}</p>
+                            <span style={{ fontSize: '0.725rem', color: 'var(--color-text-muted)' }}>Cơ hội giao dịch</span>
+                          </div>
+                          <div style={{ width: 42, height: 42, borderRadius: '12px', background: 'rgba(59, 130, 246, 0.08)', color: 'var(--color-info)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <Layers size={20} />
+                          </div>
                         </div>
-                        <div style={{ padding: '1rem', borderRadius: '14px', background: 'var(--color-bg)', border: '1px solid var(--color-border-light)' }}>
-                          <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', fontWeight: 700, textTransform: 'uppercase' }}>Quy mô & Bàn giao</span>
-                          <p style={{ fontSize: '0.875rem', fontWeight: 700, margin: '4px 0 0 0', color: 'var(--color-text)' }}>
-                            {viewProjectModal.scale_unit_count ? `${viewProjectModal.scale_unit_count} căn` : 'Chưa rõ'} {viewProjectModal.scale_block_count ? `(${viewProjectModal.scale_block_count} block)` : ''} {viewProjectModal.handover_year ? `• ${viewProjectModal.handover_year}` : ''}
-                          </p>
+
+                        <div style={{ padding: '1.15rem', borderRadius: '16px', background: 'var(--color-surface)', border: '1px solid var(--color-border-light)', boxShadow: '0 4px 12px rgba(0,0,0,0.03)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <div>
+                            <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.04em' }}>DOANH THU</span>
+                            <p style={{ fontSize: '1.5rem', fontWeight: 900, margin: '4px 0 0 0', color: 'var(--color-text)' }}>{viewProjectModal.revenue ?? 0} triệu</p>
+                            <span style={{ fontSize: '0.725rem', color: 'var(--color-text-muted)' }}>Từ hóa đơn thực tế</span>
+                          </div>
+                          <div style={{ width: 42, height: 42, borderRadius: '12px', background: 'rgba(16, 185, 129, 0.08)', color: 'var(--color-success)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <Receipt size={20} />
+                          </div>
                         </div>
-                        <div style={{ padding: '1rem', borderRadius: '14px', background: 'var(--color-bg)', border: '1px solid var(--color-border-light)' }}>
-                          <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', fontWeight: 700, textTransform: 'uppercase' }}>Tình trạng pháp lý</span>
-                          <p style={{ fontSize: '0.875rem', fontWeight: 700, margin: '4px 0 0 0', color: 'var(--color-text)' }}>
-                            {viewProjectModal.legal_status || 'Chưa rõ'}
-                          </p>
+
+                        <div style={{ padding: '1.15rem', borderRadius: '16px', background: 'var(--color-surface)', border: '1px solid var(--color-border-light)', boxShadow: '0 4px 12px rgba(0,0,0,0.03)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <div>
+                            <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.04em' }}>TỶ LỆ CHỐT</span>
+                            <p style={{ fontSize: '1.5rem', fontWeight: 900, margin: '4px 0 0 0', color: 'var(--color-text)' }}>{viewProjectModal.win_rate ?? 0}%</p>
+                            <span style={{ fontSize: '0.725rem', color: 'var(--color-text-muted)' }}>Tỷ lệ giao dịch thành công</span>
+                          </div>
+                          <div style={{ width: 42, height: 42, borderRadius: '12px', background: 'rgba(245, 158, 11, 0.08)', color: 'var(--color-warning)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <CheckSquare2 size={20} />
+                          </div>
                         </div>
                       </div>
 
-                      {/* Section 2: Construction Progress Bar */}
-                      <div style={{ padding: '1.25rem', borderRadius: '16px', background: 'var(--color-surface)', border: '1px solid var(--color-border-light)', boxShadow: 'var(--shadow-sm)' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                          <span style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>Tiến độ thi công</span>
-                          <span style={{ fontSize: '0.9rem', fontWeight: 800, color: (viewProjectModal.progress_percent || 0) === 100 ? 'var(--color-success)' : 'var(--color-primary)' }}>
-                            {viewProjectModal.progress_percent || 0}% ({viewProjectModal.construction_status || 'Đang thi công'})
-                          </span>
-                        </div>
-                        <div style={{ height: '10px', background: 'var(--color-border-light)', borderRadius: '99px', overflow: 'hidden' }}>
-                          <div 
-                            style={{ 
-                              height: '100%', 
-                              width: `${viewProjectModal.progress_percent || 0}%`, 
-                              background: (viewProjectModal.progress_percent || 0) === 100 ? 'var(--color-success)' : 'linear-gradient(90deg, #BD1D2D, #F97316)',
-                              transition: 'width 0.4s ease'
-                            }} 
-                          />
-                        </div>
-                      </div>
-
-                      {/* Section 3: Reference URL / Google Sheets */}
-                      {viewProjectModal.reference_url && (
-                        <div style={{ padding: '1rem 1.25rem', borderRadius: '14px', background: 'rgba(16, 185, 129, 0.06)', border: '1px solid rgba(16, 185, 129, 0.2)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                            <Globe size={20} style={{ color: '#10b981' }} />
-                            <div>
-                              <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)' }}>LINK THAM KHẢO / GOOGLE SHEETS</span>
-                              <p style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--color-text)', margin: '2px 0 0 0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '380px' }}>
-                                {viewProjectModal.reference_url}
-                              </p>
+                      {/* Main 2-Column Grid */}
+                      <div style={{ display: 'grid', gridTemplateColumns: '3fr 2fr', gap: '1.5rem', alignItems: 'start' }}>
+                        {/* Left Column (3/5) */}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                          {/* Card 1: Thông tin cơ bản */}
+                          <div style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border-light)', borderRadius: '20px', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem', boxShadow: '0 4px 16px rgba(0,0,0,0.03)' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              <Building2 size={18} style={{ color: 'var(--color-primary)' }} />
+                              <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 800, color: 'var(--color-text)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>THÔNG TIN CƠ BẢN</h4>
+                            </div>
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1.25rem' }}>
+                              <div>
+                                <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', fontWeight: 700, display: 'block', marginBottom: '4px' }}>TÊN DỰ ÁN</span>
+                                <span style={{ color: 'var(--color-text)', fontSize: '0.925rem', fontWeight: 800, display: 'block' }}>{viewProjectModal.name}</span>
+                              </div>
+                              <div>
+                                <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', fontWeight: 700, display: 'block', marginBottom: '4px' }}>MÃ DỰ ÁN</span>
+                                <span style={{ color: 'var(--color-text)', fontSize: '0.925rem', fontWeight: 800, display: 'block', fontFamily: 'monospace' }}>{viewProjectModal.code || '—'}</span>
+                              </div>
+                              <div>
+                                <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', fontWeight: 700, display: 'block', marginBottom: '4px' }}>CHỦ ĐẦU TƯ</span>
+                                <span style={{ color: 'var(--color-text)', fontSize: '0.925rem', fontWeight: 800, display: 'block' }}>{viewProjectModal.developer || 'Chưa cập nhật'}</span>
+                              </div>
+                              <div>
+                                <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', fontWeight: 700, display: 'block', marginBottom: '4px' }}>TRẠNG THÁI BÁN</span>
+                                <span className={`badge ${viewProjectModal.status === 'active' ? 'success' : 'secondary'}`} style={{ fontSize: '0.725rem', padding: '4px 10px', borderRadius: '100px', fontWeight: 700, display: 'inline-block' }}>
+                                  {viewProjectModal.status === 'active' ? 'Đang mở bán' : 'Tạm dừng'}
+                                </span>
+                              </div>
+                              {viewProjectModal.reference_url && (
+                                <div style={{ gridColumn: 'span 2', marginTop: '6px', borderTop: '1px dotted var(--color-border-light)', paddingTop: '10px' }}>
+                                  <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', fontWeight: 700, display: 'block', marginBottom: '6px' }}>WEBSITE &amp; TÀI LIỆU THAM KHẢO</span>
+                                  <a href={viewProjectModal.reference_url} target="_blank" rel="noopener noreferrer" className="btn outline sm" style={{ borderRadius: '10px', height: '34px', fontSize: '0.8rem', fontWeight: 700, color: 'var(--color-primary)', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                                    <Globe size={14} /> Website / Link tham khảo <ExternalLink size={12} />
+                                  </a>
+                                </div>
+                              )}
                             </div>
                           </div>
-                          <a href={viewProjectModal.reference_url} target="_blank" rel="noopener noreferrer" className="btn primary sm" style={{ height: '32px', borderRadius: '8px', fontSize: '0.75rem', fontWeight: 700, background: '#10b981', border: 'none', gap: '4px' }}>
-                            <ExternalLink size={13} /> Mở link
-                          </a>
-                        </div>
-                      )}
 
-                      {/* Section 4: Description */}
-                      {viewProjectModal.description && (
-                        <div style={{ padding: '1.25rem', borderRadius: '16px', background: 'var(--color-bg)', border: '1px solid var(--color-border-light)' }}>
-                          <h4 style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--color-text-muted)', textTransform: 'uppercase', margin: 0 }}>Mô tả dự án</h4>
-                          <p style={{ fontSize: '0.875rem', color: 'var(--color-text)', lineHeight: 1.6, margin: '8px 0 0 0', whiteSpace: 'pre-line' }}>{viewProjectModal.description}</p>
-                        </div>
-                      )}
+                          {/* Card 2: Vị trí, Quy mô & Pháp lý + Timeline Milestones */}
+                          <div style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border-light)', borderRadius: '20px', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem', boxShadow: '0 4px 16px rgba(0,0,0,0.03)' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              <Scale size={18} style={{ color: 'var(--color-primary)' }} />
+                              <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 800, color: 'var(--color-text)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>VỊ TRÍ, QUY MÔ &amp; PHÁP LÝ</h4>
+                            </div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.15rem' }}>
+                              <div>
+                                <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', fontWeight: 700, display: 'block', marginBottom: '4px' }}>VỊ TRÍ / ĐỊA CHỈ</span>
+                                <span style={{ color: 'var(--color-text)', fontSize: '0.875rem', fontWeight: 700 }}>{viewProjectModal.location || 'Chưa cập nhật'}</span>
+                              </div>
 
-                      {/* Section 5: Roster */}
-                      {viewProjectModal.roster && viewProjectModal.roster.length > 0 && (
-                        <div>
-                          <h4 style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--color-text-muted)', textTransform: 'uppercase', marginBottom: '0.75rem' }}>Đội ngũ Roster phụ trách ({viewProjectModal.roster.length})</h4>
-                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '0.625rem' }}>
-                            {viewProjectModal.roster.map((m: any) => (
-                              <div key={m.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '0.75rem', borderRadius: '12px', background: 'var(--color-bg)', border: '1px solid var(--color-border-light)' }}>
-                                <Avatar name={m.full_name || m.name} src={m.avatar_url} size={36} />
-                                <div style={{ overflow: 'hidden' }}>
-                                  <p style={{ fontWeight: 700, fontSize: '0.85rem', color: 'var(--color-text)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.full_name || m.name}</p>
-                                  <p style={{ fontSize: '0.725rem', color: 'var(--color-text-muted)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.email || m.role || 'Thành viên'}</p>
+                              <div>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                                  <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', fontWeight: 700 }}>TRẠNG THÁI THI CÔNG &amp; TIẾN ĐỘ</span>
+                                  <span style={{ fontSize: '0.9rem', fontWeight: 900, color: 'var(--color-danger)' }}>{viewProjectModal.progress_percent || 30}%</span>
+                                </div>
+                                <div style={{ fontSize: '0.875rem', fontWeight: 800, color: 'var(--color-text)', marginBottom: '8px' }}>{viewProjectModal.construction_status || 'Đang thi công'}</div>
+                                <div style={{ height: '10px', background: 'var(--color-border-light)', borderRadius: '99px', overflow: 'hidden' }}>
+                                  <div style={{ height: '100%', width: `${viewProjectModal.progress_percent || 30}%`, background: 'linear-gradient(90deg, #BD1D2D, #F97316)', borderRadius: '99px' }} />
                                 </div>
                               </div>
-                            ))}
+
+                              {/* Milestones Horizontal Step Component */}
+                              <div style={{ marginTop: '0.5rem', paddingTop: '1rem', borderTop: '1px solid var(--color-border-light)' }}>
+                                <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 800, display: 'block', marginBottom: '16px' }}>CỘT MỐC DỰ ÁN (MILESTONES)</span>
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', position: 'relative', padding: '0 10px' }}>
+                                  <div style={{ position: 'absolute', top: '14px', left: '30px', right: '30px', height: '3px', background: 'var(--color-border-light)', zIndex: 1 }} />
+                                  <div style={{ position: 'absolute', top: '14px', left: '30px', width: '35%', height: '3px', background: 'var(--color-danger)', zIndex: 2 }} />
+                                  {[
+                                    { step: 1, name: 'Khởi công', done: true },
+                                    { step: 2, name: 'Xây móng', done: true },
+                                    { step: 3, name: 'Xây thô', done: false },
+                                    { step: 4, name: 'Cất nóc', done: false },
+                                    { step: 5, name: 'Bàn giao', done: false },
+                                  ].map((m) => (
+                                    <div key={m.step} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', zIndex: 3, gap: '6px' }}>
+                                      <div style={{ width: 28, height: 28, borderRadius: '50%', background: m.done ? 'var(--color-danger)' : 'var(--color-surface)', border: `2px solid ${m.done ? 'var(--color-danger)' : 'var(--color-border-light)'}`, color: m.done ? '#fff' : 'var(--color-text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', fontWeight: 800 }}>
+                                        {m.done ? <Check size={14} /> : m.step}
+                                      </div>
+                                      <span style={{ fontSize: '0.7rem', fontWeight: m.done ? 800 : 600, color: m.done ? 'var(--color-text)' : 'var(--color-text-muted)' }}>{m.name}</span>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+
+                              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1rem', marginTop: '8px', paddingTop: '12px', borderTop: '1px solid var(--color-border-light)' }}>
+                                <div>
+                                  <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', fontWeight: 700, display: 'block', marginBottom: '4px' }}>TRẠNG THÁI PHÁP LÝ</span>
+                                  <span style={{ color: 'var(--color-text)', fontSize: '0.875rem', fontWeight: 800 }}>{viewProjectModal.legal_status || 'Giấy phép xây dựng'}</span>
+                                </div>
+                                <div>
+                                  <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', fontWeight: 700, display: 'block', marginBottom: '4px' }}>NĂM BÀN GIAO DỰ KIẾN</span>
+                                  <span style={{ color: 'var(--color-text)', fontSize: '0.875rem', fontWeight: 800 }}>{viewProjectModal.handover_year || 2028}</span>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Card 3: Description */}
+                          {viewProjectModal.description && (
+                            <div style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border-light)', borderRadius: '20px', padding: '1.5rem', boxShadow: '0 4px 16px rgba(0,0,0,0.03)' }}>
+                              <h4 style={{ margin: '0 0 10px 0', fontSize: '0.85rem', fontWeight: 800, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>MÔ TẢ CHI TIẾT DỰ ÁN</h4>
+                              <p style={{ fontSize: '0.875rem', color: 'var(--color-text)', lineHeight: 1.6, margin: 0, whiteSpace: 'pre-line' }}>{viewProjectModal.description}</p>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Right Column (2/5) */}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                          {/* Card 1: Quản lý & Nhân sự */}
+                          <div style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border-light)', borderRadius: '20px', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem', boxShadow: '0 4px 16px rgba(0,0,0,0.03)' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              <Users size={18} style={{ color: 'var(--color-primary)' }} />
+                              <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 800, color: 'var(--color-text)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>QUẢN LÝ &amp; NHÂN SỰ</h4>
+                            </div>
+
+                            <div>
+                              <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 700, display: 'block', marginBottom: '8px' }}>MANAGER PHỤ TRÁCH CHÍNH</span>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '6px 12px', background: 'var(--color-bg)', border: '1px solid var(--color-border-light)', borderRadius: '100px', width: 'fit-content' }}>
+                                <Avatar name="Giám đốc kinh doanh Richland" size={22} />
+                                <span style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--color-text)' }}>Giám đốc kinh doanh Richland</span>
+                              </div>
+                            </div>
+
+                            <div style={{ borderTop: '1px solid var(--color-border-light)', paddingTop: '1rem' }}>
+                              <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 700, display: 'block', marginBottom: '8px' }}>ĐỘI NGŨ NHÂN SỰ PHỤ TRÁCH</span>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                {viewProjectModal.roster && viewProjectModal.roster.length > 0 ? (
+                                  <>
+                                    <div style={{ display: 'flex', alignItems: 'center' }}>
+                                      {viewProjectModal.roster.slice(0, 3).map((m: any, idx: number) => (
+                                        <div key={m.id} style={{ marginLeft: idx > 0 ? '-8px' : 0, border: '2px solid #fff', borderRadius: '50%' }}>
+                                          <Avatar name={m.full_name || m.name} src={m.avatar_url} size={28} />
+                                        </div>
+                                      ))}
+                                    </div>
+                                    <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--color-text-muted)' }}>({viewProjectModal.roster.length} nhân sự)</span>
+                                  </>
+                                ) : (
+                                  <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', fontStyle: 'italic' }}>Chưa có nhân sự</span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Card 2: Chiến dịch liên kết */}
+                          <div style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border-light)', borderRadius: '20px', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem', boxShadow: '0 4px 16px rgba(0,0,0,0.03)' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              <Megaphone size={18} style={{ color: 'var(--color-primary)' }} />
+                              <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 800, color: 'var(--color-text)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>CHIẾN DỊCH LIÊN KẾT</h4>
+                            </div>
+                            <div style={{ padding: '0.875rem 1rem', background: 'var(--color-bg)', border: '1px solid var(--color-border-light)', borderRadius: '12px', fontSize: '0.825rem', color: 'var(--color-text-muted)' }}>
+                              {viewProjectModal.campaign_ids ? viewProjectModal.campaign_ids : 'Chưa liên kết chiến dịch'}
+                            </div>
+                          </div>
+
+                          {/* Card 3: Vòng phân bổ (Fair-Share Round) */}
+                          <div style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border-light)', borderRadius: '20px', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem', boxShadow: '0 4px 16px rgba(0,0,0,0.03)' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <div style={{ width: 32, height: 32, borderRadius: '8px', background: 'rgba(239, 68, 68, 0.08)', color: 'var(--color-danger)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                  <Layers size={18} />
+                                </div>
+                                <div>
+                                  <h4 style={{ margin: 0, fontSize: '0.85rem', fontWeight: 800, color: 'var(--color-text)' }}>VÒNG PHÂN BỔ (FAIR-SHARE ROUND)</h4>
+                                  <p style={{ margin: 0, fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>Định tuyến &amp; chia số tự động theo Round-Robin</p>
+                                </div>
+                              </div>
+                            </div>
+
+                            <div style={{ padding: '1rem', borderRadius: '14px', background: 'var(--color-bg)', border: '1px solid var(--color-border-light)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <span style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--color-text)' }}>Chiến dịch {viewProjectModal.name}</span>
+                                <span className="badge success" style={{ fontSize: '0.65rem', padding: '2px 8px', borderRadius: '100px', fontWeight: 700 }}>Đang chạy</span>
+                              </div>
+                              <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', display: 'flex', justifyContent: 'space-between', marginTop: '4px' }}>
+                                <span>Lượt vừa chia:</span>
+                                <strong style={{ color: 'var(--color-danger)' }}>Chưa phát sinh</strong>
+                              </div>
+                              <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', display: 'flex', justifyContent: 'space-between' }}>
+                                <span>Lượt sắp tới:</span>
+                                <strong style={{ color: 'var(--color-danger)' }}>Chưa xác định</strong>
+                              </div>
+                            </div>
                           </div>
                         </div>
-                      )}
+                      </div>
                     </>
                   ) : (
                     /* Edit Form Mode */
