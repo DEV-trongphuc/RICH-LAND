@@ -5184,336 +5184,331 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
           );
         })()}
 
-        {/* Compact KPI Ribbon Bar */}
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '0.625rem',
-          marginBottom: '1rem',
-          flexWrap: 'wrap'
-        }}>
-          {/* Overdue Pill */}
-          <div 
-            onClick={() => {
-              setWsDatePreset('overdue');
-              setWsStatus('planned');
-              setWsTaskFilter('all');
-            }}
-            style={{
-              padding: '6px 14px',
-              borderRadius: '20px',
-              border: wsDatePreset === 'overdue' ? '1.5px solid var(--color-danger)' : '1px solid var(--color-border)',
-              background: wsDatePreset === 'overdue' ? 'rgba(239, 68, 68, 0.1)' : 'var(--color-surface)',
-              color: 'var(--color-danger)',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              fontSize: '0.8rem',
-              fontWeight: 700,
-              transition: 'all 0.15s ease'
-            }}
-          >
-            <Clock size={14} />
-            <span>{t('Quá hạn')}</span>
-            <span style={{ background: 'var(--color-danger)', color: '#fff', borderRadius: '10px', padding: '1px 7px', fontSize: '0.725rem', fontWeight: 800 }}>
-              {workspaceStats.overdue}
-            </span>
-          </div>
-
-          {/* Due Today Pill */}
-          <div 
-            onClick={() => {
-              setWsDatePreset('today');
-              setWsStatus('planned');
-              setWsTaskFilter('all');
-            }}
-            style={{
-              padding: '6px 14px',
-              borderRadius: '20px',
-              border: wsDatePreset === 'today' ? '1.5px solid var(--color-warning)' : '1px solid var(--color-border)',
-              background: wsDatePreset === 'today' ? 'rgba(245, 158, 11, 0.1)' : 'var(--color-surface)',
-              color: 'var(--color-warning)',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              fontSize: '0.8rem',
-              fontWeight: 700,
-              transition: 'all 0.15s ease'
-            }}
-          >
-            <Calendar size={14} />
-            <span>{t('Đến hạn')}</span>
-            <span style={{ background: 'var(--color-warning)', color: '#fff', borderRadius: '10px', padding: '1px 7px', fontSize: '0.725rem', fontWeight: 800 }}>
-              {workspaceStats.dueToday}
-            </span>
-          </div>
-
-          {/* Upcoming Pill */}
-          <div 
-            onClick={() => {
-              setWsDatePreset('tomorrow');
-              setWsStatus('planned');
-              setWsTaskFilter('all');
-            }}
-            style={{
-              padding: '6px 14px',
-              borderRadius: '20px',
-              border: wsDatePreset === 'tomorrow' ? '1.5px solid var(--color-info)' : '1px solid var(--color-border)',
-              background: wsDatePreset === 'tomorrow' ? 'rgba(59, 130, 246, 0.1)' : 'var(--color-surface)',
-              color: 'var(--color-info)',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              fontSize: '0.8rem',
-              fontWeight: 700,
-              transition: 'all 0.15s ease'
-            }}
-          >
-            <ArrowUpRight size={14} />
-            <span>{t('Sắp đến hạn')}</span>
-            <span style={{ background: 'var(--color-info)', color: '#fff', borderRadius: '10px', padding: '1px 7px', fontSize: '0.725rem', fontWeight: 800 }}>
-              {workspaceStats.upcoming}
-            </span>
-          </div>
-
-          {/* Waiting Approval Pill */}
-          <div 
-            onClick={() => {
-              setWsTaskFilter('approve_by_me');
-              setWsStatus('all');
-              setWsDatePreset('all');
-            }}
-            style={{
-              padding: '6px 14px',
-              borderRadius: '20px',
-              border: wsTaskFilter === 'approve_by_me' ? '1.5px solid #8b5cf6' : '1px solid var(--color-border)',
-              background: wsTaskFilter === 'approve_by_me' ? 'rgba(139, 92, 246, 0.1)' : 'var(--color-surface)',
-              color: '#8b5cf6',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              fontSize: '0.8rem',
-              fontWeight: 700,
-              transition: 'all 0.15s ease'
-            }}
-          >
-            <UserCheck size={14} />
-            <span>{t('Chờ tôi duyệt')}</span>
-            <span style={{ background: '#8b5cf6', color: '#fff', borderRadius: '10px', padding: '1px 7px', fontSize: '0.725rem', fontWeight: 800 }}>
-              {workspaceStats.pendingApproval}
-            </span>
-          </div>
-
-          {/* Team Selector Dropdown Pill */}
-          {isAdminOrManager && teamsList.length > 0 && (() => {
-            const selectedTeam = teamsList.find(t => String(t.id) === String(wsTeamId));
-            return (
-              <div ref={wsTeamFilterDropdownRef} style={{ marginLeft: 'auto', position: 'relative', display: 'inline-block' }}>
-                <button
-                  type="button"
-                  onClick={() => setShowWsTeamFilterDropdown(!showWsTeamFilterDropdown)}
-                  style={{
-                    height: '34px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px',
-                    borderRadius: '20px',
-                    padding: '3px 12px 3px 5px',
-                    border: '1.5px solid var(--color-primary, #BD1D2D)',
-                    background: 'var(--color-surface)',
-                    color: 'var(--color-text)',
-                    cursor: 'pointer',
-                    fontWeight: 700,
-                    fontSize: '0.8rem',
-                    boxShadow: '0 2px 8px rgba(189, 29, 45, 0.08)'
-                  }}
-                >
-                  <div style={{
-                    width: '22px',
-                    height: '22px',
-                    borderRadius: '50%',
-                    overflow: 'hidden',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    background: (selectedTeam?.avatar_url || selectedTeam?.avatar) ? 'transparent' : 'linear-gradient(135deg, #BD1D2D 0%, #a31422 100%)',
-                    color: '#ffffff',
-                    fontSize: '0.65rem',
-                    fontWeight: 800,
-                    border: (selectedTeam?.avatar_url || selectedTeam?.avatar) ? '1px solid var(--color-border-light)' : 'none',
-                    flexShrink: 0
-                  }}>
-                    {(selectedTeam?.avatar_url || selectedTeam?.avatar) ? (
-                      <img src={selectedTeam.avatar_url || selectedTeam.avatar} alt="Team" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                    ) : (
-                      selectedTeam ? (selectedTeam.name?.[0] || 'T') : 'ALL'
-                    )}
-                  </div>
-                  <span>{selectedTeam ? selectedTeam.name : t('Tất cả các Nhóm')}</span>
-                  <ChevronDown size={14} style={{ opacity: 0.7 }} />
-                </button>
-
-                {showWsTeamFilterDropdown && (
-                  <div style={{
-                    position: 'absolute',
-                    top: '100%',
-                    right: 0,
-                    marginTop: '6px',
-                    width: '280px',
-                    background: 'var(--color-surface)',
-                    border: '1px solid var(--color-border)',
-                    borderRadius: '12px',
-                    boxShadow: 'var(--shadow-lg)',
-                    zIndex: 1000,
-                    padding: '10px',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: '8px'
-                  }}>
-                    <div>
-                      <input
-                        type="text"
-                        className="form-input"
-                        placeholder={t('Tìm kiếm nhóm...')}
-                        value={wsTeamFilterSearch}
-                        onChange={e => setWsTeamFilterSearch(e.target.value)}
-                        style={{ width: '100%', fontSize: '0.78rem', padding: '6px 10px', height: '32px', borderRadius: '6px', border: '1px solid var(--color-border)' }}
-                      />
-                    </div>
-                    <div style={{ maxHeight: '240px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '4px' }} className="custom-scrollbar">
-                      {/* Option: Tất cả các Nhóm */}
-                      <div
-                        onClick={() => {
-                          setWsTeamId('all_teams_bypass');
-                          setShowWsTeamFilterDropdown(false);
-                          setWsTeamFilterSearch('');
-                        }}
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '8px',
-                          padding: '8px',
-                          borderRadius: '6px',
-                          cursor: 'pointer',
-                          background: (!wsTeamId || wsTeamId === 'all_teams_bypass') ? 'rgba(189, 29, 45, 0.05)' : 'transparent',
-                          fontWeight: (!wsTeamId || wsTeamId === 'all_teams_bypass') ? 600 : 400
-                        }}
-                        className="hover-bg-light"
-                      >
-                        <div style={{
-                          width: '24px',
-                          height: '24px',
-                          borderRadius: '50%',
-                          background: 'linear-gradient(135deg, #BD1D2D 0%, #a31422 100%)',
-                          color: '#ffffff',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          fontSize: '0.7rem',
-                          fontWeight: 800,
-                          flexShrink: 0
-                        }}>
-                          ALL
-                        </div>
-                        <span style={{ fontSize: '0.8rem', color: 'var(--color-text)' }}>{t('Tất cả các Nhóm')}</span>
-                      </div>
-
-                      {/* Filtered Teams */}
-                      {(() => {
-                        const filtered = teamsList.filter((tm: any) =>
-                          (tm.name || '').toLowerCase().includes(wsTeamFilterSearch.toLowerCase())
-                        );
-                        if (filtered.length === 0 && wsTeamFilterSearch) {
-                          return (
-                            <div style={{ padding: '12px', fontSize: '0.75rem', color: 'var(--color-text-muted)', textAlign: 'center' }}>
-                              {t('Không tìm thấy nhóm')}
-                            </div>
-                          );
-                        }
-                        return filtered.map((tm: any) => {
-                          const isSelected = String(tm.id) === String(wsTeamId);
-                          return (
-                            <div
-                              key={tm.id}
-                              onClick={() => {
-                                setWsTeamId(String(tm.id));
-                                setShowWsTeamFilterDropdown(false);
-                                setWsTeamFilterSearch('');
-                              }}
-                              style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '8px',
-                                padding: '8px',
-                                borderRadius: '6px',
-                                cursor: 'pointer',
-                                background: isSelected ? 'rgba(189, 29, 45, 0.05)' : 'transparent',
-                                fontWeight: isSelected ? 600 : 400
-                              }}
-                              className="hover-bg-light"
-                            >
-                              <div style={{
-                                width: '24px',
-                                height: '24px',
-                                borderRadius: '50%',
-                                overflow: 'hidden',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                background: (tm.avatar_url || tm.avatar) ? 'transparent' : 'linear-gradient(135deg, #BD1D2D 0%, #a31422 100%)',
-                                color: '#ffffff',
-                                fontSize: '0.7rem',
-                                fontWeight: 800,
-                                border: (tm.avatar_url || tm.avatar) ? '1px solid var(--color-border-light)' : 'none',
-                                flexShrink: 0
-                              }}>
-                                {(tm.avatar_url || tm.avatar) ? (
-                                  <img src={tm.avatar_url || tm.avatar} alt="Team" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                                ) : (
-                                  tm.name?.[0] || 'T'
-                                )}
-                              </div>
-                              <span style={{ fontSize: '0.8rem', color: 'var(--color-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                {tm.name}
-                              </span>
-                            </div>
-                          );
-                        });
-                      })()}
-                    </div>
-                  </div>
-                )}
-              </div>
-            );
-          })()}
-        </div>
-
+        {/* Consolidated Workspace Toolbar Row (Pills + Search + Filters + View Controls) */}
         <div style={{
           background: 'var(--color-surface)',
           border: '1px solid var(--color-border-light)',
           borderRadius: '16px',
-          padding: '0.75rem 1rem',
+          padding: '0.625rem 0.875rem',
           boxShadow: '0 4px 20px -8px rgba(0,0,0,0.05)',
           display: 'flex',
-          flexDirection: 'column',
-          gap: '0.75rem',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: '0.625rem',
+          flexWrap: 'wrap',
           marginBottom: '1rem'
         }}>
-          {/* Main Controls Row */}
+          {/* Left Group: KPI Status Pills & Team Dropdown */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+            {/* Overdue Pill */}
+            <div 
+              onClick={() => {
+                setWsDatePreset('overdue');
+                setWsStatus('planned');
+                setWsTaskFilter('all');
+              }}
+              style={{
+                padding: '5px 12px',
+                borderRadius: '20px',
+                border: wsDatePreset === 'overdue' ? '1.5px solid var(--color-danger)' : '1px solid var(--color-border)',
+                background: wsDatePreset === 'overdue' ? 'rgba(239, 68, 68, 0.1)' : 'transparent',
+                color: 'var(--color-danger)',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '5px',
+                fontSize: '0.78rem',
+                fontWeight: 700,
+                transition: 'all 0.15s ease'
+              }}
+            >
+              <Clock size={13} />
+              <span>{t('Quá hạn')}</span>
+              <span style={{ background: 'var(--color-danger)', color: '#fff', borderRadius: '10px', padding: '1px 6px', fontSize: '0.7rem', fontWeight: 800 }}>
+                {workspaceStats.overdue}
+              </span>
+            </div>
+
+            {/* Due Today Pill */}
+            <div 
+              onClick={() => {
+                setWsDatePreset('today');
+                setWsStatus('planned');
+                setWsTaskFilter('all');
+              }}
+              style={{
+                padding: '5px 12px',
+                borderRadius: '20px',
+                border: wsDatePreset === 'today' ? '1.5px solid var(--color-warning)' : '1px solid var(--color-border)',
+                background: wsDatePreset === 'today' ? 'rgba(245, 158, 11, 0.1)' : 'transparent',
+                color: 'var(--color-warning)',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '5px',
+                fontSize: '0.78rem',
+                fontWeight: 700,
+                transition: 'all 0.15s ease'
+              }}
+            >
+              <Calendar size={13} />
+              <span>{t('Đến hạn')}</span>
+              <span style={{ background: 'var(--color-warning)', color: '#fff', borderRadius: '10px', padding: '1px 6px', fontSize: '0.7rem', fontWeight: 800 }}>
+                {workspaceStats.dueToday}
+              </span>
+            </div>
+
+            {/* Upcoming Pill */}
+            <div 
+              onClick={() => {
+                setWsDatePreset('tomorrow');
+                setWsStatus('planned');
+                setWsTaskFilter('all');
+              }}
+              style={{
+                padding: '5px 12px',
+                borderRadius: '20px',
+                border: wsDatePreset === 'tomorrow' ? '1.5px solid var(--color-info)' : '1px solid var(--color-border)',
+                background: wsDatePreset === 'tomorrow' ? 'rgba(59, 130, 246, 0.1)' : 'transparent',
+                color: 'var(--color-info)',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '5px',
+                fontSize: '0.78rem',
+                fontWeight: 700,
+                transition: 'all 0.15s ease'
+              }}
+            >
+              <ArrowUpRight size={13} />
+              <span>{t('Sắp đến hạn')}</span>
+              <span style={{ background: 'var(--color-info)', color: '#fff', borderRadius: '10px', padding: '1px 6px', fontSize: '0.7rem', fontWeight: 800 }}>
+                {workspaceStats.upcoming}
+              </span>
+            </div>
+
+            {/* Waiting Approval Pill */}
+            <div 
+              onClick={() => {
+                setWsTaskFilter('approve_by_me');
+                setWsStatus('all');
+                setWsDatePreset('all');
+              }}
+              style={{
+                padding: '5px 12px',
+                borderRadius: '20px',
+                border: wsTaskFilter === 'approve_by_me' ? '1.5px solid #8b5cf6' : '1px solid var(--color-border)',
+                background: wsTaskFilter === 'approve_by_me' ? 'rgba(139, 92, 246, 0.1)' : 'transparent',
+                color: '#8b5cf6',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '5px',
+                fontSize: '0.78rem',
+                fontWeight: 700,
+                transition: 'all 0.15s ease'
+              }}
+            >
+              <UserCheck size={13} />
+              <span>{t('Chờ tôi duyệt')}</span>
+              <span style={{ background: '#8b5cf6', color: '#fff', borderRadius: '10px', padding: '1px 6px', fontSize: '0.7rem', fontWeight: 800 }}>
+                {workspaceStats.pendingApproval}
+              </span>
+            </div>
+
+            {/* Team Selector Dropdown Pill */}
+            {isAdminOrManager && teamsList.length > 0 && (() => {
+              const selectedTeam = teamsList.find(t => String(t.id) === String(wsTeamId));
+              return (
+                <div ref={wsTeamFilterDropdownRef} style={{ position: 'relative', display: 'inline-block' }}>
+                  <button
+                    type="button"
+                    onClick={() => setShowWsTeamFilterDropdown(!showWsTeamFilterDropdown)}
+                    style={{
+                      height: '32px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      borderRadius: '20px',
+                      padding: '3px 10px 3px 5px',
+                      border: '1.5px solid var(--color-primary, #BD1D2D)',
+                      background: 'var(--color-surface)',
+                      color: 'var(--color-text)',
+                      cursor: 'pointer',
+                      fontWeight: 700,
+                      fontSize: '0.78rem',
+                      boxShadow: '0 2px 8px rgba(189, 29, 45, 0.08)'
+                    }}
+                  >
+                    <div style={{
+                      width: '20px',
+                      height: '20px',
+                      borderRadius: '50%',
+                      overflow: 'hidden',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      background: (selectedTeam?.avatar_url || selectedTeam?.avatar) ? 'transparent' : 'linear-gradient(135deg, #BD1D2D 0%, #a31422 100%)',
+                      color: '#ffffff',
+                      fontSize: '0.6rem',
+                      fontWeight: 800,
+                      border: (selectedTeam?.avatar_url || selectedTeam?.avatar) ? '1px solid var(--color-border-light)' : 'none',
+                      flexShrink: 0
+                    }}>
+                      {(selectedTeam?.avatar_url || selectedTeam?.avatar) ? (
+                        <img src={selectedTeam.avatar_url || selectedTeam.avatar} alt="Team" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      ) : (
+                        selectedTeam ? (selectedTeam.name?.[0] || 'T') : 'ALL'
+                      )}
+                    </div>
+                    <span>{selectedTeam ? selectedTeam.name : t('Tất cả các Nhóm')}</span>
+                    <ChevronDown size={13} style={{ opacity: 0.7 }} />
+                  </button>
+
+                  {showWsTeamFilterDropdown && (
+                    <div style={{
+                      position: 'absolute',
+                      top: '100%',
+                      right: 0,
+                      marginTop: '6px',
+                      width: '280px',
+                      background: 'var(--color-surface)',
+                      border: '1px solid var(--color-border)',
+                      borderRadius: '12px',
+                      boxShadow: 'var(--shadow-lg)',
+                      zIndex: 1000,
+                      padding: '10px',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '8px'
+                    }}>
+                      <div>
+                        <input
+                          type="text"
+                          className="form-input"
+                          placeholder={t('Tìm kiếm nhóm...')}
+                          value={wsTeamFilterSearch}
+                          onChange={e => setWsTeamFilterSearch(e.target.value)}
+                          style={{ width: '100%', fontSize: '0.78rem', padding: '6px 10px', height: '32px', borderRadius: '6px', border: '1px solid var(--color-border)' }}
+                        />
+                      </div>
+                      <div style={{ maxHeight: '240px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '4px' }} className="custom-scrollbar">
+                        {/* Option: Tất cả các Nhóm */}
+                        <div
+                          onClick={() => {
+                            setWsTeamId('all_teams_bypass');
+                            setShowWsTeamFilterDropdown(false);
+                            setWsTeamFilterSearch('');
+                          }}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px',
+                            padding: '8px',
+                            borderRadius: '6px',
+                            cursor: 'pointer',
+                            background: (!wsTeamId || wsTeamId === 'all_teams_bypass') ? 'rgba(189, 29, 45, 0.05)' : 'transparent',
+                            fontWeight: (!wsTeamId || wsTeamId === 'all_teams_bypass') ? 600 : 400
+                          }}
+                          className="hover-bg-light"
+                        >
+                          <div style={{
+                            width: '24px',
+                            height: '24px',
+                            borderRadius: '50%',
+                            background: 'linear-gradient(135deg, #BD1D2D 0%, #a31422 100%)',
+                            color: '#ffffff',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontSize: '0.7rem',
+                            fontWeight: 800,
+                            flexShrink: 0
+                          }}>
+                            ALL
+                          </div>
+                          <span style={{ fontSize: '0.8rem', color: 'var(--color-text)' }}>{t('Tất cả các Nhóm')}</span>
+                        </div>
+
+                        {/* Filtered Teams */}
+                        {(() => {
+                          const filtered = teamsList.filter((tm: any) =>
+                            (tm.name || '').toLowerCase().includes(wsTeamFilterSearch.toLowerCase())
+                          );
+                          if (filtered.length === 0 && wsTeamFilterSearch) {
+                            return (
+                              <div style={{ padding: '12px', fontSize: '0.75rem', color: 'var(--color-text-muted)', textAlign: 'center' }}>
+                                {t('Không tìm thấy nhóm')}
+                              </div>
+                            );
+                          }
+                          return filtered.map((tm: any) => {
+                            const isSelected = String(tm.id) === String(wsTeamId);
+                            return (
+                              <div
+                                key={tm.id}
+                                onClick={() => {
+                                  setWsTeamId(String(tm.id));
+                                  setShowWsTeamFilterDropdown(false);
+                                  setWsTeamFilterSearch('');
+                                }}
+                                style={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '8px',
+                                  padding: '8px',
+                                  borderRadius: '6px',
+                                  cursor: 'pointer',
+                                  background: isSelected ? 'rgba(189, 29, 45, 0.05)' : 'transparent',
+                                  fontWeight: isSelected ? 600 : 400
+                                }}
+                                className="hover-bg-light"
+                              >
+                                <div style={{
+                                  width: '24px',
+                                  height: '24px',
+                                  borderRadius: '50%',
+                                  overflow: 'hidden',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  background: (tm.avatar_url || tm.avatar) ? 'transparent' : 'linear-gradient(135deg, #BD1D2D 0%, #a31422 100%)',
+                                  color: '#ffffff',
+                                  fontSize: '0.7rem',
+                                  fontWeight: 800,
+                                  border: (tm.avatar_url || tm.avatar) ? '1px solid var(--color-border-light)' : 'none',
+                                  flexShrink: 0
+                                }}>
+                                  {(tm.avatar_url || tm.avatar) ? (
+                                    <img src={tm.avatar_url || tm.avatar} alt="Team" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                  ) : (
+                                    tm.name?.[0] || 'T'
+                                  )}
+                                </div>
+                                <span style={{ fontSize: '0.8rem', color: 'var(--color-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                  {tm.name}
+                                </span>
+                              </div>
+                            );
+                          });
+                        })()}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+          </div>
+
+          {/* Right Group: Search + Advanced Filters Trigger + Segmented Control + View Modes */}
           <div style={{
             display: 'flex',
-            justifyContent: 'space-between',
             alignItems: 'center',
-            gap: '1rem',
+            gap: '8px',
             flexWrap: 'wrap',
-            width: '100%'
+            justifyContent: isMobile ? 'flex-start' : 'flex-end',
+            flex: 1
           }}>
-            {/* Left side: Search & Advanced Filters Trigger */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1, minWidth: '280px', maxWidth: isMobile ? '100%' : '500px' }}>
               <div style={{ position: 'relative', flex: 1 }}>
                 <input
                   type="text"
@@ -5700,7 +5695,6 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                 </div>
               )}
             </div>
-          </div>
 
           {/* Advanced Dropdown Filters (Collapsible) */}
           <AnimatePresence>
