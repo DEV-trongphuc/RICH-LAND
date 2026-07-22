@@ -496,7 +496,7 @@ class CooperationController {
                     foreach ($attachments as $attachment) {
                         $filename = strtolower(basename($attachment));
                         if ($cleanKeyword === 'unc' || $cleanKeyword === 'uy nhiem chi' || $cleanKeyword === 'ủy nhiệm chi') {
-                            if (strpos($filename, 'unc') !== false || strpos($filename, 'uy nhiem chi') !== false || strpos($filename, 'ủy nhiệm chi') !== false) {
+                            if (strpos($filename, 'unc') !== false || strpos($filename, 'uy nhiem chi') !== false || strpos($filename, 'ủy nhiệm chi') !== false || strpos($attachment, 'deposits/') !== false || !empty($attachments)) {
                                 $hasFile = true;
                                 break;
                             }

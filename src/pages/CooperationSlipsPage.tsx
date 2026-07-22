@@ -1831,7 +1831,11 @@ export default function CooperationSlipsPage() {
                     display: 'flex',
                     alignItems: 'center'
                   }}>
-                    <img src={user.signature_url} alt="Chữ ký mẫu" style={{ maxHeight: '35px', objectFit: 'contain' }} />
+                    <img 
+                      src={user.signature_url.startsWith('http') || user.signature_url.startsWith('data:') ? user.signature_url : `https://open.domation.net/richland/${user.signature_url.replace(/^\/+/, '')}`} 
+                      alt="Chữ ký mẫu" 
+                      style={{ maxHeight: '35px', objectFit: 'contain' }} 
+                    />
                   </div>
                   <div>
                     <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--color-text)' }}>

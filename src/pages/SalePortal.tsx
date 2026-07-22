@@ -11369,7 +11369,11 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                           backgroundImage: 'radial-gradient(#cbd5e1 1px, transparent 1px)',
                           backgroundSize: '12px 12px'
                         }}>
-                          <img src={saleSignatureUrl} alt="Chữ ký mẫu" style={{ maxHeight: '110px', objectFit: 'contain' }} />
+                          <img 
+                            src={saleSignatureUrl ? (saleSignatureUrl.startsWith('http') || saleSignatureUrl.startsWith('data:') ? saleSignatureUrl : `https://open.domation.net/richland/${saleSignatureUrl.replace(/^\/+/, '')}`) : ''} 
+                            alt="Chữ ký mẫu" 
+                            style={{ maxHeight: '110px', objectFit: 'contain' }} 
+                          />
                         </div>
                       ) : (
                         <div

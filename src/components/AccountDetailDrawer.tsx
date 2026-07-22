@@ -1662,7 +1662,11 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
                             backgroundImage: 'radial-gradient(#cbd5e1 1px, transparent 1px)',
                             backgroundSize: '12px 12px'
                           }}>
-                            <img src={signatureUrl} alt="Chữ ký mẫu" style={{ maxHeight: '110px', objectFit: 'contain' }} />
+                            <img 
+                              src={signatureUrl ? (signatureUrl.startsWith('http') || signatureUrl.startsWith('data:') ? signatureUrl : `https://open.domation.net/richland/${signatureUrl.replace(/^\/+/, '')}`) : ''} 
+                              alt="Chữ ký mẫu" 
+                              style={{ maxHeight: '110px', objectFit: 'contain' }} 
+                            />
                           </div>
                         ) : (
                           <div
