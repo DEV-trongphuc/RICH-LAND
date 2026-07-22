@@ -3,7 +3,7 @@ import {
   X, CheckSquare, Check, Paperclip, Link2, MessageSquare, Calendar, User, Clock, 
   Settings, AlertCircle, Trash2, Plus, Send, Share2, FileText, Globe, 
   Users, RefreshCw, Layers, CheckSquare2, Info, Receipt, Scale, ArrowUpRight, Search, Save, Bell, BellOff,
-  Eye, ExternalLink, UserPlus, UserCheck, Edit3, Play, Sparkles, ArrowRight
+  Eye, ExternalLink, UserPlus, UserCheck, Edit3, Play, Sparkles, ArrowRight, Building2, Megaphone, Loader2
 } from 'lucide-react';
 import api from '../api/axios';
 import toast from 'react-hot-toast';
@@ -157,6 +157,38 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
   const [allowedProjects, setAllowedProjects] = useState<any[]>([]);
   const [allowedCampaigns, setAllowedCampaigns] = useState<any[]>([]);
   const [allowedTeams, setAllowedTeams] = useState<any[]>([]);
+
+  // Quick View Drawer states for Project & Campaign
+  const [viewProjectModal, setViewProjectModal] = useState<any | null>(null);
+  const [viewCampaignModal, setViewCampaignModal] = useState<any | null>(null);
+  const [loadingViewProject, setLoadingViewProject] = useState(false);
+  const [loadingViewCampaign, setLoadingViewCampaign] = useState(false);
+
+  const openProjectDetail = async (projId: number) => {
+    if (!projId) return;
+    setLoadingViewProject(true);
+    try {
+      const res = await api.get(`/projects/${projId}`);
+      setViewProjectModal(res.data.data || res.data);
+    } catch {
+      toast.error(t('Không thể tải chi tiết dự án'));
+    } finally {
+      setLoadingViewProject(false);
+    }
+  };
+
+  const openCampaignDetail = async (campId: number) => {
+    if (!campId) return;
+    setLoadingViewCampaign(true);
+    try {
+      const res = await api.get(`/campaigns/${campId}`);
+      setViewCampaignModal(res.data.data || res.data);
+    } catch {
+      toast.error(t('Không thể tải chi tiết chiến dịch'));
+    } finally {
+      setLoadingViewCampaign(false);
+    }
+  };
 
   useEffect(() => {
     if (isOpen) {
@@ -1335,6 +1367,31 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
                         {new Date(formData.due_date).toLocaleDateString('vi-VN')} {new Date(formData.due_date).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
                       </strong>
                     </div>
+                  )}
+
+                  {!!erpMeta.project_id && (
+                    <button
+                      type="button"
+                      disabled={loadingViewProject}
+                      onClick={() => openProjectDetail(erpMeta.project_id)}
+                      style={{ display: 'flex', alignItems: 'center', gap: '4px', background: 'rgba(59, 130, 246, 0.08)', color: 'var(--color-info)', border: '1px solid rgba(59, 130, 246, 0.2)', padding: '2px 8px', borderRadius: '6px', fontSize: '0.725rem', fontWeight: 700, cursor: 'pointer' }}
+                      title={t('Mở Drawer xem chi tiết Dự án')}
+                    >
+                      {loadingViewProject ? <Loader2 size={12} className="spin" /> : <Building2 size={12} />}
+                      <span>{allowedProjects.find(p => Number(p.id) === Number(erpMeta.project_id))?.name || t('Dự án')}</span>
+                    </button>
+                  )}
+                  {!!erpMeta.campaign_id && (
+                    <button
+                      type="button"
+                      disabled={loadingViewCampaign}
+                      onClick={() => openCampaignDetail(erpMeta.campaign_id)}
+                      style={{ display: 'flex', alignItems: 'center', gap: '4px', background: 'rgba(245, 158, 11, 0.08)', color: 'var(--color-warning)', border: '1px solid rgba(245, 158, 11, 0.2)', padding: '2px 8px', borderRadius: '6px', fontSize: '0.725rem', fontWeight: 700, cursor: 'pointer' }}
+                      title={t('Mở Drawer xem chi tiết Chiến dịch')}
+                    >
+                      {loadingViewCampaign ? <Loader2 size={12} className="spin" /> : <Megaphone size={12} />}
+                      <span>{allowedCampaigns.find(c => Number(c.id) === Number(erpMeta.campaign_id))?.name || t('Chiến dịch')}</span>
+                    </button>
                   )}
                 </div>
               )}
@@ -2651,7 +2708,19 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                  <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>{t('Dự án')}</span>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>{t('Dự án')}</span>
+                    {!!erpMeta.project_id && (
+                      <button 
+                        type="button" 
+                        disabled={loadingViewProject}
+                        onClick={() => openProjectDetail(erpMeta.project_id)} 
+                        style={{ background: 'none', border: 'none', color: 'var(--color-primary)', fontSize: '0.725rem', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', padding: 0 }}
+                      >
+                        {loadingViewProject ? <Loader2 size={12} className="spin" /> : <Eye size={12} />} {t('Xem dự án')}
+                      </button>
+                    )}
+                  </div>
                   <CustomSelect
                     searchable
                     options={[
@@ -2677,7 +2746,19 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
                 </div>
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                  <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>{t('Chiến dịch')}</span>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>{t('Chiến dịch')}</span>
+                    {!!erpMeta.campaign_id && (
+                      <button 
+                        type="button" 
+                        disabled={loadingViewCampaign}
+                        onClick={() => openCampaignDetail(erpMeta.campaign_id)} 
+                        style={{ background: 'none', border: 'none', color: 'var(--color-primary)', fontSize: '0.725rem', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', padding: 0 }}
+                      >
+                        {loadingViewCampaign ? <Loader2 size={12} className="spin" /> : <Eye size={12} />} {t('Xem chiến dịch')}
+                      </button>
+                    )}
+                  </div>
                   {(() => {
                     const filteredCamps = erpMeta.project_id
                       ? allowedCampaigns.filter(c => Number(c.project_id) === Number(erpMeta.project_id))
@@ -3674,6 +3755,160 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
             cancelText={t('Quay lại')}
             confirmType="danger"
           />
+
+          {/* Quick View Project Drawer */}
+          {viewProjectModal && createPortal(
+            <div className="modal-overlay" onClick={() => setViewProjectModal(null)} style={{ position: 'fixed', inset: 0, zIndex: 2000020, backdropFilter: 'blur(6px)', background: 'rgba(0,0,0,0.65)', display: 'flex', justifyContent: 'flex-end' }}>
+              <motion.div 
+                initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }} transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+                style={{ width: '600px', maxWidth: '90vw', height: '100%', background: 'var(--color-surface)', borderLeft: '1px solid var(--color-border)', boxShadow: '-10px 0 30px rgba(0,0,0,0.25)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
+                onClick={e => e.stopPropagation()}
+              >
+                <div style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid var(--color-border-light)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--color-surface)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <div style={{ width: 40, height: 40, borderRadius: '10px', background: 'rgba(59, 130, 246, 0.1)', color: 'var(--color-info)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <Building2 size={20} />
+                    </div>
+                    <div>
+                      <h3 style={{ fontSize: '1.1rem', fontWeight: 800, margin: 0, color: 'var(--color-text)' }}>{viewProjectModal.name}</h3>
+                      <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', margin: '2px 0 0 0' }}>Mã dự án: {viewProjectModal.code || '—'} {viewProjectModal.developer ? `• CĐT: ${viewProjectModal.developer}` : ''}</p>
+                    </div>
+                  </div>
+                  <button type="button" className="btn-icon" onClick={() => setViewProjectModal(null)} style={{ borderRadius: '8px' }}><X size={18} /></button>
+                </div>
+
+                <div style={{ padding: '1.5rem', flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.75rem' }}>
+                    <div style={{ padding: '0.875rem', borderRadius: '12px', background: 'var(--color-bg)', border: '1px solid var(--color-border-light)' }}>
+                      <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>TRẠNG THÁI</span>
+                      <p style={{ fontSize: '0.875rem', fontWeight: 800, margin: '2px 0 0 0', color: viewProjectModal.status === 'active' ? 'var(--color-success)' : 'var(--color-text)' }}>
+                        {viewProjectModal.status === 'active' ? 'Hoạt động' : (viewProjectModal.status || 'Chờ triển khai')}
+                      </p>
+                    </div>
+                    <div style={{ padding: '0.875rem', borderRadius: '12px', background: 'var(--color-bg)', border: '1px solid var(--color-border-light)' }}>
+                      <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>ĐỊA ĐIỂM</span>
+                      <p style={{ fontSize: '0.875rem', fontWeight: 800, margin: '2px 0 0 0', color: 'var(--color-text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {viewProjectModal.location || 'Chưa cập nhật'}
+                      </p>
+                    </div>
+                    <div style={{ padding: '0.875rem', borderRadius: '12px', background: 'var(--color-bg)', border: '1px solid var(--color-border-light)' }}>
+                      <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>QUY MÔ</span>
+                      <p style={{ fontSize: '0.875rem', fontWeight: 800, margin: '2px 0 0 0', color: 'var(--color-text)' }}>
+                        {viewProjectModal.scale_unit_count ? `${viewProjectModal.scale_unit_count} căn` : 'Chưa rõ'} {viewProjectModal.scale_block_count ? `(${viewProjectModal.scale_block_count} block)` : ''}
+                      </p>
+                    </div>
+                    <div style={{ padding: '0.875rem', borderRadius: '12px', background: 'var(--color-bg)', border: '1px solid var(--color-border-light)' }}>
+                      <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>PHÁP LÝ / TIẾN ĐỘ</span>
+                      <p style={{ fontSize: '0.875rem', fontWeight: 800, margin: '2px 0 0 0', color: 'var(--color-text)' }}>
+                        {viewProjectModal.legal_status || 'Chưa rõ'} {viewProjectModal.progress_percent ? `(${viewProjectModal.progress_percent}%)` : ''}
+                      </p>
+                    </div>
+                  </div>
+
+                  {viewProjectModal.description && (
+                    <div style={{ padding: '1rem', borderRadius: '14px', background: 'var(--color-bg)', border: '1px solid var(--color-border-light)' }}>
+                      <h4 style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--color-text-muted)', textTransform: 'uppercase', margin: 0 }}>Mô tả dự án</h4>
+                      <p style={{ fontSize: '0.875rem', color: 'var(--color-text)', lineHeight: 1.5, margin: '6px 0 0 0', whiteSpace: 'pre-line' }}>{viewProjectModal.description}</p>
+                    </div>
+                  )}
+
+                  {viewProjectModal.roster && viewProjectModal.roster.length > 0 && (
+                    <div>
+                      <h4 style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--color-text-muted)', textTransform: 'uppercase', marginBottom: '0.75rem' }}>Nhân sự phụ trách ({viewProjectModal.roster.length})</h4>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                        {viewProjectModal.roster.map((m: any) => (
+                          <div key={m.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.625rem 0.875rem', borderRadius: '10px', background: 'var(--color-bg)', border: '1px solid var(--color-border-light)' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                              <Avatar name={m.full_name || m.name} src={m.avatar_url} size={32} />
+                              <div>
+                                <p style={{ fontWeight: 700, fontSize: '0.85rem', color: 'var(--color-text)', margin: 0 }}>{m.full_name || m.name}</p>
+                                <p style={{ fontSize: '0.725rem', color: 'var(--color-text-muted)', margin: 0 }}>{m.email || m.role || 'Thành viên'}</p>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </motion.div>
+            </div>,
+            document.body
+          )}
+
+          {/* Quick View Campaign Drawer */}
+          {viewCampaignModal && createPortal(
+            <div className="modal-overlay" onClick={() => setViewCampaignModal(null)} style={{ position: 'fixed', inset: 0, zIndex: 2000020, backdropFilter: 'blur(6px)', background: 'rgba(0,0,0,0.65)', display: 'flex', justifyContent: 'flex-end' }}>
+              <motion.div 
+                initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }} transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+                style={{ width: '600px', maxWidth: '90vw', height: '100%', background: 'var(--color-surface)', borderLeft: '1px solid var(--color-border)', boxShadow: '-10px 0 30px rgba(0,0,0,0.25)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
+                onClick={e => e.stopPropagation()}
+              >
+                <div style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid var(--color-border-light)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--color-surface)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <div style={{ width: 40, height: 40, borderRadius: '10px', background: 'rgba(245, 158, 11, 0.1)', color: 'var(--color-warning)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <Megaphone size={20} />
+                    </div>
+                    <div>
+                      <h3 style={{ fontSize: '1.1rem', fontWeight: 800, margin: 0, color: 'var(--color-text)' }}>{viewCampaignModal.name}</h3>
+                      <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', margin: '2px 0 0 0' }}>Mã chiến dịch: {viewCampaignModal.code || '—'} {viewCampaignModal.project_name ? `• Dự án: ${viewCampaignModal.project_name}` : ''}</p>
+                    </div>
+                  </div>
+                  <button type="button" className="btn-icon" onClick={() => setViewCampaignModal(null)} style={{ borderRadius: '8px' }}><X size={18} /></button>
+                </div>
+
+                <div style={{ padding: '1.5rem', flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.75rem' }}>
+                    <div style={{ padding: '0.875rem', borderRadius: '12px', background: 'var(--color-bg)', border: '1px solid var(--color-border-light)' }}>
+                      <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>TRẠNG THÁI</span>
+                      <p style={{ fontSize: '0.875rem', fontWeight: 800, margin: '2px 0 0 0', color: viewCampaignModal.status === 'active' ? 'var(--color-success)' : 'var(--color-text)' }}>
+                        {viewCampaignModal.status === 'active' ? 'Đang diễn ra' : (viewCampaignModal.status || 'Tạm dừng')}
+                      </p>
+                    </div>
+                    <div style={{ padding: '0.875rem', borderRadius: '12px', background: 'var(--color-bg)', border: '1px solid var(--color-border-light)' }}>
+                      <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>NGÂN SÁCH</span>
+                      <p style={{ fontSize: '0.875rem', fontWeight: 800, margin: '2px 0 0 0', color: 'var(--color-primary)' }}>
+                        {viewCampaignModal.budget ? new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(viewCampaignModal.budget) : 'Chưa lập'}
+                      </p>
+                    </div>
+                    <div style={{ padding: '0.875rem', borderRadius: '12px', background: 'var(--color-bg)', border: '1px solid var(--color-border-light)', gridColumn: 'span 2' }}>
+                      <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>MỤC TIÊU CHIẾN DỊCH</span>
+                      <p style={{ fontSize: '0.875rem', fontWeight: 800, margin: '2px 0 0 0', color: 'var(--color-text)' }}>
+                        {viewCampaignModal.target || viewCampaignModal.description || 'Chưa có thông tin mục tiêu'}
+                      </p>
+                    </div>
+                  </div>
+
+                  {viewCampaignModal.description && (
+                    <div style={{ padding: '1rem', borderRadius: '14px', background: 'var(--color-bg)', border: '1px solid var(--color-border-light)' }}>
+                      <h4 style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--color-text-muted)', textTransform: 'uppercase', margin: 0 }}>Chi tiết chiến dịch</h4>
+                      <p style={{ fontSize: '0.875rem', color: 'var(--color-text)', lineHeight: 1.5, margin: '6px 0 0 0', whiteSpace: 'pre-line' }}>{viewCampaignModal.description}</p>
+                    </div>
+                  )}
+
+                  {viewCampaignModal.roster && viewCampaignModal.roster.length > 0 && (
+                    <div>
+                      <h4 style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--color-text-muted)', textTransform: 'uppercase', marginBottom: '0.75rem' }}>Nhân sự tham gia chiến dịch ({viewCampaignModal.roster.length})</h4>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                        {viewCampaignModal.roster.map((m: any) => (
+                          <div key={m.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.625rem 0.875rem', borderRadius: '10px', background: 'var(--color-bg)', border: '1px solid var(--color-border-light)' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                              <Avatar name={m.full_name || m.name} src={m.avatar_url} size={32} />
+                              <div>
+                                <p style={{ fontWeight: 700, fontSize: '0.85rem', color: 'var(--color-text)', margin: 0 }}>{m.full_name || m.name}</p>
+                                <p style={{ fontSize: '0.725rem', color: 'var(--color-text-muted)', margin: 0 }}>{m.email || m.role || 'Thành viên'}</p>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </motion.div>
+            </div>,
+            document.body
+          )}
     </>,
     document.body
   );
