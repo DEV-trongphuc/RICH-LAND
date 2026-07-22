@@ -274,84 +274,108 @@ export const TicketDrawer: React.FC<Props> = ({ isOpen, onClose, ticket, onUpdat
           willChange: 'transform'
         }}
       >
-        {/* Header */}
-        <div className={styles.header} style={{ padding: '1.25rem 1.5rem', background: 'var(--color-surface)', borderBottom: '1px solid var(--color-border-light)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem' }}>
-          <div className={styles.headerProfile} style={{ display: 'flex', alignItems: 'center', gap: '1rem', flex: 1, minWidth: 0 }}>
+        {/* Modern Dark Glass Header Banner */}
+        <div style={{
+          padding: isMobile ? '1rem' : '1.25rem 1.75rem',
+          background: 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)',
+          color: '#ffffff',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          flexWrap: 'wrap',
+          gap: '1rem',
+          borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
+          boxShadow: '0 4px 20px rgba(0,0,0,0.15)'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem', flex: 1, minWidth: 0 }}>
+            {/* Priority Squircle Icon */}
             <div style={{
-              width: '46px',
-              height: '46px',
-              borderRadius: '14px',
-              background: PRIORITIES.find(p => p.id === formData.priority)?.color ? `${PRIORITIES.find(p => p.id === formData.priority)?.color}15` : 'var(--color-primary-light, rgba(189,29,45,0.1))',
-              border: `1.5px solid ${PRIORITIES.find(p => p.id === formData.priority)?.color || 'var(--color-primary)'}`,
+              width: '50px',
+              height: '50px',
+              borderRadius: '16px',
+              background: formData.priority === 'urgent' 
+                ? 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)'
+                : formData.priority === 'high' 
+                ? 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)'
+                : formData.priority === 'low'
+                ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)'
+                : 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              color: PRIORITIES.find(p => p.id === formData.priority)?.color || 'var(--color-primary)',
+              color: '#ffffff',
+              boxShadow: '0 4px 12px rgba(0,0,0,0.25)',
               flexShrink: 0
             }}>
-              <AlertCircle size={22} />
+              <AlertCircle size={24} />
             </div>
 
             <div style={{ minWidth: 0, flex: 1 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginBottom: '4px' }}>
+              {/* Badges row */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginBottom: '6px' }}>
                 <span style={{
                   fontSize: '0.725rem',
                   fontWeight: 800,
-                  color: 'var(--color-text-muted)',
-                  background: 'var(--color-bg)',
+                  color: '#94a3b8',
+                  background: 'rgba(255,255,255,0.08)',
                   padding: '2px 8px',
                   borderRadius: '6px',
-                  border: '1px solid var(--color-border-light)'
+                  border: '1px solid rgba(255,255,255,0.12)'
                 }}>
                   #{formData.id}
                 </span>
 
-                <span className="badge" style={{
-                  background: PRIORITIES.find(p => p.id === formData.priority)?.color + '18',
-                  color: PRIORITIES.find(p => p.id === formData.priority)?.color,
+                <span style={{
+                  background: PRIORITIES.find(p => p.id === formData.priority)?.color ? `${PRIORITIES.find(p => p.id === formData.priority)?.color}30` : 'rgba(255,255,255,0.15)',
+                  color: '#ffffff',
                   fontWeight: 700,
                   fontSize: '0.725rem',
-                  padding: '2px 8px',
-                  borderRadius: '6px'
+                  padding: '2px 9px',
+                  borderRadius: '6px',
+                  border: `1px solid ${PRIORITIES.find(p => p.id === formData.priority)?.color || '#3b82f6'}60`
                 }}>
-                  {PRIORITIES.find(p => p.id === formData.priority)?.label}
+                  {PRIORITIES.find(p => p.id === formData.priority)?.label || 'Trung bình'}
                 </span>
 
                 {/* Status Badge */}
                 {formData.status === 'open' || formData.status === 'new' || !formData.status ? (
-                  <span className="badge info" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '2px 8px', borderRadius: '6px', fontWeight: 700, fontSize: '0.725rem' }}>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '2px 9px', borderRadius: '6px', fontWeight: 700, fontSize: '0.725rem', background: 'rgba(59, 130, 246, 0.25)', color: '#60a5fa', border: '1px solid rgba(59, 130, 246, 0.4)' }}>
                     <Inbox size={12} /> Mới tạo
                   </span>
                 ) : formData.status === 'in_progress' ? (
-                  <span className="badge warning" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '2px 8px', borderRadius: '6px', fontWeight: 700, fontSize: '0.725rem' }}>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '2px 9px', borderRadius: '6px', fontWeight: 700, fontSize: '0.725rem', background: 'rgba(245, 158, 11, 0.25)', color: '#fbbf24', border: '1px solid rgba(245, 158, 11, 0.4)' }}>
                     <Clock size={12} /> Đã tiếp nhận
                   </span>
                 ) : formData.resolution_status === 'rejected' ? (
-                  <span className="badge danger" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '2px 8px', borderRadius: '6px', fontWeight: 700, fontSize: '0.725rem' }}>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '2px 9px', borderRadius: '6px', fontWeight: 700, fontSize: '0.725rem', background: 'rgba(239, 68, 68, 0.25)', color: '#f87171', border: '1px solid rgba(239, 68, 68, 0.4)' }}>
                     <XCircle size={12} /> Từ chối
                   </span>
                 ) : (
-                  <span className="badge success" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '2px 8px', borderRadius: '6px', fontWeight: 700, fontSize: '0.725rem' }}>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '2px 9px', borderRadius: '6px', fontWeight: 700, fontSize: '0.725rem', background: 'rgba(16, 185, 129, 0.25)', color: '#34d399', border: '1px solid rgba(16, 185, 129, 0.4)' }}>
                     <CheckCircle2 size={12} /> Đã hoàn thành
                   </span>
                 )}
               </div>
 
-              <h2 className={styles.title} style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--color-text)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', lineHeight: 1.3 }}>
+              {/* Title */}
+              <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#ffffff', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', lineHeight: 1.3, letterSpacing: '-0.01em' }}>
                 {formData.subject}
               </h2>
 
-              <p className={styles.subtitle} style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '4px', fontSize: '0.775rem', color: 'var(--color-text-muted)', margin: 0 }}>
-                <User size={13} style={{ color: 'var(--color-primary)' }} /> 
-                <span style={{ fontWeight: 650, color: 'var(--color-text)' }}>{formData.created_by_name || formData.customer_name || 'Người gửi'}</span>
-                <span>•</span>
-                <Clock size={12} />
-                <span>Mở lúc: {formData.created_at ? new Date(formData.created_at).toLocaleString('vi-VN') : '—'}</span>
+              {/* Meta row */}
+              <p style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '6px', fontSize: '0.775rem', color: '#cbd5e1', margin: 0, flexWrap: 'wrap' }}>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontWeight: 650, color: '#f8fafc' }}>
+                  <User size={13} style={{ color: '#38bdf8' }} /> {formData.created_by_name || formData.customer_name || 'Người gửi'}
+                </span>
+                <span style={{ color: '#64748b' }}>•</span>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', color: '#94a3b8' }}>
+                  <Clock size={12} /> Mở lúc: {formData.created_at ? new Date(formData.created_at).toLocaleString('vi-VN') : '—'}
+                </span>
               </p>
             </div>
           </div>
 
-          <div className={styles.headerActions} style={{ display: 'flex', gap: '8px', alignItems: 'center', flexShrink: 0 }}>
+          <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexShrink: 0 }}>
             {/* Operational Action Buttons */}
             {isAdminOrManager && (
               <>
@@ -361,7 +385,7 @@ export const TicketDrawer: React.FC<Props> = ({ isOpen, onClose, ticket, onUpdat
                     className="btn primary sm"
                     onClick={handleAcceptTicket}
                     disabled={isSubmitting}
-                    style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontWeight: 700, borderRadius: '8px' }}
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontWeight: 700, borderRadius: '8px', padding: '7px 14px' }}
                   >
                     {isSubmitting ? <Loader2 size={14} className="spin" /> : <Inbox size={14} />}
                     Tiếp nhận Ticket
@@ -375,7 +399,7 @@ export const TicketDrawer: React.FC<Props> = ({ isOpen, onClose, ticket, onUpdat
                       className="btn success sm"
                       onClick={handleResolveTicket}
                       disabled={isSubmitting}
-                      style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: '#10b981', color: '#fff', fontWeight: 700, border: 'none', borderRadius: '8px' }}
+                      style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: '#10b981', color: '#fff', fontWeight: 700, border: 'none', borderRadius: '8px', padding: '7px 14px' }}
                     >
                       {isSubmitting ? <Loader2 size={14} className="spin" /> : <CheckCircle2 size={14} />}
                       Hoàn thành & Đóng
@@ -385,7 +409,7 @@ export const TicketDrawer: React.FC<Props> = ({ isOpen, onClose, ticket, onUpdat
                       className="btn danger sm outline"
                       onClick={() => setShowRejectModal(true)}
                       disabled={isSubmitting}
-                      style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontWeight: 700, borderRadius: '8px' }}
+                      style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontWeight: 700, borderRadius: '8px', color: '#f87171', borderColor: 'rgba(239, 68, 68, 0.4)' }}
                     >
                       <XCircle size={14} />
                       Từ chối & Đóng
@@ -395,8 +419,25 @@ export const TicketDrawer: React.FC<Props> = ({ isOpen, onClose, ticket, onUpdat
               </>
             )}
 
-            <button className={styles.closeBtn} onClick={onClose} style={{ borderRadius: '10px', padding: '6px' }}>
-              <X size={20} />
+            <button 
+              onClick={onClose} 
+              style={{
+                width: '36px',
+                height: '36px',
+                borderRadius: '10px',
+                background: 'rgba(255, 255, 255, 0.1)',
+                border: '1px solid rgba(255, 255, 255, 0.15)',
+                color: '#ffffff',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease'
+              }}
+              onMouseEnter={e => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.2)'}
+              onMouseLeave={e => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)'}
+            >
+              <X size={18} />
             </button>
           </div>
         </div>
