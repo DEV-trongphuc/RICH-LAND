@@ -11026,8 +11026,11 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                 <button className="btn outline" onClick={() => setPipelineModal({ ...pipelineModal, isOpen: false })}>Hủy</button>
                 <button
                   className="btn primary"
-                  disabled={!pipelineModal.note.trim()}
+                  disabled={isSubmitting || !pipelineModal.note.trim()}
                   onClick={async () => {
+                    if (isSubmitting) return;
+                    setIsSubmitting(true);
+                    
                     const targetId = pipelineModal.targetId;   // string, e.g. 'chua_xac_dinh' or 'dong_y_gap'
                     const targetLabel = pipelineModal.targetLabel;
                     const note = pipelineModal.note;
@@ -11044,11 +11047,11 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                       setPipelineModal({ isOpen: false, targetId: '', targetLabel: '', note: '' });
                       setPendingPipelineTransition({ targetId, targetLabel, note });
                       setShowDealModal(true);
+                      setIsSubmitting(false);
                       return;
                     }
                     
                     if (coopEligibleStatuses.includes(targetId)) {
-                      setIsSubmitting(true);
                       try {
                         const docsRes = await api.get(`/cloud-files?contact_id=${contact.id}&limit=1000`);
                         const currentCloudFiles = docsRes.data.data?.items || [];
@@ -11106,28 +11109,28 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                       }
                     }
                     
-                    setPipelineModal({ isOpen: false, targetId: '', targetLabel: '', note: '' });
-
-                    // Map selected pipeline stage slug to the macro status enum
-                    let calculatedStatus = 'lead';
-                    if (targetId === 'dat_coc' || targetId === 'dong_deal') {
-                      calculatedStatus = 'customer';
-                    } else if (targetId === 'not_lead') {
-                      calculatedStatus = 'churned';
-                    } else if (targetId === 'chua_xac_dinh') {
-                      calculatedStatus = 'lead';
-                    } else {
-                      calculatedStatus = 'qualified';
-                    }
-
-                    // Optimistically update UI
-                    setFormData((prev: any) => ({ 
-                      ...prev, 
-                      pipeline_status: targetId, 
-                      status: calculatedStatus 
-                    }));
-
                     try {
+                      setPipelineModal({ isOpen: false, targetId: '', targetLabel: '', note: '' });
+
+                      // Map selected pipeline stage slug to the macro status enum
+                      let calculatedStatus = 'lead';
+                      if (targetId === 'dat_coc' || targetId === 'dong_deal') {
+                        calculatedStatus = 'customer';
+                      } else if (targetId === 'not_lead') {
+                        calculatedStatus = 'churned';
+                      } else if (targetId === 'chua_xac_dinh') {
+                        calculatedStatus = 'lead';
+                      } else {
+                        calculatedStatus = 'qualified';
+                      }
+
+                      // Optimistically update UI
+                      setFormData((prev: any) => ({ 
+                        ...prev, 
+                        pipeline_status: targetId, 
+                        status: calculatedStatus 
+                      }));
+
                       // Persist status change
                       await api.put(`/contacts/${contact.id}`, { 
                         pipeline_status: targetId, 
@@ -11159,11 +11162,13 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                         status: contact.status 
                       }));
                       addToast(e?.response?.data?.message || 'Lỗi khi cập nhật Pipeline', 'error');
+                    } finally {
+                      setIsSubmitting(false);
                     }
                   }}
 
                 >
-                  Lưu cập nhật
+                  {isSubmitting ? 'Đang lưu...' : 'Lưu cập nhật'}
                 </button>
               </div>
             </motion.div>
