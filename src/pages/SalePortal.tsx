@@ -1613,9 +1613,17 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
   // Find oldest active offered lead to accept
   const activeIncomingOffer = useMemo(() => {
     if (!['sale', 'manager'].includes(String(effectiveRole).toLowerCase())) return null;
-    const unacceptedLeads = (data.leads || []).filter(
-      (l: any) => !Number(l.is_accepted) && Number(l.lead_recall_minutes) > 0 && !dismissedLeadIds.includes(Number(l.lead_id || l.id))
-    );
+    const unacceptedLeads = (data.leads || []).filter((l: any) => {
+      if (Number(l.is_accepted)) return false;
+      if (Number(l.lead_recall_minutes) <= 0) return false;
+      if (dismissedLeadIds.includes(Number(l.lead_id || l.id))) return false;
+      
+      const status = String(l.status || l.distribution_status || '').toLowerCase();
+      if (status === 'pending_work_hours' || status === 'pending_approval' || status === 'silent' || status === 'duplicate') {
+        return false;
+      }
+      return true;
+    });
     if (unacceptedLeads.length === 0) return null;
     
     const activeOffers = unacceptedLeads.map((lead: any) => {
