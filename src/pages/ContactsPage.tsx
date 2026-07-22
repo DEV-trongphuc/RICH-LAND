@@ -213,7 +213,6 @@ export const ContactsPage: React.FC = () => {
     if (openContactId) {
       const cid = Number(openContactId);
       if (cid) {
-        setSearch(String(cid));
         api.get(`/contacts/${cid}`).then(res => {
           if (res.data.success && res.data.data) {
             setProfileContact(res.data.data);
