@@ -1629,7 +1629,7 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
                           log.status === 'pending_approval'
                             ? 'Rich Land AI - Screener'
                             : (log.status === 'pending_work_hours' || !log.assigned_to_name || log.assigned_to_name === '-')
-                              ? 'RichLand Bot'
+                              ? 'Rich Land Bot'
                               : log.status === 'rejected'
                                 ? 'Rich Land AI - Evaluator'
                                 : log.status === 'blacklisted'
@@ -1643,7 +1643,7 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
                           {log.status === 'pending_approval'
                             ? 'Rich Land AI - Screener'
                             : (log.status === 'pending_work_hours' || !log.assigned_to_name || log.assigned_to_name === '-')
-                              ? 'RichLand Bot'
+                              ? 'Rich Land Bot'
                               : log.status === 'rejected'
                                 ? 'Rich Land AI - Evaluator'
                                 : log.status === 'blacklisted'

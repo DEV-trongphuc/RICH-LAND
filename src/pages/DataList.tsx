@@ -2349,8 +2349,8 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                             </div>
                           ) : (
                             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                              <Avatar src="/LOGO.jpg" name="RichLand Bot" size={20} />
-                              <span style={{ fontWeight: 700, color: 'var(--color-text)' }}>RichLand Bot</span>
+                              <Avatar src="/LOGO.jpg" name="Rich Land Bot" size={20} />
+                              <span style={{ fontWeight: 700, color: 'var(--color-text)' }}>Rich Land Bot</span>
                             </div>
                           )}
                         </div>
@@ -2519,9 +2519,9 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                             </div>
                           ) : (
                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                              <Avatar src="/LOGO.jpg" name="RichLand Bot" size={32} />
+                              <Avatar src="/LOGO.jpg" name="Rich Land Bot" size={32} />
                               <div>
-                                <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>RichLand Bot</div>
+                                <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>Rich Land Bot</div>
                                 <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2 }}>
                                   {t('Chờ giờ làm')}
                                 </div>
