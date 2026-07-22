@@ -208,7 +208,6 @@ class ProjectController {
     }
 
     public function show(array $auth, int $id): void {
-        $this->ensureColumnsExist();
         $tenantId = getTenantId($auth);
 
         $stmt = $this->db->prepare("SELECT p.* FROM projects p WHERE p.id = ?");
