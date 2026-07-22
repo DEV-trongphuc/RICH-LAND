@@ -8,7 +8,7 @@ import {
   Clock3, GitBranch, ArrowUpRight, ShieldAlert, Send, ArrowLeft,
   Sun, Moon, ChevronDown, ChevronUp, AlertTriangle, ChevronLeft, ChevronRight,
   LayoutDashboard, Database, Ticket, Calendar, RefreshCw, Menu, Tag, Server, Scale, Settings, Info, Cpu,
-  Camera, Video, Layers, Plus, Receipt, CreditCard, Building2, Users, User, UserCheck, UserPlus, Trash2, CheckSquare, X, Paperclip, LifeBuoy, Fingerprint, LayoutGrid, Monitor, Tv, Phone, Save, Award, Ban, RotateCcw, MoreHorizontal, Check, KeyRound, Loader2, Shield, Mail, ShieldCheck, Lock as LockIcon,
+  Camera, Video, Layers, Plus, Receipt, CreditCard, Building2, Users, User, UserCheck, UserPlus, Trash2, CheckSquare, X, Paperclip, LifeBuoy, Fingerprint, LayoutGrid, Monitor, Tv, Phone, Save, Award, Ban, RotateCcw, MoreHorizontal, Check, KeyRound, Loader2, Shield, Mail, ShieldCheck, Lock as LockIcon, Bell,
   Play, Sparkles, ArrowRight, Eye, MapPin
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -16783,37 +16783,91 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
         <CustomModal
           isOpen={true}
           onClose={() => {
-            const leadIdToDismiss = Number(activeIncomingOffer.lead.lead_id || activeIncomingOffer.lead.id);
-            if (leadIdToDismiss) {
-              setDismissedLeadIds(prev => [...prev, leadIdToDismiss]);
-            }
+            // No close event on backdrop click
           }}
+          showCloseIcon={false}
           title={t('CÓ LEAD MỚI ĐƯỢC PHÂN BỔ!')}
           width="400px"
         >
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1.25rem', padding: '1rem 0' }}>
-            <div style={{ position: 'relative', width: '100px', height: '100px' }}>
-              <svg width="100" height="100" style={{ transform: 'rotate(-90deg)' }}>
+          <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: '1.5rem',
+            padding: '1.5rem 1rem',
+            textAlign: 'center',
+            position: 'relative'
+          }}>
+            <style>{`
+              @keyframes rippleEffect {
+                0% { transform: scale(1); opacity: 0.8; }
+                100% { transform: scale(1.5); opacity: 0; }
+              }
+              @keyframes bellWobble {
+                0%, 100% { transform: rotate(0); }
+                15% { transform: rotate(12deg); }
+                30% { transform: rotate(-12deg); }
+                45% { transform: rotate(8deg); }
+                60% { transform: rotate(-8deg); }
+                75% { transform: rotate(4deg); }
+              }
+            `}</style>
+
+            {/* Ringing Bell Icon */}
+            <div style={{
+              position: 'relative',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              width: '80px',
+              height: '80px',
+              borderRadius: '50%',
+              background: 'rgba(189, 29, 45, 0.1)',
+              marginBottom: '-0.5rem'
+            }}>
+              <div style={{
+                position: 'absolute',
+                width: '100%',
+                height: '100%',
+                borderRadius: '50%',
+                border: '2px solid rgba(189, 29, 45, 0.4)',
+                animation: 'rippleEffect 2s infinite ease-out'
+              }} />
+              <div style={{
+                position: 'absolute',
+                width: '100%',
+                height: '100%',
+                borderRadius: '50%',
+                border: '2px solid rgba(189, 29, 45, 0.2)',
+                animation: 'rippleEffect 2s infinite ease-out 0.6s'
+              }} />
+              <Bell size={36} color="#BD1D2D" style={{ animation: 'bellWobble 1.5s infinite ease-in-out' }} />
+            </div>
+
+            {/* Countdown Circular Ring & Text */}
+            <div style={{ position: 'relative', width: '120px', height: '120px' }}>
+              <svg width="120" height="120" style={{ transform: 'rotate(-90deg)', filter: 'drop-shadow(0px 4px 8px rgba(189, 29, 45, 0.15))' }}>
                 <circle
-                  cx="50"
-                  cy="50"
-                  r="44"
+                  cx="60"
+                  cy="60"
+                  r="52"
                   stroke="var(--color-border-light)"
-                  strokeWidth="8"
+                  strokeWidth="6"
                   fill="transparent"
                 />
                 <circle
-                  cx="50"
-                  cy="50"
-                  r="44"
-                  stroke="var(--color-danger)"
+                  cx="60"
+                  cy="60"
+                  r="52"
+                  stroke="#BD1D2D"
                   strokeWidth="8"
                   fill="transparent"
-                  strokeDasharray={2 * Math.PI * 44}
+                  strokeDasharray={2 * Math.PI * 52}
                   strokeDashoffset={
-                    (2 * Math.PI * 44) * 
-                    (1 - Math.max(0, activeIncomingOffer.remainingMs) / (Number(activeIncomingOffer.lead.lead_recall_minutes) * 60 * 1000))
+                    (2 * Math.PI * 52) * 
+                    (1 - Math.max(0, activeIncomingOffer.remainingMs) / (Number(activeIncomingOffer.lead.lead_recall_minutes || 2) * 60 * 1000))
                   }
+                  strokeLinecap="round"
                   style={{ transition: 'stroke-dashoffset 1s linear' }}
                 />
               </svg>
@@ -16823,41 +16877,84 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                fontSize: '1.25rem',
-                fontWeight: 800,
-                color: 'var(--color-danger)',
+                flexDirection: 'column'
               }}>
-                {(() => {
-                  const totalSecs = Math.max(0, Math.floor(activeIncomingOffer.remainingMs / 1000));
-                  const mins = Math.floor(totalSecs / 60);
-                  const secs = totalSecs % 60;
-                  return `${mins}:${String(secs).padStart(2, '0')}`;
-                })()}
+                <span style={{
+                  fontSize: '1.6rem',
+                  fontWeight: 800,
+                  fontFamily: 'Outfit, sans-serif',
+                  color: '#BD1D2D',
+                  letterSpacing: '-0.5px'
+                }}>
+                  {(() => {
+                    const totalSecs = Math.max(0, Math.floor(activeIncomingOffer.remainingMs / 1000));
+                    const mins = Math.floor(totalSecs / 60);
+                    const secs = totalSecs % 60;
+                    return `${mins}:${String(secs).padStart(2, '0')}`;
+                  })()}
+                </span>
+                <span style={{ fontSize: '0.65rem', fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginTop: '-2px' }}>
+                  {t('Còn lại')}
+                </span>
               </div>
             </div>
 
-            <div style={{ textAlign: 'center' }}>
-              <p style={{ fontSize: '0.95rem', fontWeight: 800, color: 'var(--color-text)', margin: 0 }}>
+            {/* Lead Details Card */}
+            <div style={{
+              width: '100%',
+              padding: '1.25rem',
+              borderRadius: '12px',
+              background: 'var(--color-bg)',
+              border: '1px solid var(--color-border-light)',
+              boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.02)'
+            }}>
+              <h4 style={{ fontSize: '1.15rem', fontWeight: 700, color: 'var(--color-text)', margin: '0 0 6px 0' }}>
                 {activeIncomingOffer.lead.full_name || t('Khách hàng mới')}
-              </p>
-              <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', margin: '4px 0 0' }}>
-                Nguồn: <strong style={{ color: 'var(--color-primary)' }}>{activeIncomingOffer.lead.source || 'Facebook CAPI'}</strong>
-              </p>
-              <p style={{ fontSize: '0.75rem', color: 'var(--color-danger)', marginTop: '8px', fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
-                <AlertTriangle size={12} /> {t('Vui lòng tiếp nhận ngay. Lead sẽ bị thu hồi khi hết giờ!')}
+              </h4>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                <span style={{
+                  padding: '4px 10px',
+                  borderRadius: '12px',
+                  fontSize: '0.75rem',
+                  fontWeight: 600,
+                  background: 'rgba(189, 29, 45, 0.08)',
+                  color: '#BD1D2D',
+                  border: '1px solid rgba(189, 29, 45, 0.15)'
+                }}>
+                  {t('Nguồn:')} {activeIncomingOffer.lead.source || 'Facebook CAPI'}
+                </span>
+              </div>
+              <p style={{
+                fontSize: '0.75rem',
+                color: '#BD1D2D',
+                marginTop: '10px',
+                fontWeight: 600,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '6px',
+                margin: '10px 0 0 0'
+              }}>
+                <AlertTriangle size={14} style={{ animation: 'pulse 1s infinite' }} /> {t('Tiếp nhận ngay trước khi lead bị thu hồi!')}
               </p>
             </div>
 
+            {/* Action Button */}
             <button
               onClick={() => handleAcceptLead(activeIncomingOffer.lead.lead_id)}
               className="btn danger pulsing"
               style={{
                 width: '100%',
-                height: '44px',
-                borderRadius: '22px',
-                fontSize: '0.9rem',
+                height: '48px',
+                borderRadius: '24px',
+                fontSize: '0.95rem',
                 fontWeight: 800,
-                boxShadow: '0 4px 15px rgba(189,29,45,0.3)',
+                background: 'linear-gradient(135deg, #BD1D2D 0%, #a31422 100%)',
+                color: '#fff',
+                border: 'none',
+                boxShadow: '0 4px 15px rgba(189, 29, 45, 0.35)',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease',
               }}
             >
               {t('TIẾP NHẬN LEAD NGAY')}
