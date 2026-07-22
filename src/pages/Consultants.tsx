@@ -161,7 +161,11 @@ const ConsultantsInner = () => {
   const activeTabRaw = queryParams.get('tab') || 'consultants';
   const activeTab = showAllTabs ? activeTabRaw : 'consultants';
 
-  const { addProgress, updateProgress, completeProgress } = useUploadProgress();
+  const uploadProgress = useUploadProgress();
+  const startUpload = uploadProgress?.startUpload;
+  const updateProgress = uploadProgress?.updateProgress;
+  const finishUpload = uploadProgress?.finishUpload;
+
   const [teams, setTeams] = useState<any[]>([]);
   const [teamsLoading, setTeamsLoading] = useState(true);
   const [branchSearchQuery, setBranchSearchQuery] = useState('');
@@ -187,11 +191,11 @@ const ConsultantsInner = () => {
     e.target.value = '';
 
     setIsUploadingTeamAvatar(true);
-    const taskId = addProgress(`Avatar nhóm (${file.name})`, 0);
+    const taskId = startUpload ? startUpload(file.name) : null;
     try {
-      updateProgress(taskId, 15, 'compressing');
+      if (taskId && updateProgress) updateProgress(taskId, 15, 'compressing');
       const compressedFile = await compressToWebP(file);
-      updateProgress(taskId, 40, 'uploading');
+      if (taskId && updateProgress) updateProgress(taskId, 40, 'uploading');
 
       const fd = new FormData();
       fd.append('file', compressedFile);
@@ -202,7 +206,7 @@ const ConsultantsInner = () => {
       const res = await api.post('/upload', fd, {
         headers: { 'Content-Type': 'multipart/form-data' },
         onUploadProgress: (evt) => {
-          if (evt.total) {
+          if (evt.total && taskId && updateProgress) {
             const pct = Math.round(40 + (evt.loaded / evt.total) * 50);
             updateProgress(taskId, pct, 'uploading');
           }
@@ -211,14 +215,14 @@ const ConsultantsInner = () => {
 
       const fileUrl = res.data?.url || res.data?.file_url || res.data?.path || res.data?.data?.url;
       if (fileUrl) {
-        completeProgress(taskId);
+        if (taskId && finishUpload) finishUpload(taskId, true);
         setTeamFormData(prev => ({ ...prev, avatar_url: fileUrl }));
         toast.success(t('Đã tải lên avatar nhóm thành công!'));
       } else {
         throw new Error(res.data?.message || 'Upload failed');
       }
     } catch (err: any) {
-      completeProgress(taskId);
+      if (taskId && finishUpload) finishUpload(taskId, false, err.message || 'Upload error');
       toast.error(t('Lỗi tải ảnh avatar: ') + (err.message || err));
     } finally {
       setIsUploadingTeamAvatar(false);
