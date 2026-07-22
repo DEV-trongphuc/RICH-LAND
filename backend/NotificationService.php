@@ -194,7 +194,7 @@ class NotificationService {
                             $rId = (int)($rec['id'] ?? 0);
                             if (!empty($rec['email']) && $isChannelEnabled($rId, 'email')) {
                                 try {
-                                    sendEmailNotification($rec['email'], $emailSubject, $emailTitle, $emailContent, '', 1, false);
+                                    sendEmailNotification($rec['email'], $emailSubject, $emailTitle, $emailContent, '', false, false);
                                 } catch (\Throwable $ee) {
                                     error_log("NotificationService Email send error (" . $rec['email'] . "): " . $ee->getMessage());
                                 }

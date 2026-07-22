@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, User, Users, Phone, Mail, MapPin, Briefcase, Plus, Search, Send, History, CheckSquare, DollarSign, HelpCircle, FileText, ShoppingCart, Tag as TagIcon, Target, Pencil, Trash2, LifeBuoy, AlertCircle, Clock, UserCheck, Activity, Calendar, CheckCircle2, ChevronLeft, ChevronRight, ChevronDown, Check, Camera, Loader2, MessageSquare, PenTool, Lightbulb, Upload, Paperclip, CreditCard, Ban, ShieldAlert, Copy, Folder, FolderPlus, ArrowRightLeft, List, LayoutGrid, RotateCcw, RefreshCw, Layers, Save, LogOut, XCircle, Eye, TrendingUp, Wallet, Lock, Zap } from 'lucide-react';
+import { X, User, Users, Phone, Mail, MapPin, Briefcase, Plus, Search, Send, History, CheckSquare, DollarSign, HelpCircle, FileText, ShoppingCart, Tag as TagIcon, Target, Pencil, Trash2, LifeBuoy, AlertCircle, Clock, UserCheck, Activity, Calendar, CheckCircle2, ChevronLeft, ChevronRight, ChevronDown, Check, Camera, Loader2, MessageSquare, PenTool, Lightbulb, Upload, Paperclip, CreditCard, Ban, ShieldAlert, Copy, Folder, FolderPlus, ArrowRightLeft, List, LayoutGrid, RotateCcw, RefreshCw, Layers, Save, LogOut, XCircle, Eye, TrendingUp, Wallet, Lock, Zap, Link2 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { LeadScoreRing } from '../components/ui/LeadScoreRing';
 import { TagInput } from '../components/ui/TagInput';
@@ -1395,6 +1395,13 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
   }, [isOpen, activeTab]);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    (window as any).__setDepositSubmitting = setIsSubmitting;
+    return () => {
+      delete (window as any).__setDepositSubmitting;
+    };
+  }, [setIsSubmitting]);
   const lastLoadedContactIdRef = React.useRef<number | null>(null);
   const [formData, setFormData] = useState<any>({});
   const [showScoringSystemModal, setShowScoringSystemModal] = useState(false);
@@ -2416,30 +2423,17 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
       return;
     }
 
-    // Check for mandatory files based on admin configuration
-    const files = coopSlip.attachment_url ? coopSlip.attachment_url.split(',').map((s: string) => s.trim()).filter(Boolean) : [];
+    // Check for mandatory files based on admin configuration using checkFileExists helper
     if (coopDefaultFiles && coopDefaultFiles.length > 0) {
       for (const mandatoryFile of coopDefaultFiles) {
-        const cleanKeyword = mandatoryFile.split('.')[0].toLowerCase().trim();
-        if (!cleanKeyword) continue;
-        
-        const hasFile = files.some((f: string) => {
-          const filename = f.split('/').pop() || '';
-          const lower = (f + ' ' + filename).toLowerCase();
-          if (cleanKeyword === 'unc' || cleanKeyword === 'uy nhiem chi' || cleanKeyword === 'ủy nhiệm chi') {
-            return lower.includes('unc') || lower.includes('uy nhiem chi') || lower.includes('ủy nhiệm chi') || lower.includes('deposits') || files.length > 0;
-          }
-          return lower.includes(cleanKeyword);
-        });
-        
-        if (!hasFile) {
+        if (!checkFileExists(mandatoryFile)) {
           addToast(`Vui lòng upload tài liệu ${mandatoryFile} trước khi ký xác nhận!`, 'error');
           return;
         }
       }
     } else {
-      // Fallback safeguard: if files exist on coopSlip, accept as UNC
-      if (files.length === 0) {
+      // Fallback safeguard: check if UNC file exists anywhere via checkFileExists
+      if (!checkFileExists('UNC') && !checkFileExists('Ủy nhiệm chi') && !checkFileExists('uy nhiem chi')) {
         addToast('Vui lòng upload tài liệu UNC (Ủy nhiệm chi) trước khi ký xác nhận!', 'error');
         return;
       }
@@ -11276,11 +11270,193 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
           <div className="overlay-backdrop" style={{ zIndex: 1000020 }} onClick={() => setShowDealModal(false)}>
             <motion.div
               className="modal-sheet"
-              style={{ width: '100%', maxWidth: 820 }}
+              style={{ width: '100%', maxWidth: 820, position: 'relative' }}
               initial={{ opacity: 0, scale: 0.95, y: 16 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 16 }}
               transition={{ type: 'tween', duration: 0.22, ease: 'easeOut' }}
               onClick={e => e.stopPropagation()}
             >
+              {isSubmitting && (() => {
+                const ownerId = String(contact?.owner_id || formData?.owner_id || currentUser?.id || '');
+                const collabList = getCoopCollaboratorIds();
+                
+                const mainSaleUser = salesUsers.find(u => String(u.id) === ownerId) || users.find(u => String(u.id) === ownerId) || currentUser;
+                const coopSaleUsers = collabList.map(uid => salesUsers.find(u => String(u.id) === String(uid)) || users.find(u => String(u.id) === String(uid))).filter(Boolean);
+                const hasCoop = coopSaleUsers.length > 0;
+
+                return (
+                  <div style={{
+                    position: 'absolute',
+                    inset: 0,
+                    backgroundColor: 'var(--color-surface)',
+                    opacity: 0.98,
+                    backdropFilter: 'blur(10px)',
+                    zIndex: 1000,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '24px',
+                    borderRadius: '16px',
+                    padding: '2rem'
+                  }}>
+                    <style>{`
+                      @keyframes flowDash {
+                        0% { transform: translateX(-100%); }
+                        100% { transform: translateX(300%); }
+                      }
+                      @keyframes progressBar {
+                        0% { width: 0%; }
+                        50% { width: 70%; }
+                        100% { width: 100%; }
+                      }
+                      @keyframes pulseSlow {
+                        0%, 100% { transform: scale(1); opacity: 1; }
+                        50% { transform: scale(1.15); opacity: 0.85; }
+                      }
+                      .flow-dash {
+                        animation: flowDash 1.5s infinite linear;
+                      }
+                      .progress-bar-fill {
+                        animation: progressBar 3s infinite ease-in-out;
+                      }
+                      .pulse-slow {
+                        animation: pulseSlow 2s infinite ease-in-out;
+                      }
+                    `}</style>
+
+                    {/* Avatars Connection Animation */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '20px', position: 'relative' }}>
+                      {/* Main Sale */}
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
+                        <div style={{
+                          position: 'relative',
+                          padding: '4px',
+                          borderRadius: '50%',
+                          background: 'linear-gradient(135deg, var(--color-primary) 0%, #d97706 100%)',
+                          boxShadow: '0 4px 12px rgba(163, 20, 34, 0.25)'
+                        }}>
+                          <Avatar src={mainSaleUser?.avatar_url || mainSaleUser?.avatar} name={mainSaleUser?.full_name || mainSaleUser?.name || 'Sale'} size={60} />
+                        </div>
+                        <span style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--color-text)', maxWidth: '90px', textAlign: 'center', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {mainSaleUser?.full_name || mainSaleUser?.name || 'Sale'}
+                        </span>
+                      </div>
+
+                      {/* Connection Link */}
+                      {hasCoop && (
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '80px', position: 'relative' }}>
+                          {/* Animated connection dash */}
+                          <div style={{
+                            width: '100%',
+                            height: '3px',
+                            background: 'linear-gradient(90deg, var(--color-primary) 0%, #10b981 100%)',
+                            borderRadius: '2px',
+                            position: 'relative',
+                            overflow: 'hidden'
+                          }}>
+                            <div className="flow-dash" style={{
+                              position: 'absolute',
+                              top: 0,
+                              left: 0,
+                              height: '100%',
+                              width: '30px',
+                              background: '#ffffff',
+                              opacity: 0.8,
+                              borderRadius: '50%'
+                            }} />
+                          </div>
+                          {/* Center link icon */}
+                          <div style={{
+                            position: 'absolute',
+                            top: '50%',
+                            left: '50%',
+                            transform: 'translate(-50%, -50%)',
+                            width: '28px',
+                            height: '28px',
+                            borderRadius: '50%',
+                            backgroundColor: 'var(--color-surface)',
+                            border: '2.5px solid var(--color-border)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            color: 'var(--color-primary)',
+                            boxShadow: 'var(--shadow-sm)'
+                          }}>
+                            <Link2 size={14} className="pulse-slow" />
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Coop Sale(s) */}
+                      {hasCoop && (
+                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                          {coopSaleUsers.slice(0, 3).map((collab, cIdx) => (
+                            <div key={cIdx} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
+                              <div style={{
+                                position: 'relative',
+                                padding: '4px',
+                                borderRadius: '50%',
+                                background: 'linear-gradient(135deg, #10b981 0%, #06b6d4 100%)',
+                                boxShadow: '0 4px 12px rgba(16, 185, 129, 0.25)'
+                              }}>
+                                <Avatar src={collab?.avatar_url || collab?.avatar} name={collab?.full_name || collab?.name || 'Sale'} size={60} />
+                              </div>
+                              <span style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--color-text)', maxWidth: '90px', textAlign: 'center', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                {collab?.full_name || collab?.name || 'Co.op'}
+                              </span>
+                            </div>
+                          ))}
+                          {coopSaleUsers.length > 3 && (
+                            <div style={{
+                              width: '40px',
+                              height: '40px',
+                              borderRadius: '50%',
+                              backgroundColor: 'var(--color-bg-light)',
+                              border: '1px solid var(--color-border)',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              fontSize: '0.8rem',
+                              fontWeight: 700,
+                              color: 'var(--color-text-muted)'
+                            }}>
+                              +{coopSaleUsers.length - 3}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Progress Bar & Status Text */}
+                    <div style={{ width: '100%', maxWidth: '340px', textAlign: 'center', marginTop: '10px' }}>
+                      <h4 style={{ fontWeight: 800, color: 'var(--color-text)', margin: '0 0 6px 0', fontSize: '1rem' }}>
+                        Đang khởi tạo giao dịch
+                      </h4>
+                      <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', margin: '0 0 14px 0', lineHeight: 1.4, fontWeight: 500 }}>
+                        {hasCoop 
+                          ? 'Đang tạo phiếu đặt cọc và tự động liên kết tạo phiếu hợp tác chia hoa hồng...' 
+                          : 'Đang xử lý tạo phiếu đặt cọc giao dịch...'}
+                      </p>
+
+                      {/* Progress Bar */}
+                      <div style={{
+                        width: '100%',
+                        height: '6px',
+                        backgroundColor: 'var(--color-border-light)',
+                        borderRadius: '10px',
+                        overflow: 'hidden',
+                        position: 'relative'
+                      }}>
+                        <div className="progress-bar-fill" style={{
+                          height: '100%',
+                          background: 'linear-gradient(90deg, var(--color-primary) 0%, #10b981 100%)',
+                          borderRadius: '10px'
+                        }} />
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
               <div className="modal-header">
                 <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                   <div style={{ width: 42, height: 42, borderRadius: '12px', background: 'var(--color-primary-light)', color: 'var(--color-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>

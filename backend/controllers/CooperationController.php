@@ -501,35 +501,88 @@ class CooperationController {
         }
 
         // Backend check for mandatory files before allowing signature
+        $stmtDocs = $this->db->prepare("SELECT name, file_path, category, folder FROM cloud_files WHERE contact_id = ? AND tenant_id = ?");
+        $stmtDocs->execute([$slip['contact_id'], $auth['tenant_id']]);
+        $docs = $stmtDocs->fetchAll(PDO::FETCH_ASSOC) ?: [];
+
+        $stmtMilestones = $this->db->prepare("
+            SELECT dm.milestone_name, dm.unc_file_path 
+            FROM deposit_milestones dm
+            JOIN deposits d ON dm.deposit_id = d.id
+            JOIN contacts c ON d.contact_id = c.id
+            WHERE d.contact_id = ? AND c.tenant_id = ?
+        ");
+        $stmtMilestones->execute([$slip['contact_id'], $auth['tenant_id']]);
+        $milestones = $stmtMilestones->fetchAll(PDO::FETCH_ASSOC) ?: [];
+
+        $checkFileExists = function($fileKeyword) use ($slip, $docs, $milestones) {
+            $cleanKeyword = strtolower(trim(explode('.', $fileKeyword)[0]));
+            if (empty($cleanKeyword)) return false;
+
+            // 1. Check coopSlip attachments
+            $attachments = array_filter(array_map('trim', explode(',', $slip['attachment_url'] ?? '')));
+            foreach ($attachments as $attachment) {
+                $filename = strtolower(basename($attachment));
+                if ($cleanKeyword === 'unc' || $cleanKeyword === 'uy nhiem chi' || $cleanKeyword === 'ủy nhiệm chi') {
+                    if (strpos($filename, 'unc') !== false || strpos($filename, 'uy nhiem chi') !== false || strpos($filename, 'ủy nhiệm chi') !== false || strpos($attachment, 'deposits/') !== false || !empty($attachments)) {
+                        return true;
+                    }
+                } else {
+                    if (strpos($filename, $cleanKeyword) !== false) {
+                        return true;
+                    }
+                }
+            }
+
+            // 2. Check profile docs (cloud_files)
+            foreach ($docs as $doc) {
+                $name = strtolower($doc['name'] ?? '');
+                $cat = strtolower($doc['category'] ?? $doc['folder'] ?? '');
+                $path = strtolower($doc['file_path'] ?? '');
+                if ($cleanKeyword === 'unc' || $cleanKeyword === 'uy nhiem chi' || $cleanKeyword === 'ủy nhiệm chi') {
+                    if (strpos($name, 'unc') !== false || strpos($name, 'cọc') !== false || strpos($name, 'đặt cọc') !== false || strpos($name, 'uy nhiem chi') !== false || strpos($name, 'ủy nhiệm chi') !== false || strpos($cat, 'đặt cọc') !== false || strpos($cat, 'unc') !== false || strpos($path, 'deposits') !== false) {
+                        return true;
+                    }
+                } else {
+                    if (strpos($name, $cleanKeyword) !== false || strpos($cat, $cleanKeyword) !== false) {
+                        return true;
+                    }
+                }
+            }
+
+            // 3. Check deposit milestones
+            foreach ($milestones as $m) {
+                $uPath = strtolower($m['unc_file_path'] ?? '');
+                $mName = strtolower($m['milestone_name'] ?? '');
+                if ($cleanKeyword === 'unc' || $cleanKeyword === 'uy nhiem chi' || $cleanKeyword === 'ủy nhiệm chi') {
+                    if (!empty($uPath) || strpos($mName, 'cọc') !== false || strpos($mName, 'unc') !== false) {
+                        return true;
+                    }
+                } else {
+                    if (strpos($uPath, $cleanKeyword) !== false || strpos($mName, $cleanKeyword) !== false) {
+                        return true;
+                    }
+                }
+            }
+
+            return false;
+        };
+
         $coopSettingStmt = $this->db->query("SELECT setting_value FROM system_settings WHERE setting_key = 'coop_default_files' LIMIT 1");
         $coopDefaultFilesSetting = $coopSettingStmt ? $coopSettingStmt->fetchColumn() : null;
         if ($coopDefaultFilesSetting) {
             $requiredFiles = array_filter(array_map('trim', explode(',', $coopDefaultFilesSetting)));
             if (!empty($requiredFiles)) {
-                $attachments = array_filter(array_map('trim', explode(',', $slip['attachment_url'] ?? '')));
                 foreach ($requiredFiles as $requiredFile) {
-                    $cleanKeyword = strtolower(explode('.', $requiredFile)[0]);
-                    if (empty($cleanKeyword)) continue;
-                    
-                    $hasFile = false;
-                    foreach ($attachments as $attachment) {
-                        $filename = strtolower(basename($attachment));
-                        if ($cleanKeyword === 'unc' || $cleanKeyword === 'uy nhiem chi' || $cleanKeyword === 'ủy nhiệm chi') {
-                            if (strpos($filename, 'unc') !== false || strpos($filename, 'uy nhiem chi') !== false || strpos($filename, 'ủy nhiệm chi') !== false || strpos($attachment, 'deposits/') !== false || !empty($attachments)) {
-                                $hasFile = true;
-                                break;
-                            }
-                        } else {
-                            if (strpos($filename, $cleanKeyword) !== false) {
-                                $hasFile = true;
-                                break;
-                            }
-                        }
-                    }
-                    if (!$hasFile) {
+                    if (!$checkFileExists($requiredFile)) {
                         respond(400, null, "Vui lòng upload tài liệu $requiredFile trước khi ký xác nhận!", false);
                     }
                 }
+            }
+        } else {
+            // Fallback safeguard
+            if (!$checkFileExists('UNC') && !$checkFileExists('Ủy nhiệm chi') && !$checkFileExists('uy nhiem chi')) {
+                respond(400, null, "Vui lòng upload tài liệu UNC (Ủy nhiệm chi) trước khi ký xác nhận!", false);
             }
         }
 
