@@ -4265,28 +4265,28 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
             document.body
           )}
 
-          {/* Full View & Edit Campaign Drawer */}
+          {/* Full View & Edit Campaign Drawer (Matching 100% Full-Screen Width) */}
           {viewCampaignModal && createPortal(
             <div className="modal-overlay" onClick={() => setViewCampaignModal(null)} style={{ position: 'fixed', inset: 0, zIndex: 2000020, backdropFilter: 'blur(6px)', background: 'rgba(0,0,0,0.65)', display: 'flex', justifyContent: 'flex-end' }}>
               <motion.div 
                 initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }} transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-                style={{ width: '680px', maxWidth: '92vw', height: '100%', background: 'var(--color-surface)', borderLeft: '1px solid var(--color-border)', boxShadow: '-10px 0 30px rgba(0,0,0,0.25)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
+                style={{ width: 'calc(100vw - 220px)', minWidth: '85vw', maxWidth: '100vw', height: '100vh', background: '#f8fafc', borderLeft: '1px solid var(--color-border)', boxShadow: '-10px 0 40px rgba(0,0,0,0.3)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
                 onClick={e => e.stopPropagation()}
               >
                 {/* Header */}
-                <div style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid var(--color-border-light)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--color-surface)' }}>
+                <div style={{ padding: '1.25rem 2rem', borderBottom: '1px solid var(--color-border-light)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#ffffff' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                     <div style={{ width: 42, height: 42, borderRadius: '12px', background: 'rgba(245, 158, 11, 0.1)', color: 'var(--color-warning)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                       <Megaphone size={22} />
                     </div>
                     <div>
-                      <h3 style={{ fontSize: '1.15rem', fontWeight: 800, margin: 0, color: 'var(--color-text)' }}>{viewCampaignModal.name}</h3>
+                      <h3 style={{ fontSize: '1.25rem', fontWeight: 800, margin: 0, color: 'var(--color-text)' }}>Chi tiết Chiến dịch: {viewCampaignModal.name}</h3>
                       <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', margin: '2px 0 0 0' }}>
                         Dự án: <span style={{ fontWeight: 700 }}>{viewCampaignModal.project_name || 'Chưa chọn'}</span>
                       </p>
                     </div>
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                     {campaignModalMode === 'view' ? (
                       <button
                         type="button"
@@ -4295,7 +4295,7 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
                           setCampaignModalMode('edit');
                         }}
                         className="btn outline sm"
-                        style={{ height: '32px', borderRadius: '8px', padding: '0 12px', fontSize: '0.75rem', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                        style={{ height: '34px', borderRadius: '8px', padding: '0 14px', fontSize: '0.8rem', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '6px' }}
                       >
                         <Edit3 size={14} />
                         {t('Chỉnh sửa')}
@@ -4306,13 +4306,14 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
                         onClick={handleSaveCampaignEdit}
                         disabled={savingCampaign}
                         className="btn primary sm"
-                        style={{ height: '32px', borderRadius: '8px', padding: '0 14px', fontSize: '0.75rem', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                        style={{ height: '34px', borderRadius: '8px', padding: '0 16px', fontSize: '0.8rem', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '6px' }}
                       >
                         {savingCampaign ? <Loader2 size={14} className="spin" /> : <Save size={14} />}
                         {t('Lưu thay đổi')}
                       </button>
                     )}
-                    <button type="button" className="btn-icon" onClick={() => setViewCampaignModal(null)} style={{ borderRadius: '8px' }}><X size={18} /></button>
+                    <button type="button" className="btn-icon" style={{ borderRadius: '8px', color: 'var(--color-text-muted)', background: 'transparent' }} title="Lịch sử"><RotateCcw size={18} /></button>
+                    <button type="button" className="btn-icon" onClick={() => setViewCampaignModal(null)} style={{ borderRadius: '8px', color: 'var(--color-text-muted)', background: 'transparent' }}><X size={22} /></button>
                   </div>
                 </div>
 
