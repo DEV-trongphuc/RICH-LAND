@@ -9866,7 +9866,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                           }).map(doc => {
                             const ext = doc.name.split('.').pop()?.toLowerCase();
                             const isImg = ext && ['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext);
-                            const fileUrl = `${import.meta.env.VITE_API_URL ?? '/backend'}/${doc.path}`;
+                            const fileUrl = resolveAttachmentUrl(doc.path);
                             return (
                               <div key={doc.id} className="card-panel" style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '1rem', background: 'var(--color-surface)' }}>
                                 <div style={{ width: 40, height: 40, background: 'var(--color-info-light)', color: 'var(--color-info)', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, overflow: 'hidden' }}>
