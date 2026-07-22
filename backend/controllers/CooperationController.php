@@ -917,10 +917,7 @@ class CooperationController {
             $remaining = [];
             foreach ($files as $f) {
                 if (trim($f) === $fileUrl) {
-                    $physPath = UPLOAD_DIR . '/' . str_replace('uploads/', '', $f);
-                    if (file_exists($physPath) && is_file($physPath)) {
-                        @unlink($physPath);
-                    }
+                    deleteServerFile($f);
                 } else {
                     $remaining[] = $f;
                 }

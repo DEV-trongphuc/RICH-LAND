@@ -68,18 +68,25 @@ if (!function_exists('deleteAttachmentFiles')) {
         if (is_string($input)) {
             $decoded = json_decode($input, true);
             if (is_array($decoded)) {
-                $input = $decoded;
+                foreach ($decoded as $item) {
+                    if (is_string($item)) {
+                        $urls[] = $item;
+                    } elseif (is_array($item)) {
+                        if (!empty($item['url'])) $urls[] = $item['url'];
+                        if (!empty($item['file_path'])) $urls[] = $item['file_path'];
+                    }
+                }
             } else {
                 preg_match_all('/(?:uploads\/[^\s\)\"\'>]+|https?:\/\/[^\s\)\"\'>]+)/i', $input, $matches);
                 if (!empty($matches[0])) {
-                    $urls = $matches[0];
+                    foreach ($matches[0] as $m) {
+                        $urls[] = $m;
+                    }
                 } else {
-                    $urls = [$input];
+                    $urls[] = $input;
                 }
             }
-        }
-
-        if (is_array($input)) {
+        } elseif (is_array($input)) {
             foreach ($input as $item) {
                 if (is_string($item)) {
                     $urls[] = $item;
@@ -91,7 +98,7 @@ if (!function_exists('deleteAttachmentFiles')) {
         }
 
         foreach (array_unique($urls) as $url) {
-            deleteServerFile($url);
+            deleteServerFile((string)$url);
         }
     }
 }

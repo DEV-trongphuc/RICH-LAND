@@ -674,10 +674,7 @@ class ProjectController {
         }
 
         // Delete physical file
-        $filePath = UPLOAD_DIR . '/' . $doc['file_path'];
-        if (file_exists($filePath)) {
-            @unlink($filePath);
-        }
+        deleteServerFile($doc['file_path']);
 
         // Delete DB record
         $stmt = $this->db->prepare("DELETE FROM project_documents WHERE id = ?");

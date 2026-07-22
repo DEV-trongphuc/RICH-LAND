@@ -332,11 +332,8 @@ class CloudFileController {
         // 2. Delete from DB
         $this->db->prepare("DELETE FROM cloud_files WHERE id = ? AND tenant_id = ?")->execute([$id, $tid]);
 
-        // 3. Delete from Disk
-        $fullPath = dirname(__DIR__) . '/' . $path;
-        if (file_exists($fullPath)) {
-            unlink($fullPath);
-        }
+        // 3. Delete physical file from disk
+        deleteServerFile($path);
 
         respond(200, null, 'Đã xóa tệp tin vĩnh viễn');
     }

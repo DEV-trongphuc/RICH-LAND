@@ -5422,13 +5422,7 @@ switch ($action) {
                 // Xóa ảnh cũ nếu có
                 $oldAvatar = $_GET['old_avatar'] ?? '';
                 if (!empty($oldAvatar)) {
-                    $oldFilename = basename($oldAvatar);
-                    if ($oldFilename && preg_match('/^avatar_[0-9a-f]+\.(jpg|jpeg|png|gif|webp)$/i', $oldFilename)) {
-                        $oldFilePath = $uploadDir . $oldFilename;
-                        if (file_exists($oldFilePath) && is_file($oldFilePath)) {
-                            unlink($oldFilePath);
-                        }
-                    }
+                    deleteServerFile($oldAvatar);
                 }
 
                 echo json_encode(['success' => true, 'url' => $relativeUrl]);
