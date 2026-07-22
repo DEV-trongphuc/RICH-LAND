@@ -121,7 +121,7 @@ class UserController {
         if (!in_array($auth['role'], ['admin', 'super_admin', 'superadmin', 'director'], true) && (int)$auth['user_id'] !== (int)$id) respond(403, null, 'Không có quyền cập nhật thông tin người khác', false);
         
         $b = getBody();
-        $fields = ['email', 'full_name', 'phone', 'avatar_url', 'signature_url', 'is_active', 'dob', 'gender', 'citizen_id', 'address', 'bank_name', 'bank_account', 'permissions_json'];
+        $fields = ['email', 'full_name', 'phone', 'avatar_url', 'signature_url', 'is_active', 'dob', 'gender', 'citizen_id', 'address', 'bank_name', 'bank_account', 'permissions_json', 'job_title', 'team_id', 'zalo_chat_id', 'telegram_chat_id'];
         if (in_array($auth['role'], ['admin', 'super_admin', 'superadmin', 'director'], true)) {
             $fields[] = 'role';
             $fields[] = 'is_active';

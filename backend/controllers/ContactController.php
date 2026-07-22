@@ -613,7 +613,11 @@ class ContactController {
             'expected_revenue','win_probability','last_contact','stage_id',
             'pipeline_status', 'ttl1_completed', 'ttl1_data',
             'gender', 'zalo_link', 'fb_link', 'customer_type', 'industry', 'budget_range',
-            'temperature', 'suggested_temperature', 'campaign_id', 'collaborator_ids'
+            'temperature', 'suggested_temperature', 'campaign_id', 'collaborator_ids',
+            'phone2', 'dob', 'citizen_id', 'district', 'company', 'tax_code', 'budget',
+            'demand_type', 'property_type', 'bedroom_count', 'preferred_location',
+            'utm_campaign', 'utm_medium', 'utm_content', 'utm_term', 'platform',
+            'form_name', 'zalo_phone', 'facebook_link'
         ];
         $sets = []; $params = [];
         
