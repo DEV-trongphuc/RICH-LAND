@@ -233,9 +233,11 @@ class NoteController {
         // 1. Extract mentions from body text (@Full_Name_With_Underscores)
         $mentions = $b['mentions'] ?? [];
         if (empty($mentions)) {
-            preg_match_all('/@([a-zA-Z0-9_\x{00C0}-\x{1EF9}()]+)/u', $b['body'], $matches);
-            if (!empty($matches[1])) {
-                foreach ($matches[1] as $nameWithUnderscores) {
+            $matches = [];
+            preg_match_all('/@([a-zA-Z0-9_\x{00C0}-\x{1EF9}()]+)/u', (string)($b['body'] ?? ''), $matches);
+            $names = is_array($matches[1] ?? null) ? $matches[1] : [];
+            if (!empty($names)) {
+                foreach ($names as $nameWithUnderscores) {
                     $fullName = str_replace('_', ' ', $nameWithUnderscores);
                     $stmt = $this->db->prepare("SELECT id FROM users WHERE tenant_id=? AND full_name=?");
                     $stmt->execute([$auth['tenant_id'], $fullName]);

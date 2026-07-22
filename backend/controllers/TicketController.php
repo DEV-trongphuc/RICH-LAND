@@ -573,9 +573,11 @@ class TicketController {
         // Parse mentions in comment body
         $bodyText = $data['body'];
         $mentions = [];
-        preg_match_all('/@([a-zA-Z0-9_\x{00C0}-\x{1EF9}()]+)/u', $bodyText, $matches);
-        if (!empty($matches[1])) {
-            foreach ($matches[1] as $nameWithUnderscores) {
+        $matches = [];
+        preg_match_all('/@([a-zA-Z0-9_\x{00C0}-\x{1EF9}()]+)/u', (string)$bodyText, $matches);
+        $names = is_array($matches[1] ?? null) ? $matches[1] : [];
+        if (!empty($names)) {
+            foreach ($names as $nameWithUnderscores) {
                 $fullName = str_replace('_', ' ', $nameWithUnderscores);
                 $stmtUser = $this->db->prepare("SELECT id, email, full_name FROM users WHERE tenant_id=? AND full_name=?");
                 $stmtUser->execute([$auth['tenant_id'], $fullName]);
