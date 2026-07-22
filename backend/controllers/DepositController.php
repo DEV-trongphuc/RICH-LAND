@@ -76,10 +76,11 @@ class DepositController {
                 }
             }
             $userMap = [];
-            if (!empty($allUids)) {
-                $inUsers = implode(',', array_fill(0, count($allUids), '?'));
+            $uniqueUids = array_values(array_unique(array_filter($allUids)));
+            if (!empty($uniqueUids)) {
+                $inUsers = implode(',', array_fill(0, count($uniqueUids), '?'));
                 $stmtU = $this->db->prepare("SELECT id, full_name, email, avatar_url FROM users WHERE id IN ($inUsers)");
-                $stmtU->execute(array_values(array_unique($allUids)));
+                $stmtU->execute($uniqueUids);
                 $users = $stmtU->fetchAll(PDO::FETCH_ASSOC);
                 foreach ($users as $u) {
                     $userMap[(int)$u['id']] = $u;
@@ -352,14 +353,14 @@ class DepositController {
                         VALUES (?, ?, ?, ?, ?, ?, ?, 'Đặt cọc', 'shared', ?, NOW())
                     ");
                     $stmtInsCloud->execute([
-                        $auth['tenant_id'],
+                        $auth['tenant_id'] ?? 1,
                         $dep['contact_id'],
                         'UNC_DatCoc_' . $milestoneId . '_' . $fileName,
                         $fileName,
                         $relPath,
                         $fileSize,
                         $mimeType,
-                        $auth['user_id']
+                        $auth['user_id'] ?? 1
                     ]);
                 }
             } catch (\Throwable $cfEx) {

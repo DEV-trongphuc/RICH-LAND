@@ -178,13 +178,13 @@ class CooperationController {
                 $allUids[] = (int)$s['adjustment_request_user_id'];
             }
         }
-        $allUids = array_unique($allUids);
+        $uniqueUids = array_values(array_unique(array_filter($allUids)));
 
         $userMap = [];
-        if (!empty($allUids)) {
-            $inClause = implode(',', array_fill(0, count($allUids), '?'));
+        if (!empty($uniqueUids)) {
+            $inClause = implode(',', array_fill(0, count($uniqueUids), '?'));
             $stmtU = $this->db->prepare("SELECT id, full_name, email, avatar_url FROM users WHERE id IN ($inClause)");
-            $stmtU->execute(array_values($allUids));
+            $stmtU->execute($uniqueUids);
             $users = $stmtU->fetchAll();
             foreach ($users as $u) {
                 $userMap[(int)$u['id']] = $u;

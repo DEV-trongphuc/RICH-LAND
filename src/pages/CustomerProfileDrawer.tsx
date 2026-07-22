@@ -3859,6 +3859,12 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
       return;
     }
     
+    // Require amount for milestone 1
+    if (!depositMilestones[0] || !depositMilestones[0].amount || parseFloat(depositMilestones[0].amount) <= 0) {
+      addToast('Vui lòng nhập số tiền cọc cho Đợt 1 - Cọc giữ chỗ (bắt buộc).', 'error');
+      return;
+    }
+
     // Require UNC proof for milestone 1
     if (!depositUncFile) {
       addToast('Vui lòng tải lên minh chứng chuyển khoản (UNC) Đợt 1 để tạo phiếu cọc.', 'error');
@@ -3900,6 +3906,13 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
       await api.post(`/deposits/${createdDepositId}/milestones/${firstMilestone.id}`, formDataUpload, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
+
+      // Auto-register "Đặt cọc" folder for Customer Documents
+      const updatedFolders = Array.from(new Set([...localFolders, 'Đặt cọc']));
+      setLocalFolders(updatedFolders);
+      if (contact?.id) {
+        localStorage.setItem(`richland_folders_contact_${contact.id}`, JSON.stringify(updatedFolders));
+      }
 
       // 3. Complete pipeline stage transition if pending
       if (pendingPipelineTransition) {
@@ -3944,7 +3957,10 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
       fetchData();
       await fetchCoopSlip();
 
-      const hasCoopSales = Boolean((formData.collaborator_ids || contact?.collaborator_ids || '').trim());
+      const rawCollab = formData.collaborator_ids || contact?.collaborator_ids || selectedCollaborators;
+      const collabStr = Array.isArray(rawCollab) ? rawCollab.join(',') : String(rawCollab || '');
+      const hasCoopSales = Boolean(collabStr.split(',').filter(Boolean).length > 0);
+
       if (hasCoopSales) {
         setActiveTab('cooperation');
         setIsRequestingChange(true);
