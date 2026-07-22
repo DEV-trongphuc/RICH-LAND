@@ -7460,7 +7460,11 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                           </span>
                                           {sh.signature_img && (
                                             <div style={{ background: '#f8fafc', padding: '3px 8px', borderRadius: '6px', border: '1px dashed var(--color-border-light)', display: 'inline-flex', justifyContent: 'center', alignItems: 'center' }}>
-                                              <img src={sh.signature_img} style={{ height: '36px', maxWidth: '120px', objectFit: 'contain' }} alt="Chữ ký" />
+                                              <img 
+                                                src={sh.signature_img.startsWith('http') || sh.signature_img.startsWith('data:') ? sh.signature_img : `https://open.domation.net/richland/${sh.signature_img.replace(/^\/+/, '')}`} 
+                                                style={{ height: '36px', maxWidth: '120px', objectFit: 'contain' }} 
+                                                alt="Chữ ký" 
+                                              />
                                             </div>
                                           )}
                                         </div>

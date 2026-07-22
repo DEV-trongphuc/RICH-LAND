@@ -1530,7 +1530,11 @@ export default function CooperationSlipsPage() {
                             </div>
                             {sh.signed && (sh as any).signature_img && (
                               <div style={{ marginTop: '8px', borderTop: '1px dashed var(--color-border-light)', paddingTop: '6px', textAlign: 'center' }}>
-                                <img src={(sh as any).signature_img} style={{ height: '40px', objectFit: 'contain', display: 'inline-block' }} alt="Chữ ký" />
+                                <img 
+                                  src={(sh as any).signature_img.startsWith('http') || (sh as any).signature_img.startsWith('data:') ? (sh as any).signature_img : `https://open.domation.net/richland/${(sh as any).signature_img.replace(/^\/+/, '')}`} 
+                                  style={{ height: '40px', objectFit: 'contain', display: 'inline-block' }} 
+                                  alt="Chữ ký" 
+                                />
                               </div>
                             )}
                           </div>
