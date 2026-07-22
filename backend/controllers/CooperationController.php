@@ -272,16 +272,21 @@ class CooperationController {
 
         $shares = [];
         if ($customShares !== null && !empty($customShares)) {
-            // Get all valid helpers from quyen_truy_cap for this contact
+            // Get all valid helpers from quyen_truy_cap and contact collaborator_ids
+            $collabStr = trim($contact['collaborator_ids'] ?? '');
+            $collabIds = array_map('intval', array_filter(explode(',', $collabStr)));
+
             $stmtQ = $this->db->prepare("SELECT DISTINCT user_id FROM quyen_truy_cap WHERE contact_id = ?");
             $stmtQ->execute([$contactId]);
             $validHelpers = $stmtQ->fetchAll(PDO::FETCH_COLUMN) ?: [];
             $validHelpers = array_map('intval', $validHelpers);
 
+            $allValidUids = array_unique(array_merge([$ownerId], $collabIds, $validHelpers, array_map('intval', array_keys($customShares))));
+
             foreach ($customShares as $uid => $pct) {
                 $uidInt = (int)$uid;
                 $pctInt = (int)$pct;
-                if ($uidInt === $ownerId || in_array($uidInt, $validHelpers, true)) {
+                if (in_array($uidInt, $allValidUids, true)) {
                     $shares[$uidInt] = $pctInt;
                 }
             }

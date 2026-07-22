@@ -248,8 +248,8 @@ class DepositController {
                     }
                 }
 
-                // Check if there is an unlinked cooperation slip for this contact
-                $stmtCheckCoop = $this->db->prepare("SELECT id FROM cooperation_slips WHERE contact_id = ? AND deposit_slip_id IS NULL ORDER BY created_at DESC LIMIT 1");
+                // Check if there is an existing cooperation slip for this contact
+                $stmtCheckCoop = $this->db->prepare("SELECT id FROM cooperation_slips WHERE contact_id = ? ORDER BY id DESC LIMIT 1");
                 $stmtCheckCoop->execute([$contactId]);
                 $existingCoop = $stmtCheckCoop->fetch();
 
