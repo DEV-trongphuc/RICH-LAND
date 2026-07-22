@@ -648,11 +648,13 @@ class ContactController {
             if ($f === 'company_id') continue;
             if (array_key_exists($f, $b)) { 
                 $sets[] = "$f=?"; 
-                // Fix date string strict mode crash
-                if (in_array($f, ['birthday', 'last_contact']) && $b[$f] === '') {
+                // Fix date string & numeric strict mode crashes
+                if (in_array($f, ['birthday', 'dob', 'last_contact', 'leave_start', 'leave_end']) && ($b[$f] === '' || $b[$f] === null || $b[$f] === 'null')) {
                     $params[] = null;
-                } else if (in_array($f, ['stage_id', 'project_id', 'campaign_id']) && (empty($b[$f]) || $b[$f] === 0 || $b[$f] === '0' || $b[$f] === 'null')) {
+                } else if (in_array($f, ['stage_id', 'project_id', 'campaign_id', 'owner_id', 'company_id']) && (empty($b[$f]) || $b[$f] === 0 || $b[$f] === '0' || $b[$f] === 'null')) {
                     $params[] = null;
+                } else if (in_array($f, ['budget', 'expected_revenue', 'win_probability']) && ($b[$f] === '' || $b[$f] === null || $b[$f] === 'null')) {
+                    $params[] = 0;
                 } else if ($f === 'ttl1_data' && is_array($b[$f])) {
                     $params[] = json_encode($b[$f]);
                 } else {

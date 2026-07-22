@@ -172,7 +172,20 @@ class UserController {
         }
 
         $sets=[];$params=[];
-        foreach($fields as $f){if(array_key_exists($f,$b)){$sets[]="$f=?";$params[]=$b[$f];}}
+        foreach($fields as $f){
+            if(array_key_exists($f,$b)){
+                $val = $b[$f];
+                if (in_array($f, ['dob', 'leave_start', 'leave_end']) && ($val === '' || $val === null || $val === 'null')) {
+                    $val = null;
+                } else if (in_array($f, ['team_id']) && (empty($val) || $val === 0 || $val === '0' || $val === 'null')) {
+                    $val = null;
+                } else if ($f === 'permissions_json' && is_array($val)) {
+                    $val = json_encode($val);
+                }
+                $sets[]="$f=?";
+                $params[]=$val;
+            }
+        }
         if(!empty($b['password'])){$sets[]='password_hash=?';$params[]=password_hash($b['password'],PASSWORD_BCRYPT,['cost'=>12]);}
         if(!$sets) respond(422,null,'Không có dữ liệu',false);
         $params[]=$id;$params[]=$auth['tenant_id'];
