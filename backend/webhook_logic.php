@@ -2212,13 +2212,45 @@ function checkConsultantGates($conn, $consultantId, $lead = null)
  * Supports intervals spanning midnight (e.g. 22:00 to 06:00).
  * Highly resilient: supports HH:MM, HH:MM:SS, and leading/trailing spaces.
  */
-function isConsultantInWorkHours($timeStr, $start, $end, $workScheduleJson = null)
+function isConsultantInWorkHours($timeStr, $start, $end, $workScheduleJson = null, $userId = null, $conn = null)
 {
     $timeStr = trim($timeStr ?? '');
     if (preg_match('/^(\d{2}:\d{2})/', $timeStr, $m)) {
         $timeStr = $m[1];
     } else {
         $timeStr = date('H:i');
+    }
+
+    // Check Night Shift Registration if in Night Shift Time Window
+    if ($conn !== null && $userId !== null && $userId > 0) {
+        $nightShiftStart = get_system_setting($conn, 'night_shift_start_time') ?: '22:00';
+        $nightShiftEnd = get_system_setting($conn, 'night_shift_end_time') ?: '06:00';
+        
+        $isNightShiftTime = false;
+        if ($nightShiftStart < $nightShiftEnd) {
+            $isNightShiftTime = ($timeStr >= $nightShiftStart && $timeStr <= $nightShiftEnd);
+        } else {
+            $isNightShiftTime = ($timeStr >= $nightShiftStart || $timeStr <= $nightShiftEnd);
+        }
+
+        if ($isNightShiftTime) {
+            $today = date('Y-m-d');
+            $stmtN = $conn->prepare("
+                SELECT 1 FROM night_shift_registrations nsr
+                LEFT JOIN consultants c ON nsr.user_id = c.id
+                WHERE (nsr.user_id = ? OR c.id = ?) AND nsr.shift_date = ? AND nsr.approved = 1
+                LIMIT 1
+            ");
+            if ($stmtN) {
+                $stmtN->bind_param("iis", $userId, $userId, $today);
+                $stmtN->execute();
+                $hasNightReg = (bool)$stmtN->get_result()->fetch_assoc();
+                $stmtN->close();
+                if ($hasNightReg) {
+                    return true; // Active during night shift!
+                }
+            }
+        }
     }
 
     if (!empty($workScheduleJson)) {

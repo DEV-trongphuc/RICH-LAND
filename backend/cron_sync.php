@@ -466,7 +466,7 @@ if (!function_exists('releasePendingWorkHoursLeads')) {
                        l.source as lead_source, l.type as lead_type, l.note as lead_note,
                        c.name as consultant_name, c.email as consultant_email, c.work_start_time, c.work_end_time, c.work_schedule,
                        c.status as consultant_status, c.leave_start, c.leave_end,
-                       u.id AS user_id,
+                       COALESCE(u.id, c.id) AS user_id,
                        r.round_name, r.cc_emails
                 FROM distribution_logs dl
                 JOIN leads l ON dl.lead_id = l.id
@@ -511,7 +511,7 @@ if (!function_exists('releasePendingWorkHoursLeads')) {
                 $whEnd = $row['work_end_time'] ?? '23:59';
                 $workSchedule = $row['work_schedule'] ?? null;
                 
-                if (isConsultantInWorkHours($currentTime, $whStart, $whEnd, $workSchedule)) {
+                if (isConsultantInWorkHours($currentTime, $whStart, $whEnd, $workSchedule, $targetUserId, $conn)) {
                     // Check if consultant has checked in today (Gate 2 Check-in constraint)
                     // Check if today is holiday or rest day, and check registrations
                     $currDate = date('Y-m-d');
@@ -584,13 +584,34 @@ if (!function_exists('releasePendingWorkHoursLeads')) {
                     if ($isWeekendOrHoliday && !$mustCheckinWknd && !$mustCheckinHoli) {
                         $hasCheckIn = $hasReg; // No check-in required for weekend/holiday shift if setting is OFF
                     } else {
-                        // Must check check_ins table
-                        $stmtCheck = $conn->prepare("SELECT 1 FROM check_ins WHERE user_id = ? AND check_in_date = ? AND status = 'approved' LIMIT 1");
-                        if ($stmtCheck) {
-                            $stmtCheck->bind_param("is", $targetUserId, $currDate);
-                            $stmtCheck->execute();
-                            $hasCheckIn = (bool)$stmtCheck->get_result()->fetch_assoc();
-                            $stmtCheck->close();
+                        // Check if current time is in night shift time window
+                        $isNightShiftNow = false;
+                        $nightShiftStart = get_system_setting($conn, 'night_shift_start_time') ?: '22:00';
+                        $nightShiftEnd = get_system_setting($conn, 'night_shift_end_time') ?: '06:00';
+                        if ($nightShiftStart < $nightShiftEnd) {
+                            $isNightShiftNow = ($currentTime >= $nightShiftStart && $currentTime <= $nightShiftEnd);
+                        } else {
+                            $isNightShiftNow = ($currentTime >= $nightShiftStart || $currentTime <= $nightShiftEnd);
+                        }
+
+                        if ($isNightShiftNow) {
+                            // Night shift check-in / authorization via approved night_shift_registrations
+                            $stmtNightCheck = $conn->prepare("SELECT 1 FROM night_shift_registrations WHERE (user_id = ? OR user_id = (SELECT user_id FROM consultants WHERE id = ? LIMIT 1)) AND shift_date = ? AND approved = 1 LIMIT 1");
+                            if ($stmtNightCheck) {
+                                $stmtNightCheck->bind_param("iis", $targetUserId, $targetUserId, $currDate);
+                                $stmtNightCheck->execute();
+                                $hasCheckIn = (bool)$stmtNightCheck->get_result()->fetch_assoc();
+                                $stmtNightCheck->close();
+                            }
+                        } else {
+                            // Regular daytime check-in table
+                            $stmtCheck = $conn->prepare("SELECT 1 FROM check_ins WHERE user_id = ? AND check_in_date = ? AND status = 'approved' LIMIT 1");
+                            if ($stmtCheck) {
+                                $stmtCheck->bind_param("is", $targetUserId, $currDate);
+                                $stmtCheck->execute();
+                                $hasCheckIn = (bool)$stmtCheck->get_result()->fetch_assoc();
+                                $stmtCheck->close();
+                            }
                         }
                     }
                     if (!$hasCheckIn) {
@@ -679,7 +700,7 @@ if (!function_exists('releasePendingWorkHoursLeads')) {
                             $whEnd = $whRow['work_end_time'] ?? '23:59';
                             $workSchedule = $whRow['work_schedule'] ?? null;
                             $tempTime = date('H:i');
-                            if (!isConsultantInWorkHours($tempTime, $whStart, $whEnd, $workSchedule)) {
+                            if (!isConsultantInWorkHours($tempTime, $whStart, $whEnd, $workSchedule, $assignedConsultantId, $conn)) {
                                 $newStatus = 'pending_work_hours';
                                 $compSuffix = ($assignResult && $assignResult['is_compensation']) ? ' (Bù lượt)' : '';
                                 $logMsg .= "Gán cho Sale mới: {$whRow['name']} (Chờ ngoài giờ làm việc){$compSuffix}.";
@@ -825,7 +846,7 @@ if (!function_exists('releasePendingWorkHoursLeads')) {
                 $whEnd = $row['work_end_time'] ?? '23:59';
                 $workSchedule = $row['work_schedule'] ?? null;
                 
-                if (isConsultantInWorkHours($currentTime, $whStart, $whEnd, $workSchedule)) {
+                if (isConsultantInWorkHours($currentTime, $whStart, $whEnd, $workSchedule, $targetUserId, $conn)) {
                     // Check if consultant has an approved check-in for today (Gate 2 Check-in constraint)
                     // Check if today is holiday or rest day, and check registrations
                     $currDate = date('Y-m-d');
@@ -890,13 +911,34 @@ if (!function_exists('releasePendingWorkHoursLeads')) {
                     if ($isWeekendOrHoliday && !$mustCheckinWknd && !$mustCheckinHoli) {
                         $hasCheckIn = $hasReg; // No check-in required for weekend/holiday shift if setting is OFF
                     } else {
-                        // Must check check_ins table
-                        $stmtCheck = $conn->prepare("SELECT 1 FROM check_ins WHERE user_id = ? AND check_in_date = ? AND status = 'approved' LIMIT 1");
-                        if ($stmtCheck) {
-                            $stmtCheck->bind_param("is", $targetUserId, $currDate);
-                            $stmtCheck->execute();
-                            $hasCheckIn = (bool)$stmtCheck->get_result()->fetch_assoc();
-                            $stmtCheck->close();
+                        // Check if current time is in night shift time window
+                        $isNightShiftNow = false;
+                        $nightShiftStart = get_system_setting($conn, 'night_shift_start_time') ?: '22:00';
+                        $nightShiftEnd = get_system_setting($conn, 'night_shift_end_time') ?: '06:00';
+                        if ($nightShiftStart < $nightShiftEnd) {
+                            $isNightShiftNow = ($currentTime >= $nightShiftStart && $currentTime <= $nightShiftEnd);
+                        } else {
+                            $isNightShiftNow = ($currentTime >= $nightShiftStart || $currentTime <= $nightShiftEnd);
+                        }
+
+                        if ($isNightShiftNow) {
+                            // Night shift check-in / authorization via approved night_shift_registrations
+                            $stmtNightCheck = $conn->prepare("SELECT 1 FROM night_shift_registrations WHERE (user_id = ? OR user_id = (SELECT user_id FROM consultants WHERE id = ? LIMIT 1)) AND shift_date = ? AND approved = 1 LIMIT 1");
+                            if ($stmtNightCheck) {
+                                $stmtNightCheck->bind_param("iis", $targetUserId, $targetUserId, $currDate);
+                                $stmtNightCheck->execute();
+                                $hasCheckIn = (bool)$stmtNightCheck->get_result()->fetch_assoc();
+                                $stmtNightCheck->close();
+                            }
+                        } else {
+                            // Standard daytime check-in table
+                            $stmtCheck = $conn->prepare("SELECT 1 FROM check_ins WHERE user_id = ? AND check_in_date = ? AND status = 'approved' LIMIT 1");
+                            if ($stmtCheck) {
+                                $stmtCheck->bind_param("is", $targetUserId, $currDate);
+                                $stmtCheck->execute();
+                                $hasCheckIn = (bool)$stmtCheck->get_result()->fetch_assoc();
+                                $stmtCheck->close();
+                            }
                         }
                     }
                     
