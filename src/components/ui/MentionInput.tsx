@@ -16,9 +16,11 @@ interface MentionInputProps extends React.TextareaHTMLAttributes<HTMLTextAreaEle
   value: string;
   onChange: (e: any) => void;
   users?: User[];
+  onImagePaste?: (file: File) => void;
+  onFilePaste?: (file: File) => void;
 }
 
-export const MentionInput: React.FC<MentionInputProps> = ({ value, onChange, users: propUsers, ...props }) => {
+export const MentionInput: React.FC<MentionInputProps> = ({ value, onChange, users: propUsers, onImagePaste, onFilePaste, ...props }) => {
   const { user: currentUser } = useAuth();
   const [users, setUsers] = useState<User[]>([]);
   const [showDropdown, setShowDropdown] = useState(false);
@@ -152,6 +154,39 @@ export const MentionInput: React.FC<MentionInputProps> = ({ value, onChange, use
     return name.includes(searchQuery) || role.includes(searchQuery);
   });
 
+  const handlePaste = (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+    const items = e.clipboardData?.items;
+    if (items) {
+      for (let i = 0; i < items.length; i++) {
+        const item = items[i];
+        if (item.type.indexOf('image') !== -1) {
+          const file = item.getAsFile();
+          if (file) {
+            if (onImagePaste) {
+              e.preventDefault();
+              onImagePaste(file);
+              return;
+            } else if (onFilePaste) {
+              e.preventDefault();
+              onFilePaste(file);
+              return;
+            }
+          }
+        } else if (item.kind === 'file') {
+          const file = item.getAsFile();
+          if (file && onFilePaste) {
+            e.preventDefault();
+            onFilePaste(file);
+            return;
+          }
+        }
+      }
+    }
+    if (props.onPaste) {
+      props.onPaste(e);
+    }
+  };
+
   return (
     <div style={{ position: 'relative', flex: 1, display: 'flex', minWidth: 0 }}>
       <textarea
@@ -159,6 +194,7 @@ export const MentionInput: React.FC<MentionInputProps> = ({ value, onChange, use
         value={value}
         onChange={handleChange}
         onKeyDown={handleKeyDown}
+        onPaste={handlePaste}
         className={`form-textarea ${props.className || ''}`}
         {...props}
         style={{ width: '100%', ...props.style }}

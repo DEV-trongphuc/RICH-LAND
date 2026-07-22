@@ -383,8 +383,7 @@ const ConsultantsInner = () => {
     }
   };
 
-  const handleAttachCommentFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+  const uploadTeamCommentFile = async (file: File) => {
     if (!file) return;
     setIsUploadingCommentFile(true);
     const fd = new FormData();
@@ -403,8 +402,13 @@ const ConsultantsInner = () => {
       toast.error(t('Lỗi tải tệp lên máy chủ'));
     } finally {
       setIsUploadingCommentFile(false);
-      e.target.value = '';
     }
+  };
+
+  const handleAttachCommentFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) await uploadTeamCommentFile(file);
+    e.target.value = '';
   };
 
   const handleAttachCommentLink = () => {
@@ -3775,12 +3779,20 @@ const ConsultantsInner = () => {
                                 </div>
                               )}
                               
-                              <MentionInput
-                                value={newTeamCommentText}
-                                onChange={e => setNewTeamCommentText(e.target.value)}
-                                placeholder="Nhập nội dung trao đổi... (Gõ @ để nhắc tên đồng nghiệp)"
-                                style={{ minHeight: '60px', fontSize: '0.85rem' }}
-                              />
+                              <div style={{ position: 'relative' }}>
+                                <MentionInput
+                                  value={newTeamCommentText}
+                                  onChange={e => setNewTeamCommentText(e.target.value)}
+                                  onImagePaste={uploadTeamCommentFile}
+                                  placeholder="Nhập nội dung trao đổi... (Dán ảnh trực tiếp Ctrl+V)"
+                                  style={{ minHeight: '65px', fontSize: '0.85rem', paddingRight: '40px' }}
+                                  disabled={isSubmittingTeamComment || isUploadingCommentFile}
+                                />
+                                <label style={{ position: 'absolute', right: '10px', bottom: '10px', cursor: (isUploadingCommentFile || isSubmittingTeamComment) ? 'not-allowed' : 'pointer', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center' }} title={t('Đính kèm tệp')}>
+                                  <input type="file" onChange={handleAttachCommentFile} style={{ display: 'none' }} disabled={isUploadingCommentFile || isSubmittingTeamComment} />
+                                  {isUploadingCommentFile ? <RefreshCw className="spin" size={18} /> : <Paperclip size={18} />}
+                                </label>
+                              </div>
 
                               {/* Attachments Preview Row */}
                               {teamCommentAttachments.length > 0 && (

@@ -497,6 +497,17 @@ const ActivityComments: React.FC<{
     setExpanded(!expanded);
   };
 
+  const handleImagePaste = (file: File) => {
+    if (file.size > 5 * 1024 * 1024) {
+      addToast('Dung lượng tệp đính kèm không được vượt quá 5MB', 'error');
+      return;
+    }
+    const previewUrl = URL.createObjectURL(file);
+    setAttachmentFile(file);
+    setAttachmentPreview(previewUrl);
+    addToast('Đã dán tệp đính kèm từ clipboard!', 'success');
+  };
+
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -691,6 +702,8 @@ const ActivityComments: React.FC<{
                   value={text}
                   disabled={submitting}
                   onChange={e => setText(e.target.value)}
+                  onImagePaste={handleImagePaste}
+                  onFilePaste={handleImagePaste}
                 />
                 <label style={{ position: 'absolute', right: '8px', bottom: '8px', cursor: submitting ? 'not-allowed' : 'pointer', color: 'var(--color-text-muted)' }}>
                   <input type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.zip,.rar,.csv,image/*" style={{ display: 'none' }} onChange={handleUpload} disabled={uploading || submitting} />

@@ -1022,8 +1022,7 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
   };
 
   // Comment Attachments Upload
-  const handleCommentAttachmentUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+  const uploadCommentFile = async (file: File) => {
     if (!file) return;
 
     setUploadingFile(true);
@@ -1057,8 +1056,13 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
       toast.error(t('Lỗi tải đính kèm: ') + err.message);
     } finally {
       setUploadingFile(false);
-      e.target.value = '';
     }
+  };
+
+  const handleCommentAttachmentUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) await uploadCommentFile(file);
+    e.target.value = '';
   };
 
   const handlePostComment = async () => {
@@ -2220,36 +2224,43 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
                       <button onClick={() => setReplyTo(null)} style={{ border: 'none', background: 'transparent', color: '#a31422', cursor: 'pointer', fontWeight: 800, fontSize: '0.9rem', padding: '0 4px' }}>×</button>
                     </div>
                   )}
-                  <MentionInput
-                    value={newCommentText}
-                    onChange={e => setNewCommentText(e.target.value)}
-                    placeholder={t('Viết bình luận... (Gõ @ để nhắc tên đồng nghiệp)')}
-                    style={{ minHeight: '55px' }}
-                  />
+                  <div style={{ position: 'relative' }}>
+                    <MentionInput
+                      value={newCommentText}
+                      onChange={e => setNewCommentText(e.target.value)}
+                      onImagePaste={uploadCommentFile}
+                      placeholder={t('Viết bình luận... (Dán ảnh trực tiếp Ctrl+V)')}
+                      style={{ minHeight: '65px', fontSize: '0.85rem', paddingRight: '40px' }}
+                      disabled={isSubmittingComment || uploadingFile}
+                    />
+                    <label style={{ position: 'absolute', right: '10px', bottom: '10px', cursor: (uploadingFile || isSubmittingComment) ? 'not-allowed' : 'pointer', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center' }} title={t('Đính kèm file')}>
+                      <input type="file" onChange={handleCommentAttachmentUpload} style={{ display: 'none' }} disabled={uploadingFile || isSubmittingComment} />
+                      {uploadingFile ? <RefreshCw className="spin" size={18} /> : <Paperclip size={18} />}
+                    </label>
+                  </div>
                   
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--color-border-light)', paddingTop: '10px', marginTop: '4px' }}>
-                    {/* File attach trigger */}
-                    <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-                      <label style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.7rem', fontWeight: 700, color: 'var(--color-text-light)' }} className="hover-lift">
-                        <Paperclip size={12} color="var(--color-text-muted)" />
-                        <span>{t('Đính kèm file')}</span>
-                        <input type="file" onChange={handleCommentAttachmentUpload} style={{ display: 'none' }} />
-                      </label>
+                  {/* Attachment Chips List */}
+                  {commentAttachments.length > 0 && (
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', paddingTop: '2px' }}>
                       {commentAttachments.map((att: any, idx: number) => (
-                        <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '4px', background: 'var(--color-surface)', border: '1px solid var(--color-border-light)', padding: '2px 6px', borderRadius: '4px', fontSize: '0.625rem' }}>
-                          <span style={{ maxWidth: '60px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{att.name}</span>
-                          <button onClick={() => setCommentAttachments(prev => prev.filter((_, i) => i !== idx))} style={{ border: 'none', background: 'transparent', color: 'var(--color-danger)', cursor: 'pointer', fontSize: '0.7rem' }}>×</button>
+                        <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '5px', background: 'var(--color-surface)', border: '1px solid var(--color-border-light)', padding: '3px 8px', borderRadius: '12px', fontSize: '0.72rem', color: 'var(--color-text)' }}>
+                          <Paperclip size={11} color="var(--color-primary)" />
+                          <span style={{ maxWidth: '180px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: 600 }}>{att.name}</span>
+                          <button onClick={() => setCommentAttachments(prev => prev.filter((_, i) => i !== idx))} style={{ border: 'none', background: 'transparent', color: 'var(--color-danger)', cursor: 'pointer', fontSize: '0.8rem', padding: '0 2px', lineHeight: 1 }}>×</button>
                         </div>
                       ))}
                     </div>
+                  )}
 
+                  <div style={{ display: 'flex', justifyContent: 'flex-start', paddingTop: '4px' }}>
                     <button
                       onClick={handlePostComment}
-                      disabled={isSubmittingComment}
+                      disabled={isSubmittingComment || uploadingFile || (!newCommentText.trim() && commentAttachments.length === 0)}
                       className="btn primary sm"
-                      style={{ padding: '5px 16px', fontSize: '0.75rem', borderRadius: '20px', display: 'flex', alignItems: 'center', gap: '6px' }}
+                      style={{ padding: '6px 18px', fontSize: '0.78rem', borderRadius: '20px', display: 'flex', alignItems: 'center', gap: '5px', background: '#db2777', borderColor: '#db2777', color: '#fff' }}
                     >
-                      {isSubmittingComment ? <RefreshCw className="spin" size={12} /> : t('Gửi bình luận')}
+                      {isSubmittingComment ? <RefreshCw className="spin" size={13} /> : <Send size={13} />}
+                      <span>{t('Gửi')}</span>
                     </button>
                   </div>
                 </div>
