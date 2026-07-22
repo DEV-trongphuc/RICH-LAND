@@ -1737,6 +1737,8 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
     });
   };
 
+  const [docs, setDocs] = useState<any[]>([]);
+
   const isOwnerOrAdmin = useMemo(() => {
     const scope = getModulePermissionScope(currentUser, 'leads', 'write');
     if (scope === 'all') return true;
@@ -1836,18 +1838,36 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
   }, [isCoopApprover, isCoopCreator, currentUser?.id, formData.owner_id, contact?.owner_id]);
 
   const checkFileExists = useCallback((fileKeyword: string) => {
-    const files = coopSlip?.attachment_url ? coopSlip.attachment_url.split(',') : [];
     const cleanKeyword = fileKeyword.split('.')[0].toLowerCase().trim();
     if (!cleanKeyword) return false;
-    return files.some((f: string) => {
+
+    // 1. Check coopSlip attachments
+    const files = coopSlip?.attachment_url ? coopSlip.attachment_url.split(',') : [];
+    const existsInCoop = files.some((f: string) => {
       const filename = f.split('/').pop() || '';
-      const lower = filename.toLowerCase();
+      const lower = (f + ' ' + filename).toLowerCase();
       if (cleanKeyword === 'unc' || cleanKeyword === 'uy nhiem chi' || cleanKeyword === 'ủy nhiệm chi') {
-        return lower.includes('unc') || lower.includes('uy nhiem chi') || lower.includes('ủy nhiệm chi');
+        return lower.includes('unc') || lower.includes('uy nhiem chi') || lower.includes('ủy nhiệm chi') || lower.includes('deposits');
       }
       return lower.includes(cleanKeyword);
     });
-  }, [coopSlip?.attachment_url]);
+    if (existsInCoop) return true;
+
+    // 2. Check profile document files (cloud_files / docs)
+    if (docs && docs.length > 0) {
+      const existsInDocs = docs.some((d: any) => {
+        const name = (d.name || '').toLowerCase();
+        const cat = (d.category || d.folder || '').toLowerCase();
+        if (cleanKeyword === 'unc' || cleanKeyword === 'uy nhiem chi' || cleanKeyword === 'ủy nhiệm chi') {
+          return name.includes('unc') || name.includes('cọc') || name.includes('đặt cọc') || name.includes('uy nhiem chi') || name.includes('ủy nhiệm chi') || cat.includes('đặt cọc') || cat.includes('unc');
+        }
+        return name.includes(cleanKeyword) || cat.includes(cleanKeyword);
+      });
+      if (existsInDocs) return true;
+    }
+
+    return false;
+  }, [coopSlip?.attachment_url, docs]);
 
   const [isSignModalOpen, setIsSignModalOpen] = useState(false);
   const [signatureMethod, setSignatureMethod] = useState<'draw' | 'upload' | 'saved'>(() => currentUser?.signature_url ? 'saved' : 'draw');
@@ -2421,7 +2441,6 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
     }
   };
 
-  const [docs, setDocs] = useState<any[]>([]);
   const [currentFolder, setCurrentFolder] = useState<string>('');
   const [localFolders, setLocalFolders] = useState<string[]>([]);
   const [movingFile, setMovingFile] = useState<any>(null);
@@ -3979,8 +3998,10 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
 
       if (hasCoopSales) {
         setActiveTab('cooperation');
-        setIsRequestingChange(true);
-        addToast('Đã tự động khởi tạo Phiếu hợp tác. Vui lòng kiểm tra và điều chỉnh tỷ lệ % hoa hồng.', 'info');
+        setTimeout(() => {
+          handleCreateCoopSlip();
+        }, 300);
+        addToast('Phát hiện có Sale hợp tác! Vui lòng kiểm tra và bấm xác nhận tỷ lệ % hoa hồng.', 'info');
       }
     } catch (e: any) {
       addToast(e?.response?.data?.message || e.message || 'Lỗi khi tạo phiếu cọc', 'error');
