@@ -4777,19 +4777,38 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
 
         {/* AI Priority Assistant Banner */}
         {(() => {
-          const overdueCount = workspaceStats.overdue || 0;
-          const dueTodayCount = workspaceStats.dueToday || 0;
-          const highPriorityTask = (wsTasks || []).find((t: any) => t.priority === 'high' || t.priority === 'urgent');
+          const todayStr = new Date().toISOString().slice(0, 10);
+          const uid = currentUser?.id ? Number(currentUser.id) : 0;
 
-          if (overdueCount === 0 && dueTodayCount === 0 && !highPriorityTask) return null;
+          const isMyTask = (t: any) => {
+            if (!uid) return false;
+            const assignee = Number(t.assignee_id || t.user_id || 0);
+            return assignee === uid;
+          };
+
+          const myOverdueCount = (wsTasks || []).filter((t: any) => t.status !== 'done' && isMyTask(t) && t.due_date && t.due_date.slice(0, 10) < todayStr).length;
+          const myDueTodayCount = (wsTasks || []).filter((t: any) => t.status !== 'done' && isMyTask(t) && t.due_date && t.due_date.slice(0, 10) === todayStr).length;
+          const myHighPriorityTask = (wsTasks || []).find((t: any) => t.status !== 'done' && isMyTask(t) && (t.priority === 'high' || t.priority === 'urgent'));
+
+          const totalOverdueCount = workspaceStats.overdue || 0;
+          const totalDueTodayCount = workspaceStats.dueToday || 0;
+          const teamHighPriorityTask = (wsTasks || []).find((t: any) => t.status !== 'done' && (t.priority === 'high' || t.priority === 'urgent'));
+
+          if (totalOverdueCount === 0 && totalDueTodayCount === 0 && !teamHighPriorityTask) return null;
 
           let aiMessage = '';
-          if (overdueCount > 0) {
-            aiMessage = `Hôm nay bạn có ${overdueCount} công việc quá hạn cần xử lý gấp. Bạn nên ưu tiên hoàn thành trước để đảm bảo tiến độ!`;
-          } else if (highPriorityTask) {
-            aiMessage = `Bạn có 1 công việc ưu tiên cao (${highPriorityTask.subject || 'Nhiệm vụ quan trọng'}) cần tập trung xử lý ngay.`;
+          if (myOverdueCount > 0) {
+            aiMessage = `Hôm nay bạn có ${myOverdueCount} công việc quá hạn cần xử lý gấp. Bạn nên ưu tiên hoàn thành trước để đảm bảo tiến độ!`;
+          } else if (myHighPriorityTask) {
+            aiMessage = `Bạn có 1 công việc ưu tiên cao (${myHighPriorityTask.subject || 'Nhiệm vụ quan trọng'}) cần tập trung xử lý ngay.`;
+          } else if (myDueTodayCount > 0) {
+            aiMessage = `Hôm nay bạn có ${myDueTodayCount} công việc đến hạn cần hoàn thành đúng kế hoạch.`;
+          } else if (totalOverdueCount > 0) {
+            aiMessage = `Toàn đội ngũ hiện có ${totalOverdueCount} công việc quá hạn cần đôn đốc xử lý.`;
+          } else if (teamHighPriorityTask) {
+            aiMessage = `Hệ thống có 1 công việc ưu tiên cao (${teamHighPriorityTask.subject || 'Nhiệm vụ quan trọng'}) cần theo dõi.`;
           } else {
-            aiMessage = `Hôm nay bạn có ${dueTodayCount} công việc đến hạn cần hoàn thành đúng kế hoạch.`;
+            aiMessage = `Hôm nay toàn đội ngũ có ${totalDueTodayCount} công việc đến hạn cần hoàn thành.`;
           }
 
           return (
