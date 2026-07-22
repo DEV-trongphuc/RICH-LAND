@@ -38,17 +38,6 @@ class CloudFileController {
             $params[] = $uid;
         } else {
             $where[] = "(cf.visibility = 'shared' OR cf.visibility IS NULL OR cf.visibility = '')";
-            if ($isSale) {
-                $where[] = "(
-                    cf.uploaded_by = ? 
-                    OR (
-                        cf.category NOT LIKE 'consultant_%' 
-                        OR cf.category = ?
-                    )
-                )";
-                $params[] = $uid;
-                $params[] = 'consultant_' . $uid;
-            }
         }
 
         if ($cat) {
@@ -61,6 +50,17 @@ class CloudFileController {
             $params[] = (int)$contactId;
         } else {
             $where[] = "cf.contact_id IS NULL";
+            if ($isSale) {
+                $where[] = "(
+                    cf.uploaded_by = ? 
+                    OR (
+                        cf.category NOT LIKE 'consultant_%' 
+                        OR cf.category = ?
+                    )
+                )";
+                $params[] = $uid;
+                $params[] = 'consultant_' . $uid;
+            }
         }
 
         if ($projectId !== '') {

@@ -1969,11 +1969,64 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
     setCoopError('');
     try {
       const usersEndpoint = 'users?all=1';
-      const [resSlips, resUsers] = await Promise.all([
+      const [resSlips, resUsers, resDocs, resDeposits] = await Promise.all([
         fetchAPI('cooperation-slips'),
-        fetchAPI(usersEndpoint)
+        fetchAPI(usersEndpoint),
+        api.get(`/cloud-files?contact_id=${contact.id}&limit=1000`).catch(() => ({ data: { data: { items: [] } } })),
+        api.get(`/deposits?contact_id=${contact.id}`).catch(() => ({ data: { data: [] } }))
       ]);
       
+      const docsData = resDocs?.data?.data?.items || [];
+      const mappedDocs = docsData.map((d: any) => ({
+        id: d.id,
+        name: d.name,
+        category: d.category || d.folder || 'general',
+        folder: d.folder || d.category || 'general',
+        path: d.file_path,
+        date: d.created_at ? new Date(d.created_at).toLocaleDateString('vi-VN') : '—',
+        type: d.name ? d.name.split('.').pop() : 'file'
+      }));
+
+      const depositsData = resDeposits?.data?.data || [];
+      const depositsList = (Array.isArray(depositsData) ? depositsData : []).map((d: any) => ({
+        id: d.id,
+        title: `${d.project_name} - Căn ${d.unit_code}`,
+        value: d.price,
+        unit_code: d.unit_code,
+        price: d.price,
+        milestones: d.milestones || [],
+        contact_id: d.contact_id
+      }));
+
+      // Merge deposit milestone payment proofs (UNC) into docs
+      depositsList.forEach((dep: any) => {
+        const milestones = dep.milestones || [];
+        milestones.forEach((m: any) => {
+          const fileUrl = m.unc_file_path || m.attachment_url;
+          if (fileUrl) {
+            const filename = fileUrl.split('/').pop() || `${m.name || 'Cọc'}_UNC`;
+            const fileExt = filename.split('.').pop() || 'png';
+            const exists = mappedDocs.some((d: any) => d.path === fileUrl);
+            if (!exists) {
+              mappedDocs.push({
+                id: `milestone_attachment_${m.id}`,
+                name: `${m.name || 'Cọc giữ chỗ'} - UNC.${fileExt}`,
+                date: m.updated_at ? new Date(m.updated_at).toLocaleDateString('vi-VN') : new Date().toLocaleDateString('vi-VN'),
+                size: '—',
+                type: fileExt,
+                path: fileUrl,
+                category: 'Đặt cọc',
+                folder: 'Đặt cọc',
+                isMilestoneAttachment: true
+              });
+            }
+          }
+        });
+      });
+
+      setDocs(mappedDocs);
+      setDeals(depositsList);
+
       if (resSlips.success) {
         const found = (resSlips.data || []).find((s: any) => Number(s.contact_id) === Number(contact.id));
         setCoopSlip(found || null);
@@ -1985,8 +2038,32 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
             percentage: String(s.percentage)
           }));
           setCoopShares(initialShares);
+
+          // Merge coop slip attachment files into docs if any
+          if (found.attachment_url) {
+            const coopFiles = found.attachment_url.split(',').map((s: string) => s.trim()).filter(Boolean);
+            coopFiles.forEach((fileUrl: string, idx: number) => {
+              const filename = fileUrl.split('/').pop() || 'coop_file';
+              const exists = mappedDocs.some((d: any) => d.path === fileUrl);
+              if (!exists) {
+                mappedDocs.push({
+                  id: `coop_slip_attachment_${idx}`,
+                  name: filename,
+                  date: found.created_at ? new Date(found.created_at).toLocaleDateString('vi-VN') : new Date().toLocaleDateString('vi-VN'),
+                  size: '—',
+                  type: filename.split('.').pop() || 'file',
+                  path: fileUrl,
+                  category: 'Tài liệu Hợp tác & Hoa hồng',
+                  folder: 'Tài liệu Hợp tác & Hoa hồng',
+                  isCoopAttachment: true
+                });
+              }
+            });
+            setDocs([...mappedDocs]);
+          }
         }
       }
+
       if (resUsers.success) {
         const mapped = (resUsers.data || []).map((u: any) => ({
           ...u,
@@ -2758,14 +2835,18 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
         }));
       }
 
-      if (tabToLoad === 'deals' || tabToLoad === 'cooperation') {
+      if (tabToLoad === 'deals' || tabToLoad === 'cooperation' || tabToLoad === 'info' || !tabToLoad) {
         api.get(`/cloud-files?contact_id=${contact.id}&limit=1000`)
           .then(res => {
             const docsData = res.data.data?.items || [];
             const mappedDocs = docsData.map((d: any) => ({
               id: d.id,
               name: d.name,
-              category: d.category
+              category: d.category || d.folder || 'general',
+              folder: d.folder || d.category || 'general',
+              path: d.file_path,
+              date: d.created_at ? new Date(d.created_at).toLocaleDateString('vi-VN') : '—',
+              type: d.name ? d.name.split('.').pop() : 'file'
             }));
             setDocs(mappedDocs);
           })
