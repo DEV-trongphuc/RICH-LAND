@@ -58,6 +58,7 @@ export const TicketDrawer: React.FC<Props> = ({ isOpen, onClose, ticket, onUpdat
   const [loading, setLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [prevTicketId, setPrevTicketId] = useState<number | null>(null);
+  const [resolvedContact, setResolvedContact] = useState<any>(null);
 
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [rejectReason, setRejectReason] = useState('');
@@ -85,6 +86,31 @@ export const TicketDrawer: React.FC<Props> = ({ isOpen, onClose, ticket, onUpdat
       setFormData(ticket);
       setPrevTicketId(ticket.id);
       fetchComments();
+      setResolvedContact(null);
+
+      // Resolve contact dynamically from database
+      const cid = ticket.contact_id || ticket.customer_id || (ticket.related_contacts && ticket.related_contacts.length > 0 ? ticket.related_contacts[0] : null);
+      if (cid) {
+        api.get(`/contacts/${cid}`).then(res => {
+          if (res.data.success && res.data.data) {
+            setResolvedContact(res.data.data);
+          }
+        }).catch(() => {});
+      } else if (ticket.customer_name) {
+        api.get('/contacts', { params: { search: ticket.customer_name, limit: 5 } }).then(res => {
+          const list = res.data.data?.items || res.data.data || [];
+          const matched = list.find((x: any) => {
+            const name1 = `${x.last_name || ''} ${x.first_name || ''}`.trim().toLowerCase();
+            const name2 = `${x.first_name || ''} ${x.last_name || ''}`.trim().toLowerCase();
+            const cName = x.name ? x.name.trim().toLowerCase() : '';
+            const target = ticket.customer_name.trim().toLowerCase();
+            return name1 === target || name2 === target || cName === target;
+          });
+          if (matched) {
+            setResolvedContact(matched);
+          }
+        }).catch(() => {});
+      }
     }
   }, [ticket]);
 
@@ -631,12 +657,15 @@ export const TicketDrawer: React.FC<Props> = ({ isOpen, onClose, ticket, onUpdat
               <h4 style={{ fontSize: '0.825rem', fontWeight: 800, textTransform: 'uppercase', color: 'var(--color-text-light)', marginBottom: '0.625rem' }}>THÔNG TIN KHÁCH HÀNG</h4>
               {(() => {
                 const cid = formData.contact_id || formData.customer_id || (formData.related_contacts && formData.related_contacts.length > 0 ? formData.related_contacts[0] : null);
-                const matchedContact = cid 
+                const matchedContact = resolvedContact || (cid 
                   ? (contacts || []).find((x: any) => String(x.id) === String(cid))
                   : (contacts || []).find((x: any) => {
-                      const fullName = `${x.last_name || ''} ${x.first_name || ''}`.trim() || x.name || '';
-                      return fullName && formData.customer_name && fullName.toLowerCase() === formData.customer_name.toLowerCase();
-                    });
+                      const name1 = `${x.last_name || ''} ${x.first_name || ''}`.trim().toLowerCase();
+                      const name2 = `${x.first_name || ''} ${x.last_name || ''}`.trim().toLowerCase();
+                      const cName = x.name ? x.name.trim().toLowerCase() : '';
+                      const target = (formData.customer_name || '').trim().toLowerCase();
+                      return target && (name1 === target || name2 === target || cName === target);
+                    }));
 
                 const targetContact = matchedContact || { 
                   id: cid ? Number(cid) : 0, 
