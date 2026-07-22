@@ -1293,6 +1293,49 @@ class ActivityController {
         }
     }
 
+    public function cancelMeeting(array $auth, int $id): void {
+        if ($auth['role'] === 'viewer') respond(403, null, 'Bạn không có quyền hủy lịch họp', false);
+        $check = $this->db->prepare("SELECT * FROM activities WHERE id=? AND tenant_id=? AND deleted_at IS NULL");
+        $check->execute([$id, $auth['tenant_id']]);
+        $activity = $check->fetch();
+        if (!$activity) respond(404, null, 'Không tìm thấy lịch họp', false);
+
+        if (!$this->hasAccess($auth, $activity)) {
+            respond(403, null, 'Bạn không có quyền hủy lịch họp này', false);
+        }
+
+        $b = getBody();
+        $reason = $b['reason'] ?? 'Hủy cuộc họp';
+
+        $stmt = $this->db->prepare("UPDATE activities SET status='cancelled', note=CONCAT(COALESCE(note,''), '\n[Lý do hủy]: ', ?), updated_at=NOW() WHERE id=? AND tenant_id=?");
+        $stmt->execute([$reason, $id, $auth['tenant_id']]);
+
+        logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'CANCEL_MEETING', 'activity', $id, json_encode(['reason' => $reason]));
+        respond(200, ['id' => $id], 'Đã hủy lịch họp thành công');
+    }
+
+    public function rescheduleMeeting(array $auth, int $id): void {
+        if ($auth['role'] === 'viewer') respond(403, null, 'Bạn không có quyền đổi lịch họp', false);
+        $check = $this->db->prepare("SELECT * FROM activities WHERE id=? AND tenant_id=? AND deleted_at IS NULL");
+        $check->execute([$id, $auth['tenant_id']]);
+        $activity = $check->fetch();
+        if (!$activity) respond(404, null, 'Không tìm thấy lịch họp', false);
+
+        if (!$this->hasAccess($auth, $activity)) {
+            respond(403, null, 'Bạn không có quyền đổi lịch họp này', false);
+        }
+
+        $b = getBody();
+        $newDate = $b['due_date'] ?? null;
+        if (!$newDate) respond(422, null, 'Thời gian mới là bắt buộc', false);
+
+        $stmt = $this->db->prepare("UPDATE activities SET due_date=?, status='planned', updated_at=NOW() WHERE id=? AND tenant_id=?");
+        $stmt->execute([$newDate, $id, $auth['tenant_id']]);
+
+        logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'RESCHEDULE_MEETING', 'activity', $id, json_encode(['due_date' => $newDate]));
+        respond(200, ['id' => $id], 'Đã đổi lịch họp thành công');
+    }
+
     private function notifyUser(int $userId, string $title, string $body, string $type, string $link, ?int $taskId = null): void {
         try {
             if ($taskId && $this->isTaskMuted($taskId, $userId)) {
