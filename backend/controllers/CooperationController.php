@@ -50,8 +50,8 @@ class CooperationController {
             $stmtUser = $this->db->prepare("SELECT email FROM users WHERE id = ?");
             $stmtUser->execute([$uid]);
             $uRow = $stmtUser->fetch(PDO::FETCH_ASSOC);
-            if ($uRow && !empty($uRow['email'])) {
-                sendMailAsync($uRow['email'], $enrichedSubject, $title, $enrichedContent);
+            if ($uRow && !empty($uRow['email']) && function_exists('sendEmailNotification')) {
+                sendEmailNotification($uRow['email'], $enrichedSubject, $title, $enrichedContent);
             }
 
             NotificationService::send($this->db, $tenantId, 'COOP_INVITATION', [
