@@ -1846,14 +1846,14 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
   }, [coopSlip?.attachment_url]);
 
   const [isSignModalOpen, setIsSignModalOpen] = useState(false);
-  const [signatureMethod, setSignatureMethod] = useState<'draw' | 'upload' | 'saved'>(() => (user?.signature_url || currentUser?.signature_url) ? 'saved' : 'draw');
+  const [signatureMethod, setSignatureMethod] = useState<'draw' | 'upload' | 'saved'>(() => currentUser?.signature_url ? 'saved' : 'draw');
   const [uploadedSignatureImg, setUploadedSignatureImg] = useState<string | null>(null);
 
   useEffect(() => {
-    if (isSignModalOpen && (user?.signature_url || currentUser?.signature_url)) {
+    if (isSignModalOpen && currentUser?.signature_url) {
       setSignatureMethod('saved');
     }
-  }, [isSignModalOpen, user?.signature_url, currentUser?.signature_url]);
+  }, [isSignModalOpen, currentUser?.signature_url]);
   const canvasRef = React.useRef<HTMLCanvasElement | null>(null);
   const isDrawing = React.useRef(false);
 
@@ -2284,7 +2284,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
 
   const handleSubmitSignature = () => {
     if (signatureMethod === 'saved') {
-      const mySavedSig = user?.signature_url || currentUser?.signature_url;
+      const mySavedSig = currentUser?.signature_url;
       if (!mySavedSig) {
         addToast('Bạn chưa thiết lập Chữ ký Điện tử Cá nhân trong Quản lý Tài khoản.', 'error');
         return;
@@ -11608,15 +11608,15 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
               {signatureMethod === 'saved' ? (
                 <div>
                   <h3 style={{ fontSize: '0.875rem', fontWeight: 700, marginBottom: '0.5rem', color: 'var(--color-text)' }}>2. Chữ ký Điện tử Cá nhân đã đăng ký:</h3>
-                  {(user?.signature_url || currentUser?.signature_url) ? (
+                  {currentUser?.signature_url ? (
                     <div style={{ padding: '1.25rem', border: '2px dashed var(--color-primary-light, var(--color-border))', borderRadius: '10px', background: 'var(--color-bg-light)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '0.75rem' }}>
                       <img 
-                        src={(user?.signature_url || currentUser?.signature_url)?.startsWith('http') || (user?.signature_url || currentUser?.signature_url)?.startsWith('data:') ? (user?.signature_url || currentUser?.signature_url)! : `/${user?.signature_url || currentUser?.signature_url}`} 
+                        src={currentUser.signature_url.startsWith('http') || currentUser.signature_url.startsWith('data:') ? currentUser.signature_url : `/${currentUser.signature_url}`} 
                         alt="Chữ ký cá nhân mẫu" 
                         style={{ maxHeight: '130px', objectFit: 'contain' }} 
                       />
                       <div style={{ textAlign: 'center' }}>
-                        <p style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text)', margin: 0 }}>Chữ ký điện tử của {user?.name || currentUser?.full_name}</p>
+                        <p style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text)', margin: 0 }}>Chữ ký điện tử của {currentUser.name}</p>
                         <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>Chữ ký mẫu chuẩn đã thiết lập trong Quản lý Tài khoản</span>
                       </div>
                     </div>
