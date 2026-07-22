@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, User, Users, Phone, Mail, MapPin, Briefcase, Plus, Search, Send, History, CheckSquare, DollarSign, HelpCircle, FileText, ShoppingCart, Tag as TagIcon, Target, Pencil, Trash2, LifeBuoy, AlertCircle, Clock, UserCheck, Activity, Calendar, CheckCircle2, ChevronLeft, ChevronRight, ChevronDown, Check, Camera, Loader2, MessageSquare, PenTool, Lightbulb, Upload, Paperclip, CreditCard, Ban, ShieldAlert, Copy, Folder, FolderPlus, ArrowRightLeft, List, LayoutGrid, RotateCcw, RefreshCw, Layers, Save, LogOut, XCircle, Eye, TrendingUp, Wallet, Lock } from 'lucide-react';
+import { X, User, Users, Phone, Mail, MapPin, Briefcase, Plus, Search, Send, History, CheckSquare, DollarSign, HelpCircle, FileText, ShoppingCart, Tag as TagIcon, Target, Pencil, Trash2, LifeBuoy, AlertCircle, Clock, UserCheck, Activity, Calendar, CheckCircle2, ChevronLeft, ChevronRight, ChevronDown, Check, Camera, Loader2, MessageSquare, PenTool, Lightbulb, Upload, Paperclip, CreditCard, Ban, ShieldAlert, Copy, Folder, FolderPlus, ArrowRightLeft, List, LayoutGrid, RotateCcw, RefreshCw, Layers, Save, LogOut, XCircle, Eye, TrendingUp, Wallet, Lock, Zap } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { LeadScoreRing } from '../components/ui/LeadScoreRing';
 import { TagInput } from '../components/ui/TagInput';
@@ -1960,14 +1960,9 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
   }, [coopSlip?.attachment_url, docs, deals]);
 
   const [isSignModalOpen, setIsSignModalOpen] = useState(false);
-  const [signatureMethod, setSignatureMethod] = useState<'draw' | 'upload' | 'saved'>(() => currentUser?.signature_url ? 'saved' : 'draw');
+  const [signatureMethod, setSignatureMethod] = useState<'draw' | 'upload'>('draw');
   const [uploadedSignatureImg, setUploadedSignatureImg] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (isSignModalOpen && currentUser?.signature_url) {
-      setSignatureMethod('saved');
-    }
-  }, [isSignModalOpen, currentUser?.signature_url]);
   const canvasRef = React.useRef<HTMLCanvasElement | null>(null);
   const isDrawing = React.useRef(false);
 
@@ -2469,36 +2464,6 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
     setCoopLoading(false);
   };
 
-  const handleSubmitSignature = () => {
-    if (signatureMethod === 'saved') {
-      const mySavedSig = currentUser?.signature_url;
-      if (!mySavedSig) {
-        addToast('Bạn chưa thiết lập Chữ ký Điện tử Cá nhân trong Quản lý Tài khoản.', 'error');
-        return;
-      }
-      handleSignCoopSlip(mySavedSig);
-    } else if (signatureMethod === 'upload') {
-      if (!uploadedSignatureImg) {
-        addToast('Vui lòng tải file ảnh chữ ký của bạn lên trước khi xác nhận', 'error');
-        return;
-      }
-      handleSignCoopSlip(uploadedSignatureImg);
-    } else {
-      const canvas = canvasRef.current;
-      if (!canvas) return;
-      
-      const blank = document.createElement('canvas');
-      blank.width = canvas.width;
-      blank.height = canvas.height;
-      if (canvas.toDataURL() === blank.toDataURL()) {
-        addToast('Vui lòng vẽ chữ ký của bạn trước khi xác nhận', 'error');
-        return;
-      }
-      
-      const signatureImg = canvas.toDataURL('image/png');
-      handleSignCoopSlip(signatureImg);
-    }
-  };
 
   const [ticketForm, setTicketForm] = useState({ subject: '', category: 'technical_support', priority: 'medium', description: '' });
   const [dealForm, setDealForm] = useState({
@@ -11913,15 +11878,272 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
         users={users}
       />
 
-      {/* Shared Signature Modal */}
-      <SignaturePadModal
-        isOpen={isSignModalOpen}
-        onClose={() => setIsSignModalOpen(false)}
-        onSave={async (signatureUrl) => {
-          await handleSignCoopSlip(signatureUrl);
-        }}
-        initialSignatureUrl={currentUser?.signature_url}
-      />
+      {/* Signature Modal */}
+      {isSignModalOpen && coopSlip && createPortal(
+        <div style={{ position: 'fixed', inset: 0, zIndex: 9999999, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0, 0, 0, 0.6)', backdropFilter: 'blur(4px)', padding: '1rem' }} onClick={() => setIsSignModalOpen(false)}>
+          <div className="card animate-fade" style={{ maxWidth: '800px', width: '100%', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem', maxHeight: '90vh', overflowY: 'auto' }} onClick={(e) => e.stopPropagation()}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--color-border)', paddingBottom: '0.5rem' }}>
+              <h2 style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--color-text)' }}>Đọc tài liệu &amp; Ký xác nhận điện tử</h2>
+              <button onClick={() => { setIsSignModalOpen(false); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center' }}><X size={20} /></button>
+            </div>
+
+            {/* Document Reader Area */}
+            <div>
+              <h3 style={{ fontSize: '0.875rem', fontWeight: 700, marginBottom: '0.5rem', color: 'var(--color-text)' }}>1. Đọc tài liệu đính kèm:</h3>
+              {coopSlip.attachment_url ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  {coopSlip.attachment_url.split(',').map((url: string, urlIdx: number) => (
+                    <div key={urlIdx} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 16px', background: 'var(--color-bg-light)', borderRadius: '10px', border: '1px solid var(--color-border)' }}>
+                      <FileText size={24} style={{ color: 'var(--color-primary)' }} />
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <p style={{ fontSize: '0.825rem', fontWeight: 700, margin: 0, color: 'var(--color-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {url.includes('deposits/') || url.includes('_UNC') || url.includes('1784734208') ? 'UNC - Chứng từ Ủy nhiệm chi Đặt cọc Đợt 1' : (url.split('/').pop() || 'Tài liệu hợp tác đính kèm')}
+                        </p>
+                        <a 
+                          href={`https://open.domation.net/richland/${url}`} 
+                          target="_blank" 
+                          rel="noreferrer" 
+                          style={{ fontSize: '0.75rem', color: 'var(--color-primary)', fontWeight: 600, textDecoration: 'underline', marginTop: '2px', display: 'inline-block' }}
+                        >
+                          Bấm để mở xem tài liệu ở tab mới ↗
+                        </a>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div style={{ padding: '1rem', textAlign: 'center', background: 'var(--color-bg-light)', border: '1px solid var(--color-border)', borderRadius: '8px', color: 'var(--color-text-muted)', fontSize: '0.8125rem' }}>
+                  Phiếu hợp tác này không đính kèm tệp tài liệu bổ sung. Vui lòng kiểm tra tỷ lệ phân chia bên dưới.
+                </div>
+              )}
+            </div>
+
+            {/* Shares info recap */}
+            <div style={{ padding: '12px 16px', background: 'var(--color-bg-light)', borderRadius: '10px', border: '1px solid var(--color-border)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)' }}>Tỷ lệ phân chia của các thành viên:</span>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {coopSlip.shareholders?.map((sh: any) => (
+                  <div key={sh.user_id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', background: 'var(--color-surface)', borderRadius: '8px', border: '1px solid var(--color-border-light)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <Avatar src={sh.avatar} name={sh.name} size="md" />
+                      <div style={{ display: 'flex', flexDirection: 'column' }}>
+                        <span style={{ fontWeight: 700, fontSize: '0.875rem', color: 'var(--color-text)' }}>{sh.name}</span>
+                        <span style={{ fontSize: '0.725rem', color: 'var(--color-text-muted)', fontStyle: 'italic', marginTop: '2px' }}>
+                          {numberToVietnameseWords(sh.percentage)}
+                        </span>
+                      </div>
+                    </div>
+                    <div style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--color-primary)' }}>
+                      {sh.percentage}%
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Quick Signature Banner if user has saved signature */}
+            {currentUser?.signature_url ? (
+              <div style={{
+                background: 'rgba(189, 29, 45, 0.05)',
+                border: '1px solid rgba(189, 29, 45, 0.2)',
+                borderRadius: '12px',
+                padding: '12px 16px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: '12px'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <div style={{
+                    background: 'white',
+                    border: '1px solid var(--color-border)',
+                    borderRadius: '6px',
+                    padding: '4px 8px',
+                    maxHeight: '45px',
+                    display: 'flex',
+                    alignItems: 'center'
+                  }}>
+                    <img 
+                      src={currentUser.signature_url.startsWith('http') || currentUser.signature_url.startsWith('data:') ? currentUser.signature_url : `https://open.domation.net/richland/${currentUser.signature_url.replace(/^\/+/, '')}`} 
+                      alt="Chữ ký mẫu" 
+                      style={{ maxHeight: '35px', objectFit: 'contain' }} 
+                    />
+                  </div>
+                  <div>
+                    <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--color-text)' }}>
+                      Chữ ký mẫu đã lưu của bạn
+                    </div>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
+                      Điền chữ ký cá nhân chính chủ chỉ với 1-click
+                    </div>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => handleSignCoopSlip(currentUser.signature_url!)}
+                  style={{
+                    padding: '8px 16px',
+                    borderRadius: '8px',
+                    border: 'none',
+                    background: '#BD1D2D',
+                    color: 'white',
+                    fontSize: '0.8125rem',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    boxShadow: 'var(--shadow-sm)',
+                    whiteSpace: 'nowrap',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px'
+                  }}
+                >
+                  <Zap size={15} />
+                  Dùng chữ ký của tôi
+                </button>
+              </div>
+            ) : (
+              <div style={{
+                background: 'var(--color-bg-light)',
+                border: '1px solid var(--color-border)',
+                borderRadius: '10px',
+                padding: '10px 14px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: '10px'
+              }}>
+                <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>
+                  Bạn chưa cài đặt chữ ký mẫu cá nhân.
+                </span>
+                <span style={{ fontSize: '0.8rem', color: '#BD1D2D', fontWeight: 700 }}>
+                  (Vẽ chữ ký của bạn bên dưới để ký xác nhận)
+                </span>
+              </div>
+            )}
+
+            {/* Signature Area Selector & Component */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+              <div style={{ display: 'flex', gap: '10px', borderBottom: '1px solid var(--color-border)', paddingBottom: '0.75rem' }}>
+                <button
+                  type="button"
+                  className={`btn sm ${signatureMethod === 'draw' ? 'primary' : 'outline'}`}
+                  style={{ flex: 1, height: '36px', fontSize: '0.8125rem', fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+                  onClick={() => setSignatureMethod('draw')}
+                >
+                  <PenTool size={14} /> Vẽ chữ ký tay
+                </button>
+                <button
+                  type="button"
+                  className={`btn sm ${signatureMethod === 'upload' ? 'primary' : 'outline'}`}
+                  style={{ flex: 1, height: '36px', fontSize: '0.8125rem', fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+                  onClick={() => setSignatureMethod('upload')}
+                >
+                  <Paperclip size={14} /> Tải file ảnh chữ ký
+                </button>
+              </div>
+
+              {signatureMethod === 'draw' ? (
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                    <h3 style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)' }}>2. Vẽ chữ ký của bạn lên khung dưới đây:</h3>
+                    <button 
+                      onClick={clearCanvas} 
+                      style={{ fontSize: '0.75rem', color: 'var(--color-danger)', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 700 }}
+                    >
+                      Xóa vẽ lại
+                    </button>
+                  </div>
+                  <canvas
+                    ref={canvasRef}
+                    width={750}
+                    height={220}
+                    onMouseDown={startDrawing}
+                    onMouseMove={draw}
+                    onMouseUp={stopDrawing}
+                    onMouseLeave={stopDrawing}
+                    onTouchStart={startDrawing}
+                    onTouchMove={draw}
+                    onTouchEnd={stopDrawing}
+                    style={{
+                      border: '2px dashed var(--color-border)',
+                      borderRadius: '8px',
+                      background: 'var(--color-bg-light)',
+                      cursor: 'crosshair',
+                      display: 'block',
+                      touchAction: 'none',
+                      width: '100%',
+                      height: '220px'
+                    }}
+                  />
+                </div>
+              ) : (
+                <div>
+                  <h3 style={{ fontSize: '0.875rem', fontWeight: 700, marginBottom: '0.5rem', color: 'var(--color-text)' }}>2. Chọn file ảnh chữ ký từ máy tính của bạn:</h3>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        const reader = new FileReader();
+                        reader.onload = (event) => {
+                          setUploadedSignatureImg(event.target?.result as string);
+                        };
+                        reader.readAsDataURL(file);
+                      }
+                    }}
+                    style={{ display: 'block', width: '100%', padding: '10px', border: '1px solid var(--color-border)', borderRadius: '6px', background: 'var(--color-bg-light)', fontSize: '0.8125rem', cursor: 'pointer' }}
+                  />
+                  {uploadedSignatureImg && (
+                    <div style={{ marginTop: '1rem', padding: '1rem', border: '1px solid var(--color-border)', borderRadius: '8px', background: 'var(--color-surface)', display: 'flex', justifyContent: 'center', alignItems: 'center', boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.02)' }}>
+                      <img src={uploadedSignatureImg} alt="Preview Chữ ký" style={{ maxHeight: '150px', objectFit: 'contain' }} />
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Sticky Action Footer Button */}
+            <div style={{ position: 'sticky', bottom: 0, background: 'var(--color-surface, #ffffff)', paddingTop: '12px', paddingBottom: '4px', marginTop: '12px', borderTop: '1px solid var(--color-border)', zIndex: 20 }}>
+              <button
+                onClick={() => {
+                  if (coopLoading) return;
+                  if (signatureMethod === 'upload') {
+                    if (!uploadedSignatureImg) {
+                      alert('Vui lòng tải file ảnh chữ ký của bạn lên trước khi bấm xác nhận.');
+                      return;
+                    }
+                    handleSignCoopSlip(uploadedSignatureImg);
+                  } else {
+                    const canvas = canvasRef.current;
+                    if (!canvas) return;
+                    
+                    const ctx = canvas.getContext('2d');
+                    if (!ctx) return;
+                    
+                    const buffer = new Uint32Array(ctx.getImageData(0, 0, canvas.width, canvas.height).data.buffer);
+                    const isBlank = !buffer.some(color => color !== 0);
+                    if (isBlank) {
+                      alert('Vui lòng vẽ chữ ký của bạn trước khi bấm xác nhận.');
+                      return;
+                    }
+
+                    const signatureImg = canvas.toDataURL('image/png');
+                    handleSignCoopSlip(signatureImg);
+                  }
+                }}
+                disabled={coopLoading}
+                className="btn primary w-full"
+                style={{ height: '48px', fontSize: '1rem', fontWeight: 800, opacity: coopLoading ? 0.7 : 1, cursor: coopLoading ? 'not-allowed' : 'pointer', background: '#BD1D2D', borderColor: '#BD1D2D', borderRadius: '10px', boxShadow: '0 4px 14px rgba(189, 29, 45, 0.3)' }}
+              >
+                {coopLoading ? 'Đang xử lý chữ ký số...' : 'Tôi đồng ý và Ký xác nhận'}
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
 
       {reschedulingMeeting && (
         <CustomModal
