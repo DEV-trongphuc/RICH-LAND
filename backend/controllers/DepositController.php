@@ -238,8 +238,11 @@ class DepositController {
 
                 $coopCtrl->syncCollaboratorsToContact((int)$contactId, $sharesJson);
             } else {
-                // Auto-generate new cooperation slip
-                $coopCtrl->autoGenerateSlip($contactId, $depositId, $auth['user_id'], $customShares);
+                // Auto-generate new cooperation slip ONLY if multi-sale co-care exists (!empty($coopSales))
+                // If solo sale (làm 1 mình), no cooperation slip is required or created.
+                if (!empty($coopSales)) {
+                    $coopCtrl->autoGenerateSlip($contactId, $depositId, $auth['user_id'], $customShares);
+                }
             }
 
             // Fetch the created milestones to return their IDs to the frontend
@@ -318,16 +321,47 @@ class DepositController {
 
         if ($res['success']) {
             $savedName = $res['filename'];
+            $relPath = 'deposits/' . $id . '/' . $savedName;
+
             $stmt = $this->db->prepare("
                 UPDATE deposit_milestones 
                 SET unc_file_path = ?, status = 'paid' 
                 WHERE id = ? AND deposit_id = ?
             ");
-            $stmt->execute(['deposits/' . $id . '/' . $savedName, $milestoneId, $id]);
+            $stmt->execute([$relPath, $milestoneId, $id]);
+
+            // Automatically save UNC deposit proof file into Customer Documents ("Hồ sơ & Tài liệu") under folder "Đặt cọc"
+            try {
+                $fileSize = file_exists($destPath) ? filesize($destPath) : ($file['size'] ?? 0);
+                $fileExt = strtolower(pathinfo($savedName, PATHINFO_EXTENSION));
+                $mimeType = mime_content_type($destPath) ?: ($file['type'] ?? ('image/' . $fileExt));
+
+                // Check if UNC file already recorded in cloud_files for this contact to prevent duplicates
+                $stmtCheckCF = $this->db->prepare("SELECT id FROM cloud_files WHERE contact_id = ? AND file_path = ? LIMIT 1");
+                $stmtCheckCF->execute([$dep['contact_id'], $relPath]);
+                if (!$stmtCheckCF->fetch()) {
+                    $stmtInsCloud = $this->db->prepare("
+                        INSERT INTO cloud_files (tenant_id, contact_id, name, original_name, file_path, file_size, file_type, category, visibility, uploaded_by, created_at)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, 'Đặt cọc', 'shared', ?, NOW())
+                    ");
+                    $stmtInsCloud->execute([
+                        $auth['tenant_id'],
+                        $dep['contact_id'],
+                        'UNC_DatCoc_' . $milestoneId . '_' . $fileName,
+                        $fileName,
+                        $relPath,
+                        $fileSize,
+                        $mimeType,
+                        $auth['user_id']
+                    ]);
+                }
+            } catch (\Throwable $cfEx) {
+                error_log("Error auto-saving UNC deposit file to cloud_files: " . $cfEx->getMessage());
+            }
 
             logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'UPLOAD_DEPOSIT_UNC', 'deposit_milestone', $milestoneId, "Tải lên UNC cho đợt thanh toán ID: $milestoneId");
             respond(200, [
-                'unc_file_path' => 'deposits/' . $id . '/' . $safeName
+                'unc_file_path' => $relPath
             ], 'Đã tải lên ủy nhiệm chi thành công, vui lòng chờ Admin duyệt');
         } else {
             respond(500, null, 'Không thể lưu file trên máy chủ', false);
