@@ -13433,7 +13433,25 @@ switch ($action) {
         $bank_account = !empty($input['bank_account']) ? $input['bank_account'] : null;
         $leave_start = !empty($input['leave_start']) ? $input['leave_start'] : null;
         $leave_end = !empty($input['leave_end']) ? $input['leave_end'] : null;
-        $zalo_chat_id = !empty($input['zalo_chat_id']) ? trim($input['zalo_chat_id']) : null;
+
+        // Preserve existing zalo_chat_id if not explicitly provided in edit request
+        $existingZaloId = null;
+        $stmtCurr = $conn->prepare("SELECT zalo_chat_id FROM users WHERE id = ? LIMIT 1");
+        if ($stmtCurr) {
+            $stmtCurr->bind_param("i", $targetUserId);
+            $stmtCurr->execute();
+            $currRes = $stmtCurr->get_result();
+            if ($currRes && $currRes->num_rows > 0) {
+                $existingZaloId = $currRes->fetch_assoc()['zalo_chat_id'] ?? null;
+            }
+            $stmtCurr->close();
+        }
+
+        if (array_key_exists('zalo_chat_id', $input) && $input['zalo_chat_id'] !== '') {
+            $zalo_chat_id = !empty($input['zalo_chat_id']) ? trim($input['zalo_chat_id']) : null;
+        } else {
+            $zalo_chat_id = $existingZaloId;
+        }
         $overtime_mode = isset($input['overtime_mode']) ? (int)$input['overtime_mode'] : 0;
         $use_custom_work_hours = isset($input['use_custom_work_hours']) ? (int)$input['use_custom_work_hours'] : 0;
         $extra_fields_json = isset($input['extra_fields_json']) ? (is_array($input['extra_fields_json']) ? json_encode($input['extra_fields_json']) : trim($input['extra_fields_json'])) : null;
