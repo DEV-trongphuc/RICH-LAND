@@ -2174,24 +2174,16 @@ function checkConsultantGates($conn, $consultantId, $lead = null)
         FROM contacts c
         WHERE c.owner_id = ? 
           AND c.status != 'rejected'
-          AND (
-              c.pipeline_status = 'chua_xac_dinh'
-              OR (
-                  c.pipeline_status = 'quan_tam'
-                  AND NOT EXISTS (
-                      SELECT 1 FROM notes n 
-                      WHERE n.entity_type = 'contact' 
-                        AND n.entity_id = c.id 
-                        AND n.user_id = c.owner_id
-                  )
-                  AND NOT EXISTS (
-                      SELECT 1 FROM activities a
-                      WHERE a.related_type = 'contact'
-                        AND a.related_id = c.id
-                        AND a.user_id = c.owner_id
-                        AND a.status = 'done'
-                  )
-              )
+          AND c.pipeline_status IN ('chua_xac_dinh', 'quan_tam')
+          AND NOT EXISTS (
+              SELECT 1 FROM notes n 
+              WHERE n.entity_type = 'contact' 
+                AND n.entity_id = c.id 
+          )
+          AND NOT EXISTS (
+              SELECT 1 FROM activities a
+              WHERE (a.related_type = 'contact' AND a.related_id = c.id)
+                 OR a.contact_id = c.id
           )
     ");
     $stmtKhtn->bind_param("i", $targetUserId);

@@ -5816,32 +5816,34 @@ switch ($action) {
                     $backpressureLimit = 5;
                 }
 
+                $rawAssigned = (int)$resChk['assigned_to'];
+                $targetUserId = $rawAssigned;
+                $stmtU = $conn->prepare("SELECT id FROM users WHERE id = ? OR email = (SELECT email FROM consultants WHERE id = ? LIMIT 1) LIMIT 1");
+                if ($stmtU) {
+                    $stmtU->bind_param("ii", $rawAssigned, $rawAssigned);
+                    $stmtU->execute();
+                    $uRes = $stmtU->get_result()->fetch_column();
+                    if ($uRes) $targetUserId = (int)$uRes;
+                    $stmtU->close();
+                }
+
                 $stmtKhtn = $conn->prepare("
                     SELECT COUNT(*) as cnt 
                     FROM contacts c
                     WHERE c.owner_id = ? 
                       AND c.status != 'rejected'
-                      AND (
-                          c.pipeline_status = 'chua_xac_dinh'
-                          OR (
-                              c.pipeline_status = 'quan_tam'
-                              AND NOT EXISTS (
-                                  SELECT 1 FROM notes n 
-                                  WHERE n.entity_type = 'contact' 
-                                    AND n.entity_id = c.id 
-                                    AND n.user_id = c.owner_id
-                              )
-                              AND NOT EXISTS (
-                                  SELECT 1 FROM activities a
-                                  WHERE a.related_type = 'contact'
-                                    AND a.related_id = c.id
-                                    AND a.user_id = c.owner_id
-                                    AND a.status = 'done'
-                              )
-                          )
+                      AND c.pipeline_status IN ('chua_xac_dinh', 'quan_tam')
+                      AND NOT EXISTS (
+                          SELECT 1 FROM notes n 
+                          WHERE n.entity_type = 'contact' 
+                            AND n.entity_id = c.id 
+                      )
+                      AND NOT EXISTS (
+                          SELECT 1 FROM activities a
+                          WHERE (a.related_type = 'contact' AND a.related_id = c.id)
+                             OR a.contact_id = c.id
                       )
                 ");
-                $targetUserId = (int)$resChk['assigned_to'];
                 $stmtKhtn->bind_param("i", $targetUserId);
                 $stmtKhtn->execute();
                 $khtnCnt = (int) ($stmtKhtn->get_result()->fetch_assoc()['cnt'] ?? 0);
