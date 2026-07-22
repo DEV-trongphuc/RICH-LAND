@@ -1738,6 +1738,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
   };
 
   const [docs, setDocs] = useState<any[]>([]);
+  const [deals, setDeals] = useState<any[]>([]);
 
   const isOwnerOrAdmin = useMemo(() => {
     const scope = getModulePermissionScope(currentUser, 'leads', 'write');
@@ -1858,16 +1859,33 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
       const existsInDocs = docs.some((d: any) => {
         const name = (d.name || '').toLowerCase();
         const cat = (d.category || d.folder || '').toLowerCase();
+        const path = (d.path || d.file_path || '').toLowerCase();
         if (cleanKeyword === 'unc' || cleanKeyword === 'uy nhiem chi' || cleanKeyword === 'ủy nhiệm chi') {
-          return name.includes('unc') || name.includes('cọc') || name.includes('đặt cọc') || name.includes('uy nhiem chi') || name.includes('ủy nhiệm chi') || cat.includes('đặt cọc') || cat.includes('unc');
+          return name.includes('unc') || name.includes('cọc') || name.includes('đặt cọc') || name.includes('uy nhiem chi') || name.includes('ủy nhiệm chi') || cat.includes('đặt cọc') || cat.includes('unc') || path.includes('deposits');
         }
         return name.includes(cleanKeyword) || cat.includes(cleanKeyword);
       });
       if (existsInDocs) return true;
     }
 
+    // 3. Check deals / deposits milestone proofs
+    if (deals && deals.length > 0) {
+      const existsInDeals = deals.some((d: any) => {
+        const ms = d.milestones || [];
+        return ms.some((m: any) => {
+          const uPath = (m.unc_file_path || m.attachment_url || '').toLowerCase();
+          const mName = (m.name || m.milestone_name || '').toLowerCase();
+          if (cleanKeyword === 'unc' || cleanKeyword === 'uy nhiem chi' || cleanKeyword === 'ủy nhiệm chi') {
+            return uPath.length > 0 || mName.includes('cọc') || mName.includes('unc');
+          }
+          return uPath.includes(cleanKeyword) || mName.includes(cleanKeyword);
+        });
+      });
+      if (existsInDeals) return true;
+    }
+
     return false;
-  }, [coopSlip?.attachment_url, docs]);
+  }, [coopSlip?.attachment_url, docs, deals]);
 
   const [isSignModalOpen, setIsSignModalOpen] = useState(false);
   const [signatureMethod, setSignatureMethod] = useState<'draw' | 'upload' | 'saved'>(() => currentUser?.signature_url ? 'saved' : 'draw');
@@ -2473,7 +2491,6 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
   }, [docs, currentFolder, allFolders]);
 
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
-  const [deals, setDeals] = useState<any[]>([]);
   const [stages, setStages] = useState<any[]>([]);
   const [drawerInvoices, setDrawerInvoices] = useState<any[]>([]);
   const [drawerQuotes, setDrawerQuotes] = useState<any[]>([]);
