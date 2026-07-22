@@ -202,7 +202,14 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileC
           try {
             const resSalePortal = await fetchAPI('get_sale_portal_data');
             if (resSalePortal && resSalePortal.success && Array.isArray(resSalePortal.leads)) {
-              const pendingAcceptLeads = resSalePortal.leads.filter((l: any) => Number(l.is_accepted) === 0).length;
+              const pendingAcceptLeads = resSalePortal.leads.filter((l: any) => {
+                if (Number(l.is_accepted)) return false;
+                const status = String(l.status || l.distribution_status || '').toLowerCase();
+                if (status === 'pending_work_hours' || status === 'pending_approval' || status === 'silent' || status === 'duplicate') {
+                  return false;
+                }
+                return true;
+              }).length;
               setPendingLeadsCount(pendingAcceptLeads);
             }
           } catch {

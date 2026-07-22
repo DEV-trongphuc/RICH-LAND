@@ -171,7 +171,14 @@ export const ContactsPage: React.FC = () => {
     if (isSale) {
       fetchAPI('get_sale_portal_data').then(res => {
         if (res && res.success && Array.isArray(res.leads)) {
-          const count = res.leads.filter((l: any) => Number(l.is_accepted) === 0).length;
+          const count = res.leads.filter((l: any) => {
+            if (Number(l.is_accepted)) return false;
+            const status = String(l.status || l.distribution_status || '').toLowerCase();
+            if (status === 'pending_work_hours' || status === 'pending_approval' || status === 'silent' || status === 'duplicate') {
+              return false;
+            }
+            return true;
+          }).length;
           setPendingLeadsCount(count);
         }
       }).catch((err) => {
