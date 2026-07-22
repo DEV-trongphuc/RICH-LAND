@@ -253,6 +253,16 @@ try {
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
     ");
 
+    // Ensure teams table has avatar_url column
+    $teamTblCheck = $conn->query("SHOW TABLES LIKE 'teams'");
+    if ($teamTblCheck && $teamTblCheck->num_rows > 0) {
+        $colCheck = $conn->query("SHOW COLUMNS FROM `teams` LIKE 'avatar_url'");
+        if (!$colCheck || $colCheck->num_rows == 0) {
+            $conn->query("ALTER TABLE `teams` ADD COLUMN `avatar_url` TEXT NULL AFTER `name`");
+            $logMsg("Đã tự động bổ sung cột avatar_url vào bảng teams.", "success");
+        }
+    }
+
     // 7. Update DB version in system_settings
     $conn->query("INSERT INTO system_settings (setting_key, setting_value) VALUES ('db_version', '186') ON DUPLICATE KEY UPDATE setting_value = '186'");
     

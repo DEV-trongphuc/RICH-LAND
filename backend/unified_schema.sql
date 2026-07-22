@@ -61,6 +61,7 @@ CREATE TABLE IF NOT EXISTS `teams` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `tenant_id` int(11) NOT NULL DEFAULT 1,
   `name` varchar(255) NOT NULL,
+  `avatar_url` text DEFAULT NULL,
   `leader_id` int(11) NOT NULL,
   `branch` varchar(255) DEFAULT NULL,
   `co_leader_ids` text DEFAULT NULL,

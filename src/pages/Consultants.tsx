@@ -13,6 +13,7 @@ import { AccountDetailDrawer } from '../components/AccountDetailDrawer';
 import { MentionInput } from '../components/ui/MentionInput';
 import styles from './EntityDrawer.module.css';
 import { compressToWebP } from '../utils/imageCompress';
+import { useUploadProgress } from '../contexts/UploadProgressContext';
 import { TableRowSkeleton, KpiCardSkeleton, ChartSkeleton } from '../components/ui/Skeleton';
 import { ToggleSwitch } from '../components/ui/ToggleSwitch';
 import { CustomSelect } from '../components/ui/CustomSelect';
@@ -160,13 +161,16 @@ const ConsultantsInner = () => {
   const activeTabRaw = queryParams.get('tab') || 'consultants';
   const activeTab = showAllTabs ? activeTabRaw : 'consultants';
 
+  const { addProgress, updateProgress, completeProgress } = useUploadProgress();
   const [teams, setTeams] = useState<any[]>([]);
   const [teamsLoading, setTeamsLoading] = useState(true);
   const [branchSearchQuery, setBranchSearchQuery] = useState('');
   const [teamModalOpen, setTeamModalOpen] = useState(false);
   const [editingTeam, setEditingTeam] = useState<any>(null);
+  const [isUploadingTeamAvatar, setIsUploadingTeamAvatar] = useState(false);
   const [teamFormData, setTeamFormData] = useState({
     name: '',
+    avatar_url: '',
     branch: '',
     leader_id: '',
     co_leader_ids: [] as string[],
@@ -176,6 +180,50 @@ const ConsultantsInner = () => {
     focus_projects: [] as string[],
     member_ids: [] as string[]
   });
+
+  const handleUploadTeamAvatar = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = '';
+
+    setIsUploadingTeamAvatar(true);
+    const taskId = addProgress(`Avatar nhóm (${file.name})`, 0);
+    try {
+      updateProgress(taskId, 15, 'compressing');
+      const compressedFile = await compressToWebP(file);
+      updateProgress(taskId, 40, 'uploading');
+
+      const fd = new FormData();
+      fd.append('file', compressedFile);
+      if (teamFormData.avatar_url) {
+        fd.append('previous_url', teamFormData.avatar_url);
+      }
+
+      const res = await api.post('/upload', fd, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+        onUploadProgress: (evt) => {
+          if (evt.total) {
+            const pct = Math.round(40 + (evt.loaded / evt.total) * 50);
+            updateProgress(taskId, pct, 'uploading');
+          }
+        }
+      });
+
+      const fileUrl = res.data?.url || res.data?.file_url || res.data?.path || res.data?.data?.url;
+      if (fileUrl) {
+        completeProgress(taskId);
+        setTeamFormData(prev => ({ ...prev, avatar_url: fileUrl }));
+        toast.success(t('Đã tải lên avatar nhóm thành công!'));
+      } else {
+        throw new Error(res.data?.message || 'Upload failed');
+      }
+    } catch (err: any) {
+      completeProgress(taskId);
+      toast.error(t('Lỗi tải ảnh avatar: ') + (err.message || err));
+    } finally {
+      setIsUploadingTeamAvatar(false);
+    }
+  };
   const [searchLeader, setSearchLeader] = useState('');
   const [searchCoLeader, setSearchCoLeader] = useState('');
   const [memberSearch, setMemberSearch] = useState('');
@@ -586,6 +634,7 @@ const ConsultantsInner = () => {
     setEditingTeam(null);
     setTeamFormData({
       name: '',
+      avatar_url: '',
       branch: '',
       leader_id: '',
       co_leader_ids: [],
@@ -613,6 +662,7 @@ const ConsultantsInner = () => {
         const coLeaderIds = data.co_leader_ids ? (Array.isArray(data.co_leader_ids) ? data.co_leader_ids.map(String) : (typeof data.co_leader_ids === 'string' && data.co_leader_ids.startsWith('[') ? JSON.parse(data.co_leader_ids).map(String) : String(data.co_leader_ids).split(',').map((id: any) => id.trim()).filter(Boolean))) : [];
         setTeamFormData({
           name: data.name,
+          avatar_url: data.avatar_url || data.avatar || '',
           branch: data.branch || '',
           leader_id: data.leader_id || '',
           co_leader_ids: coLeaderIds,
@@ -648,6 +698,7 @@ const ConsultantsInner = () => {
       
       const payload = {
         name: teamFormData.name,
+        avatar_url: teamFormData.avatar_url,
         branch: teamFormData.branch,
         leader_id: teamFormData.leader_id,
         co_leader_ids: teamFormData.co_leader_ids,
@@ -1747,14 +1798,20 @@ const ConsultantsInner = () => {
                         width: '42px', 
                         height: '42px', 
                         borderRadius: '12px', 
-                        background: 'var(--color-primary)', 
+                        overflow: 'hidden',
+                        border: (team.avatar_url || team.avatar) ? '1.5px solid var(--color-border-light)' : 'none',
+                        background: (team.avatar_url || team.avatar) ? 'transparent' : 'var(--color-primary)', 
                         display: 'flex', 
                         alignItems: 'center', 
                         justifyContent: 'center',
                         color: '#ffffff',
                         flexShrink: 0
                       }}>
-                        <Users size={20} />
+                        {(team.avatar_url || team.avatar) ? (
+                          <img src={team.avatar_url || team.avatar} alt={team.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        ) : (
+                          <Users size={20} />
+                        )}
                       </div>
                       <div style={{ minWidth: 0, flex: 1 }}>
                         <h3 style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--color-text)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -3151,6 +3208,81 @@ const ConsultantsInner = () => {
                           </div>
 
                           <div className="grid grid-2" style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '1.25rem' }}>
+                            {/* Avatar Nhóm Upload */}
+                            <div className="form-group" style={{ gridColumn: 'span 2', textAlign: 'left' }}>
+                              <label className="form-label" style={{ fontWeight: 650, fontSize: '0.8rem', color: 'var(--color-text-muted)', marginBottom: 6, display: 'block' }}>
+                                {t('Avatar nhóm')}
+                              </label>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                                <div style={{
+                                  width: '54px',
+                                  height: '54px',
+                                  borderRadius: '14px',
+                                  overflow: 'hidden',
+                                  border: '2px solid var(--color-border-light)',
+                                  boxShadow: 'var(--shadow-sm)',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  background: teamFormData.avatar_url ? 'transparent' : 'var(--color-primary-light, rgba(189, 29, 45, 0.1))',
+                                  color: 'var(--color-primary)',
+                                  flexShrink: 0
+                                }}>
+                                  {teamFormData.avatar_url ? (
+                                    <img src={teamFormData.avatar_url} alt="Team Avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                  ) : (
+                                    <Avatar name={teamFormData.name || 'Team'} size={54} />
+                                  )}
+                                </div>
+                                {isWriteAuthorized && (
+                                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                    <label
+                                      className="btn sm outline"
+                                      style={{
+                                        borderRadius: '8px',
+                                        padding: '6px 14px',
+                                        fontSize: '0.8rem',
+                                        fontWeight: 600,
+                                        cursor: isUploadingTeamAvatar ? 'not-allowed' : 'pointer',
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        gap: '6px',
+                                        userSelect: 'none'
+                                      }}
+                                    >
+                                      <Paperclip size={14} />
+                                      {isUploadingTeamAvatar ? t('Đang xử lý...') : t('Tải ảnh avatar nhóm')}
+                                      <input
+                                        type="file"
+                                        accept="image/*"
+                                        onChange={handleUploadTeamAvatar}
+                                        disabled={isUploadingTeamAvatar}
+                                        style={{ display: 'none' }}
+                                      />
+                                    </label>
+                                    {teamFormData.avatar_url && (
+                                      <button
+                                        type="button"
+                                        onClick={() => setTeamFormData(prev => ({ ...prev, avatar_url: '' }))}
+                                        style={{
+                                          background: 'transparent',
+                                          color: 'var(--color-danger)',
+                                          border: 'none',
+                                          fontSize: '0.75rem',
+                                          fontWeight: 600,
+                                          padding: 0,
+                                          textAlign: 'left',
+                                          cursor: 'pointer'
+                                        }}
+                                      >
+                                        {t('Gỡ bỏ avatar')}
+                                      </button>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+
                             <div className="form-group" style={{ gridColumn: 'span 2', textAlign: 'left' }}>
                               <label className="form-label" style={{ fontWeight: 650, fontSize: '0.8rem', color: 'var(--color-text-muted)', marginBottom: 6, display: 'block' }}>{t('Tên nhóm')} <span style={{ color: 'var(--color-danger)' }}>*</span></label>
                               <input 

@@ -93,9 +93,10 @@ class TeamController
         }
 
         $coLeaderIds = isset($b['co_leader_ids']) ? (is_array($b['co_leader_ids']) ? implode(',', array_filter(array_map('intval', $b['co_leader_ids']))) : trim($b['co_leader_ids'])) : null;
+        $avatarUrl = !empty($b['avatar_url']) ? trim($b['avatar_url']) : (!empty($b['avatar']) ? trim($b['avatar']) : null);
 
-        $stmt = $this->db->prepare("INSERT INTO teams (name, branch, leader_id, description, kpi_target, max_members, focus_project, co_leader_ids) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
-        $stmt->execute([$name, $branch, $leaderId, $description, $kpiTarget, $maxMembers, $focusProject, $coLeaderIds]);
+        $stmt = $this->db->prepare("INSERT INTO teams (name, avatar_url, branch, leader_id, description, kpi_target, max_members, focus_project, co_leader_ids) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
+        $stmt->execute([$name, $avatarUrl, $branch, $leaderId, $description, $kpiTarget, $maxMembers, $focusProject, $coLeaderIds]);
         $newId = (int)$this->db->lastInsertId();
 
         // Sync members
@@ -184,6 +185,19 @@ class TeamController
             }
             $sets[] = "name = ?";
             $params[] = $name;
+        }
+
+        if (array_key_exists('avatar_url', $b) || array_key_exists('avatar', $b)) {
+            $newAvatar = !empty($b['avatar_url']) ? trim($b['avatar_url']) : (!empty($b['avatar']) ? trim($b['avatar']) : null);
+            // Fetch old avatar to delete from disk if updated/replaced
+            $oldAvatarStmt = $this->db->prepare("SELECT avatar_url FROM teams WHERE id = ?");
+            $oldAvatarStmt->execute([$id]);
+            $oldAvatar = $oldAvatarStmt->fetchColumn();
+            if ($oldAvatar && $oldAvatar !== $newAvatar) {
+                deleteServerFile($oldAvatar);
+            }
+            $sets[] = "avatar_url = ?";
+            $params[] = $newAvatar;
         }
 
         if (array_key_exists('branch', $b)) {
@@ -300,6 +314,14 @@ class TeamController
             // Set team_id to NULL for all users in this team
             $upStmtUser = $this->db->prepare("UPDATE users SET team_id = NULL WHERE team_id = ?");
             $upStmtUser->execute([$id]);
+
+            // Delete physical team avatar file if exists
+            $avatarStmt = $this->db->prepare("SELECT avatar_url FROM teams WHERE id = ?");
+            $avatarStmt->execute([$id]);
+            $teamAvatar = $avatarStmt->fetchColumn();
+            if ($teamAvatar) {
+                deleteServerFile($teamAvatar);
+            }
 
             // Delete team
             $delStmt = $this->db->prepare("DELETE FROM teams WHERE id = ?");

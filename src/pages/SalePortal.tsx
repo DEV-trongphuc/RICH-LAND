@@ -5623,17 +5623,48 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                   <>
                     <div style={{ width: '1px', height: '24px', background: 'var(--color-border)', flexShrink: 0 }} />
 
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                          <span style={{ fontSize: isMobile ? '0.65rem' : '0.725rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{t('Đang xem nhóm')}</span>
-                          <span style={{ width: '4px', height: '4px', borderRadius: '50%', background: 'var(--color-primary)' }} />
-                          <span style={{ fontSize: isMobile ? '0.65rem' : '0.725rem', fontWeight: 700, color: 'var(--color-primary)' }}>{t('Nội bộ')}</span>
-                        </div>
-                        <h4 style={{ fontSize: isMobile ? '0.85rem' : '1.05rem', fontWeight: 800, color: 'var(--color-text)', margin: '1px 0 0 0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: isMobile ? '180px' : 'none' }}>
-                          {wsTeamId === 'all_teams_bypass' ? t('Tất cả các Nhóm') : (teamsList.find(t => String(t.id) === wsTeamId)?.name || wsTeamId)}
-                        </h4>
-                      </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      {(() => {
+                        const targetTeam = teamsList.find(t => String(t.id) === wsTeamId);
+                        const teamName = wsTeamId === 'all_teams_bypass' ? t('Tất cả các Nhóm') : (targetTeam?.name || wsTeamId);
+                        const teamAvatar = targetTeam?.avatar_url || targetTeam?.avatar;
+                        return (
+                          <>
+                            {wsTeamId !== 'all_teams_bypass' && (
+                              <div style={{ 
+                                width: isMobile ? '30px' : '36px', 
+                                height: isMobile ? '30px' : '36px', 
+                                borderRadius: '10px', 
+                                overflow: 'hidden', 
+                                border: '1.5px solid var(--color-border-light)',
+                                boxShadow: 'var(--shadow-xs)',
+                                flexShrink: 0,
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                background: teamAvatar ? 'transparent' : 'var(--color-primary-light, rgba(189, 29, 45, 0.1))',
+                                color: 'var(--color-primary)'
+                              }}>
+                                {teamAvatar ? (
+                                  <img src={teamAvatar} alt={teamName} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                ) : (
+                                  <Avatar name={teamName} size={isMobile ? 30 : 36} />
+                                )}
+                              </div>
+                            )}
+                            <div>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                <span style={{ fontSize: isMobile ? '0.625rem' : '0.7rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{t('ĐANG XEM NHÓM')}</span>
+                                <span style={{ width: '4px', height: '4px', borderRadius: '50%', background: 'var(--color-primary)' }} />
+                                <span style={{ fontSize: isMobile ? '0.625rem' : '0.7rem', fontWeight: 700, color: 'var(--color-primary)' }}>{t('Nội bộ')}</span>
+                              </div>
+                              <h4 style={{ fontSize: isMobile ? '0.85rem' : '0.95rem', fontWeight: 800, color: 'var(--color-text)', margin: '1px 0 0 0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: isMobile ? '160px' : 'none' }}>
+                                {teamName}
+                              </h4>
+                            </div>
+                          </>
+                        );
+                      })()}
                     </div>
                   </>
                 )}
