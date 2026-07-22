@@ -1619,20 +1619,22 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
                         src={
                           log.status === 'pending_approval'
                             ? '/imgs/warn_icon.png'
-                            : log.status === 'rejected'
+                            : (log.status === 'rejected' || log.status === 'pending_work_hours' || !log.assigned_to_name || log.assigned_to_name === '-')
                               ? '/LOGO.jpg'
                               : log.status === 'blacklisted'
                                 ? '/imgs/angry_icon.jpg'
-                                : log.assigned_to_avatar
+                                : (log.assigned_to_avatar || '/LOGO.jpg')
                         }
                         name={
                           log.status === 'pending_approval'
                             ? 'Rich Land AI - Screener'
-                            : log.status === 'rejected'
-                              ? 'Rich Land AI - Evaluator'
-                              : log.status === 'blacklisted'
-                                ? 'Rich Land AI - Angry'
-                                : (log.assigned_to_name || t('Hệ thống'))
+                            : (log.status === 'pending_work_hours' || !log.assigned_to_name || log.assigned_to_name === '-')
+                              ? 'RichLand Bot'
+                              : log.status === 'rejected'
+                                ? 'Rich Land AI - Evaluator'
+                                : log.status === 'blacklisted'
+                                  ? 'Rich Land AI - Angry'
+                                  : log.assigned_to_name
                         }
                         size={32}
                       />
@@ -1640,11 +1642,13 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
                         <div style={{ fontWeight: 800, fontSize: '0.875rem', color: 'var(--color-text)' }}>
                           {log.status === 'pending_approval'
                             ? 'Rich Land AI - Screener'
-                            : log.status === 'rejected'
-                              ? 'Rich Land AI - Evaluator'
-                              : log.status === 'blacklisted'
-                                ? 'Rich Land AI - Angry'
-                                : (log.assigned_to_name || t('Hệ thống'))}
+                            : (log.status === 'pending_work_hours' || !log.assigned_to_name || log.assigned_to_name === '-')
+                              ? 'RichLand Bot'
+                              : log.status === 'rejected'
+                                ? 'Rich Land AI - Evaluator'
+                                : log.status === 'blacklisted'
+                                  ? 'Rich Land AI - Angry'
+                                  : log.assigned_to_name}
                         </div>
                         <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                           {log.lead_name || t('Khách hàng')} • {new Date(log.created_at).toLocaleString(language === 'en' ? 'en-US' : 'vi-VN')}

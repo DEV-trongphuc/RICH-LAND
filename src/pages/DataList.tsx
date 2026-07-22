@@ -2342,13 +2342,16 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                                 return <span style={{ color: 'var(--color-text-muted)' }}>{t('Chưa ai nhận')}</span>;
                               }
                             })()
-                          ) : lead.assigned_to_name !== '-' ? (
+                          ) : (lead.assigned_to_name !== '-' && lead.status !== 'pending_work_hours') ? (
                             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                              <Avatar src={lead.assigned_to_avatar} name={lead.assigned_to_name} size={20} aiScreened={!!(lead.ai_screener_status && lead.ai_screener_status !== 'not_screened')} />
+                              <Avatar src={lead.assigned_to_avatar || '/LOGO.jpg'} name={lead.assigned_to_name} size={20} aiScreened={!!(lead.ai_screener_status && lead.ai_screener_status !== 'not_screened')} />
                               <span style={{ fontWeight: 700, color: 'var(--color-text)' }}>{lead.assigned_to_name}</span>
                             </div>
                           ) : (
-                            <span style={{ color: 'var(--color-text-muted)' }}>-</span>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                              <Avatar src="/LOGO.jpg" name="RichLand Bot" size={20} />
+                              <span style={{ fontWeight: 700, color: 'var(--color-text)' }}>RichLand Bot</span>
+                            </div>
                           )}
                         </div>
                         {lead.round_name && lead.round_name !== '-' && (
@@ -2504,9 +2507,9 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                                 return <span style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem' }}>{t('Chưa ai nhận')}</span>;
                               }
                             })()
-                          ) : lead.assigned_to_name !== '-' ? (
+                          ) : (lead.assigned_to_name !== '-' && lead.status !== 'pending_work_hours') ? (
                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                              <Avatar src={lead.assigned_to_avatar} name={lead.assigned_to_name} size={32} aiScreened={!!(lead.ai_screener_status && lead.ai_screener_status !== 'not_screened')} />
+                              <Avatar src={lead.assigned_to_avatar || '/LOGO.jpg'} name={lead.assigned_to_name} size={32} aiScreened={!!(lead.ai_screener_status && lead.ai_screener_status !== 'not_screened')} />
                               <div>
                                 <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>{lead.assigned_to_name}</div>
                                 <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2 }}>
@@ -2515,7 +2518,15 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                               </div>
                             </div>
                           ) : (
-                            <span style={{ color: 'var(--color-text-muted)' }}>-</span>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                              <Avatar src="/LOGO.jpg" name="RichLand Bot" size={32} />
+                              <div>
+                                <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>RichLand Bot</div>
+                                <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2 }}>
+                                  {t('Chờ giờ làm')}
+                                </div>
+                              </div>
+                            </div>
                           )}
                         </td>
                         <td style={{ padding: '1rem', fontSize: '0.8125rem', color: 'var(--color-text-light)' }}>{lead.created_at}</td>
