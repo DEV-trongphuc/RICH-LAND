@@ -2078,13 +2078,16 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
         milestones.forEach((m: any) => {
           const fileUrl = m.unc_file_path || m.attachment_url;
           if (fileUrl) {
-            const filename = fileUrl.split('/').pop() || `${m.name || 'Cọc'}_UNC`;
+            const filename = (() => {
+              const base = fileUrl.split('/').pop() || `${m.name || 'Cọc'}_UNC`;
+              try { return decodeURIComponent(base); } catch (e) { return base; }
+            })();
             const fileExt = filename.split('.').pop() || 'png';
             const exists = mappedDocs.some((d: any) => d.path === fileUrl);
             if (!exists) {
               mappedDocs.push({
                 id: `milestone_attachment_${m.id}`,
-                name: `${m.name || 'Cọc giữ chỗ'} - UNC.${fileExt}`,
+                name: filename,
                 date: m.updated_at ? new Date(m.updated_at).toLocaleDateString('vi-VN') : new Date().toLocaleDateString('vi-VN'),
                 size: '—',
                 type: fileExt,
@@ -3021,13 +3024,16 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
             milestones.forEach((m: any) => {
               const fileUrl = m.unc_file_path || m.attachment_url;
               if (fileUrl) {
-                const filename = fileUrl.split('/').pop() || `${m.name || 'Cọc'}_UNC`;
+                const filename = (() => {
+                  const base = fileUrl.split('/').pop() || `${m.name || 'Cọc'}_UNC`;
+                  try { return decodeURIComponent(base); } catch (e) { return base; }
+                })();
                 const fileExt = filename.split('.').pop() || 'png';
                 const exists = mappedDocs.some((d: any) => d.path === fileUrl);
                 if (!exists) {
                   mappedDocs.push({
                     id: `milestone_attachment_${m.id}`,
-                    name: `${m.name || m.milestone_name || 'Cọc giữ chỗ'} - UNC.${fileExt}`,
+                    name: filename,
                     date: m.updated_at ? new Date(m.updated_at).toLocaleDateString('vi-VN') : new Date().toLocaleDateString('vi-VN'),
                     size: '—',
                     type: fileExt,
@@ -7916,7 +7922,10 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                     const fileUrl = m.unc_file_path || m.attachment_url;
                                     if (fileUrl && !addedPaths.has(fileUrl)) {
                                       addedPaths.add(fileUrl);
-                                      const filename = `${m.name || 'Cọc giữ chỗ'} - UNC.${fileUrl.split('.').pop() || 'png'}`;
+                                      const filename = (() => {
+                                        const base = fileUrl.split('/').pop() || `${m.name || 'Cọc giữ chỗ'} - UNC.${fileUrl.split('.').pop() || 'png'}`;
+                                        try { return decodeURIComponent(base); } catch (e) { return base; }
+                                      })();
                                       coopAttachmentsList.push({ name: filename, path: fileUrl, canDelete: false });
                                     }
                                   });
@@ -12091,6 +12100,22 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                         modalAttachmentsList.push({ name: d.name || p.split('/').pop() || 'UNC Đặt cọc', path: p });
                       }
                     }
+                  });
+                }
+
+                if (Array.isArray(deals)) {
+                  deals.forEach((dep: any) => {
+                    (dep.milestones || []).forEach((m: any) => {
+                      const fileUrl = m.unc_file_path || m.attachment_url;
+                      if (fileUrl && !addedPaths.has(fileUrl)) {
+                        addedPaths.add(fileUrl);
+                        const filename = (() => {
+                          const base = fileUrl.split('/').pop() || `${m.name || 'Cọc giữ chỗ'} - UNC.${fileUrl.split('.').pop() || 'png'}`;
+                          try { return decodeURIComponent(base); } catch (e) { return base; }
+                        })();
+                        modalAttachmentsList.push({ name: filename, path: fileUrl });
+                      }
+                    });
                   });
                 }
 
