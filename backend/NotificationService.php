@@ -635,30 +635,53 @@ class NotificationService {
                 $inviterName = $payload['inviter_name'] ?? 'Đồng nghiệp';
                 $sharePct = isset($payload['share_pct']) && $payload['share_pct'] !== '' ? ($payload['share_pct'] . '%') : '';
                 $shareText = !empty($sharePct) ? " (Tỷ lệ hoa hồng: $sharePct)" : "";
-
-                return [
-                    'recipients' => $recipients,
-                    'title' => "🤝 Lời mời hợp tác chăm sóc (Co-care)",
-                    'body' => "Sale $inviterName vừa mời bạn hợp tác chăm sóc khách hàng $custName$shareText.",
-                    'type' => "cooperation",
-                    'link' => "/contacts?id=" . ($payload['contact_id'] ?? ''),
-                    'zalo_msg' => "🤝 [ LỜI MỜI HỢP TÁC CHĂM SÓC ]\n\n"
-                        . "Sale $inviterName vừa thêm bạn làm nhân sự hợp tác (Co-care):\n"
-                        . "  • Khách hàng: $custName\n"
-                        . (!empty($sharePct) ? "  • Tỷ lệ chia: $sharePct\n" : "")
-                        . "\nVui lòng truy cập CRM để xem chi tiết khách hàng.",
-                    'tg_msg' => "🤝 <b>[ LỜI MỜI HỢP TÁC CHĂM SÓC ]</b>\n\n"
-                        . "Sale <b>" . htmlspecialchars($inviterName) . "</b> vừa thêm bạn làm nhân sự hợp tác (Co-care):\n"
-                        . "  • Khách hàng: <b>" . htmlspecialchars($custName) . "</b>\n"
-                        . (!empty($sharePct) ? "  • Tỷ lệ chia: <b>$sharePct</b>\n" : "")
-                        . "\nVui lòng truy cập CRM để xem chi tiết khách hàng.",
-                    'email_subject' => "[RICH LAND] Lời mời hợp tác chăm sóc khách hàng $custName",
-                    'email_title' => "LỜI MỜI HỢP TÁC CHĂM SÓC (CO-CARE)",
-                    'email_content' => "Chào bạn,<br/><br/>" .
-                                    "Sale <strong>" . htmlspecialchars($inviterName) . "</strong> vừa mời bạn hợp tác chăm sóc (Co-care) khách hàng: <strong>" . htmlspecialchars($custName) . "</strong>.<br/>" .
-                                    (!empty($sharePct) ? "Tỷ lệ chia sẻ hoa hồng: <strong>$sharePct</strong>.<br/>" : "") .
-                                    "Vui lòng đăng nhập CRM để xem thông tin chi tiết."
-                ];
+                
+                $slipId = isset($payload['slip_id']) ? (int)$payload['slip_id'] : 0;
+                
+                if ($slipId > 0) {
+                    return [
+                        'recipients' => $recipients,
+                        'title' => "✍️ Yêu cầu ký xác nhận Phiếu hợp tác",
+                        'body' => "Bạn nhận được yêu cầu ký xác nhận Phiếu hợp tác #$slipId cho khách hàng $custName.",
+                        'type' => "cooperation",
+                        'link' => "/sale-portal",
+                        'zalo_msg' => "✍️ [ YÊU CẦU KÝ XÁC NHẬN PHIẾU HỢP TÁC ]\n\n"
+                            . "Một phiếu hợp tác chia sẻ hoa hồng mới (#$slipId) đã được tạo cho khách hàng: $custName.\n"
+                            . "Vui lòng truy cập CRM để xem chi tiết và ký xác nhận.",
+                        'tg_msg' => "✍️ <b>[ YÊU CẦU KÝ XÁC NHẬN PHIẾU HỢP TÁC ]</b>\n\n"
+                            . "Một phiếu hợp tác chia sẻ hoa hồng mới (<b>#$slipId</b>) đã được tạo cho khách hàng: <b>" . htmlspecialchars($custName) . "</b>.\n"
+                            . "Vui lòng truy cập CRM để xem chi tiết và ký xác nhận.",
+                        'email_subject' => $payload['email_subject'] ?? "[RICH LAND] Yêu cầu ký xác nhận Phiếu hợp tác #$slipId",
+                        'email_title' => $payload['email_title'] ?? "KÝ XÁC NHẬN PHIẾU HỢP TÁC",
+                        'email_content' => $payload['email_content'] ?? "Chào bạn,<br/><br/>" .
+                                        "Một phiếu hợp tác chia sẻ hoa hồng mới (#$slipId) đã được tạo trên hệ thống cho khách hàng <strong>" . htmlspecialchars($custName) . "</strong>.<br/>" .
+                                        "Vui lòng đăng nhập CRM để xem chi tiết và ký xác nhận."
+                    ];
+                } else {
+                    return [
+                        'recipients' => $recipients,
+                        'title' => "🤝 Lời mời hợp tác chăm sóc (Co-care)",
+                        'body' => "Sale $inviterName vừa mời bạn hợp tác chăm sóc khách hàng $custName$shareText.",
+                        'type' => "cooperation",
+                        'link' => "/contacts?id=" . ($payload['contact_id'] ?? ''),
+                        'zalo_msg' => "🤝 [ LỜI MỜI HỢP TÁC CHĂM SÓC ]\n\n"
+                            . "Sale $inviterName vừa thêm bạn làm nhân sự hợp tác (Co-care):\n"
+                            . "  • Khách hàng: $custName\n"
+                            . (!empty($sharePct) ? "  • Tỷ lệ chia: $sharePct\n" : "")
+                            . "\nVui lòng truy cập CRM để xem chi tiết khách hàng.",
+                        'tg_msg' => "🤝 <b>[ LỜI MỜI HỢP TÁC CHĂM SÓC ]</b>\n\n"
+                            . "Sale <b>" . htmlspecialchars($inviterName) . "</b> vừa thêm bạn làm nhân sự hợp tác (Co-care):\n"
+                            . "  • Khách hàng: <b>" . htmlspecialchars($custName) . "</b>\n"
+                            . (!empty($sharePct) ? "  • Tỷ lệ chia: <b>$sharePct</b>\n" : "")
+                            . "\nVui lòng truy cập CRM để xem chi tiết khách hàng.",
+                        'email_subject' => $payload['email_subject'] ?? "[RICH LAND] Lời mời hợp tác chăm sóc khách hàng $custName",
+                        'email_title' => $payload['email_title'] ?? "LỜI MỜI HỢP TÁC CHĂM SÓC (CO-CARE)",
+                        'email_content' => $payload['email_content'] ?? "Chào bạn,<br/><br/>" .
+                                        "Sale <strong>" . htmlspecialchars($inviterName) . "</strong> vừa mời bạn hợp tác chăm sóc (Co-care) khách hàng: <strong>" . htmlspecialchars($custName) . "</strong>.<br/>" .
+                                        (!empty($sharePct) ? "Tỷ lệ chia sẻ hoa hồng: <strong>$sharePct</strong>.<br/>" : "") .
+                                        "Vui lòng đăng nhập CRM để xem thông tin chi tiết."
+                    ];
+                }
 
             case 'CUSTOMER_UPDATE':
                 $recipients = self::getRecipientById($db, $payload['user_id'] ?? 0);

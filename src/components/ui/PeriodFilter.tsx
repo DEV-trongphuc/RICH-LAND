@@ -33,16 +33,25 @@ export function getDateRange(period: Period, custom?: DateRange): DateRange {
   const now = new Date();
   const y = now.getFullYear();
   const m = now.getMonth();
-  const today = now.toISOString().slice(0, 10);
+  
+  // Format local date helper: YYYY-MM-DD
+  const formatLocalDate = (dateObj: Date) => {
+    const yr = dateObj.getFullYear();
+    const mo = String(dateObj.getMonth() + 1).padStart(2, '0');
+    const dy = String(dateObj.getDate()).padStart(2, '0');
+    return `${yr}-${mo}-${dy}`;
+  };
+
+  const today = formatLocalDate(now);
 
   switch (period) {
     case '7d': {
       const d = new Date(now); d.setDate(d.getDate() - 6);
-      return { from: d.toISOString().slice(0, 10), to: today };
+      return { from: formatLocalDate(d), to: today };
     }
     case '30d': {
       const d = new Date(now); d.setDate(d.getDate() - 29);
-      return { from: d.toISOString().slice(0, 10), to: today };
+      return { from: formatLocalDate(d), to: today };
     }
     case 'this_month':
       return { from: `${y}-${String(m + 1).padStart(2, '0')}-01`, to: today };

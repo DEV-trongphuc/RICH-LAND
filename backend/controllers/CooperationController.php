@@ -781,7 +781,7 @@ class CooperationController {
         }
 
         // Find owner of contact and check access
-        $stmtC = $this->db->prepare("SELECT owner_id, tenant_id, pipeline_status FROM contacts WHERE id = ?");
+        $stmtC = $this->db->prepare("SELECT owner_id, tenant_id, pipeline_status, first_name, last_name FROM contacts WHERE id = ?");
         $stmtC->execute([$contactId]);
         $contactRow = $stmtC->fetch();
         if (!$contactRow) {
@@ -888,6 +888,15 @@ class CooperationController {
 
         // Sync collaborators to contacts table
         $this->syncCollaboratorsToContact((int)$contactId, $sharesJson);
+
+        // Email and notify all shareholders that a slip requires their signature
+        $custFullName = trim(($contactRow['first_name'] ?? '') . ' ' . ($contactRow['last_name'] ?? '')) ?: 'Khách hàng';
+        $emailSubject = "[RICH LAND] Yêu cầu ký xác nhận Phiếu hợp tác #" . $slipId;
+        $emailTitle = "KÝ XÁC NHẬN PHIẾU HỢP TÁC";
+        $emailContent = "Chào các thành viên,<br/><br/>" .
+                        "Một phiếu hợp tác chia sẻ hoa hồng mới (#" . $slipId . ") đã được khởi tạo trên hệ thống cho khách hàng <strong>" . htmlspecialchars($custFullName) . "</strong>.<br/>" .
+                        "Vui lòng đăng nhập hệ thống RICH LAND CRM và truy cập mục <strong>Phiếu hợp tác</strong> để xem chi tiết và ký xác nhận.";
+        $this->notifyShareholders($slipId, $shares, $emailSubject, $emailTitle, $emailContent);
 
         // Withdraw from databank and terminate other parallel contacts
         require_once __DIR__ . '/../config/ParallelHelper.php';
@@ -1263,47 +1272,6 @@ class CooperationController {
         $stmtUpd = $this->db->prepare("UPDATE contacts SET collaborator_ids = ? WHERE id = ?");
         $stmtUpd->execute([$collaboratorsStr, $contactId]);
 
-        // Send notifications to newly added collaborators
-        $addedIds = array_diff($mergedIds, $existingIds);
-        if (!empty($addedIds)) {
-            require_once __DIR__ . '/../NotificationService.php';
-            $custFullName = trim(($contact['first_name'] ?? '') . ' ' . ($contact['last_name'] ?? ''));
-            
-            // Fetch owner name
-            $stmtOwner = $this->db->prepare("SELECT full_name FROM users WHERE id = ?");
-            $stmtOwner->execute([$ownerId]);
-            $ownerName = $stmtOwner->fetchColumn() ?: 'đồng nghiệp';
-
-            foreach ($addedIds as $collabUid) {
-                $collabUidInt = (int)$collabUid;
-                if ($collabUidInt > 0) {
-                    // Map consultant ID to user ID
-                    $targetUserId = $collabUidInt;
-                    $stmtMap = $this->db->prepare("
-                        SELECT u.id FROM users u 
-                        LEFT JOIN consultants c ON (u.email = c.email OR u.id = c.id) 
-                        WHERE c.id = ? OR u.id = ? 
-                        LIMIT 1
-                    ");
-                    $stmtMap->execute([$collabUidInt, $collabUidInt]);
-                    if ($mappedUId = $stmtMap->fetchColumn()) {
-                        $targetUserId = (int)$mappedUId;
-                    }
-
-                    // Only send notification if collaborator user ID is not the owner (inviter)
-                    if ($targetUserId > 0 && $targetUserId !== $ownerId) {
-                        $pct = isset($shares[$collabUidInt]) ? $shares[$collabUidInt] : (isset($shares[(string)$collabUidInt]) ? $shares[(string)$collabUidInt] : null);
-                        NotificationService::send($this->db, (int)$contact['tenant_id'], 'COOP_INVITATION', [
-                            'user_id' => $targetUserId,
-                            'customer_name' => $custFullName,
-                            'inviter_name' => $ownerName,
-                            'share_pct' => $pct,
-                            'contact_id' => $contactId
-                        ]);
-                    }
-                }
-            }
-        }
     }
 
     public function createAdjustmentSlip(array $auth, int $id): void {
