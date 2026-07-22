@@ -5125,15 +5125,15 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
             }}>
               {/* CARD 1: GỢI Ý ƯU TIÊN TỪ AI */}
               <div style={{
-                background: 'linear-gradient(135deg, rgba(239, 68, 68, 0.05) 0%, rgba(225, 29, 72, 0.08) 100%)',
-                border: '1px solid rgba(225, 29, 72, 0.22)',
+                background: 'linear-gradient(135deg, rgba(189, 29, 45, 0.05) 0%, rgba(189, 29, 45, 0.1) 100%)',
+                border: '1px solid rgba(189, 29, 45, 0.25)',
                 borderRadius: isMobile ? '12px' : '16px',
                 padding: isMobile ? '8px 10px' : '0.875rem 1.25rem',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
                 gap: isMobile ? '6px' : '1rem',
-                boxShadow: '0 4px 16px rgba(225, 29, 72, 0.06)',
+                boxShadow: '0 4px 16px rgba(189, 29, 45, 0.06)',
                 backdropFilter: 'blur(8px)',
                 position: 'relative',
                 overflow: 'hidden'
@@ -5143,18 +5143,18 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                     width: isMobile ? '28px' : '40px',
                     height: isMobile ? '28px' : '40px',
                     borderRadius: isMobile ? '8px' : '12px',
-                    background: 'linear-gradient(135deg, #f43f5e 0%, #e11d48 100%)',
+                    background: 'linear-gradient(135deg, #E52E3D 0%, #BD1D2D 100%)',
                     color: '#ffffff',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
                     flexShrink: 0,
-                    boxShadow: '0 4px 12px rgba(225, 29, 72, 0.35)'
+                    boxShadow: '0 4px 12px rgba(189, 29, 45, 0.35)'
                   }}>
                     <Sparkles size={isMobile ? 14 : 20} />
                   </div>
                   <div style={{ minWidth: 0, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                    <span style={{ fontSize: isMobile ? '0.625rem' : '0.725rem', fontWeight: 800, color: '#e11d48', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', lineHeight: 1.15 }}>
+                    <span style={{ fontSize: isMobile ? '0.625rem' : '0.725rem', fontWeight: 800, color: 'var(--color-primary, #BD1D2D)', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', lineHeight: 1.15 }}>
                       {isMobile ? t('GỢI Ý AI') : t('GỢI Ý ƯU TIÊN TỪ AI')}
                     </span>
                     <span style={{ fontSize: isMobile ? '0.725rem' : '0.875rem', fontWeight: 600, color: 'var(--color-text)', overflow: 'hidden', textOverflow: 'ellipsis', display: 'block', whiteSpace: 'nowrap', marginTop: '2px', lineHeight: 1.15 }}>
@@ -5166,7 +5166,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                   type="button"
                   onClick={handleStartFocusSession}
                   style={{
-                    background: 'linear-gradient(135deg, #f43f5e 0%, #e11d48 100%)',
+                    background: 'linear-gradient(135deg, #E52E3D 0%, #BD1D2D 100%)',
                     border: 'none',
                     color: '#ffffff',
                     padding: isMobile ? '5px 10px' : '8px 16px',
@@ -5179,16 +5179,16 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                     cursor: 'pointer',
                     whiteSpace: 'nowrap',
                     flexShrink: 0,
-                    boxShadow: '0 3px 10px rgba(225, 29, 72, 0.3)',
+                    boxShadow: '0 3px 10px rgba(189, 29, 45, 0.3)',
                     transition: 'transform 0.2s, box-shadow 0.2s'
                   }}
                   onMouseEnter={(e) => {
                     e.currentTarget.style.transform = 'translateY(-1px)';
-                    e.currentTarget.style.boxShadow = '0 5px 14px rgba(225, 29, 72, 0.4)';
+                    e.currentTarget.style.boxShadow = '0 5px 14px rgba(189, 29, 45, 0.4)';
                   }}
                   onMouseLeave={(e) => {
                     e.currentTarget.style.transform = 'translateY(0)';
-                    e.currentTarget.style.boxShadow = '0 3px 10px rgba(225, 29, 72, 0.3)';
+                    e.currentTarget.style.boxShadow = '0 3px 10px rgba(189, 29, 45, 0.3)';
                   }}
                 >
                   <Play size={isMobile ? 10 : 13} fill="#ffffff" />
