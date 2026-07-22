@@ -26,6 +26,8 @@ import {
 } from 'recharts';
 import toast from 'react-hot-toast';
 import { useUIStore } from '../store/uiStore';
+import { Package } from 'lucide-react';
+import { AssignedAssetsSection, type AssignedAsset } from '../components/ui/AssignedAssetsSection';
 
 import { fetchAPI } from '../utils/api';
 import { compressToWebP } from '../utils/imageCompress';
@@ -9614,6 +9616,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
         case 'schedule': return t('Lịch trực nhận data');
         case 'personal': return t('Thông tin cá nhân');
         case 'erp': return t('Hồ sơ & ERP');
+        case 'assets': return t('Tài sản cấp phát');
         case 'certificates': return t('Bằng cấp & Chứng chỉ');
         case 'hr_records': return t('Khen thưởng & Kỷ luật');
         case 'contact': return t('Thông tin liên hệ');
@@ -9679,6 +9682,23 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
         }
       }));
     };
+
+    const getProfileAssets = (p: any): AssignedAsset[] => {
+      if (!p) return [];
+      if (Array.isArray(p.assigned_assets)) return p.assigned_assets;
+      if (Array.isArray(p.erp_profile?.assigned_assets)) return p.erp_profile.assigned_assets;
+      if (p.extra_fields_json) {
+        try {
+          const extra = typeof p.extra_fields_json === 'string' ? JSON.parse(p.extra_fields_json) : p.extra_fields_json;
+          if (extra.erp_profile?.assigned_assets) return extra.erp_profile.assigned_assets;
+          if (extra.assigned_assets) return extra.assigned_assets;
+        } catch (e) {}
+      }
+      return [];
+    };
+    const profileAssets = getProfileAssets(profile);
+
+    const canEditUserAssets = ['admin', 'superadmin', 'manager'].includes(String(user?.role).toLowerCase());
 
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: isMobile ? '1rem' : '1rem', padding: isMobile ? '0.25rem 0' : '0.5rem 0' }}>
@@ -10228,6 +10248,15 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                     </button>
                     <button
                       type="button"
+                      className={`${styles.sidebarTabBtn} ${profileActiveTab === 'assets' ? styles.sidebarTabActive : ''}`}
+                      onClick={() => setProfileActiveTab('assets')}
+                      style={{ width: '100%', border: 'none', textAlign: 'left', cursor: 'pointer' }}
+                    >
+                      {renderColoredIcon(Package, '#8b5cf6')}
+                      <span style={{ whiteSpace: 'nowrap' }}>{t('Tài sản cấp phát')}</span>
+                    </button>
+                    <button
+                      type="button"
                       className={`${styles.sidebarTabBtn} ${profileActiveTab === 'certificates' ? styles.sidebarTabActive : ''}`}
                       onClick={() => setProfileActiveTab('certificates')}
                       style={{ width: '100%', border: 'none', textAlign: 'left', cursor: 'pointer' }}
@@ -10594,7 +10623,23 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                       </div>
                     </div>
                 </div>
+
+                {/* TÀI SẢN ĐƯỢC CẤP PHÁT SECTION IN ERP TAB */}
+                <AssignedAssetsSection
+                  assets={profileAssets}
+                  onChange={() => {}}
+                  readOnly={!canEditUserAssets}
+                />
               </div>
+            )}
+
+            {/* TÀI SẢN CẤP PHÁT TAB */}
+            {profileActiveTab === 'assets' && (
+              <AssignedAssetsSection
+                assets={profileAssets}
+                onChange={() => {}}
+                readOnly={!canEditUserAssets}
+              />
             )}
 
             {profileActiveTab === 'certificates' && (
