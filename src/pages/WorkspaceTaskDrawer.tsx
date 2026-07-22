@@ -158,18 +158,27 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
   const [allowedCampaigns, setAllowedCampaigns] = useState<any[]>([]);
   const [allowedTeams, setAllowedTeams] = useState<any[]>([]);
 
-  // Quick View Drawer states for Project & Campaign
+  // Full View & Edit Drawer states for Project & Campaign
   const [viewProjectModal, setViewProjectModal] = useState<any | null>(null);
   const [viewCampaignModal, setViewCampaignModal] = useState<any | null>(null);
+  const [projectModalMode, setProjectModalMode] = useState<'view' | 'edit'>('view');
+  const [campaignModalMode, setCampaignModalMode] = useState<'view' | 'edit'>('view');
+  const [projectEditForm, setProjectEditForm] = useState<any>({});
+  const [campaignEditForm, setCampaignEditForm] = useState<any>({});
+  const [savingProject, setSavingProject] = useState(false);
+  const [savingCampaign, setSavingCampaign] = useState(false);
   const [loadingViewProject, setLoadingViewProject] = useState(false);
   const [loadingViewCampaign, setLoadingViewCampaign] = useState(false);
 
   const openProjectDetail = async (projId: number) => {
     if (!projId) return;
     setLoadingViewProject(true);
+    setProjectModalMode('view');
     try {
       const res = await api.get(`/projects/${projId}`);
-      setViewProjectModal(res.data.data || res.data);
+      const data = res.data.data || res.data;
+      setViewProjectModal(data);
+      setProjectEditForm(data || {});
     } catch {
       toast.error(t('Không thể tải chi tiết dự án'));
     } finally {
@@ -180,13 +189,62 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
   const openCampaignDetail = async (campId: number) => {
     if (!campId) return;
     setLoadingViewCampaign(true);
+    setCampaignModalMode('view');
     try {
       const res = await api.get(`/campaigns/${campId}`);
-      setViewCampaignModal(res.data.data || res.data);
+      const data = res.data.data || res.data;
+      setViewCampaignModal(data);
+      setCampaignEditForm(data || {});
     } catch {
       toast.error(t('Không thể tải chi tiết chiến dịch'));
     } finally {
       setLoadingViewCampaign(false);
+    }
+  };
+
+  const handleSaveProjectEdit = async () => {
+    if (!projectEditForm || !projectEditForm.id) return;
+    setSavingProject(true);
+    try {
+      const payload = { ...projectEditForm, _method: 'PUT' };
+      const res = await api.post(`/projects/${projectEditForm.id}`, payload);
+      if (res.data && res.data.success) {
+        toast.success(t('Cập nhật thông tin dự án thành công!'));
+        const updated = res.data.data || { ...viewProjectModal, ...projectEditForm };
+        setViewProjectModal(updated);
+        setProjectModalMode('view');
+        // Refresh allowedProjects list
+        api.get('/projects').then(r => setAllowedProjects(r.data.data?.items || r.data.data || [])).catch(() => {});
+      } else {
+        toast.error(res.data?.message || t('Lỗi cập nhật dự án'));
+      }
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || t('Không thể lưu thông tin dự án'));
+    } finally {
+      setSavingProject(false);
+    }
+  };
+
+  const handleSaveCampaignEdit = async () => {
+    if (!campaignEditForm || !campaignEditForm.id) return;
+    setSavingCampaign(true);
+    try {
+      const payload = { ...campaignEditForm, _method: 'PUT' };
+      const res = await api.post(`/campaigns/${campaignEditForm.id}`, payload);
+      if (res.data && res.data.success) {
+        toast.success(t('Cập nhật thông tin chiến dịch thành công!'));
+        const updated = res.data.data || { ...viewCampaignModal, ...campaignEditForm };
+        setViewCampaignModal(updated);
+        setCampaignModalMode('view');
+        // Refresh allowedCampaigns list
+        api.get('/campaigns').then(r => setAllowedCampaigns(r.data.data?.items || r.data.data || [])).catch(() => {});
+      } else {
+        toast.error(res.data?.message || t('Lỗi cập nhật chiến dịch'));
+      }
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || t('Không thể lưu thông tin chiến dịch'));
+    } finally {
+      setSavingCampaign(false);
     }
   };
 
@@ -3759,77 +3817,257 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
             confirmType="danger"
           />
 
-          {/* Quick View Project Drawer */}
+          {/* Full View & Edit Project Drawer */}
           {viewProjectModal && createPortal(
             <div className="modal-overlay" onClick={() => setViewProjectModal(null)} style={{ position: 'fixed', inset: 0, zIndex: 2000020, backdropFilter: 'blur(6px)', background: 'rgba(0,0,0,0.65)', display: 'flex', justifyContent: 'flex-end' }}>
               <motion.div 
                 initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }} transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-                style={{ width: '600px', maxWidth: '90vw', height: '100%', background: 'var(--color-surface)', borderLeft: '1px solid var(--color-border)', boxShadow: '-10px 0 30px rgba(0,0,0,0.25)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
+                style={{ width: '680px', maxWidth: '92vw', height: '100%', background: 'var(--color-surface)', borderLeft: '1px solid var(--color-border)', boxShadow: '-10px 0 30px rgba(0,0,0,0.25)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
                 onClick={e => e.stopPropagation()}
               >
+                {/* Header */}
                 <div style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid var(--color-border-light)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--color-surface)' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <div style={{ width: 40, height: 40, borderRadius: '10px', background: 'rgba(59, 130, 246, 0.1)', color: 'var(--color-info)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <Building2 size={20} />
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <div style={{ width: 42, height: 42, borderRadius: '12px', background: 'rgba(59, 130, 246, 0.1)', color: 'var(--color-info)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <Building2 size={22} />
                     </div>
                     <div>
-                      <h3 style={{ fontSize: '1.1rem', fontWeight: 800, margin: 0, color: 'var(--color-text)' }}>{viewProjectModal.name}</h3>
-                      <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', margin: '2px 0 0 0' }}>Mã dự án: {viewProjectModal.code || '—'} {viewProjectModal.developer ? `• CĐT: ${viewProjectModal.developer}` : ''}</p>
+                      <h3 style={{ fontSize: '1.15rem', fontWeight: 800, margin: 0, color: 'var(--color-text)' }}>{viewProjectModal.name}</h3>
+                      <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', margin: '2px 0 0 0' }}>
+                        Mã dự án: <span style={{ fontWeight: 700, fontFamily: 'monospace' }}>{viewProjectModal.code || '—'}</span> 
+                        {viewProjectModal.developer ? ` • CĐT: ${viewProjectModal.developer}` : ''}
+                      </p>
                     </div>
                   </div>
-                  <button type="button" className="btn-icon" onClick={() => setViewProjectModal(null)} style={{ borderRadius: '8px' }}><X size={18} /></button>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    {projectModalMode === 'view' ? (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setProjectEditForm({ ...viewProjectModal });
+                          setProjectModalMode('edit');
+                        }}
+                        className="btn outline sm"
+                        style={{ height: '32px', borderRadius: '8px', padding: '0 12px', fontSize: '0.75rem', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                      >
+                        <Edit3 size={14} />
+                        {t('Chỉnh sửa')}
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={handleSaveProjectEdit}
+                        disabled={savingProject}
+                        className="btn primary sm"
+                        style={{ height: '32px', borderRadius: '8px', padding: '0 14px', fontSize: '0.75rem', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                      >
+                        {savingProject ? <Loader2 size={14} className="spin" /> : <Save size={14} />}
+                        {t('Lưu thay đổi')}
+                      </button>
+                    )}
+                    <button type="button" className="btn-icon" onClick={() => setViewProjectModal(null)} style={{ borderRadius: '8px' }}><X size={18} /></button>
+                  </div>
                 </div>
 
+                {/* Content Body */}
                 <div style={{ padding: '1.5rem', flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.75rem' }}>
-                    <div style={{ padding: '0.875rem', borderRadius: '12px', background: 'var(--color-bg)', border: '1px solid var(--color-border-light)' }}>
-                      <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>TRẠNG THÁI</span>
-                      <p style={{ fontSize: '0.875rem', fontWeight: 800, margin: '2px 0 0 0', color: viewProjectModal.status === 'active' ? 'var(--color-success)' : 'var(--color-text)' }}>
-                        {viewProjectModal.status === 'active' ? 'Hoạt động' : (viewProjectModal.status || 'Chờ triển khai')}
-                      </p>
-                    </div>
-                    <div style={{ padding: '0.875rem', borderRadius: '12px', background: 'var(--color-bg)', border: '1px solid var(--color-border-light)' }}>
-                      <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>ĐỊA ĐIỂM</span>
-                      <p style={{ fontSize: '0.875rem', fontWeight: 800, margin: '2px 0 0 0', color: 'var(--color-text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                        {viewProjectModal.location || 'Chưa cập nhật'}
-                      </p>
-                    </div>
-                    <div style={{ padding: '0.875rem', borderRadius: '12px', background: 'var(--color-bg)', border: '1px solid var(--color-border-light)' }}>
-                      <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>QUY MÔ</span>
-                      <p style={{ fontSize: '0.875rem', fontWeight: 800, margin: '2px 0 0 0', color: 'var(--color-text)' }}>
-                        {viewProjectModal.scale_unit_count ? `${viewProjectModal.scale_unit_count} căn` : 'Chưa rõ'} {viewProjectModal.scale_block_count ? `(${viewProjectModal.scale_block_count} block)` : ''}
-                      </p>
-                    </div>
-                    <div style={{ padding: '0.875rem', borderRadius: '12px', background: 'var(--color-bg)', border: '1px solid var(--color-border-light)' }}>
-                      <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>PHÁP LÝ / TIẾN ĐỘ</span>
-                      <p style={{ fontSize: '0.875rem', fontWeight: 800, margin: '2px 0 0 0', color: 'var(--color-text)' }}>
-                        {viewProjectModal.legal_status || 'Chưa rõ'} {viewProjectModal.progress_percent ? `(${viewProjectModal.progress_percent}%)` : ''}
-                      </p>
-                    </div>
-                  </div>
+                  {projectModalMode === 'view' ? (
+                    <>
+                      {/* Section 1: Top Metrics */}
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.875rem' }}>
+                        <div style={{ padding: '1rem', borderRadius: '14px', background: 'var(--color-bg)', border: '1px solid var(--color-border-light)' }}>
+                          <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', fontWeight: 700, textTransform: 'uppercase' }}>Trạng thái mở bán</span>
+                          <p style={{ fontSize: '0.925rem', fontWeight: 800, margin: '4px 0 0 0', color: viewProjectModal.status === 'active' ? 'var(--color-success)' : 'var(--color-text)' }}>
+                            {viewProjectModal.status === 'active' ? 'Đang mở bán' : (viewProjectModal.status || 'Tạm dừng')}
+                          </p>
+                        </div>
+                        <div style={{ padding: '1rem', borderRadius: '14px', background: 'var(--color-bg)', border: '1px solid var(--color-border-light)' }}>
+                          <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', fontWeight: 700, textTransform: 'uppercase' }}>Địa điểm / Vị trí</span>
+                          <p style={{ fontSize: '0.875rem', fontWeight: 700, margin: '4px 0 0 0', color: 'var(--color-text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            {viewProjectModal.location || 'Chưa cập nhật'}
+                          </p>
+                        </div>
+                        <div style={{ padding: '1rem', borderRadius: '14px', background: 'var(--color-bg)', border: '1px solid var(--color-border-light)' }}>
+                          <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', fontWeight: 700, textTransform: 'uppercase' }}>Quy mô & Bàn giao</span>
+                          <p style={{ fontSize: '0.875rem', fontWeight: 700, margin: '4px 0 0 0', color: 'var(--color-text)' }}>
+                            {viewProjectModal.scale_unit_count ? `${viewProjectModal.scale_unit_count} căn` : 'Chưa rõ'} {viewProjectModal.scale_block_count ? `(${viewProjectModal.scale_block_count} block)` : ''} {viewProjectModal.handover_year ? `• ${viewProjectModal.handover_year}` : ''}
+                          </p>
+                        </div>
+                        <div style={{ padding: '1rem', borderRadius: '14px', background: 'var(--color-bg)', border: '1px solid var(--color-border-light)' }}>
+                          <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', fontWeight: 700, textTransform: 'uppercase' }}>Tình trạng pháp lý</span>
+                          <p style={{ fontSize: '0.875rem', fontWeight: 700, margin: '4px 0 0 0', color: 'var(--color-text)' }}>
+                            {viewProjectModal.legal_status || 'Chưa rõ'}
+                          </p>
+                        </div>
+                      </div>
 
-                  {viewProjectModal.description && (
-                    <div style={{ padding: '1rem', borderRadius: '14px', background: 'var(--color-bg)', border: '1px solid var(--color-border-light)' }}>
-                      <h4 style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--color-text-muted)', textTransform: 'uppercase', margin: 0 }}>Mô tả dự án</h4>
-                      <p style={{ fontSize: '0.875rem', color: 'var(--color-text)', lineHeight: 1.5, margin: '6px 0 0 0', whiteSpace: 'pre-line' }}>{viewProjectModal.description}</p>
-                    </div>
-                  )}
+                      {/* Section 2: Construction Progress Bar */}
+                      <div style={{ padding: '1.25rem', borderRadius: '16px', background: 'var(--color-surface)', border: '1px solid var(--color-border-light)', boxShadow: 'var(--shadow-sm)' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                          <span style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>Tiến độ thi công</span>
+                          <span style={{ fontSize: '0.9rem', fontWeight: 800, color: (viewProjectModal.progress_percent || 0) === 100 ? 'var(--color-success)' : 'var(--color-primary)' }}>
+                            {viewProjectModal.progress_percent || 0}% ({viewProjectModal.construction_status || 'Đang thi công'})
+                          </span>
+                        </div>
+                        <div style={{ height: '10px', background: 'var(--color-border-light)', borderRadius: '99px', overflow: 'hidden' }}>
+                          <div 
+                            style={{ 
+                              height: '100%', 
+                              width: `${viewProjectModal.progress_percent || 0}%`, 
+                              background: (viewProjectModal.progress_percent || 0) === 100 ? 'var(--color-success)' : 'linear-gradient(90deg, #BD1D2D, #F97316)',
+                              transition: 'width 0.4s ease'
+                            }} 
+                          />
+                        </div>
+                      </div>
 
-                  {viewProjectModal.roster && viewProjectModal.roster.length > 0 && (
-                    <div>
-                      <h4 style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--color-text-muted)', textTransform: 'uppercase', marginBottom: '0.75rem' }}>Nhân sự phụ trách ({viewProjectModal.roster.length})</h4>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                        {viewProjectModal.roster.map((m: any) => (
-                          <div key={m.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.625rem 0.875rem', borderRadius: '10px', background: 'var(--color-bg)', border: '1px solid var(--color-border-light)' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                              <Avatar name={m.full_name || m.name} src={m.avatar_url} size={32} />
-                              <div>
-                                <p style={{ fontWeight: 700, fontSize: '0.85rem', color: 'var(--color-text)', margin: 0 }}>{m.full_name || m.name}</p>
-                                <p style={{ fontSize: '0.725rem', color: 'var(--color-text-muted)', margin: 0 }}>{m.email || m.role || 'Thành viên'}</p>
-                              </div>
+                      {/* Section 3: Reference URL / Google Sheets */}
+                      {viewProjectModal.reference_url && (
+                        <div style={{ padding: '1rem 1.25rem', borderRadius: '14px', background: 'rgba(16, 185, 129, 0.06)', border: '1px solid rgba(16, 185, 129, 0.2)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                            <Globe size={20} style={{ color: '#10b981' }} />
+                            <div>
+                              <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)' }}>LINK THAM KHẢO / GOOGLE SHEETS</span>
+                              <p style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--color-text)', margin: '2px 0 0 0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '380px' }}>
+                                {viewProjectModal.reference_url}
+                              </p>
                             </div>
                           </div>
-                        ))}
+                          <a href={viewProjectModal.reference_url} target="_blank" rel="noopener noreferrer" className="btn primary sm" style={{ height: '32px', borderRadius: '8px', fontSize: '0.75rem', fontWeight: 700, background: '#10b981', border: 'none', gap: '4px' }}>
+                            <ExternalLink size={13} /> Mở link
+                          </a>
+                        </div>
+                      )}
+
+                      {/* Section 4: Description */}
+                      {viewProjectModal.description && (
+                        <div style={{ padding: '1.25rem', borderRadius: '16px', background: 'var(--color-bg)', border: '1px solid var(--color-border-light)' }}>
+                          <h4 style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--color-text-muted)', textTransform: 'uppercase', margin: 0 }}>Mô tả dự án</h4>
+                          <p style={{ fontSize: '0.875rem', color: 'var(--color-text)', lineHeight: 1.6, margin: '8px 0 0 0', whiteSpace: 'pre-line' }}>{viewProjectModal.description}</p>
+                        </div>
+                      )}
+
+                      {/* Section 5: Roster */}
+                      {viewProjectModal.roster && viewProjectModal.roster.length > 0 && (
+                        <div>
+                          <h4 style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--color-text-muted)', textTransform: 'uppercase', marginBottom: '0.75rem' }}>Đội ngũ Roster phụ trách ({viewProjectModal.roster.length})</h4>
+                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '0.625rem' }}>
+                            {viewProjectModal.roster.map((m: any) => (
+                              <div key={m.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '0.75rem', borderRadius: '12px', background: 'var(--color-bg)', border: '1px solid var(--color-border-light)' }}>
+                                <Avatar name={m.full_name || m.name} src={m.avatar_url} size={36} />
+                                <div style={{ overflow: 'hidden' }}>
+                                  <p style={{ fontWeight: 700, fontSize: '0.85rem', color: 'var(--color-text)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.full_name || m.name}</p>
+                                  <p style={{ fontSize: '0.725rem', color: 'var(--color-text-muted)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.email || m.role || 'Thành viên'}</p>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    /* Edit Form Mode */
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1rem' }}>
+                        <div>
+                          <label className="form-label" style={{ fontSize: '0.8rem', fontWeight: 700 }}>Tên dự án *</label>
+                          <input 
+                            type="text" className="form-control" 
+                            value={projectEditForm.name || ''} 
+                            onChange={e => setProjectEditForm({ ...projectEditForm, name: e.target.value })} 
+                          />
+                        </div>
+                        <div>
+                          <label className="form-label" style={{ fontSize: '0.8rem', fontWeight: 700 }}>Mã dự án *</label>
+                          <input 
+                            type="text" className="form-control" 
+                            value={projectEditForm.code || ''} 
+                            onChange={e => setProjectEditForm({ ...projectEditForm, code: e.target.value })} 
+                          />
+                        </div>
+                        <div>
+                          <label className="form-label" style={{ fontSize: '0.8rem', fontWeight: 700 }}>Chủ đầu tư</label>
+                          <input 
+                            type="text" className="form-control" 
+                            value={projectEditForm.developer || ''} 
+                            onChange={e => setProjectEditForm({ ...projectEditForm, developer: e.target.value })} 
+                          />
+                        </div>
+                        <div>
+                          <label className="form-label" style={{ fontSize: '0.8rem', fontWeight: 700 }}>Trạng thái bán</label>
+                          <select 
+                            className="form-control" 
+                            value={projectEditForm.status || 'active'} 
+                            onChange={e => setProjectEditForm({ ...projectEditForm, status: e.target.value })}
+                          >
+                            <option value="active">Đang mở bán</option>
+                            <option value="inactive">Tạm dừng bán</option>
+                          </select>
+                        </div>
+                        <div style={{ gridColumn: 'span 2' }}>
+                          <label className="form-label" style={{ fontSize: '0.8rem', fontWeight: 700 }}>Vị trí / Địa chỉ</label>
+                          <input 
+                            type="text" className="form-control" 
+                            value={projectEditForm.location || ''} 
+                            onChange={e => setProjectEditForm({ ...projectEditForm, location: e.target.value })} 
+                          />
+                        </div>
+                        <div>
+                          <label className="form-label" style={{ fontSize: '0.8rem', fontWeight: 700 }}>Pháp lý dự án</label>
+                          <input 
+                            type="text" className="form-control" 
+                            value={projectEditForm.legal_status || ''} 
+                            onChange={e => setProjectEditForm({ ...projectEditForm, legal_status: e.target.value })} 
+                          />
+                        </div>
+                        <div>
+                          <label className="form-label" style={{ fontSize: '0.8rem', fontWeight: 700 }}>Tiến độ thi công (%)</label>
+                          <input 
+                            type="number" className="form-control" min={0} max={100} 
+                            value={projectEditForm.progress_percent ?? 0} 
+                            onChange={e => setProjectEditForm({ ...projectEditForm, progress_percent: Number(e.target.value) })} 
+                          />
+                        </div>
+                        <div>
+                          <label className="form-label" style={{ fontSize: '0.8rem', fontWeight: 700 }}>Số lượng căn</label>
+                          <input 
+                            type="number" className="form-control" 
+                            value={projectEditForm.scale_unit_count || ''} 
+                            onChange={e => setProjectEditForm({ ...projectEditForm, scale_unit_count: e.target.value ? Number(e.target.value) : null })} 
+                          />
+                        </div>
+                        <div>
+                          <label className="form-label" style={{ fontSize: '0.8rem', fontWeight: 700 }}>Số Block / Tháp</label>
+                          <input 
+                            type="number" className="form-control" 
+                            value={projectEditForm.scale_block_count || ''} 
+                            onChange={e => setProjectEditForm({ ...projectEditForm, scale_block_count: e.target.value ? Number(e.target.value) : null })} 
+                          />
+                        </div>
+                        <div style={{ gridColumn: 'span 2' }}>
+                          <label className="form-label" style={{ fontSize: '0.8rem', fontWeight: 700 }}>Link Google Sheets / Website tham khảo</label>
+                          <input 
+                            type="url" className="form-control" 
+                            value={projectEditForm.reference_url || ''} 
+                            placeholder="https://docs.google.com/spreadsheets/..." 
+                            onChange={e => setProjectEditForm({ ...projectEditForm, reference_url: e.target.value })} 
+                          />
+                        </div>
+                        <div style={{ gridColumn: 'span 2' }}>
+                          <label className="form-label" style={{ fontSize: '0.8rem', fontWeight: 700 }}>Mô tả dự án</label>
+                          <textarea 
+                            className="form-control" rows={4} 
+                            value={projectEditForm.description || ''} 
+                            onChange={e => setProjectEditForm({ ...projectEditForm, description: e.target.value })} 
+                          />
+                        </div>
+                      </div>
+
+                      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '1rem' }}>
+                        <button type="button" className="btn outline sm" onClick={() => setProjectModalMode('view')}>{t('Hủy')}</button>
+                        <button type="button" className="btn primary sm" onClick={handleSaveProjectEdit} disabled={savingProject} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                          {savingProject ? <Loader2 size={14} className="spin" /> : <Save size={14} />} {t('Lưu thay đổi')}
+                        </button>
                       </div>
                     </div>
                   )}
@@ -3839,71 +4077,197 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
             document.body
           )}
 
-          {/* Quick View Campaign Drawer */}
+          {/* Full View & Edit Campaign Drawer */}
           {viewCampaignModal && createPortal(
             <div className="modal-overlay" onClick={() => setViewCampaignModal(null)} style={{ position: 'fixed', inset: 0, zIndex: 2000020, backdropFilter: 'blur(6px)', background: 'rgba(0,0,0,0.65)', display: 'flex', justifyContent: 'flex-end' }}>
               <motion.div 
                 initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }} transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-                style={{ width: '600px', maxWidth: '90vw', height: '100%', background: 'var(--color-surface)', borderLeft: '1px solid var(--color-border)', boxShadow: '-10px 0 30px rgba(0,0,0,0.25)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
+                style={{ width: '680px', maxWidth: '92vw', height: '100%', background: 'var(--color-surface)', borderLeft: '1px solid var(--color-border)', boxShadow: '-10px 0 30px rgba(0,0,0,0.25)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
                 onClick={e => e.stopPropagation()}
               >
+                {/* Header */}
                 <div style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid var(--color-border-light)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--color-surface)' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <div style={{ width: 40, height: 40, borderRadius: '10px', background: 'rgba(245, 158, 11, 0.1)', color: 'var(--color-warning)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <Megaphone size={20} />
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <div style={{ width: 42, height: 42, borderRadius: '12px', background: 'rgba(245, 158, 11, 0.1)', color: 'var(--color-warning)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <Megaphone size={22} />
                     </div>
                     <div>
-                      <h3 style={{ fontSize: '1.1rem', fontWeight: 800, margin: 0, color: 'var(--color-text)' }}>{viewCampaignModal.name}</h3>
-                      <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', margin: '2px 0 0 0' }}>Mã chiến dịch: {viewCampaignModal.code || '—'} {viewCampaignModal.project_name ? `• Dự án: ${viewCampaignModal.project_name}` : ''}</p>
+                      <h3 style={{ fontSize: '1.15rem', fontWeight: 800, margin: 0, color: 'var(--color-text)' }}>{viewCampaignModal.name}</h3>
+                      <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', margin: '2px 0 0 0' }}>
+                        Dự án: <span style={{ fontWeight: 700 }}>{viewCampaignModal.project_name || 'Chưa chọn'}</span>
+                      </p>
                     </div>
                   </div>
-                  <button type="button" className="btn-icon" onClick={() => setViewCampaignModal(null)} style={{ borderRadius: '8px' }}><X size={18} /></button>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    {campaignModalMode === 'view' ? (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setCampaignEditForm({ ...viewCampaignModal });
+                          setCampaignModalMode('edit');
+                        }}
+                        className="btn outline sm"
+                        style={{ height: '32px', borderRadius: '8px', padding: '0 12px', fontSize: '0.75rem', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                      >
+                        <Edit3 size={14} />
+                        {t('Chỉnh sửa')}
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={handleSaveCampaignEdit}
+                        disabled={savingCampaign}
+                        className="btn primary sm"
+                        style={{ height: '32px', borderRadius: '8px', padding: '0 14px', fontSize: '0.75rem', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                      >
+                        {savingCampaign ? <Loader2 size={14} className="spin" /> : <Save size={14} />}
+                        {t('Lưu thay đổi')}
+                      </button>
+                    )}
+                    <button type="button" className="btn-icon" onClick={() => setViewCampaignModal(null)} style={{ borderRadius: '8px' }}><X size={18} /></button>
+                  </div>
                 </div>
 
+                {/* Content Body */}
                 <div style={{ padding: '1.5rem', flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.75rem' }}>
-                    <div style={{ padding: '0.875rem', borderRadius: '12px', background: 'var(--color-bg)', border: '1px solid var(--color-border-light)' }}>
-                      <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>TRẠNG THÁI</span>
-                      <p style={{ fontSize: '0.875rem', fontWeight: 800, margin: '2px 0 0 0', color: viewCampaignModal.status === 'active' ? 'var(--color-success)' : 'var(--color-text)' }}>
-                        {viewCampaignModal.status === 'active' ? 'Đang diễn ra' : (viewCampaignModal.status || 'Tạm dừng')}
-                      </p>
-                    </div>
-                    <div style={{ padding: '0.875rem', borderRadius: '12px', background: 'var(--color-bg)', border: '1px solid var(--color-border-light)' }}>
-                      <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>NGÂN SÁCH</span>
-                      <p style={{ fontSize: '0.875rem', fontWeight: 800, margin: '2px 0 0 0', color: 'var(--color-primary)' }}>
-                        {viewCampaignModal.budget ? new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(viewCampaignModal.budget) : 'Chưa lập'}
-                      </p>
-                    </div>
-                    <div style={{ padding: '0.875rem', borderRadius: '12px', background: 'var(--color-bg)', border: '1px solid var(--color-border-light)', gridColumn: 'span 2' }}>
-                      <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>MỤC TIÊU CHIẾN DỊCH</span>
-                      <p style={{ fontSize: '0.875rem', fontWeight: 800, margin: '2px 0 0 0', color: 'var(--color-text)' }}>
-                        {viewCampaignModal.target || viewCampaignModal.description || 'Chưa có thông tin mục tiêu'}
-                      </p>
-                    </div>
-                  </div>
+                  {campaignModalMode === 'view' ? (
+                    <>
+                      {/* Metrics */}
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.875rem' }}>
+                        <div style={{ padding: '1rem', borderRadius: '14px', background: 'var(--color-bg)', border: '1px solid var(--color-border-light)' }}>
+                          <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', fontWeight: 700, textTransform: 'uppercase' }}>TRẠNG THÁI</span>
+                          <p style={{ fontSize: '0.925rem', fontWeight: 800, margin: '4px 0 0 0', color: viewCampaignModal.status === 'active' ? 'var(--color-success)' : 'var(--color-text)' }}>
+                            {viewCampaignModal.status === 'active' ? 'Đang diễn ra' : (viewCampaignModal.status || 'Tạm dừng')}
+                          </p>
+                        </div>
+                        <div style={{ padding: '1rem', borderRadius: '14px', background: 'var(--color-bg)', border: '1px solid var(--color-border-light)' }}>
+                          <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', fontWeight: 700, textTransform: 'uppercase' }}>THỜI GIAN TRIỂN KHAI</span>
+                          <p style={{ fontSize: '0.875rem', fontWeight: 700, margin: '4px 0 0 0', color: 'var(--color-text)' }}>
+                            {viewCampaignModal.start_date || '—'} đến {viewCampaignModal.end_date || '—'}
+                          </p>
+                        </div>
+                      </div>
 
-                  {viewCampaignModal.description && (
-                    <div style={{ padding: '1rem', borderRadius: '14px', background: 'var(--color-bg)', border: '1px solid var(--color-border-light)' }}>
-                      <h4 style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--color-text-muted)', textTransform: 'uppercase', margin: 0 }}>Chi tiết chiến dịch</h4>
-                      <p style={{ fontSize: '0.875rem', color: 'var(--color-text)', lineHeight: 1.5, margin: '6px 0 0 0', whiteSpace: 'pre-line' }}>{viewCampaignModal.description}</p>
-                    </div>
-                  )}
-
-                  {viewCampaignModal.roster && viewCampaignModal.roster.length > 0 && (
-                    <div>
-                      <h4 style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--color-text-muted)', textTransform: 'uppercase', marginBottom: '0.75rem' }}>Nhân sự tham gia chiến dịch ({viewCampaignModal.roster.length})</h4>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                        {viewCampaignModal.roster.map((m: any) => (
-                          <div key={m.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.625rem 0.875rem', borderRadius: '10px', background: 'var(--color-bg)', border: '1px solid var(--color-border-light)' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                              <Avatar name={m.full_name || m.name} src={m.avatar_url} size={32} />
-                              <div>
-                                <p style={{ fontWeight: 700, fontSize: '0.85rem', color: 'var(--color-text)', margin: 0 }}>{m.full_name || m.name}</p>
-                                <p style={{ fontSize: '0.725rem', color: 'var(--color-text-muted)', margin: 0 }}>{m.email || m.role || 'Thành viên'}</p>
-                              </div>
+                      {/* Reference URL */}
+                      {viewCampaignModal.reference_url && (
+                        <div style={{ padding: '1rem 1.25rem', borderRadius: '14px', background: 'rgba(16, 185, 129, 0.06)', border: '1px solid rgba(16, 185, 129, 0.2)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                            <Globe size={20} style={{ color: '#10b981' }} />
+                            <div>
+                              <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)' }}>LINK THAM KHẢO</span>
+                              <p style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--color-text)', margin: '2px 0 0 0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '380px' }}>
+                                {viewCampaignModal.reference_url}
+                              </p>
                             </div>
                           </div>
-                        ))}
+                          <a href={viewCampaignModal.reference_url} target="_blank" rel="noopener noreferrer" className="btn primary sm" style={{ height: '32px', borderRadius: '8px', fontSize: '0.75rem', fontWeight: 700, background: '#10b981', border: 'none', gap: '4px' }}>
+                            <ExternalLink size={13} /> Mở link
+                          </a>
+                        </div>
+                      )}
+
+                      {/* Description / Target */}
+                      {viewCampaignModal.description && (
+                        <div style={{ padding: '1.25rem', borderRadius: '16px', background: 'var(--color-bg)', border: '1px solid var(--color-border-light)' }}>
+                          <h4 style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--color-text-muted)', textTransform: 'uppercase', margin: 0 }}>Mục tiêu &amp; Mô tả chiến dịch</h4>
+                          <p style={{ fontSize: '0.875rem', color: 'var(--color-text)', lineHeight: 1.6, margin: '8px 0 0 0', whiteSpace: 'pre-line' }}>{viewCampaignModal.description}</p>
+                        </div>
+                      )}
+
+                      {/* Roster */}
+                      {viewCampaignModal.roster && viewCampaignModal.roster.length > 0 && (
+                        <div>
+                          <h4 style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--color-text-muted)', textTransform: 'uppercase', marginBottom: '0.75rem' }}>Nhân sự tham gia chiến dịch ({viewCampaignModal.roster.length})</h4>
+                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '0.625rem' }}>
+                            {viewCampaignModal.roster.map((m: any) => (
+                              <div key={m.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '0.75rem', borderRadius: '12px', background: 'var(--color-bg)', border: '1px solid var(--color-border-light)' }}>
+                                <Avatar name={m.full_name || m.name} src={m.avatar_url} size={36} />
+                                <div style={{ overflow: 'hidden' }}>
+                                  <p style={{ fontWeight: 700, fontSize: '0.85rem', color: 'var(--color-text)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.full_name || m.name}</p>
+                                  <p style={{ fontSize: '0.725rem', color: 'var(--color-text-muted)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.email || m.role || 'Thành viên'}</p>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    /* Edit Form Mode */
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1rem' }}>
+                        <div style={{ gridColumn: 'span 2' }}>
+                          <label className="form-label" style={{ fontSize: '0.8rem', fontWeight: 700 }}>Tên chiến dịch *</label>
+                          <input 
+                            type="text" className="form-control" 
+                            value={campaignEditForm.name || ''} 
+                            onChange={e => setCampaignEditForm({ ...campaignEditForm, name: e.target.value })} 
+                          />
+                        </div>
+                        <div>
+                          <label className="form-label" style={{ fontSize: '0.8rem', fontWeight: 700 }}>Dự án liên kết</label>
+                          <select 
+                            className="form-control" 
+                            value={campaignEditForm.project_id || ''} 
+                            onChange={e => setCampaignEditForm({ ...campaignEditForm, project_id: Number(e.target.value) })}
+                          >
+                            <option value="">-- Chọn dự án --</option>
+                            {allowedProjects.map(p => (
+                              <option key={p.id} value={p.id}>{p.name}</option>
+                            ))}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="form-label" style={{ fontSize: '0.8rem', fontWeight: 700 }}>Trạng thái</label>
+                          <select 
+                            className="form-control" 
+                            value={campaignEditForm.status || 'active'} 
+                            onChange={e => setCampaignEditForm({ ...campaignEditForm, status: e.target.value })}
+                          >
+                            <option value="active">Đang diễn ra</option>
+                            <option value="inactive">Tạm dừng</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="form-label" style={{ fontSize: '0.8rem', fontWeight: 700 }}>Ngày bắt đầu</label>
+                          <input 
+                            type="date" className="form-control" 
+                            value={campaignEditForm.start_date || ''} 
+                            onChange={e => setCampaignEditForm({ ...campaignEditForm, start_date: e.target.value })} 
+                          />
+                        </div>
+                        <div>
+                          <label className="form-label" style={{ fontSize: '0.8rem', fontWeight: 700 }}>Ngày kết thúc</label>
+                          <input 
+                            type="date" className="form-control" 
+                            value={campaignEditForm.end_date || ''} 
+                            onChange={e => setCampaignEditForm({ ...campaignEditForm, end_date: e.target.value })} 
+                          />
+                        </div>
+                        <div style={{ gridColumn: 'span 2' }}>
+                          <label className="form-label" style={{ fontSize: '0.8rem', fontWeight: 700 }}>Link tham khảo</label>
+                          <input 
+                            type="url" className="form-control" 
+                            value={campaignEditForm.reference_url || ''} 
+                            placeholder="https://..." 
+                            onChange={e => setCampaignEditForm({ ...campaignEditForm, reference_url: e.target.value })} 
+                          />
+                        </div>
+                        <div style={{ gridColumn: 'span 2' }}>
+                          <label className="form-label" style={{ fontSize: '0.8rem', fontWeight: 700 }}>Mô tả &amp; Mục tiêu chiến dịch</label>
+                          <textarea 
+                            className="form-control" rows={4} 
+                            value={campaignEditForm.description || ''} 
+                            onChange={e => setCampaignEditForm({ ...campaignEditForm, description: e.target.value })} 
+                          />
+                        </div>
+                      </div>
+
+                      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '1rem' }}>
+                        <button type="button" className="btn outline sm" onClick={() => setCampaignModalMode('view')}>{t('Hủy')}</button>
+                        <button type="button" className="btn primary sm" onClick={handleSaveCampaignEdit} disabled={savingCampaign} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                          {savingCampaign ? <Loader2 size={14} className="spin" /> : <Save size={14} />} {t('Lưu thay đổi')}
+                        </button>
                       </div>
                     </div>
                   )}
