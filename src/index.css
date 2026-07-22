@@ -4442,8 +4442,12 @@ div[role="status"] {
   }
   
   /* Selectively target normal text, table cells, form labels to keep them readable but structured */
-  p, .form-label, .table td, .table th, .badge, .card-body, .modal-body, .drawer-body {
+  p, .form-label, .table td, .table th, .card-body, .modal-body, .drawer-body {
     font-size: 14px !important;
+  }
+
+  .badge, .tag {
+    font-size: 0.65rem !important;
   }
   
   /* KPI/Stat Cards Compression */

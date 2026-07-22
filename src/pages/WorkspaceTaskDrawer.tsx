@@ -2718,7 +2718,7 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
                         style={{ background: 'none', border: 'none', color: 'var(--color-text-muted)', fontSize: '0.725rem', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', padding: 0 }}
                         className="hover-opacity"
                       >
-                        {loadingViewProject ? <Loader2 size={12} className="spin" /> : <Eye size={13} style={{ color: 'var(--color-text-muted)' }} />} {t('Xem dự án')}
+                        {loadingViewProject ? <Loader2 size={12} className="spin" /> : <Eye size={13} style={{ color: 'var(--color-text-muted)' }} />} {t('Xem')}
                       </button>
                     )}
                   </div>
@@ -2756,8 +2756,9 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
                         onClick={() => openCampaignDetail(erpMeta.campaign_id)} 
                         style={{ background: 'none', border: 'none', color: 'var(--color-text-muted)', fontSize: '0.725rem', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', padding: 0 }}
                         className="hover-opacity"
+                        title={t('Xem chi tiết chiến dịch')}
                       >
-                        {loadingViewCampaign ? <Loader2 size={12} className="spin" /> : <Eye size={13} style={{ color: 'var(--color-text-muted)' }} />} {t('Xem chiến dịch')}
+                        {loadingViewCampaign ? <Loader2 size={12} className="spin" /> : <Eye size={13} style={{ color: 'var(--color-text-muted)' }} />} {t('Xem')}
                       </button>
                     )}
                   </div>
