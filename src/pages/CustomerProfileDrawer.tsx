@@ -1292,7 +1292,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
     updated[sIdx].percentage = parseInt(val) || 0;
     setTempSharesData(updated);
   };
-  const [showDealModal, setShowDealModal] = useState(false);
+  const [showDealModal, setShowDealModal] = useState(true);
   const [depositProjectId, setDepositProjectId] = useState('');
   const [depositUnitCode, setDepositUnitCode] = useState('');
   const [depositPrice, setDepositPrice] = useState('');
@@ -1394,7 +1394,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
     }
   }, [isOpen, activeTab]);
 
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(true);
 
   useEffect(() => {
     (window as any).__setDepositSubmitting = setIsSubmitting;
