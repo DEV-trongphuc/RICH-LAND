@@ -15721,15 +15721,16 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
         zIndex={2000000}
       >
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', padding: '4px 0' }}>
-          {/* Toolbar: Search + Team Filter + Sale Filter + Status Filter + Count Indicator (Single Row) */}
+          {/* Toolbar: Search + Team Filter + Sale Filter + Status Filter + Count Indicator */}
           <div style={{
             display: 'flex',
             alignItems: 'center',
             gap: '8px',
-            flexWrap: 'wrap'
+            flexWrap: 'wrap',
+            width: '100%'
           }}>
             {/* Search Input */}
-            <div style={{ position: 'relative', width: '230px', flexShrink: 0 }}>
+            <div style={{ position: 'relative', width: isMobile ? '100%' : '230px', flexShrink: 0 }}>
               <input
                 type="text"
                 placeholder={t('Tìm tên khách, SĐT, TVV...')}
@@ -15739,7 +15740,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                   setMeetingPage(1);
                 }}
                 className="form-input"
-                style={{ paddingLeft: '14px', paddingRight: '34px', fontSize: '0.825rem', height: '36px' }}
+                style={{ paddingLeft: '14px', paddingRight: '34px', fontSize: '0.825rem', height: '36px', width: '100%' }}
               />
               {meetingSearchText ? (
                 <button
@@ -15769,7 +15770,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                 searchable
                 showAvatars
                 placeholder={t('Tất cả các Nhóm')}
-                width="180px"
+                width={isMobile ? '100%' : '180px'}
               />
             )}
 
@@ -15785,7 +15786,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                 searchable
                 showAvatars
                 placeholder={t('Tất cả Sale / TVV')}
-                width="190px"
+                width={isMobile ? '100%' : '190px'}
               />
             )}
 
@@ -15798,39 +15799,49 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                 setMeetingPage(1);
               }}
               placeholder={t('Trạng thái')}
-              width="170px"
+              width={isMobile ? '100%' : '170px'}
             />
 
-            {/* Count Indicator (Aligned Far Right) */}
-            <span style={{ marginLeft: 'auto', fontSize: '0.8rem', color: 'var(--color-text-muted)', whiteSpace: 'nowrap' }}>
+            {/* Count Indicator */}
+            <span style={{
+              marginLeft: isMobile ? '0' : 'auto',
+              fontSize: '0.8rem',
+              color: 'var(--color-text-muted)',
+              whiteSpace: 'nowrap',
+              width: isMobile ? '100%' : 'auto',
+              textAlign: isMobile ? 'right' : 'left',
+              marginTop: isMobile ? '2px' : '0'
+            }}>
               {t('Hiển thị')} {filteredUpcomingMeetingsModalList.length} / {upcomingMeetingsList.length} {t('cuộc hẹn')}
             </span>
           </div>
 
-          {/* Table Column Header */}
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            padding: '8px 16px',
-            background: 'var(--color-bg-subtle, rgba(0,0,0,0.02))',
-            borderRadius: '8px',
-            fontSize: '0.725rem',
-            fontWeight: 800,
-            color: 'var(--color-text-muted)',
-            textTransform: 'uppercase',
-            letterSpacing: '0.5px',
-            gap: '1rem',
-            border: '1px solid var(--color-border)'
-          }}>
-            <div style={{ flex: '1.4', minWidth: '220px' }}>{t('Khách hàng')}</div>
-            <div style={{ flex: '1.2', minWidth: '180px' }}>{t('Sale phụ trách')}</div>
-            <div style={{ flex: '1.2', minWidth: '170px' }}>{t('Thời gian')}</div>
-            <div style={{ width: '130px', flexShrink: 0 }}>{t('Trạng thái')}</div>
-            <div style={{ width: '100px', flexShrink: 0, textAlign: 'right' }}>{t('Thao tác')}</div>
-          </div>
+          {/* Desktop Table Column Header (Hidden on Mobile) */}
+          {!isMobile && (
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              padding: '8px 16px',
+              background: 'var(--color-bg-subtle, rgba(0,0,0,0.02))',
+              borderRadius: '8px',
+              fontSize: '0.725rem',
+              fontWeight: 800,
+              color: 'var(--color-text-muted)',
+              textTransform: 'uppercase',
+              letterSpacing: '0.5px',
+              gap: '1rem',
+              border: '1px solid var(--color-border)'
+            }}>
+              <div style={{ flex: '1.4', minWidth: '220px' }}>{t('Khách hàng')}</div>
+              <div style={{ flex: '1.2', minWidth: '180px' }}>{t('Sale phụ trách')}</div>
+              <div style={{ flex: '1.2', minWidth: '170px' }}>{t('Thời gian')}</div>
+              <div style={{ width: '130px', flexShrink: 0 }}>{t('Trạng thái')}</div>
+              <div style={{ width: '100px', flexShrink: 0, textAlign: 'right' }}>{t('Thao tác')}</div>
+            </div>
+          )}
 
           {/* Meeting Cards List */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '52vh', overflowY: 'auto', paddingRight: '4px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: isMobile ? '10px' : '8px', maxHeight: '58vh', overflowY: 'auto', paddingRight: '4px' }}>
             {filteredUpcomingMeetingsModalList.length === 0 ? (
               <div style={{
                 padding: '2.5rem 1rem',
@@ -15852,7 +15863,6 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                 const rawCustomerName = item.contact_name || item.lead_name || item.related_name || item.customer_name || 'Khách hàng';
                 const customerName = formatVietnameseFullName(rawCustomerName);
                 const customerPhone = item.phone || item.contact_phone || item.lead_phone || '';
-                // Only use explicit customer avatar fields, do not fallback to item.avatar which is sale's photo!
                 const customerAvatar = item.contact_avatar || item.customer_avatar || item.lead_avatar || '';
 
                 const saleName = item.assignee_name || item.user_name || item.created_by_name || item.sale_name || 'Tư vấn viên';
@@ -15863,6 +15873,122 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                 const isDone = checkMeetingIsDone(item);
                 const isOverdue = checkMeetingIsOverdue(item);
 
+                // MOBILE CARD VIEW
+                if (isMobile) {
+                  return (
+                    <motion.div
+                      key={item.id || idx}
+                      whileHover={{ translateY: -1 }}
+                      transition={{ duration: 0.15 }}
+                      onClick={() => handleOpenCustomerFromMeetingModal(item)}
+                      style={{
+                        background: 'var(--color-surface)',
+                        border: '1px solid var(--color-border)',
+                        borderRadius: '14px',
+                        padding: '0.875rem 1rem',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '10px',
+                        boxShadow: 'var(--shadow-xs)',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      {/* Top Row: Customer Info + Status Pill */}
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0, flex: 1 }}>
+                          <Avatar name={customerName} src={customerAvatar} size={40} />
+                          <div style={{ minWidth: 0 }}>
+                            <span style={{ fontSize: '0.925rem', fontWeight: 800, color: 'var(--color-text)', display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              {customerName}
+                            </span>
+                            {customerPhone && (
+                              <span style={{ fontSize: '0.775rem', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: '4px', marginTop: '2px' }}>
+                                <Phone size={12} />
+                                {customerPhone}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Status Badge */}
+                        <div style={{ flexShrink: 0 }}>
+                          {isDone ? (
+                            <span style={{ padding: '4px 10px', borderRadius: '20px', fontSize: '0.725rem', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '4px', background: 'rgba(16, 185, 129, 0.12)', color: '#10b981' }}>
+                              <CheckCircle2 size={12} /> {t('Đã gặp')}
+                            </span>
+                          ) : isOverdue ? (
+                            <span style={{ padding: '4px 10px', borderRadius: '20px', fontSize: '0.725rem', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '4px', background: 'rgba(245, 158, 11, 0.15)', color: '#d97706' }}>
+                              <AlertCircle size={12} /> {t('Quá giờ hẹn')}
+                            </span>
+                          ) : (
+                            <span style={{ padding: '4px 10px', borderRadius: '20px', fontSize: '0.725rem', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '4px', background: 'rgba(37, 99, 235, 0.12)', color: '#2563EB' }}>
+                              <Clock size={12} /> {t('Sắp diễn ra')}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Line Separator */}
+                      <div style={{ height: '1px', background: 'var(--color-border-light)' }} />
+
+                      {/* Middle Row: Meeting Time & Sale in Charge */}
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', alignItems: 'center' }}>
+                        {/* Time info */}
+                        <div>
+                          <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', fontWeight: 600, display: 'block' }}>
+                            {getRelativeDateLabel(dueDateRaw) ? t(getRelativeDateLabel(dueDateRaw)) : t('Thời gian')}
+                          </span>
+                          <span style={{ fontSize: '0.825rem', fontWeight: 700, color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: '4px', marginTop: '2px' }}>
+                            <Clock size={12} style={{ color: '#2563EB' }} />
+                            {dueDateRaw ? dueDateRaw.replace('T', ' ').slice(0, 16) : t('Chưa xếp giờ')}
+                          </span>
+                        </div>
+
+                        {/* Sale info */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', justifyContent: 'flex-end' }}>
+                          <Avatar name={saleName} src={saleAvatar} size={24} />
+                          <div style={{ minWidth: 0, textAlign: 'right' }}>
+                            <span style={{ fontSize: '0.675rem', color: 'var(--color-text-muted)', display: 'block', fontWeight: 600 }}>
+                              {t('Sale phụ trách')}
+                            </span>
+                            <span style={{ fontSize: '0.775rem', fontWeight: 700, color: 'var(--color-text)', display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              {saleName}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Action Button Bar */}
+                      <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '2px' }}>
+                        <button
+                          type="button"
+                          className="btn sm outline"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleOpenCustomerFromMeetingModal(item);
+                          }}
+                          style={{
+                            width: '100%',
+                            justifyContent: 'center',
+                            fontSize: '0.8rem',
+                            fontWeight: 700,
+                            padding: '7px 12px',
+                            borderRadius: '8px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '6px'
+                          }}
+                        >
+                          <Eye size={14} />
+                          <span>{t('Xem chi tiết hồ sơ')}</span>
+                          <ChevronRight size={14} />
+                        </button>
+                      </div>
+                    </motion.div>
+                  );
+                }
+
+                // DESKTOP TABLE ROW
                 return (
                   <motion.div
                     key={item.id || idx}
