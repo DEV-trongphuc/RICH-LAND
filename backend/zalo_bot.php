@@ -52,7 +52,8 @@ function sendZaloMessage($botToken, $chatId, $text, $sync = true, $leadId = 0)
     curl_setopt($ch, CURLOPT_POSTFIELDS, $payload);
     curl_setopt($ch, CURLOPT_HTTPHEADER, array('Content-Type: application/json; charset=utf-8'));
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_TIMEOUT, 5); // Timeout 5 giây tránh nghẽn
+    curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 1);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 2);
     curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
 
     $result = curl_exec($ch);

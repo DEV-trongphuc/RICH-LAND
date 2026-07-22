@@ -84,8 +84,16 @@ function respond(int $code, $data = null, string $message = '', bool $success = 
     if (!headers_sent()) {
         http_response_code($code);
         header('Content-Type: application/json; charset=UTF-8');
+        $json = json_encode(['success' => $success, 'data' => $data, 'message' => $message], JSON_UNESCAPED_UNICODE);
+        header('Content-Length: ' . strlen($json));
+        header('Connection: close');
+        echo $json;
+        if (function_exists('fastcgi_finish_request')) {
+            fastcgi_finish_request();
+        }
+    } else {
+        echo json_encode(['success' => $success, 'data' => $data, 'message' => $message], JSON_UNESCAPED_UNICODE);
     }
-    echo json_encode(['success' => $success, 'data' => $data, 'message' => $message], JSON_UNESCAPED_UNICODE);
     exit;
 }
 

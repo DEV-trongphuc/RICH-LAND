@@ -782,19 +782,14 @@ class ContactController {
                 if (!empty($capiTriggersRaw)) {
                     $capiMap = json_decode($capiTriggersRaw, true) ?: [];
                 }
-                
-                // Fallback mapping if not configured in settings
-                if (empty($capiMap)) {
-                    $capiMap = [
-                        'dong_y_gap' => 'Schedule',
-                        'da_gap' => 'Schedule',
-                        'not_lead' => 'BAD',
-                        'dat_coc' => 'Purchase'
-                    ];
-                }
-                
-                if (isset($capiMap[$newStatus]) && $capiMap[$newStatus] !== 'Skip' && $capiMap[$newStatus] !== 'None' && $capiMap[$newStatus] !== 'BAD') {
-                    CapiHelper::sendEvent($this->db, $id, $capiMap[$newStatus]);
+                    if (isset($capiMap[$newStatus]) && $capiMap[$newStatus] !== 'Skip' && $capiMap[$newStatus] !== 'None' && $capiMap[$newStatus] !== 'BAD') {
+                    $evtName = $capiMap[$newStatus];
+                    register_shutdown_function(function() use ($id, $evtName) {
+                        try {
+                            require_once __DIR__ . '/../config/CapiHelper.php';
+                            CapiHelper::sendEvent(null, $id, $evtName);
+                        } catch (\Throwable $ex) {}
+                    });
                 }
 
                 // Update security_expires_at
@@ -833,15 +828,24 @@ class ContactController {
             saveCustomFields($this->db, $auth['tenant_id'], $id, 'contact', $b['custom_fields']);
         }
 
-        // Notify the owner if modified by another user
+        // Notify the owner asynchronously if modified by another user
         if ($currentContact && !empty($currentContact['owner_id']) && (int)$currentContact['owner_id'] !== (int)$auth['user_id']) {
             $ownerId = (int)$currentContact['owner_id'];
-            require_once __DIR__ . '/../NotificationService.php';
-            NotificationService::send($this->db, $auth['tenant_id'], 'CUSTOMER_UPDATE', [
-                'user_id' => $ownerId,
-                'customer_name' => trim($currentContact['first_name'] . ' ' . ($currentContact['last_name'] ?? '')),
-                'content' => ($auth['full_name'] ?? 'Đồng nghiệp') . ' vừa cập nhật thông tin khách hàng của bạn.'
-            ]);
+            $tenantId = (int)$auth['tenant_id'];
+            $custName = trim($currentContact['first_name'] . ' ' . ($currentContact['last_name'] ?? ''));
+            $updaterName = $auth['full_name'] ?? 'Đồng nghiệp';
+            register_shutdown_function(function() use ($tenantId, $ownerId, $custName, $updaterName) {
+                try {
+                    require_once __DIR__ . '/../NotificationService.php';
+                    require_once __DIR__ . '/../config/CapiHelper.php';
+                    $db = CapiHelper::getPdo();
+                    NotificationService::send($db, $tenantId, 'CUSTOMER_UPDATE', [
+                        'user_id' => $ownerId,
+                        'customer_name' => $custName,
+                        'content' => $updaterName . ' vừa cập nhật thông tin khách hàng của bạn.'
+                    ]);
+                } catch (\Throwable $ex) {}
+            });
         }
         
         logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'UPDATE', 'contact', $id, json_encode(['first_name' => $currentContact['first_name'], 'last_name' => $currentContact['last_name'] ?? '']));
