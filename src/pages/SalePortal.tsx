@@ -15721,14 +15721,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
         zIndex={2000000}
       >
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', padding: '4px 0' }}>
-          {/* Subtitle / Count Header */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '1rem' }}>
-            <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>
-              {t('Hiển thị')} {filteredUpcomingMeetingsModalList.length} / {upcomingMeetingsList.length} {t('cuộc hẹn')}
-            </span>
-          </div>
-
-          {/* Toolbar: Search + Team Filter + Sale Filter + Status Filter (Single Row) */}
+          {/* Toolbar: Search + Team Filter + Sale Filter + Status Filter + Count Indicator (Single Row) */}
           <div style={{
             display: 'flex',
             alignItems: 'center',
@@ -15807,6 +15800,11 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
               placeholder={t('Trạng thái')}
               width="170px"
             />
+
+            {/* Count Indicator (Aligned Far Right) */}
+            <span style={{ marginLeft: 'auto', fontSize: '0.8rem', color: 'var(--color-text-muted)', whiteSpace: 'nowrap' }}>
+              {t('Hiển thị')} {filteredUpcomingMeetingsModalList.length} / {upcomingMeetingsList.length} {t('cuộc hẹn')}
+            </span>
           </div>
 
           {/* Table Column Header */}
