@@ -192,7 +192,7 @@ export const SignaturePadModal: React.FC<SignaturePadModalProps> = ({
         inset: 0,
         backgroundColor: 'rgba(0, 0, 0, 0.65)',
         backdropFilter: 'blur(5px)',
-        zIndex: 1000090,
+        zIndex: 10000000,
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
