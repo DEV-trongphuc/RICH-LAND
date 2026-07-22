@@ -49,6 +49,20 @@ const DAY_LABELS: Record<string, string> = {
   "7": "Chủ Nhật"
 };
 
+const getDefaultRoleLabel = (role: string) => {
+  switch (role?.toLowerCase()) {
+    case 'superadmin': return 'Super Admin';
+    case 'admin': return 'Quản trị viên';
+    case 'director': return 'Giám đốc kinh doanh';
+    case 'manager': return 'Trưởng phòng kinh doanh';
+    case 'assistant': return 'Trợ lý kinh doanh';
+    case 'sale':
+    case 'sales': return 'Nhân viên kinh doanh';
+    case 'viewer': return 'Người xem';
+    default: return role || 'Nhân viên kinh doanh';
+  }
+};
+
 const getDefaultPermissionsForRole = (role: string) => {
   const normRole = (role || '').toLowerCase();
   if (normRole === 'admin' || normRole === 'superadmin' || normRole === 'super_admin') {
@@ -124,7 +138,8 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
   const { user: currentUser, updateUser } = useAuth();
   const isSuperAdmin = currentUser?.role === 'superadmin' || (currentUser?.role as string) === 'super_admin';
   const isAdmin = currentUser?.role === 'admin' || isSuperAdmin;
-  const isManager = currentUser?.role === 'manager';
+  const isViewingOtherUser = Boolean(account && currentUser && String(account.id) !== String(currentUser.id));
+  const effectiveReadOnly = readOnly || (isViewingOtherUser && !isAdmin && !isSuperAdmin);
 
   const [loading, setLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -1184,7 +1199,7 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
           
           {/* Save Button with text on Desktop and Icon on Mobile */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
-            {!loading && !readOnly && (
+            {!loading && !effectiveReadOnly && (
               <button 
                 type="submit"
                 form="account-detail-form"
@@ -1237,9 +1252,9 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
                 >
                   {/* Profile Card inside Sidebar */}
                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', paddingBottom: '1.25rem', borderBottom: '1px solid var(--color-border-light)', marginBottom: '0.75rem' }}>
-                    <div style={{ position: 'relative', cursor: readOnly ? 'default' : 'pointer' }} onClick={() => !readOnly && fileInputRef.current?.click()}>
+                    <div style={{ position: 'relative', cursor: effectiveReadOnly ? 'default' : 'pointer' }} onClick={() => !effectiveReadOnly && fileInputRef.current?.click()}>
                       <Avatar src={avatar} name={name || 'S'} size={72} />
-                      {!readOnly && (
+                      {!effectiveReadOnly && (
                         <div style={{
                           position: 'absolute',
                           bottom: 0,
@@ -1274,11 +1289,16 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
                     </div>
                     <div style={{ textAlign: 'center', marginTop: 4 }}>
                       <h4 style={{ fontSize: '0.875rem', fontWeight: 700, margin: 0, color: 'var(--color-text)', wordBreak: 'break-word' }}>{name || t('Chưa cập nhật')}</h4>
-                      {!!(jobTitle || (account as any)?.job_title || (account as any)?.erp_profile?.job_title) && (
-                        <p style={{ fontSize: '0.725rem', color: '#a31422', fontWeight: 700, margin: '2px 0 0' }}>
-                          {jobTitle || (account as any)?.job_title || (account as any)?.erp_profile?.job_title}
-                        </p>
-                      )}
+                      {(() => {
+                        const rawJt = jobTitle || (account as any)?.job_title || (account as any)?.erp_profile?.job_title;
+                        const isFake = rawJt && (rawJt.toLowerCase().includes('fake') || rawJt.toLowerCase().includes('dummy'));
+                        const displayJt = (!rawJt || isFake) ? getDefaultRoleLabel(role || (account as any)?.role) : rawJt;
+                        return (
+                          <p style={{ fontSize: '0.725rem', color: '#a31422', fontWeight: 700, margin: '2px 0 0' }}>
+                            {displayJt}
+                          </p>
+                        );
+                      })()}
                       <p style={{ fontSize: '0.725rem', color: 'var(--color-text-muted)', margin: '2px 0 0' }}>
                         {t('Mã nhân viên')}: {employeeId || (account?.id ? `RL-${account.id}` : '—')}
                       </p>
@@ -1553,7 +1573,7 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
                     </button>
                   )}
                   <form id="account-detail-form" onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-                    <fieldset disabled={readOnly} style={{ border: 'none', padding: 0, margin: 0, display: 'contents' }}>
+                    <fieldset disabled={effectiveReadOnly} style={{ border: 'none', padding: 0, margin: 0, display: 'contents', pointerEvents: effectiveReadOnly ? 'none' : 'auto' }}>
 
               {/* CARD 1: THÔNG TIN CÁ NHÂN */}
               {activeTab === 'personal' && (

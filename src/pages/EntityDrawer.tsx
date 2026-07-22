@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, User, FileText, FileBadge, Tag as TagIcon, Phone, Mail, MapPin, Search, History, Briefcase, Plus, HelpCircle, Settings, Download, Trash2, CheckCircle, ShoppingCart } from 'lucide-react';
+import { X, User, FileText, FileBadge, Tag as TagIcon, Phone, Mail, MapPin, Search, History, Briefcase, Plus, HelpCircle, Settings, Download, Trash2, CheckCircle, ShoppingCart, Lock } from 'lucide-react';
 import { CustomSelect } from '../components/ui/CustomSelect';
 import { CustomCheckbox } from '../components/ui/CustomCheckbox';
 import { CustomRadio } from '../components/ui/CustomRadio';
 import { AddressSelect } from '../components/ui/AddressSelect';
 import { EmptyCard } from '../components/ui/EmptyCard';
 import { useUIStore } from '../store/uiStore';
+import { useAuthStore } from '../store/authStore';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { createPortal } from 'react-dom';
 import styles from './EntityDrawer.module.css';
@@ -29,6 +30,7 @@ const TABS = [
 
 export const EntityDrawer: React.FC<EntityDrawerProps> = ({ isOpen, onClose, entity, onSave }) => {
   const { addToast } = useUIStore();
+  const { user } = useAuthStore();
   const [activeTab, setActiveTab] = useState('info');
   const [formData, setFormData] = useState(entity || {});
   const [helpModal, setHelpModal] = useState<{ title: string, content: string } | null>(null);
@@ -202,8 +204,14 @@ export const EntityDrawer: React.FC<EntityDrawerProps> = ({ isOpen, onClose, ent
                             />
                           </div>
                           <div className="form-group">
-                            <label className="form-label">Nguồn khách (Source)</label>
+                            <label className="form-label" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                              <span>Nguồn khách (Source)</span>
+                               {(user?.role === 'sale' || user?.role === 'sales') && (
+                                 <span style={{ fontSize: '0.68rem', color: 'var(--color-text-muted)', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '3px' }}><Lock size={11} /> Chỉ Quản lý/Admin</span>
+                               )}
+                            </label>
                             <CustomSelect
+                              disabled={user?.role === 'sale' || user?.role === 'sales'}
                               options={[
                                 { value: 'website', label: 'Từ Website' },
                                 { value: 'facebook', label: 'Facebook Ads' },

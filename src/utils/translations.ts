@@ -5,7 +5,7 @@ export const en: Record<string, string> = {
   "Dashboard": "Dashboard",
   "Quản lý Data": "Data Management",
   "Vòng phân bổ": "Distribution Rounds",
-  "Logic xử lý": "Routing Rules",
+  "Quy tắc định tuyến": "Routing Rules",
   "Tư vấn viên": "Consultants",
   "Ticket Lỗi Data": "Error Tickets",
   "Đối soát công bằng": "Fair Share Audit",

@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { 
   X, CheckSquare, Check, Paperclip, Link2, MessageSquare, Calendar, User, Clock, 
   Settings, AlertCircle, Trash2, Plus, Send, Share2, FileText, Globe, 
-  Users, RefreshCw, Layers, CheckSquare2, Info, Receipt, Scale, ArrowUpRight, Search, Save, Bell, BellOff
+  Users, RefreshCw, Layers, CheckSquare2, Info, Receipt, Scale, ArrowUpRight, Search, Save, Bell, BellOff,
+  Eye, ExternalLink, UserPlus, UserCheck, Edit3
 } from 'lucide-react';
 import api from '../api/axios';
 import toast from 'react-hot-toast';
@@ -19,6 +20,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useUIStore } from '../store/uiStore';
 import { useUploadProgress } from '../contexts/UploadProgressContext';
 import { PasteDropzoneArea } from '../components/ui/PasteDropzoneArea';
+import { ConfirmModal } from '../components/ui/ConfirmModal';
 
 interface WorkspaceTaskDrawerProps {
   isOpen: boolean;
@@ -137,6 +139,12 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
   const [newSubAssignee, setNewSubAssignee] = useState('');
   const [newSubDeadline, setNewSubDeadline] = useState('');
   const [newSubPriority, setNewSubPriority] = useState<string>('medium');
+
+  // Checklist inline edit & assignee picker state
+  const [editingChecklistId, setEditingChecklistId] = useState<string | null>(null);
+  const [editingChecklistTitle, setEditingChecklistTitle] = useState<string>('');
+  const [activeAssigneeDropdownId, setActiveAssigneeDropdownId] = useState<string | null>(null);
+  const [deleteSubtaskTarget, setDeleteSubtaskTarget] = useState<{ id: string; title: string } | null>(null);
 
   const [allowedProjects, setAllowedProjects] = useState<any[]>([]);
   const [allowedCampaigns, setAllowedCampaigns] = useState<any[]>([]);
@@ -834,6 +842,42 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
     toast.success(t('Đã xóa việc con'));
   };
 
+  const handleUpdateChecklistItemTitle = (itemId: string, newTitle: string) => {
+    if (!newTitle.trim()) return;
+    const updatedChecklist = erpMeta.checklist.map((item: any) => {
+      if (item.id === itemId) {
+        return { ...item, title: newTitle.trim() };
+      }
+      return item;
+    });
+    const updatedMeta = { ...erpMeta, checklist: updatedChecklist };
+    handleSaveMeta(updatedMeta);
+    toast.success(t('Đã cập nhật tiêu đề việc con'));
+  };
+
+  const handleUpdateChecklistItemAssignee = (itemId: string, newAssigneeId: string) => {
+    const updatedChecklist = erpMeta.checklist.map((item: any) => {
+      if (item.id === itemId) {
+        return { ...item, assignee_id: newAssigneeId };
+      }
+      return item;
+    });
+
+    if (newAssigneeId) {
+      const current = getParticipantIds(formData.participant_ids);
+      if (!current.includes(String(newAssigneeId))) {
+        const next = [...current, String(newAssigneeId)];
+        const nextString = next.join(',');
+        setFormData((prev: any) => ({ ...prev, participant_ids: nextString }));
+        handleUpdateField('participant_ids', nextString);
+      }
+    }
+
+    const updatedMeta = { ...erpMeta, checklist: updatedChecklist };
+    handleSaveMeta(updatedMeta);
+    toast.success(t('Đã phân công nhân sự thực hiện'));
+  };
+
   // Resources Actions
   const handleAddLink = () => {
     if (!newLinkLabel.trim() || !newLinkUrl.trim()) {
@@ -1234,22 +1278,22 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
               </div>
             )}
             <div style={{ minWidth: 0, flex: 1 }}>
-              <h3 style={{ fontSize: isMobileOrTablet ? '0.9rem' : '1.1rem', fontWeight: 800, color: 'var(--color-text)', margin: 0, display: 'flex', alignItems: 'center', gap: '6px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                {t("Chi tiết công việc")}
+              <h3 style={{ fontSize: isMobileOrTablet ? '0.75rem' : '1.1rem', fontWeight: 800, color: 'var(--color-text)', margin: 0, display: 'flex', alignItems: 'center', gap: isMobileOrTablet ? '4px' : '6px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t("Chi tiết công việc")}</span>
                 <span className="badge" style={{
                   background: 'rgba(107, 114, 128, 0.1)',
                   color: 'var(--color-text-muted)',
-                  fontSize: '0.6rem',
+                  fontSize: isMobileOrTablet ? '0.55rem' : '0.6rem',
                   fontWeight: 800,
-                  padding: '1px 6px',
+                  padding: isMobileOrTablet ? '1px 4px' : '1px 6px',
                   borderRadius: '4px',
                   textTransform: 'uppercase',
                   flexShrink: 0
                 }}>#{formData.id}</span>
                 <span className={`badge ${formData.priority === 'high' ? 'danger' : formData.priority === 'low' ? 'info' : 'warning'}`} style={{
-                  fontSize: '0.6rem',
+                  fontSize: isMobileOrTablet ? '0.55rem' : '0.6rem',
                   fontWeight: 800,
-                  padding: '1px 6px',
+                  padding: isMobileOrTablet ? '1px 4px' : '1px 6px',
                   borderRadius: '4px',
                   textTransform: 'uppercase',
                   flexShrink: 0
@@ -1573,6 +1617,9 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
                 ) : (
                   erpMeta.checklist.map((item: any) => {
                     const itemUser = users.find(u => Number(u.id) === Number(item.assignee_id));
+                    const isEditingThis = editingChecklistId === item.id;
+                    const isAssigneeDropdownOpen = activeAssigneeDropdownId === item.id;
+
                     return (
                       <div 
                         key={item.id}
@@ -1582,13 +1629,15 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
                           justifyContent: 'space-between',
                           background: item.done ? 'rgba(16, 185, 129, 0.03)' : 'var(--color-bg)',
                           border: '1px solid var(--color-border-light)',
-                          padding: '8px 12px',
-                          borderRadius: '8px',
+                          padding: '10px 14px',
+                          borderRadius: '10px',
                           transition: 'all 0.2s',
-                          opacity: item.done ? 0.8 : 1
+                          opacity: item.done ? 0.8 : 1,
+                          position: 'relative',
+                          gap: '10px'
                         }}
                       >
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1, minWidth: 0 }}>
                           {/* Round & Large Custom Checkbox */}
                           <div style={{ position: 'relative', width: 22, height: 22, flexShrink: 0 }}>
                             <input
@@ -1638,35 +1687,88 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
                             </motion.div>
                           </div>
 
-                          <div style={{ display: 'flex', flexDirection: 'column' }}>
-                            <span style={{
-                              fontSize: '0.78rem',
-                              fontWeight: 700,
-                              color: item.done ? 'var(--color-text-muted)' : 'var(--color-text)',
-                              textDecoration: item.done ? 'line-through' : 'none'
-                            }}>{item.title}</span>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '2px', flexWrap: 'wrap' }}>
-                              <div style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                                <span style={{ fontSize: '0.68rem', color: 'var(--color-text-muted)' }}>
-                                  {t('Giao cho')}:
+                          <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0, gap: '3px' }}>
+                            {/* Title / Inline Edit */}
+                            {isEditingThis ? (
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                <input
+                                  type="text"
+                                  className="form-input"
+                                  value={editingChecklistTitle}
+                                  onChange={(e) => setEditingChecklistTitle(e.target.value)}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter') {
+                                      handleUpdateChecklistItemTitle(item.id, editingChecklistTitle);
+                                      setEditingChecklistId(null);
+                                    } else if (e.key === 'Escape') {
+                                      setEditingChecklistId(null);
+                                    }
+                                  }}
+                                  autoFocus
+                                  style={{ fontSize: '0.82rem', padding: '4px 8px', height: '32px', borderRadius: '6px', width: '100%' }}
+                                />
+                                <button
+                                  type="button"
+                                  className="btn primary sm"
+                                  onClick={() => {
+                                    handleUpdateChecklistItemTitle(item.id, editingChecklistTitle);
+                                    setEditingChecklistId(null);
+                                  }}
+                                  style={{ padding: '4px 10px', height: '32px', fontSize: '0.75rem', flexShrink: 0 }}
+                                >
+                                  {t('Lưu')}
+                                </button>
+                                <button
+                                  type="button"
+                                  className="btn outline sm"
+                                  onClick={() => setEditingChecklistId(null)}
+                                  style={{ padding: '4px 8px', height: '32px', fontSize: '0.75rem', flexShrink: 0 }}
+                                >
+                                  ✕
+                                </button>
+                              </div>
+                            ) : (
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                <span style={{
+                                  fontSize: '0.82rem',
+                                  fontWeight: 700,
+                                  color: item.done ? 'var(--color-text-muted)' : 'var(--color-text)',
+                                  textDecoration: item.done ? 'line-through' : 'none',
+                                  wordBreak: 'break-word'
+                                }}>
+                                  {item.title}
                                 </span>
-                                {itemUser ? (
-                                  <div style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                                    <Avatar 
-                                      src={itemUser.avatar || itemUser.avatar_url} 
-                                      name={itemUser.full_name} 
-                                      size={16} 
-                                    />
-                                    <span style={{ fontSize: '0.68rem', fontWeight: 700, color: 'var(--color-text)' }}>
-                                      {itemUser.full_name}
-                                    </span>
-                                  </div>
-                                ) : (
-                                  <span style={{ fontSize: '0.68rem', color: 'var(--color-text-muted)' }}>
-                                    {t('Chưa phân công')}
-                                  </span>
+                                {currentUser?.role !== 'viewer' && (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setEditingChecklistId(item.id);
+                                      setEditingChecklistTitle(item.title);
+                                    }}
+                                    style={{
+                                      border: 'none',
+                                      background: 'transparent',
+                                      color: 'var(--color-text-muted)',
+                                      cursor: 'pointer',
+                                      padding: '2px 4px',
+                                      borderRadius: '4px',
+                                      display: 'inline-flex',
+                                      alignItems: 'center'
+                                    }}
+                                    className="hover-bg-alt hover-color-primary"
+                                    title={t('Sửa tiêu đề')}
+                                  >
+                                    <Edit3 size={13} />
+                                  </button>
                                 )}
                               </div>
+                            )}
+
+                            {/* Subtitle Assignee & Due Date Row */}
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '2px' }}>
+                              <span style={{ fontSize: '0.68rem', color: 'var(--color-text-muted)' }}>
+                                {t('Giao cho')}: <strong style={{ color: itemUser ? 'var(--color-text)' : 'var(--color-text-muted)' }}>{itemUser ? (itemUser.full_name || itemUser.name) : t('Chưa phân công')}</strong>
+                              </span>
                               {item.due_date && (
                                 <span style={{ fontSize: '0.68rem', color: 'var(--color-text-muted)' }}>
                                   {` • Hạn: ${new Date(item.due_date).toLocaleDateString('vi-VN')}`}
@@ -1676,15 +1778,140 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
                           </div>
                         </div>
 
-                        {currentUser?.role !== 'viewer' && (
-                          <button
-                            onClick={() => handleDeleteChecklistItem(item.id)}
-                            style={{ border: 'none', background: 'transparent', color: 'var(--color-danger)', cursor: 'pointer', padding: '4px' }}
-                            className="hover-lift"
-                          >
-                            <Trash2 size={13} />
-                          </button>
-                        )}
+                        {/* Right Actions (Round User Icon & Delete Trash Icon) */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
+                          {/* Round User Assignee Icon Button */}
+                          <div style={{ position: 'relative' }}>
+                            <button
+                              type="button"
+                              onClick={() => setActiveAssigneeDropdownId(isAssigneeDropdownOpen ? null : item.id)}
+                              disabled={currentUser?.role === 'viewer'}
+                              style={{
+                                border: itemUser ? '1.5px solid var(--color-primary-light)' : '1px solid var(--color-border-light)',
+                                background: itemUser ? 'transparent' : 'rgba(163, 20, 34, 0.06)',
+                                width: '28px',
+                                height: '28px',
+                                borderRadius: '50%',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                cursor: currentUser?.role === 'viewer' ? 'default' : 'pointer',
+                                padding: 0,
+                                transition: 'all 0.15s ease'
+                              }}
+                              className="hover-scale"
+                              title={itemUser ? `${t('Giao cho')}: ${itemUser.full_name || itemUser.name}` : t('Phân công người thực hiện')}
+                            >
+                              {itemUser ? (
+                                <Avatar 
+                                  src={itemUser.avatar || itemUser.avatar_url} 
+                                  name={itemUser.full_name || itemUser.name} 
+                                  size={26} 
+                                />
+                              ) : (
+                                <UserPlus size={14} color="var(--color-primary)" />
+                              )}
+                            </button>
+
+                            {/* User selection dropdown popup */}
+                            {isAssigneeDropdownOpen && (
+                              <div style={{
+                                position: 'absolute',
+                                top: '100%',
+                                right: 0,
+                                marginTop: '6px',
+                                zIndex: 9999,
+                                background: 'var(--color-surface)',
+                                border: '1px solid var(--color-border-light)',
+                                borderRadius: '12px',
+                                boxShadow: '0 10px 25px rgba(0, 0, 0, 0.18)',
+                                minWidth: '220px',
+                                maxHeight: '230px',
+                                overflowY: 'auto',
+                                padding: '6px',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: '2px'
+                              }}>
+                                <div style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--color-text-muted)', padding: '4px 8px' }}>
+                                  {t('Phân công người thực hiện:')}
+                                </div>
+                                
+                                {/* Unassign option */}
+                                <div
+                                  onClick={() => {
+                                    handleUpdateChecklistItemAssignee(item.id, '');
+                                    setActiveAssigneeDropdownId(null);
+                                  }}
+                                  style={{
+                                    padding: '6px 8px',
+                                    borderRadius: '6px',
+                                    cursor: 'pointer',
+                                    fontSize: '0.75rem',
+                                    color: 'var(--color-danger)',
+                                    fontWeight: 600,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '6px'
+                                  }}
+                                  className="hover-bg-alt"
+                                >
+                                  <span>✕ {t('Bỏ phân công (Chưa ai làm)')}</span>
+                                </div>
+
+                                {users.map((u: any) => (
+                                  <div
+                                    key={u.id}
+                                    onClick={() => {
+                                      handleUpdateChecklistItemAssignee(item.id, String(u.id));
+                                      setActiveAssigneeDropdownId(null);
+                                    }}
+                                    style={{
+                                      padding: '6px 8px',
+                                      borderRadius: '6px',
+                                      cursor: 'pointer',
+                                      fontSize: '0.75rem',
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      gap: '8px',
+                                      background: String(u.id) === String(item.assignee_id) ? 'var(--color-primary-light)' : 'transparent',
+                                      color: String(u.id) === String(item.assignee_id) ? 'var(--color-primary)' : 'var(--color-text)',
+                                      fontWeight: String(u.id) === String(item.assignee_id) ? 700 : 500
+                                    }}
+                                    className="hover-bg-alt"
+                                  >
+                                    <Avatar src={u.avatar || u.avatar_url} name={u.full_name || u.name} size={18} />
+                                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                      {u.full_name || u.name}
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Delete Trash Can */}
+                          {currentUser?.role !== 'viewer' && (
+                            <button
+                              type="button"
+                              onClick={() => setDeleteSubtaskTarget({ id: item.id, title: item.title })}
+                              style={{
+                                border: 'none',
+                                background: 'transparent',
+                                color: 'var(--color-danger)',
+                                cursor: 'pointer',
+                                padding: '4px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center'
+                              }}
+                              className="hover-lift"
+                              title={t('Xóa việc con')}
+                            >
+                              <Trash2 size={15} />
+                            </button>
+                          )}
+                        </div>
                       </div>
                     );
                   })
@@ -1765,47 +1992,167 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
                   subtext="Xem trước ảnh/tệp tin trước khi tải lên (Hỗ trợ Ctrl+V từ Clipboard)"
                 />
 
-                {erpMeta.links && erpMeta.links.map((link: any, idx: number) => (
+                {erpMeta.links && erpMeta.links.map((link: any, idx: number) => {
+                  const rawUrl = link.url || '';
+                  const fullUrl = rawUrl.startsWith('http://') || rawUrl.startsWith('https://') || rawUrl.startsWith('blob:') || rawUrl.startsWith('data:')
+                    ? rawUrl
+                    : `${window.location.origin}${rawUrl.startsWith('/') ? '' : '/'}${rawUrl}`;
+
+                  const combinedStr = `${rawUrl} ${link.label || ''}`.toLowerCase();
+                  const isImage = Boolean(
+                    link.is_image ||
+                    combinedStr.includes('.jpg') ||
+                    combinedStr.includes('.jpeg') ||
+                    combinedStr.includes('.png') ||
+                    combinedStr.includes('.gif') ||
+                    combinedStr.includes('.webp') ||
+                    combinedStr.includes('.svg') ||
+                    combinedStr.includes('image/') ||
+                    combinedStr.includes('/img_') ||
+                    combinedStr.includes('uploads/')
+                  );
+
+                  return (
                     <div
                       key={idx}
                       style={{
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'space-between',
-                        background: 'var(--color-bg)',
+                        background: 'var(--color-surface)',
                         border: '1px solid var(--color-border-light)',
-                        padding: '6px 12px',
-                        borderRadius: '6px'
+                        padding: '10px 14px',
+                        borderRadius: '12px',
+                        minHeight: '54px',
+                        boxShadow: '0 2px 8px rgba(0, 0, 0, 0.02)',
+                        gap: '12px',
+                        transition: 'all 0.2s ease',
+                        cursor: 'pointer'
+                      }}
+                      className="hover-lift"
+                      onClick={(e) => {
+                        if ((e.target as HTMLElement).closest('.btn-delete-link')) return;
+                        window.open(fullUrl, '_blank');
                       }}
                     >
-                      <a
-                        href={link.url}
-                        target="_blank"
-                        rel="noreferrer"
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '6px',
-                          textDecoration: 'none',
-                          color: 'var(--color-primary)',
-                          fontSize: '0.75rem',
-                          fontWeight: 700,
-                          flex: 1
-                        }}
-                      >
-                        {link.is_file ? <FileText size={12} /> : <Link2 size={12} />}
-                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '300px' }}>{link.label}</span>
-                      </a>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1, minWidth: 0 }}>
+                        {/* Left Thumbnail Preview or Icon */}
+                        {isImage ? (
+                          <div style={{
+                            width: '44px',
+                            height: '44px',
+                            borderRadius: '8px',
+                            overflow: 'hidden',
+                            flexShrink: 0,
+                            border: '1px solid var(--color-border-light)',
+                            background: 'var(--color-bg-alt)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center'
+                          }}>
+                            <img
+                              src={fullUrl}
+                              alt={link.label || 'Preview'}
+                              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                              onError={(e) => {
+                                (e.currentTarget as HTMLElement).style.display = 'none';
+                              }}
+                            />
+                          </div>
+                        ) : (
+                          <div style={{
+                            width: '42px',
+                            height: '42px',
+                            borderRadius: '8px',
+                            background: link.is_file ? 'rgba(16, 185, 129, 0.1)' : 'var(--color-primary-light)',
+                            color: link.is_file ? 'var(--color-success)' : 'var(--color-primary)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            flexShrink: 0
+                          }}>
+                            {link.is_file ? <FileText size={20} /> : <Link2 size={20} />}
+                          </div>
+                        )}
 
-                      <button
-                        onClick={() => handleDeleteLink(idx)}
-                        style={{ border: 'none', background: 'transparent', color: 'var(--color-danger)', cursor: 'pointer', padding: '4px' }}
-                        className="hover-lift"
-                      >
-                        <Trash2 size={13} />
-                      </button>
+                        {/* Name & Subtext */}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', flex: 1, minWidth: 0 }}>
+                          <a
+                            href={fullUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            onClick={(e) => e.stopPropagation()}
+                            style={{
+                              fontSize: '0.85rem',
+                              fontWeight: 700,
+                              color: 'var(--color-text)',
+                              textDecoration: 'none',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              whiteSpace: 'nowrap',
+                              display: 'block'
+                            }}
+                            className="hover-color-primary"
+                          >
+                            {link.label || link.url}
+                          </a>
+                          <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                            <Eye size={12} /> {isImage ? t('Nhấn để xem / phóng to ảnh') : t('Nhấn để mở tệp / link')}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Right Actions */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <a
+                          href={fullUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          onClick={(e) => e.stopPropagation()}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            width: '32px',
+                            height: '32px',
+                            borderRadius: '8px',
+                            color: 'var(--color-text-muted)',
+                            background: 'var(--color-bg-alt)',
+                            transition: 'all 0.15s ease'
+                          }}
+                          className="hover-bg-primary-light hover-color-primary"
+                          title={t('Mở trong tab mới')}
+                        >
+                          <ExternalLink size={15} />
+                        </a>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteLink(idx);
+                          }}
+                          style={{
+                            border: 'none',
+                            background: 'rgba(239, 68, 68, 0.08)',
+                            color: 'var(--color-danger)',
+                            cursor: 'pointer',
+                            width: '32px',
+                            height: '32px',
+                            borderRadius: '8px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            transition: 'all 0.15s ease'
+                          }}
+                          className="btn-delete-link hover-bg-danger-light"
+                          title={t('Xóa tệp đính kèm')}
+                        >
+                          <Trash2 size={15} />
+                        </button>
+                      </div>
                     </div>
-                  ))}
+                  );
+                })}
               </div>
             </div>
 
@@ -2003,6 +2350,77 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
           {/* Right Column (2/5) */}
           <div style={{ flex: isMobileOrTablet ? 'none' : 2, display: 'flex', flexDirection: 'column', gap: isMobileOrTablet ? '1rem' : (embedMode ? '1rem' : '1.5rem'), minWidth: 0 }}>
             
+            {/* Tiến độ công việc */}
+            <div className="card" style={cardStyle}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontSize: '0.78rem', fontWeight: 800, color: 'var(--color-text)' }}>{t('Tiến độ công việc')}</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '2px' }}>
+                  <input
+                    type="number"
+                    min="0"
+                    max="100"
+                    value={formData.progress ?? 0}
+                    onChange={(e) => {
+                      let val = Number(e.target.value);
+                      if (isNaN(val)) val = 0;
+                      val = Math.min(100, Math.max(0, val));
+                      setFormData((prev: any) => {
+                        const next: any = { ...prev, progress: val };
+                        if (val === 100 && prev.require_approval === 1 && prev.approver_id) {
+                          next.approval_status = 'pending';
+                        } else if (val < 100) {
+                          next.approval_status = null;
+                        }
+                        return next;
+                      });
+                    }}
+                    style={{
+                      width: '45px',
+                      height: '24px',
+                      fontSize: '0.8rem',
+                      fontWeight: 800,
+                      textAlign: 'center',
+                      color: 'var(--color-primary)',
+                      border: '1px solid var(--color-border-light)',
+                      borderRadius: '4px',
+                      background: 'var(--color-surface)',
+                      padding: 0
+                    }}
+                  />
+                  <span style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--color-primary)' }}>%</span>
+                </div>
+              </div>
+              <input
+                type="range"
+                min="0"
+                max="100"
+                value={formData.progress || 0}
+                onChange={(e) => {
+                  const val = Number(e.target.value);
+                  setFormData((prev: any) => {
+                    const next: any = { ...prev, progress: val };
+                    if (val === 100 && prev.require_approval === 1 && prev.approver_id) {
+                      next.approval_status = 'pending';
+                    } else if (val < 100) {
+                      next.approval_status = null;
+                    }
+                    return next;
+                  });
+                }}
+                className="progress-slider"
+                style={{
+                  background: (formData.progress || 0) === 100
+                    ? 'var(--color-success)'
+                    : 'linear-gradient(to right, #BD1D2D 0%, #F97316 ' + (formData.progress || 0) + '%, var(--color-border-light) ' + (formData.progress || 0) + '%, var(--color-border-light) 100%)'
+                }}
+              />
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.68rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>
+                <span>0%</span>
+                <span>50%</span>
+                <span>100%</span>
+              </div>
+            </div>
+
             {/* Khách hàng liên quan */}
             <div className="card" style={cardStyle}>
               
@@ -2355,76 +2773,7 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
               </div>
             )}
 
-            {/* Tiến độ công việc */}
-            <div className="card" style={cardStyle}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontSize: '0.78rem', fontWeight: 800, color: 'var(--color-text)' }}>{t('Tiến độ công việc')}</span>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '2px' }}>
-                  <input
-                    type="number"
-                    min="0"
-                    max="100"
-                    value={formData.progress ?? 0}
-                    onChange={(e) => {
-                      let val = Number(e.target.value);
-                      if (isNaN(val)) val = 0;
-                      val = Math.min(100, Math.max(0, val));
-                      setFormData((prev: any) => {
-                        const next: any = { ...prev, progress: val };
-                        if (val === 100 && prev.require_approval === 1 && prev.approver_id) {
-                          next.approval_status = 'pending';
-                        } else if (val < 100) {
-                          next.approval_status = null;
-                        }
-                        return next;
-                      });
-                    }}
-                    style={{
-                      width: '45px',
-                      height: '24px',
-                      fontSize: '0.8rem',
-                      fontWeight: 800,
-                      textAlign: 'center',
-                      color: 'var(--color-primary)',
-                      border: '1px solid var(--color-border-light)',
-                      borderRadius: '4px',
-                      background: 'var(--color-surface)',
-                      padding: 0
-                    }}
-                  />
-                  <span style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--color-primary)' }}>%</span>
-                </div>
-              </div>
-              <input
-                type="range"
-                min="0"
-                max="100"
-                value={formData.progress || 0}
-                onChange={(e) => {
-                  const val = Number(e.target.value);
-                  setFormData((prev: any) => {
-                    const next: any = { ...prev, progress: val };
-                    if (val === 100 && prev.require_approval === 1 && prev.approver_id) {
-                      next.approval_status = 'pending';
-                    } else if (val < 100) {
-                      next.approval_status = null;
-                    }
-                    return next;
-                  });
-                }}
-                className="progress-slider"
-                style={{
-                  background: (formData.progress || 0) === 100
-                    ? 'var(--color-success)'
-                    : 'linear-gradient(to right, #BD1D2D 0%, #F97316 ' + (formData.progress || 0) + '%, var(--color-border-light) ' + (formData.progress || 0) + '%, var(--color-border-light) 100%)'
-                }}
-              />
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.68rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>
-                <span>0%</span>
-                <span>50%</span>
-                <span>100%</span>
-              </div>
-            </div>
+
 
             {/* Yêu cầu phê duyệt */}
             <div className="card" style={cardStyle}>
@@ -3283,6 +3632,23 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
               </div>
             )}
           </AnimatePresence>
+
+          {/* Confirm Subtask Deletion Modal */}
+          <ConfirmModal
+            isOpen={Boolean(deleteSubtaskTarget)}
+            onClose={() => setDeleteSubtaskTarget(null)}
+            onConfirm={() => {
+              if (deleteSubtaskTarget) {
+                handleDeleteChecklistItem(deleteSubtaskTarget.id);
+                setDeleteSubtaskTarget(null);
+              }
+            }}
+            title={t('Xác nhận xóa việc con')}
+            message={t(`Bạn có chắc chắn muốn xóa việc con "${deleteSubtaskTarget?.title || ''}" không? Hành động này không thể hoàn tác.`)}
+            confirmText={t('Xóa việc con')}
+            cancelText={t('Quay lại')}
+            confirmType="danger"
+          />
     </>,
     document.body
   );

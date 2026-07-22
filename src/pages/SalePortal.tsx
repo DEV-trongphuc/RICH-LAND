@@ -931,6 +931,34 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
   const [weeklyRegistrations, setWeeklyRegistrations] = useState<any[]>([]);
   const [loadingWeeklyRegs, setLoadingWeeklyRegs] = useState(false);
   const [showWeeklyShiftScheduler, setShowWeeklyShiftScheduler] = useState(false);
+  const [showWeeklyConfirmModal, setShowWeeklyConfirmModal] = useState(false);
+
+  const executeSubmitWeeklyShifts = async () => {
+    if (weeklyShiftDates.length === 0) {
+      toast.error(t('Vui lòng chọn ít nhất 1 ngày để đăng ký lịch trực tuần!'));
+      return;
+    }
+    setWeeklySubmitting(true);
+    try {
+      const res = await fetchAPI('users/weekly-shifts', {
+        method: 'POST',
+        body: JSON.stringify({
+          dates: weeklyShiftDates
+        })
+      });
+      if (res && (res.success || res.status === 'success')) {
+        toast.success(t('Đã lưu và gửi đăng ký lịch trực tuần thành công!'));
+        setShowWeeklyConfirmModal(false);
+      } else {
+        toast.error(res?.message || t('Không thể lưu lịch trực tuần'));
+      }
+    } catch (err: any) {
+      console.error(err);
+      toast.error(err?.message || t('Lỗi kết nối khi lưu lịch trực'));
+    } finally {
+      setWeeklySubmitting(false);
+    }
+  };
 
   // Leave scheduler state
   const [showLeaveScheduler, setShowLeaveScheduler] = useState(false);
@@ -1010,8 +1038,15 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
         setIsMobileDateMenuOpen(false);
       }
     };
+    const handleResetAccountTab = () => {
+      setProfileActiveTab('');
+    };
     document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    window.addEventListener('reset-account-tab', handleResetAccountTab);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      window.removeEventListener('reset-account-tab', handleResetAccountTab);
+    };
   }, []);
 
   // Enterprise ERP Profile Extra Fields
@@ -11902,36 +11937,68 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                       </div>
 
                       {(() => {
-                        const yestObj = new Date();
-                        yestObj.setDate(yestObj.getDate() - 1);
-                        const yestStr = yestObj.getFullYear() + '-' + String(yestObj.getMonth() + 1).padStart(2, '0') + '-' + String(yestObj.getDate()).padStart(2, '0');
-                        const yestFormatted = `${String(yestObj.getDate()).padStart(2, '0')}/${String(yestObj.getMonth() + 1).padStart(2, '0')}`;
-                        const wasYestRegistered = Boolean(profile?.night_shifts && profile.night_shifts.some((ns: any) => ns.shift_date === yestStr));
+                        const past7Days = [];
+                        const today = new Date();
+                        for (let i = 7; i >= 1; i--) {
+                          const d = new Date();
+                          d.setDate(today.getDate() - i);
+                          const dateStr = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+                          const dayLabel = `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}`;
+                          const isRegistered = Boolean(profile?.night_shifts && profile.night_shifts.some((ns: any) => ns.shift_date === dateStr));
+                          past7Days.push({ dateStr, dayLabel, isRegistered });
+                        }
 
                         return (
                           <div style={{
                             display: 'flex',
-                            justifyContent: 'space-between',
-                            alignItems: 'center',
+                            flexDirection: 'column',
+                            gap: '6px',
                             background: 'var(--color-bg-alt)',
-                            padding: '8px 14px',
+                            padding: '10px 14px',
                             borderRadius: '12px',
                             border: '1px solid var(--color-border-light)',
                             marginBottom: '8px'
                           }}>
-                            <span style={{ fontSize: '0.8125rem', fontWeight: 500, color: 'var(--color-text-muted)' }}>
-                              {t('Ca đêm hôm qua')} ({yestFormatted}):
-                            </span>
-                            <span style={{
-                              fontSize: '0.78rem',
-                              fontWeight: 700,
-                              color: wasYestRegistered ? '#8b5cf6' : 'var(--color-text-muted)',
-                              background: wasYestRegistered ? 'rgba(139, 92, 246, 0.12)' : 'rgba(100, 116, 139, 0.08)',
-                              padding: '2px 8px',
-                              borderRadius: '6px'
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <span style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>
+                                {t('Lịch sử trực ca đêm (7 ngày qua):')}
+                              </span>
+                            </div>
+                            <div style={{
+                              display: 'grid',
+                              gridTemplateColumns: 'repeat(7, 1fr)',
+                              gap: isMobile ? '4px' : '6px',
+                              marginTop: '2px'
                             }}>
-                              {wasYestRegistered ? t('Đã trực ca đêm') : t('Không trực')}
-                            </span>
+                              {past7Days.map((item) => (
+                                <div
+                                  key={item.dateStr}
+                                  style={{
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    padding: '6px 2px',
+                                    borderRadius: '8px',
+                                    background: item.isRegistered ? 'rgba(139, 92, 246, 0.1)' : 'var(--color-surface)',
+                                    border: item.isRegistered ? '1px solid #8b5cf6' : '1px solid var(--color-border-light)',
+                                    textAlign: 'center'
+                                  }}
+                                >
+                                  <span style={{ fontSize: '0.68rem', color: 'var(--color-text-muted)', fontWeight: 500 }}>
+                                    {item.dayLabel}
+                                  </span>
+                                  <span style={{
+                                    fontSize: '0.72rem',
+                                    fontWeight: 700,
+                                    color: item.isRegistered ? '#8b5cf6' : 'var(--color-text-muted)',
+                                    marginTop: '2px'
+                                  }}>
+                                    {item.isRegistered ? t('Đã trực') : t('Nghỉ')}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
                           </div>
                         );
                       })()}
@@ -12215,6 +12282,11 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                                 return name.replace('Thứ ', 'T');
                               };
 
+                              const isWeekend = Boolean(
+                                (day.name && (day.name.includes('7') || day.name.includes('Bảy') || day.name.includes('Sat') || day.name.includes('CN') || day.name.includes('Chủ') || day.name.includes('Sun'))) ||
+                                day.dayIndex === 6 || day.dayIndex === 0
+                              );
+
                               // Determine background, border and text colors based on state
                               let borderStyle = '1px solid var(--color-border-light)';
                               let backgroundStyle = 'var(--color-bg-alt)';
@@ -12229,16 +12301,26 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                                 statusColor = '#8b5cf6';
                                 statusBg = 'rgba(139, 92, 246, 0.12)';
                               } else if (isSelected || reg) {
-                                backgroundStyle = isApproved ? 'rgba(16, 185, 129, 0.06)' : 'var(--color-primary-light)';
-                                borderStyle = isApproved ? '2px solid var(--color-success)' : '2px solid var(--color-primary)';
                                 if (isApproved) {
+                                  backgroundStyle = 'rgba(16, 185, 129, 0.06)';
+                                  borderStyle = '2px solid var(--color-success)';
                                   statusText = isPastDay ? t('Đã làm') : t('Đã duyệt');
                                   statusColor = 'var(--color-success)';
                                   statusBg = 'rgba(16, 185, 129, 0.12)';
+                                } else if (isWeekend) {
+                                  // Cuối tuần -> Màu Đỏ
+                                  backgroundStyle = 'rgba(239, 68, 68, 0.06)';
+                                  borderStyle = '2px solid #dc2626';
+                                  statusText = isPastDay ? t('Đã làm') : t('Đăng ký');
+                                  statusColor = '#dc2626';
+                                  statusBg = 'rgba(239, 68, 68, 0.12)';
                                 } else {
-                                  statusText = isPastDay ? t('Đã làm') : t('Đã chọn');
-                                  statusColor = 'var(--color-primary)';
-                                  statusBg = 'var(--color-primary-light)';
+                                  // Ngày thường -> Màu Vàng & ghi Đăng ký
+                                  backgroundStyle = 'rgba(245, 158, 11, 0.06)';
+                                  borderStyle = '2px solid #f59e0b';
+                                  statusText = isPastDay ? t('Đã làm') : t('Đăng ký');
+                                  statusColor = '#d97706';
+                                  statusBg = 'rgba(245, 158, 11, 0.15)';
                                 }
                               }
 
@@ -12322,7 +12404,13 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                                 justifyContent: 'center',
                                 gap: '6px'
                               }}
-                              onClick={handleSubmitWeeklyShifts}
+                              onClick={() => {
+                                if (weeklyShiftDates.length === 0) {
+                                  toast.error(t('Vui lòng chọn ít nhất 1 ngày để đăng ký lịch trực tuần!'));
+                                  return;
+                                }
+                                setShowWeeklyConfirmModal(true);
+                              }}
                               disabled={weeklySubmitting}
                             >
                               {weeklySubmitting ? (
@@ -12422,49 +12510,43 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', background: 'var(--color-bg-alt)', padding: '16px', borderRadius: '16px', border: '1px solid var(--color-border-light)' }}>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                               <label style={{ fontWeight: 750, fontSize: '0.75rem', color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('Từ ngày')}</label>
-                              <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-                                <Calendar size={16} style={{ position: 'absolute', left: '12px', color: 'var(--color-text-muted)', pointerEvents: 'none' }} />
-                                <input
-                                  type="date"
-                                  className="form-input"
-                                  value={editLeaveStart}
-                                  onChange={(e) => setEditLeaveStart(e.target.value)}
-                                  style={{
-                                    width: '100%',
-                                    paddingLeft: '36px',
-                                    borderRadius: '10px',
-                                    height: '42px',
-                                    fontSize: '0.85rem',
-                                    background: 'var(--color-surface)',
-                                    border: '1px solid var(--color-border-light)',
-                                    boxShadow: 'var(--shadow-sm)',
-                                    transition: 'border-color 0.15s ease'
-                                  }}
-                                />
-                              </div>
+                              <input
+                                type="date"
+                                className="form-input"
+                                value={editLeaveStart}
+                                onChange={(e) => setEditLeaveStart(e.target.value)}
+                                style={{
+                                  width: '100%',
+                                  padding: '0 12px',
+                                  borderRadius: '10px',
+                                  height: '42px',
+                                  fontSize: '0.85rem',
+                                  background: 'var(--color-surface)',
+                                  border: '1px solid var(--color-border-light)',
+                                  boxShadow: 'var(--shadow-sm)',
+                                  transition: 'border-color 0.15s ease'
+                                }}
+                              />
                             </div>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                               <label style={{ fontWeight: 750, fontSize: '0.75rem', color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('Đến ngày')}</label>
-                              <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-                                <Calendar size={16} style={{ position: 'absolute', left: '12px', color: 'var(--color-text-muted)', pointerEvents: 'none' }} />
-                                <input
-                                  type="date"
-                                  className="form-input"
-                                  value={editLeaveEnd}
-                                  onChange={(e) => setEditLeaveEnd(e.target.value)}
-                                  style={{
-                                    width: '100%',
-                                    paddingLeft: '36px',
-                                    borderRadius: '10px',
-                                    height: '42px',
-                                    fontSize: '0.85rem',
-                                    background: 'var(--color-surface)',
-                                    border: '1px solid var(--color-border-light)',
-                                    boxShadow: 'var(--shadow-sm)',
-                                    transition: 'border-color 0.15s ease'
-                                  }}
-                                />
-                              </div>
+                              <input
+                                type="date"
+                                className="form-input"
+                                value={editLeaveEnd}
+                                onChange={(e) => setEditLeaveEnd(e.target.value)}
+                                style={{
+                                  width: '100%',
+                                  padding: '0 12px',
+                                  borderRadius: '10px',
+                                  height: '42px',
+                                  fontSize: '0.85rem',
+                                  background: 'var(--color-surface)',
+                                  border: '1px solid var(--color-border-light)',
+                                  boxShadow: 'var(--shadow-sm)',
+                                  transition: 'border-color 0.15s ease'
+                                }}
+                              />
                             </div>
                           </div>
 
@@ -15906,6 +15988,131 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
               </button>
             </div>
           </form>
+        </CustomModal>
+      )}
+
+      {/* Weekly Shift Confirmation Modal */}
+      {showWeeklyConfirmModal && (
+        <CustomModal
+          isOpen={showWeeklyConfirmModal}
+          onClose={() => setShowWeeklyConfirmModal(false)}
+          title={t("Xác Nhận Đăng Ký Lịch Trực Tuần")}
+          maxWidth="540px"
+        >
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', padding: '0.25rem 0' }}>
+            <p style={{ margin: 0, fontSize: '0.82rem', color: 'var(--color-text-muted)', lineHeight: 1.45 }}>
+              {t("Vui lòng kiểm tra chi tiết danh sách lịch trực bạn đã chọn cho 7 ngày tới trước khi gửi xác nhận:")}
+            </p>
+
+            {/* List of 7 days */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {getWeekDates().map((day) => {
+                const reg = weeklyRegistrations.find(r => r.shift_date === day.date);
+                const isNightRegistered = Boolean(
+                  (reg && (reg.shift_type === 'night' || reg.is_night === 1 || reg.is_night === true || String(reg.note || '').toLowerCase().includes('đêm'))) ||
+                  (nightShiftRegistered && nightShiftDate === day.date) ||
+                  (data.consultant_profile?.night_shifts && data.consultant_profile.night_shifts.some((ns: any) => ns.shift_date === day.date))
+                );
+                const isWeekend = Boolean(
+                  (day.name && (day.name.includes('7') || day.name.includes('Bảy') || day.name.includes('Sat') || day.name.includes('CN') || day.name.includes('Chủ') || day.name.includes('Sun'))) ||
+                  day.dayIndex === 6 || day.dayIndex === 0
+                );
+                const isSelected = weeklyShiftDates.includes(day.date) || isNightRegistered || Boolean(reg);
+
+                let statusLabel = t('Nghỉ');
+                let statusBadgeColor = 'var(--color-text-muted)';
+                let statusBadgeBg = 'rgba(100, 116, 139, 0.08)';
+
+                if (isNightRegistered) {
+                  statusLabel = t('Trực đêm');
+                  statusBadgeColor = '#8b5cf6';
+                  statusBadgeBg = 'rgba(139, 92, 246, 0.12)';
+                } else if (isSelected || reg) {
+                  if (isWeekend) {
+                    statusLabel = t('Đăng ký (Cuối tuần)');
+                    statusBadgeColor = '#dc2626';
+                    statusBadgeBg = 'rgba(239, 68, 68, 0.12)';
+                  } else {
+                    statusLabel = t('Đăng ký (Ngày thường)');
+                    statusBadgeColor = '#d97706';
+                    statusBadgeBg = 'rgba(245, 158, 11, 0.15)';
+                  }
+                }
+
+                return (
+                  <div
+                    key={day.date}
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      padding: '10px 14px',
+                      borderRadius: '10px',
+                      background: isSelected ? 'var(--color-surface)' : 'var(--color-bg-alt)',
+                      border: isSelected ? '1px solid var(--color-border-light)' : '1px solid transparent'
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--color-text)' }}>
+                        {day.name}
+                      </span>
+                      <span style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)' }}>
+                        ({new Date(day.date).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' })})
+                      </span>
+                    </div>
+                    <span style={{
+                      fontSize: '0.78rem',
+                      fontWeight: 700,
+                      color: statusBadgeColor,
+                      background: statusBadgeBg,
+                      padding: '3px 10px',
+                      borderRadius: '6px'
+                    }}>
+                      {statusLabel}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Warning note */}
+            <div style={{
+              padding: '10px 14px',
+              borderRadius: '10px',
+              background: 'rgba(245, 158, 11, 0.08)',
+              border: '1px solid rgba(245, 158, 11, 0.2)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              fontSize: '0.78rem',
+              color: '#b45309'
+            }}>
+              <AlertCircle size={15} color="#d97706" style={{ flexShrink: 0 }} />
+              <span>{t('Lịch đăng ký làm việc sẽ được gửi hệ thống xác nhận và phân bổ xoay ca.')}</span>
+            </div>
+
+            {/* Actions */}
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '0.5rem' }}>
+              <button
+                type="button"
+                className="btn outline sm"
+                onClick={() => setShowWeeklyConfirmModal(false)}
+                disabled={weeklySubmitting}
+              >
+                {t('Hủy / Kiểm tra lại')}
+              </button>
+              <button
+                type="button"
+                className="btn primary sm"
+                onClick={executeSubmitWeeklyShifts}
+                disabled={weeklySubmitting}
+                style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 700 }}
+              >
+                {weeklySubmitting ? <RefreshCw size={14} className="spin" /> : <CheckCircle2 size={14} />}
+                {t('Xác Nhận & Gửi Đăng Ký')}
+              </button>
+            </div>
+          </div>
         </CustomModal>
       )}
     </div>

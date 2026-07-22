@@ -210,6 +210,14 @@ export default function ProjectsPage() {
     return (document.documentElement.getAttribute('data-theme') as 'light' | 'dark') || 'light';
   });
   const navigate = useNavigate();
+  const [screenWidth, setScreenWidth] = useState(() => typeof window !== 'undefined' ? window.innerWidth : 1200);
+
+  useEffect(() => {
+    const handleResize = () => setScreenWidth(window.innerWidth);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -3823,7 +3831,7 @@ export default function ProjectsPage() {
       {/* Projects List */}
       {activeSubTab === 'projects' && (
         loading ? (
-          <div style={{ display: 'grid', gridTemplateColumns: window.innerWidth <= 768 ? 'repeat(auto-fill, minmax(280px, 1fr))' : 'repeat(3, 1fr)', gap: '1.5rem' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: screenWidth <= 640 ? '1fr' : (screenWidth <= 1024 ? 'repeat(2, 1fr)' : 'repeat(3, 1fr)'), gap: screenWidth <= 640 ? '1rem' : '1.5rem' }}>
             {Array.from({ length: 6 }).map((_, i) => (
               <ProjectCardSkeleton key={i} />
             ))}
@@ -3842,7 +3850,7 @@ export default function ProjectsPage() {
           />
         ) : (
           <>
-            <div style={{ display: 'grid', gridTemplateColumns: window.innerWidth <= 768 ? 'repeat(auto-fill, minmax(280px, 1fr))' : 'repeat(3, 1fr)', gap: '1.5rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: screenWidth <= 640 ? '1fr' : (screenWidth <= 1024 ? 'repeat(2, 1fr)' : 'repeat(3, 1fr)'), gap: screenWidth <= 640 ? '1rem' : '1.5rem' }}>
               {projects.map(proj => (
                 <div
                   key={proj.id}
@@ -3852,7 +3860,7 @@ export default function ProjectsPage() {
                     background: 'var(--color-surface)',
                     border: '1px solid var(--color-border-light)',
                     borderRadius: '24px',
-                    padding: '1.5rem',
+                    padding: screenWidth <= 640 ? '1.15rem' : '1.5rem',
                     boxShadow: '0 10px 30px -10px rgba(0,0,0,0.06)',
                     position: 'relative',
                     overflow: 'hidden'
@@ -3946,36 +3954,53 @@ export default function ProjectsPage() {
 
                     {/* Project Details Grid (Pháp lý, Bàn giao) */}
                     <div style={{ 
-                      display: 'grid', 
-                      gridTemplateColumns: '1fr 1fr', 
+                      display: 'flex', 
+                      flexDirection: 'row',
+                      alignItems: 'center', 
+                      justifyContent: 'space-between',
                       gap: '8px', 
-                      padding: '12px', 
+                      padding: screenWidth <= 640 ? '6px 10px' : '10px 12px', 
                       background: 'var(--color-bg-light)', 
-                      borderRadius: '16px', 
+                      borderRadius: '14px', 
                       border: '1px solid var(--color-border-light)', 
-                      fontSize: '0.78rem', 
-                      color: 'var(--color-text-muted)' 
+                      fontSize: '0.75rem', 
+                      color: 'var(--color-text-muted)',
+                      width: '100%',
+                      boxSizing: 'border-box',
+                      overflow: 'hidden'
                     }}>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                        <span style={{ fontSize: '0.7rem', color: 'var(--color-text-light)', fontWeight: 600 }}>Pháp lý</span>
-                        <strong style={{ color: 'var(--color-text)', display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={proj.legal_status || 'Đang hoàn thiện'}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '5px', minWidth: 0, flex: 1, overflow: 'hidden' }}>
+                        <span style={{ fontSize: '0.7rem', color: 'var(--color-text-light)', fontWeight: 600, flexShrink: 0 }}>Pháp lý:</span>
+                        <strong style={{ color: 'var(--color-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: '0.75rem' }} title={proj.legal_status || 'Đang hoàn thiện'}>
                           {proj.legal_status || 'Đang hoàn thiện'}
                         </strong>
                       </div>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', borderLeft: '1px solid var(--color-border)', paddingLeft: '12px' }}>
-                        <span style={{ fontSize: '0.7rem', color: 'var(--color-text-light)', fontWeight: 600 }}>Bàn giao</span>
-                        <strong style={{ color: 'var(--color-text)' }}>{proj.handover_year || 2028}</strong>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '5px', flexShrink: 0, borderLeft: '1px solid var(--color-border-light)', paddingLeft: '10px' }}>
+                        <span style={{ fontSize: '0.7rem', color: 'var(--color-text-light)', fontWeight: 600, flexShrink: 0 }}>Bàn giao:</span>
+                        <strong style={{ color: 'var(--color-text)', fontSize: '0.75rem', flexShrink: 0 }}>{proj.handover_year || 2028}</strong>
                       </div>
                     </div>
 
                     {/* Roster, Docs, Campaigns Info Badges */}
-                    <div style={{ display: 'flex', gap: '6px', fontSize: '0.72rem', color: 'var(--color-text-muted)', flexWrap: 'wrap' }}>
+                    <div 
+                      style={{ 
+                        display: 'flex', 
+                        gap: screenWidth <= 640 ? '4px' : '6px', 
+                        fontSize: screenWidth <= 640 ? '0.68rem' : '0.72rem', 
+                        color: 'var(--color-text-muted)', 
+                        flexWrap: screenWidth <= 640 ? 'nowrap' : 'wrap', 
+                        alignItems: 'center',
+                        overflowX: screenWidth <= 640 ? 'auto' : 'visible',
+                        width: '100%'
+                      }} 
+                      className="no-scrollbar"
+                    >
                       <span 
                         onClick={(e) => {
                           e.stopPropagation();
                           handleOpenRoster(proj.id);
                         }}
-                        style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: 'rgba(100, 116, 139, 0.06)', border: '1px solid rgba(100, 116, 139, 0.12)', padding: '6px 10px', borderRadius: '100px', fontWeight: 700, color: '#64748b', cursor: 'pointer', transition: 'all 0.2s ease' }}
+                        style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', background: 'rgba(100, 116, 139, 0.06)', border: '1px solid rgba(100, 116, 139, 0.12)', padding: screenWidth <= 640 ? '4px 8px' : '6px 10px', borderRadius: '100px', fontWeight: 700, color: '#64748b', cursor: 'pointer', transition: 'all 0.2s ease', flexShrink: 0, whiteSpace: 'nowrap' }}
                         onMouseEnter={e => {
                           e.currentTarget.style.background = 'rgba(100, 116, 139, 0.12)';
                           e.currentTarget.style.transform = 'scale(1.03)';
@@ -3992,7 +4017,7 @@ export default function ProjectsPage() {
                           e.stopPropagation();
                           handleOpenDocs(proj.id);
                         }}
-                        style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: 'rgba(100, 116, 139, 0.06)', border: '1px solid rgba(100, 116, 139, 0.12)', padding: '6px 10px', borderRadius: '100px', fontWeight: 700, color: '#64748b', cursor: 'pointer', transition: 'all 0.2s ease' }}
+                        style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', background: 'rgba(100, 116, 139, 0.06)', border: '1px solid rgba(100, 116, 139, 0.12)', padding: screenWidth <= 640 ? '4px 8px' : '6px 10px', borderRadius: '100px', fontWeight: 700, color: '#64748b', cursor: 'pointer', transition: 'all 0.2s ease', flexShrink: 0, whiteSpace: 'nowrap' }}
                         onMouseEnter={e => {
                           e.currentTarget.style.background = 'rgba(100, 116, 139, 0.12)';
                           e.currentTarget.style.transform = 'scale(1.03)';
@@ -4012,7 +4037,7 @@ export default function ProjectsPage() {
                               e.stopPropagation();
                               handleOpenQuickCampaigns(proj, linkedCamps);
                             }}
-                            style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: 'rgba(100, 116, 139, 0.06)', border: '1px solid rgba(100, 116, 139, 0.12)', padding: '6px 10px', borderRadius: '100px', fontWeight: 700, color: '#64748b', cursor: 'pointer', transition: 'all 0.2s ease' }}
+                            style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', background: 'rgba(100, 116, 139, 0.06)', border: '1px solid rgba(100, 116, 139, 0.12)', padding: screenWidth <= 640 ? '4px 8px' : '6px 10px', borderRadius: '100px', fontWeight: 700, color: '#64748b', cursor: 'pointer', transition: 'all 0.2s ease', flexShrink: 0, whiteSpace: 'nowrap' }}
                             onMouseEnter={e => {
                               e.currentTarget.style.background = 'rgba(100, 116, 139, 0.12)';
                               e.currentTarget.style.transform = 'scale(1.03)';
@@ -4224,7 +4249,7 @@ export default function ProjectsPage() {
 
 
           {campaignsLoading ? (
-            <div style={{ display: 'grid', gridTemplateColumns: window.innerWidth <= 768 ? 'repeat(auto-fill, minmax(280px, 1fr))' : 'repeat(3, 1fr)', gap: '1.5rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: screenWidth <= 640 ? '1fr' : (screenWidth <= 1024 ? 'repeat(2, 1fr)' : 'repeat(3, 1fr)'), gap: screenWidth <= 640 ? '1rem' : '1.5rem' }}>
               {Array.from({ length: 6 }).map((_, i) => (
                 <CampaignCardSkeleton key={i} />
               ))}
@@ -4237,7 +4262,7 @@ export default function ProjectsPage() {
             />
           ) : (
             <>
-              <div style={{ display: 'grid', gridTemplateColumns: window.innerWidth <= 768 ? 'repeat(auto-fill, minmax(280px, 1fr))' : 'repeat(3, 1fr)', gap: '1.5rem' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: screenWidth <= 640 ? '1fr' : (screenWidth <= 1024 ? 'repeat(2, 1fr)' : 'repeat(3, 1fr)'), gap: screenWidth <= 640 ? '1rem' : '1.5rem' }}>
                 {paginatedCampaigns.map(camp => {
                   const associatedProj = camp.project_id 
                     ? projects.find(p => p.id === camp.project_id)
@@ -4258,7 +4283,7 @@ export default function ProjectsPage() {
                         background: 'var(--color-surface)',
                         border: '1px solid var(--color-border-light)',
                         borderRadius: '24px',
-                        padding: '1.5rem',
+                        padding: screenWidth <= 640 ? '1.15rem' : '1.5rem',
                         boxShadow: '0 10px 30px -10px rgba(0,0,0,0.06)',
                         position: 'relative',
                         overflow: 'hidden'

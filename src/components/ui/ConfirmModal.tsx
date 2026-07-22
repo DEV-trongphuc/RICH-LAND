@@ -1,12 +1,12 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { CustomModal } from './CustomModal';
-import { AlertTriangle } from 'lucide-react';
+import { AlertTriangle, RefreshCw } from 'lucide-react';
 import { useLanguage } from '../../contexts/LanguageContext';
 
 interface ConfirmModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onConfirm: () => void;
+  onConfirm: () => void | Promise<void>;
   title?: string;
   message?: string;
   confirmText?: string;
@@ -29,6 +29,8 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
   children
 }) => {
   const { t } = useLanguage();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   let btnClass = 'btn danger';
   let iconBg = 'var(--color-danger-light)';
   let iconColor = 'var(--color-danger)';
@@ -43,8 +45,24 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
     iconColor = 'var(--color-success)';
   }
 
+  const handleConfirm = async () => {
+    if (isSubmitting) return;
+    setIsSubmitting(true);
+    try {
+      const res = onConfirm();
+      if (res && typeof (res as any).then === 'function') {
+        await res;
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setIsSubmitting(false);
+      onClose();
+    }
+  };
+
   return (
-    <CustomModal isOpen={isOpen} onClose={onClose} title={t(title)} width={width}>
+    <CustomModal isOpen={isOpen} onClose={() => { if (!isSubmitting) onClose(); }} title={t(title)} width={width}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', padding: '0.5rem 0' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
           <div style={{ 
@@ -61,8 +79,16 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
         {children}
         
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1rem' }}>
-          <button className="btn outline" onClick={onClose}>{t(cancelText)}</button>
-          <button className={btnClass} onClick={() => { onConfirm(); onClose(); }}>{t(confirmText)}</button>
+          <button className="btn outline" disabled={isSubmitting} onClick={onClose}>{t(cancelText)}</button>
+          <button
+            className={btnClass}
+            disabled={isSubmitting}
+            onClick={handleConfirm}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 6, opacity: isSubmitting ? 0.6 : 1 }}
+          >
+            {isSubmitting ? <RefreshCw size={14} className="spin" /> : null}
+            {isSubmitting ? `${t(confirmText)}...` : t(confirmText)}
+          </button>
         </div>
       </div>
     </CustomModal>

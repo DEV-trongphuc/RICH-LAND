@@ -404,6 +404,26 @@ export const Header = ({
     }
     setIsNotifModalOpen(false);
 
+    // Attendance Notification Check
+    const isAttendance = 
+      notif.type === 'attendance_update' || 
+      notif.type === 'attendance' || 
+      (notif.title && (
+        notif.title.toLowerCase().includes('chấm công') || 
+        notif.title.toLowerCase().includes('đi trễ') || 
+        notif.title.toLowerCase().includes('nhận lead')
+      )) ||
+      (notif.body && (
+        notif.body.toLowerCase().includes('chấp thuận') || 
+        notif.body.toLowerCase().includes('chấm công') || 
+        notif.body.toLowerCase().includes('đi trễ')
+      ));
+
+    if (isAttendance) {
+      navigate('/attendance');
+      return;
+    }
+
     let contactIdFromRef: string | null = null;
     if (notif.body && (
       !notif.link || 
@@ -706,6 +726,7 @@ export const Header = ({
   const handleProfileClick = () => {
     setIsProfileMenuOpen(false);
     navigate('/account');
+    window.dispatchEvent(new CustomEvent('reset-account-tab'));
   };
 
   const handleActivityClick = () => {
@@ -1579,7 +1600,12 @@ export const Header = ({
             if (lowercase.includes('databank') || lowercase.includes('kho data')) return { bg: 'linear-gradient(135deg, #f59e0b, #b45309)', color: '#ffffff' };
             if (lowercase.includes('khách hàng') || lowercase.includes('contacts')) return { bg: 'linear-gradient(135deg, #f43f5e, #be123c)', color: '#ffffff' };
             if (lowercase.includes('pipeline') || lowercase.includes('chi phí')) return { bg: 'linear-gradient(135deg, #a855f7, #7e22ce)', color: '#ffffff' };
-            if (lowercase.includes('phân bổ') || lowercase.includes('chiến dịch')) return { bg: 'linear-gradient(135deg, #ff7a00, #d05300)', color: '#ffffff' };
+            if (lowercase.includes('vòng phân bổ') || lowercase.includes('phân bổ') || lowercase.includes('chiến dịch')) return { bg: 'linear-gradient(135deg, #ff7a00, #d05300)', color: '#ffffff' };
+            if (lowercase.includes('định tuyến') || lowercase.includes('logic')) return { bg: 'linear-gradient(135deg, #8b5cf6, #6d28d9)', color: '#ffffff' };
+            if (lowercase.includes('tích hợp')) return { bg: 'linear-gradient(135deg, #0d9488, #0f766e)', color: '#ffffff' };
+            if (lowercase.includes('capi')) return { bg: 'linear-gradient(135deg, #2563eb, #1e40af)', color: '#ffffff' };
+            if (lowercase.includes('cài đặt hệ thống') || lowercase.includes('cài đặt')) return { bg: 'linear-gradient(135deg, #0ea5e9, #0284c7)', color: '#ffffff' };
+            if (lowercase.includes('quản lý tài khoản') || lowercase.includes('tài khoản cá nhân') || lowercase.includes('tài khoản')) return { bg: 'linear-gradient(135deg, #3b82f6, #1d4ed8)', color: '#ffffff' };
             if (lowercase.includes('đối soát') || lowercase.includes('phân quyền')) return { bg: 'linear-gradient(135deg, #ec4899, #be185d)', color: '#ffffff' };
             if (lowercase.includes('ai') || lowercase.includes('gatekeeper')) return { bg: 'linear-gradient(135deg, #14b8a6, #0f766e)', color: '#ffffff' };
             if (lowercase.includes('ticket')) return { bg: 'linear-gradient(135deg, #0ea5e9, #0369a1)', color: '#ffffff' };
@@ -1590,7 +1616,7 @@ export const Header = ({
             if (lowercase.includes('báo giá') || lowercase.includes('hóa đơn')) return { bg: 'linear-gradient(135deg, #10b981, #059669)', color: '#ffffff' };
             if (lowercase.includes('đặt cọc') || lowercase.includes('hợp tác')) return { bg: 'linear-gradient(135deg, #6366f1, #4f46e5)', color: '#ffffff' };
             if (lowercase.includes('chi nhánh') || lowercase.includes('team') || lowercase.includes('nhân viên')) return { bg: 'linear-gradient(135deg, #8b5cf6, #5b21b6)', color: '#ffffff' };
-            return { bg: 'linear-gradient(135deg, #475569, #334155)', color: '#ffffff' };
+            return { bg: 'linear-gradient(135deg, #6366f1, #4338ca)', color: '#ffffff' };
           };
 
           const ITEM_DESC: Record<string, string> = {
@@ -1602,7 +1628,7 @@ export const Header = ({
             'Pipeline': 'Quy trình giao dịch và phễu chuyển đổi bán hàng',
             'Lịch biểu': 'Xem lịch làm việc và đăng ký ngày phép',
             'Kho Data': 'Xem danh sách toàn bộ data phân bổ',
-            'Quy tắc phân bổ': 'Tự động phân bổ khách hàng tiềm năng cho nhân viên',
+            'Vòng phân bổ': 'Tự động phân bổ khách hàng tiềm năng cho nhân viên',
             'Đối soát công bằng': 'Đối soát phân chia dữ liệu khách hàng công bằng',
             'AI Pre-screener': 'Thiết lập AI Gatekeeper đánh giá khách hàng',
             'Ticket data lỗi': 'Báo cáo lỗi dữ liệu khách hàng',
@@ -1627,7 +1653,7 @@ export const Header = ({
             'Chấm công': 'Ghi nhận check-in và xin nghỉ phép của tôi',
             'Cài đặt hệ thống': 'Các thông số và cấu hình chung toàn hệ thống',
             'Quản lý tài khoản': 'Phân quyền tài khoản quản trị viên',
-            'Logic xử lý': 'Thiết lập quy định chặn, skip và check-in',
+            'Quy tắc định tuyến': 'Thiết lập quy định chặn, skip và check-in',
             'Tích hợp Data': 'Cấu hình webhook và liên kết Google Sheets',
             'CAPI': 'Cấu hình sự kiện Meta Conversion API'
           };

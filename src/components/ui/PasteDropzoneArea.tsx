@@ -213,22 +213,7 @@ export const PasteDropzoneArea: React.FC<PasteDropzoneAreaProps> = ({
           )}
         </div>
 
-        <div style={{
-          display: 'inline-flex',
-          alignItems: 'center',
-          gap: '4px',
-          padding: '2px 8px',
-          borderRadius: '6px',
-          background: 'rgba(189, 29, 45, 0.08)',
-          color: '#BD1D2D',
-          fontSize: '0.7rem',
-          fontWeight: 700,
-          marginTop: '2px'
-        }}>
-          <Clipboard size={12} />
-          <span>Nhấn Ctrl+V để dán ngay từ máy tính</span>
         </div>
-      </div>
 
       {/* PREVIEW MODAL BEFORE CONFIRMING UPLOAD ("Có preview trước khi up thật nha") */}
       <AnimatePresence>

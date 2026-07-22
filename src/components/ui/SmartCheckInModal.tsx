@@ -698,16 +698,46 @@ export const SmartCheckInModal: React.FC<SmartCheckInModalProps> = ({
 
             {/* Captured Actions or Manual Retake */}
             {capturedImage && (
-              <div style={{ display: 'flex', justifyContent: 'center', gap: 10, marginTop: '1.25rem' }}>
-                <button
-                  type="button"
-                  className="btn outline sm"
-                  onClick={startCamera}
-                  style={{ borderRadius: '20px', padding: '6px 18px', fontSize: '0.78rem', display: 'inline-flex', alignItems: 'center', gap: 4 }}
-                >
-                  <RefreshCw size={14} />
-                  {t('Quét lại')}
-                </button>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, marginTop: '1rem', marginBottom: '0.5rem' }}>
+                <div style={{ display: 'flex', gap: 10, justifyContent: 'center', width: '100%' }}>
+                  <button
+                    type="button"
+                    className="btn outline sm"
+                    onClick={startCamera}
+                    disabled={submitting}
+                    style={{ borderRadius: '20px', padding: '6px 18px', fontSize: '0.78rem', display: 'inline-flex', alignItems: 'center', gap: 4 }}
+                  >
+                    <RefreshCw size={14} />
+                    {t('Quét lại')}
+                  </button>
+
+                  <button
+                    type="button"
+                    className="btn primary sm"
+                    disabled={submitting || (isLate && !checkInReason.trim())}
+                    onClick={() => submitCheckIn()}
+                    style={{
+                      backgroundColor: '#BD1D2D',
+                      color: '#fff',
+                      borderRadius: '20px',
+                      padding: '8px 24px',
+                      fontWeight: 700,
+                      boxShadow: '0 4px 15px rgba(189, 29, 45, 0.4)',
+                      border: 'none',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '6px'
+                    }}
+                  >
+                    {submitting ? (
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                        <RefreshCw size={14} className="spin" /> {t('Đang gửi...')}
+                      </span>
+                    ) : (
+                      t('Xác nhận Chấm công')
+                    )}
+                  </button>
+                </div>
               </div>
             )}
           </div>
@@ -793,49 +823,6 @@ export const SmartCheckInModal: React.FC<SmartCheckInModalProps> = ({
                 >
                   {isManualMode && <Camera size={16} />}
                   <span>{isManualMode ? t('Chụp ảnh thủ công') : t('Không nhận diện được khuôn mặt')}</span>
-                </button>
-              </div>
-            )}
-
-            {/* Submit Action Buttons (Shown only after an image has been captured) */}
-            {capturedImage && (
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.5rem', borderTop: '1px solid var(--color-border-light)', paddingTop: '12px' }}>
-                <button
-                  type="button"
-                  className="btn secondary sm"
-                  onClick={startCamera}
-                  disabled={submitting}
-                  style={{
-                    borderRadius: '20px',
-                    padding: '6px 18px',
-                    background: 'var(--color-surface)',
-                    color: 'var(--color-text)',
-                    border: '1px solid var(--color-border)',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '4px'
-                  }}
-                >
-                  <RefreshCw size={14} />
-                  {t('Quét lại')}
-                </button>
-
-                <button
-                  type="button"
-                  className="btn primary sm"
-                  disabled={submitting || (isLate && !checkInReason.trim())}
-                  onClick={() => submitCheckIn()}
-                  style={{
-                    backgroundColor: '#BD1D2D',
-                    color: '#fff',
-                    borderRadius: '20px',
-                    padding: '8px 24px',
-                    fontWeight: 600,
-                    boxShadow: '0 4px 15px rgba(189, 29, 45, 0.4)',
-                    border: 'none'
-                  }}
-                >
-                  {submitting ? t('Đang gửi...') : t('Xác nhận Chấm công')}
                 </button>
               </div>
             )}

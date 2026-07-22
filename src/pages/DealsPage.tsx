@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { Pagination } from '../components/ui/Pagination';
-import { Plus, GripVertical, Pencil, Trash2, Calendar, Target, DollarSign, MessageSquare, Building2, Loader2, Search, Filter, Users, User, CheckCircle2, Phone, Mail, LayoutGrid, List, Clock, Download, RefreshCw, X, AlertCircle, AlertTriangle, ShieldAlert, ChevronRight } from 'lucide-react';
+import { Plus, GripVertical, Pencil, Trash2, Calendar, Target, DollarSign, MessageSquare, Building2, Loader2, Search, Filter, Users, User, CheckCircle2, Phone, Mail, LayoutGrid, List, Clock, Download, RefreshCw, X, AlertCircle, AlertTriangle, ShieldAlert, ChevronRight, ChevronLeft } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Avatar } from '../components/ui/Avatar';
 import confetti from 'canvas-confetti';
@@ -37,9 +37,35 @@ export const DealsPage: React.FC = () => {
   }, [stages]);
   const [items, setItems] = useState<Record<number, any[]>>({});
 
+  const kanbanScrollRef = React.useRef<HTMLDivElement>(null);
+  const [stageVisibleLimits, setStageVisibleLimits] = useState<Record<string, number>>({});
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(true);
+
+  const updateScrollState = () => {
+    if (kanbanScrollRef.current) {
+      const { scrollLeft, scrollWidth, clientWidth } = kanbanScrollRef.current;
+      setCanScrollLeft(scrollLeft > 10);
+      setCanScrollRight(scrollLeft + clientWidth < scrollWidth - 10);
+    }
+  };
+
+  const scrollKanban = (direction: 'left' | 'right') => {
+    if (kanbanScrollRef.current) {
+      const scrollAmount = direction === 'left' ? -360 : 360;
+      kanbanScrollRef.current.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+      setTimeout(updateScrollState, 350);
+    }
+  };
+
   const [allUsers, setAllUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [teams, setTeams] = useState<any[]>([]);
+
+  useEffect(() => {
+    const timer = setTimeout(updateScrollState, 100);
+    return () => clearTimeout(timer);
+  }, [stages, items, loading, viewMode]);
 
   useEffect(() => {
     const currentUser = useAuthStore.getState().user;
@@ -1206,192 +1232,335 @@ export const DealsPage: React.FC = () => {
 
       {/* Main Content Area */}
       {viewMode === 'kanban' ? (
-        <div className="card custom-scrollbar" style={{ 
-          display: 'flex', 
-          gap: isMobile ? '0.75rem' : '1.25rem', 
-          overflowX: 'auto', 
-          padding: isMobile ? '0.75rem' : '1.5rem', 
-          paddingBottom: '2rem', 
-          height: 'calc(100vh - 280px)',
-          minHeight: '520px',
-          flex: 1, 
-          alignItems: 'stretch', 
-          scrollSnapType: 'x mandatory',
-          background: `
-            linear-gradient(to right, var(--color-surface) 30%, transparent),
-            linear-gradient(to left, var(--color-surface) 30%, transparent) 100% 0,
-            linear-gradient(to right, rgba(0, 0, 0, 0.08), transparent),
-            linear-gradient(to left, rgba(0, 0, 0, 0.08), transparent) 100% 0
-          `,
-          backgroundRepeat: 'no-repeat',
-          backgroundSize: '32px 100%, 32px 100%, 12px 100%, 12px 100%',
-          backgroundAttachment: 'local, local, scroll, scroll'
-        }}>
-          {loading ? (
-            // Skeleton columns while loading
+        <div style={{ position: 'relative', flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+          {/* Floating Semi-transparent Left / Right Navigation Scroll Buttons for Desktop */}
+          {!isMobile && (
             <>
-              {(isMobile ? [1] : [1, 2, 3, 4]).map(i => (
-                <div key={i} style={{ minWidth: isMobile ? '100%' : 320, width: isMobile ? '100%' : 320, flexShrink: 0, background: 'var(--color-surface)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--color-border-light)', overflow: 'hidden', height: '100%' }}>
-                  <div style={{ padding: '1rem 1.25rem', borderBottom: '3px solid var(--color-border)' }}>
-                    <div style={{ height: 18, width: 120, background: '#e9ecef', borderRadius: 6, marginBottom: 8 }} />
-                    <div style={{ height: 14, width: 60, background: '#f1f3f5', borderRadius: 6 }} />
-                  </div>
-                  <div style={{ padding: '1rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                    {[1, 2].map(j => (
-                      <div key={j} style={{ background: '#f8f9fa', borderRadius: 'var(--radius-lg)', padding: '1.25rem', animation: 'pulse 1.5s ease-in-out infinite' }}>
-                        <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', marginBottom: '1rem' }}>
-                          <div style={{ width: 36, height: 36, borderRadius: '50%', background: '#e9ecef' }} />
-                          <div style={{ flex: 1 }}>
-                            <div style={{ height: 14, width: '70%', background: '#dee2e6', borderRadius: 4, marginBottom: 6 }} />
-                            <div style={{ height: 11, width: '50%', background: '#e9ecef', borderRadius: 4 }} />
-                          </div>
-                        </div>
-                        <div style={{ height: 11, width: '60%', background: '#e9ecef', borderRadius: 4, marginBottom: 6 }} />
-                        <div style={{ height: 11, width: '80%', background: '#e9ecef', borderRadius: 4 }} />
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </>
-          ) : stages.map(stage => {
-            if (isMobile && activeStageMobile !== stage.id) return null;
-            const stageItems = filteredItems[stage.id] || [];
-            const total = stageItems.reduce((s, d) => s + (Number(d.expected_revenue) || 0), 0);
-
-            return (
-              <div key={stage.id}
-                style={{ 
-                  minWidth: isMobile ? '100%' : 320, width: isMobile ? '100%' : 320, flexShrink: 0, 
-                  background: 'var(--color-surface)',
-                  border: '1px solid var(--color-border-light)',
-                  borderRadius: 'var(--radius-lg)',
-                  display: 'flex', flexDirection: 'column', maxHeight: '100%', height: '100%',
-                  transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-                  scrollSnapAlign: 'center'
+              <button
+                className="no-active-scale"
+                onClick={() => scrollKanban('left')}
+                disabled={!canScrollLeft}
+                title="Cuộn sang trái"
+                style={{
+                  position: 'absolute',
+                  left: '12px',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  zIndex: 15,
+                  width: '42px',
+                  height: '42px',
+                  borderRadius: '50%',
+                  background: canScrollLeft ? 'rgba(255, 255, 255, 0.9)' : 'rgba(255, 255, 255, 0.4)',
+                  backdropFilter: 'blur(8px)',
+                  border: canScrollLeft ? '1px solid var(--color-border)' : '1px solid var(--color-border-light)',
+                  boxShadow: canScrollLeft ? '0 4px 14px rgba(0,0,0,0.1)' : 'none',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: canScrollLeft ? 'pointer' : 'not-allowed',
+                  color: canScrollLeft ? 'var(--color-text)' : 'var(--color-text-muted)',
+                  opacity: canScrollLeft ? 0.9 : 0.35,
+                  pointerEvents: canScrollLeft ? 'auto' : 'none',
+                  transition: 'all 0.2s ease'
                 }}
-                onDragOver={e => { 
-                  e.preventDefault(); 
-                  e.currentTarget.style.background = 'var(--color-primary-light)'; 
-                  e.currentTarget.style.border = '2px dashed var(--color-primary)';
-                  e.currentTarget.style.transform = 'scale(1.01)';
+                onMouseEnter={e => {
+                  if (canScrollLeft) {
+                    e.currentTarget.style.color = 'var(--color-primary)';
+                    e.currentTarget.style.borderColor = 'var(--color-primary)';
+                    e.currentTarget.style.background = 'var(--color-surface)';
+                  }
                 }}
-                onDragLeave={e => { 
-                  e.currentTarget.style.background = 'var(--color-surface)'; 
-                  e.currentTarget.style.border = '1px solid var(--color-border)';
-                  e.currentTarget.style.transform = 'scale(1)';
-                }}
-                onDrop={e => { 
-                  e.currentTarget.style.background = 'var(--color-surface)'; 
-                  e.currentTarget.style.border = '1px solid var(--color-border)';
-                  e.currentTarget.style.transform = 'scale(1)';
-                  handleDrop(stage.id); 
+                onMouseLeave={e => {
+                  if (canScrollLeft) {
+                    e.currentTarget.style.color = 'var(--color-text)';
+                    e.currentTarget.style.borderColor = 'var(--color-border)';
+                    e.currentTarget.style.background = 'rgba(255, 255, 255, 0.9)';
+                  }
                 }}
               >
-                {/* Stage Header */}
-                <div style={{ padding: '1rem 1.25rem', borderBottom: `3px solid ${stage.color || 'var(--color-primary)'}`, display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                      <h3 style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--color-text)' }}>{stage.name}</h3>
-                      <span style={{ background: 'var(--color-bg)', color: 'var(--color-text-muted)', padding: '2px 8px', borderRadius: '99px', fontSize: '0.75rem', fontWeight: 700 }}>{stageItems.length}</span>
-                    </div>
-                    </div>
-                  <div style={{ fontSize: '0.875rem', color: 'var(--color-text-light)', fontWeight: 600 }}>
-                    {FMT(total)}
-                  </div>
-                </div>
+                <ChevronLeft size={22} />
+              </button>
+              <button
+                className="no-active-scale"
+                onClick={() => scrollKanban('right')}
+                disabled={!canScrollRight}
+                title="Cuộn sang phải"
+                style={{
+                  position: 'absolute',
+                  right: '12px',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  zIndex: 15,
+                  width: '42px',
+                  height: '42px',
+                  borderRadius: '50%',
+                  background: canScrollRight ? 'rgba(255, 255, 255, 0.9)' : 'rgba(255, 255, 255, 0.4)',
+                  backdropFilter: 'blur(8px)',
+                  border: canScrollRight ? '1px solid var(--color-border)' : '1px solid var(--color-border-light)',
+                  boxShadow: canScrollRight ? '0 4px 14px rgba(0,0,0,0.1)' : 'none',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: canScrollRight ? 'pointer' : 'not-allowed',
+                  color: canScrollRight ? 'var(--color-text)' : 'var(--color-text-muted)',
+                  opacity: canScrollRight ? 0.9 : 0.35,
+                  pointerEvents: canScrollRight ? 'auto' : 'none',
+                  transition: 'all 0.2s ease'
+                }}
+                onMouseEnter={e => {
+                  if (canScrollRight) {
+                    e.currentTarget.style.color = 'var(--color-primary)';
+                    e.currentTarget.style.borderColor = 'var(--color-primary)';
+                    e.currentTarget.style.background = 'var(--color-surface)';
+                  }
+                }}
+                onMouseLeave={e => {
+                  if (canScrollRight) {
+                    e.currentTarget.style.color = 'var(--color-text)';
+                    e.currentTarget.style.borderColor = 'var(--color-border)';
+                    e.currentTarget.style.background = 'rgba(255, 255, 255, 0.9)';
+                  }
+                }}
+              >
+                <ChevronRight size={22} />
+              </button>
+            </>
+          )}
 
-                {/* Cards Container */}
-                <div style={{ padding: '1rem', overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                  <AnimatePresence>
-                    {stageItems.map(item => {
-                      const itemName = pipelineView === 'contacts' ? `${item.last_name || ''} ${item.first_name}`.trim() : (pipelineView === 'companies' ? item.name : item.title);
-                      const isItemOwner = Number(currentUser?.id) === Number(item.owner_id || item.created_by);
-                      const isPrivileged = currentUser?.role && ['admin', 'superadmin', 'super_admin', 'manager', 'director', 'assistant'].includes(currentUser.role);
-                      const canDrag = (isItemOwner || isPrivileged) && currentUser?.role !== 'viewer';
-                      return (
-                      <motion.div key={item.id}
-                        draggable={canDrag}
-                        onDragStart={() => canDrag && setDragging({ id: item.id, fromStage: stage.id })}
-                        onDragEnd={() => setDragging(null)}
-                        initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }} layout
-                        style={{ 
-                          background: 'var(--color-surface)', borderRadius: 'var(--radius-lg)', padding: '0.875rem 1rem', 
-                          boxShadow: 'var(--shadow-sm)', border: '1px solid var(--color-border-light)', 
-                          cursor: canDrag ? 'grab' : 'default', userSelect: 'none', position: 'relative'
-                        }}
-                        onClick={() => {
-                          if (pipelineView === 'deals') { setSelectedDeal(item); setShowDealDrawer(true); }
-                          else if (pipelineView === 'contacts') { setSelectedContact(item); setShowContactDrawer(true); }
-                          else { setSelectedCompany(item); setShowCompanyDrawer(true); }
-                        }}
-                        whileHover={{ y: -2, boxShadow: '0 8px 16px rgba(0,0,0,0.08)' }}
-                        whileTap={{ cursor: 'grabbing' }}
-                      >
-                        {/* Header: Avatar and Name */}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.875rem' }}>
-                           <Avatar name={itemName} src={item.avatar_url} size={38} />
-                          <div style={{ minWidth: 0, flex: 1 }}>
-                            <h4 style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--color-text)', lineHeight: 1.25, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                              {itemName}
-                            </h4>
-                            {item.company_name && (
-                              <p style={{ fontSize: '0.73rem', color: 'var(--color-text-light)', marginTop: '3px', display: 'flex', alignItems: 'center', gap: '3px', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>
-                                <Building2 size={11} style={{ flexShrink: 0 }} />
-                                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.company_name}</span>
-                              </p>
+          <div
+            ref={kanbanScrollRef}
+            onScroll={updateScrollState}
+            className="card custom-scrollbar"
+            style={{ 
+              display: 'flex', 
+              gap: isMobile ? '0.75rem' : '1.25rem', 
+              overflowX: 'auto', 
+              padding: isMobile ? '0.75rem' : '1.5rem', 
+              paddingBottom: '2rem', 
+              height: 'calc(100vh - 280px)',
+              minHeight: '520px',
+              flex: 1, 
+              alignItems: 'stretch', 
+              scrollSnapType: 'x mandatory',
+              background: `
+                linear-gradient(to right, var(--color-surface) 30%, transparent),
+                linear-gradient(to left, var(--color-surface) 30%, transparent) 100% 0,
+                linear-gradient(to right, rgba(0, 0, 0, 0.08), transparent),
+                linear-gradient(to left, rgba(0, 0, 0, 0.08), transparent) 100% 0
+              `,
+              backgroundRepeat: 'no-repeat',
+              backgroundSize: '32px 100%, 32px 100%, 12px 100%, 12px 100%',
+              backgroundAttachment: 'local, local, scroll, scroll'
+            }}
+          >
+            {loading ? (
+              // Skeleton columns while loading
+              <>
+                {(isMobile ? [1] : [1, 2, 3, 4]).map(i => (
+                  <div key={i} style={{ minWidth: isMobile ? '100%' : 320, width: isMobile ? '100%' : 320, flexShrink: 0, background: 'var(--color-surface)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--color-border-light)', overflow: 'hidden', height: '100%' }}>
+                    <div style={{ padding: '1rem 1.25rem', borderBottom: '3px solid var(--color-border)' }}>
+                      <div style={{ height: 18, width: 120, background: '#e9ecef', borderRadius: 6, marginBottom: 8 }} />
+                      <div style={{ height: 14, width: 60, background: '#f1f3f5', borderRadius: 6 }} />
+                    </div>
+                    <div style={{ padding: '1rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                      {[1, 2].map(j => (
+                        <div key={j} style={{ background: '#f8f9fa', borderRadius: 'var(--radius-lg)', padding: '1.25rem', animation: 'pulse 1.5s ease-in-out infinite' }}>
+                          <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', marginBottom: '1rem' }}>
+                            <div style={{ width: 36, height: 36, borderRadius: '50%', background: '#e9ecef' }} />
+                            <div style={{ flex: 1 }}>
+                              <div style={{ height: 14, width: '70%', background: '#dee2e6', borderRadius: 4, marginBottom: 6 }} />
+                              <div style={{ height: 11, width: '50%', background: '#e9ecef', borderRadius: 4 }} />
+                            </div>
+                          </div>
+                          <div style={{ height: 11, width: '60%', background: '#e9ecef', borderRadius: 4, marginBottom: 6 }} />
+                          <div style={{ height: 11, width: '80%', background: '#e9ecef', borderRadius: 4 }} />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </>
+            ) : stages.map(stage => {
+              if (isMobile && activeStageMobile !== stage.id) return null;
+              const stageItems = filteredItems[stage.id] || [];
+              const total = stageItems.reduce((s, d) => s + (Number(d.expected_revenue) || 0), 0);
+              const limit = stageVisibleLimits[stage.id] || 10;
+              const visibleStageItems = stageItems.slice(0, limit);
+              const hasMore = stageItems.length > visibleStageItems.length;
+
+              return (
+                <div key={stage.id}
+                  style={{ 
+                    minWidth: isMobile ? '100%' : 320, width: isMobile ? '100%' : 320, flexShrink: 0, 
+                    background: 'var(--color-surface)',
+                    border: '1px solid var(--color-border-light)',
+                    borderRadius: 'var(--radius-lg)',
+                    display: 'flex', flexDirection: 'column', maxHeight: '100%', height: '100%',
+                    transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                    scrollSnapAlign: 'center'
+                  }}
+                  onDragOver={e => { 
+                    e.preventDefault(); 
+                    e.currentTarget.style.background = 'var(--color-primary-light)'; 
+                    e.currentTarget.style.border = '2px dashed var(--color-primary)';
+                    e.currentTarget.style.transform = 'scale(1.01)';
+                  }}
+                  onDragLeave={e => { 
+                    e.currentTarget.style.background = 'var(--color-surface)'; 
+                    e.currentTarget.style.border = '1px solid var(--color-border)';
+                    e.currentTarget.style.transform = 'scale(1)';
+                  }}
+                  onDrop={e => { 
+                    e.currentTarget.style.background = 'var(--color-surface)'; 
+                    e.currentTarget.style.border = '1px solid var(--color-border)';
+                    e.currentTarget.style.transform = 'scale(1)';
+                    handleDrop(stage.id); 
+                  }}
+                >
+                  {/* Stage Header */}
+                  <div style={{ padding: '1rem 1.25rem', borderBottom: `3px solid ${stage.color || 'var(--color-primary)'}`, display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <h3 style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--color-text)' }}>{stage.name}</h3>
+                        <span style={{ background: 'var(--color-bg)', color: 'var(--color-text-muted)', padding: '2px 8px', borderRadius: '99px', fontSize: '0.75rem', fontWeight: 700 }}>{stageItems.length}</span>
+                      </div>
+                    </div>
+                    <div style={{ fontSize: '0.875rem', color: 'var(--color-text-light)', fontWeight: 600 }}>
+                      {FMT(total)}
+                    </div>
+                  </div>
+
+                  {/* Cards Container */}
+                  <div
+                    style={{ padding: '1rem', overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: '1rem' }}
+                    onScroll={(e) => {
+                      const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
+                      if (scrollHeight - scrollTop - clientHeight < 60 && hasMore) {
+                        setStageVisibleLimits(prev => ({
+                          ...prev,
+                          [stage.id]: (prev[stage.id] || 10) + 10
+                        }));
+                      }
+                    }}
+                  >
+                    <AnimatePresence>
+                      {visibleStageItems.map(item => {
+                        const itemName = pipelineView === 'contacts' ? `${item.last_name || ''} ${item.first_name}`.trim() : (pipelineView === 'companies' ? item.name : item.title);
+                        const isItemOwner = Number(currentUser?.id) === Number(item.owner_id || item.created_by);
+                        const isPrivileged = currentUser?.role && ['admin', 'superadmin', 'super_admin', 'manager', 'director', 'assistant'].includes(currentUser.role);
+                        const canDrag = (isItemOwner || isPrivileged) && currentUser?.role !== 'viewer';
+                        return (
+                        <motion.div key={item.id}
+                          draggable={canDrag}
+                          onDragStart={() => canDrag && setDragging({ id: item.id, fromStage: stage.id })}
+                          onDragEnd={() => setDragging(null)}
+                          initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }} layout
+                          style={{ 
+                            background: 'var(--color-surface)', borderRadius: 'var(--radius-lg)', padding: '0.875rem 1rem', 
+                            boxShadow: 'var(--shadow-sm)', border: '1px solid var(--color-border-light)', 
+                            cursor: canDrag ? 'grab' : 'default', userSelect: 'none', position: 'relative'
+                          }}
+                          onClick={() => {
+                            if (pipelineView === 'deals') { setSelectedDeal(item); setShowDealDrawer(true); }
+                            else if (pipelineView === 'contacts') { setSelectedContact(item); setShowContactDrawer(true); }
+                            else { setSelectedCompany(item); setShowCompanyDrawer(true); }
+                          }}
+                          whileHover={{ y: -2, boxShadow: '0 8px 16px rgba(0,0,0,0.08)' }}
+                          whileTap={{ cursor: 'grabbing' }}
+                        >
+                          {/* Header: Avatar and Name */}
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.875rem' }}>
+                             <Avatar name={itemName} src={item.avatar_url} size={38} />
+                            <div style={{ minWidth: 0, flex: 1 }}>
+                              <h4 style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--color-text)', lineHeight: 1.25, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                {itemName}
+                              </h4>
+                              {item.company_name && (
+                                <p style={{ fontSize: '0.73rem', color: 'var(--color-text-light)', marginTop: '3px', display: 'flex', alignItems: 'center', gap: '3px', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>
+                                  <Building2 size={11} style={{ flexShrink: 0 }} />
+                                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.company_name}</span>
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                          
+                          {/* Body: Contact Info */}
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', marginBottom: '0.875rem' }}>
+                            {item.phone && (
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>
+                                <Phone size={13} style={{ color: 'var(--color-text-light)', flexShrink: 0 }} />
+                                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.phone}</span>
+                              </div>
+                            )}
+                            {item.email && (
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>
+                                <Mail size={13} style={{ color: 'var(--color-text-light)', flexShrink: 0 }} />
+                                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.email}</span>
+                              </div>
                             )}
                           </div>
-                        </div>
-                        
-                        {/* Body: Contact Info */}
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', marginBottom: '0.875rem' }}>
-                          {item.phone && (
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>
-                              <Phone size={13} style={{ color: 'var(--color-text-light)', flexShrink: 0 }} />
-                              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.phone}</span>
-                            </div>
-                          )}
-                          {item.email && (
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>
-                              <Mail size={13} style={{ color: 'var(--color-text-light)', flexShrink: 0 }} />
-                              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.email}</span>
-                            </div>
-                          )}
-                        </div>
-                        
-                        {/* Footer: Pipeline Update Time & Owner */}
-                        <div style={{ borderTop: '1px dashed var(--color-border)', paddingTop: '0.75rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                           <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.75rem', color: 'var(--color-text-light)' }} title="Cập nhật Pipeline lần cuối">
-                             <Clock size={12} />
-                             <span>{item.updated_at ? item.updated_at.substring(0,10) : (item.created_at?.substring(0,10) || '')}</span>
+                          
+                          {/* Footer: Pipeline Update Time & Owner */}
+                          <div style={{ borderTop: '1px dashed var(--color-border)', paddingTop: '0.75rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                             <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.75rem', color: 'var(--color-text-light)' }} title="Cập nhật Pipeline lần cuối">
+                               <Clock size={12} />
+                               <span>{item.updated_at ? item.updated_at.substring(0,10) : (item.created_at?.substring(0,10) || '')}</span>
+                             </div>
+                             <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.75rem', color: 'var(--color-text-muted)' }} title={item.owner_name || 'Sale phụ trách'}>
+                               <Avatar name={item.owner_name} src={item.owner_avatar} size={16} />
+                               <span>{item.owner_name?.split(' ').pop() || 'Sale'}</span>
+                              </div>
                            </div>
-                           <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.75rem', color: 'var(--color-text-muted)' }} title={item.owner_name || 'Sale phụ trách'}>
-                             <Avatar name={item.owner_name} src={item.owner_avatar} size={16} />
-                             <span>{item.owner_name?.split(' ').pop() || 'Sale'}</span>
-                            </div>
-                         </div>
-                         {isMobile && (
-                           <div style={{ marginTop: '0.75rem', borderTop: '1px solid var(--color-border-light)', paddingTop: '0.5rem' }}>
-                             <button
-                               className="btn outline sm"
-                               style={{ width: '100%', height: '32px', fontSize: '0.75rem', padding: '0 8px', borderRadius: '8px', fontWeight: 700 }}
-                               onClick={(e) => {
-                                 e.stopPropagation();
-                                 setStagePickerItem({ id: item.id, fromStageId: stage.id });
-                               }}
-                             >
-                               Chuyển giai đoạn...
-                             </button>
-                           </div>
-                         )}
-                       </motion.div>
-                     )})}
-                  </AnimatePresence>
+                           {isMobile && (
+                             <div style={{ marginTop: '0.75rem', borderTop: '1px solid var(--color-border-light)', paddingTop: '0.5rem' }}>
+                               <button
+                                 className="btn outline sm"
+                                 style={{ width: '100%', height: '32px', fontSize: '0.75rem', padding: '0 8px', borderRadius: '8px', fontWeight: 700 }}
+                                 onClick={(e) => {
+                                   e.stopPropagation();
+                                   setStagePickerItem({ id: item.id, fromStageId: stage.id });
+                                 }}
+                               >
+                                 Chuyển giai đoạn...
+                               </button>
+                             </div>
+                           )}
+                         </motion.div>
+                       )})}
+                    </AnimatePresence>
+                    {hasMore && (
+                      <button
+                        className="btn ghost sm"
+                        style={{
+                          width: '100%',
+                          padding: '8px 12px',
+                          fontSize: '0.78rem',
+                          fontWeight: 600,
+                          color: 'var(--color-primary)',
+                          background: 'var(--color-primary-light, rgba(59, 130, 246, 0.08))',
+                          border: '1px dashed var(--color-primary)',
+                          borderRadius: '8px',
+                          cursor: 'pointer',
+                          marginTop: '0.25rem',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center'
+                        }}
+                        onClick={() => {
+                          setStageVisibleLimits(prev => ({
+                            ...prev,
+                            [stage.id]: (prev[stage.id] || 10) + 10
+                          }));
+                        }}
+                      >
+                        Xem thêm 10 thẻ (Còn {stageItems.length - visibleStageItems.length} thẻ)
+                      </button>
+                    )}
+                  </div>
                 </div>
-              </div>
-            );
-          })}
+              );
+            })}
+          </div>
         </div>
       ) : (
         <div className="card-panel" style={{ flex: 1, overflow: 'auto', background: 'var(--color-surface)', padding: 0 }}>

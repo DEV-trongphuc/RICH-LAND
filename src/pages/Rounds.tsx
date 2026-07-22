@@ -2,7 +2,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { withRouterFreezer } from '../components/RouterFreezer';
-import { Plus, Users, Zap, X, Shield, Check, LayoutGrid, List, Trash2, Search, AlertCircle, Clock, Scale, Info, Layers, HelpCircle, ArrowRight, RefreshCw } from 'lucide-react';
+import { Plus, Users, Zap, X, Shield, Check, LayoutGrid, List, Trash2, Search, AlertCircle, Clock, Scale, Info, Layers, HelpCircle, ArrowRight, RefreshCw, Globe, Building2 } from 'lucide-react';
 import { ToggleSwitch } from '../components/ui/ToggleSwitch';
 import { ConfirmModal } from '../components/ui/ConfirmModal';
 import { fetchAPI, getDefaultDateFilter } from '../utils/api';
@@ -133,6 +133,8 @@ const RoundsInner = ({ isActive }: { isActive: boolean }) => {
   const [isDeleting, setIsDeleting] = useState(false);
   const [isActioning, setIsActioning] = useState<number | null>(null);
   const [projects, setProjects] = useState<any[]>([]);
+  const [campaigns, setCampaigns] = useState<any[]>([]);
+  const [scopeType, setScopeType] = useState<'none' | 'project' | 'campaign'>('none');
   const [formData, setFormData] = useState({
     round_name: '',
     is_active: 1,
@@ -143,7 +145,8 @@ const RoundsInner = ({ isActive }: { isActive: boolean }) => {
     data_per_turns: {} as Record<string, number>,
     compensations: {} as Record<string, number>,
     is_fallback: false,
-    project_id: null as number | null
+    project_id: null as number | null,
+    campaign_id: null as number | null
   });
 
   const [searchUser, setSearchUser] = useState('');
@@ -235,6 +238,15 @@ const RoundsInner = ({ isActive }: { isActive: boolean }) => {
     }
   };
 
+  const fetchCampaigns = async () => {
+    try {
+      const json = await fetchAPI('campaigns');
+      if (json.success) setCampaigns(json.data || []);
+    } catch (e: any) {
+      console.error(t('Không thể tải chiến dịch:'), e.message);
+    }
+  };
+
   useEffect(() => {
     if (isActive) {
       setRoundsPage(1);
@@ -246,6 +258,7 @@ const RoundsInner = ({ isActive }: { isActive: boolean }) => {
     fetchConsultants();
     fetchAccounts();
     fetchProjects();
+    fetchCampaigns();
   }, []);
 
   useEffect(() => {
@@ -279,7 +292,8 @@ const RoundsInner = ({ isActive }: { isActive: boolean }) => {
 
   const openAddModal = () => {
     setEditingRound(null);
-    setFormData({ round_name: '', is_active: 1, cc_emails: '', selected_users: [], starting_consultant_id: null, ratios: {}, data_per_turns: {}, compensations: {}, is_fallback: false, project_id: null });
+    setScopeType('none');
+    setFormData({ round_name: '', is_active: 1, cc_emails: '', selected_users: [], starting_consultant_id: null, ratios: {}, data_per_turns: {}, compensations: {}, is_fallback: false, project_id: null, campaign_id: null });
     setSelectedAdmins([]);
     setEnableExternalCc(false);
     setExternalCcEmails('');
@@ -327,6 +341,10 @@ const RoundsInner = ({ isActive }: { isActive: boolean }) => {
       matchedIds = r.consultant_ids.split(',').map((id: string) => parseInt(id, 10));
     }
 
+    const currentProjId = r.project_id ? Number(r.project_id) : null;
+    const currentCampId = r.campaign_id ? Number(r.campaign_id) : null;
+    setScopeType(currentCampId ? 'campaign' : (currentProjId ? 'project' : 'none'));
+
     setFormData({
       round_name: r.round_name,
       is_active: Number(r.is_active),
@@ -337,7 +355,8 @@ const RoundsInner = ({ isActive }: { isActive: boolean }) => {
       data_per_turns: r.data_per_turns || {},
       compensations: r.compensations || {},
       is_fallback: !!r.is_fallback,
-      project_id: r.project_id ? Number(r.project_id) : null
+      project_id: currentProjId,
+      campaign_id: currentCampId
     });
 
     // Parse cc_emails into selected admins and external emails
@@ -358,6 +377,120 @@ const RoundsInner = ({ isActive }: { isActive: boolean }) => {
     setModalOpen(true);
     fetchReports(r.id);
     fetchActiveLogs(r.id);
+  };
+  const isManagementUser = (userId: number, memberRole?: string) => {
+    const mgmtRoles = ['admin', 'superadmin', 'super_admin', 'manager', 'director', 'assistant', 'lead', 'leader'];
+    if (memberRole && mgmtRoles.includes(String(memberRole).toLowerCase())) {
+      return true;
+    }
+    const acc = accounts.find(a => Number(a.id) === Number(userId));
+    if (acc && acc.role) {
+      const accRole = String(acc.role).toLowerCase();
+      if (mgmtRoles.includes(accRole)) {
+        return true;
+      }
+    }
+    return false;
+  };
+
+  const handleSelectProject = async (projId: number | null) => {
+    setFormData(prev => ({ ...prev, project_id: projId, campaign_id: null }));
+    if (!projId) return;
+
+    try {
+      const rosterRes = await fetchAPI(`projects/${projId}/roster`);
+      let rosterList: any[] = [];
+      if (Array.isArray(rosterRes)) {
+        rosterList = rosterRes;
+      } else if (rosterRes?.success && Array.isArray(rosterRes.data)) {
+        rosterList = rosterRes.data;
+      }
+      
+      const assignedUserIds = rosterList
+        .filter((m: any) => Number(m.is_assigned) === 1)
+        .map((m: any) => ({ id: Number(m.id || m.user_id), role: m.role }))
+        .filter((m: any) => !isManagementUser(m.id, m.role))
+        .map((m: any) => m.id);
+
+      if (assignedUserIds.length > 0) {
+        const newRatios = { ...formData.ratios };
+        const newTurns = { ...formData.data_per_turns };
+        const newComps = { ...formData.compensations };
+        assignedUserIds.forEach(id => {
+          if (newRatios[id] === undefined) newRatios[id] = 1;
+          if (newTurns[id] === undefined) newTurns[id] = 1;
+          if (newComps[id] === undefined) newComps[id] = 0;
+        });
+        setFormData(prev => ({
+          ...prev,
+          selected_users: Array.from(new Set([...prev.selected_users, ...assignedUserIds])),
+          ratios: newRatios,
+          data_per_turns: newTurns,
+          compensations: newComps
+        }));
+        const projName = projects.find(p => p.id === projId)?.name || 'Dự án';
+        toast.success(t(`Đã tự động nạp ${assignedUserIds.length} nhân sự từ Roster của ${projName}!`));
+      } else {
+        toast(t('Dự án này chưa có nhân sự tư vấn nào trong Roster'), { icon: 'ℹ️' });
+      }
+    } catch (e) {
+      console.error('Failed to load project roster', e);
+    }
+  };
+
+  const handleSelectCampaign = async (campId: number | null) => {
+    setFormData(prev => ({ ...prev, campaign_id: campId, project_id: null }));
+    if (!campId) return;
+
+    try {
+      const camp = campaigns.find(c => Number(c.id) === Number(campId));
+      let rawUserIds: any[] = [];
+      if (camp?.user_ids) {
+        const parsed = typeof camp.user_ids === 'string'
+          ? camp.user_ids.split(',').map((id: string) => Number(id.trim())).filter(Boolean)
+          : (Array.isArray(camp.user_ids) ? camp.user_ids.map(Number) : []);
+        rawUserIds = parsed.map((id: number) => ({ id }));
+      }
+      if (rawUserIds.length === 0 && camp?.project_id) {
+        const rosterRes = await fetchAPI(`projects/${camp.project_id}/roster`);
+        let rosterList: any[] = [];
+        if (Array.isArray(rosterRes)) {
+          rosterList = rosterRes;
+        } else if (rosterRes?.success && Array.isArray(rosterRes.data)) {
+          rosterList = rosterRes.data;
+        }
+        rawUserIds = rosterList
+          .filter((m: any) => Number(m.is_assigned) === 1)
+          .map((m: any) => ({ id: Number(m.id || m.user_id), role: m.role }));
+      }
+
+      const userIds = rawUserIds
+        .filter((m: any) => !isManagementUser(m.id, m.role))
+        .map((m: any) => m.id);
+
+      if (userIds.length > 0) {
+        const newRatios = { ...formData.ratios };
+        const newTurns = { ...formData.data_per_turns };
+        const newComps = { ...formData.compensations };
+        userIds.forEach(id => {
+          if (newRatios[id] === undefined) newRatios[id] = 1;
+          if (newTurns[id] === undefined) newTurns[id] = 1;
+          if (newComps[id] === undefined) newComps[id] = 0;
+        });
+        setFormData(prev => ({
+          ...prev,
+          selected_users: Array.from(new Set([...prev.selected_users, ...userIds])),
+          ratios: newRatios,
+          data_per_turns: newTurns,
+          compensations: newComps
+        }));
+        toast.success(t(`Đã tự động nạp ${userIds.length} nhân sự từ Roster của Chiến dịch ${camp?.name || ''}!`));
+      } else {
+        toast(t('Chiến dịch này chưa có nhân sự tư vấn nào trong Roster'), { icon: 'ℹ️' });
+      }
+    } catch (e) {
+      console.error('Failed to load campaign roster', e);
+    }
   };
 
   const fetchActiveLogs = async (roundId: number) => {
@@ -1316,20 +1449,138 @@ const RoundsInner = ({ isActive }: { isActive: boolean }) => {
                           />
                         </div>
 
+                        {/* Phạm vi áp dụng & Roster Scope Selector */}
                         <div className="form-group">
-                          <label className="form-label">{t("Thuộc Dự Án")}</label>
-                          <select
-                            className="form-input"
-                            style={{ width: '100%' }}
-                            value={formData.project_id || ''}
-                            onChange={e => setFormData({ ...formData, project_id: e.target.value ? Number(e.target.value) : null })}
-                          >
-                            <option value="">-- {t("Chọn Dự án (Không bắt buộc)")} --</option>
-                            {projects.map(proj => (
-                              <option key={proj.id} value={proj.id}>{proj.name}</option>
-                            ))}
-                          </select>
+                          <label className="form-label">{t("Phạm vi áp dụng (Dự án / Chiến dịch)")}</label>
+                          <div style={{ display: 'flex', gap: '4px', background: 'var(--color-bg)', padding: '3px', borderRadius: '10px', border: '1px solid var(--color-border-light)' }}>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setScopeType('none');
+                                setFormData(prev => ({ ...prev, project_id: null, campaign_id: null }));
+                              }}
+                              style={{
+                                flex: 1,
+                                padding: '6px 8px',
+                                borderRadius: '8px',
+                                fontSize: '0.75rem',
+                                fontWeight: 700,
+                                border: 'none',
+                                background: scopeType === 'none' ? 'var(--color-surface)' : 'transparent',
+                                color: scopeType === 'none' ? 'var(--color-primary)' : 'var(--color-text-muted)',
+                                boxShadow: scopeType === 'none' ? '0 1px 4px rgba(0,0,0,0.08)' : 'none',
+                                cursor: 'pointer',
+                                transition: 'all 0.15s ease',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: '4px'
+                              }}
+                            >
+                              <Globe size={13} /> {t("Độc lập")}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setScopeType('project');
+                                setFormData(prev => ({ ...prev, campaign_id: null }));
+                              }}
+                              style={{
+                                flex: 1,
+                                padding: '6px 8px',
+                                borderRadius: '8px',
+                                fontSize: '0.75rem',
+                                fontWeight: 700,
+                                border: 'none',
+                                background: scopeType === 'project' ? 'var(--color-surface)' : 'transparent',
+                                color: scopeType === 'project' ? 'var(--color-primary)' : 'var(--color-text-muted)',
+                                boxShadow: scopeType === 'project' ? '0 1px 4px rgba(0,0,0,0.08)' : 'none',
+                                cursor: 'pointer',
+                                transition: 'all 0.15s ease',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: '4px'
+                              }}
+                            >
+                              <Building2 size={13} /> {t("Theo Dự Án")}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setScopeType('campaign');
+                                setFormData(prev => ({ ...prev, project_id: null }));
+                              }}
+                              style={{
+                                flex: 1,
+                                padding: '6px 8px',
+                                borderRadius: '8px',
+                                fontSize: '0.75rem',
+                                fontWeight: 700,
+                                border: 'none',
+                                background: scopeType === 'campaign' ? 'var(--color-surface)' : 'transparent',
+                                color: scopeType === 'campaign' ? 'var(--color-primary)' : 'var(--color-text-muted)',
+                                boxShadow: scopeType === 'campaign' ? '0 1px 4px rgba(0,0,0,0.08)' : 'none',
+                                cursor: 'pointer',
+                                transition: 'all 0.15s ease',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: '4px'
+                              }}
+                            >
+                              <Layers size={13} /> {t("Theo Chiến Dịch")}
+                            </button>
+                          </div>
                         </div>
+
+                        {/* Project Dropdown with Search */}
+                        {scopeType === 'project' && (
+                          <div className="form-group" style={{ animation: 'fadeIn 0.2s ease-out' }}>
+                            <label className="form-label">{t("Chọn Dự Án")}</label>
+                            <CustomSelect
+                              searchable={true}
+                              placeholder={t("Tìm kiếm và chọn Dự án...")}
+                              value={formData.project_id || ''}
+                              onChange={(val) => handleSelectProject(val ? Number(val) : null)}
+                              options={[
+                                { value: '', label: `-- ${t("Chọn Dự án")} --` },
+                                ...projects.map(proj => ({
+                                  value: proj.id,
+                                  label: proj.name,
+                                  sublabel: proj.code ? `Mã: ${proj.code}` : undefined
+                                }))
+                              ]}
+                            />
+                            <p style={{ fontSize: '0.68rem', color: 'var(--color-text-muted)', marginTop: 4 }}>
+                              {t("Chọn dự án sẽ tự động nạp danh sách TVV trong Roster dự án sang bên phải.")}
+                            </p>
+                          </div>
+                        )}
+
+                        {/* Campaign Dropdown with Search */}
+                        {scopeType === 'campaign' && (
+                          <div className="form-group" style={{ animation: 'fadeIn 0.2s ease-out' }}>
+                            <label className="form-label">{t("Chọn Chiến Dịch")}</label>
+                            <CustomSelect
+                              searchable={true}
+                              placeholder={t("Tìm kiếm và chọn Chiến dịch...")}
+                              value={formData.campaign_id || ''}
+                              onChange={(val) => handleSelectCampaign(val ? Number(val) : null)}
+                              options={[
+                                { value: '', label: `-- ${t("Chọn Chiến dịch")} --` },
+                                ...campaigns.map(camp => ({
+                                  value: camp.id,
+                                  label: camp.name,
+                                  sublabel: camp.code ? `Mã: ${camp.code}` : undefined
+                                }))
+                              ]}
+                            />
+                            <p style={{ fontSize: '0.68rem', color: 'var(--color-text-muted)', marginTop: 4 }}>
+                              {t("Chọn chiến dịch sẽ tự động nạp danh sách TVV trong Roster chiến dịch sang bên phải.")}
+                            </p>
+                          </div>
+                        )}
 
                         <div className="form-group">
                           <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>

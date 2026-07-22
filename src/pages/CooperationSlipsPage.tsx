@@ -2381,8 +2381,8 @@ export default function CooperationSlipsPage() {
       {/* Yêu cầu chỉnh sửa tỷ lệ hoa hồng Modal */}
       {/* Yêu cầu chỉnh sửa tỷ lệ hoa hồng Modal */}
       {requestAdjustmentSlip && createPortal(
-        <div style={{ position: 'fixed', inset: 0, zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0, 0, 0, 0.65)', backdropFilter: 'blur(5px)', padding: '1rem' }}>
-          <div className="card animate-fade" style={{ maxWidth: '540px', width: '100%', padding: '2rem', display: 'flex', flexDirection: 'column', gap: '1.5rem', maxHeight: '92vh', overflowY: 'auto', borderRadius: '24px', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.15), 0 10px 10px -5px rgba(0, 0, 0, 0.04)', border: '1px solid var(--color-border)' }}>
+        <div style={{ position: 'fixed', inset: 0, zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0, 0, 0, 0.65)', backdropFilter: 'blur(5px)', padding: window.innerWidth <= 768 ? '0.75rem 0.75rem 80px 0.75rem' : '1rem' }}>
+          <div className="card animate-fade" style={{ maxWidth: '540px', width: '100%', padding: window.innerWidth <= 768 ? '1.25rem' : '2rem', display: 'flex', flexDirection: 'column', gap: '1.25rem', maxHeight: window.innerWidth <= 768 ? '72vh' : '88vh', overflowY: 'auto', borderRadius: '24px', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.15), 0 10px 10px -5px rgba(0, 0, 0, 0.04)', border: '1px solid var(--color-border)', boxSizing: 'border-box' }}>
             
             {/* Header */}
             <div>
@@ -2508,8 +2508,20 @@ export default function CooperationSlipsPage() {
               />
             </div>
 
-            {/* Actions */}
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', borderTop: '1px solid var(--color-border-light)', paddingTop: '1.25rem', marginTop: '0.5rem' }}>
+            {/* Actions (Sticky Bottom) */}
+            <div style={{
+              display: 'flex',
+              justifyContent: 'flex-end',
+              gap: '10px',
+              borderTop: '1px solid var(--color-border-light)',
+              paddingTop: '1rem',
+              paddingBottom: '0.25rem',
+              marginTop: '0.5rem',
+              position: 'sticky',
+              bottom: 0,
+              background: 'var(--color-surface)',
+              zIndex: 10
+            }}>
               <button 
                 className="btn outline" 
                 onClick={() => setRequestAdjustmentSlip(null)} 

@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { AlertTriangle, Info, X } from 'lucide-react';
+import { AlertTriangle, Info, X, RefreshCw } from 'lucide-react';
 import { useUIStore } from '../../store/uiStore';
 
 export const GlobalConfirmModal: React.FC = () => {
@@ -9,6 +9,7 @@ export const GlobalConfirmModal: React.FC = () => {
   const [matchInput, setMatchInput] = React.useState('');
   const [promptInput, setPromptInput] = React.useState('');
   const [isMobile, setIsMobile] = React.useState(window.innerWidth <= 768);
+  const [isSubmitting, setIsSubmitting] = React.useState(false);
 
   React.useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth <= 768);
@@ -20,6 +21,7 @@ export const GlobalConfirmModal: React.FC = () => {
     if (isOpen) {
       setMatchInput('');
       setPromptInput('');
+      setIsSubmitting(false);
     }
   }, [isOpen]);
 
@@ -27,13 +29,24 @@ export const GlobalConfirmModal: React.FC = () => {
 
   const isLocked = !!(requireWordMatch && matchInput !== requireWordMatch) || !!(requirePromptInput && !promptInput.trim());
 
-  const handleConfirm = () => {
-    if (isLocked) return;
-    onConfirm((requirePromptInput || optionalPromptInput) ? promptInput : undefined);
-    closeConfirm();
+  const handleConfirm = async () => {
+    if (isLocked || isSubmitting) return;
+    setIsSubmitting(true);
+    try {
+      const res: any = onConfirm((requirePromptInput || optionalPromptInput) ? promptInput : undefined);
+      if (res && typeof res.then === 'function') {
+        await res;
+      }
+    } catch (err) {
+      console.error('Error executing confirm action:', err);
+    } finally {
+      setIsSubmitting(false);
+      closeConfirm();
+    }
   };
 
   const handleCancel = () => {
+    if (isSubmitting) return;
     if (onCancel) onCancel();
     closeConfirm();
   };
@@ -300,12 +313,12 @@ export const GlobalConfirmModal: React.FC = () => {
             <button 
               className="btn sm"
               onClick={handleConfirm}
-              disabled={isLocked}
+              disabled={isLocked || isSubmitting}
               style={{ 
                 minWidth: isMobile ? 'unset' : '100px', 
                 flex: isMobile ? 1 : 'none',
-                opacity: isLocked ? 0.4 : 1,
-                cursor: isLocked ? 'not-allowed' : 'pointer',
+                opacity: (isLocked || isSubmitting) ? 0.5 : 1,
+                cursor: (isLocked || isSubmitting) ? 'not-allowed' : 'pointer',
                 fontWeight: 700,
                 padding: '8px 16px',
                 borderRadius: '10px',
@@ -314,22 +327,33 @@ export const GlobalConfirmModal: React.FC = () => {
                 borderColor: isDanger ? '#ef4444' : 'var(--color-primary)',
                 color: 'white',
                 boxShadow: isDanger ? '0 4px 12px rgba(239, 68, 68, 0.18)' : '0 4px 12px rgba(163, 20, 34, 0.18)',
-                transition: 'all 0.15s ease'
+                transition: 'all 0.15s ease',
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '6px'
               }}
               onMouseEnter={(e) => {
-                if (!isLocked && !isMobile) {
+                if (!isLocked && !isSubmitting && !isMobile) {
                   e.currentTarget.style.transform = 'translateY(-1px)';
                   e.currentTarget.style.boxShadow = isDanger ? '0 6px 16px rgba(239, 68, 68, 0.25)' : '0 6px 16px rgba(163, 20, 34, 0.25)';
                 }
               }}
               onMouseLeave={(e) => {
-                if (!isLocked && !isMobile) {
+                if (!isLocked && !isSubmitting && !isMobile) {
                   e.currentTarget.style.transform = 'translateY(0)';
                   e.currentTarget.style.boxShadow = isDanger ? '0 4px 12px rgba(239, 68, 68, 0.18)' : '0 4px 12px rgba(163, 20, 34, 0.18)';
                 }
               }}
             >
-              {confirmText}
+              {isSubmitting ? (
+                <>
+                  <RefreshCw size={14} className="spin" />
+                  <span>{confirmText}...</span>
+                </>
+              ) : (
+                confirmText
+              )}
             </button>
           </div>
         </motion.div>

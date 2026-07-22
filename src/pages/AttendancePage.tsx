@@ -2111,6 +2111,7 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
                             {row.status === 'pending_approval' && canApprove && (
                               <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', marginTop: '4px' }}>
                                 <button
+                                  disabled={actionSubmittingId === row.id}
                                   onClick={() => {
                                     showConfirm({
                                       title: t('Phê duyệt đi trễ'),
@@ -2120,16 +2121,17 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
                                       confirmText: t('Phê duyệt'),
                                       cancelText: t('Hủy'),
                                       onConfirm: (reason) => {
-                                        handleUpdateStatus(row.id, 'approved', reason ? reason.trim() : undefined);
+                                        return handleUpdateStatus(row.id, 'approved', reason ? reason.trim() : undefined);
                                       }
                                     });
                                   }}
                                   className="btn success sm"
-                                  style={{ padding: '3px 10px', fontSize: '0.7rem', height: 'auto', borderRadius: '6px' }}
+                                  style={{ padding: '3px 10px', fontSize: '0.7rem', height: 'auto', borderRadius: '6px', opacity: actionSubmittingId === row.id ? 0.6 : 1 }}
                                 >
-                                  <Check size={12} /> {t('Phê duyệt')}
+                                  {actionSubmittingId === row.id ? <RefreshCw size={12} className="spin" /> : <Check size={12} />} {t('Phê duyệt')}
                                 </button>
                                 <button
+                                  disabled={actionSubmittingId === row.id}
                                   onClick={() => {
                                     showConfirm({
                                       title: t('Từ chối chấm công'),
@@ -2141,7 +2143,7 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
                                       isDanger: true,
                                       onConfirm: (reason) => {
                                         if (reason && reason.trim()) {
-                                          handleUpdateStatus(row.id, 'rejected', reason.trim());
+                                          return handleUpdateStatus(row.id, 'rejected', reason.trim());
                                         } else {
                                           toast.error(t('Lý do từ chối là bắt buộc'));
                                         }
@@ -2149,9 +2151,9 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
                                     });
                                   }}
                                   className="btn danger sm"
-                                  style={{ padding: '3px 10px', fontSize: '0.7rem', height: 'auto', borderRadius: '6px' }}
+                                  style={{ padding: '3px 10px', fontSize: '0.7rem', height: 'auto', borderRadius: '6px', opacity: actionSubmittingId === row.id ? 0.6 : 1 }}
                                 >
-                                  <X size={12} /> {t('Từ chối')}
+                                  {actionSubmittingId === row.id ? <RefreshCw size={12} className="spin" /> : <X size={12} />} {t('Từ chối')}
                                 </button>
                               </div>
                             )}

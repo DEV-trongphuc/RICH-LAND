@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, User, Users, Phone, Mail, MapPin, Briefcase, Plus, Search, Send, History, CheckSquare, DollarSign, HelpCircle, FileText, ShoppingCart, Tag as TagIcon, Target, Pencil, Trash2, LifeBuoy, AlertCircle, Clock, UserCheck, Activity, Calendar, CheckCircle2, ChevronLeft, ChevronRight, ChevronDown, Check, Camera, Loader2, MessageSquare, PenTool, Lightbulb, Upload, Paperclip, CreditCard, Ban, ShieldAlert, Copy, Folder, FolderPlus, ArrowRightLeft, List, LayoutGrid, RotateCcw, RefreshCw, Layers, Save, LogOut, XCircle, Eye, TrendingUp, Wallet } from 'lucide-react';
+import { X, User, Users, Phone, Mail, MapPin, Briefcase, Plus, Search, Send, History, CheckSquare, DollarSign, HelpCircle, FileText, ShoppingCart, Tag as TagIcon, Target, Pencil, Trash2, LifeBuoy, AlertCircle, Clock, UserCheck, Activity, Calendar, CheckCircle2, ChevronLeft, ChevronRight, ChevronDown, Check, Camera, Loader2, MessageSquare, PenTool, Lightbulb, Upload, Paperclip, CreditCard, Ban, ShieldAlert, Copy, Folder, FolderPlus, ArrowRightLeft, List, LayoutGrid, RotateCcw, RefreshCw, Layers, Save, LogOut, XCircle, Eye, TrendingUp, Wallet, Lock } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { LeadScoreRing } from '../components/ui/LeadScoreRing';
 import { TagInput } from '../components/ui/TagInput';
@@ -2286,7 +2286,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
     }
   };
 
-  const [ticketForm, setTicketForm] = useState({ subject: '', priority: 'medium', description: '' });
+  const [ticketForm, setTicketForm] = useState({ subject: '', category: 'technical_support', priority: 'medium', description: '' });
   const [dealForm, setDealForm] = useState({
     title: '',
     value: '',
@@ -4159,17 +4159,23 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
 
   const handleCreateTicket = async () => {
     if (!ticketForm.subject.trim() || isSubmitting) return;
+    const isSelfEnteredOrDb = ['ca_nhan', 'cold_call', 'gioi_thieu'].includes(formData.source || contact?.source) || (formData.dl_status || contact?.dl_status) === 'databank_claim';
+    if (isSelfEnteredOrDb && ticketForm.category === 'lead_error_compensation') {
+      addToast('Khách hàng tự khai thác / Databank không hỗ trợ tạo ticket Báo lỗi bù data.', 'error');
+      return;
+    }
     setIsSubmitting(true);
     try {
       await api.post('/tickets', {
         contact_id: contact.id,
         customer_name: fullName,
         subject: ticketForm.subject,
+        category: ticketForm.category || 'technical_support',
         priority: ticketForm.priority,
         description: ticketForm.description
       });
       setShowTicketModal(false);
-      setTicketForm({ subject: '', priority: 'medium', description: '' });
+      setTicketForm({ subject: '', category: 'technical_support', priority: 'medium', description: '' });
       fetchData();
       addToast('Đã gửi yêu cầu hỗ trợ', 'success');
     } catch (e: any) {
@@ -4505,18 +4511,31 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                 {quickUserCard && quickUserCard.visible && (
                   <>
                     <div
-                      style={{ position: 'fixed', inset: 0, zIndex: 3000 }}
+                      style={{ position: 'fixed', inset: 0, zIndex: 1000050, background: isMobileOrTablet ? 'rgba(0,0,0,0.5)' : 'transparent' }}
                       onClick={() => setQuickUserCard(null)}
                     />
                     <motion.div
                       initial={{ opacity: 0, scale: 0.9, y: 10 }}
                       animate={{ opacity: 1, scale: 1, y: 0 }}
                       exit={{ opacity: 0, scale: 0.9, y: 10 }}
-                      style={{
+                      style={isMobileOrTablet ? {
+                        position: 'fixed',
+                        top: '50%',
+                        left: '50%',
+                        transform: 'translate(-50%, -50%)',
+                        zIndex: 1000060,
+                        width: 'calc(100vw - 40px)',
+                        maxWidth: '290px',
+                        background: 'var(--color-surface)',
+                        borderRadius: '20px',
+                        boxShadow: '0 25px 50px -12px rgba(0,0,0,0.4)',
+                        border: '1px solid rgba(163, 20, 34, 0.12)',
+                        overflow: 'hidden'
+                      } : {
                         position: 'fixed',
                         top: quickUserCard.y + 15,
                         left: quickUserCard.x - 130,
-                        zIndex: 3001,
+                        zIndex: 1000060,
                         width: 270,
                         background: 'var(--color-surface)',
                         borderRadius: '20px',
@@ -6326,8 +6345,14 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                         <h4 className="panel-title">Phân loại & Trạng thái Sales</h4>
                         <div className="grid grid-2">
                           <div className="form-group">
-                            <label className="form-label">Nguồn khách (Source)</label>
+                            <label className="form-label" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                              <span>Nguồn khách (Source)</span>
+                              {currentUser?.role === 'sale' && (
+                                <span style={{ fontSize: '0.68rem', color: 'var(--color-text-muted)', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '3px' }}><Lock size={11} /> Chỉ Quản lý/Admin</span>
+                              )}
+                            </label>
                             <CustomSelect
+                              disabled={currentUser?.role === 'sale'}
                               options={[
                                 { value: 'website', label: 'Từ Website' },
                                 { value: 'facebook', label: 'Facebook Ads' },
@@ -7365,11 +7390,9 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                           Hoa hồng dự kiến
                                         </span>
                                         <span style={{ fontSize: '0.9rem', fontWeight: 800, color: 'var(--color-primary)' }}>
-                                          {coopSlip.expected_commission && Number(coopSlip.expected_commission) > 0 ? (
-                                            `~ ${Math.round((parseFloat(coopSlip.expected_commission) || 0) * (sh.percentage || 0) / 100).toLocaleString()} đ`
-                                          ) : (
-                                            '0 đ'
-                                          )}
+                                          {coopSlip.expected_commission && Number(coopSlip.expected_commission) > 0 
+                                            ? `~ ${Math.round((parseFloat(coopSlip.expected_commission) || 0) * (sh.percentage || 0) / 100).toLocaleString()} đ`
+                                            : '0 đ'}
                                         </span>
                                       </div>
                                     </div>
@@ -7398,7 +7421,15 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                   <button 
                                     type="button"
                                     className="btn outline sm"
-                                    onClick={() => setIsRequestingChange(true)}
+                                    onClick={() => {
+                                      if (coopSlip && Array.isArray(coopSlip.shareholders) && coopSlip.shareholders.length > 0) {
+                                        setCoopShares(coopSlip.shareholders.map((s: any) => ({
+                                          user_id: String(s.user_id),
+                                          percentage: String(s.percentage || '0')
+                                        })));
+                                      }
+                                      setIsRequestingChange(true);
+                                    }}
                                     style={{ color: 'var(--color-primary)', borderColor: 'var(--color-primary)', display: 'inline-flex', alignItems: 'center', gap: '6px', borderRadius: '8px' }}
                                   >
                                     <Pencil size={13} /> {isCoopApprover ? 'Cập nhật tỷ lệ' : 'Yêu cầu thay đổi tỷ lệ'}
@@ -7414,7 +7445,12 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                               <h4 style={{ fontWeight: 700, marginBottom: '1.25rem', fontSize: '1rem' }}>Danh sách phân chia hoa hồng</h4>
                               
                               <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '1.5rem' }}>
-                                {coopShares.map((share, idx) => (
+                                {(coopShares.length > 0
+                                  ? coopShares
+                                  : (coopSlip?.shareholders && coopSlip.shareholders.length > 0)
+                                  ? coopSlip.shareholders.map((s: any) => ({ user_id: String(s.user_id), percentage: String(s.percentage || '0') }))
+                                  : [{ user_id: String(contact?.owner_id || currentUser?.id || ''), percentage: '100' }]
+                                ).map((share: any, idx: number) => (
                                   <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                                     <div style={{
                                       flex: 1,
@@ -7424,7 +7460,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                       <CustomSelect
                                         value={share.user_id}
                                         onChange={(val) => {
-                                          const newShares = [...coopShares];
+                                          const newShares = coopShares.length > 0 ? [...coopShares] : coopSlip.shareholders.map((s: any) => ({ user_id: String(s.user_id), percentage: String(s.percentage || '0') }));
                                           newShares[idx].user_id = val;
                                           setCoopShares(newShares);
                                         }}
@@ -7451,7 +7487,8 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                           min="0"
                                           max="100"
                                           onChange={(e) => {
-                                            const newShares = [...coopShares];
+                                            const currentList = coopShares.length > 0 ? coopShares : coopSlip.shareholders.map((s: any) => ({ user_id: String(s.user_id), percentage: String(s.percentage || '0') }));
+                                            const newShares = [...currentList];
                                             newShares[idx].percentage = e.target.value;
                                             setCoopShares(newShares);
                                           }}
@@ -7473,7 +7510,10 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                       <button 
                                         type="button"
                                         className="btn ghost text-danger sm" 
-                                        onClick={() => setCoopShares(prev => prev.filter((_, i) => i !== idx))}
+                                        onClick={() => {
+                                          const currentList = coopShares.length > 0 ? coopShares : coopSlip.shareholders.map((s: any) => ({ user_id: String(s.user_id), percentage: String(s.percentage || '0') }));
+                                          setCoopShares(currentList.filter((_, i) => i !== idx));
+                                        }}
                                         style={{ padding: '8px' }}
                                       >
                                         <Trash2 size={16} />
@@ -7498,18 +7538,30 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                 </div>
                               )}
 
-                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--color-border-light)', paddingTop: '1rem' }}>
+                              {/* Actions (Sticky Bottom) */}
+                              <div style={{
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                alignItems: 'center',
+                                borderTop: '1px solid var(--color-border-light)',
+                                paddingTop: '1rem',
+                                paddingBottom: '0.25rem',
+                                position: 'sticky',
+                                bottom: 0,
+                                background: '#ffffff',
+                                zIndex: 10
+                              }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                                   <button 
                                     type="button"
                                     className="btn outline sm"
-                                    onClick={() => setCoopShares(prev => [...prev, { user_id: '', percentage: '0' }])}
+                                    onClick={() => setCoopShares(prev => [...(prev.length > 0 ? prev : (coopSlip?.shareholders || []).map((s: any) => ({ user_id: String(s.user_id), percentage: String(s.percentage || '0') }))), { user_id: '', percentage: '0' }])}
                                     style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', borderRadius: '8px' }}
                                   >
                                     <Plus size={14} /> Thêm nhân sự
                                   </button>
                                   <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)' }}>
-                                    Tổng: {coopShares.reduce((acc, curr) => acc + (Number(curr.percentage) || 0), 0)}% / 100%
+                                    Tổng: {(coopShares.length > 0 ? coopShares : (coopSlip?.shareholders || [])).reduce((acc: number, curr: any) => acc + (Number(curr.percentage) || 0), 0)}% / 100%
                                   </span>
                                 </div>
                                 <div style={{ display: 'flex', gap: '6px' }}>
@@ -9982,10 +10034,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                     <div className="animate-fade">
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
                         <h3 style={{ fontWeight: 700, fontSize: '1.125rem' }}>Hỗ trợ / Khiếu nại (Tickets)</h3>
-                        {!isViewer && 
-                         !['ca_nhan', 'cold_call', 'gioi_thieu'].includes(formData.source || contact?.source) && 
-                         (formData.dl_status || contact?.dl_status) !== 'databank_claim' && 
-                         Number(formData.dl_round_id || contact?.dl_round_id) > 0 && (
+                        {!isViewer && (
                           <button className="btn outline sm" onClick={() => setShowTicketModal(true)}>
                             <Plus size={14} /> Tạo Ticket
                           </button>
@@ -10001,12 +10050,10 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                         <div className="card-panel" style={{ textAlign: 'center', padding: '4rem 2rem', border: '2px dashed var(--color-border-light)', borderRadius: '24px' }}>
                           <LifeBuoy size={48} style={{ color: 'var(--color-border)', margin: '0 auto 1.5rem', opacity: 0.4 }} />
                           <h4 style={{ fontWeight: 800, color: 'var(--color-text)', marginBottom: '8px' }}>Chưa có ticket hỗ trợ</h4>
-                          <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', maxWidth: '240px', margin: '0 auto' }}>
-                            {!['ca_nhan', 'cold_call', 'gioi_thieu'].includes(formData.source || contact?.source) && 
-                             (formData.dl_status || contact?.dl_status) !== 'databank_claim' && 
-                             Number(formData.dl_round_id || contact?.dl_round_id) > 0
-                              ? t('Hiện tại không có yêu cầu hỗ trợ nào đang chờ xử lý cho khách hàng này.')
-                              : t('Khách hàng tự nhập hoặc nhận từ Databank không hỗ trợ báo lỗi/yêu cầu bù data.')
+                          <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', maxWidth: '340px', margin: '0 auto' }}>
+                            {['ca_nhan', 'cold_call', 'gioi_thieu'].includes(formData.source || contact?.source) || (formData.dl_status || contact?.dl_status) === 'databank_claim'
+                              ? t('Khách hàng tự nhập hoặc nhận từ Databank không hỗ trợ báo lỗi/yêu cầu bù data. Bạn vẫn có thể gửi ticket hỗ trợ kỹ thuật.')
+                              : t('Hiện tại không có yêu cầu hỗ trợ nào đang chờ xử lý cho khách hàng này.')
                             }
                           </p>
                         </div>
@@ -11189,6 +11236,22 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                 <button className="btn-icon sm" onClick={() => setShowTicketModal(false)}><X size={18} /></button>
               </div>
               <div className="modal-body">
+                <div className="form-group" style={{ marginBottom: '1rem' }}>
+                  <label className="form-label">Loại hỗ trợ *</label>
+                  <CustomSelect
+                    options={[
+                      { value: 'technical_support', label: 'Hỗ trợ kỹ thuật / Yêu cầu chung' },
+                      { value: 'lead_error_compensation', label: 'Báo lỗi data / Yêu cầu bù data' }
+                    ]}
+                    value={ticketForm.category || 'technical_support'}
+                    onChange={val => setTicketForm({ ...ticketForm, category: val.toString() })}
+                  />
+                  {(['ca_nhan', 'cold_call', 'gioi_thieu'].includes(formData.source || contact?.source) || (formData.dl_status || contact?.dl_status) === 'databank_claim') && (
+                    <span style={{ fontSize: '0.725rem', color: '#dc2626', fontWeight: 600, display: 'block', marginTop: '4px' }}>
+                      * Khách hàng tự khai thác / Databank chỉ hỗ trợ gửi ticket Hỗ trợ kỹ thuật (không hỗ trợ báo lỗi bù data).
+                    </span>
+                  )}
+                </div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                   <div className="form-group">
                     <label className="form-label">Tiêu đề hỗ trợ *</label>
@@ -12176,26 +12239,27 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
       {showMobilePipelineSelector && (
         <div 
           className="overlay-backdrop" 
-          style={{ zIndex: 12000, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }} 
+          style={{ zIndex: 1000050, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', background: 'rgba(0, 0, 0, 0.65)', backdropFilter: 'blur(4px)' }} 
           onClick={() => setShowMobilePipelineSelector(false)}
         >
           <motion.div
-            initial={{ y: '100%' }}
-            animate={{ y: 0 }}
-            exit={{ y: '100%' }}
+            initial={{ opacity: 0, scale: 0.95, y: 15 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: 15 }}
             transition={{ type: 'spring', damping: 25, stiffness: 220 }}
             style={{
               background: 'var(--color-surface)',
               width: '100%',
-              borderTopLeftRadius: '24px',
-              borderTopRightRadius: '24px',
+              maxWidth: '380px',
+              borderRadius: '24px',
               maxHeight: '75vh',
               overflowY: 'auto',
-              boxShadow: 'var(--shadow-xl)',
+              boxShadow: 'var(--shadow-2xl)',
               display: 'flex',
               flexDirection: 'column',
-              padding: '16px 16px 24px 16px',
-              boxSizing: 'border-box'
+              padding: '20px',
+              boxSizing: 'border-box',
+              position: 'relative'
             }}
             onClick={e => e.stopPropagation()}
           >
