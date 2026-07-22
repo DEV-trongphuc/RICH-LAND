@@ -13406,22 +13406,22 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                             {m.status === 'approved' ? 'Đã duyệt' : m.status === 'paid' ? 'Chờ duyệt' : m.status === 'failed' ? 'Từ chối' : 'Chờ nộp'}
                           </span>
                           {m.approval_date && m.status === 'approved' && (
-                            <span style={{ fontSize: '0.65rem', color: '#10b981', fontWeight: 500 }}>
-                              Duyệt: {new Date(m.approval_date).toLocaleDateString('vi-VN')}
+                            <span style={{ fontSize: '0.65rem', color: '#10b981', fontWeight: 500, textAlign: 'center', whiteSpace: 'nowrap' }}>
+                              {new Date(m.approval_date).toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' }).replace(',', '')}
                             </span>
                           )}
                         </div>
 
                         {/* UNC proof */}
                         <div style={{ display: 'flex', justifyContent: 'center', gap: '4px' }}>
-                          {/* Upload UNC */}
-                          {m.status !== 'approved' && (
+                          {/* Upload UNC - hidden if m.unc_file_path is present */}
+                          {!m.unc_file_path && m.status !== 'approved' && (
                             <label
                               className="btn sm"
                               style={{
                                 padding: '0 8px',
                                 height: '30px',
-                                cursor: 'pointer',
+                                cursor: actioningMilestoneId !== null ? 'not-allowed' : 'pointer',
                                 display: 'inline-flex',
                                 alignItems: 'center',
                                 justifyContent: 'center',
@@ -13429,6 +13429,8 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                 border: '1px solid var(--color-border)',
                                 background: 'var(--color-surface)',
                                 color: 'var(--color-text-muted)',
+                                opacity: actioningMilestoneId !== null ? 0.5 : 1,
+                                pointerEvents: actioningMilestoneId !== null ? 'none' : 'auto',
                                 transition: 'all 0.15s'
                               }}
                               title="Tải ảnh chuyển khoản (UNC)"
@@ -13438,35 +13440,49 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                 type="file"
                                 accept="image/*"
                                 style={{ display: 'none' }}
+                                disabled={actioningMilestoneId !== null}
                                 onChange={e => handleUploadUncFromModal(e, idx)}
                               />
                             </label>
                           )}
 
-                          {/* View UNC link */}
-                          {m.unc_file_path && (
-                            <a
-                              href={m.unc_file_path.startsWith('uploads/') ? `${import.meta.env.VITE_API_URL || '/backend'}/${m.unc_file_path}` : `${import.meta.env.VITE_API_URL || '/backend'}/uploads/${m.unc_file_path}`}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="btn sm"
-                              style={{
-                                padding: '0 8px',
-                                height: '30px',
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                borderRadius: '6px',
-                                background: 'rgba(59, 130, 246, 0.1)',
-                                color: '#2563eb',
-                                border: 'none',
-                                transition: 'all 0.15s'
-                              }}
-                              title="Xem UNC đã tải lên"
-                            >
-                              <Eye size={13} />
-                            </a>
-                          )}
+                          {/* View UNC link - Show thumbnail image instead of eye icon */}
+                          {m.unc_file_path && (() => {
+                            const downloadUrl = m.unc_file_path.startsWith('uploads/') ? `${import.meta.env.VITE_API_URL || '/backend'}/${m.unc_file_path}` : `${import.meta.env.VITE_API_URL || '/backend'}/uploads/${m.unc_file_path}`;
+                            const isPdf = m.unc_file_path.toLowerCase().endsWith('.pdf');
+                            return (
+                              <a
+                                href={downloadUrl}
+                                target="_blank"
+                                rel="noreferrer"
+                                style={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  width: '32px',
+                                  height: '32px',
+                                  borderRadius: '6px',
+                                  overflow: 'hidden',
+                                  border: '1px solid var(--color-border-light)',
+                                  background: '#ffffff',
+                                  boxShadow: 'var(--shadow-sm)',
+                                  transition: 'transform 0.15s'
+                                }}
+                                className="hover-scale"
+                                title="Bấm để xem chi tiết minh chứng"
+                              >
+                                {isPdf ? (
+                                  <FileText size={16} color="var(--color-primary)" />
+                                ) : (
+                                  <img 
+                                    src={downloadUrl} 
+                                    alt="Minh chứng" 
+                                    style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+                                  />
+                                )}
+                              </a>
+                            );
+                          })()}
                         </div>
 
                         {/* Actions (Approve/Reject or Delete) */}
@@ -13494,10 +13510,8 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                 }}
                                 title="Phê duyệt đợt tiền này"
                               >
-                                {actioningMilestoneId === m.id && actioningType === 'approve' ? (
-                                  <Loader2 size={13} className="animate-spin" style={{ marginRight: 2 }} />
-                                ) : (
-                                  <Check size={13} style={{ marginRight: 2 }} />
+                                {actioningMilestoneId === m.id && actioningType === 'approve' && (
+                                  <Loader2 size={13} className="animate-spin" style={{ marginRight: 4 }} />
                                 )}
                                 Duyệt
                               </button>
@@ -13519,14 +13533,12 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                   fontWeight: 700,
                                   opacity: actioningMilestoneId !== null ? 0.6 : 1
                                 }}
-                                title="Bác bỏ minh chứng"
+                                title="Từ chối minh chứng"
                               >
-                                {actioningMilestoneId === m.id && actioningType === 'reject' ? (
-                                  <Loader2 size={13} className="animate-spin" style={{ marginRight: 2 }} />
-                                ) : (
-                                  <X size={13} style={{ marginRight: 2 }} />
+                                {actioningMilestoneId === m.id && actioningType === 'reject' && (
+                                  <Loader2 size={13} className="animate-spin" style={{ marginRight: 4 }} />
                                 )}
-                                Bác bỏ
+                                Từ chối
                               </button>
                             </>
                           )}

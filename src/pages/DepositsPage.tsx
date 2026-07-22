@@ -135,6 +135,8 @@ export default function DepositsPage() {
   const [selectedDepForManage, setSelectedDepForManage] = useState<Deposit | null>(null);
   const [tempMilestones, setTempMilestones] = useState<any[]>([]);
   const [isSavingMilestones, setIsSavingMilestones] = useState(false);
+  const [actioningMilestoneId, setActioningMilestoneId] = useState<any>(null);
+  const [actioningType, setActioningType] = useState<'approve' | 'reject' | null>(null);
 
   const [showContactDrawer, setShowContactDrawer] = useState(false);
   const [selectedContact, setSelectedContact] = useState<any>(null);
@@ -572,6 +574,9 @@ export default function DepositsPage() {
   const handleApproveFromModal = async (index: number) => {
     const m = tempMilestones[index];
     if (!selectedDepForManage || !m.id) return;
+    if (actioningMilestoneId !== null) return;
+    setActioningMilestoneId(m.id);
+    setActioningType('approve');
     try {
       const res = await fetchAPI(`deposits/${selectedDepForManage.id}/milestones/${m.id}/approve`, { method: 'POST' });
       if (res.success) {
@@ -585,12 +590,16 @@ export default function DepositsPage() {
       }
     } catch (e: any) {
       addToast(e.message || 'Lỗi kết nối', 'error');
+    } finally {
+      setActioningMilestoneId(null);
+      setActioningType(null);
     }
   };
 
   const handleRejectFromModal = async (index: number) => {
     const m = tempMilestones[index];
     if (!selectedDepForManage || !m.id) return;
+    if (actioningMilestoneId !== null) return;
     showConfirm({
       title: 'Từ chối UNC',
       message: 'Vui lòng nhập lý do từ chối bản xác nhận thanh toán này:',
@@ -600,6 +609,8 @@ export default function DepositsPage() {
       requirePromptInput: true,
       promptPlaceholder: 'Nhập lý do từ chối (bắt buộc)...',
       onConfirm: async (reason) => {
+        setActioningMilestoneId(m.id);
+        setActioningType('reject');
         try {
           const res = await fetchAPI(`deposits/${selectedDepForManage.id}/milestones/${m.id}/reject`, {
             method: 'POST',
@@ -616,6 +627,9 @@ export default function DepositsPage() {
           }
         } catch (e: any) {
           addToast(e.message || 'Lỗi kết nối', 'error');
+        } finally {
+          setActioningMilestoneId(null);
+          setActioningType(null);
         }
       }
     });
@@ -1725,21 +1739,21 @@ export default function DepositsPage() {
                           </span>
                           {m.approval_date && m.status === 'approved' && (
                             <span style={{ fontSize: '0.65rem', color: '#10b981', fontWeight: 500, textAlign: 'center', whiteSpace: 'nowrap' }}>
-                              Duyệt: {new Date(m.approval_date).toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' }).replace(',', '')}
+                              {new Date(m.approval_date).toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' }).replace(',', '')}
                             </span>
                           )}
                         </div>
 
                         {/* UNC proof */}
                         <div style={{ display: 'flex', justifyContent: 'center', gap: '4px' }}>
-                          {/* Upload UNC */}
-                          {m.status !== 'approved' && canEditMilestones && (
+                          {/* Upload UNC - hidden if m.unc_file_path is present */}
+                          {!m.unc_file_path && m.status !== 'approved' && canEditMilestones && (
                             <label
                               className="btn sm"
                               style={{
                                 padding: '0 8px',
                                 height: '30px',
-                                cursor: 'pointer',
+                                cursor: actioningMilestoneId !== null ? 'not-allowed' : 'pointer',
                                 display: 'inline-flex',
                                 alignItems: 'center',
                                 justifyContent: 'center',
@@ -1747,6 +1761,8 @@ export default function DepositsPage() {
                                 border: '1px solid var(--color-border)',
                                 background: 'var(--color-surface)',
                                 color: 'var(--color-text-muted)',
+                                opacity: actioningMilestoneId !== null ? 0.5 : 1,
+                                pointerEvents: actioningMilestoneId !== null ? 'none' : 'auto',
                                 transition: 'all 0.15s'
                               }}
                               title="Tải ảnh chuyển khoản (UNC)"
@@ -1756,35 +1772,49 @@ export default function DepositsPage() {
                                 type="file"
                                 accept="image/*"
                                 style={{ display: 'none' }}
+                                disabled={actioningMilestoneId !== null}
                                 onChange={e => handleUploadUncFromModal(e, idx)}
                               />
                             </label>
                           )}
 
-                          {/* View UNC link */}
-                          {m.unc_file_path && (
-                            <a
-                              href={m.unc_file_path.startsWith('uploads/') ? `${import.meta.env.VITE_API_URL || '/backend'}/${m.unc_file_path}` : `${import.meta.env.VITE_API_URL || '/backend'}/uploads/${m.unc_file_path}`}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="btn sm"
-                              style={{
-                                padding: '0 8px',
-                                height: '30px',
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                borderRadius: '6px',
-                                background: 'rgba(59, 130, 246, 0.1)',
-                                color: '#2563eb',
-                                border: 'none',
-                                transition: 'all 0.15s'
-                              }}
-                              title="Xem UNC đã tải lên"
-                            >
-                              <Eye size={13} />
-                            </a>
-                          )}
+                          {/* View UNC link - Show thumbnail image instead of eye icon */}
+                          {m.unc_file_path && (() => {
+                            const downloadUrl = m.unc_file_path.startsWith('uploads/') ? `${import.meta.env.VITE_API_URL || '/backend'}/${m.unc_file_path}` : `${import.meta.env.VITE_API_URL || '/backend'}/uploads/${m.unc_file_path}`;
+                            const isPdf = m.unc_file_path.toLowerCase().endsWith('.pdf');
+                            return (
+                              <a
+                                href={downloadUrl}
+                                target="_blank"
+                                rel="noreferrer"
+                                style={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  width: '32px',
+                                  height: '32px',
+                                  borderRadius: '6px',
+                                  overflow: 'hidden',
+                                  border: '1px solid var(--color-border-light)',
+                                  background: '#ffffff',
+                                  boxShadow: 'var(--shadow-sm)',
+                                  transition: 'transform 0.15s'
+                                }}
+                                className="hover-scale"
+                                title="Bấm để xem chi tiết minh chứng"
+                              >
+                                {isPdf ? (
+                                  <FileText size={16} color="var(--color-primary)" />
+                                ) : (
+                                  <img 
+                                    src={downloadUrl} 
+                                    alt="Minh chứng" 
+                                    style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+                                  />
+                                )}
+                              </a>
+                            );
+                          })()}
                         </div>
 
                         {/* Actions (Approve/Reject or Delete) */}
@@ -1794,6 +1824,7 @@ export default function DepositsPage() {
                             <>
                               <button
                                 onClick={() => handleApproveFromModal(idx)}
+                                disabled={actioningMilestoneId !== null}
                                 style={{
                                   padding: '0 8px',
                                   height: '30px',
@@ -1804,16 +1835,21 @@ export default function DepositsPage() {
                                   display: 'inline-flex',
                                   alignItems: 'center',
                                   justifyContent: 'center',
-                                  cursor: 'pointer',
+                                  cursor: actioningMilestoneId !== null ? 'not-allowed' : 'pointer',
                                   fontSize: '0.7rem',
-                                  fontWeight: 700
+                                  fontWeight: 700,
+                                  opacity: actioningMilestoneId !== null ? 0.6 : 1
                                 }}
                                 title="Phê duyệt đợt tiền này"
                               >
-                                <Check size={13} style={{ marginRight: 2 }} /> Duyệt
+                                {actioningMilestoneId === m.id && actioningType === 'approve' && (
+                                  <Loader2 size={13} className="animate-spin" style={{ marginRight: 4 }} />
+                                )}
+                                Duyệt
                               </button>
                               <button
                                 onClick={() => handleRejectFromModal(idx)}
+                                disabled={actioningMilestoneId !== null}
                                 style={{
                                   padding: '0 8px',
                                   height: '30px',
@@ -1824,13 +1860,17 @@ export default function DepositsPage() {
                                   display: 'inline-flex',
                                   alignItems: 'center',
                                   justifyContent: 'center',
-                                  cursor: 'pointer',
+                                  cursor: actioningMilestoneId !== null ? 'not-allowed' : 'pointer',
                                   fontSize: '0.7rem',
-                                  fontWeight: 700
+                                  fontWeight: 700,
+                                  opacity: actioningMilestoneId !== null ? 0.6 : 1
                                 }}
-                                title="Bác bỏ minh chứng"
+                                title="Từ chối minh chứng"
                               >
-                                <X size={13} style={{ marginRight: 2 }} /> Bác bỏ
+                                {actioningMilestoneId === m.id && actioningType === 'reject' && (
+                                  <Loader2 size={13} className="animate-spin" style={{ marginRight: 4 }} />
+                                )}
+                                Từ chối
                               </button>
                             </>
                           )}
