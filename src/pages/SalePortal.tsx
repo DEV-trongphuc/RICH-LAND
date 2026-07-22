@@ -15584,7 +15584,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
         isOpen={showUpcomingMeetingsModal}
         onClose={() => setShowUpcomingMeetingsModal(false)}
         title={t('Danh Sách Cuộc Hẹn Sắp Diễn Ra')}
-        maxWidth={860}
+        maxWidth={1150}
         zIndex={2000000}
       >
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', padding: '4px 0' }}>
@@ -15613,7 +15613,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
             gap: '0.75rem',
             flexWrap: 'wrap'
           }}>
-            <div style={{ position: 'relative', flex: 1, minWidth: '220px' }}>
+            <div style={{ position: 'relative', flex: 1, minWidth: '260px' }}>
               <Search size={15} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-muted)' }} />
               <input
                 type="text"
@@ -15637,7 +15637,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
               <button
                 onClick={() => setMeetingFilterStatus('all')}
                 style={{
-                  padding: '4px 10px',
+                  padding: '5px 12px',
                   borderRadius: '7px',
                   fontSize: '0.775rem',
                   fontWeight: 700,
@@ -15653,7 +15653,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
               <button
                 onClick={() => setMeetingFilterStatus('planned')}
                 style={{
-                  padding: '4px 10px',
+                  padding: '5px 12px',
                   borderRadius: '7px',
                   fontSize: '0.775rem',
                   fontWeight: 700,
@@ -15669,7 +15669,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
               <button
                 onClick={() => setMeetingFilterStatus('overdue')}
                 style={{
-                  padding: '4px 10px',
+                  padding: '5px 12px',
                   borderRadius: '7px',
                   fontSize: '0.775rem',
                   fontWeight: 700,
@@ -15685,7 +15685,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
               <button
                 onClick={() => setMeetingFilterStatus('done')}
                 style={{
-                  padding: '4px 10px',
+                  padding: '5px 12px',
                   borderRadius: '7px',
                   fontSize: '0.775rem',
                   fontWeight: 700,
@@ -15701,8 +15701,31 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
             </div>
           </div>
 
+          {/* Table Column Header */}
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            padding: '8px 16px',
+            background: 'var(--color-bg-subtle, rgba(0,0,0,0.02))',
+            borderRadius: '8px',
+            fontSize: '0.725rem',
+            fontWeight: 800,
+            color: 'var(--color-text-muted)',
+            textTransform: 'uppercase',
+            letterSpacing: '0.5px',
+            gap: '1rem',
+            border: '1px solid var(--color-border)'
+          }}>
+            <div style={{ flex: '1.2', minWidth: '210px' }}>{t('Khách hàng')}</div>
+            <div style={{ flex: '1', minWidth: '170px' }}>{t('Sale phụ trách')}</div>
+            <div style={{ flex: '1.2', minWidth: '190px' }}>{t('Nội dung cuộc hẹn')}</div>
+            <div style={{ width: '180px', flexShrink: 0 }}>{t('Thời gian')}</div>
+            <div style={{ width: '130px', flexShrink: 0 }}>{t('Trạng thái')}</div>
+            <div style={{ width: '100px', flexShrink: 0, textAlign: 'right' }}>{t('Thao tác')}</div>
+          </div>
+
           {/* Meeting Cards List */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', maxHeight: '58vh', overflowY: 'auto', paddingRight: '4px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '56vh', overflowY: 'auto', paddingRight: '4px' }}>
             {filteredUpcomingMeetingsModalList.length === 0 ? (
               <div style={{
                 padding: '2.5rem 1rem',
@@ -15723,10 +15746,11 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
               filteredUpcomingMeetingsModalList.map((item: any, idx: number) => {
                 const customerName = item.contact_name || item.lead_name || item.related_name || item.customer_name || 'Khách hàng';
                 const customerPhone = item.phone || item.contact_phone || item.lead_phone || '';
-                const customerAvatar = item.contact_avatar || item.customer_avatar || item.lead_avatar || item.avatar_url || item.avatar || '';
+                // Only use explicit customer avatar fields, do not fallback to item.avatar which is sale's photo!
+                const customerAvatar = item.contact_avatar || item.customer_avatar || item.lead_avatar || '';
 
                 const saleName = item.assignee_name || item.user_name || item.created_by_name || item.sale_name || 'Tư vấn viên';
-                const saleAvatar = item.assignee_avatar || item.user_avatar || item.sale_avatar || item.created_by_avatar || '';
+                const saleAvatar = item.assignee_avatar || item.user_avatar || item.sale_avatar || item.created_by_avatar || item.avatar_url || item.avatar || '';
 
                 const meetingTitle = item.subject || item.title || t('Lịch hẹn gặp mặt tư vấn');
                 const dueDateRaw = item.due_date || item.shift_date || item.created_at || '';
@@ -15744,38 +15768,38 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                       background: 'var(--color-surface)',
                       border: '1px solid var(--color-border)',
                       borderRadius: '12px',
-                      padding: '0.875rem 1.125rem',
+                      padding: '0.75rem 1rem',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'space-between',
                       gap: '1rem',
-                      flexWrap: 'wrap',
                       cursor: 'pointer',
                       transition: 'all 0.2s'
                     }}
                     onClick={() => handleOpenCustomerFromMeetingModal(item)}
                   >
-                    {/* Customer Info */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: '210px', flex: 1 }}>
-                      <Avatar name={customerName} src={customerAvatar} size={38} />
-                      <div>
+                    {/* Col 1: Customer Info */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: '1.2', minWidth: '210px' }}>
+                      <Avatar name={customerName} src={customerAvatar} size={36} />
+                      <div style={{ minWidth: 0 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                          <span style={{ fontSize: '0.9rem', fontWeight: 800, color: 'var(--color-text)' }}>
+                          <span style={{ fontSize: '0.875rem', fontWeight: 800, color: 'var(--color-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                             {customerName}
                           </span>
                           <span style={{
-                            padding: '2px 7px',
-                            borderRadius: '12px',
-                            fontSize: '0.675rem',
+                            padding: '1px 6px',
+                            borderRadius: '10px',
+                            fontSize: '0.65rem',
                             fontWeight: 700,
                             background: 'rgba(37, 99, 235, 0.08)',
-                            color: '#2563EB'
+                            color: '#2563EB',
+                            flexShrink: 0
                           }}>
-                            {t('Khách hàng')}
+                            {t('Khách')}
                           </span>
                         </div>
                         {customerPhone && (
-                          <span style={{ fontSize: '0.785rem', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: '4px', marginTop: '2px' }}>
+                          <span style={{ fontSize: '0.775rem', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: '4px', marginTop: '1px' }}>
                             <Phone size={11} />
                             {customerPhone}
                           </span>
@@ -15783,62 +15807,75 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                       </div>
                     </div>
 
-                    {/* Sale Info */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: '160px' }}>
-                      <Avatar name={saleName} src={saleAvatar} size={28} />
-                      <div>
-                        <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', display: 'block', fontWeight: 600 }}>
+                    {/* Col 2: Sale Info */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: '1', minWidth: '170px' }}>
+                      <Avatar name={saleName} src={saleAvatar} size={26} />
+                      <div style={{ minWidth: 0 }}>
+                        <span style={{ fontSize: '0.685rem', color: 'var(--color-text-muted)', display: 'block', fontWeight: 600 }}>
                           {t('Sale phụ trách')}
                         </span>
-                        <span style={{ fontSize: '0.825rem', fontWeight: 700, color: 'var(--color-text)' }}>
+                        <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--color-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                           {saleName}
                         </span>
                       </div>
                     </div>
 
-                    {/* Time & Title */}
-                    <div style={{ minWidth: '190px', flex: 1 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    {/* Col 3: Title / Notes */}
+                    <div style={{ flex: '1.2', minWidth: '190px' }}>
+                      <span style={{ fontSize: '0.825rem', fontWeight: 700, color: 'var(--color-text)', display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {meetingTitle}
+                      </span>
+                      {item.location && (
+                        <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: '3px', marginTop: '1px' }}>
+                          <MapPin size={11} />
+                          {item.location}
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Col 4: Time */}
+                    <div style={{ width: '180px', flexShrink: 0 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
                         <Clock size={13} style={{ color: isDone ? '#10b981' : isOverdue ? '#f59e0b' : '#2563EB' }} />
                         <span style={{ fontSize: '0.825rem', fontWeight: 800, color: isDone ? '#10b981' : isOverdue ? '#f59e0b' : 'var(--color-text)' }}>
                           {dueDateRaw ? dueDateRaw.replace('T', ' ').slice(0, 16) : t('Chưa xếp giờ')}
                         </span>
-                        {isToday && !isDone && (
-                          <span style={{ padding: '1px 6px', borderRadius: '4px', fontSize: '0.65rem', fontWeight: 800, background: '#ef4444', color: '#fff' }}>
-                            {t('HÔM NAY')}
-                          </span>
-                        )}
                       </div>
-                      <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--color-text-muted)', display: 'block', marginTop: '2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '220px' }}>
-                        {meetingTitle}
-                      </span>
-                    </div>
-
-                    {/* Status & Action */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                      {isDone ? (
-                        <span style={{ padding: '4px 10px', borderRadius: '20px', fontSize: '0.75rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '5px', background: 'rgba(16, 185, 129, 0.1)', color: '#10b981' }}>
-                          <CheckCircle2 size={13} /> {t('Đã gặp')}
-                        </span>
-                      ) : isOverdue ? (
-                        <span style={{ padding: '4px 10px', borderRadius: '20px', fontSize: '0.75rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '5px', background: 'rgba(245, 158, 11, 0.15)', color: '#f59e0b' }}>
-                          <AlertCircle size={13} /> {t('Quá giờ hẹn')}
-                        </span>
-                      ) : (
-                        <span style={{ padding: '4px 10px', borderRadius: '20px', fontSize: '0.75rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '5px', background: 'rgba(37, 99, 235, 0.1)', color: '#2563EB' }}>
-                          <Clock size={13} /> {t('Sắp diễn ra')}
+                      {isToday && !isDone && (
+                        <span style={{ padding: '1px 6px', borderRadius: '4px', fontSize: '0.625rem', fontWeight: 800, background: '#ef4444', color: '#fff', marginTop: '2px', display: 'inline-block' }}>
+                          {t('HÔM NAY')}
                         </span>
                       )}
+                    </div>
 
+                    {/* Col 5: Status */}
+                    <div style={{ width: '130px', flexShrink: 0 }}>
+                      {isDone ? (
+                        <span style={{ padding: '3px 9px', borderRadius: '20px', fontSize: '0.725rem', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '4px', background: 'rgba(16, 185, 129, 0.1)', color: '#10b981' }}>
+                          <CheckCircle2 size={12} /> {t('Đã gặp')}
+                        </span>
+                      ) : isOverdue ? (
+                        <span style={{ padding: '3px 9px', borderRadius: '20px', fontSize: '0.725rem', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '4px', background: 'rgba(245, 158, 11, 0.15)', color: '#f59e0b' }}>
+                          <AlertCircle size={12} /> {t('Quá giờ hẹn')}
+                        </span>
+                      ) : (
+                        <span style={{ padding: '3px 9px', borderRadius: '20px', fontSize: '0.725rem', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '4px', background: 'rgba(37, 99, 235, 0.1)', color: '#2563EB' }}>
+                          <Clock size={12} /> {t('Sắp diễn ra')}
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Col 6: Action */}
+                    <div style={{ width: '100px', flexShrink: 0, textAlign: 'right' }}>
                       <button
-                        className="btn sm secondary"
+                        className="btn sm primary"
                         onClick={(e) => {
                           e.stopPropagation();
                           handleOpenCustomerFromMeetingModal(item);
                         }}
-                        style={{ padding: '5px 10px', fontSize: '0.775rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }}
+                        style={{ padding: '4px 10px', fontSize: '0.75rem', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }}
                       >
-                        <UserCheck size={13} />
+                        <UserCheck size={12} />
                         <span>{t('Xem hồ sơ')}</span>
                       </button>
                     </div>
