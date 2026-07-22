@@ -170,7 +170,7 @@ const overridePurpleColor = (c: string | null | undefined): string => {
 
 const resolveAttachmentUrl = (url: string | null | undefined): string => {
   if (!url) return '';
-  if (url.startsWith('http')) return url;
+  if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:')) return url;
   
   let cleanPath = url.replace(/^\/+/, '');
   
@@ -183,12 +183,16 @@ const resolveAttachmentUrl = (url: string | null | undefined): string => {
     cleanPath = cleanPath.substring('backend/'.length);
   }
   
-  const apiBase = import.meta.env.VITE_API_URL || '/backend';
+  const apiBase = import.meta.env.VITE_API_URL || 'https://open.domation.net/richland/api.php';
   let baseUrl = apiBase;
   if (baseUrl.includes('api.php')) {
     baseUrl = baseUrl.split('api.php')[0];
   }
   baseUrl = baseUrl.replace(/\/+$/, '');
+  
+  if (!baseUrl.startsWith('http')) {
+    baseUrl = 'https://open.domation.net/richland';
+  }
   
   return `${baseUrl}/${cleanPath}`;
 };
@@ -1948,6 +1952,8 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
       if (resUsers.success) {
         const mapped = (resUsers.data || []).map((u: any) => ({
           ...u,
+          value: String(u.id),
+          label: u.full_name || u.name,
           full_name: u.full_name || u.name,
           role: u.role || 'sale'
         }));
