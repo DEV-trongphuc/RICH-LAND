@@ -13,6 +13,7 @@ class NotificationService {
      */
     public static function send(PDO $db, int $tenantId, string $eventType, array $payload): void {
         try {
+            $GLOBALS['pdo'] = $db;
             $resolved = self::resolveEventData($db, $tenantId, $eventType, $payload);
             if (!$resolved) {
                 return;
@@ -905,7 +906,17 @@ class NotificationService {
     private static function getRecipientById(PDO $db, int $userId): array {
         if ($userId <= 0) return [];
         $stmt = $db->prepare("
-            SELECT u.id, u.email, u.zalo_chat_id, u.telegram_chat_id, u.full_name 
+            SELECT u.id, u.email, 
+                   COALESCE(
+                     NULLIF(NULLIF(TRIM(u.zalo_chat_id), 'chưa liên kết'), 'Chưa liên kết'), 
+                     NULLIF(NULLIF(TRIM(u.zalo_id), 'chưa liên kết'), 'Chưa liên kết'), 
+                     NULLIF(NULLIF(TRIM(c.zalo_chat_id), 'chưa liên kết'), 'Chưa liên kết')
+                   ) AS zalo_chat_id,
+                   COALESCE(
+                     NULLIF(NULLIF(TRIM(u.telegram_chat_id), 'chưa liên kết'), 'Chưa liên kết'), 
+                     NULLIF(NULLIF(TRIM(c.telegram_chat_id), 'chưa liên kết'), 'Chưa liên kết')
+                   ) AS telegram_chat_id,
+                   u.full_name 
             FROM users u
             LEFT JOIN consultants c ON (u.email = c.email OR u.id = c.id)
             WHERE u.id = ? OR c.id = ?
@@ -917,7 +928,22 @@ class NotificationService {
     }
 
     private static function getAllUsers(PDO $db, int $tenantId): array {
-        $stmt = $db->prepare("SELECT id, email, zalo_chat_id, telegram_chat_id, full_name FROM users WHERE tenant_id = ? AND is_active = 1");
+        $stmt = $db->prepare("
+            SELECT u.id, u.email, 
+                   COALESCE(
+                     NULLIF(NULLIF(TRIM(u.zalo_chat_id), 'chưa liên kết'), 'Chưa liên kết'), 
+                     NULLIF(NULLIF(TRIM(u.zalo_id), 'chưa liên kết'), 'Chưa liên kết'), 
+                     NULLIF(NULLIF(TRIM(c.zalo_chat_id), 'chưa liên kết'), 'Chưa liên kết')
+                   ) AS zalo_chat_id,
+                   COALESCE(
+                     NULLIF(NULLIF(TRIM(u.telegram_chat_id), 'chưa liên kết'), 'Chưa liên kết'), 
+                     NULLIF(NULLIF(TRIM(c.telegram_chat_id), 'chưa liên kết'), 'Chưa liên kết')
+                   ) AS telegram_chat_id,
+                   u.full_name 
+            FROM users u
+            LEFT JOIN consultants c ON (u.email = c.email OR u.id = c.id)
+            WHERE u.tenant_id = ? AND u.is_active = 1
+        ");
         $stmt->execute([$tenantId]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
     }
@@ -927,17 +953,28 @@ class NotificationService {
      */
     private static function getAdminsAndManagers(PDO $db, int $tenantId, $teamId = null): array {
         $sql = "
-            SELECT id, email, zalo_chat_id, telegram_chat_id, full_name
-            FROM users 
-            WHERE tenant_id = ? 
+            SELECT u.id, u.email, 
+                   COALESCE(
+                     NULLIF(NULLIF(TRIM(u.zalo_chat_id), 'chưa liên kết'), 'Chưa liên kết'), 
+                     NULLIF(NULLIF(TRIM(u.zalo_id), 'chưa liên kết'), 'Chưa liên kết'), 
+                     NULLIF(NULLIF(TRIM(c.zalo_chat_id), 'chưa liên kết'), 'Chưa liên kết')
+                   ) AS zalo_chat_id,
+                   COALESCE(
+                     NULLIF(NULLIF(TRIM(u.telegram_chat_id), 'chưa liên kết'), 'Chưa liên kết'), 
+                     NULLIF(NULLIF(TRIM(c.telegram_chat_id), 'chưa liên kết'), 'Chưa liên kết')
+                   ) AS telegram_chat_id,
+                   u.full_name
+            FROM users u
+            LEFT JOIN consultants c ON (u.email = c.email OR u.id = c.id)
+            WHERE u.tenant_id = ? 
               AND (
-                role IN ('admin', 'superadmin', 'super_admin', 'director', 'assistant')
+                u.role IN ('admin', 'superadmin', 'super_admin', 'director', 'assistant')
                 OR (
-                  role = 'manager' 
+                  u.role = 'manager' 
                   AND (
                     ? IS NULL
-                    OR id IN (SELECT leader_id FROM teams WHERE id = ?)
-                    OR team_id = ?
+                    OR u.id IN (SELECT leader_id FROM teams WHERE id = ?)
+                    OR u.team_id = ?
                   )
                 )
               )

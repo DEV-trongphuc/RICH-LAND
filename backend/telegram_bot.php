@@ -58,7 +58,7 @@ function sendTelegramMessage($botToken, $chatId, $text, $leadId = 0)
     $errorMessage = $isSent ? null : ("HTTP Code: " . $httpCode . ", Response: " . ($response ?: 'NO RESPONSE'));
 
     if (function_exists('log_communication')) {
-        log_communication($conn ?? null, $leadId, 'telegram', $chatId, $newStatus, $errorMessage);
+        log_communication($conn ?? $GLOBALS['pdo'] ?? null, $leadId, 'telegram', $chatId, $newStatus, $errorMessage);
     }
 
     return $isSent;

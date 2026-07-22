@@ -7877,170 +7877,218 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                               </div>
                             )}
 
-                            {coopSlip.attachment_url ? (
-                              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(290px, 1fr))', gap: '12px' }}>
-                                {coopSlip.attachment_url.split(',').map((s: string) => s.trim()).filter(Boolean).map((fileUrl, fIdx) => {
-                                  const isImage = /\.(jpg|jpeg|png|gif|webp)$/i.test(fileUrl);
-                                  const isPdf = fileUrl.toLowerCase().endsWith('.pdf');
-                                  const isWord = fileUrl.toLowerCase().endsWith('.doc') || fileUrl.toLowerCase().endsWith('.docx');
-                                  const filename = fileUrl.split('/').pop() || '';
-                                  
-                                  return (
-                                    <div 
-                                      key={fIdx} 
-                                      style={{ 
-                                        display: 'flex', 
-                                        alignItems: 'center', 
-                                        justifyContent: 'space-between', 
-                                        padding: '12px', 
-                                        background: '#f8fafc', 
-                                        borderRadius: '12px', 
-                                        border: '1px solid var(--color-border-light)',
-                                        transition: 'all 0.2s ease',
-                                        boxShadow: '0 1px 3px rgba(0,0,0,0.01)'
-                                      }}
-                                    >
-                                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: 0, flex: 1 }}>
-                                        {/* Thumbnail or Custom Extension Icon */}
-                                        {isImage ? (
-                                          <div style={{ position: 'relative', width: '44px', height: '44px', borderRadius: '8px', overflow: 'hidden', border: '1px solid var(--color-border-light)', flexShrink: 0 }}>
-                                            <img 
-                                              src={resolveAttachmentUrl(fileUrl)} 
-                                              style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
-                                              alt={filename} 
-                                            />
-                                          </div>
-                                        ) : (
-                                          <div style={{ 
-                                            width: '44px', 
-                                            height: '44px', 
-                                            borderRadius: '8px', 
-                                            background: isPdf ? 'rgba(239, 68, 68, 0.08)' : isWord ? 'rgba(59, 130, 246, 0.08)' : 'rgba(100, 116, 139, 0.08)',
+                            {(() => {
+                              // Combined list of attachments from coopSlip, docs ('Đặt cọc' / milestone UNC), and deals
+                              const coopAttachmentsList: { name: string; path: string; canDelete: boolean }[] = [];
+                              const addedPaths = new Set<string>();
+
+                              if (coopSlip?.attachment_url) {
+                                coopSlip.attachment_url.split(',').map((s: string) => s.trim()).filter(Boolean).forEach((fileUrl: string) => {
+                                  if (!addedPaths.has(fileUrl)) {
+                                    addedPaths.add(fileUrl);
+                                    const filename = fileUrl.split('/').pop() || 'Tài liệu hợp tác';
+                                    coopAttachmentsList.push({ name: filename, path: fileUrl, canDelete: true });
+                                  }
+                                });
+                              }
+
+                              if (Array.isArray(docs)) {
+                                docs.forEach((d: any) => {
+                                  const p = d.path || d.file_path;
+                                  if (p && !addedPaths.has(p)) {
+                                    const cat = (d.category || d.folder || '').toLowerCase();
+                                    const nameLower = (d.name || '').toLowerCase();
+                                    if (cat.includes('cọc') || cat.includes('unc') || d.isMilestoneAttachment || nameLower.includes('unc') || p.toLowerCase().includes('deposits')) {
+                                      addedPaths.add(p);
+                                      coopAttachmentsList.push({ name: d.name || p.split('/').pop() || 'UNC Đặt cọc', path: p, canDelete: false });
+                                    }
+                                  }
+                                });
+                              }
+
+                              if (Array.isArray(deals)) {
+                                deals.forEach((dep: any) => {
+                                  (dep.milestones || []).forEach((m: any) => {
+                                    const fileUrl = m.unc_file_path || m.attachment_url;
+                                    if (fileUrl && !addedPaths.has(fileUrl)) {
+                                      addedPaths.add(fileUrl);
+                                      const filename = `${m.name || 'Cọc giữ chỗ'} - UNC.${fileUrl.split('.').pop() || 'png'}`;
+                                      coopAttachmentsList.push({ name: filename, path: fileUrl, canDelete: false });
+                                    }
+                                  });
+                                });
+                              }
+
+                              if (coopAttachmentsList.length > 0) {
+                                return (
+                                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(290px, 1fr))', gap: '12px' }}>
+                                    {coopAttachmentsList.map((item, fIdx) => {
+                                      const fileUrl = item.path;
+                                      const isImage = /\.(jpg|jpeg|png|gif|webp)$/i.test(fileUrl);
+                                      const isPdf = fileUrl.toLowerCase().endsWith('.pdf');
+                                      const isWord = fileUrl.toLowerCase().endsWith('.doc') || fileUrl.toLowerCase().endsWith('.docx');
+                                      const filename = item.name;
+
+                                      return (
+                                        <div 
+                                          key={fIdx} 
+                                          style={{ 
                                             display: 'flex', 
                                             alignItems: 'center', 
-                                            justifyContent: 'center',
-                                            flexShrink: 0
-                                          }}>
-                                            {isPdf ? (
-                                              <FileText size={20} style={{ color: '#ef4444' }} />
-                                            ) : isWord ? (
-                                              <FileText size={20} style={{ color: '#3b82f6' }} />
+                                            justifyContent: 'space-between', 
+                                            padding: '12px', 
+                                            background: '#f8fafc', 
+                                            borderRadius: '12px', 
+                                            border: '1px solid var(--color-border-light)',
+                                            transition: 'all 0.2s ease',
+                                            boxShadow: '0 1px 3px rgba(0,0,0,0.01)'
+                                          }}
+                                        >
+                                          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: 0, flex: 1 }}>
+                                            {isImage ? (
+                                              <div style={{ position: 'relative', width: '44px', height: '44px', borderRadius: '8px', overflow: 'hidden', border: '1px solid var(--color-border-light)', flexShrink: 0 }}>
+                                                <img 
+                                                  src={resolveAttachmentUrl(fileUrl)} 
+                                                  style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+                                                  alt={filename} 
+                                                />
+                                              </div>
                                             ) : (
-                                              <Paperclip size={20} style={{ color: '#64748b' }} />
+                                              <div style={{ 
+                                                width: '44px', 
+                                                height: '44px', 
+                                                borderRadius: '8px', 
+                                                background: isPdf ? 'rgba(239, 68, 68, 0.08)' : isWord ? 'rgba(59, 130, 246, 0.08)' : 'rgba(100, 116, 139, 0.08)',
+                                                display: 'flex', 
+                                                alignItems: 'center', 
+                                                justifyContent: 'center',
+                                                flexShrink: 0
+                                              }}>
+                                                {isPdf ? (
+                                                  <FileText size={20} style={{ color: '#ef4444' }} />
+                                                ) : isWord ? (
+                                                  <FileText size={20} style={{ color: '#3b82f6' }} />
+                                                ) : (
+                                                  <Paperclip size={20} style={{ color: '#64748b' }} />
+                                                )}
+                                              </div>
                                             )}
+
+                                            <div style={{ minWidth: 0, flex: 1 }}>
+                                              <a 
+                                                href={resolveAttachmentUrl(fileUrl)} 
+                                                target="_blank" 
+                                                rel="noopener noreferrer" 
+                                                style={{ 
+                                                  fontSize: '0.85rem', 
+                                                  fontWeight: 700, 
+                                                  color: 'var(--color-text)', 
+                                                  textDecoration: 'none',
+                                                  display: 'block',
+                                                  overflow: 'hidden',
+                                                  textOverflow: 'ellipsis',
+                                                  whiteSpace: 'nowrap'
+                                                }}
+                                                title={filename}
+                                              >
+                                                {filename}
+                                              </a>
+                                              <p style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', margin: '2px 0 0 0' }}>
+                                                {isImage ? 'Định dạng: Hình ảnh' : isPdf ? 'Định dạng: PDF' : isWord ? 'Định dạng: Word Document' : 'Tài liệu đính kèm'}
+                                              </p>
+                                            </div>
                                           </div>
-                                        )}
-                                        
-                                        {/* Filename & Type details */}
-                                        <div style={{ minWidth: 0, flex: 1 }}>
-                                          <a 
-                                            href={resolveAttachmentUrl(fileUrl)} 
-                                            target="_blank" 
-                                            rel="noopener noreferrer" 
-                                            style={{ 
-                                              fontSize: '0.85rem', 
-                                              fontWeight: 700, 
-                                              color: 'var(--color-text)', 
-                                              textDecoration: 'none',
-                                              display: 'block',
-                                              overflow: 'hidden',
-                                              textOverflow: 'ellipsis',
-                                              whiteSpace: 'nowrap'
-                                            }}
-                                            title={filename}
-                                          >
-                                            {filename}
-                                          </a>
-                                          <p style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', margin: '2px 0 0 0' }}>
-                                            {isImage ? 'Định dạng: Hình ảnh' : isPdf ? 'Định dạng: PDF' : isWord ? 'Định dạng: Word Document' : 'Tài liệu đính kèm'}
-                                          </p>
+
+                                          {canManageCoopAttachments && (
+                                            <div style={{ display: 'flex', gap: '4px', alignItems: 'center', marginLeft: '8px' }}>
+                                              {item.canDelete && (
+                                                <>
+                                                  <button 
+                                                    type="button"
+                                                    className="btn-icon sm ghost" 
+                                                    title="Đổi tên" 
+                                                    style={{ background: '#ffffff', border: '1px solid var(--color-border-light)', borderRadius: '8px', width: '28px', height: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                                                    onClick={() => {
+                                                      const cleanName = filename.substring(0, filename.lastIndexOf('.')) || filename;
+                                                      showConfirm({
+                                                        title: 'Đổi tên tài liệu hợp tác',
+                                                        message: 'Nhập tên mới cho tài liệu hợp tác:',
+                                                        requirePromptInput: true,
+                                                        promptPlaceholder: cleanName,
+                                                        confirmText: 'Lưu',
+                                                        cancelText: 'Hủy',
+                                                        onConfirm: async (newName) => {
+                                                          if (newName && newName.trim()) {
+                                                            try {
+                                                              await api.post(`/cooperation-slips/${coopSlip.id}/rename-attachment`, { name: newName.trim(), file_url: fileUrl });
+                                                              await fetchCoopSlip();
+                                                              addToast('Đã đổi tên tài liệu hợp tác.', 'success');
+                                                            } catch (err) {
+                                                              addToast('Lỗi khi đổi tên tài liệu.', 'error');
+                                                            }
+                                                          }
+                                                        }
+                                                      });
+                                                    }}
+                                                  >
+                                                    <Pencil size={12} />
+                                                  </button>
+                                                  <button 
+                                                    type="button"
+                                                    className="btn-icon sm ghost text-danger" 
+                                                    title="Xóa" 
+                                                    style={{ background: 'rgba(239, 68, 68, 0.05)', border: '1px solid rgba(239, 68, 68, 0.1)', borderRadius: '8px', width: '28px', height: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                                                    onClick={() => handleRemoveCoopAttachment(fileUrl)}
+                                                  >
+                                                    <Trash2 size={12} />
+                                                  </button>
+                                                </>
+                                              )}
+                                            </div>
+                                          )}
                                         </div>
-                                      </div>
-                                      
-                                      {/* Rename & Delete action buttons */}
-                                      {canManageCoopAttachments && (
-                                        <div style={{ display: 'flex', gap: '4px', alignItems: 'center', marginLeft: '8px' }}>
-                                          <button 
-                                            type="button"
-                                            className="btn-icon sm ghost" 
-                                            title="Đổi tên" 
-                                            style={{ background: '#ffffff', border: '1px solid var(--color-border-light)', borderRadius: '8px', width: '28px', height: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                                            onClick={() => {
-                                              const filename = fileUrl.split('/').pop() || '';
-                                              const cleanName = filename.substring(0, filename.lastIndexOf('.')) || filename;
-                                              showConfirm({
-                                                title: 'Đổi tên tài liệu hợp tác',
-                                                message: 'Nhập tên mới cho tài liệu hợp tác:',
-                                                requirePromptInput: true,
-                                                promptPlaceholder: cleanName,
-                                                confirmText: 'Lưu',
-                                                cancelText: 'Hủy',
-                                                onConfirm: async (newName) => {
-                                                  if (newName && newName.trim()) {
-                                                    try {
-                                                      await api.post(`/cooperation-slips/${coopSlip.id}/rename-attachment`, { name: newName.trim(), file_url: fileUrl });
-                                                      await fetchCoopSlip();
-                                                      addToast('Đã đổi tên tài liệu hợp tác.', 'success');
-                                                    } catch (err) {
-                                                      addToast('Lỗi khi đổi tên tài liệu.', 'error');
-                                                    }
-                                                  }
-                                                }
-                                              });
-                                            }}
-                                          >
-                                            <Pencil size={12} />
-                                          </button>
-                                          <button 
-                                            type="button"
-                                            className="btn-icon sm ghost text-danger" 
-                                            title="Xóa" 
-                                            style={{ background: 'rgba(239, 68, 68, 0.05)', border: '1px solid rgba(239, 68, 68, 0.1)', borderRadius: '8px', width: '28px', height: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                                            onClick={() => handleRemoveCoopAttachment(fileUrl)}
-                                          >
-                                            <Trash2 size={12} />
-                                          </button>
-                                        </div>
-                                      )}
-                                    </div>
-                                  );
-                                })}
-                              </div>
-                            ) : (
-                              <div style={{ 
-                                padding: '2.5rem 1.5rem', 
-                                textAlign: 'center', 
-                                background: '#f8fafc', 
-                                borderRadius: '12px', 
-                                border: '1px dashed var(--color-border)', 
-                                display: 'flex', 
-                                flexDirection: 'column', 
-                                alignItems: 'center', 
-                                gap: '12px' 
-                              }}>
-                                <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: 'rgba(100, 116, 139, 0.06)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-text-muted)' }}>
-                                  <Paperclip size={22} />
-                                </div>
-                                <div>
-                                  <p style={{ fontSize: '0.85rem', fontWeight: 650, color: 'var(--color-text)', margin: '0 0 4px 0' }}>Chưa có tài liệu đính kèm</p>
-                                  <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', margin: 0 }}>Vui lòng đính kèm các tài liệu/minh chứng hợp tác bắt buộc phía trên.</p>
-                                </div>
-                                {canManageCoopAttachments && (
-                                  <div style={{ marginTop: '4px' }}>
-                                    <input
-                                      type="file"
-                                      id="coop-attachment-upload"
-                                      style={{ display: 'none' }}
-                                      accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.webp,.gif"
-                                      onChange={handleCoopAttachmentUpload}
-                                    />
-                                    <label htmlFor="coop-attachment-upload" className="btn primary sm" style={{ cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '8px', borderRadius: '8px' }}>
-                                      <Upload size={14} /> Tải tài liệu đính kèm
-                                    </label>
+                                      );
+                                    })}
                                   </div>
-                                )}
-                              </div>
-                            )}
+                                );
+                              }
+
+                              return (
+                                <div style={{ 
+                                  padding: '2.5rem 1.5rem', 
+                                  textAlign: 'center', 
+                                  background: '#f8fafc', 
+                                  borderRadius: '12px', 
+                                  border: '1px dashed var(--color-border)', 
+                                  display: 'flex', 
+                                  flexDirection: 'column', 
+                                  alignItems: 'center', 
+                                  gap: '12px' 
+                                }}>
+                                  <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: 'rgba(100, 116, 139, 0.06)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-text-muted)' }}>
+                                    <Paperclip size={22} />
+                                  </div>
+                                  <div>
+                                    <p style={{ fontSize: '0.85rem', fontWeight: 650, color: 'var(--color-text)', margin: '0 0 4px 0' }}>Chưa có tài liệu đính kèm</p>
+                                    <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', margin: 0 }}>Vui lòng đính kèm các tài liệu/minh chứng hợp tác bắt buộc phía trên.</p>
+                                  </div>
+                                  {canManageCoopAttachments && (
+                                    <div style={{ marginTop: '4px' }}>
+                                      <input
+                                        type="file"
+                                        id="coop-attachment-upload"
+                                        style={{ display: 'none' }}
+                                        accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.webp,.gif"
+                                        onChange={handleCoopAttachmentUpload}
+                                      />
+                                      <label htmlFor="coop-attachment-upload" className="btn primary sm" style={{ cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '8px', borderRadius: '8px' }}>
+                                        <Upload size={14} /> Tải tài liệu đính kèm
+                                      </label>
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })()}
                           </div>
                         </div>
                       )}
@@ -9551,7 +9599,14 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                       {currentFolder === '' && allFolders.length > 0 && (
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '1.25rem', marginBottom: '2rem' }}>
                           {allFolders.map(folder => {
-                            const folderFiles = docs.filter(d => d.category === folder);
+                            const folderFiles = docs.filter(d => {
+                              if (folder === 'Đặt cọc') {
+                                const cat = (d.category || d.folder || '').toLowerCase();
+                                const p = (d.path || d.file_path || '').toLowerCase();
+                                return cat.includes('cọc') || cat.includes('unc') || d.isMilestoneAttachment || (d.name || '').toLowerCase().includes('unc') || p.includes('deposits');
+                              }
+                              return d.category === folder || d.folder === folder;
+                            });
                             return (
                               <div
                                 key={folder}
@@ -9787,7 +9842,15 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                       ) : (
                         /* Files List View */
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                          {visibleDocs.map(doc => {
+                          {docs.filter(d => {
+                            if (currentFolder === '') return true;
+                            if (currentFolder === 'Đặt cọc') {
+                              const cat = (d.category || d.folder || '').toLowerCase();
+                              const p = (d.path || d.file_path || '').toLowerCase();
+                              return cat.includes('cọc') || cat.includes('unc') || d.isMilestoneAttachment || (d.name || '').toLowerCase().includes('unc') || p.includes('deposits');
+                            }
+                            return d.category === currentFolder || d.folder === currentFolder;
+                          }).map(doc => {
                             const ext = doc.name.split('.').pop()?.toLowerCase();
                             const isImg = ext && ['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext);
                             const fileUrl = `${import.meta.env.VITE_API_URL ?? '/backend'}/${doc.path}`;

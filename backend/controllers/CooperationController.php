@@ -13,7 +13,7 @@ class CooperationController {
 
         // Fetch slip and contact info to enrich notifications with customer details
         $stmtSlip = $this->db->prepare("
-            SELECT cs.created_by, c.tenant_id, c.first_name, c.last_name, c.phone, c.owner_id
+            SELECT cs.id, cs.created_by, c.tenant_id, c.first_name, c.last_name, c.phone, c.owner_id
             FROM cooperation_slips cs
             JOIN contacts c ON cs.contact_id = c.id
             WHERE cs.id = ?
@@ -46,10 +46,21 @@ class CooperationController {
         require_once __DIR__ . '/../NotificationService.php';
 
         foreach ($uids as $uid) {
-            NotificationService::send($this->db, $tenantId, 'COOPERATION_PENDING_APPROVAL', [
+            // Notify individual shareholder via targeted email & in-app event
+            $stmtUser = $this->db->prepare("SELECT email FROM users WHERE id = ?");
+            $stmtUser->execute([$uid]);
+            $uRow = $stmtUser->fetch(PDO::FETCH_ASSOC);
+            if ($uRow && !empty($uRow['email'])) {
+                sendMailAsync($uRow['email'], $enrichedSubject, $title, $enrichedContent);
+            }
+
+            NotificationService::send($this->db, $tenantId, 'COOP_INVITATION', [
                 'user_id' => $uid,
-                'slip_id' => $slip['id'] ?? 0,
-                'reason' => strip_tags($content)
+                'slip_id' => $slipId,
+                'customer_name' => $customerName,
+                'email_subject' => $enrichedSubject,
+                'email_title' => $title,
+                'email_content' => $enrichedContent
             ]);
         }
     }

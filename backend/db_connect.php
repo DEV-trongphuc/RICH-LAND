@@ -22,16 +22,27 @@ $conn->query("SET time_zone = '+07:00'");
 // Global helper: Log Zalo/Email/Telegram communications to database
 if (!function_exists('log_communication')) {
     function log_communication($conn = null, $leadId = 0, $type = '', $recipient = '', $status = '', $errorMessage = null) {
-        if (!$conn || !($conn instanceof mysqli)) {
-            $conn = $GLOBALS['conn'] ?? null;
+        if (!$conn) {
+            $conn = $GLOBALS['conn'] ?? $GLOBALS['pdo'] ?? null;
         }
-        if (!$conn || !($conn instanceof mysqli)) return;
-        $stmt = $conn->prepare("INSERT INTO communication_logs (lead_id, type, recipient, status, error_message) VALUES (?, ?, ?, ?, ?)");
-        if ($stmt) {
-            $leadIdVal = !empty($leadId) ? (int)$leadId : null;
-            $stmt->bind_param("issss", $leadIdVal, $type, $recipient, $status, $errorMessage);
-            $stmt->execute();
-            $stmt->close();
+        if (!$conn) return;
+
+        $leadIdVal = !empty($leadId) ? (int)$leadId : null;
+
+        try {
+            if ($conn instanceof mysqli) {
+                $stmt = $conn->prepare("INSERT INTO communication_logs (lead_id, type, recipient, status, error_message) VALUES (?, ?, ?, ?, ?)");
+                if ($stmt) {
+                    $stmt->bind_param("issss", $leadIdVal, $type, $recipient, $status, $errorMessage);
+                    $stmt->execute();
+                    $stmt->close();
+                }
+            } elseif ($conn instanceof PDO) {
+                $stmt = $conn->prepare("INSERT INTO communication_logs (lead_id, type, recipient, status, error_message) VALUES (?, ?, ?, ?, ?)");
+                $stmt->execute([$leadIdVal, $type, $recipient, $status, $errorMessage]);
+            }
+        } catch (\Throwable $e) {
+            error_log("log_communication error: " . $e->getMessage());
         }
     }
 }
