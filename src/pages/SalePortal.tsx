@@ -5079,35 +5079,34 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                 background: 'var(--color-surface, #ffffff)',
                 border: '1px solid var(--color-border)',
                 borderRadius: isMobile ? '10px' : '14px',
-                padding: isMobile ? '8px 10px' : '0.875rem 1.25rem',
+                padding: isMobile ? '8px' : '0.875rem 1.25rem',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
-                gap: isMobile ? '6px' : '1rem',
+                gap: isMobile ? '4px' : '1rem',
                 boxShadow: 'var(--shadow-xs)'
               }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? '8px' : '10px', flex: 1, minWidth: 0 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? '6px' : '10px', flex: 1, minWidth: 0 }}>
                   <div style={{
-                    width: isMobile ? '32px' : '38px',
-                    height: isMobile ? '32px' : '38px',
-                    borderRadius: isMobile ? '8px' : '10px',
-                    background: 'rgba(189, 29, 45, 0.08)',
+                    width: isMobile ? '26px' : '38px',
+                    height: isMobile ? '26px' : '38px',
+                    borderRadius: isMobile ? '6px' : '10px',
+                    background: '#f1f5f9',
                     color: 'var(--color-primary, #BD1D2D)',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    flexShrink: 0,
-                    alignSelf: 'center'
+                    flexShrink: 0
                   }}>
-                    <Sparkles size={isMobile ? 15 : 18} />
+                    <Sparkles size={isMobile ? 13 : 18} />
                   </div>
                   <div style={{ minWidth: 0, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                    <span style={{ fontSize: isMobile ? '0.62rem' : '0.725rem', fontWeight: 800, color: 'var(--color-primary, #BD1D2D)', textTransform: 'uppercase', letterSpacing: '0.4px', display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', lineHeight: 1.2 }}>
+                    <span style={{ fontSize: isMobile ? '0.6rem' : '0.725rem', fontWeight: 800, color: 'var(--color-primary, #BD1D2D)', textTransform: 'uppercase', letterSpacing: '0.4px', display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', lineHeight: 1.15 }}>
                       {isMobile ? t('GỢI Ý AI') : t('GỢI Ý ƯU TIÊN TỪ AI')}
                     </span>
-                    <p style={{ margin: '2px 0 0 0', fontSize: isMobile ? '0.75rem' : '0.85rem', fontWeight: 700, color: 'var(--color-text)', overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: isMobile ? 1 : 2, WebkitBoxOrient: 'vertical', lineHeight: 1.2 }}>
+                    <span style={{ fontSize: isMobile ? '0.725rem' : '0.85rem', fontWeight: 700, color: 'var(--color-text)', overflow: 'hidden', textOverflow: 'ellipsis', display: 'block', whiteSpace: 'nowrap', marginTop: '1px', lineHeight: 1.15 }}>
                       {isMobile ? mobileAiMessage : aiMessage}
-                    </p>
+                    </span>
                   </div>
                 </div>
                 <button
@@ -5117,22 +5116,21 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                     background: 'rgba(189, 29, 45, 0.08)',
                     border: '1px solid rgba(189, 29, 45, 0.2)',
                     color: 'var(--color-primary, #BD1D2D)',
-                    padding: isMobile ? '4px 8px' : '7px 14px',
-                    fontSize: isMobile ? '0.7rem' : '0.8rem',
+                    padding: isMobile ? '4px 7px' : '7px 14px',
+                    fontSize: isMobile ? '0.68rem' : '0.8rem',
                     fontWeight: 700,
                     borderRadius: '6px',
                     display: 'flex',
                     alignItems: 'center',
-                    gap: '4px',
+                    gap: '3px',
                     cursor: 'pointer',
                     whiteSpace: 'nowrap',
                     flexShrink: 0,
-                    alignSelf: 'center',
                     transition: 'all 0.2s'
                   }}
                   className="hover-bg-light"
                 >
-                  <Play size={isMobile ? 11 : 13} />
+                  <Play size={isMobile ? 10 : 13} />
                   <span>{isMobile ? t('Xử lý') : t('Xử lý ngay')}</span>
                 </button>
               </div>
@@ -5142,37 +5140,36 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                 background: 'var(--color-surface, #ffffff)',
                 border: '1px solid var(--color-border)',
                 borderRadius: isMobile ? '10px' : '14px',
-                padding: isMobile ? '8px 10px' : '0.875rem 1.25rem',
+                padding: isMobile ? '8px' : '0.875rem 1.25rem',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
-                gap: isMobile ? '6px' : '1rem',
+                gap: isMobile ? '4px' : '1rem',
                 boxShadow: 'var(--shadow-xs)'
               }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? '8px' : '10px', flex: 1, minWidth: 0 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? '6px' : '10px', flex: 1, minWidth: 0 }}>
                   <div style={{
-                    width: isMobile ? '32px' : '38px',
-                    height: isMobile ? '32px' : '38px',
-                    borderRadius: isMobile ? '8px' : '10px',
-                    background: 'rgba(37, 99, 235, 0.08)',
+                    width: isMobile ? '26px' : '38px',
+                    height: isMobile ? '26px' : '38px',
+                    borderRadius: isMobile ? '6px' : '10px',
+                    background: '#f1f5f9',
                     color: '#2563EB',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    flexShrink: 0,
-                    alignSelf: 'center'
+                    flexShrink: 0
                   }}>
-                    <Calendar size={isMobile ? 15 : 18} />
+                    <Calendar size={isMobile ? 13 : 18} />
                   </div>
                   <div style={{ minWidth: 0, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                    <span style={{ fontSize: isMobile ? '0.62rem' : '0.725rem', fontWeight: 800, color: '#2563EB', textTransform: 'uppercase', letterSpacing: '0.4px', display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', lineHeight: 1.2 }}>
+                    <span style={{ fontSize: isMobile ? '0.6rem' : '0.725rem', fontWeight: 800, color: '#2563EB', textTransform: 'uppercase', letterSpacing: '0.4px', display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', lineHeight: 1.15 }}>
                       {isMobile ? t('LỊCH HẸN') : t('LỊCH HẸN GẶP SẮP DIỄN RA')}
                     </span>
-                    <p style={{ margin: '2px 0 0 0', fontSize: isMobile ? '0.75rem' : '0.85rem', fontWeight: 700, color: 'var(--color-text)', overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: isMobile ? 1 : 2, WebkitBoxOrient: 'vertical', lineHeight: 1.2 }}>
+                    <span style={{ fontSize: isMobile ? '0.725rem' : '0.85rem', fontWeight: 700, color: 'var(--color-text)', overflow: 'hidden', textOverflow: 'ellipsis', display: 'block', whiteSpace: 'nowrap', marginTop: '1px', lineHeight: 1.15 }}>
                       {meetingCount > 0 
                         ? (isMobile ? `${meetingCount} cuộc hẹn` : `Có ${meetingCount} cuộc hẹn gặp khách hàng đã được lên lịch trong kế hoạch.`)
                         : (isMobile ? `0 cuộc hẹn` : t('Chưa có lịch hẹn'))}
-                    </p>
+                    </span>
                   </div>
                 </div>
                 <button
@@ -5182,22 +5179,21 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                     background: 'rgba(37, 99, 235, 0.08)',
                     border: '1px solid rgba(37, 99, 235, 0.2)',
                     color: '#2563EB',
-                    padding: isMobile ? '4px 8px' : '7px 14px',
-                    fontSize: isMobile ? '0.7rem' : '0.8rem',
+                    padding: isMobile ? '4px 7px' : '7px 14px',
+                    fontSize: isMobile ? '0.68rem' : '0.8rem',
                     fontWeight: 700,
                     borderRadius: '6px',
                     display: 'flex',
                     alignItems: 'center',
-                    gap: '4px',
+                    gap: '3px',
                     cursor: 'pointer',
                     whiteSpace: 'nowrap',
                     flexShrink: 0,
-                    alignSelf: 'center',
                     transition: 'all 0.2s'
                   }}
                   className="hover-bg-light"
                 >
-                  <Eye size={isMobile ? 11 : 13} />
+                  <Eye size={isMobile ? 10 : 13} />
                   <span>{isMobile ? t('Xem') : t('Xem danh sách')}</span>
                 </button>
               </div>
