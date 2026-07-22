@@ -1407,6 +1407,8 @@ function insertLead($conn, $data, $assignedConsultantId, $phone, $email, $name, 
         } catch (Exception $e) {
             // silent catch
         }
+    }
+
 if (!function_exists('saveMappedExtendedFields')) {
     function saveMappedExtendedFields($conn, $leadId, $data, $mappings) {
         if (!$leadId || empty($mappings) || !is_array($mappings)) return;
