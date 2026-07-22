@@ -4,7 +4,7 @@ import {
   Settings, AlertCircle, Trash2, Plus, Send, Share2, FileText, Globe, 
   Users, RefreshCw, Layers, CheckSquare2, Info, Receipt, Scale, ArrowUpRight, Search, Save, Bell, BellOff,
   Eye, ExternalLink, UserPlus, UserCheck, Edit3, Play, Sparkles, ArrowRight, Building2, Megaphone, Loader2, RotateCcw,
-  CheckCircle2, XCircle
+  CheckCircle2, XCircle, Camera
 } from 'lucide-react';
 import api from '../api/axios';
 import toast from 'react-hot-toast';
@@ -92,6 +92,17 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
   const [isMuted, setIsMuted] = useState(false);
   const [loadingMute, setLoadingMute] = useState(false);
   const [showMuteConfirmModal, setShowMuteConfirmModal] = useState(false);
+
+  // Meeting action modals
+  const [meetingToComplete, setMeetingToComplete] = useState<any>(null);
+  const [completingMeeting, setCompletingMeeting] = useState(false);
+  const [proofCommentText, setProofCommentText] = useState('Ảnh minh chứng hoàn thành gặp gỡ');
+  const [proofImageFile, setProofImageFile] = useState<File | null>(null);
+  const [proofImagePreview, setProofImagePreview] = useState<string | null>(null);
+
+  const [cancellingMeeting, setCancellingMeeting] = useState<any>(null);
+  const [cancelReason, setCancelReason] = useState('');
+  const [savingCancel, setSavingCancel] = useState(false);
 
   useEffect(() => {
     if (isOpen && task?.id) {
@@ -2473,13 +2484,26 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
                       }}
                       onClick={async () => {
                         try {
-                          const payload = { status: 'done', progress: 100 };
-                          await api.put(`/activities/${task.id}`, payload);
-                          setFormData((prev: any) => ({ ...prev, status: 'done', progress: 100 }));
-                          onUpdate();
-                          toast.success(t('Đã cập nhật trạng thái lịch hẹn thành công'));
+                          const res = await api.get(`/activities/${task.id}/comments`);
+                          const commentsList = res.data.data || [];
+                          const hasImage = commentsList.some((c: any) => {
+                            const atts = Array.isArray(c.attachments) ? c.attachments : JSON.parse(c.attachments || '[]');
+                            return atts.some((att: string) => /\.(jpg|jpeg|png|gif|webp)$/i.test(att));
+                          });
+
+                          if (hasImage) {
+                            await api.put(`/activities/${task.id}`, { status: 'done', progress: 100 });
+                            setFormData((prev: any) => ({ ...prev, status: 'done', progress: 100 }));
+                            onUpdate();
+                            toast.success(t('Đã cập nhật trạng thái lịch hẹn thành công'));
+                          } else {
+                            setMeetingToComplete(task);
+                            setProofCommentText('Ảnh minh chứng hoàn thành gặp gỡ');
+                            setProofImageFile(null);
+                            setProofImagePreview(null);
+                          }
                         } catch (e) {
-                          toast.error(t('Lỗi khi cập nhật trạng thái lịch hẹn'));
+                          toast.error(t('Lỗi khi kiểm tra minh chứng'));
                         }
                       }}
                     >
@@ -2496,16 +2520,9 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
                         color: formData.status === 'cancelled' ? '#fff' : 'var(--color-danger)',
                         transition: 'all 0.2s'
                       }}
-                      onClick={async () => {
-                        try {
-                          const payload = { status: 'cancelled', progress: 0 };
-                          await api.put(`/activities/${task.id}`, payload);
-                          setFormData((prev: any) => ({ ...prev, status: 'cancelled', progress: 0 }));
-                          onUpdate();
-                          toast.success(t('Đã hủy lịch hẹn thành công'));
-                        } catch (e) {
-                          toast.error(t('Lỗi khi hủy lịch hẹn'));
-                        }
+                      onClick={() => {
+                        setCancellingMeeting(task);
+                        setCancelReason('');
                       }}
                     >
                       <XCircle size={14} /> {t('Hủy lịch hẹn')}
@@ -3346,6 +3363,27 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
               )}
             </div>
 
+            {/* Phân loại công việc */}
+            <div className="card" style={cardStyle}>
+              <label style={cardLabelStyle}>
+                {t('Phân loại công việc')}
+              </label>
+              <CustomSelect
+                options={[
+                  { value: 'task', label: t('Công việc chính') },
+                  { value: 'meeting', label: t('Lịch hẹn gặp gỡ') }
+                ]}
+                value={formData.type || 'task'}
+                onChange={async (val) => {
+                  const newType = String(val);
+                  setFormData((prev: any) => ({ ...prev, type: newType }));
+                  await handleUpdateField('type', newType);
+                  onUpdate();
+                  toast.success(t('Đã thay đổi phân loại công việc'));
+                }}
+              />
+            </div>
+
             {/* Độ ưu tiên & Hạn hoàn thành */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
               <div className="card" style={cardStyle}>
@@ -3755,6 +3793,257 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
                   >
                     {t('Đóng')}
                   </button>
+                </motion.div>
+              </div>
+            )}
+
+            {/* Meeting Proof Modal */}
+            {meetingToComplete && (
+              <div 
+                style={{
+                  position: 'fixed',
+                  inset: 0,
+                  backgroundColor: 'rgba(0, 0, 0, 0.65)',
+                  backdropFilter: 'blur(4px)',
+                  zIndex: 1000500,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  padding: '1rem'
+                }}
+                onClick={() => setMeetingToComplete(null)}
+              >
+                <motion.div 
+                  initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                  onClick={e => e.stopPropagation()}
+                  style={{ 
+                    width: '100%', 
+                    maxWidth: 500, 
+                    padding: '1.5rem', 
+                    borderRadius: '16px', 
+                    overflow: 'hidden', 
+                    background: 'var(--color-surface)', 
+                    border: '1px solid var(--color-border)',
+                    boxShadow: '0 20px 40px rgba(0,0,0,0.25)'
+                  }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+                    <h3 style={{ fontWeight: 700, fontSize: '1.25rem', color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
+                      <Camera style={{ color: '#10b981' }} size={20} />
+                      Cung cấp ảnh minh chứng
+                    </h3>
+                    <button className="btn-icon sm ghost" style={{ border: 'none', background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => setMeetingToComplete(null)}><X size={16} /></button>
+                  </div>
+
+                  <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', marginBottom: '1.25rem', lineHeight: 1.5, margin: 0 }}>
+                    Gặp gỡ này chưa có ảnh đính kèm trong phần bình luận. Bạn phải tải lên ảnh minh chứng (chụp ảnh cùng khách hàng, sa bàn, v.v.) để hoàn thành cuộc gặp.
+                  </p>
+
+                  <div style={{ marginBottom: '1.25rem', marginTop: '1rem' }}>
+                    <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 600, color: 'var(--color-text)', marginBottom: '0.5rem' }}>Ảnh minh chứng *</label>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                      {proofImagePreview ? (
+                        <div style={{ position: 'relative', width: '100%', height: '180px', borderRadius: '10px', overflow: 'hidden', border: '1px solid var(--color-border)' }}>
+                          <img src={proofImagePreview} alt="Proof preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                          <button 
+                            onClick={() => {
+                              setProofImageFile(null);
+                              setProofImagePreview(null);
+                            }}
+                            style={{ position: 'absolute', top: '8px', right: '8px', background: 'rgba(0,0,0,0.6)', color: 'white', border: 'none', borderRadius: '50%', width: '28px', height: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
+                          >
+                            <X size={14} />
+                          </button>
+                        </div>
+                      ) : (
+                        <label style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', width: '100%', height: '120px', border: '2px dashed var(--color-border)', borderRadius: '10px', cursor: 'pointer', background: 'var(--color-bg)', transition: 'border-color 0.2s' }}>
+                          <Camera size={28} style={{ color: 'var(--color-text-muted)', marginBottom: '6px' }} />
+                          <span style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>Tải ảnh lên (JPEG, PNG, WebP)</span>
+                          <input 
+                            type="file" 
+                            accept="image/*" 
+                            onChange={async (e) => {
+                              const file = e.target.files?.[0];
+                              if (!file) return;
+                              if (file.size > 5 * 1024 * 1024) {
+                                toast.error('Dung lượng tệp đính kèm không được vượt quá 5MB');
+                                return;
+                              }
+                              const previewUrl = URL.createObjectURL(file);
+                              setProofImageFile(file);
+                              setProofImagePreview(previewUrl);
+                            }}
+                            style={{ display: 'none' }}
+                          />
+                        </label>
+                      )}
+                    </div>
+                  </div>
+
+                  <div style={{ marginBottom: '1.5rem' }}>
+                    <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 600, color: 'var(--color-text)', marginBottom: '0.5rem' }}>Nội dung bình luận</label>
+                    <textarea
+                      style={{ width: '100%', minHeight: '80px', fontSize: '0.875rem', padding: '8px 12px', border: '1px solid var(--color-border)', borderRadius: '8px', outline: 'none', resize: 'none', background: 'var(--color-bg)', color: 'var(--color-text)' }}
+                      value={proofCommentText}
+                      onChange={(e) => setProofCommentText(e.target.value)}
+                      placeholder="Nhập ghi chú hoặc mô tả về buổi gặp gỡ..."
+                    />
+                  </div>
+
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+                    <button className="btn outline" onClick={() => setMeetingToComplete(null)} disabled={completingMeeting}>Hủy</button>
+                    <button 
+                      className="btn success" 
+                      disabled={!proofImageFile || completingMeeting} 
+                      onClick={async () => {
+                        if (!proofImageFile || !meetingToComplete) return;
+                        setCompletingMeeting(true);
+                        try {
+                          let fileToUpload = proofImageFile;
+                          try {
+                            const { compressToWebP } = await import('../utils/imageCompress');
+                            fileToUpload = await compressToWebP(proofImageFile);
+                          } catch (err) {}
+                          
+                          const fd = new FormData();
+                          fd.append('file', fileToUpload);
+                          const uploadRes = await api.post('/upload', fd, {
+                            headers: { 'Content-Type': 'multipart/form-data' }
+                          });
+                          const uploadedUrl = uploadRes.data.data?.url ?? uploadRes.data.url ?? '';
+                          if (!uploadedUrl) throw new Error('Không thể tải ảnh lên');
+
+                          // Post comment
+                          const payload = {
+                            content: proofCommentText,
+                            attachments: [uploadedUrl],
+                            parent_id: null
+                          };
+                          await api.post(`/activities/${meetingToComplete.id}/comments`, payload);
+
+                          // Complete activity
+                          await api.put(`/activities/${meetingToComplete.id}`, { status: 'done', progress: 100 });
+
+                          toast.success(t('Đã tải ảnh minh chứng và hoàn thành gặp gỡ'));
+                          setFormData((prev: any) => ({ ...prev, status: 'done', progress: 100 }));
+                          onUpdate();
+                          setMeetingToComplete(null);
+                        } catch (e: any) {
+                          toast.error(e.response?.data?.message || 'Có lỗi xảy ra khi lưu minh chứng');
+                        } finally {
+                          setCompletingMeeting(false);
+                        }
+                      }}
+                      style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'var(--color-success)', color: '#fff', border: 'none', padding: '8px 16px', borderRadius: '8px', cursor: 'pointer', fontWeight: 600 }}
+                    >
+                      {completingMeeting ? (
+                        <>
+                          <Loader2 size={14} className="animate-spin" />
+                          Đang xử lý...
+                        </>
+                      ) : (
+                        <>
+                          <CheckCircle2 size={14} />
+                          Hoàn thành
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </motion.div>
+              </div>
+            )}
+
+            {/* Meeting Cancellation Modal */}
+            {cancellingMeeting && (
+              <div 
+                style={{
+                  position: 'fixed',
+                  inset: 0,
+                  backgroundColor: 'rgba(0, 0, 0, 0.65)',
+                  backdropFilter: 'blur(4px)',
+                  zIndex: 1000500,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  padding: '1rem'
+                }}
+                onClick={() => setCancellingMeeting(null)}
+              >
+                <motion.div 
+                  initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                  onClick={e => e.stopPropagation()}
+                  style={{ 
+                    width: '100%', 
+                    maxWidth: 450, 
+                    padding: '1.5rem', 
+                    borderRadius: '16px', 
+                    overflow: 'hidden', 
+                    background: 'var(--color-surface)', 
+                    border: '1px solid var(--color-border)',
+                    boxShadow: '0 20px 40px rgba(0,0,0,0.25)'
+                  }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+                    <h3 style={{ fontWeight: 700, fontSize: '1.25rem', color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
+                      <XCircle style={{ color: 'var(--color-danger)' }} size={20} />
+                      Nhập lý do hủy lịch
+                    </h3>
+                    <button className="btn-icon sm ghost" style={{ border: 'none', background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => setCancellingMeeting(null)}><X size={16} /></button>
+                  </div>
+
+                  <div style={{ marginBottom: '1.5rem' }}>
+                    <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 600, color: 'var(--color-text)', marginBottom: '0.5rem' }}>Lý do hủy *</label>
+                    <textarea
+                      style={{ width: '100%', minHeight: '100px', fontSize: '0.875rem', padding: '8px 12px', border: '1px solid var(--color-border)', borderRadius: '8px', outline: 'none', resize: 'none', background: 'var(--color-bg)', color: 'var(--color-text)' }}
+                      value={cancelReason}
+                      onChange={(e) => setCancelReason(e.target.value)}
+                      placeholder="Vui lòng nhập lý do hủy cuộc hẹn..."
+                    />
+                  </div>
+
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+                    <button className="btn outline" onClick={() => setCancellingMeeting(null)} disabled={savingCancel}>Hủy</button>
+                    <button 
+                      className="btn danger" 
+                      disabled={!cancelReason.trim() || savingCancel} 
+                      onClick={async () => {
+                        const reason = cancelReason.trim();
+                        if (!reason) return;
+                        setSavingCancel(true);
+                        try {
+                          await api.put(`/activities/${cancellingMeeting.id}`, { status: 'cancelled', progress: 0 });
+                          await api.post(`/activities/${cancellingMeeting.id}/comments`, {
+                            content: `Hủy lịch gặp gỡ với lý do: ${reason}`
+                          });
+                          toast.success(t('Đã hủy lịch hẹn thành công'));
+                          setFormData((prev: any) => ({ ...prev, status: 'cancelled', progress: 0 }));
+                          onUpdate();
+                          setCancellingMeeting(null);
+                        } catch (e: any) {
+                          toast.error('Lỗi khi hủy gặp gỡ');
+                        } finally {
+                          setSavingCancel(false);
+                        }
+                      }}
+                      style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'var(--color-danger)', color: '#fff', border: 'none', padding: '8px 16px', borderRadius: '8px', cursor: 'pointer', fontWeight: 600 }}
+                    >
+                      {savingCancel ? (
+                        <>
+                          <Loader2 size={14} className="animate-spin" />
+                          Đang xử lý...
+                        </>
+                      ) : (
+                        <>
+                          <XCircle size={14} />
+                          Xác nhận hủy
+                        </>
+                      )}
+                    </button>
+                  </div>
                 </motion.div>
               </div>
             )}
