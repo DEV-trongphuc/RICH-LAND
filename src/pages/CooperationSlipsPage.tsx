@@ -4,7 +4,7 @@ import { fetchAPI } from '../utils/api';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import api from '../api/axios';
-import { FileText, Check, X, ShieldAlert, UserPlus, PenTool, CheckCircle, AlertCircle, ChevronDown, ChevronUp, Trash2, Paperclip, ExternalLink, Search, Zap, Edit3 } from 'lucide-react';
+import { FileText, Check, X, ShieldAlert, UserPlus, PenTool, CheckCircle, AlertCircle, ChevronDown, ChevronUp, Trash2, Paperclip, ExternalLink, Search, Zap, Edit3, Loader2 } from 'lucide-react';
 import { SignaturePadModal } from '../components/ui/SignaturePadModal';
 import { PeriodFilter, getDateRange } from '../components/ui/PeriodFilter';
 import type { Period, DateRange } from '../components/ui/PeriodFilter';
@@ -2202,10 +2202,10 @@ export default function CooperationSlipsPage() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
               
               {/* Slip Summary Info */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '16px 20px', background: 'linear-gradient(135deg, rgba(189,29,45,0.01) 0%, rgba(189,29,45,0.03) 100%)', padding: '16px 20px', borderRadius: '16px', border: '1px solid rgba(189, 29, 45, 0.08)' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '16px 24px', background: 'var(--color-bg-light)', padding: '20px', borderRadius: '16px', border: '1px solid var(--color-border-light)' }}>
                 <div>
                   <span style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)', display: 'block', fontWeight: 700, letterSpacing: '0.5px', textTransform: 'uppercase', marginBottom: '2px' }}>CĂN HỘ / MÃ CĂN</span>
-                  <span style={{ fontSize: '0.925rem', fontWeight: 800, color: 'var(--color-primary)' }}>{approvalSlip.unit_code || '—'}</span>
+                  <span style={{ fontSize: '0.925rem', fontWeight: 800, color: '#BD1D2D' }}>{approvalSlip.unit_code || '—'}</span>
                 </div>
                 <div>
                   <span style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)', display: 'block', fontWeight: 700, letterSpacing: '0.5px', textTransform: 'uppercase', marginBottom: '2px' }}>DỰ ÁN</span>
@@ -2217,30 +2217,30 @@ export default function CooperationSlipsPage() {
                 </div>
                 <div>
                   <span style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)', display: 'block', fontWeight: 700, letterSpacing: '0.5px', textTransform: 'uppercase', marginBottom: '2px' }}>TRẠNG THÁI</span>
-                  <span className="badge warning" style={{ display: 'inline-block', fontSize: '0.725rem', padding: '3px 8px', borderRadius: '6px', fontWeight: 700, textTransform: 'none', letterSpacing: 'normal' }}>
-                    Chờ sếp duyệt
+                  <span style={{ display: 'inline-block', fontSize: '0.725rem', padding: '4px 10px', borderRadius: '8px', fontWeight: 700, textTransform: 'none', letterSpacing: 'normal', background: 'rgba(245, 158, 11, 0.1)', color: '#d97706', width: 'fit-content' }}>
+                    Chờ duyệt
                   </span>
                 </div>
               </div>
 
               {/* Ratios & Commission */}
               <div>
-                <h4 style={{ fontSize: '0.725rem', fontWeight: 800, color: 'var(--color-text-light)', marginBottom: '10px', textTransform: 'uppercase', letterSpacing: '1px', borderLeft: '3px solid var(--color-primary)', paddingLeft: '8px' }}>
+                <h4 style={{ fontSize: '0.725rem', fontWeight: 800, color: 'var(--color-text-light)', marginBottom: '12px', textTransform: 'uppercase', letterSpacing: '1px', borderLeft: '3px solid #BD1D2D', paddingLeft: '8px' }}>
                   Tỷ lệ chia sẻ & Doanh thu hoa hồng
                 </h4>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                   {/* Financials Row */}
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', background: 'var(--color-bg-light)', border: '1px solid var(--color-border)', borderRadius: '14px', padding: '14px 18px' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', background: 'var(--color-bg-light)', border: '1px solid var(--color-border-light)', borderRadius: '16px', padding: '16px 20px' }}>
                     <div>
                       <span style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)', display: 'block', fontWeight: 700, marginBottom: '4px' }}>H.HỒNG DỰ KIẾN ({approvalSlip.total_percentage ?? 100}%)</span>
                       <span style={{ fontSize: '1.2rem', fontWeight: 900, color: 'var(--color-text)' }}>
                         {((Number(approvalSlip.expected_commission || approvalSlip.expected_revenue || 0) * (approvalSlip.total_percentage ?? 100)) / 100).toLocaleString()} <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--color-text-muted)' }}>VND</span>
                       </span>
                     </div>
-                    <div style={{ borderLeft: '1px solid var(--color-border)', paddingLeft: '16px' }}>
+                    <div style={{ borderLeft: '1px solid var(--color-border-light)', paddingLeft: '16px' }}>
                       <span style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)', display: 'block', fontWeight: 700, marginBottom: '4px' }}>THỰC THU ({approvalSlip.total_percentage ?? 100}%)</span>
-                      <span style={{ fontSize: '1.2rem', fontWeight: 900, color: 'var(--color-success)' }}>
-                        {((Number(approvalSlip.actual_revenue || 0) * (approvalSlip.total_percentage ?? 100)) / 100).toLocaleString()} <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--color-success)' }}>VND</span>
+                      <span style={{ fontSize: '1.2rem', fontWeight: 900, color: '#10b981' }}>
+                        {((Number(approvalSlip.actual_revenue || 0) * (approvalSlip.total_percentage ?? 100)) / 100).toLocaleString()} <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#10b981' }}>VND</span>
                       </span>
                     </div>
                   </div>
@@ -2248,7 +2248,7 @@ export default function CooperationSlipsPage() {
                   {/* Shareholders distribution */}
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                     {approvalSlip.shareholders?.map((sh) => (
-                      <div key={sh.user_id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--color-surface)', padding: '10px 14px', borderRadius: '12px', border: '1px solid var(--color-border-light)', boxShadow: 'var(--shadow-xs)' }}>
+                      <div key={sh.user_id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--color-surface)', padding: '12px 16px', borderRadius: '12px', border: '1px solid var(--color-border-light)', boxShadow: 'var(--shadow-sm)' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                           <Avatar src={(sh as any).avatar} name={sh.name} size={32} />
                           <div>
@@ -2256,12 +2256,35 @@ export default function CooperationSlipsPage() {
                             <span style={{ fontSize: '0.675rem', color: 'var(--color-text-muted)', display: 'block' }}>{sh.email}</span>
                           </div>
                         </div>
+
                         <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-                          <div style={{ textAlign: 'right' }}>
-                            <span style={{ fontSize: '0.9rem', fontWeight: 800, color: 'var(--color-primary)' }}>{sh.percentage}%</span>
-                            <span style={{ fontSize: '0.675rem', color: sh.signed ? 'var(--color-success)' : 'var(--color-warning)', display: 'block', fontWeight: 700, marginTop: '1px' }}>
-                              {sh.signed ? '✓ Đã ký số' : '✗ Chưa ký'}
-                            </span>
+                          {/* Right: Signature Image Preview (next to percentage) */}
+                          {sh.signed && (sh as any).signature_img && (
+                            <img 
+                              src={resolveFileUrl((sh as any).signature_img)} 
+                              style={{ height: '32px', objectFit: 'contain', background: '#f9fafb', padding: '2px 6px', borderRadius: '6px', border: '1px dashed var(--color-border-light)' }} 
+                              alt="Chữ ký" 
+                            />
+                          )}
+
+                          <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+                            <span style={{ fontSize: '0.9rem', fontWeight: 800, color: '#BD1D2D' }}>{sh.percentage}%</span>
+                            {!sh.signed && (
+                              <span style={{ 
+                                fontSize: '0.7rem', 
+                                color: '#ef4444', 
+                                background: 'rgba(239, 68, 68, 0.1)',
+                                padding: '2px 8px',
+                                borderRadius: '6px',
+                                display: 'inline-flex', 
+                                alignItems: 'center',
+                                gap: '4px',
+                                fontWeight: 700, 
+                                marginTop: '4px' 
+                              }}>
+                                ✗ Chưa ký
+                              </span>
+                            )}
                           </div>
                         </div>
                       </div>
@@ -2317,11 +2340,11 @@ export default function CooperationSlipsPage() {
 
                 return (
                   <div>
-                    <h4 style={{ fontSize: '0.725rem', fontWeight: 800, color: 'var(--color-text-light)', marginBottom: '10px', textTransform: 'uppercase', letterSpacing: '1px', borderLeft: '3px solid var(--color-primary)', paddingLeft: '8px' }}>
+                    <h4 style={{ fontSize: '0.725rem', fontWeight: 800, color: 'var(--color-text-light)', marginBottom: '12px', textTransform: 'uppercase', letterSpacing: '1px', borderLeft: '3px solid #BD1D2D', paddingLeft: '8px' }}>
                       Tài liệu đính kèm ({modalAttachmentsList.length})
                     </h4>
                     {modalAttachmentsList.length > 0 ? (
-                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '10px' }}>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '12px' }}>
                         {modalAttachmentsList.map((file, index) => {
                           const isAbsolute = file.path.startsWith('http://') || file.path.startsWith('https://');
                           const downloadUrl = isAbsolute
@@ -2329,22 +2352,39 @@ export default function CooperationSlipsPage() {
                             : file.path.startsWith('uploads/') 
                               ? `${import.meta.env.VITE_API_URL || '/backend'}/${file.path}` 
                               : `${import.meta.env.VITE_API_URL || '/backend'}/uploads/${file.path}`;
+                          const isImage = /\.(jpg|jpeg|png|webp|gif|bmp|svg)$/i.test(file.path);
 
                           return (
-                            <div key={index} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px', background: 'var(--color-bg-light)', borderRadius: '12px', border: '1px solid var(--color-border)', transition: 'all 0.2s' }} className="hover-lift">
-                              <FileText size={20} color="var(--color-primary)" style={{ flexShrink: 0 }} />
+                            <div 
+                              key={index} 
+                              style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 16px', background: 'var(--color-bg-light)', borderRadius: '12px', border: '1px solid var(--color-border-light)', transition: 'all 0.2s', cursor: 'pointer' }} 
+                              className="hover-lift"
+                              onClick={() => window.open(downloadUrl, '_blank')}
+                            >
+                              {/* Left icon: Show thumbnail if image, otherwise generic FileText icon */}
+                              {isImage ? (
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '36px', height: '36px', borderRadius: '10px', overflow: 'hidden', border: '1px solid var(--color-border-light)', background: '#ffffff', flexShrink: 0 }}>
+                                  <img 
+                                    src={downloadUrl} 
+                                    alt={file.name} 
+                                    style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+                                  />
+                                </div>
+                              ) : (
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '36px', height: '36px', borderRadius: '10px', background: 'rgba(189, 29, 45, 0.08)', color: '#BD1D2D', flexShrink: 0 }}>
+                                  <FileText size={18} />
+                                </div>
+                              )}
+
                               <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0, flex: 1 }}>
-                                <a 
-                                  href={downloadUrl} 
-                                  target="_blank" 
-                                  rel="noreferrer" 
-                                  style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-primary)', textDecoration: 'none', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
-                                  className="hover-underline"
-                                >
+                                <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--color-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                                   {file.name}
-                                </a>
+                                </span>
+                                <span style={{ fontSize: '0.675rem', color: 'var(--color-text-muted)', marginTop: '2px' }}>
+                                  Bấm để mở xem tài liệu ↗
+                                </span>
                               </div>
-                              <ExternalLink size={12} color="var(--color-text-muted)" style={{ flexShrink: 0 }} />
+                              <ExternalLink size={14} color="var(--color-text-muted)" style={{ flexShrink: 0 }} />
                             </div>
                           );
                         })}
@@ -2389,14 +2429,17 @@ export default function CooperationSlipsPage() {
                   }
                 }} 
                 className="btn"
-                style={{ flex: 2, height: '48px', borderRadius: '12px', fontSize: '0.9rem', fontWeight: 700, background: 'var(--color-success)', color: 'white', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', cursor: 'pointer', boxShadow: '0 4px 12px rgba(52, 199, 89, 0.2)' }}
+                style={{ flex: 2, height: '48px', borderRadius: '12px', fontSize: '0.9rem', fontWeight: 700, background: '#10b981', color: 'white', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', cursor: 'pointer', boxShadow: '0 4px 12px rgba(16, 185, 129, 0.2)' }}
                 disabled={isApproving}
               >
                 {isApproving ? (
-                  'Đang xử lý...'
+                  <>
+                    <Loader2 size={18} className="animate-spin" />
+                    Đang xử lý...
+                  </>
                 ) : (
                   <>
-                    <Check size={20} />
+                    <Check size={18} />
                     Xác nhận &amp; Phê duyệt
                   </>
                 )}
