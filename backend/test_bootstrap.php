@@ -15,6 +15,7 @@ if (!$isCli && !$hasValidToken) {
 }
 
 // 2. Tải toàn bộ môi trường và các thư viện cốt lõi
+require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/db_connect.php';
 require_once __DIR__ . '/webhook_logic.php';
 require_once __DIR__ . '/zalo_bot.php';
