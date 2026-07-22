@@ -5053,27 +5053,27 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
           return (
             <div style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
-              gap: '1rem',
-              marginBottom: '1rem'
+              gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(auto-fit, minmax(320px, 1fr))',
+              gap: isMobile ? '8px' : '1rem',
+              marginBottom: '0.75rem'
             }}>
               {/* CARD 1: GỢI Ý ƯU TIÊN TỪ AI */}
               <div style={{
                 background: 'var(--color-surface, #ffffff)',
                 border: '1px solid var(--color-border)',
-                borderRadius: '14px',
-                padding: '0.875rem 1.25rem',
+                borderRadius: isMobile ? '10px' : '14px',
+                padding: isMobile ? '8px 10px' : '0.875rem 1.25rem',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
-                gap: '1rem',
+                gap: isMobile ? '6px' : '1rem',
                 boxShadow: 'var(--shadow-xs)'
               }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: 1, minWidth: 0 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? '6px' : '10px', flex: 1, minWidth: 0 }}>
                   <div style={{
-                    width: '38px',
-                    height: '38px',
-                    borderRadius: '10px',
+                    width: isMobile ? '28px' : '38px',
+                    height: isMobile ? '28px' : '38px',
+                    borderRadius: isMobile ? '8px' : '10px',
                     background: 'rgba(189, 29, 45, 0.08)',
                     color: 'var(--color-primary, #BD1D2D)',
                     display: 'flex',
@@ -5081,13 +5081,13 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                     justifyContent: 'center',
                     flexShrink: 0
                   }}>
-                    <Sparkles size={18} />
+                    <Sparkles size={isMobile ? 14 : 18} />
                   </div>
                   <div style={{ minWidth: 0 }}>
-                    <span style={{ fontSize: '0.725rem', fontWeight: 800, color: 'var(--color-primary, #BD1D2D)', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block' }}>
-                      {t('GỢI Ý ƯU TIÊN TỪ AI')}
+                    <span style={{ fontSize: isMobile ? '0.65rem' : '0.725rem', fontWeight: 800, color: 'var(--color-primary, #BD1D2D)', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {isMobile ? t('GỢI Ý AI') : t('GỢI Ý ƯU TIÊN TỪ AI')}
                     </span>
-                    <p style={{ margin: '2px 0 0 0', fontSize: '0.85rem', fontWeight: 600, color: 'var(--color-text)', overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
+                    <p style={{ margin: '1px 0 0 0', fontSize: isMobile ? '0.75rem' : '0.85rem', fontWeight: 600, color: 'var(--color-text)', overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: isMobile ? 1 : 2, WebkitBoxOrient: 'vertical' }}>
                       {aiMessage}
                     </p>
                   </div>
@@ -5099,13 +5099,13 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                     background: 'rgba(189, 29, 45, 0.08)',
                     border: '1px solid rgba(189, 29, 45, 0.2)',
                     color: 'var(--color-primary, #BD1D2D)',
-                    padding: '7px 14px',
-                    fontSize: '0.8rem',
+                    padding: isMobile ? '4px 8px' : '7px 14px',
+                    fontSize: isMobile ? '0.725rem' : '0.8rem',
                     fontWeight: 700,
                     borderRadius: '8px',
                     display: 'flex',
                     alignItems: 'center',
-                    gap: '6px',
+                    gap: '4px',
                     cursor: 'pointer',
                     whiteSpace: 'nowrap',
                     flexShrink: 0,
@@ -5113,8 +5113,8 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                   }}
                   className="hover-bg-light"
                 >
-                  <Play size={13} />
-                  <span>{t('Xử lý ngay')}</span>
+                  <Play size={isMobile ? 11 : 13} />
+                  <span>{isMobile ? t('Xử lý') : t('Xử lý ngay')}</span>
                 </button>
               </div>
 
@@ -5122,19 +5122,19 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
               <div style={{
                 background: 'var(--color-surface, #ffffff)',
                 border: '1px solid var(--color-border)',
-                borderRadius: '14px',
-                padding: '0.875rem 1.25rem',
+                borderRadius: isMobile ? '10px' : '14px',
+                padding: isMobile ? '8px 10px' : '0.875rem 1.25rem',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
-                gap: '1rem',
+                gap: isMobile ? '6px' : '1rem',
                 boxShadow: 'var(--shadow-xs)'
               }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: 1, minWidth: 0 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? '6px' : '10px', flex: 1, minWidth: 0 }}>
                   <div style={{
-                    width: '38px',
-                    height: '38px',
-                    borderRadius: '10px',
+                    width: isMobile ? '28px' : '38px',
+                    height: isMobile ? '28px' : '38px',
+                    borderRadius: isMobile ? '8px' : '10px',
                     background: 'rgba(37, 99, 235, 0.08)',
                     color: '#2563EB',
                     display: 'flex',
@@ -5142,16 +5142,16 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                     justifyContent: 'center',
                     flexShrink: 0
                   }}>
-                    <Calendar size={18} />
+                    <Calendar size={isMobile ? 14 : 18} />
                   </div>
                   <div style={{ minWidth: 0 }}>
-                    <span style={{ fontSize: '0.725rem', fontWeight: 800, color: '#2563EB', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block' }}>
-                      {t('LỊCH HẸN GẶP SẮP DIỄN RA')}
+                    <span style={{ fontSize: isMobile ? '0.65rem' : '0.725rem', fontWeight: 800, color: '#2563EB', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {isMobile ? t('LỊCH HẸN') : t('LỊCH HẸN GẶP SẮP DIỄN RA')}
                     </span>
-                    <p style={{ margin: '2px 0 0 0', fontSize: '0.85rem', fontWeight: 600, color: 'var(--color-text)', overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
+                    <p style={{ margin: '1px 0 0 0', fontSize: isMobile ? '0.75rem' : '0.85rem', fontWeight: 600, color: 'var(--color-text)', overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: isMobile ? 1 : 2, WebkitBoxOrient: 'vertical' }}>
                       {meetingCount > 0 
-                        ? `Có ${meetingCount} cuộc hẹn gặp khách hàng đã được lên lịch trong kế hoạch.` 
-                        : `Hiện chưa có cuộc hẹn gặp nào trong lịch trình sắp tới.`}
+                        ? (isMobile ? `${meetingCount} cuộc hẹn gặp` : `Có ${meetingCount} cuộc hẹn gặp khách hàng đã được lên lịch trong kế hoạch.`)
+                        : t('Chưa có lịch hẹn')}
                     </p>
                   </div>
                 </div>
@@ -5162,13 +5162,13 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                     background: 'rgba(37, 99, 235, 0.08)',
                     border: '1px solid rgba(37, 99, 235, 0.2)',
                     color: '#2563EB',
-                    padding: '7px 14px',
-                    fontSize: '0.8rem',
+                    padding: isMobile ? '4px 8px' : '7px 14px',
+                    fontSize: isMobile ? '0.725rem' : '0.8rem',
                     fontWeight: 700,
                     borderRadius: '8px',
                     display: 'flex',
                     alignItems: 'center',
-                    gap: '6px',
+                    gap: '4px',
                     cursor: 'pointer',
                     whiteSpace: 'nowrap',
                     flexShrink: 0,
@@ -5176,8 +5176,8 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                   }}
                   className="hover-bg-light"
                 >
-                  <Eye size={13} />
-                  <span>{t('Xem danh sách')}</span>
+                  <Eye size={isMobile ? 11 : 13} />
+                  <span>{isMobile ? t('Xem') : t('Xem danh sách')}</span>
                 </button>
               </div>
             </div>
@@ -5188,18 +5188,24 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
         <div style={{
           background: 'var(--color-surface)',
           border: '1px solid var(--color-border-light)',
-          borderRadius: '16px',
-          padding: '0.625rem 0.875rem',
+          borderRadius: isMobile ? '12px' : '16px',
+          padding: isMobile ? '8px 10px' : '0.625rem 0.875rem',
           boxShadow: '0 4px 20px -8px rgba(0,0,0,0.05)',
           display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          gap: '0.625rem',
-          flexWrap: 'wrap',
+          flexDirection: 'column',
+          gap: isMobile ? '8px' : '0.625rem',
           marginBottom: '1rem'
         }}>
-          {/* Left Group: KPI Status Pills & Team Dropdown */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+          {/* Top Group: Horizontal Scrollable Status Pills & Team Dropdown */}
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.4rem',
+            overflowX: 'auto',
+            whiteSpace: 'nowrap',
+            width: '100%',
+            paddingBottom: isMobile ? '2px' : '0'
+          }} className="custom-scrollbar-hidden">
             {/* Overdue Pill */}
             <div 
               onClick={() => {
@@ -5208,23 +5214,24 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                 setWsTaskFilter('all');
               }}
               style={{
-                padding: '5px 12px',
+                padding: isMobile ? '4px 10px' : '5px 12px',
                 borderRadius: '20px',
                 border: wsDatePreset === 'overdue' ? '1.5px solid var(--color-danger)' : '1px solid var(--color-border)',
                 background: wsDatePreset === 'overdue' ? 'rgba(239, 68, 68, 0.1)' : 'transparent',
                 color: 'var(--color-danger)',
                 cursor: 'pointer',
-                display: 'flex',
+                display: 'inline-flex',
                 alignItems: 'center',
-                gap: '5px',
-                fontSize: '0.78rem',
+                gap: '4px',
+                fontSize: isMobile ? '0.725rem' : '0.78rem',
                 fontWeight: 700,
+                flexShrink: 0,
                 transition: 'all 0.15s ease'
               }}
             >
-              <Clock size={13} />
+              <Clock size={isMobile ? 12 : 13} />
               <span>{t('Quá hạn')}</span>
-              <span style={{ background: 'var(--color-danger)', color: '#fff', borderRadius: '10px', padding: '1px 6px', fontSize: '0.7rem', fontWeight: 800 }}>
+              <span style={{ background: 'var(--color-danger)', color: '#fff', borderRadius: '10px', padding: '1px 5px', fontSize: '0.675rem', fontWeight: 800 }}>
                 {workspaceStats.overdue}
               </span>
             </div>
@@ -5237,23 +5244,24 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                 setWsTaskFilter('all');
               }}
               style={{
-                padding: '5px 12px',
+                padding: isMobile ? '4px 10px' : '5px 12px',
                 borderRadius: '20px',
                 border: wsDatePreset === 'today' ? '1.5px solid var(--color-warning)' : '1px solid var(--color-border)',
                 background: wsDatePreset === 'today' ? 'rgba(245, 158, 11, 0.1)' : 'transparent',
                 color: 'var(--color-warning)',
                 cursor: 'pointer',
-                display: 'flex',
+                display: 'inline-flex',
                 alignItems: 'center',
-                gap: '5px',
-                fontSize: '0.78rem',
+                gap: '4px',
+                fontSize: isMobile ? '0.725rem' : '0.78rem',
                 fontWeight: 700,
+                flexShrink: 0,
                 transition: 'all 0.15s ease'
               }}
             >
-              <Calendar size={13} />
+              <Calendar size={isMobile ? 12 : 13} />
               <span>{t('Đến hạn')}</span>
-              <span style={{ background: 'var(--color-warning)', color: '#fff', borderRadius: '10px', padding: '1px 6px', fontSize: '0.7rem', fontWeight: 800 }}>
+              <span style={{ background: 'var(--color-warning)', color: '#fff', borderRadius: '10px', padding: '1px 5px', fontSize: '0.675rem', fontWeight: 800 }}>
                 {workspaceStats.dueToday}
               </span>
             </div>
@@ -5266,23 +5274,24 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                 setWsTaskFilter('all');
               }}
               style={{
-                padding: '5px 12px',
+                padding: isMobile ? '4px 10px' : '5px 12px',
                 borderRadius: '20px',
                 border: wsDatePreset === 'tomorrow' ? '1.5px solid var(--color-info)' : '1px solid var(--color-border)',
                 background: wsDatePreset === 'tomorrow' ? 'rgba(59, 130, 246, 0.1)' : 'transparent',
                 color: 'var(--color-info)',
                 cursor: 'pointer',
-                display: 'flex',
+                display: 'inline-flex',
                 alignItems: 'center',
-                gap: '5px',
-                fontSize: '0.78rem',
+                gap: '4px',
+                fontSize: isMobile ? '0.725rem' : '0.78rem',
                 fontWeight: 700,
+                flexShrink: 0,
                 transition: 'all 0.15s ease'
               }}
             >
-              <ArrowUpRight size={13} />
+              <ArrowUpRight size={isMobile ? 12 : 13} />
               <span>{t('Sắp đến hạn')}</span>
-              <span style={{ background: 'var(--color-info)', color: '#fff', borderRadius: '10px', padding: '1px 6px', fontSize: '0.7rem', fontWeight: 800 }}>
+              <span style={{ background: 'var(--color-info)', color: '#fff', borderRadius: '10px', padding: '1px 5px', fontSize: '0.675rem', fontWeight: 800 }}>
                 {workspaceStats.upcoming}
               </span>
             </div>
@@ -5295,23 +5304,24 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                 setWsDatePreset('all');
               }}
               style={{
-                padding: '5px 12px',
+                padding: isMobile ? '4px 10px' : '5px 12px',
                 borderRadius: '20px',
                 border: wsTaskFilter === 'approve_by_me' ? '1.5px solid #8b5cf6' : '1px solid var(--color-border)',
                 background: wsTaskFilter === 'approve_by_me' ? 'rgba(139, 92, 246, 0.1)' : 'transparent',
                 color: '#8b5cf6',
                 cursor: 'pointer',
-                display: 'flex',
+                display: 'inline-flex',
                 alignItems: 'center',
-                gap: '5px',
-                fontSize: '0.78rem',
+                gap: '4px',
+                fontSize: isMobile ? '0.725rem' : '0.78rem',
                 fontWeight: 700,
+                flexShrink: 0,
                 transition: 'all 0.15s ease'
               }}
             >
-              <UserCheck size={13} />
+              <UserCheck size={isMobile ? 12 : 13} />
               <span>{t('Chờ tôi duyệt')}</span>
-              <span style={{ background: '#8b5cf6', color: '#fff', borderRadius: '10px', padding: '1px 6px', fontSize: '0.7rem', fontWeight: 800 }}>
+              <span style={{ background: '#8b5cf6', color: '#fff', borderRadius: '10px', padding: '1px 5px', fontSize: '0.675rem', fontWeight: 800 }}>
                 {workspaceStats.pendingApproval}
               </span>
             </div>
@@ -5320,29 +5330,29 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
             {isAdminOrManager && teamsList.length > 0 && (() => {
               const selectedTeam = teamsList.find(t => String(t.id) === String(wsTeamId));
               return (
-                <div ref={wsTeamFilterDropdownRef} style={{ position: 'relative', display: 'inline-block' }}>
+                <div ref={wsTeamFilterDropdownRef} style={{ position: 'relative', display: 'inline-block', flexShrink: 0 }}>
                   <button
                     type="button"
                     onClick={() => setShowWsTeamFilterDropdown(!showWsTeamFilterDropdown)}
                     style={{
-                      height: '32px',
+                      height: isMobile ? '28px' : '32px',
                       display: 'flex',
                       alignItems: 'center',
-                      gap: '6px',
+                      gap: '5px',
                       borderRadius: '20px',
-                      padding: '3px 10px 3px 5px',
+                      padding: '2px 8px 2px 4px',
                       border: '1.5px solid var(--color-primary, #BD1D2D)',
                       background: 'var(--color-surface)',
                       color: 'var(--color-text)',
                       cursor: 'pointer',
                       fontWeight: 700,
-                      fontSize: '0.78rem',
+                      fontSize: isMobile ? '0.725rem' : '0.78rem',
                       boxShadow: '0 2px 8px rgba(189, 29, 45, 0.08)'
                     }}
                   >
                     <div style={{
-                      width: '20px',
-                      height: '20px',
+                      width: '18px',
+                      height: '18px',
                       borderRadius: '50%',
                       overflow: 'hidden',
                       display: 'flex',
@@ -5350,7 +5360,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                       justifyContent: 'center',
                       background: (selectedTeam?.avatar_url || selectedTeam?.avatar) ? 'transparent' : 'linear-gradient(135deg, #BD1D2D 0%, #a31422 100%)',
                       color: '#ffffff',
-                      fontSize: '0.6rem',
+                      fontSize: '0.55rem',
                       fontWeight: 800,
                       border: (selectedTeam?.avatar_url || selectedTeam?.avatar) ? '1px solid var(--color-border-light)' : 'none',
                       flexShrink: 0
@@ -5361,8 +5371,8 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                         selectedTeam ? (selectedTeam.name?.[0] || 'T') : 'ALL'
                       )}
                     </div>
-                    <span>{selectedTeam ? selectedTeam.name : t('Tất cả các Nhóm')}</span>
-                    <ChevronDown size={13} style={{ opacity: 0.7 }} />
+                    <span>{selectedTeam ? selectedTeam.name : t('Tất cả Nhóm')}</span>
+                    <ChevronDown size={12} style={{ opacity: 0.7 }} />
                   </button>
 
                   {showWsTeamFilterDropdown && (
@@ -5500,15 +5510,17 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
             })()}
           </div>
 
-          {/* Right Group: Search + Advanced Filters Trigger + Segmented Control + View Modes */}
+          {/* Controls Group: Search + Advanced Filters Trigger + Segmented Control + View Modes */}
           <div style={{
             display: 'flex',
             alignItems: 'center',
-            gap: '8px',
+            gap: '6px',
             flexWrap: 'wrap',
-            justifyContent: isMobile ? 'flex-start' : 'flex-end',
-            flex: 1
+            justifyContent: 'space-between',
+            width: '100%'
           }}>
+            {/* Search Input & Filter Button */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flex: 1, minWidth: isMobile ? '100%' : '260px' }}>
               <div style={{ position: 'relative', flex: 1 }}>
                 <input
                   type="text"
@@ -5516,29 +5528,29 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                   placeholder="Tìm theo tên, mô tả..."
                   value={wsSearch}
                   onChange={e => setWsSearch(e.target.value)}
-                  style={{ height: '38px', fontSize: '0.85rem', padding: '8px 12px', borderRadius: '10px', width: '100%' }}
+                  style={{ height: isMobile ? '34px' : '38px', fontSize: isMobile ? '0.78rem' : '0.85rem', padding: '6px 10px', borderRadius: '8px', width: '100%' }}
                 />
               </div>
               <button
                 onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
                 style={{
-                  height: '38px',
-                  padding: '0 12px',
-                  borderRadius: '10px',
+                  height: isMobile ? '34px' : '38px',
+                  padding: isMobile ? '0 10px' : '0 12px',
+                  borderRadius: '8px',
                   border: showAdvancedFilters ? '1.5px solid var(--color-primary)' : '1px solid var(--color-border)',
                   background: showAdvancedFilters ? 'var(--color-primary-light)' : 'transparent',
                   color: showAdvancedFilters ? 'var(--color-primary)' : 'var(--color-text)',
-                  fontSize: '0.8rem',
+                  fontSize: isMobile ? '0.75rem' : '0.8rem',
                   fontWeight: 700,
                   display: 'flex',
                   alignItems: 'center',
-                  gap: '6px',
+                  gap: '4px',
                   cursor: 'pointer',
                   transition: 'all 0.2s',
                   whiteSpace: 'nowrap'
                 }}
               >
-                <Filter size={14} />
+                <Filter size={isMobile ? 13 : 14} />
                 <span>{t('Bộ lọc')}</span>
                 {(() => {
                   let count = 0;
@@ -5568,41 +5580,15 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
               </button>
             </div>
 
-            {/* Right side: Role filters & View Mode switcher */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap', justifyContent: isMobile ? 'flex-start' : 'flex-end', width: isMobile ? '100%' : 'auto' }}>
-              <div className="segmented-control-wrapper">
-                <div style={{ display: 'flex', gap: '2px', background: 'var(--color-border-light)', border: '1px solid var(--color-border)', padding: '2px', borderRadius: '8px', width: 'fit-content', position: 'relative' }}>
-                  {/* Sliding Pill Background Indicator */}
-                  {(() => {
-                    const tabs = [
-                      { value: 'all', label: t('Tất cả') },
-                      { value: 'assigned_to_me', label: t('Tôi thực hiện') },
-                      currentUser && ['admin', 'superadmin', 'super_admin', 'manager', 'director', 'vp', 'leader', 'assistant'].includes(String(currentUser.role).toLowerCase()) && { value: 'approve_by_me', label: t('Tôi duyệt') },
-                      { value: 'collaborator', label: t('Tôi liên quan') }
-                    ].filter(Boolean) as any[];
-                    const activeIndex = tabs.findIndex(t => t.value === wsTaskFilter);
-                    const safeIndex = activeIndex === -1 ? 0 : activeIndex;
-                    return (
-                      <div style={{
-                        position: 'absolute',
-                        top: '2px',
-                        bottom: '2px',
-                        width: '110px',
-                        borderRadius: '6px',
-                        background: 'var(--color-surface)',
-                        boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
-                        transition: 'transform 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
-                        transform: `translateX(${safeIndex * 112}px)`,
-                        zIndex: 1
-                      }} />
-                    );
-                  })()}
-
+            {/* Segmented Control & View Mode Switcher */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'nowrap', width: isMobile ? '100%' : 'auto', justifyContent: 'space-between' }}>
+              <div className="segmented-control-wrapper" style={{ flex: isMobile ? 1 : 'none' }}>
+                <div style={{ display: 'flex', gap: '2px', background: 'var(--color-border-light)', border: '1px solid var(--color-border)', padding: '2px', borderRadius: '8px', width: isMobile ? '100%' : 'fit-content', position: 'relative' }}>
                   {[
                     { value: 'all', label: t('Tất cả') },
-                    { value: 'assigned_to_me', label: t('Tôi thực hiện') },
-                    currentUser && ['admin', 'superadmin', 'super_admin', 'manager', 'director', 'vp', 'leader', 'assistant'].includes(String(currentUser.role).toLowerCase()) && { value: 'approve_by_me', label: t('Tôi duyệt') },
-                    { value: 'collaborator', label: t('Tôi liên quan') }
+                    { value: 'assigned_to_me', label: isMobile ? t('Tôi làm') : t('Tôi thực hiện') },
+                    currentUser && ['admin', 'superadmin', 'super_admin', 'manager', 'director', 'vp', 'leader', 'assistant'].includes(String(currentUser.role).toLowerCase()) && { value: 'approve_by_me', label: isMobile ? t('Tôi duyệt') : t('Tôi duyệt') },
+                    { value: 'collaborator', label: isMobile ? t('Liên quan') : t('Tôi liên quan') }
                   ].filter((tab): tab is { value: string; label: string } => !!tab).map(tab => {
                     const isSelected = wsTaskFilter === tab.value;
                     return (
@@ -5610,25 +5596,25 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                         key={tab.value}
                         onClick={() => setWsTaskFilter(tab.value as any)}
                         style={{
-                          width: '110px',
-                          height: '28px',
+                          flex: isMobile ? 1 : 'none',
+                          width: isMobile ? 'auto' : '110px',
+                          height: isMobile ? '26px' : '28px',
                           borderRadius: '6px',
                           border: 'none',
-                          fontSize: '0.78rem',
+                          fontSize: isMobile ? '0.725rem' : '0.78rem',
                           fontWeight: 700,
                           cursor: 'pointer',
-                          background: 'transparent',
+                          background: isSelected ? 'var(--color-surface)' : 'transparent',
                           color: isSelected ? 'var(--color-text)' : 'var(--color-text-light)',
+                          boxShadow: isSelected ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
-                          position: 'relative',
                           outline: 'none',
-                          boxShadow: 'none',
-                          zIndex: 2,
-                          transition: 'color 0.2s ease'
+                          padding: isMobile ? '0 4px' : '0 8px',
+                          whiteSpace: 'nowrap',
+                          transition: 'all 0.2s ease'
                         }}
-                        className=""
                       >
                         {tab.label}
                       </button>
@@ -5695,6 +5681,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                 </div>
               )}
             </div>
+          </div>
 
           {/* Advanced Dropdown Filters (Collapsible) */}
           <AnimatePresence>
