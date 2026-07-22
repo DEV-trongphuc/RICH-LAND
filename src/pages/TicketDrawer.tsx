@@ -275,45 +275,83 @@ export const TicketDrawer: React.FC<Props> = ({ isOpen, onClose, ticket, onUpdat
         }}
       >
         {/* Header */}
-        <div className={styles.header}>
-          <div className={styles.headerProfile}>
-            <div className="avatar-placeholder lg" style={{ background: PRIORITIES.find(p => p.id === formData.priority)?.color || 'var(--color-primary)' }}>
-              <AlertCircle size={24} color="white" />
+        <div className={styles.header} style={{ padding: '1.25rem 1.5rem', background: 'var(--color-surface)', borderBottom: '1px solid var(--color-border-light)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem' }}>
+          <div className={styles.headerProfile} style={{ display: 'flex', alignItems: 'center', gap: '1rem', flex: 1, minWidth: 0 }}>
+            <div style={{
+              width: '46px',
+              height: '46px',
+              borderRadius: '14px',
+              background: PRIORITIES.find(p => p.id === formData.priority)?.color ? `${PRIORITIES.find(p => p.id === formData.priority)?.color}15` : 'var(--color-primary-light, rgba(189,29,45,0.1))',
+              border: `1.5px solid ${PRIORITIES.find(p => p.id === formData.priority)?.color || 'var(--color-primary)'}`,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: PRIORITIES.find(p => p.id === formData.priority)?.color || 'var(--color-primary)',
+              flexShrink: 0
+            }}>
+              <AlertCircle size={22} />
             </div>
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-                <span style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--color-text-light)' }}>#{formData.id}</span>
-                <span className="badge" style={{ background: PRIORITIES.find(p => p.id === formData.priority)?.color + '20', color: PRIORITIES.find(p => p.id === formData.priority)?.color }}>
+
+            <div style={{ minWidth: 0, flex: 1 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginBottom: '4px' }}>
+                <span style={{
+                  fontSize: '0.725rem',
+                  fontWeight: 800,
+                  color: 'var(--color-text-muted)',
+                  background: 'var(--color-bg)',
+                  padding: '2px 8px',
+                  borderRadius: '6px',
+                  border: '1px solid var(--color-border-light)'
+                }}>
+                  #{formData.id}
+                </span>
+
+                <span className="badge" style={{
+                  background: PRIORITIES.find(p => p.id === formData.priority)?.color + '18',
+                  color: PRIORITIES.find(p => p.id === formData.priority)?.color,
+                  fontWeight: 700,
+                  fontSize: '0.725rem',
+                  padding: '2px 8px',
+                  borderRadius: '6px'
+                }}>
                   {PRIORITIES.find(p => p.id === formData.priority)?.label}
                 </span>
 
                 {/* Status Badge */}
                 {formData.status === 'open' || formData.status === 'new' || !formData.status ? (
-                  <span className="badge info" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '3px 8px', borderRadius: '6px', fontWeight: 700, fontSize: '0.75rem' }}>
+                  <span className="badge info" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '2px 8px', borderRadius: '6px', fontWeight: 700, fontSize: '0.725rem' }}>
                     <Inbox size={12} /> Mới tạo
                   </span>
                 ) : formData.status === 'in_progress' ? (
-                  <span className="badge warning" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '3px 8px', borderRadius: '6px', fontWeight: 700, fontSize: '0.75rem' }}>
+                  <span className="badge warning" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '2px 8px', borderRadius: '6px', fontWeight: 700, fontSize: '0.725rem' }}>
                     <Clock size={12} /> Đã tiếp nhận
                   </span>
                 ) : formData.resolution_status === 'rejected' ? (
-                  <span className="badge danger" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '3px 8px', borderRadius: '6px', fontWeight: 700, fontSize: '0.75rem' }}>
+                  <span className="badge danger" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '2px 8px', borderRadius: '6px', fontWeight: 700, fontSize: '0.725rem' }}>
                     <XCircle size={12} /> Từ chối
                   </span>
                 ) : (
-                  <span className="badge success" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '3px 8px', borderRadius: '6px', fontWeight: 700, fontSize: '0.75rem' }}>
+                  <span className="badge success" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '2px 8px', borderRadius: '6px', fontWeight: 700, fontSize: '0.725rem' }}>
                     <CheckCircle2 size={12} /> Đã hoàn thành
                   </span>
                 )}
               </div>
-              <h2 className={styles.title} style={{ fontSize: '1.25rem' }}>{formData.subject}</h2>
-              <p className={styles.subtitle} style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px' }}>
-                <User size={14} /> {formData.created_by_name || formData.customer_name || 'Người gửi'} • Mở lúc: {formData.created_at ? new Date(formData.created_at).toLocaleString('vi-VN') : '—'}
+
+              <h2 className={styles.title} style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--color-text)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', lineHeight: 1.3 }}>
+                {formData.subject}
+              </h2>
+
+              <p className={styles.subtitle} style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '4px', fontSize: '0.775rem', color: 'var(--color-text-muted)', margin: 0 }}>
+                <User size={13} style={{ color: 'var(--color-primary)' }} /> 
+                <span style={{ fontWeight: 650, color: 'var(--color-text)' }}>{formData.created_by_name || formData.customer_name || 'Người gửi'}</span>
+                <span>•</span>
+                <Clock size={12} />
+                <span>Mở lúc: {formData.created_at ? new Date(formData.created_at).toLocaleString('vi-VN') : '—'}</span>
               </p>
             </div>
           </div>
 
-          <div className={styles.headerActions} style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+          <div className={styles.headerActions} style={{ display: 'flex', gap: '8px', alignItems: 'center', flexShrink: 0 }}>
             {/* Operational Action Buttons */}
             {isAdminOrManager && (
               <>
@@ -323,7 +361,7 @@ export const TicketDrawer: React.FC<Props> = ({ isOpen, onClose, ticket, onUpdat
                     className="btn primary sm"
                     onClick={handleAcceptTicket}
                     disabled={isSubmitting}
-                    style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontWeight: 700 }}
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontWeight: 700, borderRadius: '8px' }}
                   >
                     {isSubmitting ? <Loader2 size={14} className="spin" /> : <Inbox size={14} />}
                     Tiếp nhận Ticket
@@ -337,7 +375,7 @@ export const TicketDrawer: React.FC<Props> = ({ isOpen, onClose, ticket, onUpdat
                       className="btn success sm"
                       onClick={handleResolveTicket}
                       disabled={isSubmitting}
-                      style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: '#10b981', color: '#fff', fontWeight: 700, border: 'none' }}
+                      style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: '#10b981', color: '#fff', fontWeight: 700, border: 'none', borderRadius: '8px' }}
                     >
                       {isSubmitting ? <Loader2 size={14} className="spin" /> : <CheckCircle2 size={14} />}
                       Hoàn thành & Đóng
@@ -347,7 +385,7 @@ export const TicketDrawer: React.FC<Props> = ({ isOpen, onClose, ticket, onUpdat
                       className="btn danger sm outline"
                       onClick={() => setShowRejectModal(true)}
                       disabled={isSubmitting}
-                      style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontWeight: 700 }}
+                      style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontWeight: 700, borderRadius: '8px' }}
                     >
                       <XCircle size={14} />
                       Từ chối & Đóng
@@ -357,7 +395,9 @@ export const TicketDrawer: React.FC<Props> = ({ isOpen, onClose, ticket, onUpdat
               </>
             )}
 
-            <button className={styles.closeBtn} onClick={onClose}><X size={20} /></button>
+            <button className={styles.closeBtn} onClick={onClose} style={{ borderRadius: '10px', padding: '6px' }}>
+              <X size={20} />
+            </button>
           </div>
         </div>
 
@@ -584,50 +624,65 @@ export const TicketDrawer: React.FC<Props> = ({ isOpen, onClose, ticket, onUpdat
               </p>
             </div>
 
-            {/* Customer Info Card (Clickable to open CustomerProfileDrawer) */}
-            <h4 style={{ fontSize: '0.85rem', fontWeight: 800, textTransform: 'uppercase', color: 'var(--color-text-light)', marginBottom: '0.75rem' }}>Thông tin khách hàng</h4>
-            <div 
-              onClick={() => {
-                const cid = formData.contact_id || formData.customer_id || (formData.related_contacts && formData.related_contacts.length > 0 ? formData.related_contacts[0] : null);
-                const matchedContact = cid 
-                  ? (contacts || []).find((x: any) => String(x.id) === String(cid))
-                  : (contacts || []).find((x: any) => {
-                      const fullName = `${x.last_name || ''} ${x.first_name || ''}`.trim() || x.name;
-                      return fullName.toLowerCase() === (formData.customer_name || '').toLowerCase();
-                    });
+            {/* Customer Info Card (Clickable only if CRM contact profile exists) */}
+            <h4 style={{ fontSize: '0.85rem', fontWeight: 800, textTransform: 'uppercase', color: 'var(--color-text-light)', marginBottom: '0.75rem' }}>THÔNG TIN KHÁCH HÀNG</h4>
+            {(() => {
+              const cid = formData.contact_id || formData.customer_id || (formData.related_contacts && formData.related_contacts.length > 0 ? formData.related_contacts[0] : null);
+              const matchedContact = cid 
+                ? (contacts || []).find((x: any) => String(x.id) === String(cid))
+                : (contacts || []).find((x: any) => {
+                    const fullName = `${x.last_name || ''} ${x.first_name || ''}`.trim() || x.name;
+                    return fullName && formData.customer_name && fullName.toLowerCase() === formData.customer_name.toLowerCase();
+                  });
 
-                if (matchedContact) {
-                  onOpenContact?.(matchedContact);
-                } else if (cid) {
-                  onOpenContact?.({ id: Number(cid), name: formData.customer_name || 'Khách hàng' });
-                } else {
-                  addToast('Chưa có liên kết hồ sơ khách hàng', 'error');
-                }
-              }}
-              className="card hover-lift" 
-              style={{ 
-                padding: '1rem', 
-                background: 'var(--color-surface)', 
-                border: '1px solid var(--color-border-light)', 
-                borderRadius: '14px',
-                cursor: 'pointer',
-                transition: 'all 0.2s ease',
-                boxShadow: 'var(--shadow-sm)'
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <Avatar name={formData.customer_name || 'Khách hàng'} size={42} />
-                  <div>
-                    <p style={{ fontWeight: 750, fontSize: '0.9rem', color: 'var(--color-text)', margin: 0 }}>{formData.customer_name || 'Chưa cập nhật'}</p>
-                    <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', margin: 0 }}>Khách hàng liên quan</p>
+              const targetContact = matchedContact || (cid ? { id: Number(cid), name: formData.customer_name || 'Khách hàng' } : null);
+              const hasLink = !!targetContact;
+
+              return (
+                <div 
+                  onClick={() => {
+                    if (hasLink) {
+                      onOpenContact?.(targetContact);
+                    }
+                  }}
+                  className={`card ${hasLink ? 'hover-lift' : ''}`}
+                  style={{ 
+                    padding: '1rem', 
+                    background: 'var(--color-surface)', 
+                    border: '1px solid var(--color-border-light)', 
+                    borderRadius: '14px',
+                    cursor: hasLink ? 'pointer' : 'default',
+                    transition: 'all 0.2s ease',
+                    boxShadow: 'var(--shadow-sm)'
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      <Avatar name={formData.customer_name || 'Khách hàng'} size={42} />
+                      <div>
+                        <p style={{ fontWeight: 750, fontSize: '0.9rem', color: 'var(--color-text)', margin: 0 }}>{formData.customer_name || 'Chưa cập nhật'}</p>
+                        <p style={{ fontSize: '0.75rem', margin: 0, marginTop: '2px' }}>
+                          {hasLink ? (
+                            <span style={{ color: 'var(--color-text-muted)' }}>Khách hàng liên quan</span>
+                          ) : (
+                            <span style={{ color: 'var(--color-warning)', fontWeight: 650 }}>Chưa liên kết hồ sơ CRM</span>
+                          )}
+                        </p>
+                      </div>
+                    </div>
+                    {hasLink ? (
+                      <div style={{ width: '32px', height: '32px', borderRadius: '10px', background: 'var(--color-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-primary)' }}>
+                        <ExternalLink size={16} />
+                      </div>
+                    ) : (
+                      <span className="badge warning sm" style={{ fontSize: '0.6875rem', fontWeight: 650, padding: '2px 8px', borderRadius: '6px' }}>
+                        Tự nhập
+                      </span>
+                    )}
                   </div>
                 </div>
-                <div style={{ width: '32px', height: '32px', borderRadius: '10px', background: 'var(--color-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-primary)' }}>
-                  <ExternalLink size={16} />
-                </div>
-              </div>
-            </div>
+              );
+            })()}
 
             {formData.related_contacts?.length > 0 && (
               <>
