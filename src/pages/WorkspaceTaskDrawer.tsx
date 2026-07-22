@@ -3,7 +3,7 @@ import {
   X, CheckSquare, Check, Paperclip, Link2, MessageSquare, Calendar, User, Clock, 
   Settings, AlertCircle, Trash2, Plus, Send, Share2, FileText, Globe, 
   Users, RefreshCw, Layers, CheckSquare2, Info, Receipt, Scale, ArrowUpRight, Search, Save, Bell, BellOff,
-  Eye, ExternalLink, UserPlus, UserCheck, Edit3, Play, Sparkles, ArrowRight, Building2, Megaphone, Loader2
+  Eye, ExternalLink, UserPlus, UserCheck, Edit3, Play, Sparkles, ArrowRight, Building2, Megaphone, Loader2, RotateCcw
 } from 'lucide-react';
 import api from '../api/axios';
 import toast from 'react-hot-toast';
@@ -3817,29 +3817,20 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
             confirmType="danger"
           />
 
-          {/* Full View & Edit Project Drawer (Matching ProjectsPage 100%) */}
+          {/* Full View & Edit Project Drawer (Matching ProjectsPage 100% Full-Screen Width) */}
           {viewProjectModal && createPortal(
             <div className="modal-overlay" onClick={() => setViewProjectModal(null)} style={{ position: 'fixed', inset: 0, zIndex: 2000020, backdropFilter: 'blur(6px)', background: 'rgba(0,0,0,0.65)', display: 'flex', justifyContent: 'flex-end' }}>
               <motion.div 
                 initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }} transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-                style={{ width: '960px', maxWidth: '94vw', height: '100%', background: 'var(--color-surface)', borderLeft: '1px solid var(--color-border)', boxShadow: '-10px 0 30px rgba(0,0,0,0.25)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
+                style={{ width: 'calc(100vw - 220px)', minWidth: '85vw', maxWidth: '100vw', height: '100vh', background: '#f8fafc', borderLeft: '1px solid var(--color-border)', boxShadow: '-10px 0 40px rgba(0,0,0,0.3)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
                 onClick={e => e.stopPropagation()}
               >
                 {/* Header */}
-                <div style={{ padding: '1.25rem 1.75rem', borderBottom: '1px solid var(--color-border-light)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--color-surface)' }}>
+                <div style={{ padding: '1.25rem 2rem', borderBottom: '1px solid var(--color-border-light)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#ffffff' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <div style={{ width: 42, height: 42, borderRadius: '12px', background: 'rgba(59, 130, 246, 0.1)', color: 'var(--color-info)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <Building2 size={22} />
-                    </div>
-                    <div>
-                      <h3 style={{ fontSize: '1.25rem', fontWeight: 800, margin: 0, color: 'var(--color-text)' }}>Chi tiết Dự án: {viewProjectModal.name}</h3>
-                      <p style={{ fontSize: '0.775rem', color: 'var(--color-text-muted)', margin: '2px 0 0 0' }}>
-                        Mã dự án: <span style={{ fontWeight: 700, fontFamily: 'monospace' }}>{viewProjectModal.code || '—'}</span> 
-                        {viewProjectModal.developer ? ` • CĐT: ${viewProjectModal.developer}` : ''}
-                      </p>
-                    </div>
+                    <h3 style={{ fontSize: '1.35rem', fontWeight: 800, margin: 0, color: 'var(--color-text)' }}>Chi tiết Dự án: {viewProjectModal.name}</h3>
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
                     {projectModalMode === 'view' ? (
                       <button
                         type="button"
@@ -3865,7 +3856,8 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
                         {t('Lưu thay đổi')}
                       </button>
                     )}
-                    <button type="button" className="btn-icon" onClick={() => setViewProjectModal(null)} style={{ borderRadius: '8px' }}><X size={20} /></button>
+                    <button type="button" className="btn-icon" style={{ borderRadius: '8px', color: 'var(--color-text-muted)', background: 'transparent' }} title="Lịch sử"><RotateCcw size={18} /></button>
+                    <button type="button" className="btn-icon" onClick={() => setViewProjectModal(null)} style={{ borderRadius: '8px', color: 'var(--color-text-muted)', background: 'transparent' }}><X size={22} /></button>
                   </div>
                 </div>
 
