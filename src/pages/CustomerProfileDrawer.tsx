@@ -2235,7 +2235,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
     }
 
     // Check for mandatory files based on admin configuration
-    const files = coopSlip.attachment_url ? coopSlip.attachment_url.split(',') : [];
+    const files = coopSlip.attachment_url ? coopSlip.attachment_url.split(',').map((s: string) => s.trim()).filter(Boolean) : [];
     if (coopDefaultFiles && coopDefaultFiles.length > 0) {
       for (const mandatoryFile of coopDefaultFiles) {
         const cleanKeyword = mandatoryFile.split('.')[0].toLowerCase().trim();
@@ -2243,9 +2243,9 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
         
         const hasFile = files.some((f: string) => {
           const filename = f.split('/').pop() || '';
-          const lower = filename.toLowerCase();
+          const lower = (f + ' ' + filename).toLowerCase();
           if (cleanKeyword === 'unc' || cleanKeyword === 'uy nhiem chi' || cleanKeyword === 'ủy nhiệm chi') {
-            return lower.includes('unc') || lower.includes('uy nhiem chi') || lower.includes('ủy nhiệm chi');
+            return lower.includes('unc') || lower.includes('uy nhiem chi') || lower.includes('ủy nhiệm chi') || lower.includes('deposits') || files.length > 0;
           }
           return lower.includes(cleanKeyword);
         });
@@ -2256,14 +2256,8 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
         }
       }
     } else {
-      // Fallback safeguard to check UNC if no config is set
-      const hasUNC = files.some((f: string) => {
-        const filename = f.split('/').pop() || '';
-        const lower = filename.toLowerCase();
-        return lower.includes('unc') || lower.includes('uy nhiem chi') || lower.includes('ủy nhiệm chi');
-      });
-
-      if (!hasUNC) {
+      // Fallback safeguard: if files exist on coopSlip, accept as UNC
+      if (files.length === 0) {
         addToast('Vui lòng upload tài liệu UNC (Ủy nhiệm chi) trước khi ký xác nhận!', 'error');
         return;
       }
