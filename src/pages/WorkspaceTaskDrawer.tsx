@@ -1254,7 +1254,7 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
         left: isMobileOrTablet ? 0 : 'var(--sidebar-width, 220px)',
         right: 0,
         maxWidth: '100vw',
-        zIndex: 10600,
+        zIndex: 1000200,
         background: 'linear-gradient(180deg, var(--color-bg) 0%, var(--color-border-light) 100%)',
         display: 'flex',
         flexDirection: 'column',
@@ -3356,7 +3356,7 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
               position: 'fixed',
               inset: 0,
               background: 'rgba(0, 0, 0, 0.65)',
-              zIndex: 10700,
+              zIndex: 1000300,
               backdropFilter: 'blur(4px)',
               display: 'flex',
               alignItems: 'center',
@@ -3520,7 +3520,7 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
           position: 'fixed',
           inset: 0,
           background: 'rgba(0,0,0,0.65)',
-          zIndex: 10500,
+          zIndex: 1000100,
           backdropFilter: 'blur(4px)',
           opacity: animateIn ? 1 : 0,
           transition: 'opacity 0.42s cubic-bezier(0.16, 1, 0.3, 1)',
@@ -3532,7 +3532,7 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
           {/* Validation Warning Modal */}
           <AnimatePresence>
             {showValidationModal && (
-              <div className="overlay-backdrop" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 20000 }} onClick={() => setShowValidationModal(false)}>
+              <div className="overlay-backdrop" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000400 }} onClick={() => setShowValidationModal(false)}>
                 <motion.div 
                   initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }}
                   onClick={e => e.stopPropagation()}
@@ -3584,7 +3584,7 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
           {/* Approval Success Modal */}
           <AnimatePresence>
             {showApprovalSuccessModal && (
-              <div className="overlay-backdrop" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 20000 }} onClick={() => setShowApprovalSuccessModal(null)}>
+              <div className="overlay-backdrop" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000400 }} onClick={() => setShowApprovalSuccessModal(null)}>
                 <motion.div 
                   initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }}
                   onClick={e => e.stopPropagation()}
