@@ -1454,6 +1454,7 @@ function processManualLead($conn, $leadData, $override_round_id, $override_consu
                         if ($decodedUser['role'] !== 'sale' && !isConsultantInWorkHours($currentTime, $whStart, $whEnd, $workSchedule)) {
                             $status = 'pending_work_hours';
                             $isOutsideWorkHours = true;
+                            $assignedConsultantId = null;
                         }
                     }
                     $whStmt->close();

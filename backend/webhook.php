@@ -736,16 +736,19 @@ try {
                 if (!isConsultantInWorkHours($currentTime, $whStart, $whEnd, $workSchedule)) {
                     $status = 'pending_work_hours';
                     $message .= ' (Trì hoãn: ngoài khung giờ làm việc)';
+                    $assignedConsultantId = null; // Do NOT pre-assign to any sale! Hold by system!
                 }
             }
             $whStmt->close();
         } else {
-            $status = (isset($isFallbackRound) && $isFallbackRound) ? 'fallback' : 'pending';
-            $message = ((isset($isFallbackRound) && $isFallbackRound) ? 'No active consultants in fallback round.' : 'No active consultants in this round.') . $dupSuffix;
+            $status = 'pending_work_hours';
+            $message = 'Ngoài khung giờ làm việc / Chưa có TVV trực ca. Hệ thống tạm giữ Lead.' . $dupSuffix;
+            $assignedConsultantId = null;
         }
     } else {
         $status = 'unassigned';
         $message = 'Không khớp vòng phân bổ hoặc vòng không hoạt động.' . $dupSuffix;
+        $assignedConsultantId = null;
     }
 
     if ($crmCheckResult['leadExists']) {

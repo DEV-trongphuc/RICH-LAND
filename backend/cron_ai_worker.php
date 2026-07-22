@@ -306,6 +306,7 @@ function distributeLeadAfterAI($conn, $leadId, $targetRoundId, $aiScreenerResult
             if (!isConsultantInWorkHours($currentTime, $whStart, $whEnd, $workSchedule)) {
                 $status = 'pending_work_hours';
                 $message .= ' (Trì hoãn: ngoài khung giờ làm việc)';
+                $assignedConsultantId = null;
             }
         } else {
             $message = 'Không có tư vấn viên hoạt động trong vòng xoay.' . $dupSuffix;
