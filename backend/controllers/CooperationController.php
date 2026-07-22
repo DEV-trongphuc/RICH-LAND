@@ -1151,7 +1151,7 @@ class CooperationController {
         respond(200, $suggestions, 'Lấy danh sách gợi ý hợp tác thành công');
     }
 
-    private function syncCollaboratorsToContact(int $contactId, string $sharesJson): void {
+    public function syncCollaboratorsToContact(int $contactId, string $sharesJson): void {
         $shares = json_decode($sharesJson, true) ?: [];
         $stmt = $this->db->prepare("SELECT owner_id, collaborator_ids FROM contacts WHERE id = ?");
         $stmt->execute([$contactId]);

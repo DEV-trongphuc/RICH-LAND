@@ -107,6 +107,7 @@ class AuthController {
             respond(422, null, 'Mã xác thực và token là bắt buộc', false);
         }
 
+        $decoded = null;
         try {
             $decoded = JWT::decode($tempToken);
         } catch (Exception $e) {

@@ -121,6 +121,9 @@ class QuoteController {
         
         $uid = (int)($auth['user_id'] ?? 0);
         $tid = (int)($auth['tenant_id'] ?? 0);
+        $role = $auth['role'] ?? '';
+        $isSale = $role === 'sales' || $role === 'sale';
+        $isManager = $role === 'manager';
 
         $b=getBody(); if(empty($b['title'])) respond(422,null,'Tiêu đề là bắt buộc',false);
         if (($b['total'] ?? 0) < 0) respond(422, null, 'Tổng tiền báo giá không được âm', false);

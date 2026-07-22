@@ -537,7 +537,9 @@ if (!in_array($action, $publicActions)) {
     }
 
     $decodedUser['permissions'] = null;
-    $lookupUserId = $decodedUser['user_id'] ?? $decodedUser['id'] ?? 0;
+    /** @var int $dbUserId */
+    $dbUserId = (int)($decodedUser['user_id'] ?? $decodedUser['id'] ?? 0);
+    $lookupUserId = $dbUserId;
     if ($lookupUserId > 0) {
         $pStmt = $conn->prepare("SELECT permissions_json FROM users WHERE id = ? LIMIT 1");
         $pStmt->bind_param("i", $lookupUserId);
@@ -549,6 +551,7 @@ if (!in_array($action, $publicActions)) {
         }
     }
 
+    /** @var int $currentSaleConsultantId */
     $currentSaleConsultantId = 0;
     $lookupId = $decodedUser['user_id'] ?? $decodedUser['id'] ?? 0;
     if ($lookupId > 0) {
@@ -1533,7 +1536,7 @@ function processManualLead($conn, $leadData, $override_round_id, $override_consu
                         ]);
 
                         try {
-                            $admRes = $conn->query("SELECT id, name, zalo_chat_id FROM accounts WHERE role IN ('admin', 'superadmin', 'manager') AND status = 'active' AND tenant_id = 1");
+                            $admRes = $conn->query("SELECT id, name, zalo_chat_id FROM accounts WHERE role IN ('admin', 'superadmin', 'manager') AND is_active = 1 AND tenant_id = 1");
                             if ($admRes) {
                                 require_once __DIR__ . '/zalo_bot.php';
                                 while ($adm = $admRes->fetch_assoc()) {
@@ -1785,27 +1788,17 @@ switch ($action) {
             exit();
         }
 
+        /** @var mysqli_stmt|null $stmt */
+        $stmt = null;
+        $page = isset($_GET['page']) ? max(1, (int)$_GET['page']) : 1;
+        $limit = isset($_GET['limit']) ? max(1, (int)$_GET['limit']) : 50;
+        $offset = ($page - 1) * $limit;
         $search = isset($_GET['search']) ? trim($_GET['search']) : '';
-
-        // Check for pagination
-        $page = isset($_GET['page']) ? (int) $_GET['page'] : 1;
-        $pageSize = isset($_GET['pageSize']) ? (int) $_GET['pageSize'] : 50;
-        if ($page < 1)
-            $page = 1;
-        if ($pageSize < 1)
-            $pageSize = 50;
-        $offset = ($page - 1) * $pageSize;
-
-        if (!isset($_GET['page'])) {
-            $limitStr = "LIMIT 10000";
-        } else {
-            $limitStr = "LIMIT $pageSize OFFSET $offset";
-        }
+        $limitStr = "LIMIT $limit OFFSET $offset";
 
         if (!empty($search)) {
-            $searchParam = '%' . $search . '%';
+            $searchParam = "%$search%";
             
-            // Prepared count
             $countSql = "
                 SELECT COUNT(*) as cnt
                 FROM leads l
@@ -1813,12 +1806,14 @@ switch ($action) {
                   AND (l.name LIKE ? OR l.phone LIKE ? OR l.email LIKE ?)
             ";
             $stmtCount = $conn->prepare($countSql);
-            $stmtCount->bind_param("sss", $searchParam, $searchParam, $searchParam);
-            $stmtCount->execute();
-            $totalCount = (int) ($stmtCount->get_result()->fetch_assoc()['cnt'] ?? 0);
-            $stmtCount->close();
+            $totalCount = 0;
+            if ($stmtCount) {
+                $stmtCount->bind_param("sss", $searchParam, $searchParam, $searchParam);
+                $stmtCount->execute();
+                $totalCount = (int) ($stmtCount->get_result()->fetch_assoc()['cnt'] ?? 0);
+                $stmtCount->close();
+            }
 
-            // Prepared data query
             $sql = "
                 SELECT 
                     COALESCE(dl.id, -l.id) as log_id,
@@ -1840,9 +1835,13 @@ switch ($action) {
                 $limitStr
             ";
             $stmt = $conn->prepare($sql);
-            $stmt->bind_param("sss", $searchParam, $searchParam, $searchParam);
-            $stmt->execute();
-            $res = $stmt->get_result();
+            if ($stmt) {
+                $stmt->bind_param("sss", $searchParam, $searchParam, $searchParam);
+                $stmt->execute();
+                $res = $stmt->get_result();
+            } else {
+                $res = false;
+            }
         } else {
             // Count total import history records from leads table directly
             $countRes = $conn->query("
@@ -1898,7 +1897,7 @@ switch ($action) {
                     'last_interaction_date' => $row['last_interaction_date']
                 ];
             }
-            if (!empty($search)) {
+            if ($stmt instanceof mysqli_stmt) {
                 $stmt->close();
             }
         }
@@ -2271,7 +2270,7 @@ switch ($action) {
         header('X-Accel-Buffering: no'); // Tells Nginx not to buffer output
 
         $isSale = in_array($decodedUser['role'], ['sale', 'sales', 'manager'], true);
-        $saleId = $isSale ? $currentSaleConsultantId : (int) $decodedUser['id'];
+        $saleId = $isSale ? ($currentSaleConsultantId ?? 0) : (int) $decodedUser['id'];
 
         $lastLeadCount = -1;
         $lastNotifCount = -1;
@@ -2385,7 +2384,7 @@ switch ($action) {
     case 'get_sale_portal_data':
         $isSale = in_array($decodedUser['role'], ['sale', 'sales', 'manager'], true);
         $saleFilterId = isset($_GET['sale_id']) && $_GET['sale_id'] !== '' ? (int) $_GET['sale_id'] : null;
-        $saleId = $isSale ? $currentSaleConsultantId : ($saleFilterId !== null ? $saleFilterId : (int) $decodedUser['id']);
+        $saleId = $isSale ? ($currentSaleConsultantId ?? 0) : ($saleFilterId !== null ? $saleFilterId : (int) $decodedUser['id']);
         $tid = (int)($decodedUser['tenant_id'] ?? 1);
 
         $search = trim($_GET['search'] ?? '');
@@ -3077,7 +3076,7 @@ switch ($action) {
 
     case 'get_sale_lead_timeline':
         $isSale = in_array($decodedUser['role'], ['sale', 'sales', 'manager'], true);
-        $saleId = $isSale ? $currentSaleConsultantId : (int) $decodedUser['id'];
+        $saleId = $isSale ? ($currentSaleConsultantId ?? 0) : (int) $decodedUser['id'];
         $leadId = isset($_GET['lead_id']) ? (int) $_GET['lead_id'] : 0;
 
         if (empty($leadId)) {
@@ -3226,7 +3225,7 @@ switch ($action) {
 
         // Security check for Sale and Manager roles
         if (isset($decodedUser['role']) && $decodedUser['role'] === 'sale') {
-            $extraCondition .= " AND dl.assigned_to = " . (int)$currentSaleConsultantId;
+            $extraCondition .= " AND dl.assigned_to = " . (int)($currentSaleConsultantId ?? 0);
         } elseif (isset($decodedUser['role']) && $decodedUser['role'] === 'manager') {
             $teamMemberIds = [];
             $stmtTeam = $conn->prepare("SELECT id FROM consultants WHERE team_id IN (SELECT id FROM teams WHERE leader_id = ?)");
@@ -3432,7 +3431,7 @@ switch ($action) {
             }
             $stmtM->close();
             
-            if (!in_array((int)$lead['assigned_to'], $teamIds, true) && (int)$lead['assigned_to'] !== $currentSaleConsultantId) {
+            if (!in_array((int)$lead['assigned_to'], $teamIds, true) && (int)$lead['assigned_to'] !== ($currentSaleConsultantId ?? 0)) {
                 http_response_code(403);
                 echo json_encode(['success' => false, 'message' => 'Bạn không có quyền xem thông tin khách hàng này']);
                 break;
@@ -4159,7 +4158,8 @@ switch ($action) {
                 'approved' => $autoApprove
             ]));
             
-            $saleIdToNotify = ($currentSaleConsultantId > 0) ? $currentSaleConsultantId : $dbUserId;
+            $saleConsultantId = $currentSaleConsultantId ?? 0;
+            $saleIdToNotify = ($saleConsultantId > 0) ? $saleConsultantId : $dbUserId;
             if ($autoApprove === 1) {
                 try {
                     notifyNightShiftChange($conn, $saleIdToNotify, $shiftDate, true);
@@ -4177,7 +4177,7 @@ switch ($action) {
                 $notifyUserIds = [];
 
                 // 1. Lấy admins/directors
-                $adminRes = $conn->query("SELECT id FROM accounts WHERE role IN ('admin', 'superadmin', 'director') AND status = 'active'");
+                $adminRes = $conn->query("SELECT id FROM accounts WHERE role IN ('admin', 'superadmin', 'director') AND is_active = 1");
                 if ($adminRes) {
                     while ($adm = $adminRes->fetch_assoc()) {
                         $notifyUserIds[] = (int)$adm['id'];
@@ -4222,7 +4222,7 @@ switch ($action) {
                 $body = "Sale {$saleName} đã đăng ký trực ca đêm ngày {$shiftDate}. Vui lòng phê duyệt.";
                 $link = "/attendance";
                 
-                $admins = $conn->query("SELECT id FROM accounts WHERE role IN ('admin', 'superadmin', 'director') AND status = 'active'")->fetch_all(MYSQLI_ASSOC);
+                $admins = $conn->query("SELECT id FROM accounts WHERE role IN ('admin', 'superadmin', 'director') AND is_active = 1")->fetch_all(MYSQLI_ASSOC);
                 foreach ($admins as $admin) {
                     $stmtNotif = $conn->prepare("INSERT INTO notifications (user_id, tenant_id, title, body, type, link) VALUES (?, 1, ?, ?, 'shift_request', ?)");
                     $stmtNotif->bind_param("isss", $admin['id'], $title, $body, $link);
@@ -4255,6 +4255,8 @@ switch ($action) {
                 'shift_date' => $shiftDate
             ]));
             
+            $saleConsultantId = $currentSaleConsultantId ?? 0;
+            $saleIdToNotify = ($saleConsultantId > 0) ? $saleConsultantId : $dbUserId;
             try {
                 notifyNightShiftChange($conn, $saleIdToNotify, $shiftDate, false);
             } catch (Throwable $e) {
@@ -4430,7 +4432,7 @@ switch ($action) {
                 $body = "Sale {$saleName} đã đăng ký trực cuối tuần ngày {$targetDate}. Vui lòng phê duyệt.";
                 $link = "/attendance";
 
-                $admins = $conn->query("SELECT id FROM accounts WHERE role IN ('admin', 'superadmin', 'director') AND status = 'active'")->fetch_all(MYSQLI_ASSOC);
+                $admins = $conn->query("SELECT id FROM accounts WHERE role IN ('admin', 'superadmin', 'director') AND is_active = 1")->fetch_all(MYSQLI_ASSOC);
                 foreach ($admins as $admin) {
                     $stmtNotif = $conn->prepare("INSERT INTO notifications (user_id, tenant_id, title, body, type, link) VALUES (?, 1, ?, ?, 'shift_request', ?)");
                     $stmtNotif->bind_param("isss", $admin['id'], $title, $body, $link);
@@ -4589,7 +4591,7 @@ switch ($action) {
                 $body = "Sale {$saleName} đã đăng ký trực ngày lễ {$holidayName} ngày {$targetDate}. Vui lòng phê duyệt.";
                 $link = "/attendance";
 
-                $admins = $conn->query("SELECT id FROM accounts WHERE role IN ('admin', 'superadmin', 'director') AND status = 'active'")->fetch_all(MYSQLI_ASSOC);
+                $admins = $conn->query("SELECT id FROM accounts WHERE role IN ('admin', 'superadmin', 'director') AND is_active = 1")->fetch_all(MYSQLI_ASSOC);
                 foreach ($admins as $admin) {
                     $stmtNotif = $conn->prepare("INSERT INTO notifications (user_id, tenant_id, title, body, type, link) VALUES (?, 1, ?, ?, 'shift_request', ?)");
                     $stmtNotif->bind_param("isss", $admin['id'], $title, $body, $link);
@@ -4817,7 +4819,7 @@ switch ($action) {
         $body = "Sale {$saleName} đã lên lịch đăng ký trực cho {$insertedCount} ngày trong tuần này. Vui lòng kiểm duyệt.";
         $link = "/attendance";
 
-        $admins = $conn->query("SELECT id FROM accounts WHERE role IN ('admin', 'superadmin', 'director') AND status = 'active'")->fetch_all(MYSQLI_ASSOC);
+        $admins = $conn->query("SELECT id FROM accounts WHERE role IN ('admin', 'superadmin', 'director') AND is_active = 1")->fetch_all(MYSQLI_ASSOC);
         foreach ($admins as $admin) {
             $stmtNotif = $conn->prepare("INSERT INTO notifications (user_id, tenant_id, title, body, type, link) VALUES (?, 1, ?, ?, 'shift_request', ?)");
             if ($stmtNotif) {
@@ -5029,7 +5031,7 @@ switch ($action) {
         
         $targetConsultantId = null;
         if ($isSale) {
-            $targetConsultantId = $currentSaleConsultantId;
+            $targetConsultantId = $currentSaleConsultantId ?? 0;
         } else if (($isAdmin || $isManager) && isset($_GET['consultant_id'])) {
             $targetConsultantId = (int)$_GET['consultant_id'];
             if ($isManager) {
@@ -5040,7 +5042,7 @@ switch ($action) {
                 }
             }
         } else {
-            $targetConsultantId = $currentSaleConsultantId;
+            $targetConsultantId = $currentSaleConsultantId ?? 0;
         }
 
         if (!$targetConsultantId) {
@@ -5076,7 +5078,7 @@ switch ($action) {
         
         $targetConsultantId = null;
         if ($isSale) {
-            $targetConsultantId = $currentSaleConsultantId;
+            $targetConsultantId = $currentSaleConsultantId ?? 0;
         } else if (($isAdmin || $isManager) && isset($input['consultant_id'])) {
             $targetConsultantId = (int)$input['consultant_id'];
             if ($isManager) {
@@ -5087,7 +5089,7 @@ switch ($action) {
                 }
             }
         } else {
-            $targetConsultantId = $currentSaleConsultantId;
+            $targetConsultantId = $currentSaleConsultantId ?? 0;
         }
 
         if (!$targetConsultantId) {
@@ -5205,7 +5207,7 @@ switch ($action) {
         $startDate = $leaveRow['start_date'];
         $endDate = $leaveRow['end_date'];
 
-        if ($isSale && $targetConsultantId !== $currentSaleConsultantId) {
+        if ($isSale && $targetConsultantId !== ($currentSaleConsultantId ?? 0)) {
             echo json_encode(['success' => false, 'message' => 'Bạn không có quyền xóa đăng ký nghỉ phép của người khác.']);
             break;
         }
@@ -5652,8 +5654,8 @@ switch ($action) {
             $id = (int) ($input['id'] ?? 0);
 
             // If logged in as sale, override ID to their own consultant record
-            if ($decodedUser['role'] === 'sale' || $decodedUser['role'] === 'sales' || empty($id) || $id === $currentSaleConsultantId) {
-                $id = $currentSaleConsultantId;
+            if ($decodedUser['role'] === 'sale' || $decodedUser['role'] === 'sales' || empty($id) || $id === ($currentSaleConsultantId ?? 0)) {
+                $id = $currentSaleConsultantId ?? 0;
             }
 
             if ($decodedUser['role'] === 'manager') {
@@ -5794,7 +5796,7 @@ switch ($action) {
 
             // If logged in as sale, verify the lead is assigned to them
             if ($decodedUser['role'] === 'sale' || $decodedUser['role'] === 'sales') {
-                $sale_id = $currentSaleConsultantId;
+                $sale_id = $currentSaleConsultantId ?? 0;
                 if ((int)$resChk['assigned_to'] !== $sale_id) {
                     $conn->rollback();
                     echo json_encode(['success' => false, 'message' => 'Khách hàng này đã bị thu hồi hoặc chuyển cho người khác do quá hạn tiếp nhận']);
@@ -6063,6 +6065,7 @@ switch ($action) {
         $coopCount = 0;
         $databankCount = 0;
         $selfCount = 0;
+        $errorTicketCount = 0;
 
         if ($saleUserId > 0) {
             $contactsDateCondition = "1=1";
@@ -7459,17 +7462,17 @@ switch ($action) {
         if (preg_match_all('/items\.push\(\{name:\s*"([^"]+)"/i', $html, $matches)) {
             $sheets = array_map(function ($val) {
                 return str_replace('\/', '/', $val);
-            }, $matches[1]);
+            }, (array)$matches[1]);
         }
 
         // Pattern 2: HTML sheet buttons tab menu (for published public pages or older sheets)
         if (empty($sheets) && preg_match_all('/<li\s+id="sheet-button-.*?"><a\s+href=".*?">(.*?)<\/a><\/li>/i', $html, $matches)) {
-            $sheets = $matches[1];
+            $sheets = (array)$matches[1];
         }
 
         // Pattern 3: Naive JSON property fallback
         if (empty($sheets) && preg_match_all('/"name"\s*:\s*"([^"]+)"\s*,\s*"sheetId"/i', $html, $matches)) {
-            $sheets = array_values(array_unique($matches[1]));
+            $sheets = array_values(array_unique((array)$matches[1]));
             $sheets = array_filter($sheets, function ($v) {
                 return !in_array($v, ['Arial', 'Verdana', 'Helvetica', 'Times New Roman']);
             });
@@ -7589,6 +7592,11 @@ switch ($action) {
         break;
 
     case 'add_rule':
+        /** @var mysqli_stmt|null $stmt */
+        $stmt = null;
+        $target = 0;
+        $logical_operator = 'AND';
+        $newRuleId = 0;
         try {
             $input = json_decode(file_get_contents('php://input'), true);
             $col = $input['condition_column'] ?? '';
@@ -7638,8 +7646,8 @@ switch ($action) {
                     break;
                 }
             }
-            if (isset($stmt)) {
-                $stmt->close();
+            if (!empty($stmt) && $stmt instanceof mysqli_stmt) {
+                @$stmt->close();
             }
             echo json_encode(['success' => false, 'message' => $e->getMessage()]);
         }
@@ -7657,6 +7665,11 @@ switch ($action) {
         break;
 
     case 'edit_rule':
+        /** @var mysqli_stmt|null $stmt */
+        $stmt = null;
+        $id = 0;
+        $target = 0;
+        $logical_operator = 'AND';
         try {
             $input = json_decode(file_get_contents('php://input'), true);
             $id = (int) ($input['id'] ?? 0);
@@ -7698,15 +7711,17 @@ switch ($action) {
                     $fkName = $res->fetch_assoc()['CONSTRAINT_NAME'];
                     $conn->query("ALTER TABLE routing_rules DROP FOREIGN KEY " . $fkName);
                     // Retry again
-                    $stmt->execute();
-                    logAdminAction($conn, $decodedUser['id'], 'EDIT_RULE', ['id' => $id, 'target_round_id' => $target, 'logical_operator' => $logical_operator]);
-                    $stmt->close();
+                    if (!empty($stmt)) {
+                        $stmt->execute();
+                        logAdminAction($conn, $decodedUser['id'], 'EDIT_RULE', ['id' => $id, 'target_round_id' => $target, 'logical_operator' => $logical_operator]);
+                        $stmt->close();
+                    }
                     echo json_encode(['success' => true]);
                     break;
                 }
             }
-            if (isset($stmt)) {
-                $stmt->close();
+            if (!empty($stmt) && $stmt instanceof mysqli_stmt) {
+                @$stmt->close();
             }
             echo json_encode(['success' => false, 'message' => $e->getMessage()]);
         }
@@ -8534,7 +8549,7 @@ switch ($action) {
         
         $consultantId = isset($_GET['consultant_id']) && $_GET['consultant_id'] !== '' ? (int) $_GET['consultant_id'] : 0;
         if ($decodedUser['role'] === 'sale') {
-            $consultantId = $currentSaleConsultantId;
+            $consultantId = $currentSaleConsultantId ?? 0;
             if ($consultantId <= 0) {
                 echo json_encode([
                     'success' => true,
@@ -9607,9 +9622,9 @@ switch ($action) {
 
         // Search text filter
         $search = isset($_GET['search']) ? trim($_GET['search']) : '';
+        $searchVal = "%$search%";
         if ($search !== '') {
             $conds[] = "(l.name LIKE ? OR l.phone LIKE ? OR l.email LIKE ?)";
-            $searchVal = "%$search%";
             $params[] = $searchVal;
             $params[] = $searchVal;
             $params[] = $searchVal;
@@ -11060,7 +11075,7 @@ switch ($action) {
             break;
         }
         try {
-            $dbName = $_ENV['DB_NAME'] ?? $dbname;
+            $dbName = $_ENV['DB_NAME'] ?? ($dbname ?? 'vhvxoigh_sale_data');
             $res = $conn->query("
                 SELECT 
                     TABLE_NAME AS name, 
@@ -13190,7 +13205,7 @@ switch ($action) {
         if ($userIdParam !== null) {
             $targetUserId = $userIdParam;
         } else {
-            $targetId = $saleFilterId !== null ? $saleFilterId : $currentSaleConsultantId;
+            $targetId = $saleFilterId !== null ? $saleFilterId : ($currentSaleConsultantId ?? 0);
             if (!$targetId) {
                 $targetUserId = (int)$decodedUser['id'];
             } else {
@@ -13321,7 +13336,7 @@ switch ($action) {
         $work_end_time = trim($input['work_end_time'] ?? '23:59');
         
         $saleFilterId = isset($input['consultant_id']) && $input['consultant_id'] !== '' ? (int) $input['consultant_id'] : null;
-        $targetId = $saleFilterId !== null ? $saleFilterId : $currentSaleConsultantId;
+        $targetId = $saleFilterId !== null ? $saleFilterId : ($currentSaleConsultantId ?? 0);
 
         $targetUserId = null;
         $realConsultantId = null;
@@ -13442,6 +13457,7 @@ switch ($action) {
         $stmt->close();
 
         // 2. Update consultants table (if it exists as a separate table, otherwise it's a VIEW of users)
+        $successC = true;
         try {
             $stmtC = $conn->prepare("UPDATE consultants SET name=?, work_start_time=?, work_end_time=?, work_schedule=?, avatar=?, dob=?, gender=?, citizen_id=?, address=?, bank_name=?, bank_account=?, leave_start=?, leave_end=?, zalo_chat_id=?, overtime_mode=?, use_custom_work_hours=?, extra_fields_json=? WHERE id=?");
             if ($stmtC) {
@@ -14339,7 +14355,7 @@ switch ($action) {
         $outOfHoursChange = $calcChange($outOfHoursCount, $prevOutOfHoursCount);
 
         // 2. Fair-Share Equity
-        $calcFairness = function($conn, $dateCondition) use ($consultantFilter, $managerFilter) {
+        $calcFairness = function($conn, $dateCondition) use ($consultantFilter, $managerFilter, $managerFilterDlNoAlias) {
             $consultants = [];
             $sql = "SELECT id FROM consultants WHERE status = 'active' $consultantFilter";
             $res = $conn->query($sql);
@@ -15372,7 +15388,7 @@ switch ($action) {
     case 'get_consultant_compensation_details':
         $consultantId = isset($_GET['consultant_id']) ? (int) $_GET['consultant_id'] : 0;
         if ($decodedUser['role'] === 'sale') {
-            $consultantId = $currentSaleConsultantId;
+            $consultantId = $currentSaleConsultantId ?? 0;
         }
         $date = $_GET['date'] ?? 'Tuần này';
         $roundId = isset($_GET['round_id']) && $_GET['round_id'] !== '' ? (int) $_GET['round_id'] : 0;
@@ -17177,6 +17193,7 @@ switch ($action) {
         $importedCount = 0;
         $duplicateCount = 0;
         $newCount = 0;
+        $phone = '';
 
         try {
             foreach ($leads as $lead) {
@@ -18207,7 +18224,7 @@ switch ($action) {
 
                 $allowed = false;
                 if ($checkRow) {
-                    if ((int)$checkRow['assigned_to'] === (int)$currentSaleConsultantId) {
+                    if ((int)$checkRow['assigned_to'] === (int)($currentSaleConsultantId ?? 0)) {
                         $allowed = true;
                     }
                 }

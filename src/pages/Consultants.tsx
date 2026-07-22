@@ -235,6 +235,8 @@ const ConsultantsInner = () => {
   const [showCoLeaderDropdown, setShowCoLeaderDropdown] = useState(false);
   const leaderDropdownRef = useRef<HTMLDivElement>(null);
   const coLeaderDropdownRef = useRef<HTMLDivElement>(null);
+  const [showAddMemberDropdown, setShowAddMemberDropdown] = useState(false);
+  const addMemberDropdownRef = useRef<HTMLDivElement>(null);
   const [confirmDeleteTeamOpen, setConfirmDeleteTeamOpen] = useState(false);
   const [deleteTeamId, setDeleteTeamId] = useState<number | null>(null);
   const [confirmLeaveTeamOpen, setConfirmLeaveTeamOpen] = useState(false);
@@ -515,6 +517,9 @@ const ConsultantsInner = () => {
       }
       if (coLeaderDropdownRef.current && !coLeaderDropdownRef.current.contains(event.target as Node)) {
         setShowCoLeaderDropdown(false);
+      }
+      if (addMemberDropdownRef.current && !addMemberDropdownRef.current.contains(event.target as Node)) {
+        setShowAddMemberDropdown(false);
       }
     };
     document.addEventListener('mousedown', handleOutsideClick);
@@ -1801,20 +1806,22 @@ const ConsultantsInner = () => {
                       <div style={{ 
                         width: '42px', 
                         height: '42px', 
-                        borderRadius: '12px', 
+                        borderRadius: '50%', 
                         overflow: 'hidden',
-                        border: (team.avatar_url || team.avatar) ? '1.5px solid var(--color-border-light)' : 'none',
-                        background: (team.avatar_url || team.avatar) ? 'transparent' : 'var(--color-primary)', 
+                        border: '1.5px solid var(--color-border-light)',
+                        background: (team.avatar_url || team.avatar) ? 'transparent' : 'linear-gradient(135deg, #BD1D2D 0%, #a31422 100%)', 
                         display: 'flex', 
                         alignItems: 'center', 
                         justifyContent: 'center',
                         color: '#ffffff',
+                        fontWeight: 800,
+                        fontSize: '1rem',
                         flexShrink: 0
                       }}>
                         {(team.avatar_url || team.avatar) ? (
                           <img src={team.avatar_url || team.avatar} alt={team.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                         ) : (
-                          <Users size={20} />
+                          team.name?.[0] || 'T'
                         )}
                       </div>
                       <div style={{ minWidth: 0, flex: 1 }}>
@@ -3132,8 +3139,26 @@ const ConsultantsInner = () => {
                 {/* Header */}
                 <div className={styles.header}>
                   <div className={styles.headerProfile}>
-                    <div className="avatar-placeholder lg" style={{ background: 'linear-gradient(135deg, #BD1D2D 0%, #a31422 100%)', fontSize: '1.25rem', width: 56, height: 56, borderRadius: '12px', boxShadow: '0 4px 12px rgba(189, 29, 45, 0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ffffff', fontWeight: 800 }}>
-                      {teamFormData.name?.[0] || 'T'}
+                    <div style={{
+                      width: 56,
+                      height: 56,
+                      borderRadius: '50%',
+                      overflow: 'hidden',
+                      border: '2px solid var(--color-border-light)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      background: teamFormData.avatar_url ? 'transparent' : 'linear-gradient(135deg, #BD1D2D 0%, #a31422 100%)',
+                      color: '#ffffff',
+                      fontWeight: 800,
+                      fontSize: '1.25rem',
+                      flexShrink: 0
+                    }}>
+                      {teamFormData.avatar_url ? (
+                        <img src={teamFormData.avatar_url} alt="Team Avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      ) : (
+                        teamFormData.name?.[0] || 'T'
+                      )}
                     </div>
                     <div>
                       <h2 className={styles.title}>{teamFormData.name || t('Tên Nhóm')}</h2>
@@ -3221,7 +3246,7 @@ const ConsultantsInner = () => {
                                 <div style={{
                                   width: '54px',
                                   height: '54px',
-                                  borderRadius: '14px',
+                                  borderRadius: '50%',
                                   overflow: 'hidden',
                                   border: '2px solid var(--color-border-light)',
                                   boxShadow: 'var(--shadow-sm)',
@@ -3695,128 +3720,205 @@ const ConsultantsInner = () => {
                                 </p>
                               )}
                             </div>
+
+                            {/* Add Member Dropdown Trigger */}
+                            {isWriteAuthorized && (
+                              <div ref={addMemberDropdownRef} style={{ position: 'relative' }}>
+                                <button
+                                  type="button"
+                                  onClick={() => setShowAddMemberDropdown(!showAddMemberDropdown)}
+                                  className="btn primary sm"
+                                  style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '6px',
+                                    padding: '6px 14px',
+                                    fontSize: '0.8rem',
+                                    fontWeight: 700,
+                                    borderRadius: '8px',
+                                    background: 'var(--color-primary)',
+                                    color: '#fff',
+                                    border: 'none',
+                                    cursor: 'pointer'
+                                  }}
+                                >
+                                  <span>+ {t('Thêm nhân sự')}</span>
+                                </button>
+
+                                {showAddMemberDropdown && (
+                                  <div style={{
+                                    position: 'absolute',
+                                    top: '100%',
+                                    right: 0,
+                                    marginTop: '6px',
+                                    width: '320px',
+                                    background: 'var(--color-surface)',
+                                    border: '1px solid var(--color-border)',
+                                    borderRadius: '12px',
+                                    boxShadow: 'var(--shadow-lg)',
+                                    zIndex: 1000,
+                                    padding: '10px',
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    gap: '8px'
+                                  }}>
+                                    <div style={{ position: 'relative' }}>
+                                      <Search size={13} style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-muted)' }} />
+                                      <input
+                                        type="text"
+                                        className="form-input"
+                                        placeholder={t('Tìm nhân sự mới...')}
+                                        value={memberSearch}
+                                        onChange={e => setMemberSearch(e.target.value)}
+                                        style={{ width: '100%', fontSize: '0.78rem', padding: '6px 28px 6px 10px', height: '32px', borderRadius: '6px', border: '1px solid var(--color-border)' }}
+                                      />
+                                    </div>
+                                    <div style={{ maxHeight: '200px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '4px' }} className="custom-scrollbar">
+                                      {(() => {
+                                        const systemSales = allSystemUsers.filter(u => u.role === 'sales' || u.role === 'sale');
+                                        const nonMembers = systemSales.filter(u => !teamFormData.member_ids.includes(String(u.id)));
+                                        const filtered = nonMembers.filter(u => 
+                                          (u.full_name || u.name || '').toLowerCase().includes(memberSearch.toLowerCase()) ||
+                                          (u.email || '').toLowerCase().includes(memberSearch.toLowerCase())
+                                        );
+
+                                        if (filtered.length === 0) {
+                                          return (
+                                            <div style={{ padding: '12px', fontSize: '0.75rem', color: 'var(--color-text-muted)', textAlign: 'center' }}>
+                                              {t('Không có nhân sự khả dụng')}
+                                            </div>
+                                          );
+                                        }
+
+                                        return filtered.map(u => {
+                                          const belongsToOtherTeam = u.team_id && String(u.team_id) !== String(editingTeam?.id);
+                                          const otherTeam = teams.find(t => String(t.id) === String(u.team_id));
+                                          
+                                          return (
+                                            <div
+                                              key={u.id}
+                                              onClick={() => {
+                                                setTeamFormData(prev => ({
+                                                  ...prev,
+                                                  member_ids: [...prev.member_ids, String(u.id)]
+                                                }));
+                                                setShowAddMemberDropdown(false);
+                                                setMemberSearch('');
+                                                toast.success(`${t('Đã thêm')} ${u.full_name || u.name}`);
+                                              }}
+                                              style={{
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: '8px',
+                                                padding: '6px 8px',
+                                                borderRadius: '6px',
+                                                cursor: 'pointer',
+                                                background: 'transparent',
+                                                transition: 'background 0.15s'
+                                              }}
+                                              className="hover-bg-light"
+                                            >
+                                              <Avatar src={u.avatar_url || u.avatar} name={u.full_name || u.name || ''} size={22} />
+                                              <div style={{ flex: 1, minWidth: 0, textAlign: 'left' }}>
+                                                <div style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--color-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                                  {u.full_name || u.name}
+                                                </div>
+                                                {belongsToOtherTeam && (
+                                                  <div style={{ fontSize: '0.65rem', color: 'var(--color-danger)', fontWeight: 600 }}>
+                                                    {t('Nhóm hiện tại')}: {otherTeam ? otherTeam.name : 'Khác'}
+                                                  </div>
+                                                )}
+                                              </div>
+                                              <span style={{ fontSize: '0.7rem', color: 'var(--color-primary)', fontWeight: 800 }}>+ Add</span>
+                                            </div>
+                                          );
+                                        });
+                                      })()}
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            )}
                           </div>
 
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                            <div style={{ position: 'relative' }}>
-                              <Search size={14} style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-muted)' }} />
-                              <input 
-                                className="form-input"
-                                placeholder={t('Tìm kiếm tư vấn viên theo tên, email...')}
-                                value={memberSearch}
-                                onChange={e => setMemberSearch(e.target.value)}
-                                style={{ paddingLeft: '12px', paddingRight: '2.2rem', width: '100%', fontSize: '0.8125rem' }}
-                              />
-                            </div>
+                          {/* Current Members List */}
+                          <div style={{ 
+                            border: '1px solid var(--color-border-light)', 
+                            borderRadius: '8px', 
+                            maxHeight: '350px', 
+                            overflowY: 'auto',
+                            background: 'var(--color-bg)',
+                            display: 'grid',
+                            gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+                            gap: '10px',
+                            padding: '12px'
+                          }}>
+                            {(() => {
+                              const currentMembers = allSystemUsers.filter(u => teamFormData.member_ids.includes(String(u.id)));
 
-                            <div style={{ 
-                              border: '1px solid var(--color-border-light)', 
-                              borderRadius: '8px', 
-                              maxHeight: '350px', 
-                              overflowY: 'auto',
-                              background: 'var(--color-bg)',
-                              display: 'grid',
-                              gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
-                              gap: '10px',
-                              padding: '12px'
-                            }}>
-                              {(() => {
-                                const systemSales = allSystemUsers.filter(u => u.role === 'sales' || u.role === 'sale');
-                                const filteredSales = systemSales.filter(u => 
-                                  (u.full_name || u.name || '').toLowerCase().includes(memberSearch.toLowerCase()) ||
-                                  (u.email || '').toLowerCase().includes(memberSearch.toLowerCase())
+                              if (currentMembers.length === 0) {
+                                return (
+                                  <div style={{ gridColumn: '1 / -1', padding: '2rem 1rem', textAlign: 'center', color: 'var(--color-text-muted)', fontSize: '0.8125rem' }}>
+                                    {t('Nhóm hiện chưa có thành viên nào. Hãy nhấn nút "+ Thêm nhân sự" phía trên.')}
+                                  </div>
                                 );
+                              }
 
-                                if (filteredSales.length === 0) {
-                                  return (
-                                    <div style={{ gridColumn: '1 / -1', padding: '1.5rem 1rem', textAlign: 'center', color: 'var(--color-text-muted)', fontSize: '0.8125rem' }}>
-                                      {t('Không tìm thấy tư vấn viên nào')}
+                              return currentMembers.map(sale => {
+                                return (
+                                  <div
+                                    key={sale.id}
+                                    style={{
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      gap: '0.75rem',
+                                      padding: '0.625rem 0.75rem',
+                                      border: '1px solid var(--color-border-light)',
+                                      borderRadius: '8px',
+                                      background: 'var(--color-surface)',
+                                      boxShadow: '0 1px 2px rgba(0, 0, 0, 0.02)'
+                                    }}
+                                  >
+                                    <Avatar src={sale.avatar_url || sale.avatar} name={sale.full_name || sale.name || ''} size={24} />
+                                    <div style={{ flex: 1, minWidth: 0, textAlign: 'left' }}>
+                                      <p style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--color-text)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                        {sale.full_name || sale.name}
+                                      </p>
+                                      <p style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                        {sale.email}
+                                      </p>
                                     </div>
-                                  );
-                                }
-
-                                return filteredSales.map(sale => {
-                                  const isChecked = teamFormData.member_ids.includes(String(sale.id));
-                                  const belongsToOtherTeam = sale.team_id && String(sale.team_id) !== String(editingTeam?.id);
-                                  const otherTeam = teams.find(t => String(t.id) === String(sale.team_id));
-                                  
-                                  return (
-                                    <div
-                                      key={sale.id}
-                                      onClick={() => {
-                                        if (!isWriteAuthorized) return;
-                                        const currentIds = [...teamFormData.member_ids];
-                                        if (isChecked) {
-                                          setTeamFormData({ ...teamFormData, member_ids: currentIds.filter(id => id !== String(sale.id)) });
-                                        } else {
-                                          setTeamFormData({ ...teamFormData, member_ids: [...currentIds, String(sale.id)] });
-                                        }
-                                      }}
-                                      style={{
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        gap: '0.75rem',
-                                        padding: '0.625rem 0.75rem',
-                                        border: '1px solid var(--color-border-light)',
-                                        borderRadius: '8px',
-                                        cursor: isWriteAuthorized ? 'pointer' : 'default',
-                                        transition: 'all 0.15s ease',
-                                        background: isChecked ? 'rgba(163, 20, 34, 0.05)' : 'var(--color-surface)',
-                                        borderColor: isChecked ? 'var(--color-primary-light)' : 'var(--color-border-light)',
-                                        boxShadow: isChecked ? 'none' : '0 1px 2px rgba(0, 0, 0, 0.02)'
-                                      }}
-                                      onMouseEnter={e => {
-                                        if (isWriteAuthorized) {
-                                          e.currentTarget.style.borderColor = 'var(--color-primary)';
-                                          e.currentTarget.style.boxShadow = '0 2px 4px rgba(0, 0, 0, 0.05)';
-                                        }
-                                      }}
-                                      onMouseLeave={e => {
-                                        if (isWriteAuthorized) {
-                                          e.currentTarget.style.borderColor = isChecked ? 'var(--color-primary-light)' : 'var(--color-border-light)';
-                                          e.currentTarget.style.boxShadow = isChecked ? 'none' : '0 1px 2px rgba(0, 0, 0, 0.02)';
-                                        }
-                                      }}
-                                    >
-                                      <input
-                                        type="checkbox"
-                                        checked={isChecked}
-                                        onChange={() => {}}
-                                        style={{ cursor: isWriteAuthorized ? 'pointer' : 'default' }}
-                                        disabled={!isWriteAuthorized}
-                                      />
-                                      <Avatar src={sale.avatar_url || sale.avatar} name={sale.full_name || sale.name || ''} size={24} />
-                                      <div style={{ flex: 1, minWidth: 0, textAlign: 'left' }}>
-                                        <p style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--color-text)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                          {sale.full_name || sale.name}
-                                        </p>
-                                        <p style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                          {sale.email}
-                                        </p>
-                                      </div>
-                                      {sale.team_id && (
-                                        <span style={{ 
-                                          fontSize: '0.65rem', 
-                                          background: belongsToOtherTeam ? 'var(--color-danger-light)' : 'rgba(163, 20, 34, 0.05)', 
-                                          color: belongsToOtherTeam ? 'var(--color-danger)' : 'var(--color-primary)', 
-                                          padding: '2px 6px', 
-                                          borderRadius: 4, 
-                                          fontWeight: 600,
-                                          flexShrink: 0
-                                        }}>
-                                          {belongsToOtherTeam ? `${t('Nhóm')}: ${otherTeam ? otherTeam.name : 'Khác'}` : t('Đang trong nhóm')}
-                                        </span>
-                                      )}
-                                      {!sale.team_id && (
-                                        <span style={{ fontSize: '0.65rem', background: 'var(--color-bg)', color: 'var(--color-text-muted)', padding: '2px 6px', borderRadius: 4, flexShrink: 0 }}>
-                                          {t('Tự do')}
-                                        </span>
-                                      )}
-                                    </div>
-                                  );
-                                });
-                              })()}
-                            </div>
+                                    
+                                    {isWriteAuthorized && (
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          setTeamFormData(prev => ({
+                                            ...prev,
+                                            member_ids: prev.member_ids.filter(id => id !== String(sale.id))
+                                          }));
+                                          toast.success(`${t('Đã xóa')} ${sale.full_name || sale.name}`);
+                                        }}
+                                        style={{
+                                          background: 'transparent',
+                                          border: 'none',
+                                          color: 'var(--color-danger)',
+                                          cursor: 'pointer',
+                                          padding: '4px',
+                                          display: 'flex',
+                                          alignItems: 'center',
+                                          justifyContent: 'center',
+                                          borderRadius: '4px'
+                                        }}
+                                        title={t('Xóa khỏi nhóm')}
+                                      >
+                                        <Trash2 size={14} />
+                                      </button>
+                                    )}
+                                  </div>
+                                );
+                              });
+                            })()}
                           </div>
                         </div>
                       )}

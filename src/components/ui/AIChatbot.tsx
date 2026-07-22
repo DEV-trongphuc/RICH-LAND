@@ -217,12 +217,57 @@ export const AIChatbot: React.FC = () => {
       if (entity.type === 'project') {
         const detailsRes = await fetchAPI(`projects/${entity.id}`).catch(() => null);
         details = detailsRes?.data || detailsRes;
-        const docsRes = await fetchAPI(`projects/${entity.id}/documents`).catch(() => null);
-        docs = Array.isArray(docsRes) ? docsRes : (docsRes?.data || []);
         
+        // 1. Fetch project documents (uploaded directly to project)
+        const docsRes = await fetchAPI(`projects/${entity.id}/documents`).catch(() => null);
+        const docsList = Array.isArray(docsRes) ? docsRes : (docsRes?.data || []);
+
+        // 2. Fetch project folder files
+        const folderFilesRes = await fetchAPI(`projects/${entity.id}/folder-files`).catch(() => null);
+        const folderFiles = Array.isArray(folderFilesRes) ? folderFilesRes : (folderFilesRes?.data || []);
+        
+        // 3. Fetch linked documents (from document_ids)
+        let linkedDocs: any[] = [];
+        if (details && details.document_ids) {
+          const filesRes = await fetchAPI('cloud-files?limit=250').catch(() => null);
+          const allFiles = Array.isArray(filesRes) ? filesRes : (filesRes?.data?.items || filesRes?.data || []);
+          
+          let docIds: string[] = [];
+          try {
+            if (details.document_ids.startsWith('[')) {
+              docIds = JSON.parse(details.document_ids).map(String);
+            } else {
+              docIds = details.document_ids.split(',').map((s: string) => s.trim()).filter(Boolean);
+            }
+          } catch (err) {
+            docIds = details.document_ids.split(',').map((s: string) => s.trim()).filter(Boolean);
+          }
+          linkedDocs = allFiles.filter((f: any) => docIds.includes(String(f.id)));
+        }
+
+        const normalizedFolderFiles = folderFiles.map((f: any, idx: number) => ({
+          ...f,
+          id: f.id || `folder_${idx}_${f.name}`,
+          name: f.name || f.file_name || 'Tài liệu folder'
+        }));
+        
+        const combinedDocs = [
+          ...docsList,
+          ...normalizedFolderFiles,
+          ...linkedDocs
+        ];
+        
+        const seen = new Set();
+        const uniqueDocs = combinedDocs.filter((d: any) => {
+          const key = d.id || d.name;
+          if (seen.has(key)) return false;
+          seen.add(key);
+          return true;
+        });
+
         setRawDetails(details);
-        setEntityDocs(docs);
-        contextText = formatProjectContext(details, docs);
+        setEntityDocs(uniqueDocs);
+        contextText = formatProjectContext(details, uniqueDocs);
       } else {
         const detailsRes = await fetchAPI(`campaigns/${entity.id}`).catch(() => null);
         details = detailsRes?.data || detailsRes;
@@ -230,8 +275,53 @@ export const AIChatbot: React.FC = () => {
         if (details && details.project_id) {
           const parentProjRes = await fetchAPI(`projects/${details.project_id}`).catch(() => null);
           parentProject = parentProjRes?.data || parentProjRes;
+          
+          // 1. Fetch parent project documents
           const parentDocsRes = await fetchAPI(`projects/${details.project_id}/documents`).catch(() => null);
-          parentDocs = Array.isArray(parentDocsRes) ? parentDocsRes : (parentDocsRes?.data || []);
+          const pDocs = Array.isArray(parentDocsRes) ? parentDocsRes : (parentDocsRes?.data || []);
+
+          // 2. Fetch parent project folder files
+          const folderFilesRes = await fetchAPI(`projects/${details.project_id}/folder-files`).catch(() => null);
+          const folderFiles = Array.isArray(folderFilesRes) ? folderFilesRes : (folderFilesRes?.data || []);
+          
+          // 3. Fetch parent project linked documents
+          let linkedDocs: any[] = [];
+          if (parentProject && parentProject.document_ids) {
+            const filesRes = await fetchAPI('cloud-files?limit=250').catch(() => null);
+            const allFiles = Array.isArray(filesRes) ? filesRes : (filesRes?.data?.items || filesRes?.data || []);
+            
+            let docIds: string[] = [];
+            try {
+              if (parentProject.document_ids.startsWith('[')) {
+                docIds = JSON.parse(parentProject.document_ids).map(String);
+              } else {
+                docIds = parentProject.document_ids.split(',').map((s: string) => s.trim()).filter(Boolean);
+              }
+            } catch (err) {
+              docIds = parentProject.document_ids.split(',').map((s: string) => s.trim()).filter(Boolean);
+            }
+            linkedDocs = allFiles.filter((f: any) => docIds.includes(String(f.id)));
+          }
+
+          const normalizedFolderFiles = folderFiles.map((f: any, idx: number) => ({
+            ...f,
+            id: f.id || `folder_${idx}_${f.name}`,
+            name: f.name || f.file_name || 'Tài liệu folder'
+          }));
+
+          const combinedDocs = [
+            ...pDocs,
+            ...normalizedFolderFiles,
+            ...linkedDocs
+          ];
+
+          const seen = new Set();
+          parentDocs = combinedDocs.filter((d: any) => {
+            const key = d.id || d.name;
+            if (seen.has(key)) return false;
+            seen.add(key);
+            return true;
+          });
         }
         docs = parentDocs;
         setRawDetails(details);
@@ -1318,34 +1408,38 @@ Bạn có thể gõ rõ từ khóa hoặc click vào các gợi ý bên dưới 
             </button>
           </form>
 
-          {/* Document Selection Modal Overlay */}
           {showDocSelectModal && (
             <div style={{
-              position: 'absolute',
+              position: 'fixed',
               top: 0,
               left: 0,
               right: 0,
               bottom: 0,
-              background: 'rgba(0, 0, 0, 0.55)',
-              backdropFilter: 'blur(3px)',
-              zIndex: 100,
+              background: 'rgba(0, 0, 0, 0.65)',
+              backdropFilter: 'blur(4px)',
+              zIndex: 2000000,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               padding: '16px'
-            }}>
+            }}
+            onClick={() => setShowDocSelectModal(false)}
+            >
               <div style={{
-                width: '100%',
+                width: '90%',
+                maxWidth: '460px',
                 maxHeight: '85%',
-                background: 'var(--chatbot-window-bg, #ffffff)',
+                background: 'var(--color-surface, #ffffff)',
                 borderRadius: '16px',
-                border: '1px solid var(--chatbot-window-border)',
+                border: '1px solid var(--color-border)',
                 boxShadow: '0 20px 40px rgba(0, 0, 0, 0.25)',
                 display: 'flex',
                 flexDirection: 'column',
                 overflow: 'hidden',
                 animation: 'fadeIn 0.2s ease-out'
-              }}>
+              }}
+              onClick={e => e.stopPropagation()}
+              >
                 {/* Modal Header */}
                 <div style={{
                   padding: '12px 16px',

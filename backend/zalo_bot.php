@@ -446,6 +446,55 @@ function sendLeadAssignedZaloMessageToAdmin($adminChatId, $adminName, $leadName,
     return sendZaloMessage($botToken, $adminChatId, $text, $sync);
 }
 
+/**
+ * Gửi thông báo Zalo cho Admin khi phát hiện trùng lặp data MKT
+ */
+function sendLeadDuplicateFlagZaloMessageToAdmin($adminChatId, $adminName, $saleName, $leadName, $leadPhone, $oldMktSource, $leadId = 0, $sync = false)
+{
+    global $conn;
+
+    // Gửi Telegram trước
+    if (file_exists(__DIR__ . '/telegram_bot.php')) {
+        try {
+            require_once __DIR__ . '/telegram_bot.php';
+            $teleBotToken = get_system_setting($conn, 'telegram_bot_token');
+            $teleAdminGroupChatId = get_system_setting($conn, 'telegram_admin_group_chat_id');
+            if (!empty($teleBotToken) && !empty($teleAdminGroupChatId)) {
+                $textTele = "⚠️ [ CẢNH BÁO TRÙNG LẶP MARKETING ] ⚠️\n"
+                    . "Chào Quản trị viên $adminName,\n"
+                    . "Phát hiện trùng lặp data Marketing:\n"
+                    . "• Sale xử lý: $saleName\n"
+                    . "• Khách hàng: $leadName\n"
+                    . "• Số điện thoại: $leadPhone\n"
+                    . "• Nguồn cũ: $oldMktSource\n"
+                    . "• ID Lead: $leadId";
+                sendTelegramMessage($teleBotToken, $teleAdminGroupChatId, $textTele);
+            }
+        } catch (Throwable $e) {
+            error_log("Error sending Telegram message in sendLeadDuplicateFlagZaloMessageToAdmin: " . $e->getMessage());
+        }
+    }
+
+    $botToken = get_system_setting($conn, 'zalo_bot_token');
+    if (empty($botToken) || empty($adminChatId) || strtolower($adminChatId) === 'chưa liên kết') {
+        return false;
+    }
+
+    $text = "⚠️ [ CẢNH BÁO TRÙNG LẶP MARKETING ] ⚠️\n"
+        . "━━━━━━━━━━━━━━━━━━━━━\n"
+        . "Chào Quản trị viên $adminName, hệ thống phát hiện trùng lặp data Marketing:\n\n"
+        . "👤 THÔNG TIN KHÁCH HÀNG:\n"
+        . "  • Tên KH: $leadName\n"
+        . "  • Số ĐT: $leadPhone\n"
+        . "  • Nguồn cũ: $oldMktSource\n\n"
+        . "👤 NHÂN SỰ XỬ LÝ:\n"
+        . "  • Sale: $saleName\n\n"
+        . "💡 Vui lòng kiểm tra chi tiết trùng lặp của Lead ID: $leadId trên hệ thống.\n"
+        . "━━━━━━━━━━━━━━━━━━━━━";
+
+    return sendZaloMessage($botToken, $adminChatId, $text, $sync);
+}
+
 function sendCompensationAddedZaloMessageToSale($consultantId, $consultantName, $roundName, $amount, $adminName = 'Quản trị viên', $reason = '', $time = '', $sync = false)
 {
     global $conn;

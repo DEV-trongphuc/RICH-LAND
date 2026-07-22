@@ -118,6 +118,7 @@ $requirePhone = $connData['require_both_contact'];
 $connectionType = $connData['connection_type'] ?? 'sheets';
 $isSilent = (int) ($connData['is_silent'] ?? 0);
 $syncSaleperson = (int) ($connData['sync_saleperson'] ?? 0);
+$mappings = [];
 
 if ($connectionType === 'landing_page') {
     // API Landing Page Logic: map standard fields natively, bundle everything else to note

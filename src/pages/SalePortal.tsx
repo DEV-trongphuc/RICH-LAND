@@ -1076,13 +1076,22 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
   const [leaveHistory, setLeaveHistory] = useState<any[]>([]);
   const [loadingLeaves, setLoadingLeaves] = useState(false);
 
+  const [profileActiveTab, setProfileActiveTab] = useState(() => window.innerWidth < 768 ? '' : 'personal');
+  const profileLoadedIdRef = useRef<string | number | null>(null);
+
   const [isMobileDateMenuOpen, setIsMobileDateMenuOpen] = useState(false);
   const mobileDateMenuRef = useRef<HTMLDivElement>(null);
+  const [showWsTeamFilterDropdown, setShowWsTeamFilterDropdown] = useState(false);
+  const [wsTeamFilterSearch, setWsTeamFilterSearch] = useState('');
+  const wsTeamFilterDropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (mobileDateMenuRef.current && !mobileDateMenuRef.current.contains(e.target as Node)) {
         setIsMobileDateMenuOpen(false);
+      }
+      if (wsTeamFilterDropdownRef.current && !wsTeamFilterDropdownRef.current.contains(e.target as Node)) {
+        setShowWsTeamFilterDropdown(false);
       }
     };
     const handleResetAccountTab = () => {
@@ -1321,8 +1330,6 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
     payment: true,
     emergency: false
   });
-  const profileLoadedIdRef = useRef<string | number | null>(null);
-  const [profileActiveTab, setProfileActiveTab] = useState(() => window.innerWidth < 768 ? '' : 'personal');
   const [emergencyContacts, setEmergencyContacts] = useState<{ name: string, relationship: string, phone: string }[]>([{ name: '', relationship: '', phone: '' }]);
   const [profileCertificates, setProfileCertificates] = useState<{ id: string, name: string, code: string, issuer: string, link: string, image: string, issuedDate: string, expiryDate: string }[]>([]);
   const [profileHRRecords, setProfileHRRecords] = useState<{ id: string, type: 'award' | 'warning' | 'discipline', title: string, date: string, amount: string, reason: string, decisionNumber: string, documentLink: string }[]>([]);
@@ -4997,31 +5004,187 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
           </div>
 
           {/* Team Selector Dropdown Pill */}
-          {isAdminOrManager && teamsList.length > 0 && (
-            <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <select
-                value={wsTeamId || 'all_teams_bypass'}
-                onChange={e => setWsTeamId(e.target.value)}
-                className="form-select"
-                style={{
-                  height: '32px',
-                  fontSize: '0.8rem',
-                  fontWeight: 700,
-                  borderRadius: '20px',
-                  padding: '0 12px',
-                  border: '1px solid var(--color-border)',
-                  background: 'var(--color-surface)',
-                  color: 'var(--color-text)',
-                  cursor: 'pointer'
-                }}
-              >
-                <option value="all_teams_bypass">{t('Tất cả các Nhóm')}</option>
-                {teamsList.map((tm: any) => (
-                  <option key={tm.id} value={String(tm.id)}>{tm.name}</option>
-                ))}
-              </select>
-            </div>
-          )}
+          {isAdminOrManager && teamsList.length > 0 && (() => {
+            const selectedTeam = teamsList.find(t => String(t.id) === String(wsTeamId));
+            return (
+              <div ref={wsTeamFilterDropdownRef} style={{ marginLeft: 'auto', position: 'relative', display: 'inline-block' }}>
+                <button
+                  type="button"
+                  onClick={() => setShowWsTeamFilterDropdown(!showWsTeamFilterDropdown)}
+                  style={{
+                    height: '34px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    borderRadius: '20px',
+                    padding: '0 14px',
+                    border: '1.5px solid var(--color-primary, #BD1D2D)',
+                    background: 'var(--color-surface)',
+                    color: 'var(--color-text)',
+                    cursor: 'pointer',
+                    fontWeight: 700,
+                    fontSize: '0.8rem',
+                    boxShadow: '0 2px 8px rgba(189, 29, 45, 0.08)'
+                  }}
+                >
+                  <div style={{
+                    width: '22px',
+                    height: '22px',
+                    borderRadius: '50%',
+                    overflow: 'hidden',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    background: (selectedTeam?.avatar_url || selectedTeam?.avatar) ? 'transparent' : 'linear-gradient(135deg, #BD1D2D 0%, #a31422 100%)',
+                    color: '#ffffff',
+                    fontSize: '0.65rem',
+                    fontWeight: 800,
+                    border: (selectedTeam?.avatar_url || selectedTeam?.avatar) ? '1px solid var(--color-border-light)' : 'none',
+                    flexShrink: 0
+                  }}>
+                    {(selectedTeam?.avatar_url || selectedTeam?.avatar) ? (
+                      <img src={selectedTeam.avatar_url || selectedTeam.avatar} alt="Team" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    ) : (
+                      selectedTeam ? (selectedTeam.name?.[0] || 'T') : 'ALL'
+                    )}
+                  </div>
+                  <span>{selectedTeam ? selectedTeam.name : t('Tất cả các Nhóm')}</span>
+                  <ChevronDown size={14} style={{ opacity: 0.7 }} />
+                </button>
+
+                {showWsTeamFilterDropdown && (
+                  <div style={{
+                    position: 'absolute',
+                    top: '100%',
+                    right: 0,
+                    marginTop: '6px',
+                    width: '280px',
+                    background: 'var(--color-surface)',
+                    border: '1px solid var(--color-border)',
+                    borderRadius: '12px',
+                    boxShadow: 'var(--shadow-lg)',
+                    zIndex: 1000,
+                    padding: '10px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '8px'
+                  }}>
+                    <div>
+                      <input
+                        type="text"
+                        className="form-input"
+                        placeholder={t('Tìm kiếm nhóm...')}
+                        value={wsTeamFilterSearch}
+                        onChange={e => setWsTeamFilterSearch(e.target.value)}
+                        style={{ width: '100%', fontSize: '0.78rem', padding: '6px 10px', height: '32px', borderRadius: '6px', border: '1px solid var(--color-border)' }}
+                      />
+                    </div>
+                    <div style={{ maxHeight: '240px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '4px' }} className="custom-scrollbar">
+                      {/* Option: Tất cả các Nhóm */}
+                      <div
+                        onClick={() => {
+                          setWsTeamId('all_teams_bypass');
+                          setShowWsTeamFilterDropdown(false);
+                          setWsTeamFilterSearch('');
+                        }}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '8px',
+                          padding: '8px',
+                          borderRadius: '6px',
+                          cursor: 'pointer',
+                          background: (!wsTeamId || wsTeamId === 'all_teams_bypass') ? 'rgba(189, 29, 45, 0.05)' : 'transparent',
+                          fontWeight: (!wsTeamId || wsTeamId === 'all_teams_bypass') ? 600 : 400
+                        }}
+                        className="hover-bg-light"
+                      >
+                        <div style={{
+                          width: '24px',
+                          height: '24px',
+                          borderRadius: '50%',
+                          background: 'linear-gradient(135deg, #BD1D2D 0%, #a31422 100%)',
+                          color: '#ffffff',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontSize: '0.7rem',
+                          fontWeight: 800,
+                          flexShrink: 0
+                        }}>
+                          ALL
+                        </div>
+                        <span style={{ fontSize: '0.8rem', color: 'var(--color-text)' }}>{t('Tất cả các Nhóm')}</span>
+                      </div>
+
+                      {/* Filtered Teams */}
+                      {(() => {
+                        const filtered = teamsList.filter((tm: any) =>
+                          (tm.name || '').toLowerCase().includes(wsTeamFilterSearch.toLowerCase())
+                        );
+                        if (filtered.length === 0 && wsTeamFilterSearch) {
+                          return (
+                            <div style={{ padding: '12px', fontSize: '0.75rem', color: 'var(--color-text-muted)', textAlign: 'center' }}>
+                              {t('Không tìm thấy nhóm')}
+                            </div>
+                          );
+                        }
+                        return filtered.map((tm: any) => {
+                          const isSelected = String(tm.id) === String(wsTeamId);
+                          return (
+                            <div
+                              key={tm.id}
+                              onClick={() => {
+                                setWsTeamId(String(tm.id));
+                                setShowWsTeamFilterDropdown(false);
+                                setWsTeamFilterSearch('');
+                              }}
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '8px',
+                                padding: '8px',
+                                borderRadius: '6px',
+                                cursor: 'pointer',
+                                background: isSelected ? 'rgba(189, 29, 45, 0.05)' : 'transparent',
+                                fontWeight: isSelected ? 600 : 400
+                              }}
+                              className="hover-bg-light"
+                            >
+                              <div style={{
+                                width: '24px',
+                                height: '24px',
+                                borderRadius: '50%',
+                                overflow: 'hidden',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                background: (tm.avatar_url || tm.avatar) ? 'transparent' : 'linear-gradient(135deg, #BD1D2D 0%, #a31422 100%)',
+                                color: '#ffffff',
+                                fontSize: '0.7rem',
+                                fontWeight: 800,
+                                border: (tm.avatar_url || tm.avatar) ? '1px solid var(--color-border-light)' : 'none',
+                                flexShrink: 0
+                              }}>
+                                {(tm.avatar_url || tm.avatar) ? (
+                                  <img src={tm.avatar_url || tm.avatar} alt="Team" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                ) : (
+                                  tm.name?.[0] || 'T'
+                                )}
+                              </div>
+                              <span style={{ fontSize: '0.8rem', color: 'var(--color-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                {tm.name}
+                              </span>
+                            </div>
+                          );
+                        });
+                      })()}
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
         </div>
 
         <div style={{
