@@ -5183,7 +5183,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                     alignItems: 'center',
                     gap: '8px',
                     borderRadius: '20px',
-                    padding: '0 14px',
+                    padding: '3px 12px 3px 5px',
                     border: '1.5px solid var(--color-primary, #BD1D2D)',
                     background: 'var(--color-surface)',
                     color: 'var(--color-text)',
