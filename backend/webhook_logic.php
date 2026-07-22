@@ -1269,37 +1269,42 @@ function isLeadBlocked($conn, $phone, $email) {
         return false;
     }
     
-    $query = "SELECT id FROM blocked_leads WHERE 1=2";
-    $params = [];
-    
-    if (!empty($phone)) {
-        $query .= " OR (phone IS NOT NULL AND phone != '' AND phone = ?)";
-        $params[] = $phone;
-    }
-    if (!empty($email)) {
-        $query .= " OR (email IS NOT NULL AND email != '' AND email = ?)";
-        $params[] = $email;
-    }
-    
-    if ($conn instanceof PDO) {
-        $stmt = $conn->prepare($query);
-        if ($stmt) {
-            $stmt->execute($params);
-            return (bool)$stmt->fetchColumn();
+    try {
+        $query = "SELECT id FROM blocked_leads WHERE 1=2";
+        $params = [];
+        
+        if (!empty($phone)) {
+            $query .= " OR (phone IS NOT NULL AND phone != '' AND phone = ?)";
+            $params[] = $phone;
         }
-    } else {
-        $stmt = $conn->prepare($query);
-        if ($stmt) {
-            if (!empty($params)) {
-                $types = str_repeat("s", count($params));
-                $stmt->bind_param($types, ...$params);
+        if (!empty($email)) {
+            $query .= " OR (email IS NOT NULL AND email != '' AND email = ?)";
+            $params[] = $email;
+        }
+        
+        if ($conn instanceof PDO) {
+            $stmt = $conn->prepare($query);
+            if ($stmt) {
+                $stmt->execute($params);
+                return (bool)$stmt->fetchColumn();
             }
-            $stmt->execute();
-            $res = $stmt->get_result();
-            $isBlocked = ($res && $res->num_rows > 0);
-            $stmt->close();
-            return $isBlocked;
+        } else {
+            $stmt = $conn->prepare($query);
+            if ($stmt) {
+                if (!empty($params)) {
+                    $types = str_repeat("s", count($params));
+                    $stmt->bind_param($types, ...$params);
+                }
+                $stmt->execute();
+                $res = $stmt->get_result();
+                $isBlocked = ($res && $res->num_rows > 0);
+                $stmt->close();
+                return $isBlocked;
+            }
         }
+    } catch (Throwable $e) {
+        error_log("isLeadBlocked check warning: " . $e->getMessage());
+        return false;
     }
     return false;
 }

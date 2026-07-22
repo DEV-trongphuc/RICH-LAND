@@ -1639,3 +1639,16 @@ INSERT INTO `schema_migrations` (`migration`, `applied_at`) VALUES
 ('migrate_activity_comments.sql', CURRENT_TIMESTAMP()), 
 ('migrate_fractional_quantities.sql', CURRENT_TIMESTAMP())
 ON DUPLICATE KEY UPDATE `migration` = VALUES(`migration`);
+
+CREATE TABLE IF NOT EXISTS `blocked_leads` (
+  `id` INT(11) AUTO_INCREMENT PRIMARY KEY,
+  `tenant_id` INT(11) DEFAULT 1,
+  `phone` VARCHAR(50) DEFAULT NULL,
+  `email` VARCHAR(255) DEFAULT NULL,
+  `reason` VARCHAR(255) DEFAULT NULL,
+  `created_by` INT(11) DEFAULT NULL,
+  `created_at` TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
+  KEY `idx_blocked_phone` (`phone`),
+  KEY `idx_blocked_email` (`email`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+

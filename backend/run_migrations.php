@@ -18,7 +18,7 @@ $apply = (isset($_GET['apply']) && $_GET['apply'] === 'true')
       || (isset($_POST['execute_migration']) && $_POST['execute_migration'] === '1')
       || ($isCli && in_array('--apply', $argv));
 
-$targetVersion = 186;
+$targetVersion = 187;
 $currentVersion = 186;
 
 // Query current DB version
@@ -281,8 +281,24 @@ try {
         }
     }
 
-    // 7. Update DB version in system_settings
-    $conn->query("INSERT INTO system_settings (setting_key, setting_value) VALUES ('db_version', '186') ON DUPLICATE KEY UPDATE setting_value = '186'");
+    // 8. Ensure blocked_leads table exists
+    $conn->query("
+        CREATE TABLE IF NOT EXISTS `blocked_leads` (
+          `id` INT(11) AUTO_INCREMENT PRIMARY KEY,
+          `tenant_id` INT(11) DEFAULT 1,
+          `phone` VARCHAR(50) DEFAULT NULL,
+          `email` VARCHAR(255) DEFAULT NULL,
+          `reason` VARCHAR(255) DEFAULT NULL,
+          `created_by` INT(11) DEFAULT NULL,
+          `created_at` TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
+          KEY `idx_blocked_phone` (`phone`),
+          KEY `idx_blocked_email` (`email`)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    ");
+    $logMsg("Đã kiểm tra và đảm bảo bảng blocked_leads tồn tại.", "success");
+
+    // 9. Update DB version in system_settings
+    $conn->query("INSERT INTO system_settings (setting_key, setting_value) VALUES ('db_version', '187') ON DUPLICATE KEY UPDATE setting_value = '187'");
     
     $logMsg("Hệ thống đã duy trì cấu trúc Cơ sở dữ liệu ở phiên bản mới nhất: " . $targetVersion, "success");
 
