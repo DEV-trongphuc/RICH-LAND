@@ -510,6 +510,13 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
   const [meetingTeamSearchText, setMeetingTeamSearchText] = useState('');
   const [meetingSaleSearchText, setMeetingSaleSearchText] = useState('');
 
+  const formatReverseCustomerName = (nameStr: string) => {
+    if (!nameStr || typeof nameStr !== 'string') return '';
+    const parts = nameStr.trim().split(/\s+/);
+    if (parts.length <= 1) return nameStr;
+    return parts.reverse().join(' ');
+  };
+
   const isUserAdminRole = ['admin', 'superadmin', 'assistant', 'super_admin'].includes(String(currentUser?.role).toLowerCase());
   const isUserManagerRole = String(currentUser?.role).toLowerCase() === 'manager';
   const currentUidVal = currentUser?.id ? Number(currentUser.id) : 0;
@@ -6263,16 +6270,16 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                       {task.related_type === 'contact' && task.related_id && (
                         <span
                           style={{
-                            fontSize: '0.7rem', fontWeight: 700, padding: '3px 8px', borderRadius: '20px',
-                            color: 'var(--color-primary)', background: 'var(--color-primary-light)', display: 'inline-flex', alignItems: 'center', gap: '4px'
+                            fontSize: '0.7rem', fontWeight: 700, padding: '3px 9px', borderRadius: '20px',
+                            color: 'var(--color-text, #334155)', background: 'var(--color-bg-subtle, rgba(0,0,0,0.06))', border: '1px solid var(--color-border-light, rgba(0,0,0,0.08))', display: 'inline-flex', alignItems: 'center', gap: '4px'
                           }}
                           onClick={(e) => {
                             e.stopPropagation();
                             handleOpenContactProfile(Number(task.related_id));
                           }}
                         >
-                          <Avatar name={task.contact_name || t('Khách hàng')} size={14} />
-                          {task.contact_name || t('Khách hàng')}
+                          <Avatar name={formatReverseCustomerName(task.contact_name || t('Khách hàng'))} size={14} />
+                          {formatReverseCustomerName(task.contact_name || t('Khách hàng'))}
                         </span>
                       )}
                     </div>
@@ -6573,13 +6580,13 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                                 <span
                                   style={{
                                     fontSize: '0.7rem', fontWeight: 700, padding: '2px 8px', borderRadius: '12px',
-                                    color: 'var(--color-primary)', background: 'var(--color-primary-light)', display: 'inline-flex', alignItems: 'center', gap: '4px',
+                                    color: 'var(--color-text, #334155)', background: 'var(--color-bg-subtle, rgba(0,0,0,0.06))', border: '1px solid var(--color-border-light, rgba(0,0,0,0.08))', display: 'inline-flex', alignItems: 'center', gap: '4px',
                                     cursor: 'pointer'
                                   }}
                                   onClick={() => handleOpenContactProfile(Number(task.related_id))}
                                 >
-                                  <Avatar name={task.contact_name || t('Khách hàng')} size={12} />
-                                  {task.contact_name || t('Khách hàng')}
+                                  <Avatar name={formatReverseCustomerName(task.contact_name || t('Khách hàng'))} size={12} />
+                                  {formatReverseCustomerName(task.contact_name || t('Khách hàng'))}
                                 </span>
                               </div>
                             )}
@@ -16081,7 +16088,8 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
               </div>
             ) : (
               paginatedUpcomingMeetingsList.map((item: any, idx: number) => {
-                const customerName = item.contact_name || item.lead_name || item.related_name || item.customer_name || 'Khách hàng';
+                const rawCustomerName = item.contact_name || item.lead_name || item.related_name || item.customer_name || 'Khách hàng';
+                const customerName = formatReverseCustomerName(rawCustomerName);
                 const customerPhone = item.phone || item.contact_phone || item.lead_phone || '';
                 // Only use explicit customer avatar fields, do not fallback to item.avatar which is sale's photo!
                 const customerAvatar = item.contact_avatar || item.customer_avatar || item.lead_avatar || '';
