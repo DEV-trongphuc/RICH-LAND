@@ -9763,7 +9763,13 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
                         <h3 style={{ fontWeight: 700, fontSize: '1.125rem' }}>Invoices</h3>
                         {!isViewer && (
-                          <button className="btn outline sm" onClick={() => { useUIStore.getState().setShowPOS(formData); }}><Plus size={14} /> Tạo hóa đơn</button>
+                          <button 
+                            className="btn primary sm" 
+                            style={{ boxShadow: '0 4px 12px rgba(189, 29, 45, 0.2)' }}
+                            onClick={() => { useUIStore.getState().setShowPOS(formData); }}
+                          >
+                            <Plus size={14} /> Tạo hóa đơn
+                          </button>
                         )}
                       </div>
                       {loadingRelated ? (
@@ -9963,7 +9969,13 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
                         <h3 style={{ fontWeight: 700, fontSize: '1.125rem' }}>Chi phí liên quan</h3>
                         {!isViewer && (
-                          <button className="btn outline sm" style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#BD1D2D', borderColor: '#BD1D2D' }} onClick={() => setShowExpenseModal(true)}><Plus size={14} /> Nhập chi phí</button>
+                          <button 
+                            className="btn primary sm" 
+                            style={{ display: 'flex', alignItems: 'center', gap: '6px', boxShadow: '0 4px 12px rgba(189, 29, 45, 0.2)' }} 
+                            onClick={() => setShowExpenseModal(true)}
+                          >
+                            <Plus size={14} /> Nhập chi phí
+                          </button>
                         )}
                       </div>
                       {loadingRelated ? (

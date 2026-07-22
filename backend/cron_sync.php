@@ -580,6 +580,7 @@ if (!function_exists('releasePendingWorkHoursLeads')) {
                     $mustCheckinWknd = ($isRestDay && $reqWknd === 1);
                     $mustCheckinHoli = (!empty($holidayName) && $reqHoli === 1);
 
+                    $hasCheckIn = false;
                     if ($isWeekendOrHoliday && !$mustCheckinWknd && !$mustCheckinHoli) {
                         $hasCheckIn = $hasReg; // No check-in required for weekend/holiday shift if setting is OFF
                     } else {
@@ -885,6 +886,7 @@ if (!function_exists('releasePendingWorkHoursLeads')) {
                     $mustCheckinWknd = ($isRestDay && $reqWknd === 1);
                     $mustCheckinHoli = (!empty($holidayName) && $reqHoli === 1);
 
+                    $hasCheckIn = false;
                     if ($isWeekendOrHoliday && !$mustCheckinWknd && !$mustCheckinHoli) {
                         $hasCheckIn = $hasReg; // No check-in required for weekend/holiday shift if setting is OFF
                     } else {
@@ -1111,6 +1113,7 @@ if (!function_exists('recallInactiveLeads')) {
                 */
 
                 // 3. Find next consultant in the round (or fallback to admin)
+                $assignResult = null;
                 $newConsultantId = null;
                 $newStatus = 'assigned';
                 $newConsultantName = '';
