@@ -22,22 +22,23 @@ require_once __DIR__ . '/telegram_bot.php';
 require_once __DIR__ . '/mailer.php';
 require_once __DIR__ . '/NotificationService.php';
 
-// 3. Khởi tạo đối tượng PDO từ MySQLi $conn để dùng cho các Controller dùng PDO
+// 3. Khởi tạo đối tượng PDO từ kết nối MySQLi $conn
 $pdo = null;
 try {
-    $dbHost = defined('DB_HOST') ? DB_HOST : 'localhost';
-    $dbUser = defined('DB_USER') ? DB_USER : '';
-    $dbPass = defined('DB_PASS') ? DB_PASS : '';
-    $dbName = defined('DB_NAME') ? DB_NAME : '';
+    $dbHost = $_ENV['DB_HOST'] ?? ($servername ?? 'localhost');
+    $dbUser = $_ENV['DB_USER'] ?? ($username ?? '');
+    $dbPass = $_ENV['DB_PASS'] ?? ($password ?? '');
+    $dbName = $_ENV['DB_NAME'] ?? ($dbname ?? '');
     
-    if (isset($conn) && $conn instanceof mysqli) {
+    if (!empty($dbName)) {
         $pdo = new PDO("mysql:host={$dbHost};dbname={$dbName};charset=utf8mb4", $dbUser, $dbPass, [
             PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
             PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
         ]);
+        $pdo->exec("SET time_zone = '+07:00'");
     }
 } catch (\Throwable $e) {
-    // PDO optional fallback
+    error_log("PDO Connection warning: " . $e->getMessage());
 }
 
 // 4. Các hàm tiện ích kiểm thử (Test Utility Helper Functions)
