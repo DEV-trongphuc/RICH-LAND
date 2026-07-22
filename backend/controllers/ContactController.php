@@ -787,8 +787,8 @@ class ContactController {
 
             // SEND SYSTEM NOTIFICATION TO NEWLY ADDED CO-CARE SALES
             if (array_key_exists('collaborator_ids', $b)) {
-                $oldCollabs = array_filter(array_map('trim', explode(',', $currentContact['collaborator_ids'] ?? '')));
-                $newCollabs = array_filter(array_map('trim', explode(',', $b['collaborator_ids'] ?? '')));
+                $oldCollabs = array_values(array_unique(array_filter(array_map('trim', explode(',', $currentContact['collaborator_ids'] ?? '')))));
+                $newCollabs = array_values(array_unique(array_filter(array_map('trim', explode(',', $b['collaborator_ids'] ?? '')))));
                 $addedCollabs = array_diff($newCollabs, $oldCollabs);
 
                 if (!empty($addedCollabs)) {

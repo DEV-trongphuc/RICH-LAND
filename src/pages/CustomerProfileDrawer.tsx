@@ -6752,17 +6752,19 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                             >
                               <CustomSelect
                                 multiple
-                                options={users
-                                  .filter(u => Number(u.id) !== Number(formData.owner_id))
-                                  .map(u => ({
-                                    value: String(u.id),
-                                    label: u.full_name,
-                                    avatar: u.avatar_url,
-                                    sublabel: [u.phone, u.email, u.role].filter(Boolean).join(' - ')
-                                  }))}
-                                value={(formData.collaborator_ids || '').split(',').map((s: string) => s.trim()).filter(Boolean)}
+                                options={Array.from(new Map(
+                                  users
+                                    .filter(u => Number(u.id) !== Number(formData.owner_id))
+                                    .map(u => [String(u.id), {
+                                      value: String(u.id),
+                                      label: u.full_name,
+                                      avatar: u.avatar_url,
+                                      sublabel: [u.phone, u.email, u.role].filter(Boolean).join(' - ')
+                                    }])
+                                ).values())}
+                                value={Array.from(new Set((formData.collaborator_ids || '').split(',').map((s: string) => s.trim()).filter(Boolean)))}
                                 onChange={val => {
-                                  const list = Array.isArray(val) ? val.filter((v: any) => v !== 'all') : [];
+                                  const list = Array.isArray(val) ? Array.from(new Set(val.filter((v: any) => v !== 'all'))) : [];
                                   setFormData((prev: any) => ({ ...prev, collaborator_ids: list.join(',') }));
                                 }}
                                 placeholder="Chọn nhân sự chăm sóc phụ..."
