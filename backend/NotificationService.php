@@ -99,86 +99,112 @@ class NotificationService {
                 'MONTHLY_ATTENDANCE_REPORT'
             ], true);
 
-            // ==================== CHANNEL 2: ZALO BOT (INDEPENDENT) ====================
-            try {
-                if ($zaloBotToken && !empty($zaloMsg)) {
-                    require_once __DIR__ . '/zalo_bot.php';
+            // Defer heavy external network dispatches (Zalo, Telegram, Email) to shutdown function so API responds instantly to user UI!
+            register_shutdown_function(function() use (
+                $zaloBotToken, $zaloMsg, $zaloGroupChatId, $zaloOnlyGroup, $isAdminBroadcastEvent,
+                $tgBotToken, $tgMsg, $tgGroupChatId, $tgOnlyGroup,
+                $emailSubject, $emailTitle, $emailContent,
+                $recipients, $isChannelEnabled
+            ) {
+                if (function_exists('fastcgi_finish_request')) {
+                    @fastcgi_finish_request();
+                }
 
-                    $zaloChatIds = [];
-                    if (!empty($zaloGroupChatId) && $isAdminBroadcastEvent) {
-                        $zaloChatIds[] = $zaloGroupChatId;
-                    }
-                    if (!$zaloOnlyGroup || !$isAdminBroadcastEvent) {
-                        foreach ($recipients as $rec) {
-                            $rId = (int)($rec['id'] ?? 0);
-                            if (!empty($rec['zalo_chat_id']) && $isChannelEnabled($rId, 'zalo')) {
-                                $zaloChatIds[] = trim($rec['zalo_chat_id']);
-                            }
-                        }
-                    }
-                    $zaloChatIds = array_unique(array_filter($zaloChatIds));
-
-                    foreach ($zaloChatIds as $zId) {
-                        try {
-                            sendZaloMessage($zaloBotToken, $zId, $zaloMsg, true);
-                        } catch (\Throwable $ze) {
-                            error_log("NotificationService Zalo send error ($zId): " . $ze->getMessage());
-                        }
+                // Recreate database connection inside shutdown function using global configuration variables
+                global $servername, $username, $password, $dbname;
+                if (!empty($servername) && !empty($username)) {
+                    try {
+                        $shutdownDb = new PDO("mysql:host=$servername;dbname=$dbname;charset=utf8mb4", $username, $password, [
+                            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION
+                        ]);
+                        $GLOBALS['pdo'] = $shutdownDb;
+                        $GLOBALS['conn'] = $shutdownDb;
+                    } catch (\Throwable $dbEx) {
+                        error_log("NotificationService Shutdown Reconnection Error: " . $dbEx->getMessage());
                     }
                 }
-            } catch (\Throwable $zEx) {
-                error_log("NotificationService Zalo Channel Error: " . $zEx->getMessage());
-            }
 
-            // ==================== CHANNEL 3: TELEGRAM BOT (INDEPENDENT) ====================
-            try {
-                if ($tgBotToken && !empty($tgMsg)) {
-                    require_once __DIR__ . '/telegram_bot.php';
+                // ==================== CHANNEL 2: ZALO BOT (INDEPENDENT) ====================
+                try {
+                    if ($zaloBotToken && !empty($zaloMsg)) {
+                        require_once __DIR__ . '/zalo_bot.php';
 
-                    $tgChatIds = [];
-                    if (!empty($tgGroupChatId) && $isAdminBroadcastEvent) {
-                        $tgChatIds[] = $tgGroupChatId;
-                    }
-                    if (!$tgOnlyGroup || !$isAdminBroadcastEvent) {
-                        foreach ($recipients as $rec) {
-                            $rId = (int)($rec['id'] ?? 0);
-                            if (!empty($rec['telegram_chat_id']) && $isChannelEnabled($rId, 'telegram')) {
-                                $tgChatIds[] = trim($rec['telegram_chat_id']);
+                        $zaloChatIds = [];
+                        if (!empty($zaloGroupChatId) && $isAdminBroadcastEvent) {
+                            $zaloChatIds[] = $zaloGroupChatId;
+                        }
+                        if (!$zaloOnlyGroup || !$isAdminBroadcastEvent) {
+                            foreach ($recipients as $rec) {
+                                $rId = (int)($rec['id'] ?? 0);
+                                if (!empty($rec['zalo_chat_id']) && $isChannelEnabled($rId, 'zalo')) {
+                                    $zaloChatIds[] = trim($rec['zalo_chat_id']);
+                                }
                             }
                         }
-                    }
-                    $tgChatIds = array_unique(array_filter($tgChatIds));
+                        $zaloChatIds = array_unique(array_filter($zaloChatIds));
 
-                    foreach ($tgChatIds as $cId) {
-                        try {
-                            sendTelegramMessage($tgBotToken, $cId, $tgMsg);
-                        } catch (\Throwable $tge) {
-                            error_log("NotificationService Telegram send error ($cId): " . $tge->getMessage());
-                        }
-                    }
-                }
-            } catch (\Throwable $tgEx) {
-                error_log("NotificationService Telegram Channel Error: " . $tgEx->getMessage());
-            }
-
-            // ==================== CHANNEL 4: EMAIL SMTP (INDEPENDENT VIA MAIL QUEUE) ====================
-            try {
-                if (!empty($emailSubject) && !empty($emailContent)) {
-                    require_once __DIR__ . '/mailer.php';
-                    foreach ($recipients as $rec) {
-                        $rId = (int)($rec['id'] ?? 0);
-                        if (!empty($rec['email']) && $isChannelEnabled($rId, 'email')) {
+                        foreach ($zaloChatIds as $zId) {
                             try {
-                                sendEmailNotification($rec['email'], $emailSubject, $emailTitle, $emailContent, '', 1, false);
-                            } catch (\Throwable $ee) {
-                                error_log("NotificationService Email send error (" . $rec['email'] . "): " . $ee->getMessage());
+                                sendZaloMessage($zaloBotToken, $zId, $zaloMsg, true);
+                            } catch (\Throwable $ze) {
+                                error_log("NotificationService Zalo send error ($zId): " . $ze->getMessage());
                             }
                         }
                     }
+                } catch (\Throwable $zEx) {
+                    error_log("NotificationService Zalo Channel Error: " . $zEx->getMessage());
                 }
-            } catch (\Throwable $emEx) {
-                error_log("NotificationService Email Channel Error: " . $emEx->getMessage());
-            }
+
+                // ==================== CHANNEL 3: TELEGRAM BOT (INDEPENDENT) ====================
+                try {
+                    if ($tgBotToken && !empty($tgMsg)) {
+                        require_once __DIR__ . '/telegram_bot.php';
+
+                        $tgChatIds = [];
+                        if (!empty($tgGroupChatId) && $isAdminBroadcastEvent) {
+                            $tgChatIds[] = $tgGroupChatId;
+                        }
+                        if (!$tgOnlyGroup || !$isAdminBroadcastEvent) {
+                            foreach ($recipients as $rec) {
+                                $rId = (int)($rec['id'] ?? 0);
+                                if (!empty($rec['telegram_chat_id']) && $isChannelEnabled($rId, 'telegram')) {
+                                    $tgChatIds[] = trim($rec['telegram_chat_id']);
+                                }
+                            }
+                        }
+                        $tgChatIds = array_unique(array_filter($tgChatIds));
+
+                        foreach ($tgChatIds as $cId) {
+                            try {
+                                sendTelegramMessage($tgBotToken, $cId, $tgMsg);
+                            } catch (\Throwable $tge) {
+                                error_log("NotificationService Telegram send error ($cId): " . $tge->getMessage());
+                            }
+                        }
+                    }
+                } catch (\Throwable $tgEx) {
+                    error_log("NotificationService Telegram Channel Error: " . $tgEx->getMessage());
+                }
+
+                // ==================== CHANNEL 4: EMAIL SMTP (INDEPENDENT VIA MAIL QUEUE) ====================
+                try {
+                    if (!empty($emailSubject) && !empty($emailContent)) {
+                        require_once __DIR__ . '/mailer.php';
+                        foreach ($recipients as $rec) {
+                            $rId = (int)($rec['id'] ?? 0);
+                            if (!empty($rec['email']) && $isChannelEnabled($rId, 'email')) {
+                                try {
+                                    sendEmailNotification($rec['email'], $emailSubject, $emailTitle, $emailContent, '', 1, false);
+                                } catch (\Throwable $ee) {
+                                    error_log("NotificationService Email send error (" . $rec['email'] . "): " . $ee->getMessage());
+                                }
+                            }
+                        }
+                    }
+                } catch (\Throwable $emEx) {
+                    error_log("NotificationService Email Channel Error: " . $emEx->getMessage());
+                }
+            });
 
         } catch (\Throwable $outerEx) {
             error_log("NotificationService Global Dispatch Error: " . $outerEx->getMessage());

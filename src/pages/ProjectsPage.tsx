@@ -1292,6 +1292,9 @@ export default function ProjectsPage() {
     if (cleanPath.startsWith('backend/')) {
       cleanPath = cleanPath.substring('backend/'.length);
     }
+    if (cleanPath.startsWith('deposits/')) {
+      cleanPath = 'uploads/' + cleanPath;
+    }
     const apiBase = import.meta.env.VITE_API_URL || '/backend';
     let baseUrl = apiBase;
     if (baseUrl.includes('api.php')) {

@@ -2319,10 +2319,14 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
 
   const resolveAttachmentUrl = (path: string) => {
     if (!path) return '';
-    if (path.startsWith('http://') || path.startsWith('https://')) return path;
+    if (path.startsWith('http://') || path.startsWith('https://') || path.startsWith('data:')) return path;
+    let cleanPath = path.replace(/^\/+/, '');
+    if (cleanPath.startsWith('deposits/')) {
+      cleanPath = 'uploads/' + cleanPath;
+    }
     const base = api.defaults.baseURL || '';
     const cleanBase = base.replace(/\/api\/?$/, '');
-    return `${cleanBase}/${path}`;
+    return `${cleanBase}/${cleanPath}`;
   };
 
   const handleDetailTaskFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {

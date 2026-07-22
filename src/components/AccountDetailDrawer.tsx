@@ -129,8 +129,12 @@ const getDefaultPermissionsForRole = (role: string) => {
 const resolveAttachmentUrl = (path: string) => {
   if (!path) return '';
   if (path.startsWith('http://') || path.startsWith('https://')) return path;
+  let cleanPath = path.replace(/^\/+/, '');
+  if (cleanPath.startsWith('deposits/')) {
+    cleanPath = 'uploads/' + cleanPath;
+  }
   const baseUrl = import.meta.env.VITE_API_URL || '/backend';
-  return `${baseUrl}/${path.replace(/^\/+/, '')}`;
+  return `${baseUrl}/${cleanPath}`;
 };
 
 export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account, onSaveSuccess, readOnly = false }) => {

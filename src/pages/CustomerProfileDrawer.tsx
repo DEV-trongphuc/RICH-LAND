@@ -184,6 +184,10 @@ const resolveAttachmentUrl = (url: string | null | undefined): string => {
     cleanPath = cleanPath.substring('backend/'.length);
   }
   
+  if (cleanPath.startsWith('deposits/')) {
+    cleanPath = 'uploads/' + cleanPath;
+  }
+  
   const apiBase = import.meta.env.VITE_API_URL || 'https://open.domation.net/richland/api.php';
   let baseUrl = apiBase;
   if (baseUrl.includes('api.php')) {
@@ -7685,11 +7689,12 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                   ? coopSlip.shareholders.map((s: any) => ({ user_id: String(s.user_id), percentage: String(s.percentage || '0') }))
                                   : [{ user_id: String(contact?.owner_id || currentUser?.id || ''), percentage: '100' }]
                                 ).map((share: any, idx: number) => (
-                                  <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                  <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap', width: '100%' }}>
                                     <div style={{
-                                      flex: 1,
+                                      flex: '1 1 320px',
+                                      maxWidth: '450px',
                                       pointerEvents: idx === 0 ? 'none' : 'auto',
-                                      opacity: idx === 0 ? 0.6 : 1
+                                      opacity: idx === 0 ? 0.7 : 1
                                     }}>
                                       <CustomSelect
                                         value={share.user_id}
@@ -7711,12 +7716,22 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                         searchable
                                       />
                                     </div>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap', flex: 1, minWidth: '240px' }}>
+                                      {/* Percentage Input Group */}
+                                      <div style={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        border: '1px solid var(--color-border)',
+                                        borderRadius: '8px',
+                                        background: 'var(--color-bg)',
+                                        padding: '0 10px',
+                                        height: '38px',
+                                        width: '110px',
+                                        boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.02)',
+                                        transition: 'border-color 0.2s'
+                                      }}>
                                         <input
                                           type="number"
-                                          className="form-control"
-                                          placeholder="Tỷ lệ"
                                           value={share.percentage}
                                           min="0"
                                           max="100"
@@ -7726,20 +7741,48 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                             newShares[idx].percentage = e.target.value;
                                             setCoopShares(newShares);
                                           }}
-                                          style={{ textAlign: 'right', width: '80px', height: '34px', borderRadius: '6px' }}
+                                          style={{
+                                            border: 'none',
+                                            background: 'transparent',
+                                            width: '100%',
+                                            height: '100%',
+                                            textAlign: 'center',
+                                            fontWeight: 700,
+                                            fontSize: '0.9rem',
+                                            outline: 'none',
+                                            color: 'var(--color-text)',
+                                            padding: 0
+                                          }}
+                                          placeholder="0"
                                         />
-                                        <span style={{ fontWeight: 600 }}>%</span>
+                                        <span style={{ fontWeight: 850, fontSize: '0.85rem', color: 'var(--color-text-muted)', marginLeft: '4px' }}>%</span>
                                       </div>
+
+                                      {/* Money Equivalent Badge */}
                                       {coopSlip?.expected_commission && Number(coopSlip.expected_commission) > 0 && (
-                                        <div style={{ fontSize: '0.72rem', color: 'var(--color-primary)', fontWeight: 600, whiteSpace: 'nowrap' }}>
-                                          ~ {Math.round((parseFloat(coopSlip.expected_commission) || 0) * (parseFloat(share.percentage) || 0) / 100).toLocaleString()} VND
+                                        <div style={{
+                                          fontSize: '0.8rem',
+                                          color: 'var(--color-primary)',
+                                          fontWeight: 700,
+                                          background: 'rgba(189, 29, 45, 0.05)',
+                                          padding: '8px 12px',
+                                          borderRadius: '8px',
+                                          border: '1px solid rgba(189, 29, 45, 0.12)',
+                                          display: 'inline-flex',
+                                          alignItems: 'center',
+                                          gap: '6px',
+                                          whiteSpace: 'nowrap'
+                                        }}>
+                                          <span style={{ fontSize: '0.72rem', opacity: 0.7, fontWeight: 600 }}>Dự kiến:</span>
+                                          {Math.round((parseFloat(coopSlip.expected_commission) || 0) * (parseFloat(share.percentage) || 0) / 100).toLocaleString()}
+                                          <span style={{ fontSize: '0.68rem', fontWeight: 600, opacity: 0.9 }}>VND</span>
                                         </div>
                                       )}
                                     </div>
                                     {String(share.user_id) === String(contact?.owner_id || formData?.owner_id) || 
                                      String(share.user_id) === String(currentUser?.id) || 
                                      (currentUser?.consultant_id && String(share.user_id) === String(currentUser.consultant_id)) ? (
-                                      <div style={{ width: '32px' }} />
+                                      <div style={{ width: '36px', height: '36px' }} />
                                     ) : (
                                       <button 
                                         type="button"
@@ -7748,7 +7791,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                           const currentList = coopShares.length > 0 ? coopShares : coopSlip.shareholders.map((s: any) => ({ user_id: String(s.user_id), percentage: String(s.percentage || '0') }));
                                           setCoopShares(currentList.filter((_, i) => i !== idx));
                                         }}
-                                        style={{ padding: '8px' }}
+                                        style={{ padding: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '8px', border: '1px solid rgba(239, 68, 68, 0.1)', background: 'rgba(239, 68, 68, 0.02)', width: '36px', height: '36px', cursor: 'pointer' }}
                                       >
                                         <Trash2 size={16} />
                                       </button>

@@ -18,10 +18,13 @@ import type { Period, DateRange } from '../components/ui/PeriodFilter';
 const resolveAttachmentUrl = (path: string | null | undefined): string => {
   if (!path) return '';
   if (path.startsWith('http')) return path;
+  let cleanPath = path.replace(/^\/+/, '');
+  if (cleanPath.startsWith('deposits/')) {
+    cleanPath = 'uploads/' + cleanPath;
+  }
   const baseUrl = import.meta.env.VITE_API_URL || '';
   const baseClean = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
-  const pathClean = path.startsWith('/') ? path : '/' + path;
-  return `${baseClean}${pathClean}`;
+  return `${baseClean}/${cleanPath}`;
 };
 
 export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean }) => {
