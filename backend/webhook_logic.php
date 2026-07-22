@@ -2289,8 +2289,57 @@ function isConsultantInWorkHours($timeStr, $start, $end, $workScheduleJson = nul
                 }
             }
         }
-    }
 
+    // Check Weekend/Holiday Shift Registration if it's weekend/holiday
+    if ($conn !== null && $userId !== null && $userId > 0) {
+        $todayStr = date('Y-m-d');
+        
+        // Check if date is a holiday
+        $holidayName = '';
+        $holidaySchedulesJson = '[]';
+        $resHol = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'holiday_schedules' LIMIT 1");
+        if ($resHol && $hRow = $resHol->fetch_assoc()) {
+            $holidaySchedulesJson = !empty($hRow['setting_value']) ? $hRow['setting_value'] : '[]';
+        }
+        $holidays = json_decode($holidaySchedulesJson, true);
+        if (is_array($holidays)) {
+            foreach ($holidays as $h) {
+                if ($todayStr >= $h['start'] && $todayStr <= $h['end']) {
+                    $holidayName = $h['name'];
+                    break;
+                }
+            }
+        }
+        $isHoliday = !empty($holidayName);
+        $isRestDay = isRestDayForUser($conn, $userId, $todayStr);
+
+        if ($isHoliday || $isRestDay) {
+            $hasShift = false;
+            if ($isHoliday) {
+                $stmtH = $conn->prepare("SELECT 1 FROM holiday_shift_registrations WHERE user_id = ? AND shift_date = ? AND approved = 1 LIMIT 1");
+                if ($stmtH) {
+                    $stmtH->bind_param("is", $userId, $todayStr);
+                    $stmtH->execute();
+                    $hasShift = (bool)$stmtH->get_result()->fetch_assoc();
+                    $stmtH->close();
+                }
+            } else if ($isRestDay) {
+                $stmtW = $conn->prepare("SELECT 1 FROM weekend_shift_registrations WHERE user_id = ? AND shift_date = ? AND approved = 1 LIMIT 1");
+                if ($stmtW) {
+                    $stmtW->bind_param("is", $userId, $todayStr);
+                    $stmtW->execute();
+                    $hasShift = (bool)$stmtW->get_result()->fetch_assoc();
+                    $stmtW->close();
+                }
+            }
+
+            if ($hasShift) {
+                // If they have an approved shift, standard daytime schedule configuration is active.
+                $workScheduleJson = null;
+            }
+        }
+    }
+    
     if (!empty($workScheduleJson)) {
         $schedule = json_decode($workScheduleJson, true);
         if (is_array($schedule)) {
