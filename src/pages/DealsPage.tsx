@@ -1569,7 +1569,7 @@ export const DealsPage: React.FC = () => {
           ) : (
             <table className="table" style={{ width: '100%', minWidth: 800 }}>
               <thead>
-                <tr style={{ position: 'sticky', top: 0, zIndex: 10, background: 'var(--color-bg)', borderBottom: '1px solid var(--color-border)' }}>
+                <tr style={{ position: 'sticky', top: 0, zIndex: 20, background: 'var(--color-bg)', borderBottom: '1px solid var(--color-border)' }}>
                   <th style={{ width: 44, padding: '1rem', borderBottom: '1px solid var(--color-border)' }}>
                     <CustomCheckbox checked={pagedItems.every(item => selected.has(item.id)) && pagedItems.length > 0} onChange={togglePageAll} />
                   </th>

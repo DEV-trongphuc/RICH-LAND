@@ -1670,7 +1670,7 @@ export const ContactsPage: React.FC = () => {
                 }
               `}</style>
               <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                <thead style={{ position: 'sticky', top: 0, zIndex: 10, background: 'var(--color-bg)', boxShadow: '0 1px 0 var(--color-border)' }}>
+                <thead style={{ position: 'sticky', top: 0, zIndex: 20, background: 'var(--color-bg)', boxShadow: '0 1px 0 var(--color-border)' }}>
                   <tr>
                     {isMultiSelectMode && (
                       <th style={{ width: 44, padding: '1rem', borderBottom: '1px solid var(--color-border)', textAlign: 'left' }}>
@@ -1829,11 +1829,11 @@ export const ContactsPage: React.FC = () => {
                                 return (
                                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                                     <div style={{ display: 'flex', alignItems: 'center' }}>
-                                      <div style={{ position: 'relative', zIndex: 10 }}>
+                                      <div style={{ position: 'relative', zIndex: 3 }}>
                                         <Avatar name={c.owner_name} src={c.owner_avatar} size={32} title={`Chủ sở hữu: ${c.owner_name}`} />
                                       </div>
                                       {collabs.map((col, idx) => (
-                                        <div key={col.id} style={{ marginLeft: '-8px', position: 'relative', zIndex: 9 - idx }}>
+                                        <div key={col.id} style={{ marginLeft: '-8px', position: 'relative', zIndex: 2 - idx }}>
                                           <Avatar name={col.full_name} src={col.avatar_url || col.avatar} size={32} title={`Hợp tác: ${col.full_name}`} />
                                         </div>
                                       ))}

@@ -350,6 +350,7 @@ const SettingsInner = () => {
   });
   const [goldenHoursStartTime, setGoldenHoursStartTime] = useState<string>("06:00");
   const [goldenHoursEndTime, setGoldenHoursEndTime] = useState<string>("08:30");
+  const [goldenHoursMaxLeadsPerConsultant, setGoldenHoursMaxLeadsPerConsultant] = useState<number>(0);
   const [databankLimitPerDay, setDatabankLimitPerDay] = useState<number>(2);
   const [databankLimitPerHour, setDatabankLimitPerHour] = useState<number>(3);
   const [databankLimitPerMonth, setDatabankLimitPerMonth] = useState<number>(300);
@@ -877,6 +878,7 @@ const SettingsInner = () => {
         }
         if (json.data.golden_hours_start_time !== undefined) setGoldenHoursStartTime(json.data.golden_hours_start_time);
         if (json.data.golden_hours_end_time !== undefined) setGoldenHoursEndTime(json.data.golden_hours_end_time);
+        if (json.data.golden_hours_max_leads_per_consultant !== undefined) setGoldenHoursMaxLeadsPerConsultant(Number(json.data.golden_hours_max_leads_per_consultant));
         if (json.data.databank_limit_per_day !== undefined) setDatabankLimitPerDay(Number(json.data.databank_limit_per_day));
         if (json.data.databank_limit_per_hour !== undefined) setDatabankLimitPerHour(Number(json.data.databank_limit_per_hour));
         if (json.data.databank_limit_per_month !== undefined) setDatabankLimitPerMonth(Number(json.data.databank_limit_per_month));
@@ -1331,6 +1333,7 @@ const SettingsInner = () => {
       attendance_report_end_date: attendanceReportEndDate,
       golden_hours_start_time: goldenHoursStartTime,
       golden_hours_end_time: goldenHoursEndTime,
+      golden_hours_max_leads_per_consultant: goldenHoursMaxLeadsPerConsultant,
       global_work_start_time: globalWorkStartTime,
       global_work_end_time: globalWorkEndTime,
       global_work_schedule: JSON.stringify(globalScheduleMode === 'daily' 
@@ -5048,7 +5051,7 @@ function doPost(e) {
                       </div>
                     </div>
 
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr 1fr', gap: '1.25rem' }}>
                       <div>
                         <label className="form-label">{t('Bắt đầu giờ vàng')}</label>
                         <input
@@ -5067,6 +5070,21 @@ function doPost(e) {
                           value={goldenHoursEndTime}
                           onChange={e => setGoldenHoursEndTime(e.target.value)}
                         />
+                      </div>
+
+                      <div>
+                        <label className="form-label">{t('Hạn mức lead Giờ vàng (mỗi Sale)')}</label>
+                        <input
+                          type="number"
+                          min="0"
+                          className="form-input"
+                          placeholder={t('0 = Không giới hạn')}
+                          value={goldenHoursMaxLeadsPerConsultant}
+                          onChange={e => setGoldenHoursMaxLeadsPerConsultant(Math.max(0, parseInt(e.target.value) || 0))}
+                        />
+                        <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', marginTop: 4 }}>
+                          {t('Số lead tối đa 1 Sale nhận trong suốt giờ vàng (0 = không giới hạn).')}
+                        </div>
                       </div>
                     </div>
 

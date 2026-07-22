@@ -1075,6 +1075,15 @@ function getNextConsultantInRound($conn, $roundId, $lead = null)
     $today = date('Y-m-d');
     $currentTime = date('H:i');
 
+    $goldenHoursStart = get_system_setting($conn, 'golden_hours_start_time') ?: '06:00';
+    $goldenHoursEnd = get_system_setting($conn, 'golden_hours_end_time') ?: '08:30';
+    $isGoldenHoursTime = false;
+    if ($goldenHoursStart < $goldenHoursEnd) {
+        $isGoldenHoursTime = ($currentTime >= $goldenHoursStart && $currentTime <= $goldenHoursEnd);
+    } else {
+        $isGoldenHoursTime = ($currentTime >= $goldenHoursStart || $currentTime <= $goldenHoursEnd);
+    }
+
     // Calculate active count of available consultants (who pass all 5 gates and are currently on shift)
     $activeCount = 0;
     foreach ($consultants as $c) {
@@ -1082,7 +1091,7 @@ function getNextConsultantInRound($conn, $roundId, $lead = null)
         $isGatePassed = (checkConsultantGates($conn, (int)$c['id'], $lead) === true);
         $cInWorkHours = isConsultantInWorkHours($currentTime, $c['work_start_time'], $c['work_end_time'], $c['work_schedule']);
         $cNightShift = checkNightShiftAvailability($conn, (int)$c['id'], $currentTime);
-        if (!$isOnVacation && $isGatePassed && ($cInWorkHours || $cNightShift)) {
+        if (!$isOnVacation && $isGatePassed && ($cInWorkHours || $cNightShift || $isGoldenHoursTime)) {
             $activeCount++;
         }
     }
@@ -1098,8 +1107,8 @@ function getNextConsultantInRound($conn, $roundId, $lead = null)
             error_log("RICH LAND INFO: Consultant ID " . $row['id'] . " failed gate check: " . $gateResult);
         }
 
-        // Must be on duty (either in regular work hours OR active approved night shift)
-        $isAvailable = !$isOnVacation && $isGatePassed && ($isInWorkHours || $isNightShiftActive);
+        // Must be on duty (either in regular work hours OR active approved night shift OR active checked-in golden hours)
+        $isAvailable = !$isOnVacation && $isGatePassed && ($isInWorkHours || $isNightShiftActive || $isGoldenHoursTime);
 
         // Priority 1: Compensation (error data replacement) - only if available (not on vacation)
         // BUGFIX/ENHANCEMENT: Tránh dồn dập đền bù liên tục cho cùng 1 sale. 
@@ -2193,6 +2202,43 @@ function checkConsultantGates($conn, $consultantId, $lead = null)
     
     if ($khtnCnt >= $backpressureLimit) {
         return "Failed Gate 4: Backpressure valve limit exceeded ($khtnCnt >= $backpressureLimit 'Chưa Xác Định' leads)";
+    }
+
+    // GATE 5: Hạn mức Giờ Vàng (Golden Hours Cap per Consultant)
+    $goldenHoursStart = get_system_setting($conn, 'golden_hours_start_time') ?: '06:00';
+    $goldenHoursEnd = get_system_setting($conn, 'golden_hours_end_time') ?: '08:30';
+    $goldenMaxLeads = (int) get_system_setting($conn, 'golden_hours_max_leads_per_consultant');
+    
+    if ($goldenMaxLeads > 0) {
+        $currentTime = date('H:i');
+        $isGoldenHoursNow = false;
+        if ($goldenHoursStart < $goldenHoursEnd) {
+            $isGoldenHoursNow = ($currentTime >= $goldenHoursStart && $currentTime <= $goldenHoursEnd);
+        } else {
+            $isGoldenHoursNow = ($currentTime >= $goldenHoursStart || $currentTime <= $goldenHoursEnd);
+        }
+
+        if ($isGoldenHoursNow) {
+            $todayStr = date('Y-m-d');
+            $ghStartTs = $todayStr . ' ' . $goldenHoursStart . ':00';
+            $ghEndTs = $todayStr . ' ' . $goldenHoursEnd . ':00';
+
+            $stmtGh = $conn->prepare("
+                SELECT COUNT(*) as cnt FROM distribution_logs 
+                WHERE (assigned_to = ? OR assigned_to = ?)
+                  AND received_at >= ? AND received_at <= ?
+            ");
+            if ($stmtGh) {
+                $stmtGh->bind_param("iiss", $consultantId, $targetUserId, $ghStartTs, $ghEndTs);
+                $stmtGh->execute();
+                $ghCnt = (int) ($stmtGh->get_result()->fetch_assoc()['cnt'] ?? 0);
+                $stmtGh->close();
+
+                if ($ghCnt >= $goldenMaxLeads) {
+                    return "Failed Gate 5: Golden Hours max lead limit exceeded ($ghCnt >= $goldenMaxLeads leads received during Golden Hours)";
+                }
+            }
+        }
     }
 
     return true;
