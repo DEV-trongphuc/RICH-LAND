@@ -1611,6 +1611,79 @@ function updateLead($conn, $phone, $email, $assignedConsultantId, $source, $type
     return null;
 }
 
+function sendDirectSaleLeadNotification($conn, $leadId, $assignedToId, $roundId = null) {
+    if (!$leadId || !$assignedToId) return;
+
+    try {
+        // 1. Get Sale info (zalo_chat_id, email, name)
+        $saleStmt = $conn->prepare("SELECT id, name, email, zalo_chat_id FROM users WHERE id = ?");
+        if (!$saleStmt) return;
+        $saleStmt->bind_param("i", $assignedToId);
+        $saleStmt->execute();
+        $sale = $saleStmt->get_result()->fetch_assoc();
+        $saleStmt->close();
+
+        if (!$sale) return;
+
+        // 2. Get Lead info (name, phone, email, source, type, note)
+        $leadStmt = $conn->prepare("SELECT name, phone, email, source, type, note FROM leads WHERE id = ?");
+        if (!$leadStmt) return;
+        $leadStmt->bind_param("i", $leadId);
+        $leadStmt->execute();
+        $lead = $leadStmt->get_result()->fetch_assoc();
+        $leadStmt->close();
+
+        if (!$lead) return;
+
+        $botToken = get_system_setting($conn, 'zalo_bot_token');
+
+        $custName = !empty($lead['name']) ? $lead['name'] : 'Khách hàng mới';
+        $custPhone = !empty($lead['phone']) ? $lead['phone'] : 'Không có';
+        $custEmail = !empty($lead['email']) ? $lead['email'] : 'Không có';
+
+        // 3. Construct Zalo message for Sale
+        $zaloMsg = "🚨 [ CÓ LEAD MỚI ĐƯỢC PHÂN BỔ CHO BẠN! ] 🚨\n"
+            . "━━━━━━━━━━━━━━━━━━━━\n"
+            . "👤 Khách hàng: " . $custName . "\n"
+            . "📞 Số ĐT: " . $custPhone . "\n"
+            . "✉️ Email: " . $custEmail . "\n"
+            . "🌐 Nguồn: " . ($lead['source'] ?? 'Không có') . "\n"
+            . "📋 Phân loại: " . ($lead['type'] ?? 'Không có') . "\n"
+            . "📝 Ghi chú: " . ($lead['note'] ?? 'Không có') . "\n\n"
+            . "⏰ Vui lòng truy cập hệ thống CRM để TIẾP NHẬN LEAD NGAY!";
+
+        // 4. Construct Email message for Sale
+        $emailSubj = "[Rich Land CRM] 🚨 Bạn vừa nhận được Lead mới: " . $custName;
+        $emailBody = "<h3>🚨 Thông báo Lead mới phân bổ!</h3>"
+            . "<p>Chào <strong>" . htmlspecialchars($sale['name']) . "</strong>,</p>"
+            . "<p>Hệ thống vừa tự động phân bổ cho bạn một Lead mới từ vòng chia:</p>"
+            . "<ul>"
+            . "    <li><strong>Khách hàng:</strong> " . htmlspecialchars($custName) . "</li>"
+            . "    <li><strong>Số điện thoại:</strong> " . htmlspecialchars($custPhone) . "</li>"
+            . "    <li><strong>Email:</strong> " . htmlspecialchars($custEmail) . "</li>"
+            . "    <li><strong>Nguồn:</strong> " . htmlspecialchars($lead['source'] ?? '-') . "</li>"
+            . "    <li><strong>Phân loại:</strong> " . htmlspecialchars($lead['type'] ?? '-') . "</li>"
+            . "    <li><strong>Ghi chú:</strong> " . nl2br(htmlspecialchars($lead['note'] ?? '-')) . "</li>"
+            . "</ul>"
+            . "<p>Vui lòng đăng nhập hệ thống CRM để tiếp nhận và tương tác với khách hàng kịp thời!</p>";
+
+        // 5. Send Zalo
+        if (!empty($botToken) && !empty($sale['zalo_chat_id'])) {
+            require_once __DIR__ . '/zalo_bot.php';
+            sendZaloMessage($botToken, $sale['zalo_chat_id'], $zaloMsg, false, (int)$leadId);
+        }
+
+        // 6. Send Email
+        if (!empty($sale['email'])) {
+            require_once __DIR__ . '/mailer.php';
+            sendEmailNotification($sale['email'], $emailSubj, 'Phân bổ Lead mới', $emailBody, '');
+        }
+
+    } catch (Exception $e) {
+        error_log("Error in sendDirectSaleLeadNotification: " . $e->getMessage());
+    }
+}
+
 function logDistribution($conn, $leadId, $assignedTo, $roundId, $status, $message, $triggerSync = true, $customDate = null)
 {
     if ($customDate) {
@@ -1625,6 +1698,11 @@ function logDistribution($conn, $leadId, $assignedTo, $roundId, $status, $messag
 
     if (function_exists('pruneAdminLogs')) {
         pruneAdminLogs($conn);
+    }
+
+    // Directly notify the assigned Sale via Zalo & Email
+    if (in_array($status, ['assigned', 'compensation']) && $assignedTo > 0) {
+        sendDirectSaleLeadNotification($conn, $leadId, $assignedTo, $roundId);
     }
 
     // Live Two-Way Sync to Google Sheets
