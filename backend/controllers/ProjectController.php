@@ -208,7 +208,7 @@ class ProjectController {
     }
 
     public function show(array $auth, int $id): void {
-        $tenantId = getTenantId($auth);
+        $tenantId = $auth['tenant_id'] ?? 1;
 
         $stmt = $this->db->prepare("SELECT p.* FROM projects p WHERE p.id = ?");
         $stmt->execute([$id]);
