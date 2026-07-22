@@ -449,6 +449,25 @@ class ProjectController {
                 respond(403, null, 'Chỉ Admin, Director hoặc người tạo dự án mới được xóa', false);
             }
         
+        // Delete project physical documents
+        $docsStmt = $this->db->prepare("SELECT file_path FROM project_documents WHERE project_id = ?");
+        $docsStmt->execute([$id]);
+        $docs = $docsStmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+        foreach ($docs as $d) {
+            if (!empty($d['file_path'])) deleteServerFile($d['file_path']);
+        }
+        $this->db->prepare("DELETE FROM project_documents WHERE project_id = ?")->execute([$id]);
+
+        // Delete project comments physical attachments
+        $commentsStmt = $this->db->prepare("SELECT attachments, body FROM comments WHERE entity_type = 'project' AND entity_id = ? AND tenant_id = ?");
+        $commentsStmt->execute([$id, $auth['tenant_id']]);
+        $comments = $commentsStmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+        foreach ($comments as $c) {
+            if (!empty($c['attachments'])) deleteAttachmentFiles($c['attachments']);
+            if (!empty($c['body'])) deleteAttachmentFiles($c['body']);
+        }
+        $this->db->prepare("DELETE FROM comments WHERE entity_type = 'project' AND entity_id = ? AND tenant_id = ?")->execute([$id, $auth['tenant_id']]);
+
         $stmt = $this->db->prepare("DELETE FROM projects WHERE id = ? AND tenant_id = ?");
         $stmt->execute([$id, $auth['tenant_id']]);
 

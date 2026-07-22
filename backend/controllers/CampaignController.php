@@ -438,6 +438,16 @@ class CampaignController {
             }
         }
 
+        // Delete campaign comments physical attachments
+        $commentsStmt = $this->db->prepare("SELECT attachments, body FROM comments WHERE entity_type = 'campaign' AND entity_id = ? AND tenant_id = ?");
+        $commentsStmt->execute([$id, $tenantId]);
+        $comments = $commentsStmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+        foreach ($comments as $c) {
+            if (!empty($c['attachments'])) deleteAttachmentFiles($c['attachments']);
+            if (!empty($c['body'])) deleteAttachmentFiles($c['body']);
+        }
+        $this->db->prepare("DELETE FROM comments WHERE entity_type = 'campaign' AND entity_id = ? AND tenant_id = ?")->execute([$id, $tenantId]);
+
         $stmt = $this->db->prepare("DELETE FROM marketing_campaigns WHERE id = ? AND tenant_id = ?");
         $stmt->execute([$id, $tenantId]);
 

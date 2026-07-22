@@ -519,6 +519,15 @@ class TicketController {
             $p[] = $auth['user_id'];
             $p[] = $auth['user_id'];
         }
+        // Delete ticket comments physical files
+        $tcStmt = $this->db->prepare("SELECT body FROM ticket_comments WHERE ticket_id = ?");
+        $tcStmt->execute([$id]);
+        $tcRows = $tcStmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+        foreach ($tcRows as $r) {
+            if (!empty($r['body'])) deleteAttachmentFiles($r['body']);
+        }
+        $this->db->prepare("DELETE FROM ticket_comments WHERE ticket_id = ?")->execute([$id]);
+
         $stmt = $this->db->prepare($sql);
         $stmt->execute($p);
         if (!$stmt->rowCount()) respond(404, null, 'Không tìm thấy ticket hoặc bạn không có quyền', false);
