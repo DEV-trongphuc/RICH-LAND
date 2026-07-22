@@ -11532,7 +11532,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                       <FileText size={24} style={{ color: 'var(--color-primary)' }} />
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <p style={{ fontSize: '0.825rem', fontWeight: 700, margin: 0, color: 'var(--color-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                          {url.split('/').pop() || 'Tài liệu hợp tác đính kèm'}
+                          {url.includes('deposits/') || url.includes('_UNC') || url.includes('1784734208') ? 'UNC - Chứng từ Ủy nhiệm chi Đặt cọc Đợt 1' : (url.split('/').pop() || 'Tài liệu hợp tác đính kèm')}
                         </p>
                         <a 
                           href={`https://open.domation.net/richland/${url}`} 
@@ -11687,10 +11687,11 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
               )}
             </div>
 
-            <div style={{ display: 'flex', gap: '10px', marginTop: '0.5rem' }}>
+            {/* Sticky Action Footer Buttons */}
+            <div style={{ position: 'sticky', bottom: 0, background: 'var(--color-surface, #ffffff)', paddingTop: '12px', paddingBottom: '4px', marginTop: '12px', borderTop: '1px solid var(--color-border)', zIndex: 20, display: 'flex', gap: '12px' }}>
               <button 
                 className="btn outline" 
-                style={{ flex: 1 }} 
+                style={{ flex: 1, height: '48px', fontSize: '0.95rem', fontWeight: 700, borderRadius: '10px' }} 
                 onClick={() => { setIsSignModalOpen(false); }}
                 disabled={coopLoading}
               >
