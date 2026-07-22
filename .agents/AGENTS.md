@@ -21,3 +21,8 @@
 ## 5. Quy trình Deploy & Git Commit
 * **Rule**: Bất cứ khi nào có yêu cầu deploy ("deploy", "deploy đi",...), hệ thống phải thực hiện **song song cả 2 nhiệm vụ**: Chạy lệnh deploy (`npm run deploy`) và tự động Commit/Push code mới nhất lên kho Git (`git add .`, `git commit`, `git push origin main`) để đồng bộ tuyệt đối giữa server và mã nguồn gốc.
 
+## 6. Khung Kiểm thử Toàn diện (Testing Harness Bootstrap)
+* **Rule**: Bất kỳ file script kiểm thử PHP nào được viết sau này chỉ cần chèn dòng khởi tạo:
+  `require_once __DIR__ . '/test_bootstrap.php';` (hoặc `require_once __DIR__ . '/../test_bootstrap.php';`)
+* **Feature**: Tự động mở toàn bộ kết nối CSDL (`$conn` MySQLi & `$pdo`), nạp sẵn toàn bộ thư viện nghiệp vụ (`webhook_logic.php`, `NotificationService`, `mailer.php`, `zalo_bot.php`, `telegram_bot.php`) và cung cấp sẵn bộ hàm kiểm thử tiêu chuẩn `assertTest()`, `assertDbField()`, `printTestSummary()`.
+
