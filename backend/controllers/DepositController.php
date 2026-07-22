@@ -349,14 +349,13 @@ class DepositController {
                 $stmtCheckCF->execute([$dep['contact_id'], $relPath]);
                 if (!$stmtCheckCF->fetch()) {
                     $stmtInsCloud = $this->db->prepare("
-                        INSERT INTO cloud_files (tenant_id, contact_id, name, original_name, file_path, file_size, file_type, category, visibility, uploaded_by, created_at)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, 'Đặt cọc', 'shared', ?, NOW())
+                        INSERT INTO cloud_files (tenant_id, contact_id, name, file_path, file_size, mime_type, category, visibility, uploaded_by, created_at)
+                        VALUES (?, ?, ?, ?, ?, ?, 'Đặt cọc', 'shared', ?, NOW())
                     ");
                     $stmtInsCloud->execute([
                         $auth['tenant_id'] ?? 1,
                         $dep['contact_id'],
                         'UNC_DatCoc_' . $milestoneId . '_' . $fileName,
-                        $fileName,
                         $relPath,
                         $fileSize,
                         $mimeType,
