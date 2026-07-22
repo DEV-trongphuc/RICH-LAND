@@ -206,23 +206,38 @@ class DepositController {
                 $validHelpers = array_values(array_unique(array_merge($validHelpers, $cIds)));
             }
 
+            // Extract custom shares and request collaborators passed from frontend
+            $customShares = [];
+            if (!empty($b['shares']) && (is_array($b['shares']) || is_object($b['shares']))) {
+                foreach ($b['shares'] as $uid => $pct) {
+                    $uInt = (int)$uid;
+                    $pInt = (int)$pct;
+                    if ($uInt > 0 && $pInt >= 0) {
+                        $customShares[$uInt] = $pInt;
+                        $validHelpers[] = $uInt;
+                    }
+                }
+            }
+
+            if (!empty($b['collaborators']) && is_array($b['collaborators'])) {
+                foreach ($b['collaborators'] as $cid) {
+                    $validHelpers[] = (int)$cid;
+                }
+            }
+
             $ownerUid = (int)($contact['owner_id'] ?: $auth['user_id']);
-            $coopSales = array_values(array_filter($validHelpers, function($uid) use ($ownerUid) {
+            $coopSales = array_values(array_unique(array_filter($validHelpers, function($uid) use ($ownerUid) {
                 return $uid > 0 && $uid !== $ownerUid;
-            }));
+            })));
 
             $createCoopSlip = isset($b['create_coop_slip']) ? (bool)$b['create_coop_slip'] : false;
 
-            // ONLY create or update a cooperation slip if there is multi-sale co-care (!empty($coopSales)) AND createCoopSlip is true.
-            // If solo sale (chỉ có 1 sale, không có ai co.op), DO NOT CREATE ANY COOPERATION SLIP AT ALL!
-            if ($createCoopSlip && !empty($coopSales)) {
+            // Trigger cooperation slip creation if createCoopSlip is true OR customShares has multiple shareholders OR coopSales is not empty!
+            $shouldCreateCoop = ($createCoopSlip || !empty($coopSales) || count($customShares) > 1);
+
+            if ($shouldCreateCoop) {
                 // Build shares distribution using custom shares if provided by frontend
-                if (!empty($b['shares']) && (is_array($b['shares']) || is_object($b['shares']))) {
-                    $customShares = [];
-                    foreach ($b['shares'] as $uid => $pct) {
-                        $customShares[(int)$uid] = (int)$pct;
-                    }
-                } else {
+                if (empty($customShares)) {
                     $totalCount = 1 + count($coopSales);
                     $basePercent = floor(100 / $totalCount);
                     $remainder = 100 - ($basePercent * $totalCount);
