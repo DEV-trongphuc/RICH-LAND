@@ -1268,6 +1268,39 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
   const totalPages = Math.ceil(totalCount / ITEMS_PER_PAGE);
   const paginatedLeads = leads;
 
+  const getPendingUntilTime = () => {
+    if (!sysSettings) return t('Chờ giờ làm');
+    const now = new Date();
+    const currentHour = now.getHours();
+    const currentMin = now.getMinutes();
+
+    const workStart = sysSettings.global_work_start_time || '08:00';
+    const nightStart = sysSettings.night_shift_start_time || '22:00';
+    const goldenStart = sysSettings.golden_hours_start_time || '06:00';
+
+    const times = [workStart, nightStart, goldenStart];
+    let nextTimeStr = '';
+    let minDiff = Infinity;
+
+    times.forEach(tStr => {
+      const [h, m] = tStr.split(':').map(Number);
+      const targetMins = h * 60 + m;
+      const currentMins = currentHour * 60 + currentMin;
+
+      let diff = targetMins - currentMins;
+      if (diff <= 0) {
+        diff += 24 * 60;
+      }
+
+      if (diff < minDiff) {
+        minDiff = diff;
+        nextTimeStr = tStr;
+      }
+    });
+
+    return `${t('Chờ đến')} ${nextTimeStr}`;
+  };
+
   const getStatusBadge = (status: string, reportStatus?: string, aiScreenerStatus?: string, createdAt?: string, takers?: any[]) => {
     if (status === 'assigned' && reportStatus === 'pending') {
       return <span className="badge" style={{ background: 'var(--color-primary-light)', color: 'var(--color-primary)', border: '1px solid var(--color-border-light)' }}>{t('Ticket Review')}</span>;
@@ -2334,7 +2367,7 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                                 return (
                                   <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                                     {displayTakers.map((tk: any) => (
-                                      <Avatar key={tk.id} src={tk.avatar} name={tk.name} size={20} title={tk.name} />
+                                      <Avatar key={tk.id} src={tk.avatar} name={tk.name} size={20} />
                                     ))}
                                   </div>
                                 );
@@ -2350,7 +2383,10 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                           ) : (
                             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                               <Avatar src="/LOGO.jpg" name="Rich Land Bot" size={20} />
-                              <span style={{ fontWeight: 700, color: 'var(--color-text)' }}>Rich Land Bot</span>
+                              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+                                <span style={{ fontWeight: 700, color: 'var(--color-text)', fontSize: '0.75rem', lineHeight: '1rem' }}>Rich Land Bot</span>
+                                <span style={{ fontSize: '0.6rem', color: 'var(--color-text-muted)', lineHeight: '0.8rem' }}>{getPendingUntilTime()}</span>
+                              </div>
                             </div>
                           )}
                         </div>
@@ -2523,7 +2559,7 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                               <div>
                                 <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>Rich Land Bot</div>
                                 <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2 }}>
-                                  {t('Chờ giờ làm')}
+                                  {getPendingUntilTime()}
                                 </div>
                               </div>
                             </div>
