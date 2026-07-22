@@ -2554,16 +2554,18 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
 
   const allFolders = useMemo(() => {
     const docCategories = docs
-      .map(d => d.category)
+      .map(d => d.category || d.folder)
       .filter(c => c && c !== 'general' && c !== 'shared');
-    return Array.from(new Set([...localFolders, ...docCategories]));
-  }, [localFolders, docs]);
+    const hasDeposits = (deals && deals.length > 0) || docs.some(d => d.category === 'Đặt cọc' || d.folder === 'Đặt cọc' || d.isMilestoneAttachment);
+    const extraFolders = hasDeposits ? ['Đặt cọc'] : [];
+    return Array.from(new Set([...localFolders, ...docCategories, ...extraFolders]));
+  }, [localFolders, docs, deals]);
 
   const visibleDocs = useMemo(() => {
     if (currentFolder === '') {
       return docs.filter(d => !d.category || d.category === 'general' || d.category === 'shared' || !allFolders.includes(d.category));
     } else {
-      return docs.filter(d => d.category === currentFolder);
+      return docs.filter(d => (d.category || d.folder) === currentFolder);
     }
   }, [docs, currentFolder, allFolders]);
 
@@ -7085,31 +7087,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                               const currentStatus = baseData?.pipeline_status || contact?.pipeline_status || 'chua_xac_dinh';
                               const isStatusOk = coopEligibleStatuses.includes(currentStatus);
                               
-                              const checkCoopFileExists = (fileKeyword: string) => {
-                                const cleanKeyword = fileKeyword.split('.')[0].toLowerCase().trim();
-                                if (!cleanKeyword) return false;
-                                const coopFiles = coopSlip?.attachment_url ? coopSlip.attachment_url.split(',') : [];
-                                let exists = coopFiles.some((f: string) => {
-                                  const filename = f.split('/').pop() || '';
-                                  const lower = filename.toLowerCase();
-                                  if (cleanKeyword === 'unc' || cleanKeyword === 'uy nhiem chi' || cleanKeyword === 'ủy nhiệm chi') {
-                                    return lower.includes('unc') || lower.includes('uy nhiem chi') || lower.includes('ủy nhiệm chi');
-                                  }
-                                  return lower.includes(cleanKeyword);
-                                });
-                                if (!exists && Array.isArray(docs)) {
-                                  exists = docs.some((d: any) => {
-                                    const lower = d.name.toLowerCase();
-                                    if (cleanKeyword === 'unc' || cleanKeyword === 'uy nhiem chi' || cleanKeyword === 'ủy nhiệm chi') {
-                                      return lower.includes('unc') || lower.includes('uy nhiem chi') || lower.includes('ủy nhiệm chi');
-                                    }
-                                    return lower.includes(cleanKeyword);
-                                  });
-                                }
-                                return exists;
-                              };
-                              
-                              const isDocsOk = coopDefaultFiles.length === 0 || coopDefaultFiles.every(f => checkCoopFileExists(f));
+                              const isDocsOk = coopDefaultFiles.length === 0 || coopDefaultFiles.every(f => checkFileExists(f));
                               
                               return (
                                 <>
