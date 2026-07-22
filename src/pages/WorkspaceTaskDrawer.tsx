@@ -1022,58 +1022,75 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
   };
 
   // Comment Attachments Upload
-  const uploadCommentFile = async (file: File) => {
+  const addLocalTaskCommentAttachment = (file: File) => {
     if (!file) return;
-
-    setUploadingFile(true);
-    const sizeStr = (file.size / (1024 * 1024)).toFixed(1) + ' MB';
-    const taskId = startUpload(file.name, sizeStr);
-
-    const fd = new FormData();
-    fd.append('file', file);
-
-    try {
-      updateProgress(taskId, 20, 'uploading');
-      const res = await api.post('/upload', fd, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-        onUploadProgress: (progressEvent) => {
-          if (progressEvent.total) {
-            const percent = Math.round((progressEvent.loaded * 100) / progressEvent.total);
-            updateProgress(taskId, percent, percent === 100 ? 'processing' : 'uploading');
-          }
-        }
-      });
-      const fileUrl = res.data?.data?.url || res.data?.url;
-      if (res.data && res.data.success && fileUrl) {
-        finishUpload(taskId, true);
-        setCommentAttachments(prev => [...prev, { name: file.name, url: fileUrl }]);
-        toast.success(t('Tải lên đính kèm thành công!'));
-      } else {
-        finishUpload(taskId, false, res.data?.message || t('Lỗi tải tệp lên'));
-      }
-    } catch (err: any) {
-      finishUpload(taskId, false, err.message || t('Lỗi tải đính kèm'));
-      toast.error(t('Lỗi tải đính kèm: ') + err.message);
-    } finally {
-      setUploadingFile(false);
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error(t('Dung lượng tệp đính kèm không được vượt quá 10MB'));
+      return;
     }
+    const previewUrl = file.type.startsWith('image/') ? URL.createObjectURL(file) : undefined;
+    setCommentAttachments(prev => [...prev, { file, name: file.name, previewUrl }]);
+    toast.success(t('Đã thêm tệp đính kèm!'));
   };
 
-  const handleCommentAttachmentUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleCommentAttachmentUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) await uploadCommentFile(file);
+    if (file) addLocalTaskCommentAttachment(file);
     e.target.value = '';
+  };
+
+  const removeTaskCommentAttachment = (index: number) => {
+    setCommentAttachments(prev => {
+      const target = prev[index];
+      if (target?.previewUrl) {
+        URL.revokeObjectURL(target.previewUrl);
+      }
+      return prev.filter((_, i) => i !== index);
+    });
   };
 
   const handlePostComment = async () => {
     if (!newCommentText.trim() && commentAttachments.length === 0) return;
     setIsSubmittingComment(true);
+    setUploadingFile(true);
 
     try {
-      const attachmentUrls = commentAttachments.map(a => a.url);
+      const uploadedUrls: string[] = [];
+      for (const att of commentAttachments) {
+        if (att.url) {
+          uploadedUrls.push(att.url);
+        } else if (att.file) {
+          const sizeStr = (att.file.size / (1024 * 1024)).toFixed(1) + ' MB';
+          const taskId = startUpload(att.name, sizeStr);
+
+          const fd = new FormData();
+          fd.append('file', att.file);
+
+          updateProgress(taskId, 20, 'uploading');
+          const res = await api.post('/upload', fd, {
+            headers: { 'Content-Type': 'multipart/form-data' },
+            onUploadProgress: (progressEvent) => {
+              if (progressEvent.total) {
+                const percent = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+                updateProgress(taskId, percent, percent === 100 ? 'processing' : 'uploading');
+              }
+            }
+          });
+          const fileUrl = res.data?.data?.url || res.data?.url;
+          if (fileUrl) {
+            finishUpload(taskId, true);
+            uploadedUrls.push(fileUrl);
+            if (att.previewUrl) URL.revokeObjectURL(att.previewUrl);
+          } else {
+            finishUpload(taskId, false, res.data?.message || t('Lỗi tải tệp lên'));
+            throw new Error(res.data?.message || t('Lỗi tải tệp lên'));
+          }
+        }
+      }
+
       const res = await api.post(`/activities/${task.id}/comments`, {
         content: newCommentText.trim(),
-        attachments: attachmentUrls,
+        attachments: uploadedUrls,
         parent_id: replyTo ? replyTo.id : null
       });
 
@@ -1088,6 +1105,7 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
       toast.error(t('Không thể gửi bình luận: ') + e.message);
     } finally {
       setIsSubmittingComment(false);
+      setUploadingFile(false);
     }
   };
 
@@ -2228,7 +2246,8 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
                     <MentionInput
                       value={newCommentText}
                       onChange={e => setNewCommentText(e.target.value)}
-                      onImagePaste={uploadCommentFile}
+                      onImagePaste={addLocalTaskCommentAttachment}
+                      onFilePaste={addLocalTaskCommentAttachment}
                       placeholder={t('Viết bình luận... (Dán ảnh trực tiếp Ctrl+V)')}
                       style={{ minHeight: '65px', fontSize: '0.85rem', paddingRight: '40px' }}
                       disabled={isSubmittingComment || uploadingFile}
@@ -2244,9 +2263,13 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', paddingTop: '2px' }}>
                       {commentAttachments.map((att: any, idx: number) => (
                         <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '5px', background: 'var(--color-surface)', border: '1px solid var(--color-border-light)', padding: '3px 8px', borderRadius: '12px', fontSize: '0.72rem', color: 'var(--color-text)' }}>
-                          <Paperclip size={11} color="var(--color-primary)" />
+                          {att.previewUrl ? (
+                            <img src={att.previewUrl} alt="preview" style={{ width: '22px', height: '22px', borderRadius: '4px', objectFit: 'cover' }} />
+                          ) : (
+                            <Paperclip size={11} color="var(--color-primary)" />
+                          )}
                           <span style={{ maxWidth: '180px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: 600 }}>{att.name}</span>
-                          <button onClick={() => setCommentAttachments(prev => prev.filter((_, i) => i !== idx))} style={{ border: 'none', background: 'transparent', color: 'var(--color-danger)', cursor: 'pointer', fontSize: '0.8rem', padding: '0 2px', lineHeight: 1 }}>×</button>
+                          <button onClick={() => removeTaskCommentAttachment(idx)} style={{ border: 'none', background: 'transparent', color: 'var(--color-danger)', cursor: 'pointer', fontSize: '0.8rem', padding: '0 2px', lineHeight: 1 }}>×</button>
                         </div>
                       ))}
                     </div>

@@ -560,9 +560,29 @@ export const ActivityModal: React.FC<ActivityModalProps> = ({ isOpen, onClose, e
               <MentionInput 
                 className="form-input" 
                 rows={isMobile ? 3 : 4} 
-                placeholder="Nhập nội dung chi tiết của hoạt động (Sử dụng @ để tag user/sale)..."
+                placeholder="Nhập nội dung chi tiết của hoạt động (Dán ảnh trực tiếp Ctrl+V)..."
                 value={formData.body}
                 onChange={e => setFormData({ ...formData, body: e.target.value })}
+                onImagePaste={(file: File) => {
+                  if (file.size > 5 * 1024 * 1024) {
+                    addToast('Dung lượng tệp đính kèm không được vượt quá 5MB', 'error');
+                    return;
+                  }
+                  const previewUrl = URL.createObjectURL(file);
+                  setProofImageFile(file);
+                  setProofImagePreview(previewUrl);
+                  addToast('Đã dán ảnh minh chứng từ clipboard!', 'success');
+                }}
+                onFilePaste={(file: File) => {
+                  if (file.size > 5 * 1024 * 1024) {
+                    addToast('Dung lượng tệp đính kèm không được vượt quá 5MB', 'error');
+                    return;
+                  }
+                  const previewUrl = URL.createObjectURL(file);
+                  setProofImageFile(file);
+                  setProofImagePreview(previewUrl);
+                  addToast('Đã dán tệp từ clipboard!', 'success');
+                }}
                 style={{ resize: 'none' }}
               />
             </div>

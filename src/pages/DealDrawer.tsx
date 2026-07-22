@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, DollarSign, History, Briefcase, Tag as TagIcon, Box, FileText, CheckCircle2, Link2 } from 'lucide-react';
+import { X, DollarSign, History, Briefcase, Tag as TagIcon, Box, FileText, CheckCircle2, Link2, Paperclip, RefreshCw, Trash2 } from 'lucide-react';
 import { CustomSelect } from '../components/ui/CustomSelect';
 import { CustomCheckbox } from '../components/ui/CustomCheckbox';
 import { EmptyCard } from '../components/ui/EmptyCard';
@@ -269,18 +269,66 @@ export const DealDrawer: React.FC<DealDrawerProps> = ({ isOpen, onClose, deal, o
     }
   }, [isOpen, formData?.project_id, projects.length > 0]);
 
+  const [noteAttachmentFile, setNoteAttachmentFile] = useState<File | null>(null);
+  const [noteAttachmentPreview, setNoteAttachmentPreview] = useState<string | null>(null);
+  const [isSavingNote, setIsSavingNote] = useState(false);
+
+  const handleNoteImagePaste = (file: File) => {
+    if (file.size > 10 * 1024 * 1024) {
+      addToast('Dung lượng tệp đính kèm không được vượt quá 10MB', 'error');
+      return;
+    }
+    const previewUrl = file.type.startsWith('image/') ? URL.createObjectURL(file) : null;
+    setNoteAttachmentFile(file);
+    setNoteAttachmentPreview(previewUrl);
+    addToast('Đã thêm tệp đính kèm!', 'info');
+  };
+
+  const handleNoteFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) handleNoteImagePaste(file);
+    e.target.value = '';
+  };
+
+  const removeNoteAttachment = () => {
+    if (noteAttachmentPreview) {
+      URL.revokeObjectURL(noteAttachmentPreview);
+    }
+    setNoteAttachmentFile(null);
+    setNoteAttachmentPreview(null);
+  };
+
   const handleAddNote = async () => {
-    if (!newNote.trim()) return;
+    if (!newNote.trim() && !noteAttachmentFile) return;
+    setIsSavingNote(true);
+
+    let finalBody = newNote.trim();
+
     try {
-      await api.post(`/notes?entity_type=deal&entity_id=${deal.id}`, { body: newNote, type: 'internal' });
+      if (noteAttachmentFile) {
+        const fd = new FormData();
+        fd.append('file', noteAttachmentFile);
+        const res = await api.post('/upload', fd);
+        const fileUrl = res.data?.data?.url || res.data?.url || res.data?.data?.file_path || res.data?.file_path;
+        if (fileUrl) {
+          const attLine = `📎 [${noteAttachmentFile.name}](${fileUrl})`;
+          finalBody = finalBody ? `${finalBody}\n${attLine}` : attLine;
+        }
+      }
+
+      await api.post(`/notes?entity_type=deal&entity_id=${deal.id}`, { body: finalBody, type: 'internal' });
       setNewNote('');
+      removeNoteAttachment();
       addToast('Đã lưu ghi chú mới', 'success');
       fetchNotes();
     } catch (e: any) {
-      const mockNote = { id: Date.now(), author_name: 'Bạn', body: newNote, created_at: new Date().toISOString() };
+      const mockNote = { id: Date.now(), author_name: 'Bạn', body: finalBody, created_at: new Date().toISOString() };
       setNotes(prev => [mockNote, ...prev]);
       setNewNote('');
+      removeNoteAttachment();
       addToast('Đã lưu ghi chú (Local)', 'success');
+    } finally {
+      setIsSavingNote(false);
     }
   };
 
@@ -627,16 +675,42 @@ export const DealDrawer: React.FC<DealDrawerProps> = ({ isOpen, onClose, deal, o
 
                 {activeTab === 'activities' && (
                   <div className="animate-fade">
-                    <div className="card-panel" style={{ marginBottom: '1.5rem' }}>
-                      <MentionInput 
-                        className="form-textarea" 
-                        rows={3} 
-                        placeholder="Viết ghi chú, cập nhật tiến độ deal (Sử dụng @ để tag user/sale)..."
-                        value={newNote}
-                        onChange={e => setNewNote(e.target.value)}
-                      />
-                      <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
-                        <button className="btn primary sm" onClick={handleAddNote} disabled={!newNote.trim()}>Lưu ghi chú</button>
+                    <div className="card-panel" style={{ marginBottom: '1.5rem', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      <div style={{ position: 'relative' }}>
+                        <MentionInput 
+                          className="form-textarea" 
+                          rows={3} 
+                          placeholder="Viết ghi chú, cập nhật tiến độ deal (Dán ảnh trực tiếp Ctrl+V)..."
+                          value={newNote}
+                          onChange={e => setNewNote(e.target.value)}
+                          onImagePaste={handleNoteImagePaste}
+                          onFilePaste={handleNoteImagePaste}
+                          style={{ minHeight: '65px', paddingRight: '40px' }}
+                          disabled={isSavingNote}
+                        />
+                        <label style={{ position: 'absolute', right: '10px', bottom: '10px', cursor: isSavingNote ? 'not-allowed' : 'pointer', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center' }} title="Đính kèm file">
+                          <input type="file" onChange={handleNoteFileUpload} style={{ display: 'none' }} disabled={isSavingNote} />
+                          {isSavingNote ? <RefreshCw className="spin" size={18} /> : <Paperclip size={18} />}
+                        </label>
+                      </div>
+
+                      {noteAttachmentFile && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'var(--color-surface)', border: '1px solid var(--color-border-light)', padding: '4px 8px', borderRadius: '8px', fontSize: '0.75rem', width: 'fit-content' }}>
+                          {noteAttachmentPreview ? (
+                            <img src={noteAttachmentPreview} alt="preview" style={{ width: '22px', height: '22px', borderRadius: '4px', objectFit: 'cover' }} />
+                          ) : (
+                            <Paperclip size={12} color="var(--color-primary)" />
+                          )}
+                          <span style={{ fontWeight: 600 }}>{noteAttachmentFile.name}</span>
+                          <button onClick={removeNoteAttachment} style={{ border: 'none', background: 'transparent', color: 'var(--color-danger)', cursor: 'pointer', fontSize: '0.85rem' }}>×</button>
+                        </div>
+                      )}
+
+                      <div style={{ display: 'flex', justifyContent: 'flex-start', marginTop: '0.25rem' }}>
+                        <button className="btn primary sm" onClick={handleAddNote} disabled={isSavingNote || (!newNote.trim() && !noteAttachmentFile)} style={{ padding: '6px 18px', fontSize: '0.78rem', borderRadius: '20px', display: 'flex', alignItems: 'center', gap: '5px', background: '#db2777', borderColor: '#db2777', color: '#fff' }}>
+                          {isSavingNote ? <RefreshCw className="spin" size={13} /> : null}
+                          <span>Lưu ghi chú</span>
+                        </button>
                       </div>
                     </div>
                     

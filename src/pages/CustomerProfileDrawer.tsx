@@ -10610,7 +10610,27 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                   <MentionInput
                     value={newNote || ''}
                     onChange={e => setNewNote(e.target.value)}
-                    placeholder="Nhập ghi chú phản hồi khách hàng (Sử dụng @ để nhắc tên)..."
+                    onImagePaste={(file: File) => {
+                      if (file.size > 10 * 1024 * 1024) {
+                        addToast('Dung lượng tệp đính kèm không được vượt quá 10MB', 'error');
+                        return;
+                      }
+                      const previewUrl = URL.createObjectURL(file);
+                      setNoteAttachmentFile(file);
+                      setNoteAttachmentPreview(previewUrl);
+                      addToast('Đã dán tệp đính kèm từ clipboard!', 'success');
+                    }}
+                    onFilePaste={(file: File) => {
+                      if (file.size > 10 * 1024 * 1024) {
+                        addToast('Dung lượng tệp đính kèm không được vượt quá 10MB', 'error');
+                        return;
+                      }
+                      const previewUrl = URL.createObjectURL(file);
+                      setNoteAttachmentFile(file);
+                      setNoteAttachmentPreview(previewUrl);
+                      addToast('Đã dán tệp đính kèm từ clipboard!', 'success');
+                    }}
+                    placeholder="Nhập ghi chú phản hồi khách hàng (Dán ảnh trực tiếp Ctrl+V)..."
                     style={{ width: '100%', padding: '12px 16px', border: '1px solid var(--color-border)', borderRadius: '8px', fontSize: '0.875rem', lineHeight: 1.6, resize: 'vertical', minHeight: 120, color: 'var(--color-text)', outline: 'none', background: 'var(--color-surface)' }}
                   />
                 </div>

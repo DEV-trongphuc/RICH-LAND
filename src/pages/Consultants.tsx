@@ -355,13 +355,60 @@ const ConsultantsInner = () => {
     }
   };
 
+  const addLocalTeamCommentAttachment = (file: File) => {
+    if (!file) return;
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error(t('Dung lượng tệp đính kèm không được vượt quá 10MB'));
+      return;
+    }
+    const previewUrl = file.type.startsWith('image/') ? URL.createObjectURL(file) : undefined;
+    setTeamCommentAttachments(prev => [...prev, { file, name: file.name, previewUrl }]);
+    toast.success(t('Đã thêm tệp đính kèm!'));
+  };
+
+  const handleAttachCommentFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) addLocalTeamCommentAttachment(file);
+    e.target.value = '';
+  };
+
+  const removeTeamCommentAttachment = (index: number) => {
+    setTeamCommentAttachments(prev => {
+      const target = prev[index];
+      if (target?.previewUrl) {
+        URL.revokeObjectURL(target.previewUrl);
+      }
+      return prev.filter((_, i) => i !== index);
+    });
+  };
+
   const handlePostTeamComment = async (teamId: number) => {
     if (!newTeamCommentText.trim() && teamCommentAttachments.length === 0) return;
     setIsSubmittingTeamComment(true);
+    setIsUploadingCommentFile(true);
+
     try {
+      const processedAttachments: { name: string; url: string }[] = [];
+      for (const att of teamCommentAttachments) {
+        if (att.url) {
+          processedAttachments.push({ name: att.name, url: att.url });
+        } else if (att.file) {
+          const fd = new FormData();
+          fd.append('file', att.file);
+          const res = await api.post('/upload', fd);
+          const fileUrl = res.data?.data?.url || res.data?.url || res.data?.data?.file_path || res.data?.file_path;
+          if (fileUrl) {
+            processedAttachments.push({ name: att.name, url: fileUrl });
+            if (att.previewUrl) URL.revokeObjectURL(att.previewUrl);
+          } else {
+            throw new Error(t('Không nhận được đường dẫn tệp tải lên'));
+          }
+        }
+      }
+
       let finalBody = newTeamCommentText.trim();
-      if (teamCommentAttachments.length > 0) {
-        const attachmentLines = teamCommentAttachments.map(att => `📎 [${att.name}](${att.url})`).join('\n');
+      if (processedAttachments.length > 0) {
+        const attachmentLines = processedAttachments.map(att => `📎 [${att.name}](${att.url})`).join('\n');
         finalBody = finalBody ? `${finalBody}\n${attachmentLines}` : attachmentLines;
       }
 
@@ -377,38 +424,11 @@ const ConsultantsInner = () => {
       fetchTeamComments(teamId);
     } catch (e: any) {
       console.error('Failed to post team comment:', e);
-      toast.error(e.response?.data?.message || t('Lỗi khi gửi bình luận'));
+      toast.error(e.response?.data?.message || e.message || t('Lỗi khi gửi bình luận'));
     } finally {
       setIsSubmittingTeamComment(false);
-    }
-  };
-
-  const uploadTeamCommentFile = async (file: File) => {
-    if (!file) return;
-    setIsUploadingCommentFile(true);
-    const fd = new FormData();
-    fd.append('file', file);
-    try {
-      const res = await api.post('/upload', fd);
-      const fileUrl = res.data?.data?.url || res.data?.url || res.data?.data?.file_path || res.data?.file_path;
-      if (fileUrl) {
-        setTeamCommentAttachments(prev => [...prev, { name: file.name, url: fileUrl }]);
-        toast.success(t('Tải lên tệp đính kèm thành công'));
-      } else {
-        toast.error(t('Không nhận được đường dẫn tệp tải lên'));
-      }
-    } catch (err: any) {
-      console.error('Upload failed:', err);
-      toast.error(t('Lỗi tải tệp lên máy chủ'));
-    } finally {
       setIsUploadingCommentFile(false);
     }
-  };
-
-  const handleAttachCommentFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) await uploadTeamCommentFile(file);
-    e.target.value = '';
   };
 
   const handleAttachCommentLink = () => {
@@ -3783,7 +3803,8 @@ const ConsultantsInner = () => {
                                 <MentionInput
                                   value={newTeamCommentText}
                                   onChange={e => setNewTeamCommentText(e.target.value)}
-                                  onImagePaste={uploadTeamCommentFile}
+                                  onImagePaste={addLocalTeamCommentAttachment}
+                                  onFilePaste={addLocalTeamCommentAttachment}
                                   placeholder="Nhập nội dung trao đổi... (Dán ảnh trực tiếp Ctrl+V)"
                                   style={{ minHeight: '65px', fontSize: '0.85rem', paddingRight: '40px' }}
                                   disabled={isSubmittingTeamComment || isUploadingCommentFile}
@@ -3797,7 +3818,7 @@ const ConsultantsInner = () => {
                               {/* Attachments Preview Row */}
                               {teamCommentAttachments.length > 0 && (
                                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', padding: '4px 0' }}>
-                                  {teamCommentAttachments.map((att, idx) => (
+                                  {teamCommentAttachments.map((att: any, idx: number) => (
                                     <span 
                                       key={idx} 
                                       style={{ 
@@ -3812,11 +3833,15 @@ const ConsultantsInner = () => {
                                         fontWeight: 600
                                       }}
                                     >
-                                      <Paperclip size={10} style={{ opacity: 0.6 }} />
+                                      {att.previewUrl ? (
+                                        <img src={att.previewUrl} alt="preview" style={{ width: '20px', height: '20px', borderRadius: '4px', objectFit: 'cover' }} />
+                                      ) : (
+                                        <Paperclip size={10} style={{ opacity: 0.6 }} />
+                                      )}
                                       <span style={{ maxWidth: '120px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{att.name}</span>
                                       <button 
                                         type="button" 
-                                        onClick={() => setTeamCommentAttachments(prev => prev.filter((_, i) => i !== idx))}
+                                        onClick={() => removeTeamCommentAttachment(idx)}
                                         style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--color-danger)', fontSize: '0.9rem', padding: '0 2px' }}
                                       >
                                         ×
