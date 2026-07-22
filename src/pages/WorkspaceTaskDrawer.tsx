@@ -1310,14 +1310,31 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
                 </span>
               </h3>
               {!isMobileOrTablet && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '4px', flexWrap: 'wrap' }}>
-                  <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{t('Người tạo:')}</span>
-                  <Avatar src={formData.created_by_avatar || undefined} name={formData.created_by_name || t('Hệ thống / Admin')} size={20} />
-                  <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text)' }}>{formData.created_by_name || t('Hệ thống / Admin')}</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginTop: '4px', flexWrap: 'wrap', fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                    <span>{t('Người tạo:')}</span>
+                    <Avatar src={formData.created_by_avatar || undefined} name={formData.created_by_name || t('Hệ thống / Admin')} size={20} />
+                    <span style={{ fontWeight: 700, color: 'var(--color-text)' }}>{formData.created_by_name || t('Hệ thống / Admin')}</span>
+                  </div>
+
                   {formData.created_at && (
-                    <span style={{ fontSize: '0.725rem', color: 'var(--color-text-muted)', marginLeft: '4px' }}>
-                      • {new Date(formData.created_at).toLocaleString('vi-VN')}
-                    </span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px', background: 'var(--color-bg)', padding: '2px 8px', borderRadius: '6px', border: '1px solid var(--color-border-light)' }}>
+                      <Calendar size={12} style={{ color: 'var(--color-primary)' }} />
+                      <span>{t('Ngày tạo:')}</span>
+                      <strong style={{ color: 'var(--color-text)' }}>
+                        {new Date(formData.created_at).toLocaleDateString('vi-VN')} {new Date(formData.created_at).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
+                      </strong>
+                    </div>
+                  )}
+
+                  {formData.due_date && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px', background: 'var(--color-bg)', padding: '2px 8px', borderRadius: '6px', border: '1px solid var(--color-border-light)' }}>
+                      <Clock size={12} style={{ color: 'var(--color-danger, #ef4444)' }} />
+                      <span>{t('Hạn hoàn thành:')}</span>
+                      <strong style={{ color: 'var(--color-text)' }}>
+                        {new Date(formData.due_date).toLocaleDateString('vi-VN')} {new Date(formData.due_date).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
+                      </strong>
+                    </div>
                   )}
                 </div>
               )}
