@@ -5,9 +5,6 @@ class TicketController {
     private PDO $db;
     public function __construct(PDO $db) { 
         $this->db = $db; 
-        try {
-            $this->db->exec("ALTER TABLE ticket_comments ADD COLUMN parent_id INT(11) NULL DEFAULT NULL");
-        } catch (Exception $e) {}
     }
 
     public function index(array $auth): void {

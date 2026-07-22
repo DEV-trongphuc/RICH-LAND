@@ -263,6 +263,16 @@ try {
         }
     }
 
+    // Ensure ticket_comments table has parent_id column
+    $ticketCommentsCheck = $conn->query("SHOW TABLES LIKE 'ticket_comments'");
+    if ($ticketCommentsCheck && $ticketCommentsCheck->num_rows > 0) {
+        $colCheck = $conn->query("SHOW COLUMNS FROM `ticket_comments` LIKE 'parent_id'");
+        if (!$colCheck || $colCheck->num_rows == 0) {
+            $conn->query("ALTER TABLE `ticket_comments` ADD COLUMN `parent_id` INT(11) NULL DEFAULT NULL AFTER `user_id`");
+            $logMsg("Đã tự động bổ sung cột parent_id vào bảng ticket_comments.", "success");
+        }
+    }
+
     // 7. Update DB version in system_settings
     $conn->query("INSERT INTO system_settings (setting_key, setting_value) VALUES ('db_version', '186') ON DUPLICATE KEY UPDATE setting_value = '186'");
     

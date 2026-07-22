@@ -588,32 +588,44 @@ export const TicketDrawer: React.FC<Props> = ({ isOpen, onClose, ticket, onUpdat
             <h4 style={{ fontSize: '0.85rem', fontWeight: 800, textTransform: 'uppercase', color: 'var(--color-text-light)', marginBottom: '0.75rem' }}>Thông tin khách hàng</h4>
             <div 
               onClick={() => {
-                const cid = formData.customer_id || (formData.related_contacts && formData.related_contacts[0]);
-                if (cid) {
-                  onOpenContact?.({ id: Number(cid), name: formData.customer_name });
+                const cid = formData.contact_id || formData.customer_id || (formData.related_contacts && formData.related_contacts.length > 0 ? formData.related_contacts[0] : null);
+                const matchedContact = cid 
+                  ? (contacts || []).find((x: any) => String(x.id) === String(cid))
+                  : (contacts || []).find((x: any) => {
+                      const fullName = `${x.last_name || ''} ${x.first_name || ''}`.trim() || x.name;
+                      return fullName.toLowerCase() === (formData.customer_name || '').toLowerCase();
+                    });
+
+                if (matchedContact) {
+                  onOpenContact?.(matchedContact);
+                } else if (cid) {
+                  onOpenContact?.({ id: Number(cid), name: formData.customer_name || 'Khách hàng' });
                 } else {
-                  addToast('Không tìm thấy thông tin ID khách hàng', 'error');
+                  addToast('Chưa có liên kết hồ sơ khách hàng', 'error');
                 }
               }}
               className="card hover-lift" 
               style={{ 
                 padding: '1rem', 
-                background: 'var(--color-bg)', 
+                background: 'var(--color-surface)', 
                 border: '1px solid var(--color-border-light)', 
-                borderRadius: '12px',
+                borderRadius: '14px',
                 cursor: 'pointer',
-                transition: 'all 0.15s ease'
+                transition: 'all 0.2s ease',
+                boxShadow: 'var(--shadow-sm)'
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <Avatar name={formData.customer_name || 'Khách hàng'} size={40} />
+                  <Avatar name={formData.customer_name || 'Khách hàng'} size={42} />
                   <div>
-                    <p style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--color-text)', margin: 0 }}>{formData.customer_name || 'Chưa cập nhật'}</p>
+                    <p style={{ fontWeight: 750, fontSize: '0.9rem', color: 'var(--color-text)', margin: 0 }}>{formData.customer_name || 'Chưa cập nhật'}</p>
                     <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', margin: 0 }}>Khách hàng liên quan</p>
                   </div>
                 </div>
-                <ExternalLink size={16} style={{ color: 'var(--color-primary)' }} />
+                <div style={{ width: '32px', height: '32px', borderRadius: '10px', background: 'var(--color-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-primary)' }}>
+                  <ExternalLink size={16} />
+                </div>
               </div>
             </div>
 
