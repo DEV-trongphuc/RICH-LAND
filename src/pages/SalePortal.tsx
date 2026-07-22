@@ -1824,9 +1824,6 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
         const slips = res.data || [];
         setPendingCoopSlips(slips);
         setPendingCoopsCount(slips.length);
-        if (slips.length > 0 && ['sale', 'sales'].includes(effectiveRole) && ['/', '/workspace'].includes(loc.pathname)) {
-          navigate(`/cooperation-slips?sign_id=${slips[0].id}`);
-        }
       }
     } catch (e) {
       console.error(e);
@@ -5018,7 +5015,12 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
               boxShadow: '0 8px 30px -6px rgba(16, 185, 129, 0.15)'
             }}
             onClick={() => {
-              navigate('/cooperation-slips');
+              const firstSlipId = pendingCoopSlips[0]?.id;
+              if (firstSlipId) {
+                navigate(`/cooperation-slips?sign_id=${firstSlipId}`);
+              } else {
+                navigate('/cooperation-slips');
+              }
             }}
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? '8px' : '1rem', flex: 1, minWidth: 0 }}>
@@ -7356,7 +7358,14 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
       issues.push({
         type: 'coop',
         text: t(`Có ${pendingCoopsCount} Phiếu hợp tác đang chờ bạn ký xác nhận.`),
-        action: () => setActiveTab('data')
+        action: () => {
+          const firstSlipId = pendingCoopSlips[0]?.id;
+          if (firstSlipId) {
+            navigate(`/cooperation-slips?sign_id=${firstSlipId}`);
+          } else {
+            navigate('/cooperation-slips');
+          }
+        }
       });
     }
     if (pendingTasksCount > 0) {

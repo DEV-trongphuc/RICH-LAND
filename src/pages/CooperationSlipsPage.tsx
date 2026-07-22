@@ -646,9 +646,15 @@ export default function CooperationSlipsPage() {
       const match = slips.find((s: any) => String(s.id) === String(signIdParam));
       if (match) {
         setExpandedSlips(prev => ({ ...prev, [match.id]: true }));
+        handleOpenSignModal(match);
+        
+        // Clean URL parameter
+        const newParams = new URLSearchParams(location.search);
+        newParams.delete('sign_id');
+        navigate(location.pathname + (newParams.toString() ? '?' + newParams.toString() : ''), { replace: true });
       }
     }
-  }, [location.search, slips]);
+  }, [location.search, slips, navigate, location.pathname]);
 
   const handleOpenUpdateShares = (slip: CooperationSlip) => {
     setSelectedSlipId(slip.id);
