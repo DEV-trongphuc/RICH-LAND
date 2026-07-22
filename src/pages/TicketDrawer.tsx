@@ -669,12 +669,8 @@ export const TicketDrawer: React.FC<Props> = ({ isOpen, onClose, ticket, onUpdat
                           <p style={{ fontWeight: 700, fontSize: '0.85rem', color: 'var(--color-text)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                             {formData.customer_name || 'Chưa cập nhật'}
                           </p>
-                          <p style={{ fontSize: '0.725rem', margin: 0, marginTop: '1px', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                            {matchedContact ? (
-                              <span style={{ color: 'var(--color-text-muted)' }}>Khách hàng liên quan</span>
-                            ) : (
-                              <span style={{ color: 'var(--color-warning)', fontWeight: 600 }}>Tự nhập • Nhấn xem hồ sơ</span>
-                            )}
+                          <p style={{ fontSize: '0.725rem', color: 'var(--color-text-muted)', margin: 0, marginTop: '1px' }}>
+                            Khách hàng liên quan
                           </p>
                         </div>
                       </div>
