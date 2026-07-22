@@ -1571,6 +1571,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
 
   const [consultantDocs, setConsultantDocs] = useState<any[]>([]);
   const [uploadingDoc, setUploadingDoc] = useState(false);
+  const [dismissedLeadIds, setDismissedLeadIds] = useState<number[]>([]);
 
   // Impersonation role calculation for admin viewing sale
   const impersonatedSale = ((user?.role === 'admin' || user?.role === 'superadmin') && saleIdFilter)
@@ -1613,7 +1614,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
   const activeIncomingOffer = useMemo(() => {
     if (!['sale', 'manager'].includes(String(effectiveRole).toLowerCase())) return null;
     const unacceptedLeads = (data.leads || []).filter(
-      (l: any) => !Number(l.is_accepted) && Number(l.lead_recall_minutes) > 0
+      (l: any) => !Number(l.is_accepted) && Number(l.lead_recall_minutes) > 0 && !dismissedLeadIds.includes(Number(l.lead_id || l.id))
     );
     if (unacceptedLeads.length === 0) return null;
     
@@ -1628,7 +1629,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
     if (activeOffers.length === 0) return null;
     activeOffers.sort((a, b) => a.remainingMs - b.remainingMs);
     return activeOffers[0];
-  }, [data.leads, effectiveRole, now]);
+  }, [data.leads, effectiveRole, now, dismissedLeadIds]);
 
   // Tickets states & loading logic
   const [tickets, setTickets] = useState<any[]>([]);
@@ -16757,8 +16758,13 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
       {activeIncomingOffer && (
         <CustomModal
           isOpen={true}
-          onClose={() => {}}
-          title={t('🚨 CÓ LEAD MỚI ĐƯỢC PHÂN BỔ!')}
+          onClose={() => {
+            const leadIdToDismiss = Number(activeIncomingOffer.lead.lead_id || activeIncomingOffer.lead.id);
+            if (leadIdToDismiss) {
+              setDismissedLeadIds(prev => [...prev, leadIdToDismiss]);
+            }
+          }}
+          title={t('CÓ LEAD MỚI ĐƯỢC PHÂN BỔ!')}
           width="400px"
         >
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1.25rem', padding: '1rem 0' }}>
