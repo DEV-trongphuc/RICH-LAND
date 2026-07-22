@@ -5620,6 +5620,10 @@ switch ($action) {
             $oldRes = $conn->query("SELECT name, email, phone, status, leave_start, leave_end, zalo_chat_id, work_start_time, work_end_time, work_schedule, avatar, team_id, dob, gender, citizen_id, address, bank_name, bank_account FROM consultants WHERE id = " . $id);
             $oldData = $oldRes ? $oldRes->fetch_assoc() : null;
 
+            if (empty($zalo_chat_id) && !empty($oldData['zalo_chat_id']) && (!array_key_exists('zalo_chat_id', $input) || $input['zalo_chat_id'] === '')) {
+                $zalo_chat_id = $oldData['zalo_chat_id'];
+            }
+
             $stmt = $conn->prepare("UPDATE consultants SET name=?, email=?, phone=?, status=?, leave_start=?, leave_end=?, zalo_chat_id=?, work_start_time=?, work_end_time=?, work_schedule=?, avatar=?, team_id=?, dob=?, gender=?, citizen_id=?, address=?, bank_name=?, bank_account=? WHERE id=?");
             $stmt->bind_param("ssssssssssisssssssi", $name, $email, $phone, $status, $leave_start, $leave_end, $zalo_chat_id, $work_start_time, $work_end_time, $work_schedule, $avatar, $team_id, $dob, $gender, $citizen_id, $address, $bank_name, $bank_account, $id);
             if ($stmt->execute()) {
