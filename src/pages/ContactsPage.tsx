@@ -1771,20 +1771,7 @@ export const ContactsPage: React.FC = () => {
                             <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{c.job_title || ''}</p>
                           </td>
                         )}
-                        {/* {columns.find(col => col.id === 'tags')?.visible && (
-                          <td style={{ padding: '1rem', maxWidth: 160, borderBottom: '1px solid var(--color-border)' }}>
-                            <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
-                              {(c.tags || []).slice(0, 2).map((t: string) => (
-                                <span key={t} style={{ padding: '2px 8px', background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-sm)', fontSize: '0.7rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>
-                                  {t}
-                                </span>
-                              ))}
-                              {(c.tags || []).length > 2 && (
-                                <span style={{ padding: '2px 6px', color: 'var(--color-text-muted)', fontSize: '0.7rem' }}>+{c.tags.length - 2}</span>
-                              )}
-                            </div>
-                          </td>
-                        )} */}                        {columns.find(col => col.id === 'status')?.visible && (
+                        {columns.find(col => col.id === 'status')?.visible && (
                           <td style={{ padding: '1rem', borderBottom: '1px solid var(--color-border)' }}>
                             {c.report_status === 'approved' || c.report_status === 'approved_no_comp' ? (
                               <span 
