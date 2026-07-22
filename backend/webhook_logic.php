@@ -2272,7 +2272,10 @@ function isConsultantInWorkHours($timeStr, $start, $end, $workScheduleJson = nul
         }
 
         if ($isNightShiftTime) {
-            $today = date('Y-m-d');
+            $currentHour = (int)date('H');
+            $endHour = (int)explode(':', $nightShiftEnd)[0];
+            $shiftDate = ($currentHour < $endHour) ? date('Y-m-d', strtotime('-1 day')) : date('Y-m-d');
+            
             $stmtN = $conn->prepare("
                 SELECT 1 FROM night_shift_registrations nsr
                 LEFT JOIN consultants c ON nsr.user_id = c.id
@@ -2280,7 +2283,7 @@ function isConsultantInWorkHours($timeStr, $start, $end, $workScheduleJson = nul
                 LIMIT 1
             ");
             if ($stmtN) {
-                $stmtN->bind_param("iis", $userId, $userId, $today);
+                $stmtN->bind_param("iis", $userId, $userId, $shiftDate);
                 $stmtN->execute();
                 $hasNightReg = (bool)$stmtN->get_result()->fetch_assoc();
                 $stmtN->close();
@@ -2289,6 +2292,7 @@ function isConsultantInWorkHours($timeStr, $start, $end, $workScheduleJson = nul
                 }
             }
         }
+    }
 
     // Check Weekend/Holiday Shift Registration if it's weekend/holiday
     if ($conn !== null && $userId !== null && $userId > 0) {

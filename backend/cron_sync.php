@@ -595,10 +595,14 @@ if (!function_exists('releasePendingWorkHoursLeads')) {
                         }
 
                         if ($isNightShiftNow) {
+                            $currentHour = (int)date('H');
+                            $endHour = (int)explode(':', $nightShiftEnd)[0];
+                            $shiftDate = ($currentHour < $endHour) ? date('Y-m-d', strtotime('-1 day')) : date('Y-m-d');
+                            
                             // Night shift check-in / authorization via approved night_shift_registrations
                             $stmtNightCheck = $conn->prepare("SELECT 1 FROM night_shift_registrations WHERE (user_id = ? OR user_id = (SELECT user_id FROM consultants WHERE id = ? LIMIT 1)) AND shift_date = ? AND approved = 1 LIMIT 1");
                             if ($stmtNightCheck) {
-                                $stmtNightCheck->bind_param("iis", $targetUserId, $targetUserId, $currDate);
+                                $stmtNightCheck->bind_param("iis", $targetUserId, $targetUserId, $shiftDate);
                                 $stmtNightCheck->execute();
                                 $hasCheckIn = (bool)$stmtNightCheck->get_result()->fetch_assoc();
                                 $stmtNightCheck->close();
@@ -922,10 +926,14 @@ if (!function_exists('releasePendingWorkHoursLeads')) {
                         }
 
                         if ($isNightShiftNow) {
+                            $currentHour = (int)date('H');
+                            $endHour = (int)explode(':', $nightShiftEnd)[0];
+                            $shiftDate = ($currentHour < $endHour) ? date('Y-m-d', strtotime('-1 day')) : date('Y-m-d');
+                            
                             // Night shift check-in / authorization via approved night_shift_registrations
                             $stmtNightCheck = $conn->prepare("SELECT 1 FROM night_shift_registrations WHERE (user_id = ? OR user_id = (SELECT user_id FROM consultants WHERE id = ? LIMIT 1)) AND shift_date = ? AND approved = 1 LIMIT 1");
                             if ($stmtNightCheck) {
-                                $stmtNightCheck->bind_param("iis", $targetUserId, $targetUserId, $currDate);
+                                $stmtNightCheck->bind_param("iis", $targetUserId, $targetUserId, $shiftDate);
                                 $stmtNightCheck->execute();
                                 $hasCheckIn = (bool)$stmtNightCheck->get_result()->fetch_assoc();
                                 $stmtNightCheck->close();
