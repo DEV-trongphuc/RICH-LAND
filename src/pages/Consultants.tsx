@@ -193,7 +193,7 @@ const ConsultantsInner = () => {
   const [newTeamCommentText, setNewTeamCommentText] = useState('');
   const [isSubmittingTeamComment, setIsSubmittingTeamComment] = useState(false);
   const [teamReplyTo, setTeamReplyTo] = useState<{ id: number; userName: string } | null>(null);
-  const [teamCommentAttachments, setTeamCommentAttachments] = useState<{ name: string; url: string }[]>([]);
+  const [teamCommentAttachments, setTeamCommentAttachments] = useState<any[]>([]);
   const [isUploadingCommentFile, setIsUploadingCommentFile] = useState(false);
   
   const [consultantsPage, setConsultantsPage] = useState(1);
