@@ -606,6 +606,52 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
     return Array.from(map.entries()).map(([id, name]) => ({ id, name }));
   }, [upcomingMeetingsList]);
 
+  const meetingTeamSelectOptions = useMemo(() => {
+    const opts: any[] = [
+      {
+        value: 'all',
+        label: t('Tất cả các Nhóm'),
+        icon: (
+          <div style={{ width: '22px', height: '22px', borderRadius: '50%', background: 'linear-gradient(135deg, #BD1D2D 0%, #E11D48 100%)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.65rem', fontWeight: 800 }}>
+            ALL
+          </div>
+        )
+      }
+    ];
+    if (Array.isArray(teamsList)) {
+      teamsList.forEach((tm: any) => {
+        opts.push({
+          value: String(tm.id),
+          label: tm.name || `Nhóm ${tm.id}`,
+          avatar: tm.avatar_url || tm.avatar || ''
+        });
+      });
+    }
+    return opts;
+  }, [teamsList, t]);
+
+  const meetingSaleSelectOptions = useMemo(() => {
+    const opts: any[] = [
+      {
+        value: 'all',
+        label: t('Tất cả Sale / TVV'),
+        icon: (
+          <div style={{ width: '22px', height: '22px', borderRadius: '50%', background: 'linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.65rem', fontWeight: 800 }}>
+            ALL
+          </div>
+        )
+      }
+    ];
+    meetingSalesOptions.forEach((s: any) => {
+      opts.push({
+        value: String(s.id),
+        label: s.name,
+        avatar: s.avatar || ''
+      });
+    });
+    return opts;
+  }, [meetingSalesOptions, t]);
+
   const selectedFilterTeam = useMemo(() => {
     if (meetingFilterTeamId === 'all') return null;
     return teamsList.find((t: any) => String(t.id) === String(meetingFilterTeamId));
@@ -15720,250 +15766,35 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
 
             {/* Custom Team Filter Dropdown (Admin / Manager) */}
             {(isUserAdminRole || isUserManagerRole) && (
-              <div style={{ position: 'relative', display: 'inline-block' }}>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowMeetingTeamDropdown(!showMeetingTeamDropdown);
-                    setShowMeetingSaleDropdown(false);
-                  }}
-                  style={{
-                    height: '36px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                    borderRadius: '20px',
-                    padding: '3px 12px 3px 5px',
-                    border: meetingFilterTeamId !== 'all' ? '1.5px solid var(--color-primary, #BD1D2D)' : '1px solid var(--color-border)',
-                    background: 'var(--color-surface)',
-                    color: 'var(--color-text)',
-                    cursor: 'pointer',
-                    fontWeight: 700,
-                    fontSize: '0.8rem',
-                    boxShadow: 'var(--shadow-xs)'
-                  }}
-                >
-                  <div style={{
-                    width: '24px',
-                    height: '24px',
-                    borderRadius: '50%',
-                    overflow: 'hidden',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    background: selectedFilterTeam ? 'linear-gradient(135deg, #3B82F6 0%, #1D4ED8 100%)' : 'linear-gradient(135deg, #BD1D2D 0%, #a31422 100%)',
-                    color: '#ffffff',
-                    fontSize: '0.65rem',
-                    fontWeight: 800,
-                    border: (selectedFilterTeam?.avatar_url || selectedFilterTeam?.avatar) ? '1px solid var(--color-border-light)' : 'none',
-                    flexShrink: 0
-                  }}>
-                    {(selectedFilterTeam?.avatar_url || selectedFilterTeam?.avatar) ? (
-                      <img src={selectedFilterTeam.avatar_url || selectedFilterTeam.avatar} alt="Team" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                    ) : (
-                      selectedFilterTeam ? (selectedFilterTeam.name?.[0] || 'T') : 'ALL'
-                    )}
-                  </div>
-                  <span>{selectedFilterTeam ? selectedFilterTeam.name : t('Tất cả các Nhóm')}</span>
-                  <ChevronDown size={14} style={{ opacity: 0.7 }} />
-                </button>
-
-                {showMeetingTeamDropdown && (
-                  <div style={{
-                    position: 'absolute',
-                    top: '100%',
-                    left: 0,
-                    marginTop: '6px',
-                    width: '260px',
-                    background: 'var(--color-surface)',
-                    border: '1px solid var(--color-border)',
-                    borderRadius: '12px',
-                    boxShadow: 'var(--shadow-lg)',
-                    zIndex: 1000,
-                    padding: '8px',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: '6px'
-                  }}>
-                    <input
-                      type="text"
-                      className="form-input"
-                      placeholder={t('Tìm kiếm nhóm...')}
-                      value={meetingTeamSearchText}
-                      onChange={e => setMeetingTeamSearchText(e.target.value)}
-                      style={{ width: '100%', fontSize: '0.78rem', padding: '6px 10px', height: '32px', borderRadius: '6px' }}
-                    />
-                    <div style={{ maxHeight: '200px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '2px' }} className="custom-scrollbar">
-                      <div
-                        onClick={() => {
-                          setMeetingFilterTeamId('all');
-                          setShowMeetingTeamDropdown(false);
-                          setMeetingTeamSearchText('');
-                          setMeetingPage(1);
-                        }}
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '8px',
-                          padding: '6px 8px',
-                          borderRadius: '6px',
-                          cursor: 'pointer',
-                          background: meetingFilterTeamId === 'all' ? 'rgba(189, 29, 45, 0.08)' : 'transparent',
-                          fontWeight: meetingFilterTeamId === 'all' ? 700 : 500
-                        }}
-                        className="hover-bg-light"
-                      >
-                        <div style={{ width: '22px', height: '22px', borderRadius: '50%', background: 'linear-gradient(135deg, #BD1D2D 0%, #a31422 100%)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.65rem', fontWeight: 800 }}>ALL</div>
-                        <span style={{ fontSize: '0.8rem', color: 'var(--color-text)' }}>{t('Tất cả các Nhóm')}</span>
-                      </div>
-
-                      {teamsList.filter((tm: any) => (tm.name || '').toLowerCase().includes(meetingTeamSearchText.toLowerCase())).map((tm: any) => (
-                        <div
-                          key={tm.id}
-                          onClick={() => {
-                            setMeetingFilterTeamId(String(tm.id));
-                            setShowMeetingTeamDropdown(false);
-                            setMeetingTeamSearchText('');
-                            setMeetingPage(1);
-                          }}
-                          style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '8px',
-                            padding: '6px 8px',
-                            borderRadius: '6px',
-                            cursor: 'pointer',
-                            background: String(meetingFilterTeamId) === String(tm.id) ? 'rgba(59, 130, 246, 0.1)' : 'transparent',
-                            fontWeight: String(meetingFilterTeamId) === String(tm.id) ? 700 : 500
-                          }}
-                          className="hover-bg-light"
-                        >
-                          <div style={{ width: '22px', height: '22px', borderRadius: '50%', background: '#3B82F6', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.65rem', fontWeight: 800 }}>
-                            {tm.name?.[0] || 'T'}
-                          </div>
-                          <span style={{ fontSize: '0.8rem', color: 'var(--color-text)' }}>{tm.name}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
+              <CustomSelect
+                options={meetingTeamSelectOptions}
+                value={meetingFilterTeamId}
+                onChange={(val) => {
+                  setMeetingFilterTeamId(String(val));
+                  setMeetingFilterSaleId('all');
+                  setMeetingPage(1);
+                }}
+                searchable
+                showAvatars
+                placeholder={t('Tất cả các Nhóm')}
+                width="200px"
+              />
             )}
 
             {/* Custom Sale / TVV Filter Dropdown (Admin / Manager) */}
             {(isUserAdminRole || isUserManagerRole) && (
-              <div style={{ position: 'relative', display: 'inline-block' }}>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowMeetingSaleDropdown(!showMeetingSaleDropdown);
-                    setShowMeetingTeamDropdown(false);
-                  }}
-                  style={{
-                    height: '36px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                    borderRadius: '20px',
-                    padding: '3px 12px 3px 5px',
-                    border: meetingFilterSaleId !== 'all' ? '1.5px solid #2563EB' : '1px solid var(--color-border)',
-                    background: 'var(--color-surface)',
-                    color: 'var(--color-text)',
-                    cursor: 'pointer',
-                    fontWeight: 700,
-                    fontSize: '0.8rem',
-                    boxShadow: 'var(--shadow-xs)'
-                  }}
-                >
-                  <div style={{ width: '24px', height: '24px', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    {selectedFilterSale ? (
-                      <Avatar name={selectedFilterSale.name} src="" size={24} />
-                    ) : (
-                      <div style={{ width: '24px', height: '24px', borderRadius: '50%', background: 'linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.65rem', fontWeight: 800 }}>ALL</div>
-                    )}
-                  </div>
-                  <span>{selectedFilterSale ? selectedFilterSale.name : t('Tất cả Sale / TVV')}</span>
-                  <ChevronDown size={14} style={{ opacity: 0.7 }} />
-                </button>
-
-                {showMeetingSaleDropdown && (
-                  <div style={{
-                    position: 'absolute',
-                    top: '100%',
-                    left: 0,
-                    marginTop: '6px',
-                    width: '260px',
-                    background: 'var(--color-surface)',
-                    border: '1px solid var(--color-border)',
-                    borderRadius: '12px',
-                    boxShadow: 'var(--shadow-lg)',
-                    zIndex: 1000,
-                    padding: '8px',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: '6px'
-                  }}>
-                    <input
-                      type="text"
-                      className="form-input"
-                      placeholder={t('Tìm kiếm Sale / TVV...')}
-                      value={meetingSaleSearchText}
-                      onChange={e => setMeetingSaleSearchText(e.target.value)}
-                      style={{ width: '100%', fontSize: '0.78rem', padding: '6px 10px', height: '32px', borderRadius: '6px' }}
-                    />
-                    <div style={{ maxHeight: '200px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '2px' }} className="custom-scrollbar">
-                      <div
-                        onClick={() => {
-                          setMeetingFilterSaleId('all');
-                          setShowMeetingSaleDropdown(false);
-                          setMeetingSaleSearchText('');
-                          setMeetingPage(1);
-                        }}
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '8px',
-                          padding: '6px 8px',
-                          borderRadius: '6px',
-                          cursor: 'pointer',
-                          background: meetingFilterSaleId === 'all' ? 'rgba(37, 99, 235, 0.08)' : 'transparent',
-                          fontWeight: meetingFilterSaleId === 'all' ? 700 : 500
-                        }}
-                        className="hover-bg-light"
-                      >
-                        <div style={{ width: '22px', height: '22px', borderRadius: '50%', background: 'linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.65rem', fontWeight: 800 }}>ALL</div>
-                        <span style={{ fontSize: '0.8rem', color: 'var(--color-text)' }}>{t('Tất cả Sale / TVV')}</span>
-                      </div>
-
-                      {meetingSalesOptions.filter((s: any) => (s.name || '').toLowerCase().includes(meetingSaleSearchText.toLowerCase())).map((s: any) => (
-                        <div
-                          key={s.id}
-                          onClick={() => {
-                            setMeetingFilterSaleId(String(s.id));
-                            setShowMeetingSaleDropdown(false);
-                            setMeetingSaleSearchText('');
-                            setMeetingPage(1);
-                          }}
-                          style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '8px',
-                            padding: '6px 8px',
-                            borderRadius: '6px',
-                            cursor: 'pointer',
-                            background: String(meetingFilterSaleId) === String(s.id) ? 'rgba(37, 99, 235, 0.1)' : 'transparent',
-                            fontWeight: String(meetingFilterSaleId) === String(s.id) ? 700 : 500
-                          }}
-                          className="hover-bg-light"
-                        >
-                          <Avatar name={s.name} src="" size={22} />
-                          <span style={{ fontSize: '0.8rem', color: 'var(--color-text)' }}>{s.name}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
+              <CustomSelect
+                options={meetingSaleSelectOptions}
+                value={meetingFilterSaleId}
+                onChange={(val) => {
+                  setMeetingFilterSaleId(String(val));
+                  setMeetingPage(1);
+                }}
+                searchable
+                showAvatars
+                placeholder={t('Tất cả Sale / TVV')}
+                width="220px"
+              />
             )}
 
             {/* Status Pills */}
