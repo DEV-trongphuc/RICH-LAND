@@ -34,8 +34,10 @@ function sendTelegramMessage($botToken, $chatId, $text, $leadId = 0)
     curl_setopt($ch, CURLOPT_HTTPHEADER, [
         "Content-Type: application/json"
     ]);
-    curl_setopt($ch, CURLOPT_CONNECTTIMEOUT_MS, 800);
-    curl_setopt($ch, CURLOPT_TIMEOUT_MS, 1500);
+    curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 10);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 15);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
 
     $response = curl_exec($ch);
     $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
