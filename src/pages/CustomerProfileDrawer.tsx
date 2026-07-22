@@ -1292,7 +1292,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
     updated[sIdx].percentage = parseInt(val) || 0;
     setTempSharesData(updated);
   };
-  const [showDealModal, setShowDealModal] = useState(true);
+  const [showDealModal, setShowDealModal] = useState(false);
   const [depositProjectId, setDepositProjectId] = useState('');
   const [depositUnitCode, setDepositUnitCode] = useState('');
   const [depositPrice, setDepositPrice] = useState('');
@@ -1394,7 +1394,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
     }
   }, [isOpen, activeTab]);
 
-  const [isSubmitting, setIsSubmitting] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     (window as any).__setDepositSubmitting = setIsSubmitting;
@@ -11281,7 +11281,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
       {/* CREATE DEPOSIT MODAL */}
       <AnimatePresence>
         {showDealModal && (
-          <div className="overlay-backdrop" style={{ zIndex: 1000020 }} onClick={() => setShowDealModal(false)}>
+          <div className="overlay-backdrop" style={{ zIndex: 1000020 }}>
             <motion.div
               className="modal-sheet"
               style={{ width: '100%', maxWidth: 820, position: 'relative' }}
@@ -11346,8 +11346,8 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                           position: 'relative',
                           padding: '4px',
                           borderRadius: '50%',
-                          background: 'linear-gradient(135deg, var(--color-primary) 0%, #d97706 100%)',
-                          boxShadow: '0 4px 12px rgba(163, 20, 34, 0.25)'
+                          background: 'linear-gradient(135deg, var(--color-primary) 0%, #ff4d61 100%)',
+                          boxShadow: '0 4px 12px rgba(189, 29, 45, 0.25)'
                         }}>
                           <Avatar src={mainSaleUser?.avatar_url || mainSaleUser?.avatar} name={mainSaleUser?.full_name || mainSaleUser?.name || 'Sale'} size={60} />
                         </div>
@@ -11363,7 +11363,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                           <div style={{
                             width: '100%',
                             height: '3px',
-                            background: 'linear-gradient(90deg, var(--color-primary) 0%, #10b981 100%)',
+                            background: 'var(--color-primary)',
                             borderRadius: '2px',
                             position: 'relative',
                             overflow: 'hidden'
@@ -11389,7 +11389,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                             height: '28px',
                             borderRadius: '50%',
                             backgroundColor: 'var(--color-surface)',
-                            border: '2.5px solid var(--color-border)',
+                            border: '2.5px solid var(--color-primary)',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
@@ -11410,8 +11410,8 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                 position: 'relative',
                                 padding: '4px',
                                 borderRadius: '50%',
-                                background: 'linear-gradient(135deg, #10b981 0%, #06b6d4 100%)',
-                                boxShadow: '0 4px 12px rgba(16, 185, 129, 0.25)'
+                                background: 'linear-gradient(135deg, var(--color-primary) 0%, #ff4d61 100%)',
+                                boxShadow: '0 4px 12px rgba(189, 29, 45, 0.25)'
                               }}>
                                 <Avatar src={collab?.avatar_url || collab?.avatar} name={collab?.full_name || collab?.name || 'Sale'} size={60} />
                               </div>
@@ -11444,7 +11444,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                     {/* Progress Bar & Status Text */}
                     <div style={{ width: '100%', maxWidth: '340px', textAlign: 'center', marginTop: '10px' }}>
                       <h4 style={{ fontWeight: 800, color: 'var(--color-text)', margin: '0 0 6px 0', fontSize: '1rem' }}>
-                        Đang khởi tạo giao dịch
+                        Đang khởi tạo hợp tác
                       </h4>
                       <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', margin: '0 0 14px 0', lineHeight: 1.4, fontWeight: 500 }}>
                         {hasCoop 
@@ -11463,7 +11463,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                       }}>
                         <div className="progress-bar-fill" style={{
                           height: '100%',
-                          background: 'linear-gradient(90deg, var(--color-primary) 0%, #10b981 100%)',
+                          background: 'linear-gradient(90deg, var(--color-primary) 0%, #ff4d61 100%)',
                           borderRadius: '10px'
                         }} />
                       </div>
