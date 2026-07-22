@@ -652,6 +652,20 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
     return opts;
   }, [meetingSalesOptions, t]);
 
+  const meetingStatusSelectOptions = useMemo(() => {
+    const totalCount = upcomingMeetingsList.length;
+    const plannedCount = upcomingMeetingsList.filter(t => !checkMeetingIsDone(t) && !checkMeetingIsOverdue(t)).length;
+    const overdueCount = upcomingMeetingsList.filter(t => !checkMeetingIsDone(t) && checkMeetingIsOverdue(t)).length;
+    const doneCount = upcomingMeetingsList.filter(t => checkMeetingIsDone(t)).length;
+
+    return [
+      { value: 'all', label: `${t('Tất cả')} (${totalCount})` },
+      { value: 'planned', label: `${t('Sắp diễn ra')} (${plannedCount})` },
+      { value: 'overdue', label: `${t('Quá giờ hẹn')} (${overdueCount})` },
+      { value: 'done', label: `${t('Đã gặp')} (${doneCount})` }
+    ];
+  }, [upcomingMeetingsList, t]);
+
   const selectedFilterTeam = useMemo(() => {
     if (meetingFilterTeamId === 'all') return null;
     return teamsList.find((t: any) => String(t.id) === String(meetingFilterTeamId));
@@ -5045,22 +5059,22 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
             }}>
               {/* CARD 1: GỢI Ý ƯU TIÊN TỪ AI */}
               <div style={{
-                background: 'linear-gradient(135deg, rgba(189, 29, 45, 0.04) 0%, rgba(189, 29, 45, 0.08) 100%)',
-                border: '1px solid rgba(189, 29, 45, 0.18)',
+                background: 'var(--color-surface, #ffffff)',
+                border: '1px solid var(--color-border)',
                 borderRadius: '14px',
                 padding: '0.875rem 1.25rem',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
                 gap: '1rem',
-                boxShadow: '0 2px 8px rgba(189, 29, 45, 0.05)'
+                boxShadow: 'var(--shadow-xs)'
               }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: 1, minWidth: 0 }}>
                   <div style={{
                     width: '38px',
                     height: '38px',
                     borderRadius: '10px',
-                    background: 'rgba(189, 29, 45, 0.12)',
+                    background: 'rgba(189, 29, 45, 0.08)',
                     color: 'var(--color-primary, #BD1D2D)',
                     display: 'flex',
                     alignItems: 'center',
@@ -5079,12 +5093,12 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                   </div>
                 </div>
                 <button
-                  className="btn primary"
+                  type="button"
                   onClick={handleStartFocusSession}
                   style={{
-                    background: 'var(--color-primary, #BD1D2D)',
-                    border: 'none',
-                    color: '#fff',
+                    background: 'rgba(189, 29, 45, 0.08)',
+                    border: '1px solid rgba(189, 29, 45, 0.2)',
+                    color: 'var(--color-primary, #BD1D2D)',
                     padding: '7px 14px',
                     fontSize: '0.8rem',
                     fontWeight: 700,
@@ -5093,10 +5107,11 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                     alignItems: 'center',
                     gap: '6px',
                     cursor: 'pointer',
-                    boxShadow: '0 2px 8px rgba(189, 29, 45, 0.25)',
                     whiteSpace: 'nowrap',
-                    flexShrink: 0
+                    flexShrink: 0,
+                    transition: 'all 0.2s'
                   }}
+                  className="hover-bg-light"
                 >
                   <Play size={13} />
                   <span>{t('Xử lý ngay')}</span>
@@ -5105,22 +5120,22 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
 
               {/* CARD 2: CUỘC HẸN GẶP SẮP DIỄN RA */}
               <div style={{
-                background: 'linear-gradient(135deg, rgba(37, 99, 235, 0.04) 0%, rgba(99, 102, 241, 0.08) 100%)',
-                border: '1px solid rgba(37, 99, 235, 0.2)',
+                background: 'var(--color-surface, #ffffff)',
+                border: '1px solid var(--color-border)',
                 borderRadius: '14px',
                 padding: '0.875rem 1.25rem',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
                 gap: '1rem',
-                boxShadow: '0 2px 8px rgba(37, 99, 235, 0.05)'
+                boxShadow: 'var(--shadow-xs)'
               }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: 1, minWidth: 0 }}>
                   <div style={{
                     width: '38px',
                     height: '38px',
                     borderRadius: '10px',
-                    background: 'rgba(37, 99, 235, 0.12)',
+                    background: 'rgba(37, 99, 235, 0.08)',
                     color: '#2563EB',
                     display: 'flex',
                     alignItems: 'center',
@@ -5141,12 +5156,12 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                   </div>
                 </div>
                 <button
-                  className="btn"
+                  type="button"
                   onClick={() => setShowUpcomingMeetingsModal(true)}
                   style={{
-                    background: 'linear-gradient(135deg, #2563EB 0%, #4F46E5 100%)',
-                    border: 'none',
-                    color: '#fff',
+                    background: 'rgba(37, 99, 235, 0.08)',
+                    border: '1px solid rgba(37, 99, 235, 0.2)',
+                    color: '#2563EB',
                     padding: '7px 14px',
                     fontSize: '0.8rem',
                     fontWeight: 700,
@@ -5155,10 +5170,11 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                     alignItems: 'center',
                     gap: '6px',
                     cursor: 'pointer',
-                    boxShadow: '0 2px 8px rgba(37, 99, 235, 0.3)',
                     whiteSpace: 'nowrap',
-                    flexShrink: 0
+                    flexShrink: 0,
+                    transition: 'all 0.2s'
                   }}
+                  className="hover-bg-light"
                 >
                   <Eye size={13} />
                   <span>{t('Xem danh sách')}</span>
@@ -15728,16 +15744,15 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
             </span>
           </div>
 
-          {/* Toolbar: Search + Team Filter + Sale Filter + Status Pills */}
+          {/* Toolbar: Search + Team Filter + Sale Filter + Status Filter (Single Row) */}
           <div style={{
             display: 'flex',
             alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: '0.65rem',
+            gap: '8px',
             flexWrap: 'wrap'
           }}>
-            {/* Compact Search Input */}
-            <div style={{ position: 'relative', width: '260px', flex: '0 0 auto' }}>
+            {/* Search Input */}
+            <div style={{ position: 'relative', width: '230px', flexShrink: 0 }}>
               <input
                 type="text"
                 placeholder={t('Tìm tên khách, SĐT, TVV...')}
@@ -15777,7 +15792,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                 searchable
                 showAvatars
                 placeholder={t('Tất cả các Nhóm')}
-                width="200px"
+                width="180px"
               />
             )}
 
@@ -15793,89 +15808,21 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                 searchable
                 showAvatars
                 placeholder={t('Tất cả Sale / TVV')}
-                width="220px"
+                width="190px"
               />
             )}
 
-            {/* Status Pills */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '4px', background: 'var(--color-bg-subtle, rgba(0,0,0,0.03))', padding: '3px', borderRadius: '10px', border: '1px solid var(--color-border)' }}>
-              <button
-                onClick={() => {
-                  setMeetingFilterStatus('all');
-                  setMeetingPage(1);
-                }}
-                style={{
-                  padding: '5px 12px',
-                  borderRadius: '7px',
-                  fontSize: '0.775rem',
-                  fontWeight: 700,
-                  border: 'none',
-                  cursor: 'pointer',
-                  background: meetingFilterStatus === 'all' ? 'var(--color-surface, #ffffff)' : 'transparent',
-                  color: meetingFilterStatus === 'all' ? 'var(--color-primary, #BD1D2D)' : 'var(--color-text-muted)',
-                  boxShadow: meetingFilterStatus === 'all' ? 'var(--shadow-sm)' : 'none'
-                }}
-              >
-                {t('Tất cả')} ({upcomingMeetingsList.length})
-              </button>
-              <button
-                onClick={() => {
-                  setMeetingFilterStatus('planned');
-                  setMeetingPage(1);
-                }}
-                style={{
-                  padding: '5px 12px',
-                  borderRadius: '7px',
-                  fontSize: '0.775rem',
-                  fontWeight: 700,
-                  border: 'none',
-                  cursor: 'pointer',
-                  background: meetingFilterStatus === 'planned' ? 'var(--color-surface, #ffffff)' : 'transparent',
-                  color: meetingFilterStatus === 'planned' ? '#2563EB' : 'var(--color-text-muted)',
-                  boxShadow: meetingFilterStatus === 'planned' ? 'var(--shadow-sm)' : 'none'
-                }}
-              >
-                {t('Sắp diễn ra')} ({upcomingMeetingsList.filter(t => !checkMeetingIsDone(t) && !checkMeetingIsOverdue(t)).length})
-              </button>
-              <button
-                onClick={() => {
-                  setMeetingFilterStatus('overdue');
-                  setMeetingPage(1);
-                }}
-                style={{
-                  padding: '5px 12px',
-                  borderRadius: '7px',
-                  fontSize: '0.775rem',
-                  fontWeight: 700,
-                  border: 'none',
-                  cursor: 'pointer',
-                  background: meetingFilterStatus === 'overdue' ? 'var(--color-surface, #ffffff)' : 'transparent',
-                  color: meetingFilterStatus === 'overdue' ? '#f59e0b' : 'var(--color-text-muted)',
-                  boxShadow: meetingFilterStatus === 'overdue' ? 'var(--shadow-sm)' : 'none'
-                }}
-              >
-                {t('Quá giờ hẹn')} ({upcomingMeetingsList.filter(t => !checkMeetingIsDone(t) && checkMeetingIsOverdue(t)).length})
-              </button>
-              <button
-                onClick={() => {
-                  setMeetingFilterStatus('done');
-                  setMeetingPage(1);
-                }}
-                style={{
-                  padding: '5px 12px',
-                  borderRadius: '7px',
-                  fontSize: '0.775rem',
-                  fontWeight: 700,
-                  border: 'none',
-                  cursor: 'pointer',
-                  background: meetingFilterStatus === 'done' ? 'var(--color-surface, #ffffff)' : 'transparent',
-                  color: meetingFilterStatus === 'done' ? '#10b981' : 'var(--color-text-muted)',
-                  boxShadow: meetingFilterStatus === 'done' ? 'var(--shadow-sm)' : 'none'
-                }}
-              >
-                {t('Đã gặp')} ({upcomingMeetingsList.filter(t => checkMeetingIsDone(t)).length})
-              </button>
-            </div>
+            {/* Status Dropdown */}
+            <CustomSelect
+              options={meetingStatusSelectOptions}
+              value={meetingFilterStatus}
+              onChange={(val) => {
+                setMeetingFilterStatus(val as any);
+                setMeetingPage(1);
+              }}
+              placeholder={t('Trạng thái')}
+              width="170px"
+            />
           </div>
 
           {/* Table Column Header */}
