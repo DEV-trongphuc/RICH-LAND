@@ -493,13 +493,6 @@ const PersonalAccountInner = () => {
                     <Save size={16} /> {loading ? t('Đang lưu...') : t('Lưu thay đổi')}
                   </button>
                 </div>
-
-                {/* TÀI SẢN ĐƯỢC CẤP PHÁT SECTION (READ-ONLY FOR EMPLOYEE) */}
-                <AssignedAssetsSection
-                  assets={myAssets}
-                  onChange={() => {}}
-                  readOnly={true}
-                />
               </form>
             )}
 

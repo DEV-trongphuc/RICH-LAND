@@ -1940,13 +1940,6 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
                       </div>
                     </div>
                   </div>
-
-                  {/* TÀI SẢN ĐƯỢC CẤP PHÁT SECTION */}
-                  <AssignedAssetsSection
-                    assets={assignedAssets}
-                    onChange={setAssignedAssets}
-                    readOnly={readOnly}
-                  />
                 </div>
               )}
 

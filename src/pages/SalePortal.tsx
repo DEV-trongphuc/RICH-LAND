@@ -10630,13 +10630,6 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                       </div>
                     </div>
                 </div>
-
-                {/* TÀI SẢN ĐƯỢC CẤP PHÁT SECTION IN ERP TAB */}
-                <AssignedAssetsSection
-                  assets={profileAssets}
-                  onChange={() => {}}
-                  readOnly={!canEditUserAssets}
-                />
               </div>
             )}
 
@@ -11908,6 +11901,41 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                         </div>
                       </div>
 
+                      {(() => {
+                        const yestObj = new Date();
+                        yestObj.setDate(yestObj.getDate() - 1);
+                        const yestStr = yestObj.getFullYear() + '-' + String(yestObj.getMonth() + 1).padStart(2, '0') + '-' + String(yestObj.getDate()).padStart(2, '0');
+                        const yestFormatted = `${String(yestObj.getDate()).padStart(2, '0')}/${String(yestObj.getMonth() + 1).padStart(2, '0')}`;
+                        const wasYestRegistered = Boolean(profile?.night_shifts && profile.night_shifts.some((ns: any) => ns.shift_date === yestStr));
+
+                        return (
+                          <div style={{
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            background: 'var(--color-bg-alt)',
+                            padding: '8px 14px',
+                            borderRadius: '12px',
+                            border: '1px solid var(--color-border-light)',
+                            marginBottom: '8px'
+                          }}>
+                            <span style={{ fontSize: '0.8125rem', fontWeight: 500, color: 'var(--color-text-muted)' }}>
+                              {t('Ca đêm hôm qua')} ({yestFormatted}):
+                            </span>
+                            <span style={{
+                              fontSize: '0.78rem',
+                              fontWeight: 700,
+                              color: wasYestRegistered ? '#8b5cf6' : 'var(--color-text-muted)',
+                              background: wasYestRegistered ? 'rgba(139, 92, 246, 0.12)' : 'rgba(100, 116, 139, 0.08)',
+                              padding: '2px 8px',
+                              borderRadius: '6px'
+                            }}>
+                              {wasYestRegistered ? t('Đã trực ca đêm') : t('Không trực')}
+                            </span>
+                          </div>
+                        );
+                      })()}
+
                       <div style={{
                         display: 'flex',
                         justifyContent: 'space-between',
@@ -12161,7 +12189,8 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                               const reg = weeklyRegistrations.find(r => r.shift_date === day.date);
                               const isNightRegistered = Boolean(
                                 (reg && (reg.shift_type === 'night' || reg.is_night === 1 || reg.is_night === true || String(reg.note || '').toLowerCase().includes('đêm'))) ||
-                                (nightShiftRegistered && nightShiftDate === day.date)
+                                (nightShiftRegistered && nightShiftDate === day.date) ||
+                                (profile?.night_shifts && profile.night_shifts.some((ns: any) => ns.shift_date === day.date))
                               );
                               const isWeekendRegistered = Boolean(
                                 (day.date === weekendShiftSat?.date && weekendShiftSat?.registered) || 

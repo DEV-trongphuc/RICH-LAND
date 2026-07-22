@@ -2980,6 +2980,44 @@ switch ($action) {
                 if (!empty($consultantProfile['work_schedule'])) {
                     $consultantProfile['work_schedule'] = json_decode($consultantProfile['work_schedule'], true);
                 }
+
+                // Fetch night shift registrations for this user
+                $nightShifts = [];
+                $stmtNS = $conn->prepare("SELECT id, shift_date, approved, created_at FROM night_shift_registrations WHERE user_id = ? ORDER BY shift_date DESC LIMIT 100");
+                if ($stmtNS) {
+                    $stmtNS->bind_param("i", $targetUserId);
+                    $stmtNS->execute();
+                    $resNS = $stmtNS->get_result();
+                    while ($row = $resNS->fetch_assoc()) {
+                        $nightShifts[] = [
+                            'id' => (int)$row['id'],
+                            'shift_date' => $row['shift_date'],
+                            'approved' => (int)$row['approved'],
+                            'created_at' => $row['created_at']
+                        ];
+                    }
+                    $stmtNS->close();
+                }
+                $consultantProfile['night_shifts'] = $nightShifts;
+
+                // Fetch weekend shift registrations for this user
+                $weekendShifts = [];
+                $stmtWS = $conn->prepare("SELECT id, shift_date, approved, created_at FROM weekend_shift_registrations WHERE user_id = ? ORDER BY shift_date DESC LIMIT 100");
+                if ($stmtWS) {
+                    $stmtWS->bind_param("i", $targetUserId);
+                    $stmtWS->execute();
+                    $resWS = $stmtWS->get_result();
+                    while ($row = $resWS->fetch_assoc()) {
+                        $weekendShifts[] = [
+                            'id' => (int)$row['id'],
+                            'shift_date' => $row['shift_date'],
+                            'approved' => (int)$row['approved'],
+                            'created_at' => $row['created_at']
+                        ];
+                    }
+                    $stmtWS->close();
+                }
+                $consultantProfile['weekend_shifts'] = $weekendShifts;
             }
             $stmtP->close();
         }
