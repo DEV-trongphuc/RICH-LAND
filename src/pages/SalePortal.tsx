@@ -380,9 +380,10 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
   }, []);
 
   useEffect(() => {
-    const timer = setInterval(() => setNow(Date.now()), 10000);
+    const intervalMs = activeIncomingOffer ? 100 : 10000;
+    const timer = setInterval(() => setNow(Date.now()), intervalMs);
     return () => clearInterval(timer);
-  }, []);
+  }, [activeIncomingOffer]);
 
   const [search, setSearch] = useState(getInitialSearch());
   const [searchInput, setSearchInput] = useState(getInitialSearch());
@@ -16792,164 +16793,144 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
           <div style={{
             display: 'flex',
             flexDirection: 'column',
-            alignItems: 'center',
-            gap: '1.5rem',
-            padding: '1.5rem 1rem',
+            alignItems: 'stretch',
+            gap: '1.25rem',
+            padding: '1.25rem 0.5rem 0.5rem 0.5rem',
             textAlign: 'center',
-            position: 'relative'
+            position: 'relative',
           }}>
+            {/* Global style overrides to disable backdrop blur */}
             <style>{`
-              @keyframes rippleEffect {
-                0% { transform: scale(1); opacity: 0.8; }
-                100% { transform: scale(1.5); opacity: 0; }
+              div[class*="CustomModal_backdrop"] {
+                backdrop-filter: none !important;
+                -webkit-backdrop-filter: none !important;
+                background-color: rgba(15, 23, 42, 0.8) !important;
               }
-              @keyframes bellWobble {
-                0%, 100% { transform: rotate(0); }
-                15% { transform: rotate(12deg); }
-                30% { transform: rotate(-12deg); }
-                45% { transform: rotate(8deg); }
-                60% { transform: rotate(-8deg); }
-                75% { transform: rotate(4deg); }
+              
+              @keyframes progressPulse {
+                0%, 100% { opacity: 0.85; }
+                50% { opacity: 1; }
+              }
+
+              @keyframes pulseCircle {
+                0% { transform: scale(0.98); box-shadow: 0 0 0 0 rgba(189, 29, 45, 0.2); }
+                70% { transform: scale(1); box-shadow: 0 0 0 8px rgba(189, 29, 45, 0); }
+                100% { transform: scale(0.98); box-shadow: 0 0 0 0 rgba(189, 29, 45, 0); }
               }
             `}</style>
 
-            {/* Ringing Bell Icon */}
+            {/* Top Linear Smooth Progress Bar */}
             <div style={{
-              position: 'relative',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              width: '80px',
-              height: '80px',
-              borderRadius: '50%',
-              background: 'rgba(189, 29, 45, 0.1)',
-              marginBottom: '-0.5rem'
+              width: '100%',
+              height: '6px',
+              background: 'var(--color-border-light)',
+              borderRadius: '3px',
+              overflow: 'hidden',
+              marginTop: '-1rem',
+              marginBottom: '0.5rem'
             }}>
               <div style={{
-                position: 'absolute',
-                width: '100%',
                 height: '100%',
-                borderRadius: '50%',
-                border: '2px solid rgba(189, 29, 45, 0.4)',
-                animation: 'rippleEffect 2s infinite ease-out'
+                width: `${Math.max(0, Math.min(100, (activeIncomingOffer.remainingMs / (Number(activeIncomingOffer.lead.lead_recall_minutes || 2) * 60 * 1000)) * 100))}%`,
+                background: 'linear-gradient(90deg, #BD1D2D 0%, #e11d48 100%)',
+                transition: 'width 0.1s linear',
+                borderRadius: '3px',
+                animation: 'progressPulse 2s infinite ease-in-out'
               }} />
-              <div style={{
-                position: 'absolute',
-                width: '100%',
-                height: '100%',
-                borderRadius: '50%',
-                border: '2px solid rgba(189, 29, 45, 0.2)',
-                animation: 'rippleEffect 2s infinite ease-out 0.6s'
-              }} />
-              <Bell size={36} color="#BD1D2D" style={{ animation: 'bellWobble 1.5s infinite ease-in-out' }} />
             </div>
 
-            {/* Countdown Circular Ring & Text */}
-            <div style={{ position: 'relative', width: '120px', height: '120px' }}>
-              <svg width="120" height="120" style={{ transform: 'rotate(-90deg)', filter: 'drop-shadow(0px 4px 8px rgba(189, 29, 45, 0.15))' }}>
-                <circle
-                  cx="60"
-                  cy="60"
-                  r="52"
-                  stroke="var(--color-border-light)"
-                  strokeWidth="6"
-                  fill="transparent"
-                />
-                <circle
-                  cx="60"
-                  cy="60"
-                  r="52"
-                  stroke="#BD1D2D"
-                  strokeWidth="8"
-                  fill="transparent"
-                  strokeDasharray={2 * Math.PI * 52}
-                  strokeDashoffset={
-                    (2 * Math.PI * 52) * 
-                    (1 - Math.max(0, activeIncomingOffer.remainingMs) / (Number(activeIncomingOffer.lead.lead_recall_minutes || 2) * 60 * 1000))
-                  }
-                  strokeLinecap="round"
-                  style={{ transition: 'stroke-dashoffset 1s linear' }}
-                />
-              </svg>
-              <div style={{
-                position: 'absolute',
-                inset: 0,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                flexDirection: 'column'
+            {/* Giant Digital Counter Box */}
+            <div style={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '0.75rem',
+              borderRadius: '10px',
+              background: 'rgba(189, 29, 45, 0.04)',
+              border: '1px solid rgba(189, 29, 45, 0.12)',
+              margin: '0 auto',
+              width: '180px',
+              animation: 'pulseCircle 2s infinite ease-in-out'
+            }}>
+              <span style={{ fontSize: '0.72rem', fontWeight: 700, color: '#BD1D2D', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '2px' }}>
+                {t('Thời gian tiếp nhận')}
+              </span>
+              <span style={{
+                fontSize: '2rem',
+                fontWeight: 900,
+                fontFamily: 'monospace',
+                color: '#BD1D2D',
+                letterSpacing: '-0.5px',
+                lineHeight: 1
               }}>
-                <span style={{
-                  fontSize: '1.6rem',
-                  fontWeight: 800,
-                  fontFamily: 'Outfit, sans-serif',
-                  color: '#BD1D2D',
-                  letterSpacing: '-0.5px'
-                }}>
-                  {(() => {
-                    const totalSecs = Math.max(0, Math.floor(activeIncomingOffer.remainingMs / 1000));
-                    const mins = Math.floor(totalSecs / 60);
-                    const secs = totalSecs % 60;
-                    return `${mins}:${String(secs).padStart(2, '0')}`;
-                  })()}
-                </span>
-                <span style={{ fontSize: '0.65rem', fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginTop: '-2px' }}>
-                  {t('Còn lại')}
-                </span>
-              </div>
+                {(() => {
+                  const totalSecs = Math.max(0, Math.floor(activeIncomingOffer.remainingMs / 1000));
+                  const mins = Math.floor(totalSecs / 60);
+                  const secs = totalSecs % 60;
+                  return `${mins}:${String(secs).padStart(2, '0')}`;
+                })()}
+              </span>
             </div>
 
             {/* Lead Details Card */}
             <div style={{
-              width: '100%',
               padding: '1.25rem',
               borderRadius: '12px',
               background: 'var(--color-bg)',
               border: '1px solid var(--color-border-light)',
-              boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.02)'
+              textAlign: 'left'
             }}>
-              <h4 style={{ fontSize: '1.15rem', fontWeight: 700, color: 'var(--color-text)', margin: '0 0 6px 0' }}>
-                {activeIncomingOffer.lead.full_name || t('Khách hàng mới')}
-              </h4>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>
+                  {t('Thông tin khách hàng')}
+                </span>
                 <span style={{
-                  padding: '4px 10px',
-                  borderRadius: '12px',
-                  fontSize: '0.75rem',
-                  fontWeight: 600,
+                  padding: '3px 8px',
+                  borderRadius: '8px',
+                  fontSize: '0.68rem',
+                  fontWeight: 700,
                   background: 'rgba(189, 29, 45, 0.08)',
                   color: '#BD1D2D',
                   border: '1px solid rgba(189, 29, 45, 0.15)'
                 }}>
-                  {t('Nguồn:')} {activeIncomingOffer.lead.source || 'Facebook CAPI'}
+                  {activeIncomingOffer.lead.source || 'Facebook CAPI'}
                 </span>
               </div>
-              <p style={{
-                fontSize: '0.75rem',
-                color: '#BD1D2D',
-                marginTop: '10px',
-                fontWeight: 600,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '6px',
-                margin: '10px 0 0 0'
-              }}>
-                <AlertTriangle size={14} style={{ animation: 'pulse 1s infinite' }} /> {t('Tiếp nhận ngay trước khi lead bị thu hồi!')}
+              <h4 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--color-text)', margin: '0 0 4px 0' }}>
+                {activeIncomingOffer.lead.full_name || t('Khách hàng mới')}
+              </h4>
+              <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', margin: 0, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <Clock size={12} /> {t('Phân bổ lúc:')} {activeIncomingOffer.lead.last_interaction_date ? new Date(activeIncomingOffer.lead.last_interaction_date).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) : ''}
               </p>
             </div>
+
+            {/* Warning Message */}
+            <p style={{
+              fontSize: '0.75rem',
+              color: '#BD1D2D',
+              fontWeight: 700,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '6px',
+              margin: '0'
+            }}>
+              <AlertTriangle size={14} style={{ animation: 'pulse 1s infinite' }} /> 
+              {t('Lead sẽ tự động bị thu hồi khi hết giờ!')}
+            </p>
 
             {/* Action Button */}
             <button
               onClick={() => handleAcceptLead(activeIncomingOffer.lead.lead_id)}
-              className="btn danger pulsing"
+              className="btn danger"
               style={{
                 width: '100%',
-                height: '48px',
-                borderRadius: '24px',
-                fontSize: '0.95rem',
+                height: '50px',
+                borderRadius: '10px',
+                fontSize: '1rem',
                 fontWeight: 800,
-                background: 'linear-gradient(135deg, #BD1D2D 0%, #a31422 100%)',
+                background: '#BD1D2D',
                 color: '#fff',
                 border: 'none',
                 boxShadow: '0 4px 15px rgba(189, 29, 45, 0.35)',
@@ -16957,7 +16938,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                 transition: 'all 0.2s ease',
               }}
             >
-              {t('TIẾP NHẬN LEAD NGAY')}
+              {t('TIẾP NHẬN KHÁCH HÀNG')}
             </button>
           </div>
         </CustomModal>
