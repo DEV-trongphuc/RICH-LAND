@@ -9,7 +9,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 999999; /* Extremely high z-index to cover bottom nav bar and everything */
+  z-index: 2000000 !important; /* Extremely high z-index to float above all drawers (1000010) */
   padding: 1rem;
 }
 
