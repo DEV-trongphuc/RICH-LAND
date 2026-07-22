@@ -687,7 +687,7 @@ class ProjectController {
     public function updateDocument(array $auth, int $projectId, int $docId): void {
         $this->requireProjectEditPermission($auth, $projectId);
 
-        $b = getRequestBody();
+        $b = getBody();
         $name = trim($b['name'] ?? '');
         if (empty($name)) {
             respond(400, null, 'Tên tệp không được để trống', false);
