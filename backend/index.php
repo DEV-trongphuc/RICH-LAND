@@ -903,6 +903,11 @@ switch ($resource) {
     case 'system':
         $auth = requireAuth();
         requireRole($auth, ['admin', 'super_admin']);
+        if ($resourceId === 'benchmark' && $method === 'GET') {
+            define('DIAG_TOKEN', true);
+            require_once __DIR__ . '/test_coop_slips_performance.php';
+            exit;
+        }
         if ($resourceId === 'patch' && $method === 'POST') {
             $sqlFiles = ['migrate_2026_05_06_v3_files.sql', 'migrate_activity_comments.sql', 'migrate_fractional_quantities.sql'];
             $results = [];
