@@ -891,6 +891,8 @@ switch ($resource) {
         break;
 
     case 'test-benchmark':
+        ini_set('display_errors', 1);
+        error_reporting(E_ALL);
         $token = $_GET['token'] ?? '';
         if ($token !== 'RichLand_Diag_Secure_Token_2026_9e88d6c701fbc6b7') {
             respond(403, null, 'Forbidden: Invalid token', false);
@@ -898,15 +900,20 @@ switch ($resource) {
         define('DIAG_TOKEN', true);
         $testFile = $_GET['run'] ?? 'coop_slips';
         
-        ob_start();
-        if ($testFile === 'performance_benchmark') {
-            require_once __DIR__ . '/test_performance_benchmark.php';
-        } else {
-            require_once __DIR__ . '/test_coop_slips_performance.php';
+        try {
+            ob_start();
+            if ($testFile === 'performance_benchmark') {
+                require_once __DIR__ . '/test_performance_benchmark.php';
+            } else {
+                require_once __DIR__ . '/test_coop_slips_performance.php';
+            }
+            $outputContent = ob_get_clean();
+            respond(200, ['output' => $outputContent], 'Test run completed successfully');
+        } catch (Throwable $err) {
+            ob_end_clean();
+            echo "EXCEPTION_ERROR: " . $err->getMessage() . " in " . $err->getFile() . " on line " . $err->getLine() . "\n" . $err->getTraceAsString();
+            exit;
         }
-        $outputContent = ob_get_clean();
-        
-        respond(200, ['output' => $outputContent], 'Test run completed successfully');
         exit;
 
     case 'cloud-files':
