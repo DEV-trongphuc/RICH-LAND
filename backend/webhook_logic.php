@@ -1860,13 +1860,23 @@ function simulateNextConsultantInRound($conn, $roundId, $lead = null)
     $today = date('Y-m-d');
     $currentTime = date('H:i');
 
-    // Calculate active count of available consultants (who pass all 5 gates)
+    $goldenHoursStart = get_system_setting($conn, 'golden_hours_start_time') ?: '06:00';
+    $goldenHoursEnd = get_system_setting($conn, 'golden_hours_end_time') ?: '08:30';
+    $isGoldenHoursTime = false;
+    if ($goldenHoursStart < $goldenHoursEnd) {
+        $isGoldenHoursTime = ($currentTime >= $goldenHoursStart && $currentTime <= $goldenHoursEnd);
+    } else {
+        $isGoldenHoursTime = ($currentTime >= $goldenHoursStart || $currentTime <= $goldenHoursEnd);
+    }
+
+    // Calculate active count of available consultants (who pass all 5 gates and are currently on shift)
     $activeCount = 0;
     foreach ($consultants as $c) {
         $isOnVacation = ($c['vacation_mode'] == 1 || (!empty($c['leave_start']) && $today >= $c['leave_start'] && (empty($c['leave_end']) || $today <= $c['leave_end'])));
         $isGatePassed = (checkConsultantGates($conn, (int)$c['id'], $lead) === true);
-        $isNightShiftActive = checkNightShiftAvailability($conn, (int)$c['id'], $currentTime);
-        if (!$isOnVacation && $isGatePassed && $isNightShiftActive) {
+        $cInWorkHours = isConsultantInWorkHours($currentTime, $c['work_start_time'], $c['work_end_time'], $c['work_schedule']);
+        $cNightShift = checkNightShiftAvailability($conn, (int)$c['id'], $currentTime);
+        if (!$isOnVacation && $isGatePassed && ($cInWorkHours || $cNightShift || $isGoldenHoursTime)) {
             $activeCount++;
         }
     }
@@ -1874,14 +1884,14 @@ function simulateNextConsultantInRound($conn, $roundId, $lead = null)
     foreach ($consultants as $row) {
         $isOnVacation = ($row['vacation_mode'] == 1 || (!empty($row['leave_start']) && $today >= $row['leave_start'] && (empty($row['leave_end']) || $today <= $row['leave_end'])));
         $isInWorkHours = isConsultantInWorkHours($currentTime, $row['work_start_time'], $row['work_end_time'], $row['work_schedule']);
+        $isNightShiftActive = checkNightShiftAvailability($conn, (int)$row['id'], $currentTime);
         
         $gateResult = checkConsultantGates($conn, (int)$row['id'], $lead);
         $isGatePassed = ($gateResult === true);
         if ($gateResult !== true) {
             error_log("RICH LAND INFO (Sim): Consultant ID " . $row['id'] . " failed gate check: " . $gateResult);
         }
-        $isNightShiftActive = checkNightShiftAvailability($conn, (int)$row['id'], $currentTime);
-        $isAvailable = !$isOnVacation && $isGatePassed && ($isInWorkHours || $isNightShiftActive);
+        $isAvailable = !$isOnVacation && $isGatePassed && ($isInWorkHours || $isNightShiftActive || $isGoldenHoursTime);
 
         // Priority 1: Compensation
         // BUGFIX/ENHANCEMENT: Tránh dồn dập đền bù liên tục cho cùng 1 sale.
@@ -1947,8 +1957,7 @@ function simulateNextConsultantInRound($conn, $roundId, $lead = null)
 
         $isOnVacation = ($candidate['vacation_mode'] == 1 || (!empty($candidate['leave_start']) && $today >= $candidate['leave_start'] && (empty($candidate['leave_end']) || $today <= $candidate['leave_end'])));
         $isGatePassed = (checkConsultantGates($conn, (int)$candidate['id'], $lead) === true);
-        $isNightShiftActive = checkNightShiftAvailability($conn, (int)$candidate['id'], $currentTime);
-        $isAvailable = !$isOnVacation && $isGatePassed && $isNightShiftActive;
+        $isAvailable = !$isOnVacation && $isGatePassed;
 
         if ($isAvailable) {
             $ratio = max(1, (int) ($candidate['receive_ratio'] ?? 1));
