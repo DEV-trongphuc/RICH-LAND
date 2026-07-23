@@ -2308,10 +2308,10 @@ function releaseExpiredLeadsToKho($conn) {
             $activeCnt = (int)($stmtActive->get_result()->fetch_assoc()['active_cnt'] ?? 0);
             $stmtActive->close();
 
-            // Check if any remaining active claims are in 'dat_coc'
+            // Check if any remaining active claims are in deal won status
             $hasProtectedStatus = false;
             if ($activeCnt > 0) {
-                $stmtProtected = $conn->prepare("SELECT COUNT(*) FROM contacts WHERE person_id = ? AND deleted_at IS NULL AND pipeline_status = 'dat_coc'");
+                $stmtProtected = $conn->prepare("SELECT COUNT(*) FROM contacts WHERE person_id = ? AND deleted_at IS NULL AND pipeline_status = (SELECT setting_value FROM system_settings WHERE setting_key = 'deal_won_status' LIMIT 1)");
                 $stmtProtected->bind_param("i", $personId);
                 $stmtProtected->execute();
                 $pRow = $stmtProtected->get_result()->fetch_row();

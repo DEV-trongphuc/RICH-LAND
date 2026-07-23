@@ -864,8 +864,12 @@ class ContactController {
                     WorkflowHelper::triggerTasks($this->db, $auth['tenant_id'], $id, $targetStageId, $auth['user_id']);
                 }
 
-                // Withdraw from databank and terminate other parallel contacts if dat_coc
-                if ($newStatus === 'dat_coc') {
+                // Withdraw from databank and terminate other parallel contacts if deal won status is reached
+                $stmtWon = $this->db->query("SELECT setting_value FROM system_settings WHERE setting_key = 'deal_won_status' LIMIT 1");
+                $dealWonStatus = $stmtWon ? $stmtWon->fetchColumn() : 'dat_coc';
+                if (empty($dealWonStatus)) $dealWonStatus = 'dat_coc';
+
+                if ($newStatus === $dealWonStatus) {
                     require_once __DIR__ . '/../config/ParallelHelper.php';
                     ParallelHelper::lockPersonForWinningContact($this->db, (int)$id);
                 }
@@ -1063,8 +1067,12 @@ class ContactController {
             require_once __DIR__ . '/../config/WorkflowHelper.php';
             WorkflowHelper::triggerTasks($this->db, $auth['tenant_id'], $id, $stageId, $auth['user_id']);
 
-            // Withdraw from databank and terminate other parallel contacts if dat_coc
-            if ($newStatus === 'dat_coc') {
+            // Withdraw from databank and terminate other parallel contacts if deal won status is reached
+            $stmtWon = $this->db->query("SELECT setting_value FROM system_settings WHERE setting_key = 'deal_won_status' LIMIT 1");
+            $dealWonStatus = $stmtWon ? $stmtWon->fetchColumn() : 'dat_coc';
+            if (empty($dealWonStatus)) $dealWonStatus = 'dat_coc';
+
+            if ($newStatus === $dealWonStatus) {
                 require_once __DIR__ . '/../config/ParallelHelper.php';
                 ParallelHelper::lockPersonForWinningContact($this->db, (int)$id);
             }
@@ -1377,7 +1385,7 @@ class ContactController {
 
             $hasProtectedStatus = false;
             if ($activeClaims > 0) {
-                $stmtProtected = $this->db->prepare("SELECT COUNT(*) FROM contacts WHERE person_id = ? AND tenant_id = ? AND deleted_at IS NULL AND pipeline_status = 'dat_coc'");
+                $stmtProtected = $this->db->prepare("SELECT COUNT(*) FROM contacts WHERE person_id = ? AND tenant_id = ? AND deleted_at IS NULL AND pipeline_status = (SELECT setting_value FROM system_settings WHERE setting_key = 'deal_won_status' LIMIT 1)");
                 $stmtProtected->execute([$personId, $tenantId]);
                 $hasProtectedStatus = ((int)$stmtProtected->fetchColumn() > 0);
             }

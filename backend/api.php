@@ -17732,10 +17732,10 @@ switch ($action) {
             $remClaims = (int)($stmtCheckClaims->get_result()->fetch_assoc()['cnt'] ?? 0);
             $stmtCheckClaims->close();
 
-            // Check if any remaining claims are in 'dat_coc'
+            // Check if any remaining claims are in deal won status
             $hasProtectedStatus = false;
             if ($remClaims > 0) {
-                $stmtProtected = $conn->prepare("SELECT COUNT(*) as cnt FROM contacts WHERE person_id = ? AND deleted_at IS NULL AND pipeline_status = 'dat_coc'");
+                $stmtProtected = $conn->prepare("SELECT COUNT(*) as cnt FROM contacts WHERE person_id = ? AND deleted_at IS NULL AND pipeline_status = (SELECT setting_value FROM system_settings WHERE setting_key = 'deal_won_status' LIMIT 1)");
                 $stmtProtected->bind_param("i", $personId);
                 $stmtProtected->execute();
                 $hasProtectedStatus = ((int)$stmtProtected->get_result()->fetch_assoc()['cnt'] ?? 0) > 0;
@@ -18011,7 +18011,7 @@ switch ($action) {
                     FROM persons p
                     WHERE p.released_to_kho_at IS NOT NULL
                       AND (p.is_public = 1 OR NOT EXISTS (
-                          SELECT 1 FROM contacts WHERE person_id = p.id AND pipeline_status = 'dat_coc' AND deleted_at IS NULL
+                          SELECT 1 FROM contacts WHERE person_id = p.id AND pipeline_status = (SELECT setting_value FROM system_settings WHERE setting_key = 'deal_won_status' LIMIT 1) AND deleted_at IS NULL
                       ))
                       $deletedCond
                       $blockCond
