@@ -1100,7 +1100,7 @@ export default function CooperationSlipsPage() {
               <div
                 key={slip.id}
                 id={`coop-slip-row-${slip.id}`}
-                className="card animate-fade"
+                className={`card animate-fade coop-slip-card ${slip.status === 'approved' ? 'status-approved' : (slip.status === 'rejected' ? 'status-rejected' : 'status-pending')}`}
                 style={{ 
                   padding: '1.25rem 1.5rem', 
                   display: 'flex', 
@@ -1109,11 +1109,7 @@ export default function CooperationSlipsPage() {
                   cursor: 'pointer',
                   borderRadius: '12px',
                   border: '1px solid var(--color-border)',
-                  boxShadow: isExpanded ? '0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.05)' : '0 1px 3px 0 rgba(0, 0, 0, 0.02), 0 1px 2px 0 rgba(0, 0, 0, 0.01)',
-                  transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
                   background: 'var(--color-surface)',
-                  position: 'relative',
-                  overflow: 'hidden',
                   flexShrink: 0
                 }}
                 onClick={() => toggleSlip(slip.id)}
@@ -1129,13 +1125,13 @@ export default function CooperationSlipsPage() {
                     <div className="coop-slip-header-left">
                       <div className="coop-slip-card-icon" style={{ 
                         padding: '10px', 
-                        background: 'var(--color-border-light)', 
+                        background: slip.status === 'approved' ? 'rgba(16, 185, 129, 0.08)' : (slip.status === 'rejected' ? 'rgba(239, 68, 68, 0.08)' : 'rgba(245, 158, 11, 0.08)'), 
                         borderRadius: '8px', 
-                        color: 'var(--color-text-muted)', 
+                        color: slip.status === 'approved' ? '#10b981' : (slip.status === 'rejected' ? '#ef4444' : '#f59e0b'), 
                         display: 'flex', 
                         alignItems: 'center', 
                         justifyContent: 'center', 
-                        border: '1px solid var(--color-border)'
+                        border: slip.status === 'approved' ? '1px solid rgba(16, 185, 129, 0.2)' : (slip.status === 'rejected' ? '1px solid rgba(239, 68, 68, 0.2)' : '1px solid rgba(245, 158, 11, 0.2)')
                       }}>
                         <FileText size={18} />
                       </div>
@@ -1200,9 +1196,9 @@ export default function CooperationSlipsPage() {
                         <span
                           className="badge"
                           style={{
-                            background: 'var(--color-surface)',
-                            color: isPendingSignatures ? 'var(--color-warning)' : slip.status === 'approved' ? 'var(--color-success)' : slip.status === 'pending_manager_approval' ? 'var(--color-warning)' : slip.status === 'rejected' ? 'var(--color-danger)' : 'var(--color-text)',
-                            border: '1px solid var(--color-border)',
+                            background: isPendingSignatures || slip.status === 'pending_manager_approval' ? 'rgba(245, 158, 11, 0.08)' : (slip.status === 'approved' ? 'rgba(16, 185, 129, 0.08)' : (slip.status === 'rejected' ? 'rgba(239, 68, 68, 0.08)' : 'var(--color-surface)')),
+                            color: isPendingSignatures ? '#f59e0b' : slip.status === 'approved' ? '#10b981' : slip.status === 'pending_manager_approval' ? '#f59e0b' : slip.status === 'rejected' ? '#ef4444' : 'var(--color-text)',
+                            border: isPendingSignatures || slip.status === 'pending_manager_approval' ? '1px solid rgba(245, 158, 11, 0.2)' : (slip.status === 'approved' ? '1px solid rgba(16, 185, 129, 0.2)' : (slip.status === 'rejected' ? '1px solid rgba(239, 68, 68, 0.2)' : '1px solid var(--color-border)')),
                             padding: '4px 10px',
                             borderRadius: '30px',
                             fontSize: '0.7rem',
@@ -1212,24 +1208,24 @@ export default function CooperationSlipsPage() {
                             gap: '6px'
                           }}
                         >
-                          {isPendingSignatures ? (
+                           {isPendingSignatures ? (
                             <>
-                              <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--color-warning)' }} />
+                              <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#f59e0b' }} />
                               Chờ ký
                             </>
                           ) : slip.status === 'approved' ? (
                             <>
-                              <Check size={12} style={{ color: 'var(--color-success)' }} />
+                              <Check size={12} style={{ color: '#10b981' }} />
                               Đã duyệt
                             </>
                           ) : slip.status === 'pending_manager_approval' ? (
                             <>
-                              <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--color-warning)' }} />
+                              <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#f59e0b' }} />
                               Chờ sếp duyệt
                             </>
                           ) : slip.status === 'rejected' ? (
                             <>
-                              <X size={12} style={{ color: 'var(--color-danger)' }} />
+                              <X size={12} style={{ color: '#ef4444' }} />
                               Bị bác bỏ
                             </>
                           ) : (
@@ -1298,16 +1294,38 @@ export default function CooperationSlipsPage() {
                   <div className="coop-slip-bottom-row">
                     
                     {/* Left: Shareholders & percentages */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', flex: 1, minWidth: '280px' }}>
-                      <span style={{ fontSize: '0.725rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>Tỷ lệ chia:</span>
-                      <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center' }}>
-                        {slip.shareholders?.map((sh) => (
-                          <div key={sh.user_id} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', background: 'var(--color-bg-light)', padding: '3px 10px', borderRadius: '20px', border: '1px solid var(--color-border-light)' }}>
-                            <Avatar src={(sh as any).avatar} name={sh.name} size={16} />
-                            <span style={{ fontSize: '0.725rem', fontWeight: 700, color: 'var(--color-text)' }}>{sh.name}</span>
-                            <span style={{ fontSize: '0.725rem', fontWeight: 800, color: 'var(--color-text)' }}>{sh.percentage}%</span>
-                          </div>
-                        ))}
+                    {/* Left: Shareholders & percentages */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', flex: 1, minWidth: '280px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                        <span style={{ fontSize: '0.725rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>Tỷ lệ chia:</span>
+                        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center' }}>
+                          {slip.shareholders?.map((sh) => (
+                            <div key={sh.user_id} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', background: 'var(--color-bg-light)', padding: '3px 10px', borderRadius: '20px', border: '1px solid var(--color-border-light)' }}>
+                              <Avatar src={(sh as any).avatar} name={sh.name} size={16} />
+                              <span style={{ fontSize: '0.725rem', fontWeight: 700, color: 'var(--color-text)' }}>{sh.name}</span>
+                              <span style={{ fontSize: '0.725rem', fontWeight: 800, color: 'var(--color-text)' }}>{sh.percentage}%</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                      
+                      {/* Visual Proportional Split Bar */}
+                      <div style={{ display: 'flex', height: '6px', borderRadius: '3px', overflow: 'hidden', background: 'rgba(0,0,0,0.04)', width: '100%', maxWidth: '360px', marginTop: '2px' }}>
+                        {slip.shareholders?.map((sh, idx) => {
+                          const colors = ['var(--color-primary)', '#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#06b6d4'];
+                          const color = colors[idx % colors.length];
+                          return (
+                            <div 
+                              key={sh.user_id} 
+                              style={{ 
+                                width: `${sh.percentage}%`, 
+                                background: color, 
+                                height: '100%' 
+                              }} 
+                              title={`${sh.name}: ${sh.percentage}%`}
+                            />
+                          );
+                        })}
                       </div>
                     </div>
 
