@@ -2195,7 +2195,7 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
                                           rel="noopener noreferrer"
                                           style={{ color: 'var(--color-primary)', fontWeight: 650, textDecoration: 'underline' }}
                                         >
-                                          {t('Xem vị trí Vào')}
+                                          {t('Xem vị trí')}
                                         </a>
                                         {row.location_address && ` - ${row.location_address}`}
                                       </div>
@@ -2220,7 +2220,7 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
                                           rel="noopener noreferrer"
                                           style={{ color: 'var(--color-primary)', fontWeight: 650, textDecoration: 'underline' }}
                                         >
-                                          {t('Xem vị trí Ra')}
+                                          {t('Xem vị trí')}
                                         </a>
                                         {row.checkout_location_address && ` - ${row.checkout_location_address}`}
                                       </div>
