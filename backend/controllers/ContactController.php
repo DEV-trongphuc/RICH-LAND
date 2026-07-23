@@ -892,24 +892,7 @@ class ContactController {
         }
 
         // Notify the owner asynchronously if modified by another user
-        if ($currentContact && !empty($currentContact['owner_id']) && (int)$currentContact['owner_id'] !== (int)$auth['user_id']) {
-            $ownerId = (int)$currentContact['owner_id'];
-            $tenantId = (int)$auth['tenant_id'];
-            $custName = trim($currentContact['first_name'] . ' ' . ($currentContact['last_name'] ?? ''));
-            $updaterName = $auth['full_name'] ?? 'Đồng nghiệp';
-            register_shutdown_function(function() use ($tenantId, $ownerId, $custName, $updaterName) {
-                try {
-                    require_once __DIR__ . '/../NotificationService.php';
-                    require_once __DIR__ . '/../config/CapiHelper.php';
-                    $db = CapiHelper::getPdo();
-                    NotificationService::send($db, $tenantId, 'CUSTOMER_UPDATE', [
-                        'user_id' => $ownerId,
-                        'customer_name' => $custName,
-                        'content' => $updaterName . ' vừa cập nhật thông tin khách hàng của bạn.'
-                    ]);
-                } catch (\Throwable $ex) {}
-            });
-        }
+        // CUSTOMER_UPDATE notification disabled per user request
         
         logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'UPDATE', 'contact', $id, json_encode(['first_name' => $currentContact['first_name'], 'last_name' => $currentContact['last_name'] ?? '']));
         $sql = "SELECT c.*, 
@@ -1030,16 +1013,7 @@ class ContactController {
         $stmt->execute($p);
         if (!$stmt->rowCount()) respond(403, null, 'Bạn không có quyền di chuyển liên hệ này', false);
 
-        // Notify the owner if modified by another user
-        if ($currentContact && !empty($currentContact['owner_id']) && (int)$currentContact['owner_id'] !== (int)$auth['user_id']) {
-            $ownerId = (int)$currentContact['owner_id'];
-            require_once __DIR__ . '/../NotificationService.php';
-            NotificationService::send($this->db, $auth['tenant_id'], 'CUSTOMER_UPDATE', [
-                'user_id' => $ownerId,
-                'customer_name' => trim($currentContact['first_name'] . ' ' . ($currentContact['last_name'] ?? '')),
-                'content' => ($auth['full_name'] ?? 'Đồng nghiệp') . ' đã chuyển khách hàng "' . $currentContact['first_name'] . ' ' . ($currentContact['last_name'] ?? '') . '" sang giai đoạn mới.'
-            ]);
-        }
+        // CUSTOMER_UPDATE notification disabled per user request
 
         // Trigger CAPI / Security timer updates on status change
         if ($newStatus !== $currStatus) {
