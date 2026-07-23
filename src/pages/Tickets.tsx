@@ -457,7 +457,7 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
     handleCopyText(text, t('Đã sao chép toàn bộ thông tin khách hàng!'), 'full');
   };
   const [isReminderModalOpen, setIsReminderModalOpen] = useState(false);
-  const [reminderChannels, setReminderChannels] = useState({ zalo: true, email: true });
+  const [reminderChannels, setReminderChannels] = useState({ zalo: true, email: true, telegram: true });
   const [isSendingReminder, setIsSendingReminder] = useState(false);
 
   const fetchNotificationStatus = async (leadId: number) => {
@@ -503,7 +503,8 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
         body: JSON.stringify({
           lead_id: selectedLead.lead_id || selectedLead.id,
           send_zalo: reminderChannels.zalo,
-          send_email: reminderChannels.email
+          send_email: reminderChannels.email,
+          send_telegram: reminderChannels.telegram
         })
       });
       if (res.success) {
@@ -3450,6 +3451,63 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
                               )}
                             </div>
                           </div>
+
+                          {/* Telegram Status */}
+                          {notificationStatus.telegram && (
+                            <div
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                fontSize: '0.78rem',
+                                padding: '4px 6px',
+                                borderRadius: '6px'
+                              }}
+                            >
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--color-text-muted)', minWidth: 0 }}>
+                                <img
+                                  src="https://upload.wikimedia.org/wikipedia/commons/8/82/Telegram_logo.svg"
+                                  alt="Telegram"
+                                  style={{ width: 14, height: 14, objectFit: 'contain', borderRadius: '50%', flexShrink: 0 }}
+                                />
+                                <span style={{ flexShrink: 0 }}>Telegram:</span>
+                                <span style={{ fontSize: '0.72rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={notificationStatus.telegram.sent_at || notificationStatus.telegram.target}>
+                                  {notificationStatus.telegram.status === 'sent'
+                                    ? (notificationStatus.telegram.sent_at || '-')
+                                    : (notificationStatus.telegram.status === 'no_telegram_config' ? t('Chưa cấu hình ID') : ((notificationStatus.telegram.status === 'pending' || (selectedLead?.status === 'pending_work_hours' && notificationStatus.telegram.status === 'missed')) ? t('Đang chờ gửi...') : '-'))}
+                                </span>
+                              </div>
+                              <div style={{ flexShrink: 0 }}>
+                                {notificationStatus.telegram.status === 'no_telegram_config' && (
+                                  <span style={{ padding: '2px 8px', borderRadius: 6, fontSize: '0.72rem', fontWeight: 700, background: 'var(--color-border)', color: 'var(--color-text-muted)' }}>
+                                    {t('Chưa cấu hình ID')}
+                                  </span>
+                                )}
+                                {notificationStatus.telegram.status === 'sent' && (
+                                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 8px', borderRadius: 6, fontSize: '0.72rem', fontWeight: 700, background: 'var(--color-success-light)', color: 'var(--color-success)' }}>
+                                    <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 12, height: 12, borderRadius: '50%', background: 'var(--color-success)', color: 'white', flexShrink: 0 }}>
+                                      <Check size={8} strokeWidth={3} />
+                                    </span> {t('Đã gửi')}
+                                  </span>
+                                )}
+                                {(notificationStatus.telegram.status === 'pending' || (selectedLead?.status === 'pending_work_hours' && notificationStatus.telegram.status === 'missed')) && (
+                                  <span style={{ padding: '2px 8px', borderRadius: 6, fontSize: '0.72rem', fontWeight: 700, background: 'var(--color-info-light)', color: 'var(--color-info)' }}>
+                                    {selectedLead?.status === 'pending_work_hours' ? t('Chờ gửi') : t('Đang chờ')}
+                                  </span>
+                                )}
+                                {notificationStatus.telegram.status === 'failed' && (
+                                  <span style={{ padding: '2px 8px', borderRadius: 6, fontSize: '0.72rem', fontWeight: 700, background: 'var(--color-danger-light)', color: 'var(--color-danger)' }}>
+                                    {t('Thất bại')}
+                                  </span>
+                                )}
+                                {notificationStatus.telegram.status === 'missed' && selectedLead?.status !== 'pending_work_hours' && (
+                                  <span style={{ padding: '2px 8px', borderRadius: 6, fontSize: '0.72rem', fontWeight: 700, background: 'rgba(239, 68, 68, 0.12)', color: '#ef4444', border: '1px dashed rgba(239, 68, 68, 0.2)' }}>
+                                    {t('Chưa gửi')}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          )}
                         </div>
                       ) : (
                         <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
@@ -3461,7 +3519,7 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
                       {isUserAdmin && selectedLead.assigned_to_name !== '-' && (
                         <button
                           onClick={() => {
-                            setReminderChannels({ zalo: true, email: true });
+                            setReminderChannels({ zalo: true, email: true, telegram: true });
                             setIsReminderModalOpen(true);
                           }}
                           style={{
@@ -4228,6 +4286,21 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
                   onChange={checked => setReminderChannels({ ...reminderChannels, email: checked })}
                 />
               </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <img
+                    src="https://upload.wikimedia.org/wikipedia/commons/8/82/Telegram_logo.svg"
+                    alt="Telegram"
+                    style={{ width: 16, height: 16, objectFit: 'contain', borderRadius: '50%' }}
+                  />
+                  <span style={{ fontSize: '0.875rem', color: 'var(--color-text)', fontWeight: 500 }}>Telegram Bot Message</span>
+                </div>
+                <ToggleSwitch
+                  checked={reminderChannels.telegram}
+                  onChange={checked => setReminderChannels({ ...reminderChannels, telegram: checked })}
+                />
+              </div>
             </div>
 
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '0.5rem' }}>
@@ -4247,7 +4320,7 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
               <button
                 className="btn primary"
                 onClick={handleSendReminder}
-                disabled={isSendingReminder || (!reminderChannels.zalo && !reminderChannels.email)}
+                disabled={isSendingReminder || (!reminderChannels.zalo && !reminderChannels.email && !reminderChannels.telegram)}
                 style={{
                   borderRadius: '10px',
                   padding: '8px 18px',
