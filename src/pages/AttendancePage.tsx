@@ -1899,14 +1899,13 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
                   <div style={{ display: 'flex', alignItems: 'flex-start', gap: '6px' }}>
                     <MapPin size={14} style={{ color: 'var(--color-success)', marginTop: '2px', flexShrink: 0 }} />
                     <div style={{ lineHeight: 1.4, textAlign: 'left' }}>
-                      <span style={{ fontWeight: 600, color: 'var(--color-text-muted)' }}>{t('Vị trí Vào:')} </span>
                       <a
                         href={`https://www.google.com/maps?q=${previewCheckIn.latitude},${previewCheckIn.longitude}`}
                         target="_blank"
                         rel="noopener noreferrer"
                         style={{ color: 'var(--color-primary)', fontWeight: 600, textDecoration: 'underline' }}
                       >
-                        {previewCheckIn.latitude}, {previewCheckIn.longitude}
+                        {t('Xem vị trí')}
                       </a>
                       {previewCheckIn.location_address && (
                         <div style={{ fontSize: '0.72rem', color: 'var(--color-text-light)', marginTop: '2px' }}>
@@ -1920,14 +1919,13 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
                   <div style={{ display: 'flex', alignItems: 'flex-start', gap: '6px', marginTop: '4px' }}>
                     <MapPin size={14} style={{ color: 'var(--color-danger)', marginTop: '2px', flexShrink: 0 }} />
                     <div style={{ lineHeight: 1.4, textAlign: 'left' }}>
-                      <span style={{ fontWeight: 600, color: 'var(--color-text-muted)' }}>{t('Vị trí Ra:')} </span>
                       <a
                         href={`https://www.google.com/maps?q=${previewCheckIn.checkout_latitude},${previewCheckIn.checkout_longitude}`}
                         target="_blank"
                         rel="noopener noreferrer"
                         style={{ color: 'var(--color-primary)', fontWeight: 600, textDecoration: 'underline' }}
                       >
-                        {previewCheckIn.checkout_latitude}, {previewCheckIn.checkout_longitude}
+                        {t('Xem vị trí')}
                       </a>
                       {previewCheckIn.checkout_location_address && (
                         <div style={{ fontSize: '0.72rem', color: 'var(--color-text-light)', marginTop: '2px' }}>
