@@ -3068,9 +3068,11 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
         }
       } else {
         toast.error(json.message || t('Nhận data thất bại'));
+        setClaimLeadConfirmOpen(false);
       }
     } catch (e: any) {
       toast.error(t('Lỗi: ') + e.message);
+      setClaimLeadConfirmOpen(false);
     } finally {
       setIsClaimingLeadId(null);
     }
@@ -9024,6 +9026,11 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
     const databankTotalPages = Math.ceil(publicLeads.length / DATABANK_ITEMS_PER_PAGE);
     const paginatedPublicLeads = publicLeads.slice((databankPage - 1) * DATABANK_ITEMS_PER_PAGE, databankPage * DATABANK_ITEMS_PER_PAGE);
     const isAdmin = ['admin', 'superadmin', 'super_admin', 'director'].includes(String(user?.role || displayUser?.role || '').toLowerCase());
+    const isQuotaExceeded = !isAdmin && publicQuota && (
+      (publicQuota.claims_hour !== undefined && publicQuota.limit_hour !== undefined && Number(publicQuota.claims_hour) >= Number(publicQuota.limit_hour)) ||
+      (publicQuota.claims_day !== undefined && publicQuota.limit_day !== undefined && Number(publicQuota.claims_day) >= Number(publicQuota.limit_day)) ||
+      (publicQuota.claims_month !== undefined && publicQuota.limit_month !== undefined && Number(publicQuota.claims_month) >= Number(publicQuota.limit_month))
+    );
 
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', paddingBottom: isMobile ? '100px' : '0' }}>
@@ -9319,7 +9326,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
               const isFull = lead.takers && lead.takers.length >= 2;
               const takerCount = lead.takers ? lead.takers.length : 0;
               const availableCount = Math.max(0, 2 - takerCount);
-              const canClaim = !hasClaimed && !isFull && isClaimingLeadId === null && !isAdmin;
+              const canClaim = !hasClaimed && !isFull && isClaimingLeadId === null && !isAdmin && !isQuotaExceeded;
 
               // Determine badge colors based on takerCount
               const badgeBg = isFull ? 'rgba(107, 114, 128, 0.1)' : (availableCount === 1 ? 'rgba(59, 130, 246, 0.1)' : 'rgba(16, 185, 129, 0.1)');
@@ -9346,7 +9353,8 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                     alignItems: 'center',
                     justifyContent: 'space-between',
                     gap: '12px',
-                    cursor: (canClaim || isAdmin) ? 'pointer' : 'default'
+                    cursor: (canClaim || isAdmin) ? 'pointer' : (isQuotaExceeded && !hasClaimed ? 'not-allowed' : 'default'),
+                    opacity: (isQuotaExceeded && !hasClaimed) ? 0.65 : 1
                   }}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1, minWidth: 0 }}>
@@ -9443,7 +9451,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                     const hasClaimed = lead.takers && lead.takers.some((t: any) => Number(t.id) === Number(displayUser?.id) || Number(t.id) === Number(displayUser?.consultant_id));
                     const isFull = lead.takers && lead.takers.length >= 2;
                     const isAdmin = ['admin', 'superadmin', 'super_admin', 'director'].includes(String(user?.role || displayUser?.role || '').toLowerCase());
-                    const canClaim = !hasClaimed && !isFull && isClaimingLeadId === null && !isAdmin;
+                    const canClaim = !hasClaimed && !isFull && isClaimingLeadId === null && !isAdmin && !isQuotaExceeded;
 
                     return (
                       <tr 
@@ -9460,7 +9468,8 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                           borderBottom: '1px solid var(--color-border-light)', 
                           color: 'var(--color-text)', 
                           transition: 'background 0.2s',
-                          cursor: (canClaim || isAdmin) ? 'pointer' : 'default'
+                          cursor: (canClaim || isAdmin) ? 'pointer' : (isQuotaExceeded && !hasClaimed ? 'not-allowed' : 'default'),
+                          opacity: (isQuotaExceeded && !hasClaimed) ? 0.65 : 1
                         }}
                       >
                         {isAdmin && (
@@ -9675,27 +9684,27 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                                 e.stopPropagation();
                                 handleClaimLead(lead.id, lead.full_name || lead.name);
                               }}
-                              disabled={isClaimingLeadId !== null || hasClaimed || isFull || isAdmin}
+                              disabled={isClaimingLeadId !== null || hasClaimed || isFull || isAdmin || isQuotaExceeded}
                               className={isFull ? "btn outline sm" : (hasClaimed ? "btn success sm" : "btn primary sm")}
                               style={{
                                 height: 32,
                                 fontSize: '0.72rem',
                                 fontWeight: 700,
                                 padding: '0 10px',
-                                background: isAdmin ? 'rgba(0,0,0,0.04)' : (hasClaimed ? 'rgba(16,185,129,0.12)' : (isFull ? 'transparent' : '#BD1D2D')),
-                                color: isAdmin ? 'var(--color-text-muted)' : (hasClaimed ? '#10b981' : (isFull ? 'var(--color-text-muted)' : '#ffffff')),
-                                border: isAdmin ? '1px solid var(--color-border-light)' : (hasClaimed ? '1px solid rgba(16,185,129,0.2)' : (isFull ? '1px solid var(--color-border)' : 'none')),
+                                background: isAdmin ? 'rgba(0,0,0,0.04)' : (hasClaimed ? 'rgba(16,185,129,0.12)' : (isFull ? 'transparent' : (isQuotaExceeded ? 'rgba(0,0,0,0.04)' : '#BD1D2D'))),
+                                color: isAdmin ? 'var(--color-text-muted)' : (hasClaimed ? '#10b981' : (isFull ? 'var(--color-text-muted)' : (isQuotaExceeded ? 'var(--color-text-muted)' : '#ffffff'))),
+                                border: isAdmin ? '1px solid var(--color-border-light)' : (hasClaimed ? '1px solid rgba(16,185,129,0.2)' : (isFull ? '1px solid var(--color-border)' : (isQuotaExceeded ? '1px solid var(--color-border-light)' : 'none'))),
                                 borderRadius: '16px',
                                 display: 'inline-flex',
                                 alignItems: 'center',
                                 justifyContent: 'center',
-                                boxShadow: (hasClaimed || isFull || isAdmin) ? 'none' : '0 4px 12px rgba(189,29,45,0.15)',
-                                cursor: isAdmin ? 'not-allowed' : 'pointer'
+                                boxShadow: (hasClaimed || isFull || isAdmin || isQuotaExceeded) ? 'none' : '0 4px 12px rgba(189,29,45,0.15)',
+                                cursor: (isAdmin || isQuotaExceeded) ? 'not-allowed' : 'pointer'
                               }}
                             >
                               {isClaimingLeadId === lead.id 
                                 ? t('Đang nhận...') 
-                                : (hasClaimed ? t('Đã nhận') : (isFull ? t('Hết lượt') : (isAdmin ? t('Chỉ dành cho Sales') : t('Nhận Data'))))}
+                                : (hasClaimed ? t('Đã nhận') : (isFull ? t('Hết lượt') : (isAdmin ? t('Chỉ dành cho Sales') : (isQuotaExceeded ? t('Đạt giới hạn') : t('Nhận Data')))))}
                             </button>
                           </div>
                         </td>
