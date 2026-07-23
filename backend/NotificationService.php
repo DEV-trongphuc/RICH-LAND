@@ -145,7 +145,7 @@ class NotificationService {
 
                         foreach ($zaloChatIds as $zId) {
                             try {
-                                sendZaloMessage($zaloBotToken, $zId, $zaloMsg, true);
+                                sendZaloMessage($zaloBotToken, $zId, $zaloMsg, false);
                             } catch (\Throwable $ze) {
                                 error_log("NotificationService Zalo send error ($zId): " . $ze->getMessage());
                             }
@@ -176,7 +176,7 @@ class NotificationService {
 
                         foreach ($tgChatIds as $cId) {
                             try {
-                                sendTelegramMessage($tgBotToken, $cId, $tgMsg);
+                                sendTelegramMessage($tgBotToken, $cId, $tgMsg, false);
                             } catch (\Throwable $tge) {
                                 error_log("NotificationService Telegram send error ($cId): " . $tge->getMessage());
                             }

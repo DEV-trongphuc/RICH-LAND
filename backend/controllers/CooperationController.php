@@ -1482,13 +1482,13 @@ class CooperationController {
             // Send Zalo Notification
             if (!empty($zaloBotToken) && !empty($zaloAdminGroup)) {
                 require_once __DIR__ . '/../zalo_bot.php';
-                sendZaloMessage($zaloBotToken, $zaloAdminGroup, $zaloText);
+                sendZaloMessage($zaloBotToken, $zaloAdminGroup, $zaloText, false);
             }
 
             // Send Telegram Notification
             if (!empty($tgBotToken) && !empty($tgAdminGroup)) {
                 require_once __DIR__ . '/../telegram_bot.php';
-                sendTelegramMessage($tgBotToken, $tgAdminGroup, $tgText);
+                sendTelegramMessage($tgBotToken, $tgAdminGroup, $tgText, false);
             }
         } catch (Throwable $e) {
             error_log("Error sending Zalo/Telegram notification for coop adjustment: " . $e->getMessage());

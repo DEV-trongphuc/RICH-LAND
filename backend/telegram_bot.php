@@ -11,12 +11,56 @@ require_once __DIR__ . '/db_connect.php';
  * @param string $text
  * @return bool
  */
-function sendTelegramMessage($botToken, $chatId, $text, $leadId = 0)
+function sendTelegramMessage($botToken, $chatId, $text, $syncOrLeadId = true, $leadId = 0)
 {
     global $conn;
 
     if (empty($botToken) || empty($chatId) || empty($text) || strtolower(trim($chatId)) === 'chưa liên kết') {
         return false;
+    }
+
+    $sync = true;
+    if (is_int($syncOrLeadId) || is_numeric($syncOrLeadId)) {
+        $leadId = (int)$syncOrLeadId;
+    } else {
+        $sync = (bool)$syncOrLeadId;
+    }
+
+    if (!$sync) {
+        $url = "https://api.telegram.org/bot" . $botToken . "/sendMessage";
+        $parts = parse_url($url);
+        $host = $parts['host'];
+        $path = $parts['path'];
+
+        $payload = json_encode([
+            "chat_id" => $chatId,
+            "text" => $text,
+            "parse_mode" => "HTML"
+        ], JSON_UNESCAPED_UNICODE);
+
+        $fp = @fsockopen("ssl://" . $host, 443, $errno, $errstr, 2);
+        if ($fp) {
+            $out = "POST " . $path . " HTTP/1.1\r\n";
+            $out .= "Host: " . $host . "\r\n";
+            $out .= "Content-Type: application/json\r\n";
+            $out .= "Content-Length: " . strlen($payload) . "\r\n";
+            $out .= "Connection: Close\r\n\r\n";
+            $out .= $payload;
+
+            @fwrite($fp, $out);
+            @fclose($fp);
+
+            // Ghi nhận log gửi tin nhắn Telegram để kiểm tra lỗi
+            $logMsg = date('[Y-m-d H:i:s]') . " Target ChatId: $chatId, ASYNC SENT (fsockopen)\n";
+            $logFile = __DIR__ . '/telegram_send_log.txt';
+            @file_put_contents($logFile, $logMsg, FILE_APPEND | LOCK_EX);
+
+            if (function_exists('log_communication')) {
+                log_communication($conn ?? $GLOBALS['pdo'] ?? null, $leadId, 'telegram', $chatId, 'sent', null);
+            }
+            return true;
+        }
+        // Fallback to sync curl if socket connection fails
     }
 
     $url = "https://api.telegram.org/bot" . $botToken . "/sendMessage";
