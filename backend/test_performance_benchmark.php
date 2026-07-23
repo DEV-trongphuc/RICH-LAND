@@ -2,7 +2,25 @@
 // backend/test_performance_benchmark.php
 // Performance & Latency Bottleneck Diagnostic Script
 
-require_once __DIR__ . '/test_bootstrap.php';
+if (isset($db)) {
+    $pdo = $db;
+}
+
+if (!isset($pdo)) {
+    require_once __DIR__ . '/test_bootstrap.php';
+}
+
+if (!function_exists('assertTest')) {
+    function assertTest($title, $condition, $details = '') {
+        echo ($condition ? "✅ [PASS] " : "❌ [FAIL] ") . $title . ($details ? " -> $details" : "") . "\n";
+        return $condition;
+    }
+}
+if (!function_exists('printTestSummary')) {
+    function printTestSummary() {
+        echo "\nBenchmark complete.\n";
+    }
+}
 
 echo "====================================================\n";
 echo "⚡ KIEM THU HIEU NANG & DIEM NGHEN CO CHAI (BENCHMARK)\n";
