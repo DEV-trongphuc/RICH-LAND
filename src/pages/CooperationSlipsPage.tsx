@@ -1294,38 +1294,16 @@ export default function CooperationSlipsPage() {
                   <div className="coop-slip-bottom-row">
                     
                     {/* Left: Shareholders & percentages */}
-                    {/* Left: Shareholders & percentages */}
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', flex: 1, minWidth: '280px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                        <span style={{ fontSize: '0.725rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>Tỷ lệ chia:</span>
-                        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center' }}>
-                          {slip.shareholders?.map((sh) => (
-                            <div key={sh.user_id} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', background: 'var(--color-bg-light)', padding: '3px 10px', borderRadius: '20px', border: '1px solid var(--color-border-light)' }}>
-                              <Avatar src={(sh as any).avatar} name={sh.name} size={16} />
-                              <span style={{ fontSize: '0.725rem', fontWeight: 700, color: 'var(--color-text)' }}>{sh.name}</span>
-                              <span style={{ fontSize: '0.725rem', fontWeight: 800, color: 'var(--color-text)' }}>{sh.percentage}%</span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                      
-                      {/* Visual Proportional Split Bar */}
-                      <div style={{ display: 'flex', height: '6px', borderRadius: '3px', overflow: 'hidden', background: 'rgba(0,0,0,0.04)', width: '100%', maxWidth: '360px', marginTop: '2px' }}>
-                        {slip.shareholders?.map((sh, idx) => {
-                          const colors = ['var(--color-primary)', '#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#06b6d4'];
-                          const color = colors[idx % colors.length];
-                          return (
-                            <div 
-                              key={sh.user_id} 
-                              style={{ 
-                                width: `${sh.percentage}%`, 
-                                background: color, 
-                                height: '100%' 
-                              }} 
-                              title={`${sh.name}: ${sh.percentage}%`}
-                            />
-                          );
-                        })}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', flex: 1, minWidth: '280px' }}>
+                      <span style={{ fontSize: '0.725rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>Tỷ lệ chia:</span>
+                      <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center' }}>
+                        {slip.shareholders?.map((sh) => (
+                          <div key={sh.user_id} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', background: 'var(--color-bg-light)', padding: '3px 10px', borderRadius: '20px', border: '1px solid var(--color-border-light)' }}>
+                            <Avatar src={(sh as any).avatar} name={sh.name} size={16} />
+                            <span style={{ fontSize: '0.725rem', fontWeight: 700, color: 'var(--color-text)' }}>{sh.name}</span>
+                            <span style={{ fontSize: '0.725rem', fontWeight: 800, color: 'var(--color-text)' }}>{sh.percentage}%</span>
+                          </div>
+                        ))}
                       </div>
                     </div>
 
