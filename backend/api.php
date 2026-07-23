@@ -48,7 +48,7 @@ if (in_array($baseAction, [
     'pos', 'custom-fields', 'inventory', 'tags', 'pipeline-stages', 
     'users', 'reports', 'quotes', 'invoices', 'expenses', 'products',
     'contacts', 'companies', 'deals', 'activities', 'notes', 'campaigns', 'marketing-campaigns', 'upload', 'teams', 'dashboard',
-    'notifications', 'workflow-task-templates', 'search', 'export', 'import', 'system'
+    'notifications', 'workflow-task-templates', 'search', 'export', 'import', 'system', 'test-benchmark'
 ], true)) {
     $_SERVER['REQUEST_URI'] = '/backend/' . $action . (!empty($_GET) ? '?' . http_build_query($_GET) : '');
     require_once __DIR__ . '/index.php';
