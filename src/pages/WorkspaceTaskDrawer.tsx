@@ -709,12 +709,16 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
       }
 
       if (res.data && res.data.success) {
-        toast.success(task.id === 'new' ? t('Tạo công việc thành công!') : t('Đã lưu tất cả thay đổi thành công!'));
+        const taskName = formData.subject || t('Không có tiêu đề');
+        toast.success(task.id === 'new' 
+          ? t('Đã tạo công việc "{subject}" thành công!').replace('{subject}', taskName) 
+          : t('Đã lưu các thay đổi của công việc "{subject}" thành công!').replace('{subject}', taskName)
+        );
         setOriginalHash(currentHash);
         onUpdate();
         
         if (isJustSubmittedForApproval && approverName) {
-          toast.success(t('Đã gửi thông báo email thành công!'));
+          toast.success(t('Đã gửi thông báo email phê duyệt tới {name}!').replace('{name}', approverName));
           setShowApprovalSuccessModal(approverName);
         }
 
@@ -723,7 +727,8 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
         }
       }
     } catch (e: any) {
-      toast.error(t('Lỗi lưu thay đổi: ') + e.message);
+      const taskName = formData.subject || t('Không có tiêu đề');
+      toast.error(t('Không thể lưu thay đổi cho công việc "{subject}": ').replace('{subject}', taskName) + (e.response?.data?.message || e.message));
     } finally {
       setIsSaving(false);
     }
@@ -1148,24 +1153,9 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
     handleUpdateField('participant_ids', nextString);
   };
 
-  const [isVisible, setIsVisible] = useState(isOpen && !!task);
-  const [animateIn, setAnimateIn] = useState(isOpen && !!task);
-
-  useEffect(() => {
-    if (isOpen && task) {
-      setIsVisible(true);
-      const timer = setTimeout(() => setAnimateIn(true), 10);
-      return () => clearTimeout(timer);
-    } else {
-      setAnimateIn(false);
-      const timer = setTimeout(() => setIsVisible(false), 420);
-      return () => clearTimeout(timer);
-    }
-  }, [isOpen, task]);
-
   // Document body overflow handling
   useEffect(() => {
-    if (isVisible && !embedMode) {
+    if (isOpen && task && !embedMode) {
       document.body.style.overflow = 'hidden';
     } else {
       document.body.style.overflow = '';
@@ -1173,9 +1163,24 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
     return () => {
       document.body.style.overflow = '';
     };
-  }, [isVisible, embedMode]);
+  }, [isOpen, task, embedMode]);
 
-  if (!isVisible || !task) return null;
+  const drawerMotionProps = embedMode ? {} : {
+    initial: isMobileOrTablet ? { y: '100%' } : { x: '100%' },
+    animate: { y: 0, x: 0 },
+    exit: isMobileOrTablet ? { y: '100%' } : { x: '100%' },
+    transition: { type: 'spring' as const, damping: 30, stiffness: 250, mass: 0.8 },
+    drag: isMobileOrTablet ? ('y' as const) : false,
+    dragConstraints: { top: 0 },
+    dragElastic: { top: 0.05, bottom: 0.7 },
+    onDragEnd: (event: any, info: any) => {
+      if (isMobileOrTablet && (info.offset.y > 150 || info.velocity.y > 400)) {
+        handleCloseDrawer();
+      }
+    }
+  };
+
+  if (!task) return null;
 
   // Common card style override
   const cardStyle: React.CSSProperties = {
@@ -1256,8 +1261,9 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
   );
 
   const content = (
-    <div 
+    <motion.div 
       className={`${embedMode ? '' : styles.drawer} ${embedMode ? 'focus-right-column' : ''}`}
+      {...drawerMotionProps}
       style={embedMode ? {
         width: '100%',
         display: 'flex',
@@ -1269,20 +1275,23 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
       } : {
         left: isMobileOrTablet ? 0 : 'var(--sidebar-width, 220px)',
         right: 0,
-        maxWidth: '100vw',
+        top: 0,
+        bottom: 0,
+        height: isMobileOrTablet ? '92dvh' : '100vh',
+        marginTop: isMobileOrTablet ? '8dvh' : 0,
+        borderRadius: isMobileOrTablet ? '24px 24px 0 0' : 0,
+        overflow: 'hidden',
+        boxShadow: '-10px 0 30px rgba(0,0,0,0.15)',
         zIndex: zIndex || 1000200,
-        background: 'linear-gradient(180deg, var(--color-bg) 0%, var(--color-border-light) 100%)',
         display: 'flex',
         flexDirection: 'column',
         position: 'fixed',
-        top: 0,
-        bottom: 0,
-        boxShadow: '-10px 0 30px rgba(0,0,0,0.15)',
-        transform: animateIn ? 'translateX(0)' : 'translateX(100%)',
-        transition: 'transform 0.42s cubic-bezier(0.16, 1, 0.3, 1)',
-        willChange: 'transform'
+        background: 'var(--color-surface)'
       }}
     >
+      {isMobileOrTablet && !embedMode && (
+        <div style={{ width: '36px', height: '5px', background: 'var(--color-border)', borderRadius: '999px', margin: '12px auto 2px', flexShrink: 0 }} />
+      )}
         {/* Drawer Header */}
         <div style={{
           padding: isMobileOrTablet ? '0.5rem 0.75rem' : (embedMode ? '0.75rem 1rem' : '1.25rem 1.5rem'),
@@ -3662,30 +3671,38 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
             </div>
           </div>
         )}
-      </div>
+      </motion.div>
   );
 
   if (embedMode) {
-    return content;
+    return isOpen && task ? content : null;
   }
 
   return createPortal(
     <>
-      <div 
-        className="drawer-backdrop" 
-        onClick={handleCloseDrawer}
-        style={{
-          position: 'fixed',
-          inset: 0,
-          background: 'rgba(0,0,0,0.65)',
-          zIndex: zIndex ? zIndex - 100 : 1000100,
-          backdropFilter: 'blur(4px)',
-          opacity: animateIn ? 1 : 0,
-          transition: 'opacity 0.42s cubic-bezier(0.16, 1, 0.3, 1)',
-          pointerEvents: animateIn ? 'auto' : 'none'
-        }}
-      />
-      {content}
+      <AnimatePresence>
+        {isOpen && task && (
+          <>
+            <motion.div 
+              className="drawer-backdrop" 
+              onClick={handleCloseDrawer}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.25 }}
+              style={{
+                position: 'fixed',
+                inset: 0,
+                background: 'rgba(0,0,0,0.45)',
+                zIndex: zIndex ? zIndex - 100 : 1000100,
+                backdropFilter: 'blur(8px)',
+                WebkitBackdropFilter: 'blur(8px)'
+              }}
+            />
+            {content}
+          </>
+        )}
+      </AnimatePresence>
 
           {/* Validation Warning Modal */}
           <AnimatePresence>

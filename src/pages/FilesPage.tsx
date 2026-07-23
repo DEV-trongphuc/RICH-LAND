@@ -143,7 +143,13 @@ export const FilesPage: React.FC<FilesPageProps> = ({ embedProjectId, isEmbedded
         } 
       });
       const data = res.data.data;
-      setFiles(data.items || []);
+      const allFiles = data.items || [];
+      const generalFiles = allFiles.filter((f: any) => {
+        // Exclude customer files or transaction proofs
+        const isClientDoc = f.contact_id || f.category === 'Đặt cọc' || f.category === 'coop_proof' || (f.name && f.name.startsWith('UNC_'));
+        return !isClientDoc;
+      });
+      setFiles(generalFiles);
       setTotal(data.total || 0);
       setTotalSizeBytes(data.total_size_bytes || 0);
     } catch (err: any) {

@@ -65,23 +65,24 @@ export const CustomModal: React.FC<CustomModalProps> = ({
   }, [width, maxWidth]);
 
   const motionProps = isMobile ? {
-    initial: { y: '100%', opacity: 1 },
-    animate: { y: 0, opacity: 1 },
-    exit: { y: '100%', opacity: 1 },
-    transition: { type: 'tween' as const, ease: [0.16, 1, 0.3, 1] as any, duration: 0.35 }
+    initial: { y: '100%' },
+    animate: { y: 0 },
+    exit: { y: '100%' },
+    transition: { type: 'spring' as const, damping: 28, stiffness: 240, mass: 0.8 }
   } : {
-    initial: { opacity: 0, y: 15 },
-    animate: { opacity: 1, y: 0 },
-    exit: { opacity: 0, y: 15 },
-    transition: { type: "spring" as const, duration: 0.4, bounce: 0.12 }
+    initial: { opacity: 0, scale: 0.96, y: 8 },
+    animate: { opacity: 1, scale: 1, y: 0 },
+    exit: { opacity: 0, scale: 0.96, y: 8 },
+    transition: { type: 'spring' as const, damping: 26, stiffness: 220 }
   };
 
   const dragProps = isMobile ? {
     drag: 'y' as const,
+    dragDirectionLock: true,
     dragConstraints: { top: 0 },
-    dragElastic: 0.2,
+    dragElastic: { top: 0.05, bottom: 0.65 },
     onDragEnd: (event: any, info: any) => {
-      if (info.offset.y > 120 || info.velocity.y > 500) {
+      if (info.offset.y > 120 || info.velocity.y > 400) {
         onClose();
       }
     }

@@ -41,7 +41,7 @@ class CloudFileController {
             $where[] = "cf.contact_id = ?";
             $params[] = (int)$contactId;
         } else {
-            $where[] = "cf.contact_id IS NULL";
+            $where[] = "cf.contact_id IS NULL AND cf.category != 'Đặt cọc' AND cf.category != 'coop_proof'";
             if ($visibility === 'personal') {
                 $where[] = "cf.visibility = 'personal'";
                 $where[] = "cf.uploaded_by = ?";

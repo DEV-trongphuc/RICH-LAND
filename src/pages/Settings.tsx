@@ -1386,10 +1386,46 @@ const SettingsInner = () => {
         method: 'POST',
         body: JSON.stringify(payload)
       });
-      if (json.success) toast.success(t("Đã lưu cấu hình thành công!"));
-      else toast.error(t("Lỗi khi lưu cấu hình!"));
-    } catch {
-      toast.error(t("Lỗi kết nối Server"));
+      const tabLabels: Record<string, string> = {
+        business_limits: 'Giới hạn & Bảo mật',
+        time_schedule: 'Lịch hoạt động',
+        starvation_prevention: 'Quy tắc thu hồi data',
+        pipeline_stages: 'Cấu hình Pipeline',
+        duplicate_filter: 'Bộ lọc trùng',
+        blacklist: 'Danh sách đen',
+        tag_management: 'Quản lý thẻ (Tag)',
+        legacy_mapping: 'Mapping dữ liệu cũ',
+        commission_shares: 'Chia sẻ hoa hồng',
+        security_timers: 'Đồng hồ bảo mật',
+        capi_settings: 'Cài đặt CAPI',
+        gemini_ai: 'Cấu hình Gemini AI',
+        approval_matrix: 'Ma trận phê duyệt'
+      };
+      const currentTabLabel = tabLabels[activeTab] || 'Cài đặt hệ thống';
+
+      if (json.success) {
+        toast.success(t('Đã lưu cấu hình "{tabName}" thành công!').replace('{tabName}', currentTabLabel));
+      } else {
+        toast.error(t('Lỗi khi lưu cấu hình "{tabName}". Vui lòng thử lại.').replace('{tabName}', currentTabLabel));
+      }
+    } catch (err: any) {
+      const tabLabels: Record<string, string> = {
+        business_limits: 'Giới hạn & Bảo mật',
+        time_schedule: 'Lịch hoạt động',
+        starvation_prevention: 'Quy tắc thu hồi data',
+        pipeline_stages: 'Cấu hình Pipeline',
+        duplicate_filter: 'Bộ lọc trùng',
+        blacklist: 'Danh sách đen',
+        tag_management: 'Quản lý thẻ (Tag)',
+        legacy_mapping: 'Mapping dữ liệu cũ',
+        commission_shares: 'Chia sẻ hoa hồng',
+        security_timers: 'Đồng hồ bảo mật',
+        capi_settings: 'Cài đặt CAPI',
+        gemini_ai: 'Cấu hình Gemini AI',
+        approval_matrix: 'Ma trận phê duyệt'
+      };
+      const currentTabLabel = tabLabels[activeTab] || 'Cài đặt hệ thống';
+      toast.error(t('Không thể kết nối đến máy chủ để lưu cấu hình "{tabName}": ').replace('{tabName}', currentTabLabel) + (err.message || ''));
     }
     setSaving(false);
   };
@@ -2269,10 +2305,10 @@ const SettingsInner = () => {
         {isMobile && activeTab === 'menu' && (
           <motion.div 
             key="os-menu"
-            initial={{ x: '-10%', opacity: 0 }}
+            initial={{ x: '-12%', opacity: 0 }}
             animate={{ x: 0, opacity: 1 }}
-            exit={{ x: '-10%', opacity: 0 }}
-            transition={{ duration: 0.15 }}
+            exit={{ x: '-12%', opacity: 0 }}
+            transition={{ type: 'spring', damping: 28, stiffness: 240, mass: 0.8 }}
             style={{ display: 'flex', flexDirection: 'column', gap: '1rem', width: '100%' }}
           >
             {categories.map((category, catIdx) => (
@@ -2389,7 +2425,7 @@ const SettingsInner = () => {
               initial={isMobile ? { x: '100%', opacity: 0.8 } : { opacity: 0 }}
               animate={{ x: 0, opacity: 1 }}
               exit={isMobile ? { x: '100%', opacity: 0.8 } : { opacity: 0 }}
-              transition={isMobile ? { duration: 0.12, ease: 'linear' } : { type: 'spring', damping: 25, stiffness: 200 }}
+              transition={isMobile ? { type: 'spring' as const, damping: 28, stiffness: 240, mass: 0.8 } : { type: 'spring' as const, damping: 25, stiffness: 200 }}
               style={{ flex: 1, minWidth: 0, width: '100%' }}
               className="subtab-enter-active"
             >
@@ -3596,9 +3632,13 @@ const SettingsInner = () => {
                                   <tr key={i} style={{ borderBottom: '1px solid var(--color-border-light)' }}>
                                     <td style={{ padding: '1rem 0.5rem' }}><Skeleton width="40px" height={14} /></td>
                                     <td style={{ padding: '1rem 0.5rem' }}><Skeleton width="120px" height={14} /></td>
-                                    <td style={{ padding: '1rem 0.5rem' }}><Skeleton width="90px" height={14} /></td>
-                                    <td style={{ padding: '1rem 0.5rem' }}><Skeleton width="100px" height={14} /></td>
-                                    <td style={{ padding: '1rem 0.5rem' }}><Skeleton width="140px" height={14} /></td>
+                                    {!isMobile && (
+                                      <>
+                                        <td style={{ padding: '1rem 0.5rem' }}><Skeleton width="90px" height={14} /></td>
+                                        <td style={{ padding: '1rem 0.5rem' }}><Skeleton width="100px" height={14} /></td>
+                                        <td style={{ padding: '1rem 0.5rem' }}><Skeleton width="140px" height={14} /></td>
+                                      </>
+                                    )}
                                     <td style={{ padding: '1rem 0.5rem', textAlign: 'center' }}><Skeleton width="24px" height={24} borderRadius="50%" style={{ margin: '0 auto' }} /></td>
                                   </tr>
                                 ))

@@ -769,11 +769,11 @@ const ActivityComments: React.FC<{
 
 const DrawerSkeleton = () => {
   return (
-    <div className="skeleton-wrapper" style={{ display: 'flex', flex: 1, gap: '2rem', height: '100%', background: 'var(--color-surface)', animation: 'pulse 1.5s infinite ease-in-out' }}>
+    <div className="skeleton-wrapper" style={{ display: 'flex', flex: 1, gap: '2rem', height: '100%', background: 'var(--color-surface)' }}>
       {/* Sidebar Skeleton */}
       <div className="skeleton-sidebar" style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', width: '250px', borderRight: '1px solid var(--color-border-light)', padding: '1.5rem 1rem' }}>
         {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(i => (
-          <div key={i} style={{ width: '100%', height: '36px', borderRadius: '8px', background: 'var(--color-border-light)' }}></div>
+          <div key={i} className="skeleton" style={{ width: '100%', height: '36px', borderRadius: '8px' }}></div>
         ))}
       </div>
 
@@ -782,14 +782,14 @@ const DrawerSkeleton = () => {
         <div className="skeleton-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
           {[1, 2, 3, 4, 5, 6].map(i => (
             <div key={i} style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-              <div style={{ width: '30%', height: '14px', borderRadius: '4px', background: 'var(--color-border-light)' }}></div>
-              <div style={{ width: '100%', height: '38px', borderRadius: '8px', background: 'var(--color-border-light)' }}></div>
+              <div className="skeleton" style={{ width: '30%', height: '14px', borderRadius: '4px' }}></div>
+              <div className="skeleton" style={{ width: '100%', height: '38px', borderRadius: '8px' }}></div>
             </div>
           ))}
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '1rem' }}>
-          <div style={{ width: '15%', height: '14px', borderRadius: '4px', background: 'var(--color-border-light)' }}></div>
-          <div style={{ width: '100%', height: '120px', borderRadius: '8px', background: 'var(--color-border-light)' }}></div>
+          <div className="skeleton" style={{ width: '15%', height: '14px', borderRadius: '4px' }}></div>
+          <div className="skeleton" style={{ width: '100%', height: '120px', borderRadius: '8px' }}></div>
         </div>
       </div>
 
@@ -1490,9 +1490,9 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
       setBaseTags(updated.tags || []);
       onUpdate?.(updated);
       window.dispatchEvent(new CustomEvent('contact-updated'));
-      addToast('Đã lưu thông tin khách hàng', 'success');
+      addToast(`Đã lưu thông tin hồ sơ của khách hàng ${fullName || ''} thành công!`, 'success');
     } catch (e: any) {
-      addToast(e?.response?.data?.message || 'Lỗi khi lưu thông tin', 'error');
+      addToast(e?.response?.data?.message || 'Không thể lưu hồ sơ khách hàng. Vui lòng kiểm tra lại dữ liệu đầu vào.', 'error');
     } finally {
       setIsSubmitting(false);
     }
@@ -2394,7 +2394,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
         done_at: new Date().toISOString().slice(0, 19).replace('T', ' ')
       });
       fetchData();
-      addToast(`Đã cập nhật Pipeline thành ${targetLabel}`, 'success');
+      addToast(`Đã cập nhật trạng thái pipeline của ${fullName || 'khách hàng'} sang "${targetLabel}" thành công!`, 'success');
       window.dispatchEvent(new CustomEvent('contact-updated'));
     } catch (e: any) {
       setFormData((prev: any) => ({ 
@@ -2402,7 +2402,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
         pipeline_status: contact.pipeline_status, 
         status: contact.status 
       }));
-      addToast(e?.response?.data?.message || 'Lỗi khi cập nhật Pipeline', 'error');
+      addToast(e?.response?.data?.message || `Không thể chuyển trạng thái pipeline sang "${targetLabel}". Vui lòng thử lại.`, 'error');
     }
   };
   const handleRemoveCoopAttachment = async (fileUrl: string) => {
@@ -4346,14 +4346,14 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
       const res = await api.put(`/deposits/${selectedDepForManage.id}/milestones`, payload);
 
       if (res.data?.success || res.data) {
-        addToast('Lưu lịch trình thanh toán thành công!', 'success');
+        addToast(`Lịch trình thanh toán và phân chia hoa hồng cho căn ${selectedDepForManage?.unit_code || ''} đã được lưu thành công!`, 'success');
         setShowManageModal(false);
         fetchData();
       } else {
-        addToast(res.data?.message || 'Lỗi lưu lịch trình', 'error');
+        addToast(res.data?.message || 'Lỗi lưu lịch trình thanh toán.', 'error');
       }
     } catch (err: any) {
-      addToast(err?.response?.data?.message || err.message || 'Lỗi kết nối', 'error');
+      addToast(err?.response?.data?.message || err.message || 'Không thể kết nối đến máy chủ để lưu lịch trình thanh toán.', 'error');
     } finally {
       setIsSavingMilestones(false);
     }
@@ -4470,22 +4470,34 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
     }
   };
 
-  const [isVisible, setIsVisible] = useState(isOpen);
-  const [animateIn, setAnimateIn] = useState(isOpen);
-
+  // Document body overflow handling
   useEffect(() => {
     if (isOpen) {
-      setIsVisible(true);
-      const timer = setTimeout(() => setAnimateIn(true), 10);
-      return () => clearTimeout(timer);
+      document.body.style.overflow = 'hidden';
     } else {
-      setAnimateIn(false);
-      const timer = setTimeout(() => setIsVisible(false), 420);
-      return () => clearTimeout(timer);
+      document.body.style.overflow = '';
     }
+    return () => {
+      document.body.style.overflow = '';
+    };
   }, [isOpen]);
 
-  if (!contact || !isVisible) return null;
+  const drawerMotionProps = {
+    initial: isMobileOrTablet ? { y: '100%' } : { x: '100%' },
+    animate: { y: 0, x: 0 },
+    exit: isMobileOrTablet ? { y: '100%' } : { x: '100%' },
+    transition: { type: 'spring' as const, damping: 30, stiffness: 250, mass: 0.8 },
+    drag: isMobileOrTablet ? ('y' as const) : false,
+    dragConstraints: { top: 0 },
+    dragElastic: { top: 0.05, bottom: 0.7 },
+    onDragEnd: (event: any, info: any) => {
+      if (isMobileOrTablet && (info.offset.y > 150 || info.velocity.y > 400)) {
+        handleClose();
+      }
+    }
+  };
+
+  if (!contact) return null;
 
   if (typeof document === 'undefined') return null;
 
@@ -4609,25 +4621,48 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
 
   return createPortal(
     <>
-      <div
-        className="drawer-backdrop"
-        onClick={handleClose}
-        style={{
-          zIndex: zIndex ? zIndex - 5 : 1000005,
-          opacity: animateIn ? 1 : 0,
-          transition: 'opacity 0.42s cubic-bezier(0.16, 1, 0.3, 1)',
-          pointerEvents: animateIn ? 'auto' : 'none'
-        }}
-      />
-      <div
-        className={styles.drawer}
-        style={{
-          transform: animateIn ? 'translateX(0)' : 'translateX(100%)',
-          transition: 'transform 0.42s cubic-bezier(0.16, 1, 0.3, 1)',
-          willChange: 'transform',
-          zIndex: zIndex || 1000010
-        }}
-      >
+      <AnimatePresence>
+        {isOpen && (
+          <>
+            <motion.div
+              className="drawer-backdrop"
+              onClick={handleClose}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.25 }}
+              style={{
+                position: 'fixed',
+                inset: 0,
+                zIndex: zIndex ? zIndex - 5 : 1000005,
+                background: 'rgba(0, 0, 0, 0.45)',
+                backdropFilter: 'blur(8px)',
+                WebkitBackdropFilter: 'blur(8px)'
+              }}
+            />
+            <motion.div
+              className={styles.drawer}
+              {...drawerMotionProps}
+              style={{
+                left: isMobileOrTablet ? 0 : 'var(--sidebar-width, 220px)',
+                right: 0,
+                top: 0,
+                bottom: 0,
+                height: isMobileOrTablet ? '92dvh' : '100vh',
+                marginTop: isMobileOrTablet ? '8dvh' : 0,
+                borderRadius: isMobileOrTablet ? '24px 24px 0 0' : 0,
+                overflow: 'hidden',
+                boxShadow: '-10px 0 30px rgba(0,0,0,0.15)',
+                zIndex: zIndex || 1000010,
+                display: 'flex',
+                flexDirection: 'column',
+                position: 'fixed',
+                background: 'var(--color-surface)'
+              }}
+            >
+              {isMobileOrTablet && (
+                <div style={{ width: '36px', height: '5px', background: 'var(--color-border)', borderRadius: '999px', margin: '12px auto 2px', flexShrink: 0 }} />
+              )}
               <AnimatePresence>
                 {showAvatarModal && (
                   <div className="overlay-backdrop" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000020 }}>
@@ -10412,7 +10447,10 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
               </>
             )}
           </div>
-      </div>
+        </motion.div>
+      </>
+     )}
+    </AnimatePresence>
 
       <CallLoggerModal
         isOpen={showCallLogger}

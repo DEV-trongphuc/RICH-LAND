@@ -324,7 +324,7 @@ class DepositController {
 
         // Check ownership of deposit
         $stmtDep = $this->db->prepare("
-            SELECT d.id, c.tenant_id, c.owner_id 
+            SELECT d.id, d.contact_id, c.tenant_id, c.owner_id 
             FROM deposits d 
             JOIN contacts c ON d.contact_id = c.id 
             WHERE d.id = ? AND c.tenant_id = ?
