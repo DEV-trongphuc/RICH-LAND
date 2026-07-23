@@ -20,23 +20,33 @@ function sendZaloMessage($botToken, $chatId, $text, $sync = true, $leadId = 0)
     global $conn;
 
     if (!$sync) {
-        $stmt = $conn->prepare("INSERT INTO zalo_queue (bot_token, chat_id, body_text, status, lead_id) VALUES (?, ?, ?, 'pending', ?)");
-        if ($stmt) {
-            $lId = ($leadId > 0) ? $leadId : null;
-            $stmt->bind_param("sssi", $botToken, $chatId, $text, $lId);
-            $result = $stmt->execute();
-            $stmt->close();
-
+        $lId = ($leadId > 0) ? $leadId : null;
+        if ($conn instanceof PDO) {
+            $stmt = $conn->prepare("INSERT INTO zalo_queue (bot_token, chat_id, body_text, status, lead_id) VALUES (?, ?, ?, 'pending', ?)");
+            $result = $stmt->execute([$botToken, $chatId, $text, $lId]);
             if ($leadId > 0) {
                 $stmtLead = $conn->prepare("UPDATE leads SET zalo_notify_status = 'pending' WHERE id = ?");
-                if ($stmtLead) {
-                    $stmtLead->bind_param("i", $leadId);
-                    $stmtLead->execute();
-                    $stmtLead->close();
-                }
+                $stmtLead->execute([$leadId]);
             }
-
             return $result;
+        } else {
+            $stmt = $conn->prepare("INSERT INTO zalo_queue (bot_token, chat_id, body_text, status, lead_id) VALUES (?, ?, ?, 'pending', ?)");
+            if ($stmt) {
+                $stmt->bind_param("sssi", $botToken, $chatId, $text, $lId);
+                $result = $stmt->execute();
+                $stmt->close();
+
+                if ($leadId > 0) {
+                    $stmtLead = $conn->prepare("UPDATE leads SET zalo_notify_status = 'pending' WHERE id = ?");
+                    if ($stmtLead) {
+                        $stmtLead->bind_param("i", $leadId);
+                        $stmtLead->execute();
+                        $stmtLead->close();
+                    }
+                }
+
+                return $result;
+            }
         }
         return false;
     }
