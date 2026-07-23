@@ -2170,9 +2170,60 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
                                       border: isSupplementary ? '1px solid rgba(139, 92, 246, 0.15)' : '1px solid rgba(245, 158, 11, 0.1)',
                                       padding: '6px 8px',
                                       borderRadius: '6px',
-                                      color: 'var(--color-text-muted)'
+                                      color: 'var(--color-text-muted)',
+                                      marginBottom: '4px'
                                     }}>
                                       <strong>{isSupplementary ? t('Lý do cập nhật:') : t('Lý do trễ:')}</strong> {row.reason}
+                                    </div>
+                                  )}
+
+                                  {row.latitude && row.longitude && (
+                                    <div style={{
+                                      fontSize: '0.72rem',
+                                      display: 'flex',
+                                      alignItems: 'flex-start',
+                                      gap: '4px',
+                                      color: 'var(--color-text-muted)',
+                                      marginTop: '6px',
+                                      textAlign: 'left'
+                                    }}>
+                                      <MapPin size={12} style={{ color: 'var(--color-success)', marginTop: '2px', flexShrink: 0 }} />
+                                      <div style={{ lineHeight: 1.3 }}>
+                                        <a
+                                          href={`https://www.google.com/maps?q=${row.latitude},${row.longitude}`}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          style={{ color: 'var(--color-primary)', fontWeight: 650, textDecoration: 'underline' }}
+                                        >
+                                          {t('Xem vị trí Vào')}
+                                        </a>
+                                        {row.location_address && ` - ${row.location_address}`}
+                                      </div>
+                                    </div>
+                                  )}
+
+                                  {row.checkout_latitude && row.checkout_longitude && (
+                                    <div style={{
+                                      fontSize: '0.72rem',
+                                      display: 'flex',
+                                      alignItems: 'flex-start',
+                                      gap: '4px',
+                                      color: 'var(--color-text-muted)',
+                                      marginTop: '6px',
+                                      textAlign: 'left'
+                                    }}>
+                                      <MapPin size={12} style={{ color: 'var(--color-danger)', marginTop: '2px', flexShrink: 0 }} />
+                                      <div style={{ lineHeight: 1.3 }}>
+                                        <a
+                                          href={`https://www.google.com/maps?q=${row.checkout_latitude},${row.checkout_longitude}`}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          style={{ color: 'var(--color-primary)', fontWeight: 650, textDecoration: 'underline' }}
+                                        >
+                                          {t('Xem vị trí Ra')}
+                                        </a>
+                                        {row.checkout_location_address && ` - ${row.checkout_location_address}`}
+                                      </div>
                                     </div>
                                   )}
                                 </>
