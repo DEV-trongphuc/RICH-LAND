@@ -897,11 +897,16 @@ switch ($resource) {
         }
         define('DIAG_TOKEN', true);
         $testFile = $_GET['run'] ?? 'coop_slips';
+        
+        ob_start();
         if ($testFile === 'performance_benchmark') {
             require_once __DIR__ . '/test_performance_benchmark.php';
         } else {
             require_once __DIR__ . '/test_coop_slips_performance.php';
         }
+        $outputContent = ob_get_clean();
+        
+        respond(200, ['output' => $outputContent], 'Test run completed successfully');
         exit;
 
     case 'cloud-files':
