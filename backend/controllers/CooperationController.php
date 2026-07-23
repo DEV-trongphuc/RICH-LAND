@@ -233,7 +233,8 @@ class CooperationController {
                 SELECT d.contact_id, dm.unc_file_path 
                 FROM deposit_milestones dm
                 JOIN deposits d ON dm.deposit_id = d.id
-                WHERE d.tenant_id = ? AND d.contact_id IN ($inClause) AND dm.unc_file_path IS NOT NULL AND dm.unc_file_path != ''
+                JOIN contacts c ON d.contact_id = c.id
+                WHERE c.tenant_id = ? AND d.contact_id IN ($inClause) AND dm.unc_file_path IS NOT NULL AND dm.unc_file_path != ''
             ");
             $stmtMilestones->execute(array_merge([$tid], $contactIds));
             while ($row = $stmtMilestones->fetch(PDO::FETCH_ASSOC)) {
