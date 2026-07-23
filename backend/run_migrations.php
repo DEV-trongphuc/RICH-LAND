@@ -305,10 +305,10 @@ try {
         $logMsg("Đã bổ sung index idx_tenant_contact vào bảng cloud_files.", "success");
     }
     
-    $chkIdxDep = $conn->query("SHOW INDEX FROM `deposits` WHERE Key_name = 'idx_tenant_contact'");
+    $chkIdxDep = $conn->query("SHOW INDEX FROM `deposits` WHERE Key_name = 'idx_contact'");
     if (!$chkIdxDep || $chkIdxDep->num_rows == 0) {
-        $conn->query("ALTER TABLE `deposits` ADD INDEX `idx_tenant_contact` (`tenant_id`, `contact_id`)");
-        $logMsg("Đã bổ sung index idx_tenant_contact vào bảng deposits.", "success");
+        $conn->query("ALTER TABLE `deposits` ADD INDEX `idx_contact` (`contact_id`)");
+        $logMsg("Đã bổ sung index idx_contact vào bảng deposits.", "success");
     }
 
     $chkIdxDM = $conn->query("SHOW INDEX FROM `deposit_milestones` WHERE Key_name = 'idx_deposit'");
