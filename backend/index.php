@@ -890,6 +890,20 @@ switch ($resource) {
         else respond(404, null, 'Route không tồn tại', false);
         break;
 
+    case 'test-benchmark':
+        $token = $_GET['token'] ?? '';
+        if ($token !== 'RichLand_Diag_Secure_Token_2026_9e88d6c701fbc6b7') {
+            respond(403, null, 'Forbidden: Invalid token', false);
+        }
+        define('DIAG_TOKEN', true);
+        $testFile = $_GET['run'] ?? 'coop_slips';
+        if ($testFile === 'performance_benchmark') {
+            require_once __DIR__ . '/test_performance_benchmark.php';
+        } else {
+            require_once __DIR__ . '/test_coop_slips_performance.php';
+        }
+        exit;
+
     case 'cloud-files':
         $auth = requireAuth();
         $ctrl = new CloudFileController($db);
