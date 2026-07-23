@@ -91,6 +91,7 @@ interface Props {
   contact: any;
   onUpdate?: (data: any) => void;
   initialTab?: string;
+  zIndex?: number;
 }
 
 const FMT = (v: any) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(Number(v) || 0);
@@ -1161,7 +1162,7 @@ const TimelineItem = React.memo<TimelineItemProps>(({
          prevProps.index === nextProps.index;
 });
 
-export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contact, onUpdate, initialTab }) => {
+export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contact, onUpdate, initialTab, zIndex }) => {
   const { addToast, showConfirm, showCall } = useUIStore();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -4612,7 +4613,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
         className="drawer-backdrop"
         onClick={handleClose}
         style={{
-          zIndex: 1000005,
+          zIndex: zIndex ? zIndex - 5 : 1000005,
           opacity: animateIn ? 1 : 0,
           transition: 'opacity 0.42s cubic-bezier(0.16, 1, 0.3, 1)',
           pointerEvents: animateIn ? 'auto' : 'none'
@@ -4624,7 +4625,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
           transform: animateIn ? 'translateX(0)' : 'translateX(100%)',
           transition: 'transform 0.42s cubic-bezier(0.16, 1, 0.3, 1)',
           willChange: 'transform',
-          zIndex: 1000010
+          zIndex: zIndex || 1000010
         }}
       >
               <AnimatePresence>
@@ -8753,7 +8754,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                           {!isViewer && (
                             <button className="btn primary" style={{ padding: '8px 16px', fontSize: '0.875rem', height: '34px' }} onClick={() => {
                               const today = new Date().toISOString().slice(0, 10);
-                              const fullName = `${contact.last_name} ${contact.first_name}`.trim();
+                              const fullName = `${formData.last_name || ''} ${formData.first_name || ''}`.trim();
                               setSelectedTaskForDetails({
                                 id: 'new',
                                 subject: '',
@@ -8761,7 +8762,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                 due_date: today,
                                 description: '',
                                 link: '',
-                                user_id: String(contact?.owner_id || currentUser?.id || ''),
+                                user_id: String(formData?.owner_id || currentUser?.id || ''),
                                 progress: 0,
                                 require_approval: 0,
                                 approver_id: '',
@@ -8775,10 +8776,10 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                 campaign_id: '',
                                 team_id: '',
                                 campaign_target: '',
-                                related_id: contact?.id,
+                                related_id: formData?.id || contact?.id,
                                 related_type: 'contact',
                                 contact_name: fullName,
-                                contact_id: contact?.id
+                                contact_id: formData?.id || contact?.id
                               });
                             }}><Plus size={14} /> Thêm công việc</button>
                           )}
@@ -11832,6 +11833,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
           fetchData();
         }}
         users={users}
+        zIndex={zIndex ? zIndex + 100 : undefined}
       />
 
 {/* CREATE TICKET MODAL */}

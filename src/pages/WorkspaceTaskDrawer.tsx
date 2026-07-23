@@ -35,6 +35,7 @@ interface WorkspaceTaskDrawerProps {
   focusTaskIndex?: number;
   focusTasksCount?: number;
   onNextFocusTask?: () => void;
+  zIndex?: number;
 }
 
 export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({ 
@@ -48,7 +49,8 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
   isFocusSessionActive = false,
   focusTaskIndex = 0,
   focusTasksCount = 1,
-  onNextFocusTask
+  onNextFocusTask,
+  zIndex
 }) => {
   const navigate = useNavigate();
   const { t } = useLanguage();
@@ -1268,7 +1270,7 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
         left: isMobileOrTablet ? 0 : 'var(--sidebar-width, 220px)',
         right: 0,
         maxWidth: '100vw',
-        zIndex: 1000200,
+        zIndex: zIndex || 1000200,
         background: 'linear-gradient(180deg, var(--color-bg) 0%, var(--color-border-light) 100%)',
         display: 'flex',
         flexDirection: 'column',
@@ -3676,7 +3678,7 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
           position: 'fixed',
           inset: 0,
           background: 'rgba(0,0,0,0.65)',
-          zIndex: 1000100,
+          zIndex: zIndex ? zIndex - 100 : 1000100,
           backdropFilter: 'blur(4px)',
           opacity: animateIn ? 1 : 0,
           transition: 'opacity 0.42s cubic-bezier(0.16, 1, 0.3, 1)',

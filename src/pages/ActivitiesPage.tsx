@@ -797,6 +797,7 @@ export const ActivitiesPage: React.FC = () => {
         onClose={() => setProfileContact(null)}
         contact={profileContact}
         onUpdate={() => {}}
+        zIndex={selectedTaskForDrawer ? 1000300 : undefined}
       />
 
       <WorkspaceTaskDrawer
@@ -808,6 +809,7 @@ export const ActivitiesPage: React.FC = () => {
           setSelectedTaskForDrawer(null);
         }}
         users={users}
+        onOpenContact={(contactId) => setProfileContact({ id: contactId })}
       />
 
     </div>

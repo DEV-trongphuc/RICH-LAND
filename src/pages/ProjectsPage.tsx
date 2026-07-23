@@ -20,6 +20,7 @@ import { Mail, Phone, Copy, ChevronLeft } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MentionInput } from '../components/ui/MentionInput';
 import { WorkspaceTaskDrawer } from './WorkspaceTaskDrawer';
+import { CustomerProfileDrawer } from './CustomerProfileDrawer';
 import { FilesPage } from './FilesPage';
 import { useUploadProgress } from '../contexts/UploadProgressContext';
 
@@ -286,6 +287,7 @@ export default function ProjectsPage() {
   const [autoCode, setAutoCode] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [selectedTaskForDrawer, setSelectedTaskForDrawer] = useState<any>(null);
+  const [selectedContactForDrawer, setSelectedContactForDrawer] = useState<any>(null);
 
   // Quick campaigns modal state
   const [quickCampaignsModalOpen, setQuickCampaignsModalOpen] = useState(false);
@@ -8068,6 +8070,19 @@ export default function ProjectsPage() {
           window.dispatchEvent(new CustomEvent('task-updated'));
         }}
         users={users}
+        onOpenContact={(contactId) => {
+          setSelectedContactForDrawer({ id: contactId });
+        }}
+      />
+
+      <CustomerProfileDrawer
+        isOpen={!!selectedContactForDrawer}
+        onClose={() => setSelectedContactForDrawer(null)}
+        contact={selectedContactForDrawer}
+        onUpdate={() => {
+          window.dispatchEvent(new CustomEvent('contact-updated'));
+        }}
+        zIndex={selectedTaskForDrawer ? 1000300 : undefined}
       />
     </div>
   );
