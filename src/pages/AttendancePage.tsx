@@ -9,7 +9,7 @@ import { CustomModal } from '../components/ui/CustomModal';
 import { ConfirmModal } from '../components/ui/ConfirmModal';
 import { TableRowSkeleton } from '../components/ui/Skeleton';
 import { CustomSelect } from '../components/ui/CustomSelect';
-import { Clock, Calendar, Check, X, Trash2, Eye, ShieldAlert, AlertCircle, CheckCircle, Info, Download, Lightbulb, Upload, ChevronLeft, ChevronRight, Camera, Image, FileText, Zap, RefreshCw, Moon } from 'lucide-react';
+import { Clock, Calendar, Check, X, Trash2, Eye, ShieldAlert, AlertCircle, CheckCircle, Info, Download, Lightbulb, Upload, ChevronLeft, ChevronRight, Camera, Image, FileText, Zap, RefreshCw, Moon, MapPin } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { PeriodFilter, getDateRange } from '../components/ui/PeriodFilter';
 import { useUIStore } from '../store/uiStore';
@@ -1599,6 +1599,17 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
                                     {t('Trễ')} {row.late_minutes ? `${row.late_minutes}m` : ''}
                                   </span>
                                 )}
+                                {row.latitude && row.longitude && (
+                                  <a
+                                    href={`https://www.google.com/maps?q=${row.latitude},${row.longitude}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    title={row.location_address || t('Xem bản đồ vị trí Check-in')}
+                                    style={{ color: 'var(--color-primary)', display: 'inline-flex', marginLeft: '4px' }}
+                                  >
+                                    <MapPin size={12} />
+                                  </a>
+                                )}
                               </div>
                               {row.check_out_time && (
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.75rem', color: row.early_minutes > 0 ? '#f59e0b' : 'var(--color-text-muted)' }}>
@@ -1607,6 +1618,17 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
                                     <span style={{ fontSize: '0.65rem', fontWeight: 500, backgroundColor: 'rgba(245,158,11,0.15)', color: '#d97706', padding: '1px 5px', borderRadius: '4px' }}>
                                       {t('Về sớm')} {row.early_minutes}m
                                     </span>
+                                  )}
+                                  {row.checkout_latitude && row.checkout_longitude && (
+                                    <a
+                                      href={`https://www.google.com/maps?q=${row.checkout_latitude},${row.checkout_longitude}`}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      title={row.checkout_location_address || t('Xem bản đồ vị trí Check-out')}
+                                      style={{ color: 'var(--color-primary)', display: 'inline-flex', marginLeft: '4px' }}
+                                    >
+                                      <MapPin size={12} />
+                                    </a>
                                   )}
                                 </div>
                               )}
