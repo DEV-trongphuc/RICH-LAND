@@ -210,26 +210,41 @@ class CooperationController {
             }
         }
 
-        foreach ($slips as &$s) {
-            // Find all cloud files for this contact_id that contain "cọc", "unc", "hợp tác" or are in milestone categories
-            $stmtDocs = $this->db->prepare("
-                SELECT file_path 
-                FROM cloud_files 
-                WHERE contact_id = ? AND tenant_id = ?
-            ");
-            $stmtDocs->execute([$s['contact_id'], $tid]);
-            $docs = $stmtDocs->fetchAll(PDO::FETCH_ASSOC) ?: [];
+        $contactIds = array_unique(array_filter(array_column($slips, 'contact_id')));
+        $docsByContact = [];
+        $milestonesByContact = [];
 
-            // Find all deposit milestones for this contact_id that have unc_file_path
+        if (!empty($contactIds)) {
+            $inClause = implode(',', array_fill(0, count($contactIds), '?'));
+
+            // 1. Fetch group of cloud files
+            $stmtDocs = $this->db->prepare("
+                SELECT contact_id, file_path 
+                FROM cloud_files 
+                WHERE tenant_id = ? AND contact_id IN ($inClause)
+            ");
+            $stmtDocs->execute(array_merge([$tid], $contactIds));
+            while ($row = $stmtDocs->fetch(PDO::FETCH_ASSOC)) {
+                $docsByContact[$row['contact_id']][] = $row;
+            }
+
+            // 2. Fetch group of milestones
             $stmtMilestones = $this->db->prepare("
-                SELECT dm.unc_file_path 
+                SELECT d.contact_id, dm.unc_file_path 
                 FROM deposit_milestones dm
                 JOIN deposits d ON dm.deposit_id = d.id
-                JOIN contacts c ON d.contact_id = c.id
-                WHERE d.contact_id = ? AND c.tenant_id = ? AND dm.unc_file_path IS NOT NULL AND dm.unc_file_path != ''
+                WHERE d.tenant_id = ? AND d.contact_id IN ($inClause) AND dm.unc_file_path IS NOT NULL AND dm.unc_file_path != ''
             ");
-            $stmtMilestones->execute([$s['contact_id'], $tid]);
-            $milestones = $stmtMilestones->fetchAll(PDO::FETCH_ASSOC) ?: [];
+            $stmtMilestones->execute(array_merge([$tid], $contactIds));
+            while ($row = $stmtMilestones->fetch(PDO::FETCH_ASSOC)) {
+                $milestonesByContact[$row['contact_id']][] = $row;
+            }
+        }
+
+        foreach ($slips as &$s) {
+            $cid = $s['contact_id'];
+            $docs = $docsByContact[$cid] ?? [];
+            $milestones = $milestonesByContact[$cid] ?? [];
 
             // Collect all unique paths
             $allPaths = [];
@@ -638,12 +653,31 @@ class CooperationController {
         $signatures = json_decode($slip['signatures_json'], true) ?: [];
         $body = getBody();
         
+        $sigImg = $body['signature_img'] ?? null;
+        if ($sigImg && strpos($sigImg, 'data:image') === 0) {
+            try {
+                $sigDir = UPLOAD_DIR . "/signatures";
+                if (!is_dir($sigDir)) {
+                    mkdir($sigDir, 0755, true);
+                }
+                $data = explode(',', $sigImg);
+                if (count($data) > 1) {
+                    $imgData = base64_decode($data[1]);
+                    $filename = "slip_" . $id . "_user_" . $userId . "_" . time() . ".png";
+                    file_put_contents($sigDir . "/" . $filename, $imgData);
+                    $sigImg = "uploads/signatures/" . $filename;
+                }
+            } catch (Throwable $sigEx) {
+                error_log("Error saving base64 signature image: " . $sigEx->getMessage());
+            }
+        }
+
         // Add signature
         $signatures[$userId] = [
             'time' => date('Y-m-d H:i:s'),
             'ip' => $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0',
             'role' => $auth['role'],
-            'signature_img' => $body['signature_img'] ?? null
+            'signature_img' => $sigImg
         ];
 
         $signaturesJson = json_encode($signatures);

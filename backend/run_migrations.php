@@ -18,7 +18,7 @@ $apply = (isset($_GET['apply']) && $_GET['apply'] === 'true')
       || (isset($_POST['execute_migration']) && $_POST['execute_migration'] === '1')
       || ($isCli && in_array('--apply', $argv));
 
-$targetVersion = 187;
+$targetVersion = 188;
 $currentVersion = 186;
 
 // Query current DB version
@@ -298,8 +298,33 @@ try {
     ");
     $logMsg("Đã kiểm tra và đảm bảo bảng blocked_leads tồn tại.", "success");
 
+    // 8.5. Add performance indexes for Scale 1M+ (Version 188)
+    $chkIdxCF = $conn->query("SHOW INDEX FROM `cloud_files` WHERE Key_name = 'idx_tenant_contact'");
+    if (!$chkIdxCF || $chkIdxCF->num_rows == 0) {
+        $conn->query("ALTER TABLE `cloud_files` ADD INDEX `idx_tenant_contact` (`tenant_id`, `contact_id`)");
+        $logMsg("Đã bổ sung index idx_tenant_contact vào bảng cloud_files.", "success");
+    }
+    
+    $chkIdxDep = $conn->query("SHOW INDEX FROM `deposits` WHERE Key_name = 'idx_tenant_contact'");
+    if (!$chkIdxDep || $chkIdxDep->num_rows == 0) {
+        $conn->query("ALTER TABLE `deposits` ADD INDEX `idx_tenant_contact` (`tenant_id`, `contact_id`)");
+        $logMsg("Đã bổ sung index idx_tenant_contact vào bảng deposits.", "success");
+    }
+
+    $chkIdxDM = $conn->query("SHOW INDEX FROM `deposit_milestones` WHERE Key_name = 'idx_deposit'");
+    if (!$chkIdxDM || $chkIdxDM->num_rows == 0) {
+        $conn->query("ALTER TABLE `deposit_milestones` ADD INDEX `idx_deposit` (`deposit_id`)");
+        $logMsg("Đã bổ sung index idx_deposit vào bảng deposit_milestones.", "success");
+    }
+
+    $chkIdxCont = $conn->query("SHOW INDEX FROM `contacts` WHERE Key_name = 'idx_tenant_status_owner'");
+    if (!$chkIdxCont || $chkIdxCont->num_rows == 0) {
+        $conn->query("ALTER TABLE `contacts` ADD INDEX `idx_tenant_status_owner` (`tenant_id`, `status`, `owner_id`, `created_at`)");
+        $logMsg("Đã bổ sung index idx_tenant_status_owner vào bảng contacts.", "success");
+    }
+
     // 9. Update DB version in system_settings
-    $conn->query("INSERT INTO system_settings (setting_key, setting_value) VALUES ('db_version', '187') ON DUPLICATE KEY UPDATE setting_value = '187'");
+    $conn->query("INSERT INTO system_settings (setting_key, setting_value) VALUES ('db_version', '188') ON DUPLICATE KEY UPDATE setting_value = '188'");
     
     $logMsg("Hệ thống đã duy trì cấu trúc Cơ sở dữ liệu ở phiên bản mới nhất: " . $targetVersion, "success");
 
