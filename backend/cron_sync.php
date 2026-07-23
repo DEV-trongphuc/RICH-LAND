@@ -1309,35 +1309,7 @@ if (!function_exists('recallInactiveLeads')) {
                     }
                 }
                 
-                // Notify the old consultant about the recall
-                try {
-                    $stmtToken = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'zalo_bot_token' LIMIT 1");
-                    $botToken = $stmtToken->fetch_assoc()['setting_value'] ?? '';
-                    
-                    $oldCZalo = null;
-                    $cZaloStmt = $conn->prepare("SELECT zalo_chat_id FROM consultants WHERE id = ? LIMIT 1");
-                    $cZaloStmt->bind_param("i", $oldConsultantId);
-                    $cZaloStmt->execute();
-                    $cZaloRes = $cZaloStmt->get_result()->fetch_assoc();
-                    if ($cZaloRes) {
-                        $oldCZalo = $cZaloRes['zalo_chat_id'];
-                    }
-                    $cZaloStmt->close();
 
-                    if (!empty($botToken) && !empty($oldCZalo)) {
-                        $lName = $row['lead_name'] ?: 'Khách hàng ẩn danh';
-                        $recallMsg = "⚠️ [ THÔNG BÁO THU HỒI DATA ] ⚠️\n"
-                                   . "━━━━━━━━━━━━━━━━━━━━━\n"
-                                   . "Chào $oldConsultantName,\n\n"
-                                   . "Data \"$lName\" đã bị hệ thống THU HỒI do bạn không tiếp nhận trong vòng " . $row['lead_recall_minutes'] . " phút.\n"
-                                   . "Hệ thống đã bù lại 1 lượt nhận data cho bạn tại vòng: $roundName.\n\n"
-                                   . "Trân trọng,\nHệ thống Quản lý Rich Land DATA\n"
-                                   . "━━━━━━━━━━━━━━━━━━━━━";
-                        sendZaloMessage($botToken, $oldCZalo, $recallMsg);
-                    }
-                } catch (Exception $recZaloEx) {
-                    logSync("Error sending recall warning Zalo: " . $recZaloEx->getMessage());
-                }
 
                 logSync("Recalled lead ID $leadId from sale $oldConsultantName successfully.");
 
