@@ -593,7 +593,11 @@ class ContactController {
                 $allowBackward = (int)$this->getSetting('allow_pipeline_backward', '0') === 1;
                 $allowSkip = (int)$this->getSetting('allow_pipeline_skip', '0') === 1;
 
-                $isFromDeposit = strpos(strtolower($currStatus), 'coc') !== false || strpos(strtolower($currStatus), 'deposit') !== false || $currStatus === 'dat_coc';
+                $stmtWonSetting = $this->db->query("SELECT setting_value FROM system_settings WHERE setting_key = 'deal_won_status' LIMIT 1");
+                $dealWonSetting = $stmtWonSetting ? $stmtWonSetting->fetchColumn() : 'dat_coc';
+                if (empty($dealWonSetting)) $dealWonSetting = 'dat_coc';
+
+                $isFromDeposit = strpos(strtolower($currStatus), 'coc') !== false || strpos(strtolower($currStatus), 'deposit') !== false || $currStatus === 'dat_coc' || $currStatus === $dealWonSetting;
                 $isToSuccess = strpos(strtolower($newStatus), 'success') !== false || strpos(strtolower($newStatus), 'thanh_cong') !== false || $newStatus === 'dong_deal' || $newStatus === 'thanh_cong';
                 $isCancellation = $isFromDeposit && !$isToSuccess;
 
@@ -986,7 +990,11 @@ class ContactController {
         $allowBackward = (int)$this->getSetting('allow_pipeline_backward', '0') === 1;
         $allowSkip = (int)$this->getSetting('allow_pipeline_skip', '0') === 1;
 
-        $isFromDeposit = strpos(strtolower($currStatus), 'coc') !== false || strpos(strtolower($currStatus), 'deposit') !== false || $currStatus === 'dat_coc';
+        $stmtWonSetting = $this->db->query("SELECT setting_value FROM system_settings WHERE setting_key = 'deal_won_status' LIMIT 1");
+        $dealWonSetting = $stmtWonSetting ? $stmtWonSetting->fetchColumn() : 'dat_coc';
+        if (empty($dealWonSetting)) $dealWonSetting = 'dat_coc';
+
+        $isFromDeposit = strpos(strtolower($currStatus), 'coc') !== false || strpos(strtolower($currStatus), 'deposit') !== false || $currStatus === 'dat_coc' || $currStatus === $dealWonSetting;
         $isToSuccess = strpos(strtolower($newStatus), 'success') !== false || strpos(strtolower($newStatus), 'thanh_cong') !== false || $newStatus === 'dong_deal' || $newStatus === 'thanh_cong';
         $isCancellation = $isFromDeposit && !$isToSuccess;
 

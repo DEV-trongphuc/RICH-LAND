@@ -184,10 +184,14 @@ class DepositController {
                 $stmtM->execute([$depositId, trim($m['name']), (float)$m['amount']]);
             }
 
-            // Update contact pipeline stage to 'dat_coc' (Placed Deposit) and set temperature to 'hot' (Sôi = xuống tiền)
+            // Update contact pipeline stage to deal won status and set temperature to 'hot' (Sôi = xuống tiền)
             // Also sync the contact's expected_revenue with the actual deposit price
-            $stmtUpC = $this->db->prepare("UPDATE contacts SET pipeline_status = 'dat_coc', status = 'customer', temperature = 'hot', suggested_temperature = 'hot', expected_revenue = ? WHERE id = ? AND tenant_id = ?");
-            $stmtUpC->execute([$price, $contactId, $auth['tenant_id']]);
+            $stmtWon = $this->db->query("SELECT setting_value FROM system_settings WHERE setting_key = 'deal_won_status' LIMIT 1");
+            $dealWonStatus = $stmtWon ? $stmtWon->fetchColumn() : 'dat_coc';
+            if (empty($dealWonStatus)) $dealWonStatus = 'dat_coc';
+
+            $stmtUpC = $this->db->prepare("UPDATE contacts SET pipeline_status = ?, status = 'customer', temperature = 'hot', suggested_temperature = 'hot', expected_revenue = ? WHERE id = ? AND tenant_id = ?");
+            $stmtUpC->execute([$dealWonStatus, $price, $contactId, $auth['tenant_id']]);
 
             // Withdraw from databank and terminate other parallel contacts
             require_once __DIR__ . '/../config/ParallelHelper.php';

@@ -2245,7 +2245,7 @@ function releaseExpiredLeadsToKho($conn) {
             WHERE c.security_expires_at <= NOW()
               AND c.security_expires_at IS NOT NULL
               AND c.deleted_at IS NULL
-              AND c.pipeline_status NOT IN ('dat_coc', 'da_coc', 'dong_deal', 'thanh_cong')
+              AND c.pipeline_status NOT IN ((SELECT setting_value FROM system_settings WHERE setting_key = 'deal_won_status' LIMIT 1), 'da_coc', 'dong_deal', 'thanh_cong')
               $sourcesFilter
               AND NOT EXISTS (
                   SELECT 1 FROM cooperation_slips cs
