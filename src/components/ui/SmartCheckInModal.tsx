@@ -284,6 +284,59 @@ export const SmartCheckInModal: React.FC<SmartCheckInModalProps> = ({
     }
 
     setSubmitting(true);
+    let coords: { latitude: number; longitude: number } | null = null;
+    try {
+      coords = await new Promise<{ latitude: number; longitude: number }>((resolve, reject) => {
+        if (!navigator.geolocation) {
+          reject(new Error(t('Trình duyệt của bạn không hỗ trợ định vị GPS.')));
+          return;
+        }
+        navigator.geolocation.getCurrentPosition(
+          (position) => {
+            resolve({
+              latitude: position.coords.latitude,
+              longitude: position.coords.longitude
+            });
+          },
+          (error) => {
+            let msg = t('Không thể lấy vị trí GPS. Vui lòng bật định vị.');
+            if (error.code === error.PERMISSION_DENIED) {
+              msg = t('Vui lòng cấp quyền truy cập vị trí (GPS) trên trình duyệt để chấm công.');
+            }
+            reject(new Error(msg));
+          },
+          {
+            enableHighAccuracy: true,
+            timeout: 10000,
+            maximumAge: 0
+          }
+        );
+      });
+    } catch (gpsError: any) {
+      toast.error(gpsError.message);
+      setSubmitting(false);
+      return;
+    }
+
+    let addressStr = '';
+    if (coords) {
+      try {
+        const geoUrl = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${coords.latitude}&lon=${coords.longitude}&accept-language=vi`;
+        const geoRes = await fetch(geoUrl, {
+          headers: {
+            'Accept-Language': 'vi',
+            'User-Agent': 'RichLandCRM/1.0'
+          }
+        });
+        if (geoRes.ok) {
+          const geoData = await geoRes.json();
+          addressStr = geoData.display_name || '';
+        }
+      } catch (addrErr) {
+        console.warn("Failed to reverse-geocode coordinates:", addrErr);
+      }
+    }
+
     try {
       const compressToWebP = (dataUrl: string): Promise<Blob> => {
         return new Promise((resolve, reject) => {
@@ -328,7 +381,10 @@ export const SmartCheckInModal: React.FC<SmartCheckInModalProps> = ({
         method: 'POST',
         body: JSON.stringify({
           selfie_url: uploadRes.data.url,
-          reason: isLate ? checkInReason : null
+          reason: isLate ? checkInReason : null,
+          latitude: coords?.latitude?.toString() || '',
+          longitude: coords?.longitude?.toString() || '',
+          location_address: addressStr
         })
       });
 

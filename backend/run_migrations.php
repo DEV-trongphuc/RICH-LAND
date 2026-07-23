@@ -18,7 +18,7 @@ $apply = (isset($_GET['apply']) && $_GET['apply'] === 'true')
       || (isset($_POST['execute_migration']) && $_POST['execute_migration'] === '1')
       || ($isCli && in_array('--apply', $argv));
 
-$targetVersion = 188;
+$targetVersion = 189;
 $currentVersion = 186;
 
 // Query current DB version
@@ -323,8 +323,30 @@ try {
         $logMsg("Đã bổ sung index idx_tenant_status_owner vào bảng contacts.", "success");
     }
 
+    // 8.6. Add location columns for Check-in / Check-out (Version 189)
+    $chkLat = $conn->query("SHOW COLUMNS FROM `check_ins` LIKE 'latitude'");
+    if (!$chkLat || $chkLat->num_rows == 0) {
+        $conn->query("ALTER TABLE `check_ins` ADD COLUMN `latitude` VARCHAR(50) NULL COMMENT 'Vĩ độ check-in', ADD COLUMN `longitude` VARCHAR(50) NULL COMMENT 'Kinh độ check-in'");
+        $logMsg("Đã bổ sung cột latitude, longitude vào bảng check_ins.", "success");
+    }
+    $chkAddr = $conn->query("SHOW COLUMNS FROM `check_ins` LIKE 'location_address'");
+    if (!$chkAddr || $chkAddr->num_rows == 0) {
+        $conn->query("ALTER TABLE `check_ins` ADD COLUMN `location_address` VARCHAR(500) NULL COMMENT 'Địa chỉ check-in'");
+        $logMsg("Đã bổ sung cột location_address vào bảng check_ins.", "success");
+    }
+    $chkCOLat = $conn->query("SHOW COLUMNS FROM `check_ins` LIKE 'checkout_latitude'");
+    if (!$chkCOLat || $chkCOLat->num_rows == 0) {
+        $conn->query("ALTER TABLE `check_ins` ADD COLUMN `checkout_latitude` VARCHAR(50) NULL COMMENT 'Vĩ độ check-out', ADD COLUMN `checkout_longitude` VARCHAR(50) NULL COMMENT 'Kinh độ check-out'");
+        $logMsg("Đã bổ sung cột checkout_latitude, checkout_longitude vào bảng check_ins.", "success");
+    }
+    $chkCOAddr = $conn->query("SHOW COLUMNS FROM `check_ins` LIKE 'checkout_location_address'");
+    if (!$chkCOAddr || $chkCOAddr->num_rows == 0) {
+        $conn->query("ALTER TABLE `check_ins` ADD COLUMN `checkout_location_address` VARCHAR(500) NULL COMMENT 'Địa chỉ check-out'");
+        $logMsg("Đã bổ sung cột checkout_location_address vào bảng check_ins.", "success");
+    }
+
     // 9. Update DB version in system_settings
-    $conn->query("INSERT INTO system_settings (setting_key, setting_value) VALUES ('db_version', '188') ON DUPLICATE KEY UPDATE setting_value = '188'");
+    $conn->query("INSERT INTO system_settings (setting_key, setting_value) VALUES ('db_version', '189') ON DUPLICATE KEY UPDATE setting_value = '189'");
     
     $logMsg("Hệ thống đã duy trì cấu trúc Cơ sở dữ liệu ở phiên bản mới nhất: " . $targetVersion, "success");
 

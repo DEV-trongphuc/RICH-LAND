@@ -270,8 +270,12 @@ class CheckInController {
                 $checkOutStatus = 'early';
             }
 
-            $updateOut = $this->db->prepare("UPDATE check_ins SET check_out_time = ?, early_minutes = ?, check_out_status = ? WHERE id = ?");
-            $updateOut->execute([$outTimeStr, $earlyMinutes, $checkOutStatus, $existingRow['id']]);
+            $coLat = trim($b['latitude'] ?? $b['checkout_latitude'] ?? '');
+            $coLng = trim($b['longitude'] ?? $b['checkout_longitude'] ?? '');
+            $coAddr = trim($b['location_address'] ?? $b['checkout_location_address'] ?? '');
+
+            $updateOut = $this->db->prepare("UPDATE check_ins SET check_out_time = ?, early_minutes = ?, check_out_status = ?, checkout_latitude = ?, checkout_longitude = ?, checkout_location_address = ? WHERE id = ?");
+            $updateOut->execute([$outTimeStr, $earlyMinutes, $checkOutStatus, $coLat ?: null, $coLng ?: null, $coAddr ?: null, $existingRow['id']]);
 
             logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'CHECK_OUT', 'check_in', $existingRow['id'], json_encode([
                 'date' => $today,
@@ -302,6 +306,12 @@ class CheckInController {
 
         if (empty($selfieUrl) && !$isSupplementary) {
             respond(422, null, 'Ảnh selfie check-in là bắt buộc', false);
+        }
+
+        $lat = trim($b['latitude'] ?? '');
+        $lng = trim($b['longitude'] ?? '');
+        if (!$isSupplementary && (empty($lat) || empty($lng))) {
+            respond(422, null, 'Quyền truy cập vị trí (GPS) là bắt buộc để chấm công. Vui lòng cho phép định vị trên thiết bị.', false);
         }
 
         if ($isSupplementary && empty($reason)) {
@@ -354,24 +364,32 @@ class CheckInController {
 
         $inTimeStr = $today . ' ' . $currentTime;
 
+        $addr = trim($b['location_address'] ?? '');
+
         // Insert check-in log with self-healing schema check
         try {
             $insert = $this->db->prepare("
-                INSERT INTO check_ins (user_id, check_in_date, check_in_time, late_minutes, selfie_url, status, reason)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO check_ins (user_id, check_in_date, check_in_time, late_minutes, selfie_url, status, reason, latitude, longitude, location_address)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ");
-            $insert->execute([$auth['user_id'], $today, $inTimeStr, $lateMinutes, $selfieUrl ?: null, $status, $reason ?: null]);
+            $insert->execute([$auth['user_id'], $today, $inTimeStr, $lateMinutes, $selfieUrl ?: null, $status, $reason ?: null, $lat ?: null, $lng ?: null, $addr ?: null]);
         } catch (\Throwable $e) {
             // Auto-heal check_ins table if columns are missing in DB schema
             try { $this->db->exec("ALTER TABLE check_ins ADD COLUMN late_minutes INT DEFAULT 0 AFTER check_in_time"); } catch (\Throwable $ex) {}
             try { $this->db->exec("ALTER TABLE check_ins ADD COLUMN selfie_url TEXT NULL AFTER late_minutes"); } catch (\Throwable $ex) {}
             try { $this->db->exec("ALTER TABLE check_ins ADD COLUMN reason TEXT NULL AFTER status"); } catch (\Throwable $ex) {}
+            try { $this->db->exec("ALTER TABLE check_ins ADD COLUMN latitude VARCHAR(50) NULL AFTER selfie_url"); } catch (\Throwable $ex) {}
+            try { $this->db->exec("ALTER TABLE check_ins ADD COLUMN longitude VARCHAR(50) NULL AFTER latitude"); } catch (\Throwable $ex) {}
+            try { $this->db->exec("ALTER TABLE check_ins ADD COLUMN location_address VARCHAR(500) NULL AFTER longitude"); } catch (\Throwable $ex) {}
+            try { $this->db->exec("ALTER TABLE check_ins ADD COLUMN checkout_latitude VARCHAR(50) NULL"); } catch (\Throwable $ex) {}
+            try { $this->db->exec("ALTER TABLE check_ins ADD COLUMN checkout_longitude VARCHAR(50) NULL"); } catch (\Throwable $ex) {}
+            try { $this->db->exec("ALTER TABLE check_ins ADD COLUMN checkout_location_address VARCHAR(500) NULL"); } catch (\Throwable $ex) {}
             
             $insert = $this->db->prepare("
-                INSERT INTO check_ins (user_id, check_in_date, check_in_time, late_minutes, selfie_url, status, reason)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO check_ins (user_id, check_in_date, check_in_time, late_minutes, selfie_url, status, reason, latitude, longitude, location_address)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ");
-            $insert->execute([$auth['user_id'], $today, $inTimeStr, $lateMinutes, $selfieUrl ?: null, $status, $reason ?: null]);
+            $insert->execute([$auth['user_id'], $today, $inTimeStr, $lateMinutes, $selfieUrl ?: null, $status, $reason ?: null, $lat ?: null, $lng ?: null, $addr ?: null]);
         }
         
         $newId = (int)$this->db->lastInsertId();
