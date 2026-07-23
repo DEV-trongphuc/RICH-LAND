@@ -50,7 +50,8 @@ foreach ($slips as $s) {
         SELECT dm.unc_file_path 
         FROM deposit_milestones dm
         JOIN deposits d ON dm.deposit_id = d.id
-        WHERE d.contact_id = ? AND d.tenant_id = ? AND dm.unc_file_path IS NOT NULL AND dm.unc_file_path != ''
+        JOIN contacts c ON d.contact_id = c.id
+        WHERE d.contact_id = ? AND c.tenant_id = ? AND dm.unc_file_path IS NOT NULL AND dm.unc_file_path != ''
     ");
     $stmtMilestones->execute([$s['contact_id'], $tid]);
     $milestones = $stmtMilestones->fetchAll(PDO::FETCH_ASSOC);
