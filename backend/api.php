@@ -18011,7 +18011,7 @@ switch ($action) {
                     FROM persons p
                     WHERE p.released_to_kho_at IS NOT NULL
                       AND (p.is_public = 1 OR NOT EXISTS (
-                          SELECT 1 FROM contacts WHERE person_id = p.id AND status = 'dat_coc' AND deleted_at IS NULL
+                          SELECT 1 FROM contacts WHERE person_id = p.id AND pipeline_status = 'dat_coc' AND deleted_at IS NULL
                       ))
                       $deletedCond
                       $blockCond
