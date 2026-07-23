@@ -876,7 +876,7 @@ function notifyNightShiftChange($conn, $userId, $shiftDate, $register = true) {
                 }
                 foreach (array_unique($tgNotifyChatIds) as $chatId) {
                     try {
-                        sendTelegramMessage($tgToken, $chatId, $tgMsg);
+                        sendTelegramMessage($tgToken, $chatId, $tgMsg, false);
                     } catch (Throwable $etg) {
                         error_log("Error sending Telegram night shift notification: " . $etg->getMessage());
                     }
