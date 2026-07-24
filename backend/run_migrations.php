@@ -18,7 +18,7 @@ $apply = (isset($_GET['apply']) && $_GET['apply'] === 'true')
       || (isset($_POST['execute_migration']) && $_POST['execute_migration'] === '1')
       || ($isCli && in_array('--apply', $argv));
 
-$targetVersion = 189;
+$targetVersion = 190;
 $currentVersion = 186;
 
 // Query current DB version
@@ -345,8 +345,18 @@ try {
         $logMsg("Đã bổ sung cột checkout_location_address vào bảng check_ins.", "success");
     }
 
+    // 8.7. Add next_attempt_date column to leads (Version 190)
+    $chkNAD = $conn->query("SHOW COLUMNS FROM `leads` LIKE 'next_attempt_date'");
+    if (!$chkNAD || $chkNAD->num_rows == 0) {
+        $conn->query("ALTER TABLE `leads` ADD COLUMN `next_attempt_date` DATETIME NULL COMMENT 'Thời gian thử phân bổ lại tiếp theo'");
+        $logMsg("Đã bổ sung cột next_attempt_date vào bảng leads.", "success");
+    }
+
+    // Add default setting for lead_max_recall_attempts
+    $conn->query("INSERT INTO system_settings (setting_key, setting_value) VALUES ('lead_max_recall_attempts', '2') ON DUPLICATE KEY UPDATE setting_value = IFNULL(setting_value, '2')");
+
     // 9. Update DB version in system_settings
-    $conn->query("INSERT INTO system_settings (setting_key, setting_value) VALUES ('db_version', '189') ON DUPLICATE KEY UPDATE setting_value = '189'");
+    $conn->query("INSERT INTO system_settings (setting_key, setting_value) VALUES ('db_version', '190') ON DUPLICATE KEY UPDATE setting_value = '190'");
     
     $logMsg("Hệ thống đã duy trì cấu trúc Cơ sở dữ liệu ở phiên bản mới nhất: " . $targetVersion, "success");
 

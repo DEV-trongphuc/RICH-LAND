@@ -13,25 +13,47 @@ class NotificationController {
         
         $avatars = [];
         try {
-            // Lấy avatar từ cả accounts (admin) và consultants (sale)
+            // Lấy avatar từ bảng users (chứa đầy đủ full_name và avatar_url của tất cả nhân sự)
             $avatarsStmt = $this->db->query("
-                SELECT name, avatar FROM accounts WHERE avatar IS NOT NULL AND avatar != ''
-                UNION
-                SELECT name, avatar_url AS avatar FROM consultants WHERE avatar_url IS NOT NULL AND avatar_url != ''
+                SELECT full_name AS name, avatar_url AS avatar FROM users
             ");
             if ($avatarsStmt) {
                 foreach ($avatarsStmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
-                    if (!empty($row['name']) && !empty($row['avatar'])) {
-                        $avatars[$row['name']] = $row['avatar'];
+                    if (!empty($row['name'])) {
+                        $avatars[$row['name']] = $row['avatar'] ?? '';
                     }
                 }
             }
         } catch (\Throwable $e) {}
+
+        // Duyệt qua từng thông báo để lấy trực tiếp actor name & avatar
+        foreach ($items as &$item) {
+            $isWarning = ($item['type'] === 'warning') || (isset($item['title']) && (mb_strpos(mb_strtolower($item['title']), 'trùng số') !== false || mb_strpos(mb_strtolower($item['title']), 'rửa nguồn') !== false || mb_strpos(mb_strtolower($item['title']), 'cảnh báo') !== false));
+            
+            $actorName = null;
+            if (!$isWarning && !empty($item['body'])) {
+                $cleanBody = preg_replace('/^Nhân viên\s+/u', '', $item['body']);
+                if (preg_match('/^(.+?)(?:\s*\([^)]*\))?\s+(?:đã|vừa|gửi|báo|có|check-in)\s+/u', $cleanBody, $matches)) {
+                    $possibleName = trim($matches[1]);
+                    if (isset($avatars[$possibleName])) {
+                        $actorName = $possibleName;
+                    }
+                }
+            }
+            
+            if ($actorName) {
+                $item['actor_name'] = $actorName;
+                $item['actor_avatar'] = !empty($avatars[$actorName]) ? $avatars[$actorName] : null;
+            } else {
+                $item['actor_name'] = null;
+                $item['actor_avatar'] = '/LOGO.jpg';
+            }
+        }
+        unset($item);
         
         respond(200, [
             'items' => $items,
-            'unread_count' => (int)$unread->fetchColumn(),
-            'avatars' => $avatars
+            'unread_count' => (int)$unread->fetchColumn()
         ]);
     }
 

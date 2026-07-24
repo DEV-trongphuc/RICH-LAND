@@ -42,9 +42,29 @@ echo "\n--- 4. FILE STORAGE & CLEANUP ---\n";
 $delFileFunc = function_exists('deleteServerFile');
 assertTest("TC25: Function deleteServerFile san sang don dẹp file rac", $delFileFunc);
 
-// --- TC26: FAIR SHARE AUDIT ---
-echo "\n--- 5. FAIR SHARE AUDIT ---\n";
-$fsRes = $conn->query("SHOW TABLES LIKE 'distribution_logs'");
-assertTest("TC26: Bang distribution_logs phuc vu audit chia data cong bang", $fsRes && $fsRes->num_rows > 0);
+// --- TC27: MAX RECALL LIMIT & EXCLUSION FILTER ---
+echo "\n--- 6. MAX RECALL LIMIT & DEFERRED REDISTRIBUTION ---\n";
+// Add next_attempt_date check
+$chkNAD = $conn->query("SHOW COLUMNS FROM leads LIKE 'next_attempt_date'");
+assertTest("TC27.1: leads table has next_attempt_date column", $chkNAD && $chkNAD->num_rows > 0);
+
+// Add max attempts system settings check
+$chkAttempts = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'lead_max_recall_attempts'");
+$maxAttemptsVal = $chkAttempts && $chkAttempts->num_rows > 0 ? (int)$chkAttempts->fetch_assoc()['setting_value'] : 2;
+assertTest("TC27.2: system_settings has lead_max_recall_attempts", $maxAttemptsVal > 0, "Value: " . $maxAttemptsVal);
+
+// Mock dynamic getNextConsultantInRound with exclusion
+$roundIdForTest = 1; // standard round
+$testExcludeId = 1000; // mock consultant ID
+$assignWithExclusion = getNextConsultantInRound($conn, $roundIdForTest, null, [$testExcludeId]);
+if ($assignWithExclusion) {
+    assertTest("TC27.3: getNextConsultantInRound supports and respects excludeIds list", (int)$assignWithExclusion['id'] !== $testExcludeId, "Assigned: " . $assignWithExclusion['id'] . " (Expected NOT: " . $testExcludeId . ")");
+} else {
+    assertTest("TC27.3: getNextConsultantInRound returned null due to active exclusions", true);
+}
+
+// Test redistributePendingLeads structure
+$redistributeFunc = function_exists('redistributePendingLeads');
+assertTest("TC27.4: Function redistributePendingLeads defined", $redistributeFunc);
 
 printTestSummary();

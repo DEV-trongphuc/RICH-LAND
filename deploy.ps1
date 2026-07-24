@@ -12,41 +12,38 @@ if ($LASTEXITCODE -ne 0) {
     exit $LASTEXITCODE
 }
 
-# 1. Compress and Upload all files via single compressed archives for 95% speed speedup
-$tempFrontend = Join-Path $env:TEMP "richland_frontend.tar.gz"
-$tempBackend = Join-Path $env:TEMP "richland_backend.tar.gz"
-
-Write-Host "1. Compressing assets to system temp directory..." -ForegroundColor Yellow
-tar -czf "$tempFrontend" -C dist .
-tar -czf "$tempBackend" -C backend .
-
-Write-Host "1b. Uploading compressed archives via SCP..." -ForegroundColor Yellow
-scp -4 -P 2210 -O -o StrictHostKeyChecking=no "$tempFrontend" "$tempBackend" vhvxoigh@chiefaiofficer.vn:/home/vhvxoigh/open.domation.net/richland/
-if ($LASTEXITCODE -ne 0) {
-    Remove-Item "$tempFrontend", "$tempBackend" -ErrorAction SilentlyContinue
-    Write-Host "ERROR: Failed to upload compressed archives." -ForegroundColor Red
-    exit $LASTEXITCODE
+# 1. Prepare temp directory for packaging both Frontend and Backend
+$tempPackageDir = Join-Path $env:TEMP "richland_deploy_package"
+if (Test-Path $tempPackageDir) {
+    Remove-Item -Path $tempPackageDir -Recurse -Force -ErrorAction SilentlyContinue
 }
-Start-Sleep -Seconds 1
+New-Item -ItemType Directory -Path $tempPackageDir -Force | Out-Null
 
-Write-Host "1c. Extracting packages on remote server..." -ForegroundColor Yellow
-ssh -4 -p 2210 -o StrictHostKeyChecking=no vhvxoigh@chiefaiofficer.vn "tar -xzf /home/vhvxoigh/open.domation.net/richland/richland_frontend.tar.gz -C /home/vhvxoigh/open.domation.net/richland/ && tar -xzf /home/vhvxoigh/open.domation.net/richland/richland_backend.tar.gz -C /home/vhvxoigh/open.domation.net/richland/ && rm /home/vhvxoigh/open.domation.net/richland/richland_frontend.tar.gz /home/vhvxoigh/open.domation.net/richland/richland_backend.tar.gz"
-if ($LASTEXITCODE -ne 0) {
-    Remove-Item "$tempFrontend", "$tempBackend" -ErrorAction SilentlyContinue
-    Write-Host "ERROR: Failed to extract remote packages." -ForegroundColor Red
-    exit $LASTEXITCODE
+Write-Host "1. Staging frontend and backend files..." -ForegroundColor Yellow
+Copy-Item -Path "dist\*" -Destination $tempPackageDir -Recurse -Force
+Copy-Item -Path "backend\*" -Destination $tempPackageDir -Recurse -Force
+
+# 2. Compress into a single tar.gz file
+$tempArchive = Join-Path $env:TEMP "richland_package.tar.gz"
+if (Test-Path $tempArchive) {
+    Remove-Item -Path $tempArchive -Force -ErrorAction SilentlyContinue
 }
+Write-Host "2. Creating single deploy archive..." -ForegroundColor Yellow
+tar -czf "$tempArchive" -C "$tempPackageDir" .
 
-# Clean up local temp packages
-Remove-Item "$tempFrontend", "$tempBackend" -ErrorAction SilentlyContinue
+# 3. Stream and extract via 1 single SSH connection (pipeline)
+Write-Host "3. Uploading and executing remote deployment in a single SSH session..." -ForegroundColor Yellow
+cmd /c "ssh -4 -p 2210 -o StrictHostKeyChecking=no vhvxoigh@chiefaiofficer.vn ""tar -xzf - -C /home/vhvxoigh/open.domation.net/richland/ && php /home/vhvxoigh/open.domation.net/richland/run_migrations.php --apply"" < ""$tempArchive"""
 
-# 2. Trigger database migrations
-Write-Host "2. Running migrations on remote backend..." -ForegroundColor Yellow
-ssh -4 -p 2210 -o StrictHostKeyChecking=no vhvxoigh@chiefaiofficer.vn "php /home/vhvxoigh/open.domation.net/richland/run_migrations.php --apply"
+$sshExit = $LASTEXITCODE
 
-if ($LASTEXITCODE -ne 0) {
-    Write-Host "ERROR: Failed to apply database migrations." -ForegroundColor Red
-    exit $LASTEXITCODE
+# Clean up local temp files
+Remove-Item -Path $tempPackageDir -Recurse -Force -ErrorAction SilentlyContinue
+Remove-Item -Path $tempArchive -Force -ErrorAction SilentlyContinue
+
+if ($sshExit -ne 0) {
+    Write-Host "ERROR: Deployment failed." -ForegroundColor Red
+    exit $sshExit
 }
 
 # 3. Commit and push changes to Git (DISABLED per user request)

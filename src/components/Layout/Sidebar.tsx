@@ -34,10 +34,10 @@ export const SIDEBAR_GROUPS: SidebarGroup[] = [
   {
     title: 'KHÁCH HÀNG',
     items: [
-      {name: 'Khách hàng', href: '/contacts', icon: Users },
+      { name: 'Khách hàng', href: '/contacts', icon: Users },
       { name: 'Pipeline', href: '/deals', icon: TrendingUp },
       { name: 'Lịch biểu', href: '/calendar', icon: Calendar },
-      { name: 'Kho Data', href: '/data', icon: Database, hideForRoles: ['sale'] },
+      { name: 'Nhật ký Data', href: '/data', icon: Database, hideForRoles: ['sale'] },
       { name: 'Đối soát công bằng', href: '/fair-share', icon: Scale, hideForRoles: ['sale', 'sales', 'viewer'] },
       { name: 'AI Pre-screener', href: '/gatekeeper', icon: Filter, adminOnly: true, badgeKey: 'gatekeeper', hideForRoles: ['manager', 'assistant', 'sale', 'sales'] },
       { name: 'Ticket data lỗi', href: '/tickets', icon: Ticket, badgeKey: 'tickets' },

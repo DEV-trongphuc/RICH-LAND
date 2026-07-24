@@ -87,7 +87,6 @@ export const Header = ({
       window.removeEventListener('uncontacted-count-changed', handleUncontactedCountChanged);
     };
   }, []);
-
   // --- Notifications State & Logic ---
   const [notifications, setNotifications] = useState<any[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -1452,10 +1451,12 @@ export const Header = ({
                   </>
                 )}
 
-                <a
-                  href="https://zalo.me/0378859736"
-                  target="_blank"
-                  rel="noopener noreferrer"
+                <button
+                  type="button"
+                  onClick={() => {
+                    navigate('/support-tickets?create=1&type=bug');
+                    setIsProfileMenuOpen(false);
+                  }}
                   style={{
                     display: 'flex',
                     alignItems: 'center',
@@ -1477,7 +1478,7 @@ export const Header = ({
                 >
                   <AlertTriangle size={14} style={{ color: 'var(--color-danger)' }} />
                   {t('Báo lỗi')}
-                </a>
+                </button>
 
                 {/* 
                 <a
@@ -1627,7 +1628,7 @@ export const Header = ({
             'Khách hàng': 'Quản lý thông tin khách hàng và nhật ký liên hệ',
             'Pipeline': 'Quy trình giao dịch và phễu chuyển đổi bán hàng',
             'Lịch biểu': 'Xem lịch làm việc và đăng ký ngày phép',
-            'Kho Data': 'Xem danh sách toàn bộ data phân bổ',
+            'Nhật ký Data': 'Xem danh sách toàn bộ data phân bổ',
             'Vòng phân bổ': 'Tự động phân bổ khách hàng tiềm năng cho nhân viên',
             'Đối soát công bằng': 'Đối soát phân chia dữ liệu khách hàng công bằng',
             'AI Pre-screener': 'Thiết lập AI Gatekeeper đánh giá khách hàng',
@@ -2565,27 +2566,11 @@ export const Header = ({
                     );
                   }
 
-                  const parseActorName = (body: string) => {
-                    if (!body) return null;
-                    let cleanBody = body;
-                    if (cleanBody.startsWith('Nhân viên ')) {
-                      cleanBody = cleanBody.substring(10);
-                    }
-                    const match = cleanBody.match(/^(.+?)(?:\s*\([^)]*\))?\s+(?:đã|vừa|gửi|báo|có|check-in)\s+/u);
-                    if (match) {
-                      return match[1].trim();
-                    }
-                    return null;
-                  };
-
                   return (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                       {filtered.map(notif => {
                         const isWarning = notif.type === 'warning' || (notif.title && (notif.title.toLowerCase().includes('trùng số') || notif.title.toLowerCase().includes('rửa nguồn') || notif.title.toLowerCase().includes('cảnh báo')));
                         const isAttendanceUpdate = notif.type === 'attendance_update' || (notif.title && notif.title.toLowerCase().includes('cập nhật công'));
-                        // Không parse actorName cho cảnh báo hệ thống (tránh hiển thị tên sai)
-                        const actorName = isWarning ? null : parseActorName(notif.body);
-                        const isRichland = !actorName && Boolean((notif.title && (notif.title.toLowerCase().includes('richland') || notif.title.toLowerCase().includes('rich land'))) || (notif.body && (notif.body.toLowerCase().includes('richland') || notif.body.toLowerCase().includes('rich land'))));
                         
                         const bgBase = notif.is_read 
                           ? 'var(--color-surface)' 
@@ -2635,28 +2620,18 @@ export const Header = ({
                             }}
                           >
                             <div style={{ position: 'relative', display: 'flex', flexShrink: 0, marginTop: 2 }}>
-                              {isWarning ? (
-                                /* Cảnh báo hệ thống → logo Richland */
-                                <div style={{ width: 38, height: 38, borderRadius: '50%', overflow: 'hidden', border: '1px solid var(--color-border-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'white', flexShrink: 0 }}>
-                                  <img src="/LOGO.jpg" alt="Richland" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                                </div>
-                              ) : actorName ? (
+                              {notif.actor_name ? (
                                 /* Sale / Admin gửi → avatar đúng người */
                                 <div style={{ position: 'relative', display: 'inline-flex' }}>
-                                  <Avatar src={notifAvatars[actorName] || undefined} name={actorName} size={38} />
+                                  <Avatar src={notif.actor_avatar || undefined} name={notif.actor_name} size={38} />
                                   <span style={{ position: 'absolute', bottom: -2, right: -2, width: 18, height: 18, borderRadius: '50%', background: (() => { switch (notif.type) { case 'warning': return '#ef4444'; case 'mention': case 'task_assignment': case 'task_participant': case 'approval_request': return '#3b82f6'; case 'project_roster': return '#10b981'; case 'project_document': return '#f59e0b'; case 'project_comment': case 'attendance_update': return '#8b5cf6'; case 'attendance': return '#eab308'; default: return '#6b7280'; } })(), border: '1.5px solid var(--color-surface, #ffffff)', boxShadow: '0 1px 3px rgba(0,0,0,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                                     {(() => { switch (notif.type) { case 'mention': case 'task_assignment': case 'task_participant': case 'approval_request': return <CheckSquare size={11} style={{ color: 'white' }} />; case 'project_roster': return <Users size={11} style={{ color: 'white' }} />; case 'project_document': return <FileText size={11} style={{ color: 'white' }} />; case 'project_comment': return <MessageSquare size={11} style={{ color: 'white' }} />; case 'warning': return <AlertTriangle size={11} style={{ color: 'white' }} />; case 'attendance_update': return <Clock size={11} style={{ color: 'white' }} />; default: return <Info size={11} style={{ color: 'white' }} />; } })()}
                                   </span>
                                 </div>
-                              ) : isRichland ? (
-                                /* Thông báo hệ thống Admin Richland → logo */
+                              ) : (
+                                /* Cảnh báo hệ thống / hoặc không có user → logo Richland */
                                 <div style={{ width: 38, height: 38, borderRadius: '50%', overflow: 'hidden', border: '1px solid var(--color-border-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'white', flexShrink: 0 }}>
                                   <img src="/LOGO.jpg" alt="Richland" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                                </div>
-                              ) : (
-                                /* Fallback → icon circle */
-                                <div style={{ width: 38, height: 38, borderRadius: '50%', background: isAttendanceUpdate ? 'rgba(139, 92, 246, 0.1)' : 'rgba(59, 130, 246, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: 'inset 0 0 0 1px rgba(0,0,0,0.02)' }}>
-                                  {(() => { switch (notif.type) { case 'mention': case 'task_assignment': case 'task_participant': case 'approval_request': return <CheckSquare size={18} style={{ color: '#3b82f6' }} />; case 'project_roster': return <Users size={18} style={{ color: '#10b981' }} />; case 'project_document': return <FileText size={18} style={{ color: '#f59e0b' }} />; case 'project_comment': return <MessageSquare size={18} style={{ color: '#8b5cf6' }} />; case 'attendance_update': return <Clock size={18} style={{ color: '#8b5cf6' }} />; default: return <Info size={18} style={{ color: '#6b7280' }} />; } })()}
                                 </div>
                               )}
                             </div>

@@ -1186,7 +1186,33 @@ if (!function_exists('recallInactiveLeads')) {
                     }
                     $rStmt->close();
 
-                    $assignResult = getNextConsultantInRound($conn, $roundId);
+                    $maxAttempts = (int) get_system_setting($conn, 'lead_max_recall_attempts');
+                    if ($maxAttempts <= 0) {
+                        $maxAttempts = 0;
+                    }
+
+                    $excludeIds = [];
+                    if ($maxAttempts > 0) {
+                        $attemptsStmt = $conn->prepare("
+                            SELECT assigned_to, COUNT(*) as cnt 
+                            FROM distribution_logs 
+                            WHERE lead_id = ? AND status = 'recalled' AND received_at >= CURDATE() 
+                            GROUP BY assigned_to
+                        ");
+                        if ($attemptsStmt) {
+                            $attemptsStmt->bind_param("i", $leadId);
+                            $attemptsStmt->execute();
+                            $attemptsRes = $attemptsStmt->get_result();
+                            while ($attemptsRow = $attemptsRes->fetch_assoc()) {
+                                if ((int)$attemptsRow['cnt'] >= $maxAttempts) {
+                                    $excludeIds[] = (int)$attemptsRow['assigned_to'];
+                                }
+                            }
+                            $attemptsStmt->close();
+                        }
+                    }
+
+                    $assignResult = getNextConsultantInRound($conn, $roundId, null, $excludeIds);
                     if ($assignResult) {
                         $newConsultantId = $assignResult['id'];
                         $newStatus = $assignResult['is_compensation'] ? 'compensation' : 'assigned';
@@ -1210,8 +1236,8 @@ if (!function_exists('recallInactiveLeads')) {
                         }
                     }
                     $ncStmt->close();
-                } else {
-                    // Fallback to Admin
+                } else if (empty($excludeIds)) {
+                    // Fallback to Admin (only if we did NOT hit the attempts limit for the only available consultant)
                     $fbSettings = get_system_setting($conn);
                     $fbAdminId = (int)($fbSettings['fallback_admin_id'] ?? 0);
                     $fbCc = $fbSettings['fallback_cc_email'] ?? '';
@@ -1231,21 +1257,32 @@ if (!function_exists('recallInactiveLeads')) {
                     }
                 }
 
-                // 4. Update leads table
-                $upLead = $conn->prepare("UPDATE leads SET assigned_to = ?, last_interaction_date = NOW(), is_accepted = 0 WHERE id = ?");
-                $upLead->bind_param("ii", $newConsultantId, $leadId);
-                $upLead->execute();
-                $upLead->close();
-
-                // 5. Log the new distribution
-                $compSuffix = ($assignResult && $assignResult['is_compensation']) ? ' (Bù lượt)' : '';
-                $logMsg = "Tái phân bổ tự động do Sale {$oldConsultantName} không tiếp nhận.{$compSuffix}";
-                if ($isFallbackAdmin && $fallbackAdminData) {
-                    $logMsg = "Thu hồi từ Sale {$oldConsultantName} và chuyển fallback về Admin: " . $fallbackAdminData['name'];
-                } else if (!$newConsultantId) {
+                // 4. Update leads table & Log
+                if (!$newConsultantId && !empty($excludeIds)) {
+                    $nextAttemptDate = date('Y-m-d H:i:s', strtotime('+1 day'));
+                    $upLead = $conn->prepare("UPDATE leads SET assigned_to = NULL, status = 'pending', next_attempt_date = ?, last_interaction_date = NOW(), is_accepted = 0 WHERE id = ?");
+                    $upLead->bind_param("si", $nextAttemptDate, $leadId);
+                    $upLead->execute();
+                    $upLead->close();
+                    
                     $newStatus = 'pending';
-                    $logMsg = "Thu hồi từ Sale {$oldConsultantName}. Không tìm thấy Sale hoạt động khác trong vòng, chuyển lead về trạng thái Chờ xử lý (Pending).";
+                    $logMsg = "Thu hồi từ Sale {$oldConsultantName}. Đã vượt quá giới hạn chia {$maxAttempts} lần cho Sale này. Chờ phân bổ lại vào ngày mai ({$nextAttemptDate}).";
+                } else {
+                    $upLead = $conn->prepare("UPDATE leads SET assigned_to = ?, last_interaction_date = NOW(), is_accepted = 0 WHERE id = ?");
+                    $upLead->bind_param("ii", $newConsultantId, $leadId);
+                    $upLead->execute();
+                    $upLead->close();
+                    
+                    $compSuffix = ($assignResult && $assignResult['is_compensation']) ? ' (Bù lượt)' : '';
+                    $logMsg = "Tái phân bổ tự động do Sale {$oldConsultantName} không tiếp nhận.{$compSuffix}";
+                    if ($isFallbackAdmin && $fallbackAdminData) {
+                        $logMsg = "Thu hồi từ Sale {$oldConsultantName} và chuyển fallback về Admin: " . $fallbackAdminData['name'];
+                    } else if (!$newConsultantId) {
+                        $newStatus = 'pending';
+                        $logMsg = "Thu hồi từ Sale {$oldConsultantName}. Không tìm thấy Sale hoạt động khác trong vòng, chuyển lead về trạng thái Chờ xử lý (Pending).";
+                    }
                 }
+
                 logDistribution($conn, $leadId, $newConsultantId, $roundId, $newStatus, $logMsg, false);
 
                 $conn->commit();
@@ -1321,11 +1358,13 @@ if (!function_exists('recallInactiveLeads')) {
     }
 }
 
+
 logSync("Starting Google Sheets Sync Cronjob...");
 if (!isset($argv[1])) {
     deescalateFailedConnections($conn);
     releasePendingWorkHoursLeads($conn);
     recallInactiveLeads($conn);
+    redistributePendingLeads($conn);
 }
 
 // Get active connections

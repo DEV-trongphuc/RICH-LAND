@@ -957,7 +957,7 @@ function checkNightShiftAvailability($conn, $consultantId, $currentTime)
     return false;
 }
 
-function getNextConsultantInRound($conn, $roundId, $lead = null)
+function getNextConsultantInRound($conn, $roundId, $lead = null, $excludeIds = [])
 {
     // 1. Get round info with FOR UPDATE lock
     $stmt = $conn->prepare("SELECT last_assigned_consultant_id FROM distribution_rounds WHERE id = ? AND is_active = 1 FOR UPDATE");
@@ -1037,6 +1037,9 @@ function getNextConsultantInRound($conn, $roundId, $lead = null)
 
     $consultants = [];
     while ($row = $cRes->fetch_assoc()) {
+        if (!empty($excludeIds) && in_array((int)$row['id'], $excludeIds, true)) {
+            continue;
+        }
         $consultants[] = $row;
     }
 
@@ -3895,6 +3898,159 @@ function ensurePersonAndContact($conn, $leadId) {
                 $stmtContact->bind_param("iiiissssssssss", $person_id, $projectId, $ownerUserId, $createdBy, $firstName, $lastName, $email, $phone, $source, $secExpiresTime, $note, $type, $initTemp, $initTemp);
                 $stmtContact->execute();
                 $stmtContact->close();
+            }
+        }
+    }
+}
+
+if (!function_exists('safeLogSync')) {
+    function safeLogSync($msg) {
+        if (function_exists('logSync')) {
+            logSync($msg);
+        } else {
+            error_log($msg);
+        }
+    }
+}
+
+if (!function_exists('redistributePendingLeads')) {
+    function redistributePendingLeads($conn) {
+        safeLogSync("Checking for pending leads ready for redistribution...");
+        
+        $sql = "SELECT id, target_round_id, name, phone, email, source, type, note 
+                FROM leads 
+                WHERE status = 'pending' 
+                  AND next_attempt_date IS NOT NULL 
+                  AND next_attempt_date <= NOW()
+                ORDER BY id ASC";
+                
+        $res = $conn->query($sql);
+        if ($res && $res->num_rows > 0) {
+            $leads = $res->fetch_all(MYSQLI_ASSOC);
+            safeLogSync("Found " . count($leads) . " pending leads ready for redistribution.");
+            
+            foreach ($leads as $lead) {
+                $leadId = (int)$lead['id'];
+                $roundId = (int)$lead['target_round_id'];
+                
+                if ($roundId <= 0) {
+                    continue;
+                }
+                
+                $conn->begin_transaction();
+                try {
+                    // Lock the row to prevent race conditions
+                    $lockStmt = $conn->prepare("SELECT id FROM leads WHERE id = ? FOR UPDATE");
+                    $lockStmt->bind_param("i", $leadId);
+                    $lockStmt->execute();
+                    $lockStmt->close();
+                    
+                    // Assign to next consultant (without any exclusions since it's a new day!)
+                    $assignResult = getNextConsultantInRound($conn, $roundId);
+                    
+                    $newConsultantId = null;
+                    $newStatus = 'assigned';
+                    $newConsultantName = '';
+                    $newConsultantEmail = '';
+                    $roundName = 'Không rõ';
+                    $ccEmails = '';
+                    $isFallbackAdmin = false;
+                    $fallbackAdminData = null;
+                    $fallbackCcEmails = '';
+                    
+                    if ($assignResult) {
+                        $newConsultantId = $assignResult['id'];
+                        $newStatus = $assignResult['is_compensation'] ? 'compensation' : 'assigned';
+                    }
+                    
+                    if ($newConsultantId) {
+                        // Fetch new consultant info
+                        $ncStmt = $conn->prepare("SELECT name, email, work_start_time, work_end_time, work_schedule FROM consultants WHERE id = ?");
+                        $ncStmt->bind_param("i", $newConsultantId);
+                        $ncStmt->execute();
+                        $ncRow = $ncStmt->get_result()->fetch_assoc();
+                        if ($ncRow) {
+                            $newConsultantName = $ncRow['name'];
+                            $newConsultantEmail = $ncRow['email'];
+                            
+                            $currentTime = date('H:i');
+                            if (!isConsultantInWorkHours($currentTime, $ncRow['work_start_time'], $ncRow['work_end_time'], $ncRow['work_schedule'], $newConsultantId, $conn)) {
+                                $newStatus = 'pending_work_hours';
+                            }
+                        }
+                        $ncStmt->close();
+                    } else {
+                        // Fallback to Admin
+                        $fbSettings = get_system_setting($conn);
+                        $fbAdminId = (int)($fbSettings['fallback_admin_id'] ?? 0);
+                        $fbCc = $fbSettings['fallback_cc_email'] ?? '';
+                        
+                        if ($fbAdminId > 0) {
+                            $admStmt = $conn->prepare("SELECT id, name, email, zalo_chat_id FROM accounts WHERE id = ? AND (role = 'admin' OR role = 'superadmin') LIMIT 1");
+                            $admStmt->bind_param("i", $fbAdminId);
+                            $admStmt->execute();
+                            $admRes = $admStmt->get_result();
+                            if ($admRes->num_rows > 0) {
+                                $fallbackAdminData = $admRes->fetch_assoc();
+                                $isFallbackAdmin = true;
+                                $fallbackCcEmails = $fbCc;
+                            }
+                            $admStmt->close();
+                        }
+                    }
+                    
+                    // Update lead
+                    $upLead = $conn->prepare("UPDATE leads SET assigned_to = ?, status = 'active', next_attempt_date = NULL, last_interaction_date = NOW(), is_accepted = 0 WHERE id = ?");
+                    $upLead->bind_param("ii", $newConsultantId, $leadId);
+                    $upLead->execute();
+                    $upLead->close();
+                    
+                    // Get round info
+                    $rStmt = $conn->prepare("SELECT round_name, cc_emails FROM distribution_rounds WHERE id = ?");
+                    $rStmt->bind_param("i", $roundId);
+                    $rStmt->execute();
+                    $rRes = $rStmt->get_result()->fetch_assoc();
+                    if ($rRes) {
+                        $roundName = $rRes['round_name'];
+                        $ccEmails = $rRes['cc_emails'];
+                    }
+                    $rStmt->close();
+                    
+                    $compSuffix = ($assignResult && $assignResult['is_compensation']) ? ' (Bù lượt)' : '';
+                    $logMsg = "Tự động phân bổ lại sau khi tạm hoãn qua ngày mới.{$compSuffix}";
+                    if ($isFallbackAdmin && $fallbackAdminData) {
+                        $logMsg = "Tự động phân bổ lại sau ngày mới chuyển fallback về Admin: " . $fallbackAdminData['name'];
+                    } else if (!$newConsultantId) {
+                        $newStatus = 'pending';
+                        $logMsg = "Tự động phân bổ lại sau ngày mới. Không tìm thấy Sale hoạt động khác trong vòng, chuyển lead về trạng thái Chờ xử lý (Pending).";
+                    }
+                    
+                    logDistribution($conn, $leadId, $newConsultantId, $roundId, $newStatus, $logMsg, false);
+                    
+                    $conn->commit();
+                    
+                    // Post-commit: trigger live write-back
+                    triggerTwoWaySync($conn, $leadId);
+                    
+                    // Trigger notifications
+                    if ($newConsultantId && $newStatus !== 'pending_work_hours') {
+                        try {
+                            sendLeadAssignedEmailToSale($newConsultantEmail, $newConsultantName, $lead['name'] ?: 'Khách hàng ẩn danh', $lead['phone'] ?: '', $lead['note'] ?: '', $lead['source'] ?: '', $ccEmails, $roundName, $leadId, $newConsultantId, $roundId);
+                        } catch (Exception $mailEx) {}
+                        try {
+                            sendLeadAssignedZaloMessageToSale($newConsultantId, $newConsultantName, $lead['name'] ?: 'Khách hàng ẩn danh', $lead['phone'] ?: '', $lead['note'] ?: '', $lead['source'] ?: '', $roundName, $leadId, $roundId, $lead['email'] ?: '', $lead['type'] ?: '');
+                        } catch (Exception $zaloEx) {}
+                    } else if ($isFallbackAdmin && $fallbackAdminData) {
+                        try {
+                            sendLeadAssignedEmailToSale($fallbackAdminData['email'], $fallbackAdminData['name'], $lead['name'] ?: 'Khách hàng ẩn danh', $lead['phone'] ?: '', $lead['note'] ?: '', $lead['source'] ?: '', $fallbackCcEmails, 'Fallback Admin', $leadId, 0, 0);
+                        } catch (Exception $mailEx) {}
+                    }
+                    
+                    safeLogSync("Redistributed pending lead ID $leadId successfully.");
+                } catch (Exception $e) {
+                    $conn->rollback();
+                    safeLogSync("Error redistributing pending lead ID $leadId: " . $e->getMessage());
+                }
             }
         }
     }

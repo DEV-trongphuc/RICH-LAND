@@ -317,6 +317,7 @@ const SettingsInner = () => {
   // Business Configurations (Dynamic settings from markdown rules)
   const [temperatureDecayDays, setTemperatureDecayDays] = useState<number>(5);
   const [leadResponseTimeoutMinutes, setLeadResponseTimeoutMinutes] = useState<number>(2);
+  const [leadMaxRecallAttempts, setLeadMaxRecallAttempts] = useState<number>(2);
   const [leadResponseTimeoutOvertimeMinutes, setLeadResponseTimeoutOvertimeMinutes] = useState<number>(5);
   const [uncontactedLeadShareHours, setUncontactedLeadShareHours] = useState<number>(3);
   const [nightShiftStartTime, setNightShiftStartTime] = useState<string>("18:00");
@@ -753,6 +754,7 @@ const SettingsInner = () => {
         // Business configurations from markdown rules
         if (json.data.temperature_decay_days !== undefined) setTemperatureDecayDays(Number(json.data.temperature_decay_days));
         if (json.data.lead_response_timeout_minutes !== undefined) setLeadResponseTimeoutMinutes(Number(json.data.lead_response_timeout_minutes));
+        if (json.data.lead_max_recall_attempts !== undefined) setLeadMaxRecallAttempts(Number(json.data.lead_max_recall_attempts));
         if (json.data.lead_response_timeout_overtime_minutes !== undefined) setLeadResponseTimeoutOvertimeMinutes(Number(json.data.lead_response_timeout_overtime_minutes));
         if (json.data.uncontacted_lead_share_hours !== undefined) setUncontactedLeadShareHours(Number(json.data.uncontacted_lead_share_hours));
         if (json.data.night_shift_start_time !== undefined) setNightShiftStartTime(json.data.night_shift_start_time);
@@ -1303,6 +1305,7 @@ const SettingsInner = () => {
       deal_won_status: dealWonStatus,
       temperature_decay_days: temperatureDecayDays,
       lead_response_timeout_minutes: leadResponseTimeoutMinutes,
+      lead_max_recall_attempts: leadMaxRecallAttempts,
       lead_response_timeout_overtime_minutes: leadResponseTimeoutOvertimeMinutes,
       uncontacted_lead_share_hours: uncontactedLeadShareHours,
       night_shift_start_time: nightShiftStartTime,
@@ -4717,6 +4720,23 @@ function doPost(e) {
                             </div>
                           </div>
                           
+                          <div style={{ marginTop: '1rem' }}>
+                            <label className="form-label" style={{ fontWeight: 600 }}>{t('Số lần chia lead tối đa cho một Sale/ngày')}</label>
+                            <div style={{ display: 'flex', alignItems: 'center', position: 'relative' }}>
+                              <input
+                                type="number"
+                                className="form-input"
+                                style={{ paddingRight: '3.5rem' }}
+                                value={leadMaxRecallAttempts}
+                                onChange={e => setLeadMaxRecallAttempts(Number(e.target.value))}
+                                min={0}
+                              />
+                              <span style={{ position: 'absolute', right: '12px', fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>{t('lần')}</span>
+                            </div>
+                            <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px', display: 'block', lineHeight: 1.4 }}>
+                              {t('Mặc định là 2 lần. Hệ thống sẽ tạm hoãn chia lead này sang ngày mai nếu một Sale bỏ lỡ quá số lần trên. Nhập 0 để chia liên tục không giới hạn.')}
+                            </span>
+                          </div>
 
                         </div>
 

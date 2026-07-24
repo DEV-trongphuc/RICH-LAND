@@ -54,6 +54,7 @@ export const TicketsPage: React.FC = () => {
   });
 
   const [now] = useState(() => Date.now());
+  const [isBugTicket, setIsBugTicket] = useState(false);
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
 
@@ -147,6 +148,41 @@ export const TicketsPage: React.FC = () => {
           console.error("Error loading deep link ticket:", err);
         });
       }
+    }
+
+    const shouldCreate = urlParams.get('create') === '1';
+    const createType = urlParams.get('type');
+    if (shouldCreate) {
+      if (createType === 'bug') {
+        setCreateForm({
+          subject: '',
+          priority: 'medium',
+          customer_name: 'Hệ thống / Yêu cầu chung',
+          contact_id: null,
+          description: '',
+          related_contacts: [],
+          related_users: []
+        });
+        setIsBugTicket(true);
+      } else {
+        setCreateForm({
+          subject: '',
+          priority: 'medium',
+          customer_name: '',
+          contact_id: null,
+          description: '',
+          related_contacts: [],
+          related_users: []
+        });
+        setIsBugTicket(false);
+      }
+      setShowCreateModal(true);
+      
+      const newParams = new URLSearchParams(window.location.search);
+      newParams.delete('create');
+      newParams.delete('type');
+      const cleanUrl = window.location.pathname + (newParams.toString() ? '?' + newParams.toString() : '');
+      window.history.replaceState({}, '', cleanUrl);
     }
   }, [window.location.search]);
 
@@ -371,49 +407,64 @@ export const TicketsPage: React.FC = () => {
               animate={{ opacity: 1, scale: 1, y: 0 }} 
               exit={{ opacity: 0, scale: 0.96, y: 20 }}
               onClick={e => e.stopPropagation()}
+              style={{ maxWidth: '800px', width: '90%' }}
             >
               <div className="modal-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1.25rem 1.5rem', borderBottom: '1px solid var(--color-border)' }}>
-                <h3 style={{ fontWeight: 700, fontSize: '1.125rem' }}>Tạo Ticket Hỗ trợ mới</h3>
+                <h3 style={{ fontWeight: 700, fontSize: '1.125rem' }}>
+                   {isBugTicket ? 'Báo cáo lỗi' : 'Tạo Ticket Hỗ trợ mới'}
+                </h3>
                 <button onClick={() => setShowCreateModal(false)} style={{ color: 'var(--color-text-muted)', background: 'none', border: 'none', cursor: 'pointer' }}><X size={18} /></button>
               </div>
-              <div className="modal-body" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                <div className="form-group">
-                  <label className="form-label">Tên khách hàng *</label>
-                  <CustomSelect 
-                    searchable 
-                    showAvatars
-                    placeholder="Chọn khách hàng..."
-                    options={contacts.map(c => ({ 
-                      value: String(c.id), 
-                      label: `${c.last_name || ''} ${c.first_name}`.trim(),
-                      sublabel: c.phone || c.email,
-                      avatar: c.avatar_url
-                    }))}
-                    value={createForm.contact_id ? String(createForm.contact_id) : ''} 
-                    onChange={val => {
-                      const cId = Number(val);
-                      const matched = contacts.find(c => c.id === cId);
-                      setCreateForm({
-                        ...createForm, 
-                        contact_id: cId,
-                        customer_name: matched ? `${matched.last_name || ''} ${matched.first_name}`.trim() : ''
-                      });
-                    }} 
-                  />
-                  {!createForm.contact_id && (
-                    <input 
-                      className="form-input" 
-                      style={{ marginTop: '0.5rem' }}
-                      placeholder="Hoặc nhập tên khách hàng mới..." 
-                      value={createForm.customer_name}
-                      onChange={e => setCreateForm({...createForm, customer_name: e.target.value, contact_id: null})} 
-                    />
+              <div className="modal-body" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                
+                {/* Row 1 Grid: 2 columns on PC */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1rem' }}>
+                  {!isBugTicket ? (
+                    <div className="form-group" style={{ display: 'flex', flexDirection: 'column' }}>
+                      <label className="form-label">Tên khách hàng *</label>
+                      <CustomSelect 
+                        searchable 
+                        showAvatars
+                        placeholder="Chọn khách hàng..."
+                        options={contacts.map(c => ({ 
+                          value: String(c.id), 
+                          label: `${c.last_name || ''} ${c.first_name}`.trim(),
+                          sublabel: c.phone || c.email,
+                          avatar: c.avatar_url
+                        }))}
+                        value={createForm.contact_id ? String(createForm.contact_id) : ''} 
+                        onChange={val => {
+                          const cId = Number(val);
+                          const matched = contacts.find(c => c.id === cId);
+                          setCreateForm({
+                            ...createForm, 
+                            contact_id: cId,
+                            customer_name: matched ? `${matched.last_name || ''} ${matched.first_name}`.trim() : ''
+                          });
+                        }} 
+                      />
+                      {!createForm.contact_id && (
+                        <input 
+                          className="form-input" 
+                          style={{ marginTop: '0.5rem' }}
+                          placeholder="Hoặc nhập tên khách hàng mới..." 
+                          value={createForm.customer_name}
+                          onChange={e => setCreateForm({...createForm, customer_name: e.target.value, contact_id: null})} 
+                        />
+                      )}
+                    </div>
+                  ) : (
+                    <div className="form-group">
+                      <label className="form-label">Tiêu đề vấn đề (Subject) *</label>
+                      <input 
+                        className="form-input" 
+                        placeholder="Tóm tắt ngắn gọn vấn đề gặp phải" 
+                        value={createForm.subject} 
+                        onChange={e => setCreateForm({...createForm, subject: e.target.value})} 
+                      />
+                    </div>
                   )}
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Tiêu đề vấn đề (Subject) *</label>
-                  <input className="form-input" placeholder="Tóm tắt ngắn gọn vấn đề khách gặp phải" value={createForm.subject} onChange={e => setCreateForm({...createForm, subject: e.target.value})} />
-                </div>
+
                   <div className="form-group">
                     <label className="form-label">Độ ưu tiên</label>
                     <CustomSelect 
@@ -422,93 +473,140 @@ export const TicketsPage: React.FC = () => {
                       onChange={val => setCreateForm({...createForm, priority: val.toString()})} 
                     />
                   </div>
-                  
-                  <div className="form-group">
-                    <label className="form-label">Khách hàng liên quan (Tag)</label>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.625rem', marginBottom: '0.75rem' }}>
-                      {createForm.related_contacts.map(cid => {
-                        const c = contacts.find(x => String(x.id) === cid);
-                        return (
-                          <div key={cid} style={{ 
-                            display: 'flex', alignItems: 'center', gap: '8px', 
-                            padding: '4px 10px', paddingRight: '6px',
-                            background: 'var(--color-bg)', border: '1px solid var(--color-border)',
-                            borderRadius: '10px', fontSize: '0.8125rem', fontWeight: 600,
-                            boxShadow: 'var(--shadow-xs)'
-                          }}>
-                            <Avatar src={c?.avatar_url} name={c ? `${c.last_name || ''} ${c.first_name}` : cid} size={20} />
-                            <span>{c ? `${c.last_name || ''} ${c.first_name}` : cid}</span>
-                            <button 
-                              onClick={() => setCreateForm({...createForm, related_contacts: createForm.related_contacts.filter(id => id !== cid)})}
-                              style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2px', borderRadius: '4px', color: 'var(--color-text-muted)' }}
-                              onMouseEnter={e => e.currentTarget.style.background = 'rgba(0,0,0,0.05)'}
-                              onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-                            >
-                              <X size={14} />
-                            </button>
-                          </div>
-                        );
-                      })}
-                    </div>
-                    <CustomSelect 
-                      searchable 
-                      showAvatars
-                      placeholder="Chọn khách hàng để tag..."
-                      options={contacts.filter(c => !createForm.related_contacts.includes(String(c.id))).map(c => ({ 
-                        value: String(c.id), 
-                        label: `${c.last_name || ''} ${c.first_name}`.trim(),
-                        sublabel: c.phone || c.email,
-                        avatar: c.avatar_url
-                      }))}
-                      value="" 
-                      onChange={val => setCreateForm({...createForm, related_contacts: [...createForm.related_contacts, val.toString()]})} 
-                    />
-                  </div>
+                </div>
 
-                  <div className="form-group">
-                    <label className="form-label">Nhân viên liên quan (Tag)</label>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.625rem', marginBottom: '0.75rem' }}>
-                      {createForm.related_users.map(uid => {
-                        const u = users.find(x => String(x.id) === uid);
-                        return (
-                          <div key={uid} style={{ 
-                            display: 'flex', alignItems: 'center', gap: '8px', 
-                            padding: '4px 10px', paddingRight: '6px',
-                            background: 'rgba(163, 20, 34, 0.05)', border: '1px solid rgba(163, 20, 34, 0.15)',
-                            borderRadius: '10px', fontSize: '0.8125rem', fontWeight: 600,
-                            color: 'var(--color-primary)'
-                          }}>
-                            <Avatar src={u?.avatar_url} name={u?.full_name || uid} size={20} />
-                            <span>{u?.full_name || uid}</span>
-                            <button 
-                              onClick={() => setCreateForm({...createForm, related_users: createForm.related_users.filter(id => id !== uid)})}
-                              style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2px', borderRadius: '4px', color: 'var(--color-primary)' }}
-                              onMouseEnter={e => e.currentTarget.style.background = 'rgba(163, 20, 34, 0.1)'}
-                              onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-                            >
-                              <X size={14} />
-                            </button>
-                          </div>
-                        );
-                      })}
+                {/* Row 2 Grid: 2 columns on PC */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1rem' }}>
+                  {!isBugTicket ? (
+                    <>
+                      <div className="form-group">
+                        <label className="form-label">Tiêu đề vấn đề (Subject) *</label>
+                        <input 
+                          className="form-input" 
+                          placeholder="Tóm tắt ngắn gọn vấn đề khách gặp phải" 
+                          value={createForm.subject} 
+                          onChange={e => setCreateForm({...createForm, subject: e.target.value})} 
+                        />
+                      </div>
+                      
+                      <div className="form-group">
+                        <label className="form-label">Nhân viên liên quan (Tag)</label>
+                        <CustomSelect 
+                          searchable 
+                          showAvatars
+                          placeholder="Chọn nhân viên để tag..."
+                          options={users.filter(u => !createForm.related_users.includes(String(u.id))).map(u => ({ 
+                            value: String(u.id), 
+                            label: u.full_name,
+                            avatar: u.avatar_url
+                          }))}
+                          value="" 
+                          onChange={val => setCreateForm({...createForm, related_users: [...createForm.related_users, val.toString()]})} 
+                        />
+                      </div>
+                    </>
+                  ) : (
+                    <div className="form-group" style={{ gridColumn: '1 / -1' }}>
+                      <label className="form-label">Nhân viên liên quan (Tag)</label>
+                      <CustomSelect 
+                        searchable 
+                        showAvatars
+                        placeholder="Chọn nhân viên để tag..."
+                        options={users.filter(u => !createForm.related_users.includes(String(u.id))).map(u => ({ 
+                          value: String(u.id), 
+                          label: u.full_name,
+                          avatar: u.avatar_url
+                        }))}
+                        value="" 
+                        onChange={val => setCreateForm({...createForm, related_users: [...createForm.related_users, val.toString()]})} 
+                      />
                     </div>
-                    <CustomSelect 
-                      searchable 
-                      showAvatars
-                      placeholder="Chọn nhân viên để tag..."
-                      options={users.filter(u => !createForm.related_users.includes(String(u.id))).map(u => ({ 
-                        value: String(u.id), 
-                        label: u.full_name,
-                        avatar: u.avatar_url
-                      }))}
-                      value="" 
-                      onChange={val => setCreateForm({...createForm, related_users: [...createForm.related_users, val.toString()]})} 
-                    />
+                  )}
+                </div>
+
+                {/* Related Users Display */}
+                {createForm.related_users.length > 0 && (
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.625rem', marginTop: '-0.5rem' }}>
+                    {createForm.related_users.map(uid => {
+                      const u = users.find(x => String(x.id) === uid);
+                      return (
+                        <div key={uid} style={{ 
+                          display: 'flex', alignItems: 'center', gap: '8px', 
+                          padding: '4px 10px', paddingRight: '6px',
+                          background: 'rgba(163, 20, 34, 0.05)', border: '1px solid rgba(163, 20, 34, 0.15)',
+                          borderRadius: '10px', fontSize: '0.8125rem', fontWeight: 600,
+                          color: 'var(--color-primary)'
+                        }}>
+                          <Avatar src={u?.avatar_url} name={u?.full_name || uid} size={20} />
+                          <span>{u?.full_name || uid}</span>
+                          <button 
+                            onClick={() => setCreateForm({...createForm, related_users: createForm.related_users.filter(id => id !== uid)})}
+                            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2px', borderRadius: '4px', color: 'var(--color-primary)' }}
+                            onMouseEnter={e => e.currentTarget.style.background = 'rgba(163, 20, 34, 0.1)'}
+                            onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                          >
+                            <X size={14} />
+                          </button>
+                        </div>
+                      );
+                    })}
                   </div>
+                )}
+
+                {/* Related Contacts for Standard mode */}
+                {!isBugTicket && (
+                  <>
+                    <div className="form-group">
+                      <label className="form-label">Khách hàng liên quan (Tag)</label>
+                      <CustomSelect 
+                        searchable 
+                        showAvatars
+                        placeholder="Chọn khách hàng để tag..."
+                        options={contacts.filter(c => !createForm.related_contacts.includes(String(c.id))).map(c => ({ 
+                          value: String(c.id), 
+                          label: `${c.last_name || ''} ${c.first_name}`.trim(),
+                          sublabel: c.phone || c.email,
+                          avatar: c.avatar_url
+                        }))}
+                        value="" 
+                        onChange={val => setCreateForm({...createForm, related_contacts: [...createForm.related_contacts, val.toString()]})} 
+                      />
+                    </div>
+                    {createForm.related_contacts.length > 0 && (
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.625rem', marginTop: '-0.5rem' }}>
+                        {createForm.related_contacts.map(cid => {
+                          const c = contacts.find(x => String(x.id) === cid);
+                          return (
+                            <div key={cid} style={{ 
+                              display: 'flex', alignItems: 'center', gap: '8px', 
+                              padding: '4px 10px', paddingRight: '6px',
+                              background: 'var(--color-bg)', border: '1px solid var(--color-border)',
+                              borderRadius: '10px', fontSize: '0.8125rem', fontWeight: 600,
+                              boxShadow: 'var(--shadow-xs)'
+                            }}>
+                              <Avatar src={c?.avatar_url} name={c ? `${c.last_name || ''} ${c.first_name}` : cid} size={20} />
+                              <span>{c ? `${c.last_name || ''} ${c.first_name}` : cid}</span>
+                              <button 
+                                onClick={() => setCreateForm({...createForm, related_contacts: createForm.related_contacts.filter(id => id !== cid)})}
+                                style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2px', borderRadius: '4px', color: 'var(--color-text-muted)' }}
+                                onMouseEnter={e => e.currentTarget.style.background = 'rgba(0,0,0,0.05)'}
+                                onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                              >
+                                <X size={14} />
+                              </button>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </>
+                )}
+
                 <div className="form-group">
                   <label className="form-label">Mô tả chi tiết</label>
                   <textarea className="form-input" placeholder="Nhập chi tiết về lỗi hoặc yêu cầu hỗ trợ..." rows={4} value={createForm.description} onChange={e => setCreateForm({...createForm, description: e.target.value})} style={{ resize: 'none' }} />
                 </div>
+                
                 <div className="form-group">
                   <label className="form-label">Ảnh chụp màn hình / Tài liệu đính kèm (Nhấn Ctrl+V để dán)</label>
                   <PasteDropzoneArea
