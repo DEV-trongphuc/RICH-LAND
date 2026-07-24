@@ -2338,6 +2338,8 @@ foreach ($connections as $connItem) {
 function releaseExpiredLeadsToKho($conn) {
     logSync("Running releaseExpiredLeadsToKho...");
 
+    $triggerStatus = get_system_setting($conn, 'parallel_assignment_trigger_status') ?: 'chua_xac_dinh';
+
     $applicableSourcesStr = get_system_setting($conn, 'databank_applicable_sources') ?: 'R3_Fb,R3,R2,broadcast';
     $applicableSources = array_map('trim', explode(',', $applicableSourcesStr));
     $applicableSourcesEscaped = array_map(function($s) use ($conn) {
@@ -2351,6 +2353,7 @@ function releaseExpiredLeadsToKho($conn) {
               AND c.security_expires_at IS NOT NULL
               AND c.deleted_at IS NULL
               AND c.pipeline_status NOT IN ((SELECT setting_value FROM system_settings WHERE setting_key = 'deal_won_status' LIMIT 1), 'da_coc', 'dong_deal', 'thanh_cong')
+              AND NOT (c.pipeline_status = ? AND (c.parallel_assigned IS NULL OR c.parallel_assigned = 0))
               $sourcesFilter
               AND NOT EXISTS (
                   SELECT 1 FROM cooperation_slips cs
@@ -2358,8 +2361,15 @@ function releaseExpiredLeadsToKho($conn) {
                     AND cs.status IN ('pending_signatures', 'approved_pending_signatures', 'pending_manager_approval', 'approved')
               )";
               
-    $res = $conn->query($sql);
-    if (!$res) return;
+    $stmt = $conn->prepare($sql);
+    if (!$stmt) return;
+    $stmt->bind_param("s", $triggerStatus);
+    $stmt->execute();
+    $res = $stmt->get_result();
+    if (!$res) {
+        $stmt->close();
+        return;
+    }
 
     while ($row = $res->fetch_assoc()) {
         $contactId = (int)$row['contact_id'];
@@ -2558,6 +2568,7 @@ function releaseExpiredLeadsToKho($conn) {
             logSync("Error releasing/deleting contact ID $contactId: " . $e->getMessage());
         }
     }
+    $stmt->close();
 }
 
 function assignParallelLeads($conn) {

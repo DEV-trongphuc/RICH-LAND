@@ -1157,6 +1157,15 @@ class ContactController {
         ];
         $default = $defaultDurations[$status] ?? '+3 days';
         $duration = $this->getSetting('security_timer_' . $status, $default);
+        
+        $triggerStatus = $this->getSetting('parallel_assignment_trigger_status', 'chua_xac_dinh');
+        if ($status === $triggerStatus) {
+            $shareHours = (int)$this->getSetting('uncontacted_lead_share_hours', '3');
+            if ($shareHours > 0) {
+                $duration = "+$shareHours hours";
+            }
+        }
+        
         return date('Y-m-d H:i:s', strtotime($duration));
     }
 

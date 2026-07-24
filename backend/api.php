@@ -17926,14 +17926,19 @@ switch ($action) {
             }
 
             $createdBy = $saleUserId;
-            $chuaXacDinhDuration = get_system_setting($conn, 'security_timer_chua_xac_dinh') ?: '+3 hours';
+            $triggerStatus = get_system_setting($conn, 'parallel_assignment_trigger_status') ?: 'chua_xac_dinh';
+            $chuaXacDinhDuration = get_system_setting($conn, 'security_timer_' . $triggerStatus) ?: '+3 hours';
+            $shareHours = (int)get_system_setting($conn, 'uncontacted_lead_share_hours');
+            if ($shareHours > 0) {
+                $chuaXacDinhDuration = "+$shareHours hours";
+            }
             $secExpiresTime = date('Y-m-d H:i:s', strtotime($chuaXacDinhDuration));
 
             $stmtIns = $conn->prepare("
                 INSERT INTO contacts (person_id, project_id, owner_id, created_by, first_name, last_name, email, phone, source, status, pipeline_status, security_expires_at, notes, customer_type)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'lead', 'chua_xac_dinh', ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'lead', ?, ?, ?, ?)
             ");
-            $stmtIns->bind_param("iiiissssssss", $personId, $projectId, $saleUserId, $createdBy, $firstName, $lastName, $person['email'], $person['phone'], $sourceVal, $secExpiresTime, $noteVal, $typeVal);
+            $stmtIns->bind_param("iiiisssssssss", $personId, $projectId, $saleUserId, $createdBy, $firstName, $lastName, $person['email'], $person['phone'], $sourceVal, $triggerStatus, $secExpiresTime, $noteVal, $typeVal);
             $stmtIns->execute();
             $newContactId = $conn->insert_id;
             $stmtIns->close();

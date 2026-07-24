@@ -3812,7 +3812,12 @@ function ensurePersonAndContact($conn, $leadId) {
             $lastName = '';
         }
 
-        $chuaXacDinhDuration = get_system_setting($conn, 'security_timer_chua_xac_dinh') ?: '+3 hours';
+        $triggerStatus = get_system_setting($conn, 'parallel_assignment_trigger_status') ?: 'chua_xac_dinh';
+        $chuaXacDinhDuration = get_system_setting($conn, 'security_timer_' . $triggerStatus) ?: '+3 hours';
+        $shareHours = (int)get_system_setting($conn, 'uncontacted_lead_share_hours');
+        if ($shareHours > 0) {
+            $chuaXacDinhDuration = "+$shareHours hours";
+        }
         $secExpiresTime = date('Y-m-d H:i:s', strtotime($chuaXacDinhDuration));
 
         $ownerUserId = null;
@@ -3885,7 +3890,7 @@ function ensurePersonAndContact($conn, $leadId) {
 
             $stmtContact = $conn->prepare("
                 INSERT INTO contacts (person_id, project_id, owner_id, created_by, first_name, last_name, email, phone, source, status, pipeline_status, security_expires_at, notes, customer_type, temperature, suggested_temperature)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'lead', 'chua_xac_dinh', ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'lead', ?, ?, ?, ?, ?, ?)
             ");
             if ($stmtContact) {
                 $createdBy = 1;
@@ -3895,7 +3900,7 @@ function ensurePersonAndContact($conn, $leadId) {
                         $projectId = null;
                     }
                 }
-                $stmtContact->bind_param("iiiissssssssss", $person_id, $projectId, $ownerUserId, $createdBy, $firstName, $lastName, $email, $phone, $source, $secExpiresTime, $note, $type, $initTemp, $initTemp);
+                $stmtContact->bind_param("iiiisssssssssss", $person_id, $projectId, $ownerUserId, $createdBy, $firstName, $lastName, $email, $phone, $source, $triggerStatus, $secExpiresTime, $note, $type, $initTemp, $initTemp);
                 $stmtContact->execute();
                 $stmtContact->close();
             }

@@ -1408,6 +1408,20 @@ class ActivityController {
         $val = $stmt->fetchColumn();
         $duration = ($val !== false && $val !== null && $val !== '') ? $val : $fallback[$status];
         
+        $stmtTrigger = $this->db->prepare("SELECT setting_value FROM system_settings WHERE setting_key = 'parallel_assignment_trigger_status' LIMIT 1");
+        $stmtTrigger->execute();
+        $triggerStatus = $stmtTrigger->fetchColumn() ?: 'chua_xac_dinh';
+        
+        if ($status === $triggerStatus) {
+            $stmtHours = $this->db->prepare("SELECT setting_value FROM system_settings WHERE setting_key = 'uncontacted_lead_share_hours' LIMIT 1");
+            $stmtHours->execute();
+            $shareHoursVal = $stmtHours->fetchColumn();
+            $shareHours = ($shareHoursVal !== false && $shareHoursVal !== null && $shareHoursVal !== '') ? (int)$shareHoursVal : 3;
+            if ($shareHours > 0) {
+                $duration = "+$shareHours hours";
+            }
+        }
+        
         $baseTimestamp = $baseDate ? strtotime($baseDate) : time();
         return date('Y-m-d H:i:s', strtotime($duration, $baseTimestamp));
     }
