@@ -321,6 +321,7 @@ const SettingsInner = () => {
   const [leadMaxRecallAttempts, setLeadMaxRecallAttempts] = useState<number>(2);
   const [leadRecallCooldownMinutes, setLeadRecallCooldownMinutes] = useState<number>(30);
   const [parallelAssignmentTriggerStatus, setParallelAssignmentTriggerStatus] = useState<string>('chua_xac_dinh');
+  const [isParallelTriggerModalOpen, setIsParallelTriggerModalOpen] = useState<boolean>(false);
   const [leadResponseTimeoutOvertimeMinutes, setLeadResponseTimeoutOvertimeMinutes] = useState<number>(5);
   const [uncontactedLeadShareHours, setUncontactedLeadShareHours] = useState<number>(3);
   const [nightShiftStartTime, setNightShiftStartTime] = useState<string>("18:00");
@@ -4681,148 +4682,214 @@ function doPost(e) {
                           </div>
                         </div>
 
-                        {/* Nhóm B: Điều Phối & Chống Ôm (Backpressure) */}
-                        <div style={{
-                          background: 'var(--color-bg-light)',
-                          padding: '1.25rem',
-                          borderRadius: '10px',
-                          border: '1px solid var(--color-border-light)',
-                          display: 'flex',
-                          flexDirection: 'column',
-                          gap: '1rem'
-                        }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', borderBottom: '1px dashed var(--color-border-light)', paddingBottom: '8px', marginBottom: '4px' }}>
-                            <Layers size={14} style={{ color: 'var(--color-primary)' }} />
-                            <h5 style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text)', margin: 0 }}>
-                              {t('Điều Phối & Chống Ôm (Backpressure)')}
-                            </h5>
-                          </div>
-
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                            <div>
-                              <label className="form-label" style={{ fontWeight: 600 }}>{t('Hạn mức chống ôm (Backpressure)')}</label>
-                              <div style={{ display: 'flex', alignItems: 'center', position: 'relative' }}>
-                                <input
-                                  type="number"
-                                  className="form-input"
-                                  style={{ paddingRight: '3.5rem' }}
-                                  value={backpressureLimit}
-                                  onChange={e => setBackpressureLimit(Number(e.target.value))}
-                                  min={1}
-                                />
-                                <span style={{ position: 'absolute', right: '12px', fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>{t('lead')}</span>
-                              </div>
-                              <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px', display: 'block', lineHeight: 1.4 }}>
-                                {t('Hạn mức data Chưa Xác Định tối đa trước khi chặn chia lead mới.')}
-                              </span>
-                            </div>
-
-                            <div>
-                              <label className="form-label" style={{ fontWeight: 600 }}>{t('Chờ chia song song Chưa XĐ')}</label>
-                              <div style={{ display: 'flex', alignItems: 'center', position: 'relative' }}>
-                                <input
-                                  type="number"
-                                  className="form-input"
-                                  style={{ paddingRight: '3.5rem' }}
-                                  value={uncontactedLeadShareHours}
-                                  onChange={e => setUncontactedLeadShareHours(Number(e.target.value))}
-                                  min={1}
-                                />
-                                <span style={{ position: 'absolute', right: '12px', fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>{t('giờ')}</span>
-                              </div>
-                              <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px', display: 'block', lineHeight: 1.4 }}>
-                                {t('Chia thêm 1 TVV nếu lead Chưa XĐ không tiến triển sau số giờ này.')}
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-
-                      </div>
+                                              </div>
                     </div>
 
                     {/* Sub-group 2: SLA & Tiếp nhận */}
                     <div style={{ background: 'var(--color-surface)', padding: '1.5rem', borderRadius: '12px', border: '1px solid var(--color-border)', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', borderBottom: '1px solid var(--color-border-light)', paddingBottom: '8px' }}>
                         <Clock size={16} style={{ color: 'var(--color-primary)' }} />
-                        <h4 style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)', margin: 0 }}>{t('SLA & Tiếp nhận Phản hồi')}</h4>
+                        <h4 style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)', margin: 0 }}>{t('SLA, Thu Hồi & Chia Song Song')}</h4>
                       </div>
 
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                        <div>
+                        
+                        {/* Cụm 1: Thời gian chờ nhận Lead (SLA) */}
+                        <div style={{
+                          background: 'var(--color-bg-light)',
+                          padding: '1rem 1.25rem',
+                          borderRadius: '10px',
+                          border: '1px solid var(--color-border-light)',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '0.75rem'
+                        }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', borderBottom: '1px dashed var(--color-border-light)', paddingBottom: '6px' }}>
+                            <Clock size={14} style={{ color: 'var(--color-primary)' }} />
+                            <h5 style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text)', margin: 0 }}>
+                              {t('Thời gian chờ nhận Lead (SLA)')}
+                            </h5>
+                          </div>
+                          
                           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                             <div>
-                              <label className="form-label" style={{ fontWeight: 600 }}>{t('Thời gian chờ nhận lead (HC)')}</label>
+                              <label className="form-label" style={{ fontWeight: 600, fontSize: '0.75rem' }}>{t('Giờ hành chính (HC)')}</label>
                               <div style={{ display: 'flex', alignItems: 'center', position: 'relative' }}>
                                 <input
                                   type="number"
                                   className="form-input"
-                                  style={{ paddingRight: '3.5rem' }}
+                                  style={{ paddingRight: '3.5rem', height: '34px', fontSize: '0.8125rem' }}
                                   value={leadResponseTimeoutMinutes}
                                   onChange={e => setLeadResponseTimeoutMinutes(Number(e.target.value))}
                                   min={1}
                                 />
                                 <span style={{ position: 'absolute', right: '12px', fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>{t('phút')}</span>
                               </div>
-                              <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px', display: 'block', lineHeight: 1.4 }}>
-                                {t('Giờ hành chính')}
-                              </span>
                             </div>
+                            
                             <div>
-                              <label className="form-label" style={{ fontWeight: 600 }}>{t('Thời gian chờ nhận lead (TC)')}</label>
+                              <label className="form-label" style={{ fontWeight: 600, fontSize: '0.75rem' }}>{t('Giờ tăng ca/đêm (TC)')}</label>
                               <div style={{ display: 'flex', alignItems: 'center', position: 'relative' }}>
                                 <input
                                   type="number"
                                   className="form-input"
-                                  style={{ paddingRight: '3.5rem' }}
+                                  style={{ paddingRight: '3.5rem', height: '34px', fontSize: '0.8125rem' }}
                                   value={leadResponseTimeoutOvertimeMinutes}
                                   onChange={e => setLeadResponseTimeoutOvertimeMinutes(Number(e.target.value))}
                                   min={1}
                                 />
                                 <span style={{ position: 'absolute', right: '12px', fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>{t('phút')}</span>
                               </div>
-                              <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px', display: 'block', lineHeight: 1.4 }}>
-                                {t('Giờ tăng ca / Ca đêm')}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Cụm 2: Quy Tắc Thu Hồi & Thử Lại */}
+                        <div style={{
+                          background: 'var(--color-bg-light)',
+                          padding: '1rem 1.25rem',
+                          borderRadius: '10px',
+                          border: '1px solid var(--color-border-light)',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '0.75rem'
+                        }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', borderBottom: '1px dashed var(--color-border-light)', paddingBottom: '6px' }}>
+                            <RefreshCw size={14} style={{ color: 'var(--color-primary)' }} />
+                            <h5 style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text)', margin: 0 }}>
+                              {t('Quy Tắc Thu Hồi & Thử Lại')}
+                            </h5>
+                          </div>
+
+                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                            <div>
+                              <label className="form-label" style={{ fontWeight: 600, fontSize: '0.75rem' }}>{t('Số lần thử lại tối đa/lead')}</label>
+                              <div style={{ display: 'flex', alignItems: 'center', position: 'relative' }}>
+                                <input
+                                  type="number"
+                                  className="form-input"
+                                  style={{ paddingRight: '3.5rem', height: '34px', fontSize: '0.8125rem' }}
+                                  value={leadMaxRecallAttempts}
+                                  onChange={e => setLeadMaxRecallAttempts(Number(e.target.value))}
+                                  min={0}
+                                />
+                                <span style={{ position: 'absolute', right: '12px', fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>{t('lần')}</span>
+                              </div>
+                              <span style={{ fontSize: '0.6875rem', color: 'var(--color-text-muted)', marginTop: '4px', display: 'block', lineHeight: 1.3 }}>
+                                {t('Giới hạn thử lại của 1 Sale trên cùng lead trước khi hoãn.')}
+                              </span>
+                            </div>
+
+                            <div>
+                              <label className="form-label" style={{ fontWeight: 600, fontSize: '0.75rem' }}>{t('Thời gian giãn cách thử lại')}</label>
+                              <div style={{ display: 'flex', alignItems: 'center', position: 'relative' }}>
+                                <input
+                                  type="number"
+                                  className="form-input"
+                                  style={{ paddingRight: '3.5rem', height: '34px', fontSize: '0.8125rem' }}
+                                  value={leadRecallCooldownMinutes}
+                                  onChange={e => setLeadRecallCooldownMinutes(Number(e.target.value))}
+                                  min={0}
+                                />
+                                <span style={{ position: 'absolute', right: '12px', fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>{t('phút')}</span>
+                              </div>
+                              <span style={{ fontSize: '0.6875rem', color: 'var(--color-text-muted)', marginTop: '4px', display: 'block', lineHeight: 1.3 }}>
+                                {t('Thời gian tối thiểu chờ trước khi chia lại cho cùng Sale.')}
                               </span>
                             </div>
                           </div>
-                          
-                          <div style={{ marginTop: '1rem' }}>
-                            <label className="form-label" style={{ fontWeight: 600 }}>{t('Số lần thử lại tối đa đối với một Sale trên cùng một lead')}</label>
-                            <div style={{ display: 'flex', alignItems: 'center', position: 'relative' }}>
-                              <input
-                                type="number"
-                                className="form-input"
-                                style={{ paddingRight: '3.5rem' }}
-                                value={leadMaxRecallAttempts}
-                                onChange={e => setLeadMaxRecallAttempts(Number(e.target.value))}
-                                min={0}
-                              />
-                              <span style={{ position: 'absolute', right: '12px', fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>{t('lần')}</span>
-                            </div>
-                            <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px', display: 'block', lineHeight: 1.4 }}>
-                              {t('Mặc định là 2 lần. Hệ thống sẽ tạm hoãn chia chính lead này sang ngày mai nếu một Sale bỏ lỡ quá số lần trên. Nhập 0 để thử lại liên tục không giới hạn.')}
-                            </span>
-                          </div>
-
-                          <div style={{ marginTop: '1rem' }}>
-                            <label className="form-label" style={{ fontWeight: 600 }}>{t('Thời gian giãn cách tối thiểu trước khi chia lại cùng một lead')}</label>
-                            <div style={{ display: 'flex', alignItems: 'center', position: 'relative' }}>
-                              <input
-                                type="number"
-                                className="form-input"
-                                style={{ paddingRight: '3.5rem' }}
-                                value={leadRecallCooldownMinutes}
-                                onChange={e => setLeadRecallCooldownMinutes(Number(e.target.value))}
-                                min={0}
-                              />
-                              <span style={{ position: 'absolute', right: '12px', fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>{t('phút')}</span>
-                            </div>
-                            <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px', display: 'block', lineHeight: 1.4 }}>
-                              {t('Mặc định là 30 phút. Khoảng thời gian tối thiểu kể từ lần thu hồi gần nhất trước khi hệ thống có thể thử chia lại chính lead đó cho cùng một Sale. Nhập 0 để cho phép thử lại ngay.')}
-                            </span>
-                          </div>
-
                         </div>
+
+                        {/* Cụm 3: Chống Ôm & Chia Song Song */}
+                        <div style={{
+                          background: 'var(--color-bg-light)',
+                          padding: '1rem 1.25rem',
+                          borderRadius: '10px',
+                          border: '1px solid var(--color-border-light)',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '0.75rem'
+                        }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', borderBottom: '1px dashed var(--color-border-light)', paddingBottom: '6px' }}>
+                            <Layers size={14} style={{ color: 'var(--color-primary)' }} />
+                            <h5 style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text)', margin: 0 }}>
+                              {t('Chống Ôm & Chia Song Song')}
+                            </h5>
+                          </div>
+
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                              <div>
+                                <label className="form-label" style={{ fontWeight: 600, fontSize: '0.75rem' }}>{t('Hạn mức chống ôm')}</label>
+                                <div style={{ display: 'flex', alignItems: 'center', position: 'relative' }}>
+                                  <input
+                                    type="number"
+                                    className="form-input"
+                                    style={{ paddingRight: '3.5rem', height: '34px', fontSize: '0.8125rem' }}
+                                    value={backpressureLimit}
+                                    onChange={e => setBackpressureLimit(Number(e.target.value))}
+                                    min={1}
+                                  />
+                                  <span style={{ position: 'absolute', right: '12px', fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>{t('lead')}</span>
+                                </div>
+                              </div>
+
+                              <div>
+                                <label className="form-label" style={{ fontWeight: 600, fontSize: '0.75rem' }}>{t('Thời gian chờ chia song song')}</label>
+                                <div style={{ display: 'flex', alignItems: 'center', position: 'relative' }}>
+                                  <input
+                                    type="number"
+                                    className="form-input"
+                                    style={{ paddingRight: '3.5rem', height: '34px', fontSize: '0.8125rem' }}
+                                    value={uncontactedLeadShareHours}
+                                    onChange={e => setUncontactedLeadShareHours(Number(e.target.value))}
+                                    min={1}
+                                  />
+                                  <span style={{ position: 'absolute', right: '12px', fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>{t('giờ')}</span>
+                                </div>
+                              </div>
+                            </div>
+
+                            <div>
+                              <label className="form-label" style={{ fontWeight: 600, fontSize: '0.75rem' }}>{t('Trạng thái kích hoạt chia song song')}</label>
+                              <div
+                                onClick={() => setIsParallelTriggerModalOpen(true)}
+                                style={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'space-between',
+                                  width: '100%',
+                                  height: '34px',
+                                  fontSize: '0.8125rem',
+                                  borderRadius: '6px',
+                                  border: '1px solid var(--color-border)',
+                                  padding: '0 10px',
+                                  background: 'white',
+                                  cursor: 'pointer',
+                                  transition: 'all 0.15s ease-in-out',
+                                  boxShadow: '0 1px 2px rgba(0,0,0,0.02)'
+                                }}
+                                onMouseEnter={(e) => {
+                                  e.currentTarget.style.borderColor = 'var(--color-primary-light, #fca5a5)';
+                                  e.currentTarget.style.boxShadow = '0 0 0 1px var(--color-primary-light, #fca5a5)';
+                                }}
+                                onMouseLeave={(e) => {
+                                  e.currentTarget.style.borderColor = 'var(--color-border)';
+                                  e.currentTarget.style.boxShadow = '0 1px 2px rgba(0,0,0,0.02)';
+                                }}
+                              >
+                                <span style={{ fontWeight: 600, color: 'var(--color-text)', fontSize: '0.8125rem' }}>
+                                  {pipelineStatusLabels[parallelAssignmentTriggerStatus] || parallelAssignmentTriggerStatus}
+                                </span>
+                                <ChevronDown size={14} style={{ color: 'var(--color-text-muted)' }} />
+                              </div>
+                              <span style={{ fontSize: '0.6875rem', color: 'var(--color-text-muted)', marginTop: '4px', display: 'block', lineHeight: 1.3 }}>
+                                {t('Gán thêm Sale thứ hai song song nếu lead ở trạng thái trên không tiến triển sau số giờ này.')}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+
                       </div>
                     </div>
 
@@ -8216,6 +8283,77 @@ function doPost(e) {
           </div>
         )}
       </ConfirmModal>
+
+      <CustomModal
+        isOpen={isParallelTriggerModalOpen}
+        onClose={() => setIsParallelTriggerModalOpen(false)}
+        title={t("Chọn Trạng Thái Kích Hoạt Chia Song Song")}
+        width="450px"
+      >
+        {isParallelTriggerModalOpen && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', padding: '0.25rem 0' }}>
+            <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', lineHeight: 1.4, margin: 0 }}>
+              {t('Chọn trạng thái trong phễu tích hợp để khi lead nằm tại trạng thái này quá thời gian quy định sẽ tự động kích hoạt gán song song cho Sale thứ hai.')}
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '320px', overflowY: 'auto', paddingRight: '4px' }}>
+              {pipelineStatusHierarchy.map(slug => {
+                const isActive = parallelAssignmentTriggerStatus === slug;
+                const label = pipelineStatusLabels[slug] || slug;
+                return (
+                  <div
+                    key={slug}
+                    onClick={() => {
+                      setParallelAssignmentTriggerStatus(slug);
+                      setIsParallelTriggerModalOpen(false);
+                    }}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      padding: '12px 16px',
+                      borderRadius: '10px',
+                      border: isActive ? '1px solid var(--color-primary, #BD1D2D)' : '1px solid var(--color-border)',
+                      backgroundColor: isActive ? 'rgba(189, 29, 45, 0.05)' : 'var(--color-surface, #f8fafc)',
+                      cursor: 'pointer',
+                      transition: 'all 0.15s ease-in-out'
+                    }}
+                    onMouseEnter={(e) => {
+                      if (!isActive) {
+                        e.currentTarget.style.borderColor = 'var(--color-primary-light, #fca5a5)';
+                        e.currentTarget.style.backgroundColor = 'rgba(189, 29, 45, 0.01)';
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      if (!isActive) {
+                        e.currentTarget.style.borderColor = 'var(--color-border)';
+                        e.currentTarget.style.backgroundColor = 'var(--color-surface, #f8fafc)';
+                      }
+                    }}
+                  >
+                    <span style={{ fontSize: '0.875rem', fontWeight: isActive ? 600 : 500, color: isActive ? 'var(--color-primary, #BD1D2D)' : 'var(--color-text)' }}>
+                      {label}
+                    </span>
+                    {isActive ? (
+                      <CheckCircle size={18} style={{ color: 'var(--color-primary, #BD1D2D)' }} />
+                    ) : (
+                      <div style={{ width: '18px', height: '18px', borderRadius: '50%', border: '2px solid var(--color-border)' }} />
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
+              <button
+                className="btn outline"
+                onClick={() => setIsParallelTriggerModalOpen(false)}
+                style={{ borderRadius: '8px', padding: '6px 16px', fontSize: '0.8125rem' }}
+              >
+                {t('Đóng')}
+              </button>
+            </div>
+          </div>
+        )}
+      </CustomModal>
 
     </div>
   );
