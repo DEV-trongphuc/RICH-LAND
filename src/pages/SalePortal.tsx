@@ -16877,77 +16877,79 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                         }
                         const pageSize = 5;
                         const paginatedNotes = dayNotes.slice((diaryPage - 1) * pageSize, diaryPage * pageSize);
-                        return paginatedNotes.map((a: any) => (
-                          <div key={a.id} style={{
-                            padding: '12px',
-                            background: 'var(--color-surface)',
-                            border: '1px solid var(--color-border-light)',
-                            borderRadius: '10px',
-                            display: 'flex',
-                            flexDirection: 'column',
-                            gap: '4px',
-                            position: 'relative'
-                          }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                              <span style={{ fontSize: '0.68rem', color: 'var(--color-text-muted)', fontFamily: 'monospace' }}>
-                                {a.due_date ? new Date(a.due_date).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) : ''}
-                              </span>
-{!a.contact_id && (
-                                <button
-                                type="button"
-                                onClick={async () => {
-                                  if (window.confirm(t('Bạn có chắc chắn muốn xóa ghi chú này?'))) {
-                                    try {
-                                      await api.delete(`/activities/${a.id}`);
-                                      toast.success(t('Đã xóa ghi chú!'));
-                                      fetchCalendarStats();
-                                      // If the deleted item is the last one on the current page, go back a page
-                                      const remainingCount = dayNotes.length - 1;
-                                      const maxPage = Math.max(1, Math.ceil(remainingCount / pageSize));
-                                      if (diaryPage > maxPage) {
-                                        setDiaryPage(maxPage);
-                                      }
-                                    } catch {
-                                      toast.error(t('Không thể xóa ghi chú'));
-                                    }
-                                  }
-                                }}
-                                style={{ border: 'none', background: 'transparent', color: 'var(--color-danger)', display: 'flex', alignItems: 'center', cursor: 'pointer', opacity: 0.7 }}
-                                title={t('Xóa')}
-                              >
-                                <Trash2 size={14} />
-                              </button>
-                              )}
-                            </div>
-                            <div style={{ fontSize: '0.8rem', color: 'var(--color-text)', whiteSpace: 'pre-wrap', lineHeight: 1.4 }}>
-                              {formatActivityBody(a.body) || a.subject}
-                            </div>
-                            {a.contact_id && (
-                              <div 
-                                onClick={() => {
-                                  setSchedulerModalOpen(false);
-                                  setProfileContact({ id: a.contact_id });
-                                }}
-                                style={{ 
-                                  display: 'flex', 
-                                  alignItems: 'center', 
-                                  gap: '6px', 
-                                  background: 'var(--color-bg-light)',
-                                  padding: '4px 8px',
-                                  borderRadius: '6px',
-                                  border: '1px solid var(--color-border-light)',
-                                  marginTop: '6px',
-                                  alignSelf: 'flex-start',
-                                  cursor: 'pointer'
-                                }}
-                              >
-                                <Avatar src={resolveAttachmentUrl(a.contact_avatar)} name={a.contact_name} size={18} />
-                                <span style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--color-primary)' }}>{a.contact_name}</span>
-                                <span style={{ fontSize: '0.65rem', color: 'var(--color-text-light)' }}>({t('Khách hàng')})</span>
-                              </div>
-                            )}
-                          </div>
-                        ));
+                        return paginatedNotes.map((a: any) => {
+                           const isSelfNote = !a.contact_id;
+                           return (
+                             <div key={a.id} style={{
+                               padding: '12px',
+                               background: isSelfNote ? '#fffbeb' : 'var(--color-surface)',
+                               border: isSelfNote ? '1px solid #fde68a' : '1px solid var(--color-border-light)',
+                               borderRadius: '10px',
+                               display: 'flex',
+                               flexDirection: 'column',
+                               gap: '4px',
+                               position: 'relative'
+                             }}>
+                               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                 <span style={{ fontSize: '0.68rem', color: 'var(--color-text-muted)', fontFamily: 'monospace' }}>
+                                   {a.due_date ? new Date(a.due_date).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) : ''}
+                                 </span>
+                                 {!a.contact_id && (
+                                   <button
+                                     type="button"
+                                     onClick={async () => {
+                                       if (window.confirm(t('Bạn có chắc chắn muốn xóa ghi chú này?'))) {
+                                         try {
+                                           await api.delete(`/activities/${a.id}`);
+                                           toast.success(t('Đã xóa ghi chú!'));
+                                           fetchCalendarStats();
+                                           // If the deleted item is the last one on the current page, go back a page
+                                           const remainingCount = dayNotes.length - 1;
+                                           const maxPage = Math.max(1, Math.ceil(remainingCount / pageSize));
+                                           if (diaryPage > maxPage) {
+                                             setDiaryPage(maxPage);
+                                           }
+                                         } catch {
+                                           toast.error(t('Không thể xóa ghi chú'));
+                                         }
+                                       }
+                                     }}
+                                     style={{ border: 'none', background: 'transparent', color: 'var(--color-danger)', display: 'flex', alignItems: 'center', cursor: 'pointer', opacity: 0.7 }}
+                                     title={t('Xóa')}
+                                   >
+                                     <Trash2 size={14} />
+                                   </button>
+                                 )}
+                               </div>
+                               <div style={{ fontSize: '0.8rem', color: 'var(--color-text)', whiteSpace: 'pre-wrap', lineHeight: 1.4 }}>
+                                 {formatActivityBody(a.body) || a.subject}
+                               </div>
+                               {a.contact_id && (
+                                 <div 
+                                   onClick={() => {
+                                     setSchedulerModalOpen(false);
+                                     setProfileContact({ id: a.contact_id });
+                                   }}
+                                   style={{ 
+                                     display: 'flex', 
+                                     alignItems: 'center', 
+                                     gap: '6px', 
+                                     background: 'var(--color-bg-light)',
+                                     padding: '4px 8px',
+                                     borderRadius: '6px',
+                                     border: '1px solid var(--color-border-light)',
+                                     marginTop: '6px',
+                                     alignSelf: 'flex-start',
+                                     cursor: 'pointer'
+                                   }}
+                                 >
+                                   <Avatar src={resolveAttachmentUrl(a.contact_avatar)} name={a.contact_name} size={18} />
+                                   <span style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--color-primary)' }}>{a.contact_name}</span>
+                                 </div>
+                               )}
+                             </div>
+                           );
+                         });
                       })()}
                     </div>
                     {(() => {
