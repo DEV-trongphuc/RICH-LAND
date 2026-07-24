@@ -1,15 +1,9 @@
 const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
 const BASE_URL = isLocal ? '/backend/api.php' : (import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/api.php` : '/backend/api.php');
-import { en, ja, zh } from './translations';
+
 
 function getTranslatedError(key: string, replacements?: Record<string, string | number>): string {
-  const lang = localStorage.getItem('richland_lang') || 'vi';
-  if (lang === 'vi') return key;
   let translated = key;
-  if (lang === 'en') translated = en[key] || key;
-  if (lang === 'ja') translated = ja[key] || key;
-  if (lang === 'zh') translated = zh[key] || key;
-  
   if (replacements) {
     Object.entries(replacements).forEach(([k, v]) => {
       translated = translated.replace(`{${k}}`, String(v));

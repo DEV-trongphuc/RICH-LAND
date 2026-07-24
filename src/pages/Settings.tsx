@@ -12,7 +12,7 @@ import { fetchAPI } from '../utils/api';
 import toast from 'react-hot-toast';
 import { CardSkeleton, TableSkeleton, Skeleton } from '../components/ui/Skeleton';
 import { Avatar } from '../components/ui/Avatar';
-import * as XLSX from 'xlsx';
+
 
 const thStyle: React.CSSProperties = {
   position: 'sticky',
@@ -1522,9 +1522,10 @@ const SettingsInner = () => {
     }
   });
 
-  const processUploadedFile = (file: File) => {
+  const processUploadedFile = async (file: File) => {
     if (!file) return;
     setLocalFile(file);
+    const XLSX = await import('xlsx');
     const reader = new FileReader();
     reader.onload = (evt) => {
       try {
@@ -1591,10 +1592,11 @@ const SettingsInner = () => {
     }
   };
 
-  const handleBlacklistUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleBlacklistUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    const XLSX = await import('xlsx');
     const reader = new FileReader();
     reader.onload = (evt) => {
       try {
@@ -1793,8 +1795,9 @@ const SettingsInner = () => {
     setImporting(false);
   };
 
-  const handleExportResults = () => {
+  const handleExportResults = async () => {
     if (!checkedResults || checkedResults.length === 0) return;
+    const XLSX = await import('xlsx');
 
     // Combine original rows with checking results
     const exportData = checkedResults.map((res, idx) => {

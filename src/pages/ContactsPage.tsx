@@ -1,11 +1,11 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, lazy, Suspense } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { createPortal } from 'react-dom';
 import { Plus, Search, Phone, Mail, Eye, Trash2, X, Download, Users, Tag as TagIcon, UserCheck, RefreshCw, Filter, LayoutGrid, List, ArrowDownUp, Columns, Building2, Briefcase, Loader2, User, Calendar, AlertTriangle, AlertCircle, CheckSquare, Layers, MoreHorizontal, ChevronRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Avatar } from '../components/ui/Avatar';
 import { useUIStore } from '../store/uiStore';
-import { CustomerProfileDrawer } from './CustomerProfileDrawer';
+const CustomerProfileDrawer = lazy(() => import('./CustomerProfileDrawer').then(module => ({ default: module.CustomerProfileDrawer })));
 import { LeadScoreRing } from '../components/ui/LeadScoreRing';
 import { TagDisplay } from '../components/ui/TagInput';
 import { Pagination } from '../components/ui/Pagination';
@@ -1208,62 +1208,64 @@ export const ContactsPage: React.FC = () => {
               </div>
  
               <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-                <div style={{
-                  display: 'flex',
-                  background: 'var(--color-border-light)',
-                  border: '1px solid var(--color-border)',
-                  padding: '2px',
-                  borderRadius: '8px',
-                  gap: '2px',
-                  alignItems: 'center',
-                  height: '38px',
-                  boxSizing: 'border-box'
-                }}>
-                  <button 
-                    onClick={() => setViewMode('list')} 
-                    title="Danh sách"
-                    style={{ 
-                      padding: 0, 
-                      height: '32px', 
-                      width: '32px', 
-                      display: 'flex', 
-                      alignItems: 'center', 
-                      justifyContent: 'center', 
-                      borderRadius: '6px',
-                      border: 'none',
-                      outline: 'none',
-                      boxShadow: viewMode === 'list' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
-                      background: viewMode === 'list' ? 'var(--color-surface)' : 'transparent',
-                      color: viewMode === 'list' ? 'var(--color-text)' : 'var(--color-text-light)',
-                      cursor: 'pointer',
-                      transition: 'all 0.2s'
-                    }}
-                  >
-                    <List size={16} />
-                  </button>
-                  <button 
-                    onClick={() => setViewMode('card')} 
-                    title="Dạng thẻ"
-                    style={{ 
-                      padding: 0, 
-                      height: '32px', 
-                      width: '32px', 
-                      display: 'flex', 
-                      alignItems: 'center', 
-                      justifyContent: 'center', 
-                      borderRadius: '6px',
-                      border: 'none',
-                      outline: 'none',
-                      boxShadow: viewMode === 'card' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
-                      background: viewMode === 'card' ? 'var(--color-surface)' : 'transparent',
-                      color: viewMode === 'card' ? 'var(--color-text)' : 'var(--color-text-light)',
-                      cursor: 'pointer',
-                      transition: 'all 0.2s'
-                    }}
-                  >
-                    <LayoutGrid size={16} />
-                  </button>
-                </div>
+                {!isMobile && (
+                  <div style={{
+                    display: 'flex',
+                    background: 'var(--color-border-light)',
+                    border: '1px solid var(--color-border)',
+                    padding: '2px',
+                    borderRadius: '8px',
+                    gap: '2px',
+                    alignItems: 'center',
+                    height: '38px',
+                    boxSizing: 'border-box'
+                  }}>
+                    <button 
+                      onClick={() => setViewMode('list')} 
+                      title="Danh sách"
+                      style={{ 
+                        padding: 0, 
+                        height: '32px', 
+                        width: '32px', 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        justifyContent: 'center', 
+                        borderRadius: '6px',
+                        border: 'none',
+                        outline: 'none',
+                        boxShadow: viewMode === 'list' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+                        background: viewMode === 'list' ? 'var(--color-surface)' : 'transparent',
+                        color: viewMode === 'list' ? 'var(--color-text)' : 'var(--color-text-light)',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s'
+                      }}
+                    >
+                      <List size={16} />
+                    </button>
+                    <button 
+                      onClick={() => setViewMode('card')} 
+                      title="Dạng thẻ"
+                      style={{ 
+                        padding: 0, 
+                        height: '32px', 
+                        width: '32px', 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        justifyContent: 'center', 
+                        borderRadius: '6px',
+                        border: 'none',
+                        outline: 'none',
+                        boxShadow: viewMode === 'card' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+                        background: viewMode === 'card' ? 'var(--color-surface)' : 'transparent',
+                        color: viewMode === 'card' ? 'var(--color-text)' : 'var(--color-text-light)',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s'
+                      }}
+                    >
+                      <LayoutGrid size={16} />
+                    </button>
+                  </div>
+                )}
                 
                 <button 
                   onClick={() => setShowColumns(true)} 
@@ -2205,21 +2207,23 @@ export const ContactsPage: React.FC = () => {
       )}
 
       {/* 360° Profile Drawer */}
-      <CustomerProfileDrawer
-        isOpen={!!profileContact}
-        onClose={() => setProfileContact(null)}
-        contact={profileContact}
-        onUpdate={updated => {
-          if (updated === null) {
-            setContacts(p => p.filter(c => c.id !== profileContact?.id));
-            setProfileContact(null);
-            fetchData();
-            return;
-          }
-          setContacts(p=>p.map(c=>c.id===updated?.id?{...c,...updated,score:calcScore(updated)}:c));
-          setProfileContact(prev => prev && prev.id === updated?.id ? { ...prev, ...updated } : prev);
-        }}
-      />
+      <Suspense fallback={null}>
+        <CustomerProfileDrawer
+          isOpen={!!profileContact}
+          onClose={() => setProfileContact(null)}
+          contact={profileContact}
+          onUpdate={updated => {
+            if (updated === null) {
+              setContacts(p => p.filter(c => c.id !== profileContact?.id));
+              setProfileContact(null);
+              fetchData();
+              return;
+            }
+            setContacts(p=>p.map(c=>c.id===updated?.id?{...c,...updated,score:calcScore(updated)}:c));
+            setProfileContact(prev => prev && prev.id === updated?.id ? { ...prev, ...updated } : prev);
+          }}
+        />
+      </Suspense>
       
       {reportModalOpen && selectedContactForReport && (
         <CustomModal

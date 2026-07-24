@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef, useMemo } from 'react';
+import React, { useEffect, useState, useRef, useMemo, lazy, Suspense } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { withRouterFreezer } from '../components/RouterFreezer';
@@ -15,7 +15,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { createPortal } from 'react-dom';
 import { triggerFullConfetti } from '../utils/confettiHelper';
 
-import { WarRoomFlightDeck } from '../components/Dashboard/WarRoomFlightDeck';
+const WarRoomFlightDeck = lazy(() => import('../components/Dashboard/WarRoomFlightDeck').then(module => ({ default: module.WarRoomFlightDeck })));
 import { QuickAddLeadModal } from '../components/QuickAddLeadModal';
 import { AddressSelect } from '../components/ui/AddressSelect';
 import { ToggleSwitch } from '../components/ui/ToggleSwitch';
@@ -43,27 +43,17 @@ import { Pagination } from '../components/ui/Pagination';
 import { TableSkeleton, StatRowSkeleton, CalendarSkeleton, CardSkeleton, Skeleton } from '../components/ui/Skeleton';
 import { SignaturePadModal } from '../components/ui/SignaturePadModal';
 import { Edit3 } from 'lucide-react';
-import { FairShareAudit } from './FairShareAudit';
-import { InvoicesPage } from './InvoicesPage';
-import ProjectsPage from './ProjectsPage';
-import { FilesPage } from './FilesPage';
-import { Consultants } from './Consultants';
-import AttendancePage from './AttendancePage';
+const FairShareAudit = lazy(() => import('./FairShareAudit').then(module => ({ default: module.FairShareAudit })));
+const InvoicesPage = lazy(() => import('./InvoicesPage').then(module => ({ default: module.InvoicesPage })));
+const ProjectsPage = lazy(() => import('./ProjectsPage'));
+const FilesPage = lazy(() => import('./FilesPage').then(module => ({ default: module.FilesPage })));
+const Consultants = lazy(() => import('./Consultants').then(module => ({ default: module.Consultants })));
+const AttendancePage = lazy(() => import('./AttendancePage'));
 import api from '../api/axios';
-import { CustomerProfileDrawer } from './CustomerProfileDrawer';
-import { WorkspaceTaskDrawer } from './WorkspaceTaskDrawer';
+const CustomerProfileDrawer = lazy(() => import('./CustomerProfileDrawer').then(module => ({ default: module.CustomerProfileDrawer })));
+const WorkspaceTaskDrawer = lazy(() => import('./WorkspaceTaskDrawer').then(module => ({ default: module.WorkspaceTaskDrawer })));
 import styles from './EntityDrawer.module.css';
-import vnFlag from '../assets/vn.svg';
-import usFlag from '../assets/us.svg';
-import jpFlag from '../assets/jp.svg';
-import cnFlag from '../assets/cn.svg';
 
-const languagesList = [
-  { code: 'vi', name: 'Tiếng Việt', flag: vnFlag },
-  { code: 'en', name: 'English', flag: usFlag },
-  { code: 'ja', name: '日本語', flag: jpFlag },
-  { code: 'zh', name: '简体中文', flag: cnFlag }
-] as const;
 
 const LeadRecallTimer: React.FC<{
   lastInteractionDate: string;
@@ -170,6 +160,58 @@ const getDueDateLabel = (dateStr: string | null | undefined, isDone: boolean, t:
   const diff = Math.ceil((due - today) / (1000 * 60 * 60 * 24));
   if (diff <= 7) return `${t('Còn')} ${diff} ${t('ngày')}`;
   return d.toLocaleDateString('vi-VN');
+};
+
+const DebouncedSearchInput: React.FC<{
+  initialValue: string;
+  placeholder: string;
+  onSearchChange: (val: string) => void;
+}> = ({ initialValue, placeholder, onSearchChange }) => {
+  const [localVal, setLocalVal] = useState(initialValue);
+
+  useEffect(() => {
+    setLocalVal(initialValue);
+  }, [initialValue]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      onSearchChange(localVal);
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [localVal, onSearchChange]);
+
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      onSearchChange(localVal);
+    }
+  };
+
+  return (
+    <div className="responsive-filter-item" style={{ position: 'relative', width: 240 }}>
+      <input
+        className="form-input"
+        placeholder={placeholder}
+        style={{ paddingLeft: 12, width: '100%', height: 38, fontSize: '0.875rem' }}
+        value={localVal}
+        onChange={e => setLocalVal(e.target.value)}
+        onKeyPress={handleKeyPress}
+      />
+      {localVal && (
+        <button
+          onClick={() => {
+            setLocalVal('');
+            onSearchChange('');
+          }}
+          style={{
+            position: 'absolute', right: 10, top: 10, background: 'none', border: 'none',
+            color: 'var(--color-text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center'
+          }}
+        >
+          <XCircle size={14} />
+        </button>
+      )}
+    </div>
+  );
 };
 
 interface SalePortalProps {
@@ -4064,12 +4106,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
     navigate(`/${params.toString() ? '?' + params.toString() : ''}`);
   };
 
-  useEffect(() => {
-    const delayDebounceFn = setTimeout(() => {
-      setSearch(searchInput.trim());
-    }, 400);
-    return () => clearTimeout(delayDebounceFn);
-  }, [searchInput]);
+
 
   useEffect(() => {
     const handleLeadAdded = () => {
@@ -7332,21 +7369,23 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
             >
               {selectedTaskForDetails ? (
                 <div style={{ height: '100%', overflowY: 'auto' }}>
-                  <WorkspaceTaskDrawer
-                    isOpen={true}
-                    onClose={() => setSelectedTaskForDetails(null)}
-                    task={selectedTaskForDetails}
-                    onUpdate={() => {
-                      fetchPortalTasks();
-                      fetchWorkspaceTasks();
-                      window.dispatchEvent(new CustomEvent('task-updated'));
-                    }}
-                    users={users}
-                    embedMode={true}
-                    onOpenContact={(contactId) => {
-                      handleOpenContactProfile(contactId);
-                    }}
-                  />
+                  <Suspense fallback={null}>
+                    <WorkspaceTaskDrawer
+                      isOpen={true}
+                      onClose={() => setSelectedTaskForDetails(null)}
+                      task={selectedTaskForDetails}
+                      onUpdate={() => {
+                        fetchPortalTasks();
+                        fetchWorkspaceTasks();
+                        window.dispatchEvent(new CustomEvent('task-updated'));
+                      }}
+                      users={users}
+                      embedMode={true}
+                      onOpenContact={(contactId) => {
+                        handleOpenContactProfile(contactId);
+                      }}
+                    />
+                  </Suspense>
                 </div>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--color-text-muted)', gap: '1rem', padding: '2rem', flex: 1 }}>
@@ -8763,30 +8802,14 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
           boxShadow: '0 1px 3px rgba(0, 0, 0, 0.02)'
         }}>
           {/* Search Input */}
-          <div className="responsive-filter-item" style={{ position: 'relative', width: 240 }}>
-            <input
-              className="form-input"
-              placeholder={t("Tìm theo tên, SĐT, email...")}
-              style={{ paddingLeft: 12, width: '100%', height: 38, fontSize: '0.875rem' }}
-              value={searchInput}
-              onChange={e => setSearchInput(e.target.value)}
-              onKeyPress={handleSearchKeyPress}
-            />
-            {searchInput && (
-              <button
-                onClick={() => {
-                  setSearchInput('');
-                  setSearch('');
-                }}
-                style={{
-                  position: 'absolute', right: 10, top: 10, background: 'none', border: 'none',
-                  color: 'var(--color-text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center'
-                }}
-              >
-                <XCircle size={14} />
-              </button>
-            )}
-          </div>
+          <DebouncedSearchInput
+            initialValue={searchInput}
+            placeholder={t("Tìm theo tên, SĐT, email...")}
+            onSearchChange={(val) => {
+              setSearchInput(val);
+              setSearch(val.trim());
+            }}
+          />
 
           {/* Date Select Filter */}
           <div className="responsive-filter-item">
@@ -14818,117 +14841,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
               {theme === 'light' ? <Moon size={20} /> : <Sun size={20} style={{ color: '#fbbf24' }} />}
             </button>
 
-            {/* Language Selector Dropdown */}
-            <div className="responsive-hide-mobile" style={{ position: 'relative' }}>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setIsLangOpen(!isLangOpen);
-                }}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '4px',
-                  background: 'var(--color-bg)',
-                  border: `1px solid ${isLangOpen ? 'var(--color-primary)' : 'var(--color-border)'}`,
-                  borderRadius: '6px',
-                  padding: '3px 6px',
-                  cursor: 'pointer',
-                  color: 'var(--color-text)',
-                  fontSize: '0.75rem',
-                  fontWeight: 500,
-                  transition: 'all 0.2s',
-                  height: 30,
-                  outline: 'none',
-                  boxShadow: 'none',
-                }}
-                title={t('Chọn ngôn ngữ')}
-                onMouseEnter={e => {
-                  e.currentTarget.style.borderColor = 'var(--color-primary)';
-                }}
-                onMouseLeave={e => {
-                  e.currentTarget.style.borderColor = isLangOpen ? 'var(--color-primary)' : 'var(--color-border)';
-                }}
-              >
-                <img
-                  src={languagesList.find(l => l.code === language)?.flag || vnFlag}
-                  style={{
-                    width: 24,
-                    height: 16,
-                    borderRadius: '1.5px',
-                    objectFit: 'cover',
-                    border: '1px solid rgba(0, 0, 0, 0.08)',
-                    display: 'block'
-                  }}
-                  alt={t(languagesList.find(l => l.code === language)?.name || 'Tiếng Việt')}
-                />
-                <ChevronDown
-                  size={12}
-                  style={{
-                    color: 'var(--color-text-muted)',
-                    transform: isLangOpen ? 'rotate(180deg)' : 'none',
-                    transition: 'transform 0.2s'
-                  }}
-                />
-              </button>
 
-              {isLangOpen && (
-                <div style={{
-                  position: 'absolute',
-                  top: 'calc(100% + 6px)',
-                  right: 0,
-                  background: 'var(--color-surface)',
-                  border: '1px solid var(--color-border)',
-                  borderRadius: '8px',
-                  padding: '4px',
-                  boxShadow: '0 4px 16px rgba(0, 0, 0, 0.12)',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '2px',
-                  minWidth: '135px',
-                  zIndex: 50
-                }}>
-                  {languagesList.map(lang => (
-                    <button
-                      key={lang.code}
-                      onClick={() => {
-                        setLanguage(lang.code);
-                        setIsLangOpen(false);
-                      }}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '8px',
-                        width: '100%',
-                        padding: '8px 10px',
-                        border: 'none',
-                        background: language === lang.code ? 'var(--color-bg)' : 'transparent',
-                        borderRadius: '6px',
-                        cursor: 'pointer',
-                        color: 'var(--color-text)',
-                        fontSize: '0.8125rem',
-                        fontWeight: language === lang.code ? 600 : 400,
-                        textAlign: 'left',
-                        transition: 'background 0.2s'
-                      }}
-                      onMouseEnter={e => {
-                        if (language !== lang.code) e.currentTarget.style.background = 'var(--color-bg)';
-                      }}
-                      onMouseLeave={e => {
-                        if (language !== lang.code) e.currentTarget.style.background = 'transparent';
-                      }}
-                    >
-                      <img
-                        src={lang.flag}
-                        style={{ width: 20, height: 14, borderRadius: '1.5px', objectFit: 'cover', border: '1px solid rgba(0, 0, 0, 0.08)' }}
-                        alt={lang.name}
-                      />
-                      {lang.name}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
 
             {/* Check-in Button */}
             {['sale', 'manager'].includes(String(displayUser?.role).toLowerCase()) && (
@@ -15283,15 +15196,37 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
               )}
 
               {activeTab === 'attendance-portal' && (
-                <AttendancePage embedMode={true} />
+                <Suspense fallback={null}>
+                  <AttendancePage embedMode={true} />
+                </Suspense>
               )}
-              {activeTab === 'fair-share' && <FairShareAudit forceActive={true} />}
+              {activeTab === 'fair-share' && (
+                <Suspense fallback={null}>
+                  <FairShareAudit forceActive={true} />
+                </Suspense>
+              )}
               {activeTab === 'tickets' && renderTicketsView()}
               {activeTab === 'schedule' && renderScheduleView()}
-              {activeTab === 'invoices' && <InvoicesPage />}
-              {activeTab === 'projects' && <ProjectsPage />}
-              {activeTab === 'files' && <FilesPage />}
-              {activeTab === 'consultants' && <Consultants />}
+              {activeTab === 'invoices' && (
+                <Suspense fallback={null}>
+                  <InvoicesPage />
+                </Suspense>
+              )}
+              {activeTab === 'projects' && (
+                <Suspense fallback={null}>
+                  <ProjectsPage />
+                </Suspense>
+              )}
+              {activeTab === 'files' && (
+                <Suspense fallback={null}>
+                  <FilesPage />
+                </Suspense>
+              )}
+              {activeTab === 'consultants' && (
+                <Suspense fallback={null}>
+                  <Consultants />
+                </Suspense>
+              )}
             </div>
           </div>
         </main>
@@ -16143,12 +16078,14 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
       )}
 
       {showWarRoom && (
-        <WarRoomFlightDeck
-          isOpen={showWarRoom}
-          onClose={() => setShowWarRoom(false)}
-          stats={null}
-          recentLogs={[]}
-        />
+        <Suspense fallback={null}>
+          <WarRoomFlightDeck
+            isOpen={showWarRoom}
+            onClose={() => setShowWarRoom(false)}
+            stats={null}
+            recentLogs={[]}
+          />
+        </Suspense>
       )}
 
 
@@ -16587,36 +16524,38 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
         </div>
       </CustomModal>
 
-      <CustomerProfileDrawer
-        isOpen={!!profileContact}
-        onClose={() => {
-          setProfileContact(null);
-          loadPortalData();
-          fetchWorkspaceTasks();
-        }}
-        contact={profileContact}
-        initialTab={profileDrawerTab}
-        zIndex={(selectedTaskForDetails && wsViewMode !== 'focus') ? 1000300 : undefined}
-        onUpdate={updated => {
-          if (updated === null) {
+      <Suspense fallback={null}>
+        <CustomerProfileDrawer
+          isOpen={!!profileContact}
+          onClose={() => {
             setProfileContact(null);
-            setData((prev: any) => {
-              if (!prev) return prev;
-              const next = { ...prev };
-              if (next.contacts) {
-                next.contacts = next.contacts.filter((c: any) => c.id !== profileContact?.id);
-              }
-              return next;
-            });
             loadPortalData();
             fetchWorkspaceTasks();
-            return;
-          }
-          setProfileContact(updated);
-          loadPortalData();
-          fetchWorkspaceTasks();
-        }}
-      />
+          }}
+          contact={profileContact}
+          initialTab={profileDrawerTab}
+          zIndex={(selectedTaskForDetails && wsViewMode !== 'focus') ? 1000300 : undefined}
+          onUpdate={updated => {
+            if (updated === null) {
+              setProfileContact(null);
+              setData((prev: any) => {
+                if (!prev) return prev;
+                const next = { ...prev };
+                if (next.contacts) {
+                  next.contacts = next.contacts.filter((c: any) => c.id !== profileContact?.id);
+                }
+                return next;
+              });
+              loadPortalData();
+              fetchWorkspaceTasks();
+              return;
+            }
+            setProfileContact(updated);
+            loadPortalData();
+            fetchWorkspaceTasks();
+          }}
+        />
+      </Suspense>
 
       {schedulerModalOpen && selectedSchedulerDate && (
         <CustomModal
@@ -17926,27 +17865,29 @@ placeholder="Ví dụ: +5 days"
       </CustomModal>
 
       {/* Task Details Drawer */}
-      <WorkspaceTaskDrawer
-        isOpen={!!selectedTaskForDetails && wsViewMode !== 'focus'}
-        onClose={() => {
-          setSelectedTaskForDetails(null);
-          setIsFocusSessionActive(false);
-        }}
-        task={selectedTaskForDetails}
-        onUpdate={() => {
-          fetchPortalTasks();
-          fetchWorkspaceTasks();
-          window.dispatchEvent(new CustomEvent('task-updated'));
-        }}
-        users={users}
-        onOpenContact={(contactId) => {
-          setSelectedTaskForDetails(null);
-          handleOpenContactProfile(contactId);
-        }}
-        isFocusSessionActive={isFocusSessionActive}
-        focusTaskIndex={focusTaskIndex}
-        onNextFocusTask={handleNextFocusTask}
-      />
+      <Suspense fallback={null}>
+        <WorkspaceTaskDrawer
+          isOpen={!!selectedTaskForDetails && wsViewMode !== 'focus'}
+          onClose={() => {
+            setSelectedTaskForDetails(null);
+            setIsFocusSessionActive(false);
+          }}
+          task={selectedTaskForDetails}
+          onUpdate={() => {
+            fetchPortalTasks();
+            fetchWorkspaceTasks();
+            window.dispatchEvent(new CustomEvent('task-updated'));
+          }}
+          users={users}
+          onOpenContact={(contactId) => {
+            setSelectedTaskForDetails(null);
+            handleOpenContactProfile(contactId);
+          }}
+          isFocusSessionActive={isFocusSessionActive}
+          focusTaskIndex={focusTaskIndex}
+          onNextFocusTask={handleNextFocusTask}
+        />
+      </Suspense>
 
       {/* 2-Minute Lead Offer Countdown Modal */}
       {activeIncomingOffer && !hideOfferModal && (
@@ -18168,6 +18109,7 @@ placeholder="Ví dụ: +5 days"
           onClose={() => !isClaimingLeadId && setClaimLeadConfirmOpen(false)}
           title={t('Nhận Khách hàng từ Databank')}
           width="460px"
+          centeredOnMobile={true}
         >
           <div style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem', alignItems: 'center', textAlign: 'center' }}>
             <div style={{

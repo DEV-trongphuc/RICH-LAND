@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, lazy, Suspense } from 'react';
 import { fetchAPI } from '../utils/api';
 import { compressToWebP } from '../utils/imageCompress';
 import { useAuth } from '../contexts/AuthContext';
@@ -10,7 +10,7 @@ import { useLanguage } from '../contexts/LanguageContext';
 import { EmptyCard } from '../components/ui/EmptyCard';
 import { Avatar } from '../components/ui/Avatar';
 import { TableSkeleton } from '../components/ui/Skeleton';
-import { CustomerProfileDrawer } from './CustomerProfileDrawer';
+const CustomerProfileDrawer = lazy(() => import('./CustomerProfileDrawer').then(module => ({ default: module.CustomerProfileDrawer })));
 import { CurrencyInput } from '../components/ui/CurrencyInput';
 
 const formatNumberWithCommas = (val: any) => {
@@ -1921,14 +1921,16 @@ export default function DepositsPage() {
       </CustomModal>
 
       {showContactDrawer && selectedContact && (
-        <CustomerProfileDrawer
-          isOpen={showContactDrawer}
-          onClose={() => setShowContactDrawer(false)}
-          contact={selectedContact}
-          onUpdate={() => {
-            loadData();
-          }}
-        />
+        <Suspense fallback={null}>
+          <CustomerProfileDrawer
+            isOpen={showContactDrawer}
+            onClose={() => setShowContactDrawer(false)}
+            contact={selectedContact}
+            onUpdate={() => {
+              loadData();
+            }}
+          />
+        </Suspense>
       )}
     </div>
   );

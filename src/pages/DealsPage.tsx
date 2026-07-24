@@ -116,7 +116,13 @@ export const DealsPage: React.FC = () => {
   const [activeStageMobile, setActiveStageMobile] = useState<string | number>('');
 
   useEffect(() => {
-    const handleResize = () => setIsMobile(window.innerWidth <= 768);
+    const handleResize = () => {
+      const mobile = window.innerWidth <= 768;
+      setIsMobile(mobile);
+      if (mobile) {
+        setViewMode('kanban');
+      }
+    };
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
@@ -689,65 +695,67 @@ export const DealsPage: React.FC = () => {
         }}>
 
           {/* Kanban vs List Toggle (Moved to Right) */}
-          <div style={{ 
-            display: 'flex', 
-            background: 'var(--color-border-light)', 
-            border: '1px solid var(--color-border)',
-            padding: '2px', 
-            borderRadius: '8px', 
-            gap: '2px',
-            height: '38px', 
-            position: 'relative',
-            width: 'fit-content',
-            alignItems: 'center',
-            boxSizing: 'border-box'
-          }}>
-            {/* Sliding Pill Background Indicator */}
-            <div style={{
-              position: 'absolute',
-              top: '2px',
-              bottom: '2px',
-              width: '32px',
-              borderRadius: '6px',
-              background: 'var(--color-surface)',
-              boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
-              transition: 'transform 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
-              transform: `translateX(${viewMode === 'kanban' ? '0px' : '34px'})`,
-              zIndex: 1
-            }} />
+          {!isMobile && (
+            <div style={{ 
+              display: 'flex', 
+              background: 'var(--color-border-light)', 
+              border: '1px solid var(--color-border)',
+              padding: '2px', 
+              borderRadius: '8px', 
+              gap: '2px',
+              height: '38px', 
+              position: 'relative',
+              width: 'fit-content',
+              alignItems: 'center',
+              boxSizing: 'border-box'
+            }}>
+              {/* Sliding Pill Background Indicator */}
+              <div style={{
+                position: 'absolute',
+                top: '2px',
+                bottom: '2px',
+                width: '32px',
+                borderRadius: '6px',
+                background: 'var(--color-surface)',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
+                transition: 'transform 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+                transform: `translateX(${viewMode === 'kanban' ? '0px' : '34px'})`,
+                zIndex: 1
+              }} />
 
-            {[
-              { id: 'kanban', icon: <LayoutGrid size={15} />, title: "Dạng bảng (Kanban)" },
-              { id: 'list', icon: <List size={15} />, title: "Dạng danh sách" }
-            ].map(tab => {
-              const isSelected = viewMode === tab.id;
-              return (
-                <button
-                  key={tab.id}
-                  onClick={() => setViewMode(tab.id as any)}
-                  title={tab.title}
-                  style={{
-                    width: '32px',
-                    height: '32px',
-                    borderRadius: '6px',
-                    border: 'none',
-                    cursor: 'pointer',
-                    background: 'transparent',
-                    color: isSelected ? 'var(--color-text)' : 'var(--color-text-light)',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    position: 'relative',
-                    zIndex: 2,
-                    transition: 'color 0.25s ease',
-                    outline: 'none'
-                  }}
-                >
-                  {tab.icon}
-                </button>
-              );
-            })}
-          </div>
+              {[
+                { id: 'kanban', icon: <LayoutGrid size={15} />, title: "Dạng bảng (Kanban)" },
+                { id: 'list', icon: <List size={15} />, title: "Dạng danh sách" }
+              ].map(tab => {
+                const isSelected = viewMode === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => setViewMode(tab.id as any)}
+                    title={tab.title}
+                    style={{
+                      width: '32px',
+                      height: '32px',
+                      borderRadius: '6px',
+                      border: 'none',
+                      cursor: 'pointer',
+                      background: 'transparent',
+                      color: isSelected ? 'var(--color-text)' : 'var(--color-text-light)',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      position: 'relative',
+                      zIndex: 2,
+                      transition: 'color 0.25s ease',
+                      outline: 'none'
+                    }}
+                  >
+                    {tab.icon}
+                  </button>
+                );
+              })}
+            </div>
+          )}
 
           {!isMobile && currentUser?.role !== 'viewer' && currentUser?.role !== 'sale' && (
             <button 

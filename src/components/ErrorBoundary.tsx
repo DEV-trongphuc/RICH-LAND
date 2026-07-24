@@ -1,7 +1,7 @@
 import { Component } from 'react';
 import type { ErrorInfo, ReactNode } from 'react';
 import { RefreshCw } from 'lucide-react';
-import { en } from '../utils/translations';
+
 
 interface Props {
   children?: ReactNode;
@@ -28,11 +28,7 @@ export class ErrorBoundary extends Component<Props, State> {
 
   public render() {
     if (this.state.hasError) {
-      const lang = localStorage.getItem('richland_lang') || 'vi';
-      const t = (key: string) => {
-        if (lang === 'vi') return key;
-        return en[key] || key;
-      };
+      const t = (key: string) => key;
 
       return this.props.fallback || (
         <div className="flex flex-col items-center justify-center min-h-[400px] p-12 text-center bg-white rounded-2xl border border-gray-100 shadow-sm max-w-lg mx-auto mt-8">

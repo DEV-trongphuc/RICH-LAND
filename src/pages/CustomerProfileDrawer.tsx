@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, lazy, Suspense } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, User, Users, Phone, Mail, MapPin, Briefcase, Plus, Search, Send, History, CheckSquare, DollarSign, HelpCircle, FileText, ShoppingCart, Tag as TagIcon, Target, Pencil, Trash2, LifeBuoy, AlertCircle, Clock, UserCheck, Activity, Calendar, CheckCircle2, ChevronLeft, ChevronRight, ChevronDown, Check, Camera, Loader2, MessageSquare, PenTool, Lightbulb, Upload, Paperclip, CreditCard, Ban, ShieldAlert, Copy, Folder, FolderPlus, ArrowRightLeft, List, LayoutGrid, RotateCcw, RefreshCw, Layers, Save, LogOut, XCircle, Eye, TrendingUp, Wallet, Lock, Zap, Link2 } from 'lucide-react';
@@ -19,7 +19,7 @@ import { CustomModal } from '../components/ui/CustomModal';
 import { SignaturePadModal } from '../components/ui/SignaturePadModal';
 import { compressToWebP } from '../utils/imageCompress';
 import { TicketDrawer } from './TicketDrawer';
-import { WorkspaceTaskDrawer } from './WorkspaceTaskDrawer';
+const WorkspaceTaskDrawer = lazy(() => import('./WorkspaceTaskDrawer').then(module => ({ default: module.WorkspaceTaskDrawer })));
 import { Skeleton, StatRowSkeleton } from '../components/ui/Skeleton';
 import { EmptyCard } from '../components/ui/EmptyCard';
 import { numberToText } from '../utils/numberToText';
@@ -12009,22 +12009,24 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
         )}
       </AnimatePresence>
 
-            {/* Task Details & Creation Drawer */}
-      <WorkspaceTaskDrawer
-        isOpen={selectedTaskForDetails !== null}
-        onClose={() => {
-          setSelectedTaskForDetails(null);
-          setShowAssigneeDropdown(false);
-          setShowParticipantDropdown(false);
-          setShowApproverDropdown(false);
-        }}
-        task={selectedTaskForDetails}
-        onUpdate={() => {
-          fetchData();
-        }}
-        users={users}
-        zIndex={zIndex ? zIndex + 100 : undefined}
-      />
+      {/* Task Details & Creation Drawer */}
+      <Suspense fallback={null}>
+        <WorkspaceTaskDrawer
+          isOpen={selectedTaskForDetails !== null}
+          onClose={() => {
+            setSelectedTaskForDetails(null);
+            setShowAssigneeDropdown(false);
+            setShowParticipantDropdown(false);
+            setShowApproverDropdown(false);
+          }}
+          task={selectedTaskForDetails}
+          onUpdate={() => {
+            fetchData();
+          }}
+          users={users}
+          zIndex={zIndex ? zIndex + 100 : undefined}
+        />
+      </Suspense>
 
 {/* CREATE TICKET MODAL */}
       <AnimatePresence>

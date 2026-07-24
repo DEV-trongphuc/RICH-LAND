@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, lazy, Suspense } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { fetchAPI } from '../utils/api';
@@ -19,8 +19,8 @@ import { Avatar } from '../components/ui/Avatar';
 import { Mail, Phone, Copy, ChevronLeft } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MentionInput } from '../components/ui/MentionInput';
-import { WorkspaceTaskDrawer } from './WorkspaceTaskDrawer';
-import { CustomerProfileDrawer } from './CustomerProfileDrawer';
+const WorkspaceTaskDrawer = lazy(() => import('./WorkspaceTaskDrawer').then(module => ({ default: module.WorkspaceTaskDrawer })));
+const CustomerProfileDrawer = lazy(() => import('./CustomerProfileDrawer').then(module => ({ default: module.CustomerProfileDrawer })));
 import { FilesPage } from './FilesPage';
 import { useUploadProgress } from '../contexts/UploadProgressContext';
 
@@ -8057,33 +8057,37 @@ export default function ProjectsPage() {
         )}
       </CustomModal>
 
-      <WorkspaceTaskDrawer
-        isOpen={!!selectedTaskForDrawer}
-        onClose={() => {
-          setSelectedTaskForDrawer(null);
-          const params = new URLSearchParams(window.location.search);
-          params.delete('task_id');
-          navigate(`${window.location.pathname}${params.toString() ? '?' + params.toString() : ''}`, { replace: true });
-        }}
-        task={selectedTaskForDrawer}
-        onUpdate={() => {
-          window.dispatchEvent(new CustomEvent('task-updated'));
-        }}
-        users={users}
-        onOpenContact={(contactId) => {
-          setSelectedContactForDrawer({ id: contactId });
-        }}
-      />
+      <Suspense fallback={null}>
+        <WorkspaceTaskDrawer
+          isOpen={!!selectedTaskForDrawer}
+          onClose={() => {
+            setSelectedTaskForDrawer(null);
+            const params = new URLSearchParams(window.location.search);
+            params.delete('task_id');
+            navigate(`${window.location.pathname}${params.toString() ? '?' + params.toString() : ''}`, { replace: true });
+          }}
+          task={selectedTaskForDrawer}
+          onUpdate={() => {
+            window.dispatchEvent(new CustomEvent('task-updated'));
+          }}
+          users={users}
+          onOpenContact={(contactId) => {
+            setSelectedContactForDrawer({ id: contactId });
+          }}
+        />
+      </Suspense>
 
-      <CustomerProfileDrawer
-        isOpen={!!selectedContactForDrawer}
-        onClose={() => setSelectedContactForDrawer(null)}
-        contact={selectedContactForDrawer}
-        onUpdate={() => {
-          window.dispatchEvent(new CustomEvent('contact-updated'));
-        }}
-        zIndex={selectedTaskForDrawer ? 1000300 : undefined}
-      />
+      <Suspense fallback={null}>
+        <CustomerProfileDrawer
+          isOpen={!!selectedContactForDrawer}
+          onClose={() => setSelectedContactForDrawer(null)}
+          contact={selectedContactForDrawer}
+          onUpdate={() => {
+            window.dispatchEvent(new CustomEvent('contact-updated'));
+          }}
+          zIndex={selectedTaskForDrawer ? 1000300 : undefined}
+        />
+      </Suspense>
     </div>
   );
 }

@@ -1,9 +1,9 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, lazy, Suspense } from 'react';
 import { createPortal } from 'react-dom';
 import { Plus, Search, Filter, LifeBuoy, AlertCircle, Clock, X, Save } from 'lucide-react';
 import { useUIStore } from '../store/uiStore';
 import { TicketDrawer } from './TicketDrawer';
-import { CustomerProfileDrawer } from './CustomerProfileDrawer';
+const CustomerProfileDrawer = lazy(() => import('./CustomerProfileDrawer').then(module => ({ default: module.CustomerProfileDrawer })));
 import { motion, AnimatePresence } from 'framer-motion';
 import { Avatar } from '../components/ui/Avatar';
 import api from '../api/axios';
@@ -655,11 +655,13 @@ export const TicketsPage: React.FC = () => {
         users={users}
         onOpenContact={(contactData) => setSelectedContactForDrawer(contactData)}
       />
-      <CustomerProfileDrawer
-        isOpen={!!selectedContactForDrawer}
-        onClose={() => setSelectedContactForDrawer(null)}
-        contact={selectedContactForDrawer}
-      />
+      <Suspense fallback={null}>
+        <CustomerProfileDrawer
+          isOpen={!!selectedContactForDrawer}
+          onClose={() => setSelectedContactForDrawer(null)}
+          contact={selectedContactForDrawer}
+        />
+      </Suspense>
     </div>
   );
 };

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, lazy, Suspense } from 'react';
 import { Plus, CheckCircle2, Clock, Phone, Mail, Users, Calendar, AlignLeft, X, Loader2, Pencil, Trash2, RefreshCw, Link2, Search, Zap } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Avatar } from '../components/ui/Avatar';
@@ -7,8 +7,8 @@ import { useUIStore } from '../store/uiStore';
 import { useNavigate } from 'react-router-dom';
 import { Pagination } from '../components/ui/Pagination';
 import api from '../api/axios';
-import { CustomerProfileDrawer } from './CustomerProfileDrawer';
-import { WorkspaceTaskDrawer } from './WorkspaceTaskDrawer';
+const CustomerProfileDrawer = lazy(() => import('./CustomerProfileDrawer').then(module => ({ default: module.CustomerProfileDrawer })));
+const WorkspaceTaskDrawer = lazy(() => import('./WorkspaceTaskDrawer').then(module => ({ default: module.WorkspaceTaskDrawer })));
 import { useDebounce } from '../hooks/useDebounce';
 import { CustomSelect } from '../components/ui/CustomSelect';
 import { CalendarView } from '../components/CalendarView';
@@ -792,25 +792,29 @@ export const ActivitiesPage: React.FC = () => {
         </div>
       </CustomModal>
 
-      <CustomerProfileDrawer
-        isOpen={!!profileContact}
-        onClose={() => setProfileContact(null)}
-        contact={profileContact}
-        onUpdate={() => {}}
-        zIndex={selectedTaskForDrawer ? 1000300 : undefined}
-      />
+      <Suspense fallback={null}>
+        <CustomerProfileDrawer
+          isOpen={!!profileContact}
+          onClose={() => setProfileContact(null)}
+          contact={profileContact}
+          onUpdate={() => {}}
+          zIndex={selectedTaskForDrawer ? 1000300 : undefined}
+        />
+      </Suspense>
 
-      <WorkspaceTaskDrawer
-        isOpen={!!selectedTaskForDrawer}
-        onClose={() => setSelectedTaskForDrawer(null)}
-        task={selectedTaskForDrawer}
-        onUpdate={() => {
-          fetchActivities();
-          setSelectedTaskForDrawer(null);
-        }}
-        users={users}
-        onOpenContact={(contactId) => setProfileContact({ id: contactId })}
-      />
+      <Suspense fallback={null}>
+        <WorkspaceTaskDrawer
+          isOpen={!!selectedTaskForDrawer}
+          onClose={() => setSelectedTaskForDrawer(null)}
+          task={selectedTaskForDrawer}
+          onUpdate={() => {
+            fetchActivities();
+            setSelectedTaskForDrawer(null);
+          }}
+          users={users}
+          onOpenContact={(contactId) => setProfileContact({ id: contactId })}
+        />
+      </Suspense>
 
     </div>
   );

@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, lazy, Suspense } from 'react';
 import { createPortal } from 'react-dom';
 import { useLocation } from 'react-router-dom';
 import { withRouterFreezer } from '../components/RouterFreezer';
@@ -10,7 +10,7 @@ import { CustomModal } from '../components/ui/CustomModal';
 import { ConfirmModal } from '../components/ui/ConfirmModal';
 import { TableRowSkeleton } from '../components/ui/Skeleton';
 import { CustomSelect } from '../components/ui/CustomSelect';
-import { CustomerProfileDrawer } from './CustomerProfileDrawer';
+const CustomerProfileDrawer = lazy(() => import('./CustomerProfileDrawer').then(module => ({ default: module.CustomerProfileDrawer })));
 import api from '../api/axios';
 import { Clock, Calendar, Check, X, Trash2, Eye, ShieldAlert, AlertCircle, CheckCircle, Info, Download, Lightbulb, Upload, ChevronLeft, ChevronRight, Camera, Image, FileText, Zap, RefreshCw, Moon, MapPin, CheckSquare, Users } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -2769,17 +2769,19 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
         </div>
       </CustomModal>
 
-      <CustomerProfileDrawer
-        isOpen={!!selectedContact}
-        onClose={() => {
-          setSelectedContact(null);
-          fetchCalendarCheckIns();
-        }}
-        contact={selectedContact}
-        onUpdate={() => {
-          fetchCalendarCheckIns();
-        }}
-      />
+      <Suspense fallback={null}>
+        <CustomerProfileDrawer
+          isOpen={!!selectedContact}
+          onClose={() => {
+            setSelectedContact(null);
+            fetchCalendarCheckIns();
+          }}
+          contact={selectedContact}
+          onUpdate={() => {
+            fetchCalendarCheckIns();
+          }}
+        />
+      </Suspense>
 
       {/* Meeting Proof Modal */}
       {meetingToComplete && createPortal(
