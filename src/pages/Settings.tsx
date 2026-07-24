@@ -4730,8 +4730,8 @@ function doPost(e) {
                             </div>
                           </div>
                           
-                          <div style={{ marginTop: '1rem' }}>
-                            <label className="form-label" style={{ fontWeight: 600 }}>{t('Số lần chia lead tối đa cho một Sale/ngày')}</label>
+                           <div style={{ marginTop: '1rem' }}>
+                            <label className="form-label" style={{ fontWeight: 600 }}>{t('Số lần bỏ lỡ/thu hồi tối đa cho mỗi lead (mỗi Sale)')}</label>
                             <div style={{ display: 'flex', alignItems: 'center', position: 'relative' }}>
                               <input
                                 type="number"
@@ -4744,7 +4744,7 @@ function doPost(e) {
                               <span style={{ position: 'absolute', right: '12px', fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>{t('lần')}</span>
                             </div>
                             <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px', display: 'block', lineHeight: 1.4 }}>
-                              {t('Mặc định là 2 lần. Hệ thống sẽ tạm hoãn chia lead này sang ngày mai nếu một Sale bỏ lỡ quá số lần trên. Nhập 0 để chia liên tục không giới hạn.')}
+                              {t('Số lần tối đa hệ thống cho phép một Sale bỏ lỡ phản hồi (quá hạn SLA) đối với cùng một lead trước khi loại trừ Sale đó khỏi lượt chia lại của lead này.')}
                             </span>
                           </div>
 
