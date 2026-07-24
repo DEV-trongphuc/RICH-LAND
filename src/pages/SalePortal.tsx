@@ -1304,6 +1304,8 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
   const [schedulerModalOpen, setSchedulerModalOpen] = useState(false);
   const [selectedSchedulerDate, setSelectedSchedulerDate] = useState<string | null>(null);
   const [schedulerModalTab, setSchedulerModalTab] = useState<'diary' | 'tasks'>('diary');
+  const [diaryPage, setDiaryPage] = useState(1);
+  const [tasksPage, setTasksPage] = useState(1);
   const [diaryNoteText, setDiaryNoteText] = useState('');
   const [diaryContactId, setDiaryContactId] = useState<string>('');
   const [showDiaryForm, setShowDiaryForm] = useState(false);
@@ -2397,6 +2399,65 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
     const base = api.defaults.baseURL || '';
     const cleanBase = base.replace(/\/api\/?$/, '');
     return `${cleanBase}/${cleanPath}`;
+  };
+
+  const renderPagination = (currentPage: number, totalItems: number, pageSize: number, onPageChange: (p: number) => void) => {
+    const totalPages = Math.ceil(totalItems / pageSize);
+    if (totalPages <= 1) return null;
+
+    return (
+      <div style={{ 
+        display: 'flex', 
+        justifyContent: 'center', 
+        alignItems: 'center', 
+        gap: '12px', 
+        marginTop: '1.25rem', 
+        paddingTop: '0.75rem',
+        borderTop: '1px solid var(--color-border-light)' 
+      }}>
+        <button
+          type="button"
+          disabled={currentPage === 1}
+          onClick={() => onPageChange(currentPage - 1)}
+          className="btn sm"
+          style={{
+            padding: '4px 10px',
+            fontSize: '0.75rem',
+            borderRadius: '6px',
+            border: '1px solid var(--color-border)',
+            background: currentPage === 1 ? 'transparent' : 'var(--color-surface)',
+            color: currentPage === 1 ? 'var(--color-text-muted)' : 'var(--color-text)',
+            cursor: currentPage === 1 ? 'not-allowed' : 'pointer',
+            opacity: currentPage === 1 ? 0.5 : 1,
+            transition: 'all 0.15s'
+          }}
+        >
+          {t('Trước')}
+        </button>
+        <span style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>
+          {t('Trang')} {currentPage} / {totalPages}
+        </span>
+        <button
+          type="button"
+          disabled={currentPage === totalPages}
+          onClick={() => onPageChange(currentPage + 1)}
+          className="btn sm"
+          style={{
+            padding: '4px 10px',
+            fontSize: '0.75rem',
+            borderRadius: '6px',
+            border: '1px solid var(--color-border)',
+            background: currentPage === totalPages ? 'transparent' : 'var(--color-surface)',
+            color: currentPage === totalPages ? 'var(--color-text-muted)' : 'var(--color-text)',
+            cursor: currentPage === totalPages ? 'not-allowed' : 'pointer',
+            opacity: currentPage === totalPages ? 0.5 : 1,
+            transition: 'all 0.15s'
+          }}
+        >
+          {t('Sau')}
+        </button>
+      </div>
+    );
   };
 
   const handleDetailTaskFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -10328,6 +10389,8 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
           onClick={() => {
             setSelectedSchedulerDate(dateStr);
             setSchedulerModalTab('diary');
+            setDiaryPage(1);
+            setTasksPage(1);
             setSchedulerModalOpen(true);
           }}
           style={{
@@ -10368,6 +10431,8 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                 e.stopPropagation();
                 setSelectedSchedulerDate(dateStr);
                 setSchedulerModalTab('diary');
+                setDiaryPage(1);
+                setTasksPage(1);
                 setSchedulerModalOpen(true);
               }}
               className="quick-add-btn btn primary sm icon-only"
@@ -16562,7 +16627,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
           title={`${t('Lịch trình & Báo cáo ngày')} ${selectedSchedulerDate.split('-').reverse().join('/')}`}
           width="760px"
         >
-          <div style={{ display: 'flex', flexDirection: 'column', minHeight: '380px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', minHeight: isMobile ? 'auto' : '550px' }}>
             {/* Modal Sub-tabs */}
             <div style={{ display: 'flex', borderBottom: '1px solid var(--color-border-light)', marginBottom: '1.25rem', gap: '1.5rem' }}>
               <button
@@ -16796,7 +16861,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                     <h5 style={{ fontWeight: 700, fontSize: '0.8125rem', color: 'var(--color-text-muted)', margin: '4px 0 0 0' }}>
                       {t('Nhật ký đã ghi nhận')}
                     </h5>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', overflowY: 'auto', maxHeight: '200px', paddingRight: '4px' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', overflowY: 'auto', maxHeight: '400px', paddingRight: '4px' }}>
                       {(() => {
                         const dayNotes = calendarActivities.filter(a => a.due_date && a.due_date.startsWith(selectedSchedulerDate) && a.type === 'note');
                         if (dayNotes.length === 0) {
@@ -16806,7 +16871,9 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                             </div>
                           );
                         }
-                        return dayNotes.map((a: any) => (
+                        const pageSize = 5;
+                        const paginatedNotes = dayNotes.slice((diaryPage - 1) * pageSize, diaryPage * pageSize);
+                        return paginatedNotes.map((a: any) => (
                           <div key={a.id} style={{
                             padding: '12px',
                             background: 'var(--color-surface)',
@@ -16829,6 +16896,12 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                                       await api.delete(`/activities/${a.id}`);
                                       toast.success(t('Đã xóa ghi chú!'));
                                       fetchCalendarStats();
+                                      // If the deleted item is the last one on the current page, go back a page
+                                      const remainingCount = dayNotes.length - 1;
+                                      const maxPage = Math.max(1, Math.ceil(remainingCount / pageSize));
+                                      if (diaryPage > maxPage) {
+                                        setDiaryPage(maxPage);
+                                      }
                                     } catch {
                                       toast.error(t('Không thể xóa ghi chú'));
                                     }
@@ -16871,6 +16944,10 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                         ));
                       })()}
                     </div>
+                    {(() => {
+                      const dayNotes = calendarActivities.filter(a => a.due_date && a.due_date.startsWith(selectedSchedulerDate) && a.type === 'note');
+                      return renderPagination(diaryPage, dayNotes.length, 5, setDiaryPage);
+                    })()}
                   </div>
                 </div>
               ) : (
@@ -17039,7 +17116,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                     <h5 style={{ fontWeight: 700, fontSize: '0.8125rem', color: 'var(--color-text-muted)', margin: 0 }}>
                       {t('Danh sách công việc & lịch hẹn')}
                     </h5>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', overflowY: 'auto', maxHeight: '200px', paddingRight: '4px' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', overflowY: 'auto', maxHeight: '400px', paddingRight: '4px' }}>
                       {(() => {
                         const dayTasks = calendarActivities.filter(a => a.due_date && a.due_date.startsWith(selectedSchedulerDate) && a.type !== 'note');
                         if (dayTasks.length === 0) {
@@ -17049,7 +17126,9 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                             </div>
                           );
                         }
-                        return dayTasks.map((a: any) => {
+                        const pageSize = 5;
+                        const paginatedTasks = dayTasks.slice((tasksPage - 1) * pageSize, tasksPage * pageSize);
+                        return paginatedTasks.map((a: any) => {
                           const isDone = a.status === 'done';
                           const isMeeting = a.type === 'meeting';
                           const isCall = a.type === 'call';
@@ -17129,6 +17208,12 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                                           await api.delete(`/activities/${a.id}`);
                                           toast.success(t('Đã xóa công việc!'));
                                           fetchCalendarStats();
+                                          // If the deleted item is the last one on the current page, go back a page
+                                          const remainingCount = dayTasks.length - 1;
+                                          const maxPage = Math.max(1, Math.ceil(remainingCount / pageSize));
+                                          if (tasksPage > maxPage) {
+                                            setTasksPage(maxPage);
+                                          }
                                         } catch {
                                           toast.error(t('Không thể xóa công việc'));
                                         }
@@ -17175,6 +17260,10 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                         });
                       })()}
                     </div>
+                    {(() => {
+                      const dayTasks = calendarActivities.filter(a => a.due_date && a.due_date.startsWith(selectedSchedulerDate) && a.type !== 'note');
+                      return renderPagination(tasksPage, dayTasks.length, 5, setTasksPage);
+                    })()}
                   </div>
                 </div>
               )}
