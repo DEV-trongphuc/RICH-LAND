@@ -2988,7 +2988,9 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
                   <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
                     <button
                       className="btn primary"
+                      disabled={isSaving}
                       onClick={async () => {
+                        setIsSaving(true);
                         try {
                           const res = await api.put(`/activities/${task.id}`, { approval_status: 'approved', status: 'done' });
                           if (res.data && res.data.success) {
@@ -2998,15 +3000,19 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
                           }
                         } catch (e: any) {
                           toast.error(t('Lỗi phê duyệt: ') + e.message);
+                        } finally {
+                          setIsSaving(false);
                         }
                       }}
                       style={{ height: '28px', fontSize: '0.72rem', fontWeight: 700, padding: '0 10px', background: 'var(--color-success)', borderColor: 'var(--color-success)', color: 'white' }}
                     >
-                      {t('Phê duyệt')}
+                      {isSaving ? t('Đang duyệt...') : t('Phê duyệt')}
                     </button>
                     <button
                       className="btn outline"
+                      disabled={isSaving}
                       onClick={async () => {
+                        setIsSaving(true);
                         try {
                           const res = await api.put(`/activities/${task.id}`, { approval_status: 'rejected', progress: 90 });
                           if (res.data && res.data.success) {
@@ -3016,11 +3022,13 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
                           }
                         } catch (e: any) {
                           toast.error(t('Lỗi từ chối: ') + e.message);
+                        } finally {
+                          setIsSaving(false);
                         }
                       }}
                       style={{ height: '28px', fontSize: '0.72rem', fontWeight: 700, padding: '0 10px', color: 'var(--color-danger)', borderColor: 'var(--color-danger)' }}
                     >
-                      {t('Từ chối')}
+                      {isSaving ? t('Đang từ chối...') : t('Từ chối')}
                     </button>
                   </div>
                 )}

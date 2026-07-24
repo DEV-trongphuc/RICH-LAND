@@ -52,6 +52,7 @@ const CapiPage = lazy(() => import('./pages/CapiPage'));
 const AttendancePage = lazy(() => import('./pages/AttendancePage').then(module => ({ default: module.AttendancePage })));
 const TicketsPage = lazy(() => import('./pages/TicketsPage').then(module => ({ default: module.TicketsPage })));
 const DownloadPage = lazy(() => import('./pages/DownloadPage').then(module => ({ default: module.DownloadPage })));
+const AITrainingPage = lazy(() => import('./pages/AITrainingPage').then(module => ({ default: module.AITrainingPage })));
 
 // Loading spinner fallback
 const PageLoader = () => (
@@ -82,7 +83,7 @@ const AppTabs = () => {
   const currentPath = location.pathname;
 
   // Route protection mapping
-  const adminPaths = ['/consultants', '/rounds', '/tickets', '/rules', '/integrations', '/settings', '/accounts', '/gatekeeper', '/capi'];
+  const adminPaths = ['/consultants', '/rounds', '/tickets', '/rules', '/integrations', '/settings', '/accounts', '/gatekeeper', '/capi', '/ai-training'];
   const userPaths = ['/', '/workspace', '/data', '/calendar', '/databank', '/contacts', '/companies', '/deals', '/quotes', '/activities', '/products', '/invoices', '/expenses', '/reports-crm', '/suppliers', '/files', '/inventory', '/projects', '/cooperation-slips', '/deposits', '/support-tickets', '/attendance', '/fair-share', '/account'];
   const allPaths = [...userPaths, ...adminPaths];
   const isAdminPath = adminPaths.includes(currentPath);
@@ -216,6 +217,8 @@ const AppTabs = () => {
         return user?.role === 'sale' ? <SalePortal embedMode={true} activeTabProp="fair-share" key="fair-share" /> : <FairShareAudit key="fair-share" />;
       case '/capi':
         return <CapiPage key="capi" />;
+      case '/ai-training':
+        return <AITrainingPage key="ai-training" />;
       case '/attendance':
         return <AttendancePage key="attendance" />;
       case '/projects':

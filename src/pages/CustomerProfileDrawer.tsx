@@ -4829,7 +4829,9 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                         <button
                           className="btn primary"
                           style={{ flex: 1 }}
+                          disabled={uploadingFile}
                           onClick={async () => {
+                            setUploadingFile(true);
                             try {
                               let finalUrl = tempAvatar;
 
@@ -4853,10 +4855,12 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                               onUpdate?.({ ...formData, avatar_url: finalUrl });
                             } catch (err: any) {
                               addToast(err.response?.data?.message || 'Lỗi khi lưu ảnh', 'error');
+                            } finally {
+                              setUploadingFile(false);
                             }
                           }}
                         >
-                          Lưu thay đổi
+                          {uploadingFile ? 'Đang lưu...' : 'Lưu thay đổi'}
                         </button>
                       </div>
                     </motion.div>

@@ -1608,6 +1608,7 @@ export const Header = ({
             if (lowercase.includes('cài đặt hệ thống') || lowercase.includes('cài đặt')) return { bg: 'linear-gradient(135deg, #0ea5e9, #0284c7)', color: '#ffffff' };
             if (lowercase.includes('quản lý tài khoản') || lowercase.includes('tài khoản cá nhân') || lowercase.includes('tài khoản')) return { bg: 'linear-gradient(135deg, #3b82f6, #1d4ed8)', color: '#ffffff' };
             if (lowercase.includes('đối soát') || lowercase.includes('phân quyền')) return { bg: 'linear-gradient(135deg, #ec4899, #be185d)', color: '#ffffff' };
+            if (lowercase.includes('huấn luyện ai')) return { bg: 'linear-gradient(135deg, #BD1D2D, #8b101b)', color: '#ffffff' };
             if (lowercase.includes('ai') || lowercase.includes('gatekeeper')) return { bg: 'linear-gradient(135deg, #14b8a6, #0f766e)', color: '#ffffff' };
             if (lowercase.includes('ticket')) return { bg: 'linear-gradient(135deg, #0ea5e9, #0369a1)', color: '#ffffff' };
             if (lowercase.includes('dự án') || lowercase.includes('công ty')) return { bg: 'linear-gradient(135deg, #64748b, #475569)', color: '#ffffff' };

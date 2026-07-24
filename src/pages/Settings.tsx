@@ -12,6 +12,7 @@ import { fetchAPI } from '../utils/api';
 import toast from 'react-hot-toast';
 import { CardSkeleton, TableSkeleton, Skeleton } from '../components/ui/Skeleton';
 import { Avatar } from '../components/ui/Avatar';
+import { AITrainingPanel } from '../components/ui/AITrainingPanel';
 
 
 const thStyle: React.CSSProperties = {
