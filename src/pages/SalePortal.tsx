@@ -11174,13 +11174,13 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                   position: 'sticky',
                   top: '-1rem',
                   zIndex: 100,
-                  background: 'var(--color-bg)',
-                  padding: '0.5rem 0 0.75rem 0',
+                  background: 'var(--color-surface)',
+                  padding: '0.5rem 1rem 0.75rem 1rem',
                   display: 'flex',
                   justifyContent: 'space-between',
                   alignItems: 'center',
                   borderBottom: '1px solid var(--color-border)',
-                  margin: '-1rem 0 1rem 0',
+                  margin: '-1rem -1rem 1rem -1rem',
                   gap: '12px'
                 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
