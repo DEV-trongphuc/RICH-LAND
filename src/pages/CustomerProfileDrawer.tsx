@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, User, Users, Phone, Mail, MapPin, Briefcase, Plus, Search, Send, History, CheckSquare, DollarSign, HelpCircle, FileText, ShoppingCart, Tag as TagIcon, Target, Pencil, Trash2, LifeBuoy, AlertCircle, Clock, UserCheck, Activity, Calendar, CheckCircle2, ChevronLeft, ChevronRight, ChevronDown, Check, Camera, Loader2, MessageSquare, PenTool, Lightbulb, Upload, Paperclip, CreditCard, Ban, ShieldAlert, Copy, Folder, FolderPlus, ArrowRightLeft, List, LayoutGrid, RotateCcw, RefreshCw, Layers, Save, LogOut, XCircle, Eye, TrendingUp, Wallet, Lock, Zap, Link2 } from 'lucide-react';
-import confetti from 'canvas-confetti';
+import { triggerFullConfetti } from '../utils/confettiHelper';
 import { LeadScoreRing } from '../components/ui/LeadScoreRing';
 import { TagInput } from '../components/ui/TagInput';
 import { CallLoggerModal } from '../components/ui/CallLoggerModal';
@@ -3971,7 +3971,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
       if (hasImage) {
         await api.put(`/activities/${ev.id}`, { status: 'done' });
         addToast('Đã hoàn thành gặp gỡ', 'success');
-        confetti({ particleCount: 80, spread: 60, origin: { y: 0.8 } });
+        triggerFullConfetti();
         setDrawerActivities(prev => prev.map(a => a.id === ev.id ? { ...a, status: 'done' } : a));
         setTasks(prev => prev.filter(a => a.id !== ev.id));
       } else {
@@ -4063,7 +4063,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
       await api.put(`/activities/${taskId}`, { status: nextStatus });
       addToast(nextStatus === 'done' ? 'Đã hoàn thành công việc' : 'Đã mở lại công việc', 'success');
       if (nextStatus === 'done') {
-        confetti({ particleCount: 80, spread: 60, origin: { y: 0.8 } });
+        triggerFullConfetti();
       }
       setDrawerActivities(prev => prev.map(a => a.id === taskId ? { ...a, status: nextStatus } : a));
     } catch (err: any) {
@@ -4102,7 +4102,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
       const colLabel = targetCol === 'todo' ? 'Cần làm' : targetCol === 'in_progress' ? 'Đang làm' : 'Đã xong';
       addToast(`Đã chuyển công việc sang cột ${colLabel}`, 'success');
       if (nextStatus === 'done') {
-        confetti({ particleCount: 80, spread: 60, origin: { y: 0.8 } });
+        triggerFullConfetti();
       }
       setDrawerActivities(prev => prev.map(a => a.id === taskId ? { ...a, progress: nextProgress, status: nextStatus } : a));
     } catch (err: any) {
@@ -4220,7 +4220,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
         addToast('Tạo phiếu cọc và tải lên UNC thành công!', 'success');
       }
 
-      confetti({ particleCount: 150, spread: 80, origin: { y: 0.6 } });
+      triggerFullConfetti();
       setShowDealModal(false);
 
       // Reset form states
@@ -10735,7 +10735,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                       await api.put(`/activities/${meetingToComplete.id}`, { status: 'done' });
 
                       addToast('Đã tải ảnh minh chứng và hoàn thành gặp gỡ', 'success');
-                      confetti({ particleCount: 80, spread: 60, origin: { y: 0.8 } });
+                      triggerFullConfetti();
 
                       // Update local state
                       setDrawerActivities(prev => prev.map(a => a.id === meetingToComplete.id ? { ...a, status: 'done' } : a));

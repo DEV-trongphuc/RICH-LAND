@@ -4,7 +4,7 @@ import { Pagination } from '../components/ui/Pagination';
 import { Plus, GripVertical, Pencil, Trash2, Calendar, Target, DollarSign, MessageSquare, Building2, Loader2, Search, Filter, Users, User, CheckCircle2, Phone, Mail, LayoutGrid, List, Clock, Download, RefreshCw, X, AlertCircle, AlertTriangle, ShieldAlert, ChevronRight, ChevronLeft } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Avatar } from '../components/ui/Avatar';
-import confetti from 'canvas-confetti';
+import { triggerFullConfetti } from '../utils/confettiHelper';
 import { useUIStore } from '../store/uiStore';
 import { CustomerProfileDrawer } from './CustomerProfileDrawer';
 import { CompanyDrawer } from './CompanyDrawer';
@@ -595,7 +595,7 @@ export const DealsPage: React.FC = () => {
       const item = items[transitionModal.fromStage]?.find(d => d.id === transitionModal.itemId);
       const toStage = stages.find(s => s.id === transitionModal.toStage);
       if (toStage?.is_won) {
-        confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
+        triggerFullConfetti();
         addToast(`TUYỆT VỜI! Chúc mừng bạn đã chốt thành công "${pipelineView === 'contacts' ? item?.first_name : (pipelineView === 'companies' ? item?.name : item?.title)}"`, 'success');
       } else {
         addToast('Đã chuyển trạng thái & lưu Audit Log', 'success');

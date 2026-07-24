@@ -13,7 +13,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { createPortal } from 'react-dom';
-import confetti from 'canvas-confetti';
+import { triggerFullConfetti } from '../utils/confettiHelper';
 
 import { WarRoomFlightDeck } from '../components/Dashboard/WarRoomFlightDeck';
 import { QuickAddLeadModal } from '../components/QuickAddLeadModal';
@@ -2133,7 +2133,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
       const colLabel = targetCol === 'todo' ? 'Cần làm' : targetCol === 'in_progress' ? 'Đang làm' : 'Đã xong';
       toast.success(`Đã chuyển công việc sang cột ${colLabel}`);
       if (nextStatus === 'done') {
-        confetti({ particleCount: 80, spread: 60, origin: { y: 0.8 } });
+        triggerFullConfetti();
       }
       fetchWorkspaceTasks();
     } catch (err: any) {
@@ -2536,7 +2536,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
     try {
       await api.put(`/activities/${taskId}`, { status: 'done' });
       toast.success(t('Đã hoàn thành công việc'));
-      confetti({ particleCount: 80, spread: 60, origin: { y: 0.8 } });
+      triggerFullConfetti();
       fetchPortalTasks();
     } catch (e) {
       toast.error(t('Lỗi khi cập nhật trạng thái công việc'));

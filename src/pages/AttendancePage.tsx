@@ -1774,14 +1774,16 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
                                   </button>
                                 </>
                               )}
-                              <button
-                                onClick={() => openDeleteConfirm(row.id)}
-                                className="btn outline sm danger icon-only"
-                                title={t('Xóa bản ghi')}
-                                style={{ width: 28, height: 28, padding: 0, borderRadius: '6px', border: '1px solid var(--color-border)' }}
-                              >
-                                <Trash2 size={14} />
-                              </button>
+                              {['admin', 'superadmin', 'super_admin', 'director'].includes(user?.role || '') && (
+                                <button
+                                  onClick={() => openDeleteConfirm(row.id)}
+                                  className="btn outline sm danger icon-only"
+                                  title={t('Xóa bản ghi')}
+                                  style={{ width: 28, height: 28, padding: 0, borderRadius: '6px', border: '1px solid var(--color-border)' }}
+                                >
+                                  <Trash2 size={14} />
+                                </button>
+                              )}
                             </div>
                           </td>
                         </tr>
