@@ -1282,6 +1282,11 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
   useEffect(() => {
     if (activeTab) {
       setRenderedTab(activeTab);
+    } else {
+      const timer = setTimeout(() => {
+        setRenderedTab('');
+      }, 300);
+      return () => clearTimeout(timer);
     }
   }, [activeTab]);
   const [taskViewMode, setTaskViewMode] = useState<'kanban' | 'list'>('kanban');
@@ -5427,7 +5432,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                   flexDirection: 'row',
                   overflow: 'hidden',
                   width: '200%',
-                  transform: (activeTab || renderedTab) ? 'translateX(-50%)' : 'translateX(0)',
+                  transform: activeTab ? 'translateX(-50%)' : 'translateX(0)',
                   transition: 'transform 0.3s cubic-bezier(0.25, 0.1, 0.25, 1)'
                 } : undefined}
               >
@@ -5441,15 +5446,10 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                         style={isMobileOrTablet ? { 
                           width: 'calc(50% - 8px)', 
                           marginRight: '8px', 
-                          flexShrink: 0, 
                           gap: '0.25rem', 
                           padding: '12px 12px 100px 12px', 
                           overflowY: 'auto',
-                          background: 'var(--color-surface)',
-                          borderRadius: '16px',
-                          border: '1px solid var(--color-border-light)',
-                          boxShadow: 'var(--shadow-sm)',
-                          boxSizing: 'border-box'
+                          flexShrink: 0 
                         } : { gap: '0.25rem', overflowY: 'auto' }}
                       >
                         {isMobileOrTablet ? (
@@ -5986,31 +5986,29 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                               <p style={{ fontSize: '0.725rem', fontWeight: 600, color: 'var(--color-text-muted)', textAlign: 'center' }}>Enterprise CRM</p>
                             </div>
                           </>
+                        )}
                         </div>
                       )}
 
                 {/* Content Area */}
-                {(!isMobileOrTablet || activeTab || renderedTab) && (
-                  <div 
-                    className={styles.contentArea} 
-                    style={isMobileOrTablet ? { 
-                      width: 'calc(50% - 8px)', 
-                      marginLeft: '8px', 
-                      flexShrink: 0, 
-                      minWidth: 0, 
-                      boxSizing: 'border-box', 
-                      padding: '12px 12px 100px 12px', 
-                      display: 'flex', 
-                      flexDirection: 'column', 
-                      flex: 1, 
-                      overflowY: 'auto', 
-                      overflowX: 'hidden',
-                      background: 'var(--color-surface)',
-                      borderRadius: '16px',
-                      border: '1px solid var(--color-border-light)',
-                      boxShadow: 'var(--shadow-sm)'
-                    } : undefined}
-                  >
+                <AnimatePresence>
+                  {(!isMobileOrTablet || activeTab || renderedTab) && (
+                    <div 
+                      className={styles.contentArea} 
+                      style={isMobileOrTablet ? { 
+                        width: 'calc(50% - 8px)', 
+                        marginLeft: '8px', 
+                        minWidth: 0, 
+                        boxSizing: 'border-box', 
+                        padding: '0', 
+                        display: 'flex', 
+                        flexDirection: 'column', 
+                        flex: 'none', 
+                        overflowY: 'auto', 
+                        overflowX: 'hidden',
+                        flexShrink: 0
+                      } : undefined}
+                    >
                     {isMobileOrTablet && activeTab && (
                       <div style={{
                         display: 'flex',
@@ -6049,7 +6047,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                     <div style={isMobileOrTablet ? { padding: '12px 12px 100px 12px', flex: 1, width: '100%', minWidth: 0, boxSizing: 'border-box', overflowX: 'hidden' } : undefined}>
 
                   {/* INFO TAB */}
-                  {renderedTab === 'info' && (
+                  {activeTab === 'info' && (
                     <div className="animate-fade" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
                       {/* Quick Stats Dashboard */}
                       <div style={{ display: 'grid', gridTemplateColumns: isMobileOrTablet ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)', gap: '0.75rem' }}>
@@ -6899,7 +6897,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                   )}
 
                   {/* TAGS TAB */}
-                  {renderedTab === 'tags' && (
+                  {activeTab === 'tags' && (
                     <div className="animate-fade" style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
                       <div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '2rem' }}>
@@ -7175,7 +7173,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                   )}
 
                   {/* COOPERATION TAB (Module 4) */}
-                  {renderedTab === 'cooperation' && (
+                  {activeTab === 'cooperation' && (
                     <div className="animate-fade">
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', paddingBottom: '1rem', borderBottom: '1px solid var(--color-border-light)' }}>
                         <div>
@@ -8193,7 +8191,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                   )}
 
                   {/* TIMELINE TAB */}
-                  {renderedTab === 'timeline' && (
+                  {activeTab === 'timeline' && (
                     <div className="animate-fade">
                       <div style={{ 
                         display: 'flex', 
@@ -8385,7 +8383,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                   )}
 
                   {/* SCORING TAB */}
-                  {renderedTab === 'scoring' && (
+                  {activeTab === 'scoring' && (
                     <div className="animate-fade">
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
                         <div>
@@ -8555,7 +8553,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                   )}
 
                   {/* TTL1 VERIFICATION TAB */}
-                  {renderedTab === 'ttl1' && (
+                  {activeTab === 'ttl1' && (
                     <div className="animate-fade">
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
                         <div>
@@ -8666,7 +8664,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                   )}
 
                   {/* DEALS TAB */}
-                  {renderedTab === 'deals' && (
+                  {activeTab === 'deals' && (
                     <div className="animate-fade">
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
                         <h3 style={{ fontWeight: 700, fontSize: '1.125rem' }}>Phiếu đặt cọc - {deals.length}</h3>
@@ -8780,7 +8778,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                   )}
 
                   {/* TASKS TAB */}
-                  {renderedTab === 'tasks' && (
+                  {activeTab === 'tasks' && (
                     <div className="animate-fade">
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
                         <h3 style={{ fontWeight: 700, fontSize: '1.125rem', margin: 0 }}>Công việc cần làm</h3>
@@ -9480,7 +9478,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
 
 
                   {/* RESTORED OLD TABS */}
-                  {renderedTab === 'docs' && (
+                  {activeTab === 'docs' && (
                     <div className="animate-fade">
                       {/* Spaced and styled Title block */}
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.75rem', paddingBottom: '0.75rem', borderBottom: '1px solid var(--color-border-light)' }}>
@@ -10118,7 +10116,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                     </div>
                   )}
 
-                  {renderedTab === 'invoices' && (
+                  {activeTab === 'invoices' && (
                     <div className="animate-fade">
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
                         <h3 style={{ fontWeight: 700, fontSize: '1.125rem' }}>Invoices</h3>
@@ -10247,7 +10245,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                   )}
 
                   {/* QUOTES TAB */}
-                  {renderedTab === 'quotes' && (
+                  {activeTab === 'quotes' && (
                     <div className="animate-fade">
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
                         <div>
@@ -10324,7 +10322,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                   )}
 
                   {/* EXPENSES TAB */}
-                  {renderedTab === 'expenses' && (
+                  {activeTab === 'expenses' && (
                     <div className="animate-fade">
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
                         <h3 style={{ fontWeight: 700, fontSize: '1.125rem' }}>Chi phí liên quan</h3>
@@ -10402,7 +10400,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                     </div>
                   )}
 
-                  {renderedTab === 'tickets' && (
+                  {activeTab === 'tickets' && (
                     <div className="animate-fade">
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
                         <h3 style={{ fontWeight: 700, fontSize: '1.125rem' }}>Hỗ trợ / Khiếu nại (Tickets)</h3>
@@ -10472,8 +10470,8 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                   )}
 
                     </div>
-                  </div>
-                )}
+                    </div>
+                  )}
               </>
             )}
           </div>
