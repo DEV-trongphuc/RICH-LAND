@@ -66,6 +66,14 @@ if ($uRes) {
     // Test Weekend Shift Table
     $conn->query("INSERT INTO weekend_shift_registrations (user_id, shift_date, approved) VALUES ({$uId}, '{$today}', 1) ON DUPLICATE KEY UPDATE approved = 1");
     assertDbField($conn, 'weekend_shift_registrations', 'approved', "user_id = {$uId} AND shift_date = '{$today}'", 1, "TC09: Dang ky ca cuoi tuan duoc duyet");
+    
+    // Clean up test registrations to avoid polluting the attendance calendar
+    $conn->query("DELETE FROM night_shift_registrations WHERE user_id = {$uId} AND shift_date = '{$today}'");
+    $conn->query("DELETE FROM weekend_shift_registrations WHERE user_id = {$uId} AND shift_date = '{$today}'");
+    
+    // Self-healing: Clean up any stray weekend shifts registered on weekdays (Monday through Friday)
+    // In MySQL, DAYOFWEEK returns 1=Sunday, 2=Monday, 3=Tuesday, 4=Wednesday, 5=Thursday, 6=Friday, 7=Saturday
+    $conn->query("DELETE FROM weekend_shift_registrations WHERE DAYOFWEEK(shift_date) BETWEEN 2 AND 6");
 }
 
 // --- TC14 - TC18: SHIFT APPROVALS & AUDIT LOGS ---

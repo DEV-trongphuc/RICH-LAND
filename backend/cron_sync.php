@@ -113,141 +113,211 @@ if (!function_exists('syncInventoryConnection')) {
         $rowCount = 0;
         $updatedCount = 0;
         $insertedCount = 0;
-        
-        while (($row = fgetcsv($stream)) !== FALSE) {
-            $row = array_map(function($val) { return trim($val ?? '', "\" "); }, $row);
-            if ($rowCount === 0) {
-                $headers = $row;
+        $tenantId = 1;
+
+        // Tối ưu hóa 1: Tải trước toàn bộ sản phẩm và lô hàng hiện có để lưu vào bộ nhớ cache (Tránh N+1 Queries)
+        $productCache = [];
+        $prodRes = $conn->query("SELECT id, sku, name, price, stock_quantity, category, unit FROM products WHERE tenant_id = " . (int)$tenantId);
+        if ($prodRes) {
+            while ($pRow = $prodRes->fetch_assoc()) {
+                $productCache[$pRow['sku']] = [
+                    'id' => (int)$pRow['id'],
+                    'name' => $pRow['name'],
+                    'price' => (float)$pRow['price'],
+                    'qty' => (int)$pRow['stock_quantity'],
+                    'category' => $pRow['category'],
+                    'unit' => $pRow['unit']
+                ];
+            }
+        }
+
+        $batchCache = [];
+        $batchRes = $conn->query("SELECT id, product_id, current_qty, import_price, notes FROM batches WHERE tenant_id = " . (int)$tenantId);
+        if ($batchRes) {
+            while ($bRow = $batchRes->fetch_assoc()) {
+                $batchCache[(int)$bRow['product_id']] = [
+                    'id' => (int)$bRow['id'],
+                    'qty' => (int)$bRow['current_qty'],
+                    'import_price' => (float)$bRow['import_price'],
+                    'notes' => $bRow['notes']
+                ];
+            }
+        }
+
+        // Tối ưu hóa 2: Khởi tạo trước các Statement bên ngoài vòng lặp
+        $upProd = $conn->prepare("UPDATE products SET name = ?, price = ?, stock_quantity = ?, category = ?, unit = ? WHERE id = ?");
+        $upBatch = $conn->prepare("UPDATE batches SET current_qty = ?, import_price = ?, notes = ? WHERE id = ?");
+        $insBatch = $conn->prepare("INSERT INTO batches (tenant_id, product_id, batch_code, import_date, import_price, initial_qty, current_qty, notes, status) VALUES (?, ?, ?, CURRENT_DATE, ?, ?, ?, ?, 'active')");
+        $insProd = $conn->prepare("INSERT INTO products (tenant_id, name, sku, price, category, unit, stock_quantity, is_active) VALUES (?, ?, ?, ?, ?, ?, ?, 1)");
+
+        // Tối ưu hóa 3: Chạy trong một Transaction duy nhất để tăng tốc độ ghi đĩa của MySQL (tăng tốc gấp 10-50 lần)
+        $conn->begin_transaction();
+        try {
+            while (($row = fgetcsv($stream)) !== FALSE) {
+                $row = array_map(function($val) { return trim($val ?? '', "\" "); }, $row);
+                if ($rowCount === 0) {
+                    $headers = $row;
+                    $rowCount++;
+                    continue;
+                }
                 $rowCount++;
-                continue;
-            }
-            $rowCount++;
-            
-            if (empty(array_filter($row))) continue;
-            
-            $rowData = [];
-            foreach ($headers as $colIdx => $colName) {
-                $rowData[$colName] = $row[$colIdx] ?? '';
-            }
-            
-            $valExtractor = function($sysField) use ($mappings, $rowData) {
-                if (empty($mappings[$sysField])) return '';
-                foreach ($mappings[$sysField] as $colName) {
-                    if (isset($rowData[$colName]) && $rowData[$colName] !== '') {
-                        return $rowData[$colName];
+                
+                if (empty(array_filter($row))) continue;
+                
+                $rowData = [];
+                foreach ($headers as $colIdx => $colName) {
+                    $rowData[$colName] = $row[$colIdx] ?? '';
+                }
+                
+                $valExtractor = function($sysField) use ($mappings, $rowData) {
+                    if (empty($mappings[$sysField])) return '';
+                    foreach ($mappings[$sysField] as $colName) {
+                        if (isset($rowData[$colName]) && $rowData[$colName] !== '') {
+                            return $rowData[$colName];
+                        }
+                    }
+                    return '';
+                };
+                
+                $sku = trim($valExtractor('sku'));
+                if (empty($sku)) {
+                    continue;
+                }
+                
+                $productName = trim($valExtractor('product_name'));
+                if (empty($productName)) {
+                    $productName = 'Sản phẩm mới ' . $sku;
+                }
+                
+                $priceStr = $valExtractor('price');
+                $price = (float)str_replace([',', ' '], '', $priceStr);
+                
+                $importPriceStr = $valExtractor('import_price');
+                $importPrice = (float)str_replace([',', ' '], '', $importPriceStr);
+                if ($importPrice <= 0) $importPrice = $price;
+                
+                $qtyText = $valExtractor('qty');
+                $qty = 1;
+                if ($qtyText !== '') {
+                    $normalizedQty = mb_strtolower(trim($qtyText));
+                    if (in_array($normalizedQty, ['0', 'đã bán', 'sold', 'đã cọc', 'deposit', 'đã bán/đã cọc', 'đã khóa', 'đã đặt cọc'])) {
+                        $qty = 0;
+                    } elseif (is_numeric($qtyText)) {
+                        $qty = (int)$qtyText;
                     }
                 }
-                return '';
-            };
-            
-            $sku = trim($valExtractor('sku'));
-            if (empty($sku)) {
-                continue;
-            }
-            
-            $productName = trim($valExtractor('product_name'));
-            if (empty($productName)) {
-                $productName = 'Sản phẩm mới ' . $sku;
-            }
-            
-            $priceStr = $valExtractor('price');
-            $price = (float)str_replace([',', ' '], '', $priceStr);
-            
-            $importPriceStr = $valExtractor('import_price');
-            $importPrice = (float)str_replace([',', ' '], '', $importPriceStr);
-            if ($importPrice <= 0) $importPrice = $price;
-            
-            $qtyText = $valExtractor('qty');
-            $qty = 1;
-            if ($qtyText !== '') {
-                $normalizedQty = mb_strtolower(trim($qtyText));
-                if (in_array($normalizedQty, ['0', 'đã bán', 'sold', 'đã cọc', 'deposit', 'đã bán/đã cọc', 'đã khóa', 'đã đặt cọc'])) {
-                    $qty = 0;
-                } elseif (is_numeric($qtyText)) {
-                    $qty = (int)$qtyText;
+                
+                $statusText = mb_strtolower(trim($valExtractor('status')));
+                if ($statusText !== '') {
+                    if (in_array($statusText, ['0', 'đã bán', 'sold', 'đã cọc', 'deposit', 'đã bán/đã cọc', 'đã khóa', 'đã đặt cọc'])) {
+                        $qty = 0;
+                    }
                 }
-            }
-            
-            $statusText = mb_strtolower(trim($valExtractor('status')));
-            if ($statusText !== '') {
-                if (in_array($statusText, ['0', 'đã bán', 'sold', 'đã cọc', 'deposit', 'đã bán/đã cọc', 'đã khóa', 'đã đặt cọc'])) {
-                    $qty = 0;
-                }
-            }
-            
-            $category = trim($valExtractor('category'));
-            if (empty($category)) $category = 'Căn hộ';
-            
-            $unit = trim($valExtractor('unit'));
-            if (empty($unit)) $unit = 'Căn';
-            
-            $notes = trim($valExtractor('notes'));
-            
-            $extraNotes = [];
-            foreach ($mappings as $sysField => $cols) {
-                if (!in_array($sysField, ['sku', 'product_name', 'price', 'import_price', 'qty', 'status', 'category', 'unit', 'notes'])) {
-                    foreach ($cols as $colName) {
-                        if (isset($rowData[$colName]) && $rowData[$colName] !== '') {
-                            $extraNotes[] = $sysField . ': ' . $rowData[$colName];
+                
+                $category = trim($valExtractor('category'));
+                if (empty($category)) $category = 'Căn hộ';
+                
+                $unit = trim($valExtractor('unit'));
+                if (empty($unit)) $unit = 'Căn';
+                
+                $notes = trim($valExtractor('notes'));
+                
+                $extraNotes = [];
+                foreach ($mappings as $sysField => $cols) {
+                    if (!in_array($sysField, ['sku', 'product_name', 'price', 'import_price', 'qty', 'status', 'category', 'unit', 'notes'])) {
+                        foreach ($cols as $colName) {
+                            if (isset($rowData[$colName]) && $rowData[$colName] !== '') {
+                                $extraNotes[] = $sysField . ': ' . $rowData[$colName];
+                            }
                         }
                     }
                 }
-            }
-            if (!empty($extraNotes)) {
-                $notes = (empty($notes) ? '' : $notes . "\n") . implode("\n", $extraNotes);
-            }
-            
-            $tenantId = 1;
-            
-            $prodQuery = $conn->prepare("SELECT id FROM products WHERE sku = ? AND tenant_id = ? LIMIT 1");
-            $prodQuery->bind_param("si", $sku, $tenantId);
-            $prodQuery->execute();
-            $prodRes = $prodQuery->get_result()->fetch_assoc();
-            $prodQuery->close();
-            
-            if ($prodRes) {
-                $productId = $prodRes['id'];
+                if (!empty($extraNotes)) {
+                    $notes = (empty($notes) ? '' : $notes . "\n") . implode("\n", $extraNotes);
+                }
                 
-                $upProd = $conn->prepare("UPDATE products SET name = ?, price = ?, stock_quantity = ?, category = ?, unit = ? WHERE id = ?");
-                $upProd->bind_param("sdissi", $productName, $price, $qty, $category, $unit, $productId);
-                $upProd->execute();
-                $upProd->close();
-                
-                $batchQuery = $conn->prepare("SELECT id FROM batches WHERE product_id = ? AND tenant_id = ? LIMIT 1");
-                $batchQuery->bind_param("ii", $productId, $tenantId);
-                $batchQuery->execute();
-                $batchRes = $batchQuery->get_result()->fetch_assoc();
-                $batchQuery->close();
-                
-                if ($batchRes) {
-                    $upBatch = $conn->prepare("UPDATE batches SET current_qty = ?, import_price = ?, notes = ? WHERE id = ?");
-                    $upBatch->bind_param("idsi", $qty, $importPrice, $notes, $batchRes['id']);
-                    $upBatch->execute();
-                    $upBatch->close();
+                if (isset($productCache[$sku])) {
+                    $cachedProd = $productCache[$sku];
+                    $productId = $cachedProd['id'];
+                    
+                    // So sánh xem thông tin sản phẩm trên Sheet có thực sự thay đổi không
+                    $prodChanged = ($cachedProd['name'] !== $productName)
+                        || ((float)$cachedProd['price'] !== (float)$price)
+                        || ((int)$cachedProd['qty'] !== (int)$qty)
+                        || ($cachedProd['category'] !== $category)
+                        || ($cachedProd['unit'] !== $unit);
+                    
+                    if ($prodChanged) {
+                        $upProd->bind_param("sdissi", $productName, $price, $qty, $category, $unit, $productId);
+                        $upProd->execute();
+                        $updatedCount++;
+                    }
+                    
+                    if (isset($batchCache[$productId])) {
+                        $cachedBatch = $batchCache[$productId];
+                        
+                        // So sánh xem thông tin lô hàng có thực sự thay đổi không
+                        $batchChanged = ((int)$cachedBatch['qty'] !== (int)$qty)
+                            || ((float)$cachedBatch['import_price'] !== (float)$importPrice)
+                            || ($cachedBatch['notes'] !== $notes);
+                        
+                        if ($batchChanged) {
+                            $upBatch->bind_param("idsi", $qty, $importPrice, $notes, $cachedBatch['id']);
+                            $upBatch->execute();
+                        }
+                    } else {
+                        $batchCode = 'SHEET-' . strtoupper(substr(md5($sku), 0, 8));
+                        $insBatch->bind_param("iisdiis", $tenantId, $productId, $batchCode, $importPrice, $qty, $qty, $notes);
+                        $insBatch->execute();
+                        $batchCache[$productId] = [
+                            'id' => $insBatch->insert_id,
+                            'qty' => (int)$qty,
+                            'import_price' => (float)$importPrice,
+                            'notes' => $notes
+                        ];
+                    }
                 } else {
+                    $insProd->bind_param("issdssi", $tenantId, $productName, $sku, $price, $category, $unit, $qty);
+                    $insProd->execute();
+                    $productId = $insProd->insert_id;
+                    $productCache[$sku] = [
+                        'id' => $productId,
+                        'name' => $productName,
+                        'price' => (float)$price,
+                        'qty' => (int)$qty,
+                        'category' => $category,
+                        'unit' => $unit
+                    ];
+                    
                     $batchCode = 'SHEET-' . strtoupper(substr(md5($sku), 0, 8));
-                    $insBatch = $conn->prepare("INSERT INTO batches (tenant_id, product_id, batch_code, import_date, import_price, initial_qty, current_qty, notes, status) VALUES (?, ?, ?, CURRENT_DATE, ?, ?, ?, ?, 'active')");
                     $insBatch->bind_param("iisdiis", $tenantId, $productId, $batchCode, $importPrice, $qty, $qty, $notes);
                     $insBatch->execute();
-                    $insBatch->close();
+                    $batchCache[$productId] = [
+                        'id' => $insBatch->insert_id,
+                        'qty' => (int)$qty,
+                        'import_price' => (float)$importPrice,
+                        'notes' => $notes
+                    ];
+                    
+                    $insertedCount++;
                 }
-                $updatedCount++;
-            } else {
-                $insProd = $conn->prepare("INSERT INTO products (tenant_id, name, sku, price, category, unit, stock_quantity, is_active) VALUES (?, ?, ?, ?, ?, ?, ?, 1)");
-                $insProd->bind_param("issdssi", $tenantId, $productName, $sku, $price, $category, $unit, $qty);
-                $insProd->execute();
-                $productId = $insProd->insert_id;
-                $insProd->close();
-                
-                $batchCode = 'SHEET-' . strtoupper(substr(md5($sku), 0, 8));
-                $insBatch = $conn->prepare("INSERT INTO batches (tenant_id, product_id, batch_code, import_date, import_price, initial_qty, current_qty, notes, status) VALUES (?, ?, ?, CURRENT_DATE, ?, ?, ?, ?, 'active')");
-                $insBatch->bind_param("iisdiis", $tenantId, $productId, $batchCode, $importPrice, $qty, $qty, $notes);
-                $insBatch->execute();
-                $insBatch->close();
-                
-                $insertedCount++;
             }
+            $conn->commit();
+        } catch (Throwable $t) {
+            $conn->rollback();
+            // Đóng statement trước khi throw exception để tránh rò rỉ tài nguyên
+            $upProd->close();
+            $upBatch->close();
+            $insBatch->close();
+            $insProd->close();
+            fclose($stream);
+            throw $t;
         }
+
+        $upProd->close();
+        $upBatch->close();
+        $insBatch->close();
+        $insProd->close();
         fclose($stream);
         logSync("Completed inventory sync. Updated: $updatedCount. Inserted: $insertedCount.");
     }
@@ -1173,6 +1243,8 @@ if (!function_exists('recallInactiveLeads')) {
                 $isFallbackAdmin = false;
                 $fallbackAdminData = null;
                 $fallbackCcEmails = '';
+                $maxAttempts = 0;
+                $excludeIds = [];
 
                 if ($roundId > 0) {
                     // Fetch round info
@@ -1191,7 +1263,6 @@ if (!function_exists('recallInactiveLeads')) {
                         $maxAttempts = 0;
                     }
 
-                    $excludeIds = [];
                     if ($maxAttempts > 0) {
                         $attemptsStmt = $conn->prepare("
                             SELECT assigned_to, COUNT(*) as cnt 

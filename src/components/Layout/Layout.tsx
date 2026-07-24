@@ -1025,7 +1025,8 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
 
           {/* Header & List Container */}
           {(() => {
-            const hasPendingTasks = (pendingTicketsCount + heldLeadsCount + pendingCheckInsCount + pendingCoopsCount + supportTicketsCount + pendingExpensesCount) > 0;
+            const totalPending = pendingTicketsCount + heldLeadsCount + pendingCheckInsCount + pendingCoopsCount + supportTicketsCount + pendingExpensesCount;
+            const hasPendingTasks = totalPending > 0;
             if (hasPendingTasks) {
               return (
                 <>
@@ -1048,9 +1049,11 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
                       justifyContent: 'center', 
                       alignItems: 'center', 
                       color: '#fff',
-                      boxShadow: '0 8px 20px -6px rgba(189, 29, 45, 0.5)'
+                      boxShadow: '0 8px 20px -6px rgba(189, 29, 45, 0.5)',
+                      fontWeight: 800,
+                      fontSize: '1.25rem'
                     }}>
-                      <ShieldAlert size={24} className="animate-pulse" />
+                      {totalPending}
                     </div>
                     <div>
                       <h3 style={{ fontSize: '1.125rem', fontWeight: 800, color: 'var(--color-text)', margin: 0, letterSpacing: '-0.02em' }}>

@@ -85,12 +85,12 @@ api.interceptors.response.use(
       error.response?.status === 401 &&
       !original._retry &&
       !original.url?.includes('/auth/login') &&
-      !original.url?.includes('/auth/refresh')
+      !original.url?.includes('auth/refresh')
     ) {
       original._retry = true;
       try {
         const refresh = localStorage.getItem('refresh_token');
-        const { data } = await axios.post(`${BASE_URL}/auth/refresh`, { refresh_token: refresh });
+        const { data } = await axios.post(`${BASE_URL}/api.php?action=auth/refresh`, { refresh_token: refresh });
         const { access_token, refresh_token } = data.data;
         localStorage.setItem('access_token', access_token);
         if (refresh_token) localStorage.setItem('refresh_token', refresh_token);
