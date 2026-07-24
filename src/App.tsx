@@ -1,4 +1,5 @@
 import { lazy, Suspense, useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { BrowserRouter as Router, Routes, Route, Navigate, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { Layout } from './components/Layout/Layout';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
@@ -507,7 +508,10 @@ export default function App() {
       <LanguageProvider>
         <AuthProvider>
           <UploadProgressProvider>
-            <Toaster position="top-right" containerStyle={{ zIndex: 999999999, top: 76 }} toastOptions={{ className: 'custom-toast' }} />
+            {typeof document !== 'undefined' ? createPortal(
+              <Toaster position="top-right" containerStyle={{ zIndex: 999999999, top: 76 }} toastOptions={{ className: 'custom-toast' }} />,
+              document.body
+            ) : null}
             <Router>
               <Suspense fallback={<PageLoader />}>
                 <Routes>

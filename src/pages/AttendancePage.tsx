@@ -11,7 +11,7 @@ import { TableRowSkeleton } from '../components/ui/Skeleton';
 import { CustomSelect } from '../components/ui/CustomSelect';
 import { CustomerProfileDrawer } from './CustomerProfileDrawer';
 import api from '../api/axios';
-import { Clock, Calendar, Check, X, Trash2, Eye, ShieldAlert, AlertCircle, CheckCircle, Info, Download, Lightbulb, Upload, ChevronLeft, ChevronRight, Camera, Image, FileText, Zap, RefreshCw, Moon, MapPin } from 'lucide-react';
+import { Clock, Calendar, Check, X, Trash2, Eye, ShieldAlert, AlertCircle, CheckCircle, Info, Download, Lightbulb, Upload, ChevronLeft, ChevronRight, Camera, Image, FileText, Zap, RefreshCw, Moon, MapPin, CheckSquare, Users } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { PeriodFilter, getDateRange } from '../components/ui/PeriodFilter';
 import { useUIStore } from '../store/uiStore';
@@ -126,7 +126,7 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
   // Selected date for detail modal
   const [selectedDateForDetail, setSelectedDateForDetail] = useState<string | null>(null);
   const hasCheckIn = selectedDateForDetail ? calendarCheckIns.some(c => c.check_in_date === selectedDateForDetail) : false;
-  const [modalTab, setModalTab] = useState<'checkin' | 'fingerprint' | 'night_duty'>('checkin');
+  const [modalTab, setModalTab] = useState<'checkin' | 'fingerprint' | 'night_duty' | 'activities'>('checkin');
 
   // Shift registration approval states
   const [registrations, setRegistrations] = useState<any[]>([]);
@@ -142,12 +142,20 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
 
   // Scheduler / Diary creation states
   const [diaryNoteText, setDiaryNoteText] = useState('');
-  const [newActivityType, setNewActivityType] = useState<'task' | 'meeting' | 'call'>('task');
+  const [newActivityType, setNewActivityType] = useState<'task' | 'meeting' | 'call' | 'note'>('task');
   const [newActivitySubject, setNewActivitySubject] = useState('');
   const [newActivityBody, setNewActivityBody] = useState('');
   const [newActivityContactId, setNewActivityContactId] = useState<string>('');
   const [savingActivity, setSavingActivity] = useState(false);
   const [contactsList, setContactsList] = useState<any[]>([]);
+
+  const [calendarActivities, setCalendarActivities] = useState<any[]>([]);
+  const [selectedContact, setSelectedContact] = useState<any | null>(null);
+  const [meetingToComplete, setMeetingToComplete] = useState<any | null>(null);
+  const [proofCommentText, setProofCommentText] = useState('');
+  const [proofImageFile, setProofImageFile] = useState<File | null>(null);
+  const [proofImagePreview, setProofImagePreview] = useState<string | null>(null);
+  const [completingMeeting, setCompletingMeeting] = useState(false);
 
   // Preview Image Modal state
   const [previewCheckIn, setPreviewCheckIn] = useState<any | null>(null);
@@ -230,7 +238,12 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
         }
       }
 
-
+      // Fetch activities matching the current month
+      const yearMonth = `${currentYear}-${String(currentMonth).padStart(2, '0')}`;
+      const uidParam = filterUser !== 'all' ? filterUser : '';
+      const actRes = await api.get(`/activities?limit=1000&year_month=${yearMonth}&user_id=${uidParam}`);
+      const list = actRes.data?.data || actRes.data || [];
+      setCalendarActivities(list);
     } catch (err: any) {
       console.error('Error fetching calendar check-ins:', err);
     } finally {
@@ -920,7 +933,92 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
                         )
                       )}
 
+                      {/* 3. Render Calendar Activities (Notes, Meetings, Tasks) */}
+                      {(() => {
+                        const dayActivities = calendarActivities.filter(a => a.due_date && a.due_date.startsWith(cell.dateStr));
+                        if (dayActivities.length === 0) return null;
+                        return (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '4px' }}>
+                            {dayActivities.map((a: any) => {
+                              const isDone = a.status === 'done';
+                              const isMeeting = a.type === 'meeting';
+                              const isNote = a.type === 'note';
+                              
+                              let bg = 'rgba(0, 122, 255, 0.04)';
+                              let border = 'rgba(0, 122, 255, 0.15)';
+                              let txtColor = '#007aff';
+                              let icon = <CheckSquare size={10} />;
+                              let label = a.subject || t('Nhiệm vụ');
 
+                              if (isMeeting) {
+                                bg = 'rgba(16, 185, 129, 0.06)';
+                                border = 'rgba(16, 185, 129, 0.18)';
+                                txtColor = '#10b981';
+                                icon = <Users size={10} />;
+                              } else if (isNote) {
+                                bg = 'rgba(139, 92, 246, 0.06)';
+                                border = 'rgba(139, 92, 246, 0.18)';
+                                txtColor = '#8b5cf6';
+                                icon = <FileText size={10} />;
+                                label = a.body ? a.body.substring(0, 30) : a.subject;
+                              }
+
+                              return (
+                                <div
+                                  key={a.id}
+                                  style={{
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    gap: '2px',
+                                    padding: '4px 6px',
+                                    borderRadius: '6px',
+                                    border: `1px solid ${border}`,
+                                    backgroundColor: bg,
+                                    fontSize: '0.68rem',
+                                    color: 'var(--color-text)',
+                                    textDecoration: isDone ? 'line-through' : 'none',
+                                    opacity: isDone ? 0.65 : 1
+                                  }}
+                                >
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontWeight: 600, color: txtColor }}>
+                                    {icon}
+                                    <span style={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap', flex: 1 }}>
+                                      {label}
+                                    </span>
+                                  </div>
+                                  
+                                  {a.contact_id && (
+                                    <div 
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setSelectedContact({ id: a.contact_id });
+                                      }}
+                                      style={{ 
+                                        display: 'flex', 
+                                        alignItems: 'center', 
+                                        gap: '4px', 
+                                        marginTop: '2px', 
+                                        cursor: 'pointer',
+                                        alignSelf: 'flex-start',
+                                        padding: '2px 5px',
+                                        borderRadius: '4px',
+                                        backgroundColor: 'var(--color-bg-light)',
+                                        border: '1px solid var(--color-border-light)'
+                                      }}
+                                      title={a.contact_name}
+                                    >
+                                      <Avatar src={resolveAttachmentUrl(a.contact_avatar)} name={a.contact_name} size={14} />
+                                      <span style={{ fontSize: '0.625rem', fontWeight: 600, color: 'var(--color-primary)', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap', maxWidth: '70px' }}>
+                                        {a.contact_name}
+                                      </span>
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        );
+                      })()}
                     </>
                   ) : null}
                 </div>
@@ -2106,7 +2204,37 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
                 );
               })()}
 
-
+              <button
+                type="button"
+                onClick={() => setModalTab('activities')}
+                style={{
+                  padding: isMobile ? '8px 2px 10px 2px' : '8px 4px 12px 4px',
+                  fontSize: isMobile ? '0.72rem' : '0.875rem',
+                  fontWeight: 700,
+                  color: modalTab === 'activities' ? 'var(--color-primary)' : 'var(--color-text-light)',
+                  border: 'none',
+                  background: 'transparent',
+                  borderBottom: modalTab === 'activities' ? '2px solid var(--color-primary)' : '2px solid transparent',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: isMobile ? '3px' : '6px'
+                }}
+              >
+                <Calendar size={isMobile ? 13 : 16} />
+                {t('Lịch làm việc')}
+                <span style={{
+                  fontSize: '0.625rem',
+                  padding: isMobile ? '1px 4px' : '2px 6px',
+                  borderRadius: '10px',
+                  background: modalTab === 'activities' ? 'var(--color-primary-light)' : 'var(--color-bg)',
+                  color: modalTab === 'activities' ? 'var(--color-primary)' : 'var(--color-text-muted)',
+                  fontWeight: 600
+                }}>
+                  {calendarActivities.filter(a => a.due_date && a.due_date.startsWith(selectedDateForDetail)).length}
+                </span>
+              </button>
             </div>
 
             {/* Tab content body */}
@@ -2325,6 +2453,358 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
                         );
                       })
                     )}
+                  </div>
+                </div>
+              ) : modalTab === 'activities' ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                  {/* Create Activity Form */}
+                  <div style={{
+                    padding: '16px',
+                    background: 'var(--color-bg-light)',
+                    borderRadius: '12px',
+                    border: '1px solid var(--color-border-light)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '12px'
+                  }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <h4 style={{ margin: 0, fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)' }}>
+                        {t('Thêm nhật ký & công việc mới')}
+                      </h4>
+                      <div style={{ display: 'flex', gap: '4px', backgroundColor: 'var(--color-bg)', padding: '2px', borderRadius: '8px', border: '1px solid var(--color-border)' }}>
+                        {(['note', 'task', 'meeting', 'call'] as const).map(type => (
+                          <button
+                            key={type}
+                            type="button"
+                            onClick={() => setNewActivityType(type as any)}
+                            style={{
+                              border: 'none',
+                              background: newActivityType === type ? 'var(--color-surface)' : 'transparent',
+                              color: newActivityType === type ? 'var(--color-primary)' : 'var(--color-text-muted)',
+                              padding: '4px 8px',
+                              fontSize: '0.72rem',
+                              fontWeight: 600,
+                              borderRadius: '6px',
+                              cursor: 'pointer',
+                              boxShadow: newActivityType === type ? 'var(--shadow-sm)' : 'none'
+                            }}
+                          >
+                            {type === 'note' ? t('Nhật ký') : type === 'meeting' ? t('Gặp gỡ') : type === 'call' ? t('Cuộc gọi') : t('Nhiệm vụ')}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {newActivityType === 'note' ? (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        <textarea
+                          style={{
+                            width: '100%',
+                            minHeight: '70px',
+                            fontSize: '0.8125rem',
+                            padding: '8px 12px',
+                            border: '1px solid var(--color-border)',
+                            borderRadius: '8px',
+                            background: 'var(--color-surface)',
+                            color: 'var(--color-text)',
+                            outline: 'none',
+                            resize: 'none'
+                          }}
+                          placeholder={t('Nhập ghi chú nhật ký buổi làm việc hôm nay...')}
+                          value={diaryNoteText}
+                          onChange={e => setDiaryNoteText(e.target.value)}
+                        />
+                        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr auto', gap: '8px', alignItems: 'center' }}>
+                          <CustomSelect
+                            options={[
+                              { value: '', label: t('Liên kết Khách hàng (Không có)') },
+                              ...contactsList.map(c => ({
+                                value: String(c.id),
+                                label: `${c.first_name || ''} ${c.last_name || ''}`.trim() || c.phone || '',
+                                avatar: resolveAttachmentUrl(c.avatar_url)
+                              }))
+                            ]}
+                            value={newActivityContactId}
+                            onChange={(val) => setNewActivityContactId(String(val))}
+                            searchable={true}
+                            showAvatars={true}
+                            width="100%"
+                          />
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              if (!diaryNoteText.trim()) return;
+                              setSavingActivity(true);
+                              try {
+                                const now = new Date();
+                                const pad = (n: number) => String(n).padStart(2, '0');
+                                const timeStr = `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+                                const payload = {
+                                  type: 'note',
+                                  subject: `[Nhật ký] ${diaryNoteText.trim().substring(0, 40)}${diaryNoteText.trim().length > 40 ? '...' : ''}`,
+                                  body: diaryNoteText.trim(),
+                                  due_date: `${selectedDateForDetail} ${timeStr}`,
+                                  status: 'done',
+                                  priority: 'medium',
+                                  related_type: newActivityContactId ? 'contact' : null,
+                                  related_id: newActivityContactId ? Number(newActivityContactId) : null
+                                };
+                                const res = await api.post('/activities', payload);
+                                if (res.data.success || res.data.id) {
+                                  toast.success(t('Đã lưu nhật ký thành công!'));
+                                  setDiaryNoteText('');
+                                  setNewActivityContactId('');
+                                  fetchCalendarCheckIns(); // reload
+                                }
+                              } catch (err: any) {
+                                toast.error(t('Lỗi khi lưu nhật ký'));
+                              } finally {
+                                setSavingActivity(false);
+                              }
+                            }}
+                            disabled={savingActivity || !diaryNoteText.trim()}
+                            className="btn primary sm"
+                            style={{ fontSize: '0.78rem', height: '36px', padding: '0 16px', borderRadius: '6px', fontWeight: 600 }}
+                          >
+                            {savingActivity ? t('Đang lưu...') : t('Lưu nhật ký')}
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        <input
+                          type="text"
+                          placeholder={t('Tiêu đề công việc / lịch hẹn...')}
+                          value={newActivitySubject}
+                          onChange={e => setNewActivitySubject(e.target.value)}
+                          style={{
+                            width: '100%',
+                            fontSize: '0.8125rem',
+                            padding: '8px 12px',
+                            border: '1px solid var(--color-border)',
+                            borderRadius: '8px',
+                            background: 'var(--color-surface)',
+                            color: 'var(--color-text)',
+                            outline: 'none'
+                          }}
+                        />
+                        <textarea
+                          style={{
+                            width: '100%',
+                            minHeight: '50px',
+                            fontSize: '0.8125rem',
+                            padding: '8px 12px',
+                            border: '1px solid var(--color-border)',
+                            borderRadius: '8px',
+                            background: 'var(--color-surface)',
+                            color: 'var(--color-text)',
+                            outline: 'none',
+                            resize: 'none'
+                          }}
+                          placeholder={t('Mô tả chi tiết nội dung công việc (không bắt buộc)...')}
+                          value={newActivityBody}
+                          onChange={e => setNewActivityBody(e.target.value)}
+                        />
+                        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr auto', gap: '8px', alignItems: 'center' }}>
+                          <CustomSelect
+                            options={[
+                              { value: '', label: t('Liên kết Khách hàng (Không có)') },
+                              ...contactsList.map(c => ({
+                                value: String(c.id),
+                                label: `${c.first_name || ''} ${c.last_name || ''}`.trim() || c.phone || '',
+                                avatar: resolveAttachmentUrl(c.avatar_url)
+                              }))
+                            ]}
+                            value={newActivityContactId}
+                            onChange={(val) => setNewActivityContactId(String(val))}
+                            searchable={true}
+                            showAvatars={true}
+                            width="100%"
+                          />
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              if (!newActivitySubject.trim()) return;
+                              setSavingActivity(true);
+                              try {
+                                const payload = {
+                                  type: newActivityType,
+                                  subject: newActivitySubject.trim(),
+                                  body: newActivityBody.trim() || null,
+                                  due_date: `${selectedDateForDetail} 09:00:00`,
+                                  status: 'planned',
+                                  priority: 'high',
+                                  related_type: newActivityContactId ? 'contact' : null,
+                                  related_id: newActivityContactId ? Number(newActivityContactId) : null
+                                };
+                                const res = await api.post('/activities', payload);
+                                if (res.data.success || res.data.id) {
+                                  toast.success(t('Đã tạo công việc thành công!'));
+                                  setNewActivitySubject('');
+                                  setNewActivityBody('');
+                                  setNewActivityContactId('');
+                                  fetchCalendarCheckIns(); // reload
+                                }
+                              } catch (err: any) {
+                                toast.error(t('Lỗi khi tạo công việc'));
+                              } finally {
+                                setSavingActivity(false);
+                              }
+                            }}
+                            disabled={savingActivity || !newActivitySubject.trim()}
+                            className="btn primary sm"
+                            style={{ fontSize: '0.78rem', height: '36px', padding: '0 16px', borderRadius: '6px', fontWeight: 600 }}
+                          >
+                            {savingActivity ? t('Đang lưu...') : t('Tạo công việc')}
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Activities List */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <h5 style={{ fontWeight: 700, fontSize: '0.8125rem', color: 'var(--color-text-muted)', margin: 0 }}>
+                      {t('Danh sách nhật ký & công việc ngày')} {selectedDateForDetail}
+                    </h5>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', overflowY: 'auto', maxHeight: '220px', paddingRight: '4px' }}>
+                      {(() => {
+                        const dayActs = calendarActivities.filter(a => a.due_date && a.due_date.startsWith(selectedDateForDetail));
+                        if (dayActs.length === 0) {
+                          return (
+                            <div style={{ padding: '1.25rem', textAlign: 'center', background: 'var(--color-bg-light)', border: '1px dashed var(--color-border)', borderRadius: '10px', color: 'var(--color-text-light)', fontSize: '0.78rem' }}>
+                              {t('Chưa có ghi chép hay nhiệm vụ nào cho ngày này.')}
+                            </div>
+                          );
+                        }
+                        return dayActs.map((a: any) => {
+                          const isDone = a.status === 'done';
+                          const isMeeting = a.type === 'meeting';
+                          const isCall = a.type === 'call';
+                          const isNote = a.type === 'note';
+
+                          let typeLabel = t('Nhiệm vụ');
+                          let colorClass = 'info';
+                          if (isMeeting) { typeLabel = t('Gặp gỡ'); colorClass = 'primary'; }
+                          else if (isCall) { typeLabel = t('Cuộc gọi'); colorClass = 'warning'; }
+                          else if (isNote) { typeLabel = t('Nhật ký'); colorClass = 'success'; }
+
+                          const toggleActivityStatus = async () => {
+                            try {
+                              const nextStatus = isDone ? 'planned' : 'done';
+
+                              if (nextStatus === 'done' && a.type === 'meeting') {
+                                try {
+                                  const res = await api.get(`/activities/${a.id}/comments`);
+                                  const commentsList = res.data.data || [];
+                                  const hasImage = commentsList.some((c: any) => {
+                                    const atts = Array.isArray(c.attachments) ? c.attachments : JSON.parse(c.attachments || '[]');
+                                    return atts.some((att: string) => /\.(jpg|jpeg|png|gif|webp)$/i.test(att));
+                                  });
+
+                                  if (!hasImage) {
+                                    setMeetingToComplete(a);
+                                    setProofCommentText(t('Ảnh minh chứng hoàn thành gặp gỡ'));
+                                    setProofImageFile(null);
+                                    setProofImagePreview(null);
+                                    return;
+                                  }
+                                } catch (e) {
+                                  toast.error(t('Lỗi khi kiểm tra minh chứng'));
+                                  return;
+                                }
+                              }
+
+                              const res = await api.put(`/activities/${a.id}`, { status: nextStatus });
+                              if (res.data.success || res.data.id) {
+                                toast.success(t('Đã cập nhật trạng thái!'));
+                                fetchCalendarCheckIns();
+                              }
+                            } catch {
+                              toast.error(t('Không thể cập nhật trạng thái'));
+                            }
+                          };
+
+                          return (
+                            <div key={a.id} style={{
+                              padding: '12px',
+                              background: 'var(--color-surface)',
+                              border: '1px solid var(--color-border-light)',
+                              borderRadius: '10px',
+                              display: 'flex',
+                              flexDirection: 'column',
+                              gap: '6px',
+                              position: 'relative'
+                            }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                  {!isNote && (
+                                    <input
+                                      type="checkbox"
+                                      checked={isDone}
+                                      onChange={toggleActivityStatus}
+                                      style={{ width: '15px', height: '15px', cursor: 'pointer' }}
+                                    />
+                                  )}
+                                  <span className={`tag ${colorClass}`} style={{ fontSize: '0.65rem', padding: '2px 6px', borderRadius: '4px', fontWeight: 700 }}>
+                                    {typeLabel}
+                                  </span>
+                                  <span style={{ fontSize: '0.6875rem', color: 'var(--color-text-muted)' }}>
+                                    {a.due_date ? new Date(a.due_date).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) : ''}
+                                  </span>
+                                  <button
+                                    type="button"
+                                    onClick={async () => {
+                                      if (window.confirm(t('Bạn có chắc chắn muốn xóa mục này?'))) {
+                                        try {
+                                          await api.delete(`/activities/${a.id}`);
+                                          toast.success(t('Đã xóa thành công!'));
+                                          fetchCalendarCheckIns();
+                                        } catch {
+                                          toast.error(t('Không thể xóa'));
+                                        }
+                                      }
+                                    }}
+                                    style={{ border: 'none', background: 'transparent', color: 'var(--color-danger)', display: 'flex', alignItems: 'center', cursor: 'pointer', opacity: 0.7 }}
+                                    title={t('Xóa')}
+                                  >
+                                    <Trash2 size={14} />
+                                  </button>
+                                </div>
+                              </div>
+                              <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--color-text)', textDecoration: isDone ? 'line-through' : 'none', opacity: isDone ? 0.6 : 1 }}>
+                                {a.subject}
+                              </div>
+                              {a.body && <p style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)', margin: '2px 0 0 0', whiteSpace: 'pre-wrap', lineHeight: 1.4 }}>{a.body}</p>}
+                              
+                              {a.contact_id && (
+                                <div 
+                                  onClick={() => {
+                                    setSelectedContact({ id: a.contact_id });
+                                  }}
+                                  style={{ 
+                                    display: 'flex', 
+                                    alignItems: 'center', 
+                                    gap: '6px', 
+                                    background: 'var(--color-bg-light)',
+                                    padding: '4px 8px',
+                                    borderRadius: '6px',
+                                    border: '1px solid var(--color-border-light)',
+                                    marginTop: '4px',
+                                    alignSelf: 'flex-start',
+                                    cursor: 'pointer'
+                                  }}
+                                >
+                                  <Avatar src={resolveAttachmentUrl(a.contact_avatar)} name={a.contact_name} size={18} />
+                                  <span style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--color-primary)' }}>{a.contact_name}</span>
+                                  <span style={{ fontSize: '0.65rem', color: 'var(--color-text-light)' }}>({t('Khách hàng')})</span>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        });
+                      })()}
+                    </div>
                   </div>
                 </div>
               ) : modalTab === 'fingerprint' ? (
@@ -2758,6 +3238,172 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
           <button className="btn primary" onClick={() => setShowInfoModal(false)} style={{ minWidth: 100 }}>{t("Đồng ý")}</button>
         </div>
       </CustomModal>
+
+      <CustomerProfileDrawer
+        isOpen={!!selectedContact}
+        onClose={() => {
+          setSelectedContact(null);
+          fetchCalendarCheckIns();
+        }}
+        contact={selectedContact}
+        onUpdate={() => {
+          fetchCalendarCheckIns();
+        }}
+      />
+
+      {/* Meeting Proof Modal */}
+      {meetingToComplete && (
+        <div 
+          style={{
+            position: 'fixed',
+            inset: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.65)',
+            backdropFilter: 'blur(4px)',
+            zIndex: 1000500,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '1rem'
+          }}
+          onClick={() => setMeetingToComplete(null)}
+        >
+          <div 
+            onClick={e => e.stopPropagation()}
+            style={{ 
+              width: '100%', 
+              maxWidth: 500, 
+              padding: '1.5rem', 
+              borderRadius: '16px', 
+              overflow: 'hidden', 
+              background: 'var(--color-surface)', 
+              border: '1px solid var(--color-border)',
+              boxShadow: '0 20px 40px rgba(0,0,0,0.25)'
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+              <h3 style={{ fontWeight: 700, fontSize: '1.25rem', color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
+                <Camera style={{ color: '#10b981' }} size={20} />
+                {t('Cung cấp ảnh minh chứng')}
+              </h3>
+              <button 
+                type="button"
+                style={{ border: 'none', background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-text-muted)' }} 
+                onClick={() => setMeetingToComplete(null)}
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', marginBottom: '1.25rem', lineHeight: 1.5, margin: 0 }}>
+              {t('Gặp gỡ này chưa có ảnh đính kèm trong phần bình luận. Bạn phải tải lên ảnh minh chứng (chụp ảnh cùng khách hàng, sa bàn, v.v.) để hoàn thành cuộc gặp.')}
+            </p>
+
+            <div style={{ marginBottom: '1.25rem', marginTop: '1rem' }}>
+              <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 600, color: 'var(--color-text)', marginBottom: '0.5rem' }}>{t('Ảnh minh chứng *')}</label>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                {proofImagePreview ? (
+                  <div style={{ position: 'relative', width: '100%', height: '180px', borderRadius: '10px', overflow: 'hidden', border: '1px solid var(--color-border)' }}>
+                    <img src={proofImagePreview} alt="Proof preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    <button 
+                      type="button"
+                      onClick={() => {
+                        setProofImageFile(null);
+                        setProofImagePreview(null);
+                      }}
+                      style={{ position: 'absolute', top: '8px', right: '8px', background: 'rgba(0,0,0,0.6)', color: 'white', border: 'none', borderRadius: '50%', width: '28px', height: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
+                    >
+                      <X size={14} />
+                    </button>
+                  </div>
+                ) : (
+                  <label style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', width: '100%', height: '120px', border: '2px dashed var(--color-border)', borderRadius: '10px', cursor: 'pointer', background: 'var(--color-bg)', transition: 'border-color 0.2s' }}>
+                    <Camera size={28} style={{ color: 'var(--color-text-muted)', marginBottom: '6px' }} />
+                    <span style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>{t('Tải ảnh lên (JPEG, PNG, WebP)')}</span>
+                    <input 
+                      type="file" 
+                      accept="image/*" 
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+                        if (file.size > 5 * 1024 * 1024) {
+                          toast.error(t('Dung lượng tệp đính kèm không được vượt quá 5MB'));
+                          return;
+                        }
+                        const previewUrl = URL.createObjectURL(file);
+                        setProofImageFile(file);
+                        setProofImagePreview(previewUrl);
+                      }}
+                      style={{ display: 'none' }}
+                    />
+                  </label>
+                )}
+              </div>
+            </div>
+
+            <div style={{ marginBottom: '1.5rem' }}>
+              <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 600, color: 'var(--color-text)', marginBottom: '0.5rem' }}>{t('Nội dung bình luận')}</label>
+              <textarea
+                style={{ width: '100%', minHeight: '80px', fontSize: '0.875rem', padding: '8px 12px', border: '1px solid var(--color-border)', borderRadius: '8px', outline: 'none', resize: 'none', background: 'var(--color-bg)', color: 'var(--color-text)' }}
+                value={proofCommentText}
+                onChange={(e) => setProofCommentText(e.target.value)}
+                placeholder={t('Nhập ghi chú hoặc mô tả về buổi gặp gỡ...')}
+              />
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+              <button type="button" className="btn outline" onClick={() => setMeetingToComplete(null)} disabled={completingMeeting}>{t('Hủy')}</button>
+              <button 
+                type="button"
+                className="btn success" 
+                disabled={!proofImageFile || completingMeeting} 
+                onClick={async () => {
+                  if (!proofImageFile || !meetingToComplete) return;
+                  setCompletingMeeting(true);
+                  try {
+                    let fileToUpload = proofImageFile;
+                    try {
+                      const { compressToWebP } = await import('../utils/imageCompress');
+                      fileToUpload = await compressToWebP(proofImageFile);
+                    } catch (err) {}
+                    
+                    const fd = new FormData();
+                    fd.append('file', fileToUpload);
+                    const uploadRes = await api.post('/upload', fd, {
+                      headers: { 'Content-Type': 'multipart/form-data' }
+                    });
+                    const uploadedUrl = uploadRes.data.data?.url ?? uploadRes.data.data?.path ?? uploadRes.data.url ?? '';
+                    if (!uploadedUrl) throw new Error('Không thể tải ảnh lên');
+
+                    // Post comment
+                    const payload = {
+                      content: proofCommentText,
+                      attachments: JSON.stringify([uploadedUrl]),
+                      parent_id: null
+                    };
+                    await api.post(`/activities/${meetingToComplete.id}/comments`, payload);
+
+                    // Complete activity
+                    await api.put(`/activities/${meetingToComplete.id}`, { status: 'done', progress: 100 });
+
+                    toast.success(t('Đã tải ảnh minh chứng và hoàn thành gặp gỡ'));
+                    
+                    setCalendarActivities(prev => prev.map(x => x.id === meetingToComplete.id ? { ...x, status: 'done' } : x));
+                    
+                    fetchCalendarCheckIns();
+                    setMeetingToComplete(null);
+                  } catch (e: any) {
+                    toast.error(e.response?.data?.message || t('Có lỗi xảy ra khi lưu minh chứng'));
+                  } finally {
+                    setCompletingMeeting(false);
+                  }
+                }}
+              >
+                {completingMeeting ? t('Đang lưu...') : t('Xác nhận')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );

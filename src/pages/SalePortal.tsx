@@ -495,6 +495,8 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
   const [wsTasksPage, setWsTasksPage] = useState(1);
   const [wsTasksPageSize, setWsTasksPageSize] = useState(12);
 
+
+
   const [showUpcomingMeetingsModal, setShowUpcomingMeetingsModal] = useState(false);
   const [meetingSearchText, setMeetingSearchText] = useState('');
   const [meetingFilterStatus, setMeetingFilterStatus] = useState<'all' | 'planned' | 'overdue' | 'done'>('all');
@@ -1312,6 +1314,13 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
   const [newActivityContactId, setNewActivityContactId] = useState<string>('');
   const [savingActivity, setSavingActivity] = useState(false);
   const [contactsList, setContactsList] = useState<any[]>([]);
+
+  // Meeting check-in proof states
+  const [meetingToComplete, setMeetingToComplete] = useState<any>(null);
+  const [proofCommentText, setProofCommentText] = useState('Ảnh minh chứng hoàn thành gặp gỡ');
+  const [proofImageFile, setProofImageFile] = useState<File | null>(null);
+  const [proofImagePreview, setProofImagePreview] = useState<string | null>(null);
+  const [completingMeeting, setCompletingMeeting] = useState(false);
 
   // Ticket detail modal states
   const [selectedDetailTicket, setSelectedDetailTicket] = useState<any>(null);
@@ -2569,10 +2578,34 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
 
   const handleToggleTaskStatus = async (taskId: number) => {
     try {
+      const task = wsTasks.find(t => t.id === taskId);
+      if (task?.type === 'meeting') {
+        try {
+          const res = await api.get(`/activities/${taskId}/comments`);
+          const commentsList = res.data.data || [];
+          const hasImage = commentsList.some((c: any) => {
+            const atts = Array.isArray(c.attachments) ? c.attachments : JSON.parse(c.attachments || '[]');
+            return atts.some((att: string) => /\.(jpg|jpeg|png|gif|webp)$/i.test(att));
+          });
+
+          if (!hasImage) {
+            setMeetingToComplete(task);
+            setProofCommentText(t('Ảnh minh chứng hoàn thành gặp gỡ'));
+            setProofImageFile(null);
+            setProofImagePreview(null);
+            return;
+          }
+        } catch (e) {
+          toast.error(t('Lỗi khi kiểm tra minh chứng'));
+          return;
+        }
+      }
+
       await api.put(`/activities/${taskId}`, { status: 'done' });
       toast.success(t('Đã hoàn thành công việc'));
       triggerFullConfetti();
       fetchPortalTasks();
+      fetchWorkspaceTasks();
     } catch (e) {
       toast.error(t('Lỗi khi cập nhật trạng thái công việc'));
     }
@@ -16683,11 +16716,14 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                               if (!diaryNoteText.trim()) return;
                               setSavingActivity(true);
                               try {
+                                const now = new Date();
+                                const pad = (n: number) => String(n).padStart(2, '0');
+                                const timeStr = `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
                                 const payload = {
                                   type: 'note',
                                   subject: `[Nhật ký] ${diaryNoteText.trim().substring(0, 40)}${diaryNoteText.trim().length > 40 ? '...' : ''}`,
                                   body: diaryNoteText.trim(),
-                                  due_date: `${selectedSchedulerDate} ${new Date().toLocaleTimeString('vi-VN', { hour12: false })}`,
+                                  due_date: `${selectedSchedulerDate} ${timeStr}`,
                                   status: 'done',
                                   priority: 'medium',
                                   related_type: diaryContactId ? 'contact' : null,
@@ -16988,6 +17024,29 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                           const toggleActivityStatus = async () => {
                             try {
                               const nextStatus = isDone ? 'planned' : 'done';
+
+                              if (nextStatus === 'done' && a.type === 'meeting') {
+                                try {
+                                  const res = await api.get(`/activities/${a.id}/comments`);
+                                  const commentsList = res.data.data || [];
+                                  const hasImage = commentsList.some((c: any) => {
+                                    const atts = Array.isArray(c.attachments) ? c.attachments : JSON.parse(c.attachments || '[]');
+                                    return atts.some((att: string) => /\.(jpg|jpeg|png|gif|webp)$/i.test(att));
+                                  });
+
+                                  if (!hasImage) {
+                                    setMeetingToComplete(a);
+                                    setProofCommentText(t('Ảnh minh chứng hoàn thành gặp gỡ'));
+                                    setProofImageFile(null);
+                                    setProofImagePreview(null);
+                                    return;
+                                  }
+                                } catch (e) {
+                                  toast.error(t('Lỗi khi kiểm tra minh chứng'));
+                                  return;
+                                }
+                              }
+
                               const res = await api.put(`/activities/${a.id}`, { status: nextStatus });
                               if (res.data.success || res.data.id) {
                                 toast.success(t('Đã cập nhật trạng thái!'));
@@ -17085,6 +17144,167 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
             </div>
           </div>
         </CustomModal>
+      )}
+
+      {/* Meeting Proof Modal */}
+      {meetingToComplete && (
+        <div 
+          style={{
+            position: 'fixed',
+            inset: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.65)',
+            backdropFilter: 'blur(4px)',
+            zIndex: 1000500,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '1rem'
+          }}
+          onClick={() => setMeetingToComplete(null)}
+        >
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.95, y: 10 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: 10 }}
+            onClick={e => e.stopPropagation()}
+            style={{ 
+              width: '100%', 
+              maxWidth: 500, 
+              padding: '1.5rem', 
+              borderRadius: '16px', 
+              overflow: 'hidden', 
+              background: 'var(--color-surface)', 
+              border: '1px solid var(--color-border)',
+              boxShadow: '0 20px 40px rgba(0,0,0,0.25)'
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+              <h3 style={{ fontWeight: 700, fontSize: '1.25rem', color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
+                <Camera style={{ color: '#10b981' }} size={20} />
+                {t('Cung cấp ảnh minh chứng')}
+              </h3>
+              <button 
+                type="button"
+                style={{ border: 'none', background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-text-muted)' }} 
+                onClick={() => setMeetingToComplete(null)}
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', marginBottom: '1.25rem', lineHeight: 1.5, margin: 0 }}>
+              {t('Gặp gỡ này chưa có ảnh đính kèm trong phần bình luận. Bạn phải tải lên ảnh minh chứng (chụp ảnh cùng khách hàng, sa bàn, v.v.) để hoàn thành cuộc gặp.')}
+            </p>
+
+            <div style={{ marginBottom: '1.25rem', marginTop: '1rem' }}>
+              <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 600, color: 'var(--color-text)', marginBottom: '0.5rem' }}>{t('Ảnh minh chứng *')}</label>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                {proofImagePreview ? (
+                  <div style={{ position: 'relative', width: '100%', height: '180px', borderRadius: '10px', overflow: 'hidden', border: '1px solid var(--color-border)' }}>
+                    <img src={proofImagePreview} alt="Proof preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    <button 
+                      type="button"
+                      onClick={() => {
+                        setProofImageFile(null);
+                        setProofImagePreview(null);
+                      }}
+                      style={{ position: 'absolute', top: '8px', right: '8px', background: 'rgba(0,0,0,0.6)', color: 'white', border: 'none', borderRadius: '50%', width: '28px', height: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
+                    >
+                      <X size={14} />
+                    </button>
+                  </div>
+                ) : (
+                  <label style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', width: '100%', height: '120px', border: '2px dashed var(--color-border)', borderRadius: '10px', cursor: 'pointer', background: 'var(--color-bg)', transition: 'border-color 0.2s' }}>
+                    <Camera size={28} style={{ color: 'var(--color-text-muted)', marginBottom: '6px' }} />
+                    <span style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>{t('Tải ảnh lên (JPEG, PNG, WebP)')}</span>
+                    <input 
+                      type="file" 
+                      accept="image/*" 
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+                        if (file.size > 5 * 1024 * 1024) {
+                          toast.error(t('Dung lượng tệp đính kèm không được vượt quá 5MB'));
+                          return;
+                        }
+                        const previewUrl = URL.createObjectURL(file);
+                        setProofImageFile(file);
+                        setProofImagePreview(previewUrl);
+                      }}
+                      style={{ display: 'none' }}
+                    />
+                  </label>
+                )}
+              </div>
+            </div>
+
+            <div style={{ marginBottom: '1.5rem' }}>
+              <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 600, color: 'var(--color-text)', marginBottom: '0.5rem' }}>{t('Nội dung bình luận')}</label>
+              <textarea
+                style={{ width: '100%', minHeight: '80px', fontSize: '0.875rem', padding: '8px 12px', border: '1px solid var(--color-border)', borderRadius: '8px', outline: 'none', resize: 'none', background: 'var(--color-bg)', color: 'var(--color-text)' }}
+                value={proofCommentText}
+                onChange={(e) => setProofCommentText(e.target.value)}
+                placeholder={t('Nhập ghi chú hoặc mô tả về buổi gặp gỡ...')}
+              />
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+              <button type="button" className="btn outline" onClick={() => setMeetingToComplete(null)} disabled={completingMeeting}>{t('Hủy')}</button>
+              <button 
+                type="button"
+                className="btn success" 
+                disabled={!proofImageFile || completingMeeting} 
+                onClick={async () => {
+                  if (!proofImageFile || !meetingToComplete) return;
+                  setCompletingMeeting(true);
+                  try {
+                    let fileToUpload = proofImageFile;
+                    try {
+                      const { compressToWebP } = await import('../utils/imageCompress');
+                      fileToUpload = await compressToWebP(proofImageFile);
+                    } catch (err) {}
+                    
+                    const fd = new FormData();
+                    fd.append('file', fileToUpload);
+                    const uploadRes = await api.post('/upload', fd, {
+                      headers: { 'Content-Type': 'multipart/form-data' }
+                    });
+                    const uploadedUrl = uploadRes.data.data?.url ?? uploadRes.data.data?.path ?? uploadRes.data.url ?? '';
+                    if (!uploadedUrl) throw new Error('Không thể tải ảnh lên');
+
+                    // Post comment
+                    const payload = {
+                      content: proofCommentText,
+                      attachments: JSON.stringify([uploadedUrl]),
+                      parent_id: null
+                    };
+                    await api.post(`/activities/${meetingToComplete.id}/comments`, payload);
+
+                    // Complete activity
+                    await api.put(`/activities/${meetingToComplete.id}`, { status: 'done', progress: 100 });
+
+                    toast.success(t('Đã tải ảnh minh chứng và hoàn thành gặp gỡ'));
+                    
+                    setCalendarActivities(prev => prev.map(x => x.id === meetingToComplete.id ? { ...x, status: 'done' } : x));
+                    setWsTasks(prev => prev.map(x => x.id === meetingToComplete.id ? { ...x, status: 'done', progress: 100 } : x));
+                    
+                    fetchCalendarStats();
+                    fetchPortalTasks();
+                    fetchWorkspaceTasks();
+                    
+                    setMeetingToComplete(null);
+                  } catch (e: any) {
+                    toast.error(e.response?.data?.message || t('Có lỗi xảy ra khi lưu minh chứng'));
+                  } finally {
+                    setCompletingMeeting(false);
+                  }
+                }}
+              >
+                {completingMeeting ? t('Đang lưu...') : t('Xác nhận')}
+              </button>
+            </div>
+          </motion.div>
+        </div>
       )}
 
       {/* Interactive Explanation Modals */}

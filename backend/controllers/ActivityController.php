@@ -279,7 +279,7 @@ class ActivityController {
     public function index(array $auth): void {
         $tid = $auth['tenant_id'];
         $page = max(1,(int)($_GET['page']??1));
-        $limit = min(100,max(10,(int)($_GET['limit']??20)));
+        $limit = min(1000,max(10,(int)($_GET['limit']??20)));
         $offset = ($page-1)*$limit;
         $type = $_GET['type']??''; $status = $_GET['status']??''; $uid = $_GET['user_id']??'';
         $teamId = $_GET['team_id']??'';
