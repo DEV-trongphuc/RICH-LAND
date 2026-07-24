@@ -7047,6 +7047,31 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                           }} style={{ fontWeight: 600 }}><Plus size={14} /> Thêm ghi chú</button>
                         </div>
 
+                        {formData.notes && formData.notes.trim() && (
+                          <div 
+                            style={{ 
+                              padding: '1.25rem', 
+                              background: 'linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)', 
+                              border: '1px solid #bfdbfe', 
+                              borderLeft: '5px solid #2563eb', 
+                              borderRadius: '12px', 
+                              marginBottom: '1.5rem',
+                              boxShadow: '0 4px 14px rgba(37, 99, 235, 0.05)',
+                              animation: 'fadeIn 0.3s ease'
+                            }}
+                          >
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '0.5rem' }}>
+                              <FileText size={18} style={{ color: '#2563eb' }} />
+                              <h4 style={{ fontWeight: 800, fontSize: '0.9375rem', color: '#1e40af', margin: 0 }}>
+                                {t('Ghi chú / Thông tin ban đầu từ Marketing')}
+                              </h4>
+                            </div>
+                            <p style={{ fontSize: '0.875rem', color: '#1e3a8a', whiteSpace: 'pre-wrap', margin: 0, lineHeight: 1.5, fontWeight: 500 }}>
+                              {formatNote(formData.notes)}
+                            </p>
+                          </div>
+                        )}
+
                         {(() => {
                           // Retrieve stored note IDs sorting order
                           const storedOrder = localStorage.getItem(`notes_order_${contact?.id}`);

@@ -2720,7 +2720,6 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
       const res = await fetchAPI('check-ins&today_only=1');
       if (res.success) {
         setTodayCheckIn(res.data);
-        window.dispatchEvent(new CustomEvent('checkin-status-changed'));
       }
     } catch (err) {
       console.error("Error loading check-in status:", err);
@@ -16668,7 +16667,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                         onChange={(e) => setDiaryNoteText(e.target.value)}
                         style={{
                           width: '100%',
-                          height: '90px',
+                          height: '150px',
                           borderRadius: '8px',
                           border: '1px solid var(--color-border)',
                           padding: '10px',
@@ -16680,24 +16679,39 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                           lineHeight: 1.4
                         }}
                       />
-                      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr auto', gap: '8px', alignItems: 'center' }}>
-                        <CustomSelect
-                          options={[
-                            { value: '', label: t('Liên kết Khách hàng (Không có)') },
-                            ...contactsList.map(c => ({
-                              value: String(c.id),
-                              label: `${c.first_name || ''} ${c.last_name || ''}`.trim() || c.phone || '',
-                              avatar: resolveAttachmentUrl(c.avatar_url)
-                            }))
-                          ]}
-                          value={diaryContactId}
-                          onChange={(val) => setDiaryContactId(String(val))}
-                          searchable={true}
-                          showAvatars={true}
-                          width="100%"
-                        />
-
-                        <div style={{ display: 'flex', gap: '6px' }}>
+                      <div style={{ 
+                        display: 'flex', 
+                        flexDirection: isMobile ? 'column' : 'row', 
+                        gap: isMobile ? '12px' : '8px', 
+                        alignItems: isMobile ? 'stretch' : 'center',
+                        width: '100%',
+                        marginTop: '4px'
+                      }}>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <CustomSelect
+                            options={[
+                              { value: '', label: t('Liên kết Khách hàng (Không có)') },
+                              ...contactsList.map(c => ({
+                                value: String(c.id),
+                                label: `${c.first_name || ''} ${c.last_name || ''}`.trim() || c.phone || '',
+                                avatar: resolveAttachmentUrl(c.avatar_url)
+                              }))
+                            ]}
+                            value={diaryContactId}
+                            onChange={(val) => setDiaryContactId(String(val))}
+                            searchable={true}
+                            showAvatars={true}
+                            width="100%"
+                          />
+                        </div>
+ 
+                        <div style={{ 
+                          display: 'flex', 
+                          gap: '8px', 
+                          width: isMobile ? '100%' : 'auto', 
+                          justifyContent: isMobile ? 'stretch' : 'flex-end',
+                          marginTop: isMobile ? '4px' : '0'
+                        }}>
                           <button
                             type="button"
                             onClick={() => {
@@ -16706,7 +16720,19 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                               setDiaryContactId('');
                             }}
                             className="btn sm"
-                            style={{ border: '1px solid var(--color-border)', background: 'transparent', color: 'var(--color-text-muted)', fontSize: '0.78rem', padding: '6px 12px', borderRadius: '6px' }}
+                            style={{ 
+                              flex: isMobile ? 1 : 'none', 
+                              border: '1px solid var(--color-border)', 
+                              background: 'transparent', 
+                              color: 'var(--color-text-muted)', 
+                              fontSize: isMobile ? '0.85rem' : '0.78rem', 
+                              padding: isMobile ? '10px 16px' : '6px 12px', 
+                              borderRadius: isMobile ? '8px' : '6px',
+                              textAlign: 'center',
+                              justifyContent: 'center',
+                              height: isMobile ? '40px' : 'auto',
+                              fontWeight: 500
+                            }}
                           >
                             {t('Hủy')}
                           </button>
@@ -16736,6 +16762,8 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                                   setDiaryContactId('');
                                   setShowDiaryForm(false);
                                   fetchCalendarStats(); // reload
+                                } else {
+                                  toast.error(res.data.message || t('Lỗi khi lưu nhật ký'));
                                 }
                               } catch (err: any) {
                                 toast.error(t('Lỗi khi lưu nhật ký'));
@@ -16745,7 +16773,16 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                             }}
                             disabled={savingActivity || !diaryNoteText.trim()}
                             className="btn success sm"
-                            style={{ fontSize: '0.78rem', padding: '6px 14px', borderRadius: '6px', fontWeight: 600 }}
+                            style={{ 
+                              flex: isMobile ? 1 : 'none', 
+                              fontSize: isMobile ? '0.85rem' : '0.78rem', 
+                              padding: isMobile ? '10px 16px' : '6px 14px', 
+                              borderRadius: isMobile ? '8px' : '6px', 
+                              fontWeight: 600,
+                              textAlign: 'center',
+                              justifyContent: 'center',
+                              height: isMobile ? '40px' : 'auto'
+                            }}
                           >
                             {savingActivity ? t('Đang lưu...') : t('Lưu nhật ký')}
                           </button>
