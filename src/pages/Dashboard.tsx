@@ -671,7 +671,7 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
         if (pendingCoopsCount > 0) {
           issues.push({
             type: 'coop',
-            text: pendingCoopsCount + ' ' + t('yêu cầu liên kết môi giới cần duyệt.'),
+            text: pendingCoopsCount + ' ' + t('yêu cầu hợp tác cần duyệt.'),
             action: () => navigate('/cooperation-slips?status=pending_me')
           });
         }
