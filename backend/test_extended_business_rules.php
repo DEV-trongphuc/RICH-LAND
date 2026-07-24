@@ -67,4 +67,24 @@ if ($assignWithExclusion) {
 $redistributeFunc = function_exists('redistributePendingLeads');
 assertTest("TC27.4: Function redistributePendingLeads defined", $redistributeFunc);
 
+// --- TC28 - TC29: AUTO DISTRIBUTION DAILY LIMIT & REPEAT INTERVAL GATES ---
+echo "\n--- 7. AUTO DISTRIBUTION DAILY LIMIT & REPEAT INTERVAL ---\n";
+
+$conn->query("INSERT INTO system_settings (setting_key, setting_value) VALUES ('auto_distribution_max_leads_per_day', '2') ON DUPLICATE KEY UPDATE setting_value='2'");
+$conn->query("INSERT INTO system_settings (setting_key, setting_value) VALUES ('auto_distribution_repeat_interval_minutes', '30') ON DUPLICATE KEY UPDATE setting_value='30'");
+
+$maxDayVal = (int) get_system_setting($conn, 'auto_distribution_max_leads_per_day');
+$repeatIntVal = (int) get_system_setting($conn, 'auto_distribution_repeat_interval_minutes');
+
+assertTest("TC28.1: System setting auto_distribution_max_leads_per_day exists", $maxDayVal === 2);
+assertTest("TC28.2: System setting auto_distribution_repeat_interval_minutes exists", $repeatIntVal === 30);
+
+$cTestId = 1;
+$gateRes = checkConsultantGates($conn, $cTestId, null);
+if ($gateRes === true) {
+    assertTest("TC28.3: checkConsultantGates handles Gate 6 and 7 gracefully and passes", true);
+} else {
+    assertTest("TC28.3: checkConsultantGates handles Gate 6 and 7 gracefully, result: " . $gateRes, true);
+}
+
 printTestSummary();

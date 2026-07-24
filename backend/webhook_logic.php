@@ -2254,6 +2254,50 @@ function checkConsultantGates($conn, $consultantId, $lead = null)
         }
     }
 
+    // GATE 6: Hạn mức chia lead tự động hệ thống (Hệ thống chia lead tự động mỗi ngày)
+    $autoDistMaxDay = (int) get_system_setting($conn, 'auto_distribution_max_leads_per_day');
+    if ($autoDistMaxDay > 0) {
+        $stmtAd = $conn->prepare("
+            SELECT COUNT(*) as cnt FROM distribution_logs 
+            WHERE (assigned_to = ? OR assigned_to = ?)
+              AND status IN ('assigned', 'compensation')
+              AND received_at >= CURDATE()
+        ");
+        if ($stmtAd) {
+            $stmtAd->bind_param("ii", $consultantId, $targetUserId);
+            $stmtAd->execute();
+            $adCnt = (int) ($stmtAd->get_result()->fetch_assoc()['cnt'] ?? 0);
+            $stmtAd->close();
+
+            if ($adCnt >= $autoDistMaxDay) {
+                return "Failed Gate 6: Max daily auto distribution limit exceeded ($adCnt >= $autoDistMaxDay leads received today)";
+            }
+        }
+    }
+
+    // GATE 7: Khoảng cách lặp lại giữa các lần chia lead tự động
+    if ($autoDistMaxDay >= 2) {
+        $autoDistRepeatInterval = (int) get_system_setting($conn, 'auto_distribution_repeat_interval_minutes');
+        if ($autoDistRepeatInterval > 0) {
+            $stmtInt = $conn->prepare("
+                SELECT COUNT(*) as cnt FROM distribution_logs 
+                WHERE (assigned_to = ? OR assigned_to = ?)
+                  AND status IN ('assigned', 'compensation')
+                  AND received_at >= DATE_SUB(NOW(), INTERVAL ? MINUTE)
+            ");
+            if ($stmtInt) {
+                $stmtInt->bind_param("iii", $consultantId, $targetUserId, $autoDistRepeatInterval);
+                $stmtInt->execute();
+                $hasRecent = (int) ($stmtInt->get_result()->fetch_assoc()['cnt'] ?? 0);
+                $stmtInt->close();
+
+                if ($hasRecent > 0) {
+                    return "Failed Gate 7: Repeat interval not reached (Received a lead within the last $autoDistRepeatInterval minutes)";
+                }
+            }
+        }
+    }
+
     return true;
 }
 
