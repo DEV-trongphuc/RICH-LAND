@@ -17404,7 +17404,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                           entity_type: 'contact',
                           entity_id: meetingToComplete.contact_id,
                           body: `[Ảnh minh chứng Gặp gỡ] ${proofCommentText.trim()}`,
-                          attachments: JSON.stringify(uploadedPaths)
+                          attachments: JSON.stringify([uploadedUrl])
                         };
                         await api.post('/notes', notePayload);
                       } catch (noteErr) {
