@@ -10615,10 +10615,10 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
 
         {/* Responsive flex container with sidebar tabs */}
         <div className={styles.drawerBody} style={{
-          background: 'var(--color-surface)',
-          borderRadius: '16px',
-          border: '1px solid var(--color-border-light)',
-          boxShadow: '0 4px 20px rgba(0,0,0,0.02)',
+          background: isMobile ? 'transparent' : 'var(--color-surface)',
+          borderRadius: isMobile ? '0' : '16px',
+          border: isMobile ? 'none' : '1px solid var(--color-border-light)',
+          boxShadow: isMobile ? 'none' : '0 4px 20px rgba(0,0,0,0.02)',
           display: 'flex',
           flexDirection: isMobile ? 'row' : 'row',
           overflow: isMobile ? 'hidden' : 'visible',
@@ -10631,13 +10631,17 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
           {/* LEFT SIDEBAR: Avatar & Tabs */}
           {(!isMobile || true) && (
             <div style={isMobile ? {
-              width: '50%',
+              width: 'calc(50% - 8px)',
+              marginRight: '8px',
               flexShrink: 0,
               display: 'flex',
               flexDirection: 'column',
               gap: '1.25rem',
-              padding: '1.25rem 1rem',
-              background: 'var(--color-bg-alt)',
+              padding: '1.25rem 1.25rem',
+              background: 'var(--color-surface)',
+              borderRadius: '16px',
+              border: '1px solid var(--color-border-light)',
+              boxShadow: 'var(--shadow-sm)',
               boxSizing: 'border-box'
             } : {
               width: '250px',
@@ -11155,34 +11159,38 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
           {(!isMobile || profileActiveTab || renderedTab) && (
             <div className={styles.contentArea} style={{
               flex: isMobile ? 'none' : 1,
-              width: isMobile ? '50%' : 'auto',
+              width: isMobile ? 'calc(50% - 8px)' : 'auto',
+              marginLeft: isMobile ? '8px' : '0',
               flexShrink: isMobile ? 0 : 1,
               padding: isMobile ? '1rem' : '2rem',
-              background: isMobile ? 'transparent' : 'var(--color-surface)',
+              background: 'var(--color-surface)',
+              borderRadius: '16px',
+              border: isMobile ? '1px solid var(--color-border-light)' : 'none',
+              boxShadow: isMobile ? 'var(--shadow-sm)' : 'none',
               overflowY: 'auto',
               display: 'flex',
               flexDirection: 'column',
               gap: '1.5rem',
-              borderTopRightRadius: isMobile ? '0px' : '16px',
-              borderBottomRightRadius: isMobile ? '0px' : '16px',
-              borderTopLeftRadius: '0px',
-              borderBottomLeftRadius: '0px'
+              borderTopRightRadius: '16px',
+              borderBottomRightRadius: '16px',
+              borderTopLeftRadius: '16px',
+              borderBottomLeftRadius: '16px'
             }}>
               {/* Mobile Sticky Header block inside Content Area */}
               {isMobile && (profileActiveTab || renderedTab) && (
                 <div style={{
                   position: 'sticky',
-                  top: '0',
+                  top: '-1rem',
                   zIndex: 100,
                   background: 'var(--color-surface)',
-                  padding: '12px 16px',
+                  padding: '1.5rem 1.5rem 0.75rem 1.5rem',
                   display: 'flex',
                   justifyContent: 'space-between',
                   alignItems: 'center',
-                  borderRadius: '12px',
-                  border: '1px solid var(--color-border-light)',
-                  boxShadow: 'var(--shadow-sm)',
-                  marginBottom: '12px',
+                  borderBottom: '1px solid var(--color-border)',
+                  margin: '-1rem -1rem 1.25rem -1rem',
+                  borderTopLeftRadius: '16px',
+                  borderTopRightRadius: '16px',
                   gap: '12px'
                 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
