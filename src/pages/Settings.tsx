@@ -4681,7 +4681,63 @@ function doPost(e) {
                           </div>
                         </div>
 
-                                              </div>
+                        {/* Nhóm B: Điều Phối & Chống Ôm (Backpressure) */}
+                        <div style={{
+                          background: 'var(--color-bg-light)',
+                          padding: '1.25rem',
+                          borderRadius: '10px',
+                          border: '1px solid var(--color-border-light)',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '1rem'
+                        }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', borderBottom: '1px dashed var(--color-border-light)', paddingBottom: '8px', marginBottom: '4px' }}>
+                            <Layers size={14} style={{ color: 'var(--color-primary)' }} />
+                            <h5 style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text)', margin: 0 }}>
+                              {t('Điều Phối & Chống Ôm (Backpressure)')}
+                            </h5>
+                          </div>
+
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                            <div>
+                              <label className="form-label" style={{ fontWeight: 600 }}>{t('Hạn mức chống ôm (Backpressure)')}</label>
+                              <div style={{ display: 'flex', alignItems: 'center', position: 'relative' }}>
+                                <input
+                                  type="number"
+                                  className="form-input"
+                                  style={{ paddingRight: '3.5rem' }}
+                                  value={backpressureLimit}
+                                  onChange={e => setBackpressureLimit(Number(e.target.value))}
+                                  min={1}
+                                />
+                                <span style={{ position: 'absolute', right: '12px', fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>{t('lead')}</span>
+                              </div>
+                              <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px', display: 'block', lineHeight: 1.4 }}>
+                                {t('Hạn mức data Chưa Xác Định tối đa trước khi chặn chia lead mới.')}
+                              </span>
+                            </div>
+
+                            <div>
+                              <label className="form-label" style={{ fontWeight: 600 }}>{t('Chờ chia song song Chưa XĐ')}</label>
+                              <div style={{ display: 'flex', alignItems: 'center', position: 'relative' }}>
+                                <input
+                                  type="number"
+                                  className="form-input"
+                                  style={{ paddingRight: '3.5rem' }}
+                                  value={uncontactedLeadShareHours}
+                                  onChange={e => setUncontactedLeadShareHours(Number(e.target.value))}
+                                  min={1}
+                                />
+                                <span style={{ position: 'absolute', right: '12px', fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>{t('giờ')}</span>
+                              </div>
+                              <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px', display: 'block', lineHeight: 1.4 }}>
+                                {t('Chia thêm 1 TVV nếu lead Chưa XĐ không tiến triển sau số giờ này.')}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+
+                      </div>
                     </div>
 
                     {/* Sub-group 2: SLA & Tiếp nhận */}
@@ -4766,81 +4822,6 @@ function doPost(e) {
                             </span>
                           </div>
 
-                        </div>
-
-                        {/* Nhóm B: Điều Phối & Chống Ôm (Backpressure) */}
-                        <div style={{
-                          background: 'var(--color-bg-light)',
-                          padding: '1.25rem',
-                          borderRadius: '10px',
-                          border: '1px solid var(--color-border-light)',
-                          display: 'flex',
-                          flexDirection: 'column',
-                          gap: '1rem'
-                        }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', borderBottom: '1px dashed var(--color-border-light)', paddingBottom: '8px', marginBottom: '4px' }}>
-                            <Layers size={14} style={{ color: 'var(--color-primary)' }} />
-                            <h5 style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text)', margin: 0 }}>
-                              {t('Điều Phối & Chống Ôm (Backpressure)')}
-                            </h5>
-                          </div>
-
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                            <div>
-                              <label className="form-label" style={{ fontWeight: 600 }}>{t('Hạn mức chống ôm (Backpressure)')}</label>
-                              <div style={{ display: 'flex', alignItems: 'center', position: 'relative' }}>
-                                <input
-                                  type="number"
-                                  className="form-input"
-                                  style={{ paddingRight: '3.5rem' }}
-                                  value={backpressureLimit}
-                                  onChange={e => setBackpressureLimit(Number(e.target.value))}
-                                  min={1}
-                                />
-                                <span style={{ position: 'absolute', right: '12px', fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>{t('lead')}</span>
-                              </div>
-                              <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px', display: 'block', lineHeight: 1.4 }}>
-                                {t('Hạn mức data Chưa Xác Định tối đa trước khi chặn chia lead mới.')}
-                              </span>
-                            </div>
-
-                            <div>
-                              <label className="form-label" style={{ fontWeight: 600 }}>{t('Trạng thái kích hoạt chia song song')}</label>
-                              <select
-                                className="form-select"
-                                value={parallelAssignmentTriggerStatus}
-                                onChange={e => setParallelAssignmentTriggerStatus(e.target.value)}
-                                style={{ width: '100%', height: '36px', fontSize: '0.8125rem', borderRadius: '6px', border: '1px solid var(--color-border)', padding: '0 10px', background: 'white' }}
-                              >
-                                {pipelineStatusHierarchy.map(slug => (
-                                  <option key={slug} value={slug}>
-                                    {pipelineStatusLabels[slug] || slug}
-                                  </option>
-                                ))}
-                              </select>
-                              <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px', display: 'block', lineHeight: 1.4 }}>
-                                {t('Trạng thái phễu áp dụng chế độ gán thêm Sale thứ hai song song.')}
-                              </span>
-                            </div>
-
-                            <div>
-                              <label className="form-label" style={{ fontWeight: 600 }}>{t('Thời gian chờ chia song song')}</label>
-                              <div style={{ display: 'flex', alignItems: 'center', position: 'relative' }}>
-                                <input
-                                  type="number"
-                                  className="form-input"
-                                  style={{ paddingRight: '3.5rem' }}
-                                  value={uncontactedLeadShareHours}
-                                  onChange={e => setUncontactedLeadShareHours(Number(e.target.value))}
-                                  min={1}
-                                />
-                                <span style={{ position: 'absolute', right: '12px', fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>{t('giờ')}</span>
-                              </div>
-                              <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px', display: 'block', lineHeight: 1.4 }}>
-                                {t('Chia thêm 1 TVV nếu lead ở trạng thái trên không tiến triển sau số giờ này.')}
-                              </span>
-                            </div>
-                          </div>
                         </div>
                       </div>
                     </div>
