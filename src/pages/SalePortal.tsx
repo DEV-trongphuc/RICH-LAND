@@ -10495,12 +10495,12 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
     );
 
     const cardContainerStyle = (isMobile: boolean, customBorderRadius?: string): React.CSSProperties => (isMobile ? {
-      padding: '1.25rem 1rem',
+      padding: '0',
       display: 'flex',
       flexDirection: 'column',
       gap: '1.25rem',
-      background: 'var(--color-surface)',
-      borderRadius: '12px',
+      background: 'transparent',
+      borderRadius: '0',
       boxShadow: 'none'
     } : {
       padding: '2rem',
