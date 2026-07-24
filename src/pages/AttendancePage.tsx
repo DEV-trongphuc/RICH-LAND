@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { useLocation } from 'react-router-dom';
 import { withRouterFreezer } from '../components/RouterFreezer';
 import { fetchAPI } from '../utils/api';
@@ -2781,7 +2782,7 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
       />
 
       {/* Meeting Proof Modal */}
-      {meetingToComplete && (
+      {meetingToComplete && createPortal(
         <div 
           style={{
             position: 'fixed',
@@ -2910,6 +2911,19 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
                       parent_id: null
                     };
                     await api.post(`/activities/${meetingToComplete.id}/comments`, payload);
+                    if (meetingToComplete.contact_id) {
+                      try {
+                        const notePayload = {
+                          entity_type: 'contact',
+                          entity_id: meetingToComplete.contact_id,
+                          body: `[Ảnh minh chứng Gặp gỡ] ${proofCommentText.trim()}`,
+                          attachments: JSON.stringify([uploadedUrl])
+                        };
+                        await api.post('/notes', notePayload);
+                      } catch (noteErr) {
+                        console.error('Lỗi khi sao chép ghi chú khách hàng:', noteErr);
+                      }
+                    }
 
                     // Complete activity
                     await api.put(`/activities/${meetingToComplete.id}`, { status: 'done', progress: 100 });
@@ -2931,7 +2945,8 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
     </div>

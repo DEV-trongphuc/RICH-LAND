@@ -17266,7 +17266,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
       )}
 
       {/* Meeting Proof Modal */}
-      {meetingToComplete && (
+      {meetingToComplete && createPortal(
         <div 
           style={{
             position: 'fixed',
@@ -17398,6 +17398,19 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                       parent_id: null
                     };
                     await api.post(`/activities/${meetingToComplete.id}/comments`, payload);
+                    if (meetingToComplete.contact_id) {
+                      try {
+                        const notePayload = {
+                          entity_type: 'contact',
+                          entity_id: meetingToComplete.contact_id,
+                          body: `[Ảnh minh chứng Gặp gỡ] ${proofCommentText.trim()}`,
+                          attachments: JSON.stringify(uploadedPaths)
+                        };
+                        await api.post('/notes', notePayload);
+                      } catch (noteErr) {
+                        console.error('Lỗi khi sao chép ghi chú khách hàng:', noteErr);
+                      }
+                    }
 
                     // Complete activity
                     await api.put(`/activities/${meetingToComplete.id}`, { status: 'done', progress: 100 });
@@ -17423,7 +17436,8 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
               </button>
             </div>
           </motion.div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Interactive Explanation Modals */}
