@@ -319,6 +319,7 @@ const SettingsInner = () => {
   const [temperatureDecayDays, setTemperatureDecayDays] = useState<number>(5);
   const [leadResponseTimeoutMinutes, setLeadResponseTimeoutMinutes] = useState<number>(2);
   const [leadMaxRecallAttempts, setLeadMaxRecallAttempts] = useState<number>(2);
+  const [leadRecallCooldownMinutes, setLeadRecallCooldownMinutes] = useState<number>(30);
   const [leadResponseTimeoutOvertimeMinutes, setLeadResponseTimeoutOvertimeMinutes] = useState<number>(5);
   const [uncontactedLeadShareHours, setUncontactedLeadShareHours] = useState<number>(3);
   const [nightShiftStartTime, setNightShiftStartTime] = useState<string>("18:00");
@@ -367,8 +368,6 @@ const SettingsInner = () => {
   const [broadcastExclusionRules, setBroadcastExclusionRules] = useState<string>("not_lead,opt_out,active_khtn");
   const [coopEligibleStatuses, setCoopEligibleStatuses] = useState<string>("booking,da_gap,dat_coc");
   const [coopDefaultFiles, setCoopDefaultFiles] = useState<string>("UNC.png,CMND.png");
-  const [autoDistributionMaxLeadsPerDay, setAutoDistributionMaxLeadsPerDay] = useState<number>(0);
-  const [autoDistributionRepeatIntervalMinutes, setAutoDistributionRepeatIntervalMinutes] = useState<number>(0);
 
   const [securityTimers, setSecurityTimers] = useState<Record<string, string>>({
     chua_xac_dinh: '+3 hours',
@@ -758,6 +757,7 @@ const SettingsInner = () => {
         if (json.data.temperature_decay_days !== undefined) setTemperatureDecayDays(Number(json.data.temperature_decay_days));
         if (json.data.lead_response_timeout_minutes !== undefined) setLeadResponseTimeoutMinutes(Number(json.data.lead_response_timeout_minutes));
         if (json.data.lead_max_recall_attempts !== undefined) setLeadMaxRecallAttempts(Number(json.data.lead_max_recall_attempts));
+        if (json.data.lead_recall_cooldown_minutes !== undefined) setLeadRecallCooldownMinutes(Number(json.data.lead_recall_cooldown_minutes));
         if (json.data.lead_response_timeout_overtime_minutes !== undefined) setLeadResponseTimeoutOvertimeMinutes(Number(json.data.lead_response_timeout_overtime_minutes));
         if (json.data.uncontacted_lead_share_hours !== undefined) setUncontactedLeadShareHours(Number(json.data.uncontacted_lead_share_hours));
         if (json.data.night_shift_start_time !== undefined) setNightShiftStartTime(json.data.night_shift_start_time);
@@ -887,8 +887,6 @@ const SettingsInner = () => {
         if (json.data.databank_limit_per_day !== undefined) setDatabankLimitPerDay(Number(json.data.databank_limit_per_day));
         if (json.data.databank_limit_per_hour !== undefined) setDatabankLimitPerHour(Number(json.data.databank_limit_per_hour));
         if (json.data.databank_limit_per_month !== undefined) setDatabankLimitPerMonth(Number(json.data.databank_limit_per_month));
-        if (json.data.auto_distribution_max_leads_per_day !== undefined) setAutoDistributionMaxLeadsPerDay(Number(json.data.auto_distribution_max_leads_per_day));
-        if (json.data.auto_distribution_repeat_interval_minutes !== undefined) setAutoDistributionRepeatIntervalMinutes(Number(json.data.auto_distribution_repeat_interval_minutes));
         if (json.data.backpressure_limit !== undefined) setBackpressureLimit(Number(json.data.backpressure_limit));
         if (json.data.checkin_approval_sla_minutes !== undefined) setCheckinApprovalSlaMinutes(Number(json.data.checkin_approval_sla_minutes));
         if (json.data.late_checkin_compensation_enabled !== undefined) setLateCheckinCompensationEnabled(Number(json.data.late_checkin_compensation_enabled));
@@ -1311,6 +1309,7 @@ const SettingsInner = () => {
       temperature_decay_days: temperatureDecayDays,
       lead_response_timeout_minutes: leadResponseTimeoutMinutes,
       lead_max_recall_attempts: leadMaxRecallAttempts,
+      lead_recall_cooldown_minutes: leadRecallCooldownMinutes,
       lead_response_timeout_overtime_minutes: leadResponseTimeoutOvertimeMinutes,
       uncontacted_lead_share_hours: uncontactedLeadShareHours,
       night_shift_start_time: nightShiftStartTime,
@@ -1356,8 +1355,6 @@ const SettingsInner = () => {
           }
         : globalWorkSchedule),
       databank_limit_per_day: databankLimitPerDay,
-      auto_distribution_max_leads_per_day: autoDistributionMaxLeadsPerDay,
-      auto_distribution_repeat_interval_minutes: autoDistributionMaxLeadsPerDay >= 2 ? autoDistributionRepeatIntervalMinutes : 0,
       databank_limit_per_hour: databankLimitPerHour,
       databank_limit_per_month: databankLimitPerMonth,
       backpressure_limit: backpressureLimit,
@@ -4730,8 +4727,8 @@ function doPost(e) {
                             </div>
                           </div>
                           
-                           <div style={{ marginTop: '1rem' }}>
-                            <label className="form-label" style={{ fontWeight: 600 }}>{t('Số lần bỏ lỡ/thu hồi tối đa cho mỗi lead (mỗi Sale)')}</label>
+                          <div style={{ marginTop: '1rem' }}>
+                            <label className="form-label" style={{ fontWeight: 600 }}>{t('Số lần thử lại tối đa đối với một Sale trên cùng một lead')}</label>
                             <div style={{ display: 'flex', alignItems: 'center', position: 'relative' }}>
                               <input
                                 type="number"
@@ -4744,7 +4741,25 @@ function doPost(e) {
                               <span style={{ position: 'absolute', right: '12px', fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>{t('lần')}</span>
                             </div>
                             <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px', display: 'block', lineHeight: 1.4 }}>
-                              {t('Số lần tối đa hệ thống cho phép một Sale bỏ lỡ phản hồi (quá hạn SLA) đối với cùng một lead trước khi loại trừ Sale đó khỏi lượt chia lại của lead này.')}
+                              {t('Mặc định là 2 lần. Hệ thống sẽ tạm hoãn chia chính lead này sang ngày mai nếu một Sale bỏ lỡ quá số lần trên. Nhập 0 để thử lại liên tục không giới hạn.')}
+                            </span>
+                          </div>
+
+                          <div style={{ marginTop: '1rem' }}>
+                            <label className="form-label" style={{ fontWeight: 600 }}>{t('Thời gian giãn cách tối thiểu trước khi chia lại cùng một lead')}</label>
+                            <div style={{ display: 'flex', alignItems: 'center', position: 'relative' }}>
+                              <input
+                                type="number"
+                                className="form-input"
+                                style={{ paddingRight: '3.5rem' }}
+                                value={leadRecallCooldownMinutes}
+                                onChange={e => setLeadRecallCooldownMinutes(Number(e.target.value))}
+                                min={0}
+                              />
+                              <span style={{ position: 'absolute', right: '12px', fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>{t('phút')}</span>
+                            </div>
+                            <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px', display: 'block', lineHeight: 1.4 }}>
+                              {t('Mặc định là 30 phút. Khoảng thời gian tối thiểu kể từ lần thu hồi gần nhất trước khi hệ thống có thể thử chia lại chính lead đó cho cùng một Sale. Nhập 0 để cho phép thử lại ngay.')}
                             </span>
                           </div>
 
@@ -4889,63 +4904,6 @@ function doPost(e) {
                         </div>
                         <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px', display: 'block' }}>
                           {t('Số lượng Sale tối đa được claim trùng chăm sóc song song.')}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Nhóm 3.5: Cấu hình chia lead tự động (Hệ thống) */}
-                  <div style={{ background: 'var(--color-bg-secondary)', padding: '1.25rem', borderRadius: 'var(--radius-xl)', border: '1px solid var(--color-border)', marginTop: '1.25rem' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '1rem' }}>
-                      <Clock size={15} style={{ color: 'var(--color-primary)' }} />
-                      <h4 style={{ fontSize: '0.9375rem', fontWeight: 700, color: 'var(--color-text)' }}>{t('Hạn mức chia lead tự động (Vòng xoay Hệ thống)')}</h4>
-                    </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.25rem' }}>
-                      <div>
-                        <label className="form-label">{t('Hạn mức chia / Ngày')}</label>
-                        <div style={{ display: 'flex', alignItems: 'center', position: 'relative' }}>
-                          <input
-                            type="number"
-                            className="form-input"
-                            style={{ paddingRight: '4.5rem' }}
-                            value={autoDistributionMaxLeadsPerDay}
-                            onChange={e => {
-                              const val = Math.max(0, Number(e.target.value));
-                              setAutoDistributionMaxLeadsPerDay(val);
-                              if (val < 2) {
-                                setAutoDistributionRepeatIntervalMinutes(0);
-                              }
-                            }}
-                            min={0}
-                          />
-                          <span style={{ position: 'absolute', right: '12px', fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>{t('lead / ngày')}</span>
-                        </div>
-                        <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px', display: 'block' }}>
-                          {t('Số lead tối đa một Sale được hệ thống chia tự động mỗi ngày (0 = không giới hạn).')}
-                        </span>
-                      </div>
-
-                      <div>
-                        <label className="form-label" style={{ color: autoDistributionMaxLeadsPerDay < 2 ? 'var(--color-text-muted)' : 'var(--color-text)' }}>
-                          {t('Khoảng cách lặp lại')}
-                        </label>
-                        <div style={{ display: 'flex', alignItems: 'center', position: 'relative' }}>
-                          <input
-                            type="number"
-                            className="form-input"
-                            style={{ paddingRight: '4.5rem' }}
-                            value={autoDistributionRepeatIntervalMinutes}
-                            onChange={e => setAutoDistributionRepeatIntervalMinutes(Math.max(0, Number(e.target.value)))}
-                            min={0}
-                            disabled={autoDistributionMaxLeadsPerDay < 2}
-                            placeholder={autoDistributionMaxLeadsPerDay < 2 ? t('Yêu cầu hạn mức ≥ 2') : t('0 = Tắt')}
-                          />
-                          <span style={{ position: 'absolute', right: '12px', fontSize: '0.75rem', fontWeight: 600, color: autoDistributionMaxLeadsPerDay < 2 ? 'var(--color-text-muted)' : 'var(--color-text-muted)' }}>{t('phút')}</span>
-                        </div>
-                        <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px', display: 'block' }}>
-                          {autoDistributionMaxLeadsPerDay < 2 
-                            ? t('Chỉ bật khi hạn mức chia/ngày là từ 2 số trở lên.') 
-                            : t('Thời gian giãn cách tối thiểu giữa 2 lần chia lead liên tiếp cho cùng 1 Sale.')}
                         </span>
                       </div>
                     </div>

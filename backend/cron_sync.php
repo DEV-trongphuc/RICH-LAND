@@ -1263,8 +1263,7 @@ if (!function_exists('recallInactiveLeads')) {
                         $maxAttempts = 0;
                     }
 
-                    $activeCount = countActiveRoundConsultants($conn, $roundId);
-                    if ($activeCount > 1 && $maxAttempts > 0) {
+                    if ($maxAttempts > 0) {
                         $attemptsStmt = $conn->prepare("
                             SELECT assigned_to, COUNT(*) as cnt 
                             FROM distribution_logs 
@@ -1282,6 +1281,29 @@ if (!function_exists('recallInactiveLeads')) {
                             }
                             $attemptsStmt->close();
                         }
+                    }
+
+                    $cooldownMins = (int) get_system_setting($conn, 'lead_recall_cooldown_minutes');
+                    if ($cooldownMins > 0) {
+                        $cooldownStmt = $conn->prepare("
+                            SELECT DISTINCT assigned_to 
+                            FROM distribution_logs 
+                            WHERE lead_id = ? AND status = 'recalled' 
+                              AND received_at >= DATE_SUB(NOW(), INTERVAL ? MINUTE)
+                        ");
+                        if ($cooldownStmt) {
+                            $cooldownStmt->bind_param("ii", $leadId, $cooldownMins);
+                            $cooldownStmt->execute();
+                            $cooldownRes = $cooldownStmt->get_result();
+                            while ($cooldownRow = $cooldownRes->fetch_assoc()) {
+                                $excludeIds[] = (int)$cooldownRow['assigned_to'];
+                            }
+                            $cooldownStmt->close();
+                        }
+                    }
+
+                    if (!empty($excludeIds)) {
+                        $excludeIds = array_values(array_unique($excludeIds));
                     }
 
                     $assignResult = getNextConsultantInRound($conn, $roundId, null, $excludeIds);
