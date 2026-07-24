@@ -320,6 +320,7 @@ const SettingsInner = () => {
   const [leadResponseTimeoutMinutes, setLeadResponseTimeoutMinutes] = useState<number>(2);
   const [leadMaxRecallAttempts, setLeadMaxRecallAttempts] = useState<number>(2);
   const [leadRecallCooldownMinutes, setLeadRecallCooldownMinutes] = useState<number>(30);
+  const [parallelAssignmentTriggerStatus, setParallelAssignmentTriggerStatus] = useState<string>('chua_xac_dinh');
   const [leadResponseTimeoutOvertimeMinutes, setLeadResponseTimeoutOvertimeMinutes] = useState<number>(5);
   const [uncontactedLeadShareHours, setUncontactedLeadShareHours] = useState<number>(3);
   const [nightShiftStartTime, setNightShiftStartTime] = useState<string>("18:00");
@@ -758,6 +759,7 @@ const SettingsInner = () => {
         if (json.data.lead_response_timeout_minutes !== undefined) setLeadResponseTimeoutMinutes(Number(json.data.lead_response_timeout_minutes));
         if (json.data.lead_max_recall_attempts !== undefined) setLeadMaxRecallAttempts(Number(json.data.lead_max_recall_attempts));
         if (json.data.lead_recall_cooldown_minutes !== undefined) setLeadRecallCooldownMinutes(Number(json.data.lead_recall_cooldown_minutes));
+        if (json.data.parallel_assignment_trigger_status !== undefined) setParallelAssignmentTriggerStatus(json.data.parallel_assignment_trigger_status);
         if (json.data.lead_response_timeout_overtime_minutes !== undefined) setLeadResponseTimeoutOvertimeMinutes(Number(json.data.lead_response_timeout_overtime_minutes));
         if (json.data.uncontacted_lead_share_hours !== undefined) setUncontactedLeadShareHours(Number(json.data.uncontacted_lead_share_hours));
         if (json.data.night_shift_start_time !== undefined) setNightShiftStartTime(json.data.night_shift_start_time);
@@ -1310,6 +1312,7 @@ const SettingsInner = () => {
       lead_response_timeout_minutes: leadResponseTimeoutMinutes,
       lead_max_recall_attempts: leadMaxRecallAttempts,
       lead_recall_cooldown_minutes: leadRecallCooldownMinutes,
+      parallel_assignment_trigger_status: parallelAssignmentTriggerStatus,
       lead_response_timeout_overtime_minutes: leadResponseTimeoutOvertimeMinutes,
       uncontacted_lead_share_hours: uncontactedLeadShareHours,
       night_shift_start_time: nightShiftStartTime,
@@ -4802,7 +4805,26 @@ function doPost(e) {
                             </div>
 
                             <div>
-                              <label className="form-label" style={{ fontWeight: 600 }}>{t('Chờ chia song song Chưa XĐ')}</label>
+                              <label className="form-label" style={{ fontWeight: 600 }}>{t('Trạng thái kích hoạt chia song song')}</label>
+                              <select
+                                className="form-select"
+                                value={parallelAssignmentTriggerStatus}
+                                onChange={e => setParallelAssignmentTriggerStatus(e.target.value)}
+                                style={{ width: '100%', height: '36px', fontSize: '0.8125rem', borderRadius: '6px', border: '1px solid var(--color-border)', padding: '0 10px', background: 'white' }}
+                              >
+                                {pipelineStatusHierarchy.map(slug => (
+                                  <option key={slug} value={slug}>
+                                    {pipelineStatusLabels[slug] || slug}
+                                  </option>
+                                ))}
+                              </select>
+                              <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px', display: 'block', lineHeight: 1.4 }}>
+                                {t('Trạng thái phễu áp dụng chế độ gán thêm Sale thứ hai song song.')}
+                              </span>
+                            </div>
+
+                            <div>
+                              <label className="form-label" style={{ fontWeight: 600 }}>{t('Thời gian chờ chia song song')}</label>
                               <div style={{ display: 'flex', alignItems: 'center', position: 'relative' }}>
                                 <input
                                   type="number"
@@ -4815,7 +4837,7 @@ function doPost(e) {
                                 <span style={{ position: 'absolute', right: '12px', fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>{t('giờ')}</span>
                               </div>
                               <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px', display: 'block', lineHeight: 1.4 }}>
-                                {t('Chia thêm 1 TVV nếu lead Chưa XĐ không tiến triển.')}
+                                {t('Chia thêm 1 TVV nếu lead ở trạng thái trên không tiến triển sau số giờ này.')}
                               </span>
                             </div>
                           </div>

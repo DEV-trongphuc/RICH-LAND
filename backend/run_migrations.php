@@ -358,6 +358,9 @@ try {
     // Add default setting for lead_recall_cooldown_minutes
     $conn->query("INSERT INTO system_settings (setting_key, setting_value) VALUES ('lead_recall_cooldown_minutes', '30') ON DUPLICATE KEY UPDATE setting_value = IFNULL(setting_value, '30')");
 
+    // Add default setting for parallel_assignment_trigger_status
+    $conn->query("INSERT INTO system_settings (setting_key, setting_value) VALUES ('parallel_assignment_trigger_status', 'chua_xac_dinh') ON DUPLICATE KEY UPDATE setting_value = IFNULL(setting_value, 'chua_xac_dinh')");
+
     // 8.8. Add partner distribution network columns to companies (Version 191)
     $chkTier = $conn->query("SHOW COLUMNS FROM `companies` LIKE 'tier'");
     if (!$chkTier || $chkTier->num_rows == 0) {

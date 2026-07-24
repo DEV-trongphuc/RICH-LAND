@@ -2563,6 +2563,8 @@ function releaseExpiredLeadsToKho($conn) {
 function assignParallelLeads($conn) {
     logSync("Running assignParallelLeads...");
     
+    $triggerStatus = get_system_setting($conn, 'parallel_assignment_trigger_status') ?: 'chua_xac_dinh';
+    
     $applicableSourcesStr = get_system_setting($conn, 'databank_applicable_sources') ?: 'R3_Fb,R3,R2,broadcast';
     $applicableSources = array_map('trim', explode(',', $applicableSourcesStr));
     $applicableSourcesEscaped = array_map(function($s) use ($conn) {
@@ -2574,7 +2576,7 @@ function assignParallelLeads($conn) {
                    (SELECT round_id FROM distribution_logs WHERE lead_id = c.id AND status = 'assigned' ORDER BY id DESC LIMIT 1) as original_round_id
             FROM contacts c
             JOIN persons p ON c.person_id = p.id
-            WHERE c.pipeline_status = 'chua_xac_dinh'
+            WHERE c.pipeline_status = ?
               AND (c.parallel_assigned IS NULL OR c.parallel_assigned = 0)
               AND c.security_expires_at <= NOW()
               AND c.security_expires_at IS NOT NULL
@@ -2587,8 +2589,15 @@ function assignParallelLeads($conn) {
               )
               $sourcesFilter";
               
-    $res = $conn->query($sql);
-    if (!$res) return;
+    $stmt = $conn->prepare($sql);
+    if (!$stmt) return;
+    $stmt->bind_param("s", $triggerStatus);
+    $stmt->execute();
+    $res = $stmt->get_result();
+    if (!$res) {
+        $stmt->close();
+        return;
+    }
     
     while ($row = $res->fetch_assoc()) {
         $contactId = (int)$row['contact_id'];
@@ -2687,8 +2696,8 @@ function assignParallelLeads($conn) {
             $upd1->execute();
             $upd1->close();
             
-            $chuaXacDinhDuration = get_system_setting($conn, 'security_timer_chua_xac_dinh') ?: '+3 hours';
-            $secExpiresTime = date('Y-m-d H:i:s', strtotime($chuaXacDinhDuration));
+            $secTimerVal = get_system_setting($conn, 'security_timer_' . $triggerStatus) ?: '+3 hours';
+            $secExpiresTime = date('Y-m-d H:i:s', strtotime($secTimerVal));
 
             if ($projectId !== null) {
                 $chkExists = $conn->query("SELECT id FROM projects WHERE id = " . (int)$projectId);
@@ -2699,11 +2708,11 @@ function assignParallelLeads($conn) {
 
             $stmtIns = $conn->prepare("
                 INSERT INTO contacts (tenant_id, person_id, project_id, owner_id, created_by, first_name, last_name, email, phone, source, status, pipeline_status, parallel_assigned, security_expires_at, notes, customer_type)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'lead', 'chua_xac_dinh', 1, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'lead', ?, 1, ?, ?, ?)
             ");
             $createdBy = 1;
             $tenantId = (int)$row['tenant_id'];
-            $stmtIns->bind_param("iiiiissssssss", $tenantId, $personId, $projectId, $secondUserId, $createdBy, $row['first_name'], $row['last_name'], $row['email'], $row['phone'], $row['source'], $secExpiresTime, $row['notes'], $row['customer_type']);
+            $stmtIns->bind_param("iiiiisssssssss", $tenantId, $personId, $projectId, $secondUserId, $createdBy, $row['first_name'], $row['last_name'], $row['email'], $row['phone'], $row['source'], $triggerStatus, $secExpiresTime, $row['notes'], $row['customer_type']);
             $stmtIns->execute();
             $secondContactId = $stmtIns->insert_id;
             $stmtIns->close();
@@ -2720,7 +2729,17 @@ function assignParallelLeads($conn) {
             $updRound->execute();
             $updRound->close();
             
-            logDistribution($conn, $secondContactId, $secondSaleId, $roundId, 'assigned', 'Gán song song tự động (Chưa Xác Định > 3 giờ)', false);
+            $statusLabel = get_system_setting($conn, 'pipeline_status_labels');
+            $labelsArr = $statusLabel ? json_decode($statusLabel, true) : [];
+            $statusText = $labelsArr[$triggerStatus] ?? $triggerStatus;
+            
+            $timerHours = preg_replace('/[^0-9]/', '', $secTimerVal); // e.g. 3
+            if (empty($timerHours)) {
+                $timerHours = '3';
+            }
+            
+            $logMsg = "Gán song song tự động ($statusText > $timerHours giờ)";
+            logDistribution($conn, $secondContactId, $secondSaleId, $roundId, 'assigned', $logMsg, false);
             
             $conn->commit();
             logSync("Parallel assigned Person ID $personId (Contact ID $contactId) to Sale ID $secondSaleId.");
@@ -2743,7 +2762,7 @@ function assignParallelLeads($conn) {
                         $cDetail['name'],
                         $fullName,
                         $row['phone'],
-                        'Gán song song tự động do lead Chưa Xác Định quá 3 giờ',
+                        "Gán song song tự động do lead $statusText quá $timerHours giờ",
                         $row['source'],
                         '',
                         $roundName,
