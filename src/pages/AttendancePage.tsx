@@ -238,13 +238,7 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
         }
       }
 
-      // Fetch activities matching the current month
-      const yearMonth = `${currentYear}-${String(currentMonth).padStart(2, '0')}`;
-      const uidParam = filterUser !== 'all' ? filterUser : '';
-      const actRes = await api.get(`/activities?limit=1000&year_month=${yearMonth}&user_id=${uidParam}`);
-      const actData = actRes.data?.data;
-      const list = Array.isArray(actData?.items) ? actData.items : (Array.isArray(actData) ? actData : (Array.isArray(actRes.data) ? actRes.data : []));
-      setCalendarActivities(list);
+
     } catch (err: any) {
       console.error('Error fetching calendar check-ins:', err);
     } finally {
@@ -935,92 +929,7 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
                         )
                       )}
 
-                      {/* 3. Render Calendar Activities (Notes, Meetings, Tasks) */}
-                      {(() => {
-                        const dayActivities = calendarActivities.filter(a => a.due_date && a.due_date.startsWith(cell.dateStr));
-                        if (dayActivities.length === 0) return null;
-                        return (
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '4px' }}>
-                            {dayActivities.map((a: any) => {
-                              const isDone = a.status === 'done';
-                              const isMeeting = a.type === 'meeting';
-                              const isNote = a.type === 'note';
-                              
-                              let bg = 'rgba(0, 122, 255, 0.04)';
-                              let border = 'rgba(0, 122, 255, 0.15)';
-                              let txtColor = '#007aff';
-                              let icon = <CheckSquare size={10} />;
-                              let label = a.subject || t('Nhiệm vụ');
 
-                              if (isMeeting) {
-                                bg = 'rgba(16, 185, 129, 0.06)';
-                                border = 'rgba(16, 185, 129, 0.18)';
-                                txtColor = '#10b981';
-                                icon = <Users size={10} />;
-                              } else if (isNote) {
-                                bg = 'rgba(139, 92, 246, 0.06)';
-                                border = 'rgba(139, 92, 246, 0.18)';
-                                txtColor = '#8b5cf6';
-                                icon = <FileText size={10} />;
-                                label = a.body ? a.body.substring(0, 30) : a.subject;
-                              }
-
-                              return (
-                                <div
-                                  key={a.id}
-                                  style={{
-                                    display: 'flex',
-                                    flexDirection: 'column',
-                                    gap: '2px',
-                                    padding: '4px 6px',
-                                    borderRadius: '6px',
-                                    border: `1px solid ${border}`,
-                                    backgroundColor: bg,
-                                    fontSize: '0.68rem',
-                                    color: 'var(--color-text)',
-                                    textDecoration: isDone ? 'line-through' : 'none',
-                                    opacity: isDone ? 0.65 : 1
-                                  }}
-                                >
-                                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontWeight: 600, color: txtColor }}>
-                                    {icon}
-                                    <span style={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap', flex: 1 }}>
-                                      {label}
-                                    </span>
-                                  </div>
-                                  
-                                  {a.contact_id && (
-                                    <div 
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        setSelectedContact({ id: a.contact_id });
-                                      }}
-                                      style={{ 
-                                        display: 'flex', 
-                                        alignItems: 'center', 
-                                        gap: '4px', 
-                                        marginTop: '2px', 
-                                        cursor: 'pointer',
-                                        alignSelf: 'flex-start',
-                                        padding: '2px 5px',
-                                        borderRadius: '4px',
-                                        backgroundColor: 'var(--color-bg-light)',
-                                        border: '1px solid var(--color-border-light)'
-                                      }}
-                                      title={a.contact_name}
-                                    >
-                                      <Avatar src={resolveAttachmentUrl(a.contact_avatar)} name={a.contact_name} size={14} />
-                                      <span style={{ fontSize: '0.625rem', fontWeight: 600, color: 'var(--color-primary)', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap', maxWidth: '70px' }}>
-                                        {a.contact_name}
-                                      </span>
-                                    </div>
-                                  )}
-                                </div>
-                              );
-                            })}
-                          </div>
-                        );
-                      })()}
                     </>
                   ) : null}
                 </div>

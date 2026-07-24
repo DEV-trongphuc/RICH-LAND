@@ -16892,7 +16892,8 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                               <span style={{ fontSize: '0.68rem', color: 'var(--color-text-muted)', fontFamily: 'monospace' }}>
                                 {a.due_date ? new Date(a.due_date).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) : ''}
                               </span>
-                              <button
+{!a.contact_id && (
+                                <button
                                 type="button"
                                 onClick={async () => {
                                   if (window.confirm(t('Bạn có chắc chắn muốn xóa ghi chú này?'))) {
@@ -16916,6 +16917,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                               >
                                 <Trash2 size={14} />
                               </button>
+                              )}
                             </div>
                             <div style={{ fontSize: '0.8rem', color: 'var(--color-text)', whiteSpace: 'pre-wrap', lineHeight: 1.4 }}>
                               {formatActivityBody(a.body) || a.subject}
@@ -17237,30 +17239,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                                    <span style={{ fontSize: '0.68rem', color: 'var(--color-text-muted)', fontFamily: 'monospace' }}>
                                      {a.due_date ? new Date(a.due_date).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) : ''}
                                    </span>
-                                   <button
-                                     type="button"
-                                     onClick={async () => {
-                                       if (window.confirm(t('Bạn có chắc chắn muốn xóa công việc này?'))) {
-                                         try {
-                                           await api.delete(`/activities/${a.id}`);
-                                           toast.success(t('Đã xóa công việc!'));
-                                           fetchCalendarStats();
-                                           // If the deleted item is the last one on the current page, go back a page
-                                           const remainingCount = dayTasks.length - 1;
-                                           const maxPage = Math.max(1, Math.ceil(remainingCount / pageSize));
-                                           if (tasksPage > maxPage) {
-                                             setTasksPage(maxPage);
-                                           }
-                                         } catch {
-                                           toast.error(t('Không thể xóa công việc'));
-                                         }
-                                       }
-                                     }}
-                                     style={{ border: 'none', background: 'transparent', color: 'var(--color-danger)', display: 'flex', alignItems: 'center', cursor: 'pointer', opacity: 0.7 }}
-                                     title={t('Xóa')}
-                                   >
-                                     <Trash2 size={14} />
-                                   </button>
+                                   
                                  </div>
                                </div>
                                <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--color-text)', textDecoration: isDone ? 'line-through' : 'none', opacity: isDone ? 0.6 : 1 }}>
