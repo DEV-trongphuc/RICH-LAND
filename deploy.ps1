@@ -21,7 +21,7 @@ tar -czf "$tempFrontend" -C dist .
 tar -czf "$tempBackend" -C backend .
 
 Write-Host "1b. Uploading compressed archives via SCP..." -ForegroundColor Yellow
-scp -4 -P 2210 -o StrictHostKeyChecking=no "$tempFrontend" "$tempBackend" vhvxoigh@chiefaiofficer.vn:/home/vhvxoigh/open.domation.net/richland/
+scp -4 -P 2210 -O -o StrictHostKeyChecking=no "$tempFrontend" "$tempBackend" vhvxoigh@chiefaiofficer.vn:/home/vhvxoigh/open.domation.net/richland/
 if ($LASTEXITCODE -ne 0) {
     Remove-Item "$tempFrontend", "$tempBackend" -ErrorAction SilentlyContinue
     Write-Host "ERROR: Failed to upload compressed archives." -ForegroundColor Red
