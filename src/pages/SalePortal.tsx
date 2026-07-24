@@ -17292,7 +17292,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
             inset: 0,
             backgroundColor: 'rgba(0, 0, 0, 0.65)',
             backdropFilter: 'blur(4px)',
-            zIndex: 1000500,
+            zIndex: 2100000,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
