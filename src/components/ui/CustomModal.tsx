@@ -44,7 +44,7 @@ export const CustomModal: React.FC<CustomModalProps> = ({
     return () => { document.body.style.overflow = 'unset'; };
   }, [isOpen]);
 
-  const [isMobile, setIsMobile] = React.useState(false);
+  const [isMobile, setIsMobile] = React.useState(() => typeof window !== 'undefined' ? window.innerWidth <= 768 : false);
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth <= 768);
     handleResize();
@@ -65,9 +65,9 @@ export const CustomModal: React.FC<CustomModalProps> = ({
   }, [width, maxWidth]);
 
   const motionProps = isMobile ? {
-    initial: { y: '100%' },
-    animate: { y: 0 },
-    exit: { y: '100%' },
+    initial: { y: '100%', opacity: 1 },
+    animate: { y: 0, opacity: 1 },
+    exit: { y: '100%', opacity: 0 },
     transition: { type: 'spring' as const, damping: 28, stiffness: 240, mass: 0.8 }
   } : {
     initial: { opacity: 0, scale: 0.96, y: 8 },
