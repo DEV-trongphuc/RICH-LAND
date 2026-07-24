@@ -122,7 +122,7 @@ export const AddressSelect: React.FC<AddressSelectProps> = ({
       {/* ── Modal Portal ── */}
       {open && ReactDOM.createPortal(
         <div
-          style={{ position: 'fixed', inset: 0, zIndex: 99999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}
+          style={{ position: 'fixed', inset: 0, zIndex: 20000000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}
           onClick={e => { if (e.target === e.currentTarget) setOpen(false); }}
         >
           {/* Backdrop */}
