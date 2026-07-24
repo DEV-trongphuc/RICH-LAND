@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Camera, AlertTriangle, CheckCircle2, Clock, Sparkles, RefreshCw, X } from 'lucide-react';
+import { Camera, AlertTriangle, CheckCircle2, Clock, Sparkles, RefreshCw, X, Fingerprint, MapPin } from 'lucide-react';
 import { CustomModal } from './CustomModal';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { fetchAPI } from '../../utils/api';
@@ -38,6 +38,79 @@ export const SmartCheckInModal: React.FC<SmartCheckInModalProps> = ({
   // Success Screen State
   const [isSuccessScreen, setIsSuccessScreen] = useState(false);
   const [successMeta, setSuccessMeta] = useState<any>(null);
+
+  const [currentAddress, setCurrentAddress] = useState<string>('');
+  const [addressLoading, setAddressLoading] = useState<boolean>(false);
+  const [locationError, setLocationError] = useState<string>('');
+  const [gpsCoords, setGpsCoords] = useState<{ latitude: number; longitude: number } | null>(null);
+
+  useEffect(() => {
+    if (isOpen) {
+      fetchLocation();
+    } else {
+      setCurrentAddress('');
+      setLocationError('');
+      setGpsCoords(null);
+      setAddressLoading(false);
+    }
+  }, [isOpen]);
+
+  const fetchLocation = () => {
+    setAddressLoading(true);
+    setLocationError('');
+    setCurrentAddress('');
+    setGpsCoords(null);
+
+    if (!navigator.geolocation) {
+      setLocationError(t('Trình duyệt của bạn không hỗ trợ định vị GPS.'));
+      setAddressLoading(false);
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const coords = {
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude
+        };
+        setGpsCoords(coords);
+        
+        try {
+          const geoUrl = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${coords.latitude}&lon=${coords.longitude}&accept-language=vi`;
+          const geoRes = await fetch(geoUrl, {
+            headers: {
+              'Accept-Language': 'vi',
+              'User-Agent': 'RichLandCRM/1.0'
+            }
+          });
+          if (geoRes.ok) {
+            const geoData = await geoRes.json();
+            setCurrentAddress(geoData.display_name || `${coords.latitude}, ${coords.longitude}`);
+          } else {
+            setCurrentAddress(`${coords.latitude}, ${coords.longitude}`);
+          }
+        } catch (addrErr) {
+          console.warn("Failed to reverse-geocode coordinates:", addrErr);
+          setCurrentAddress(`${coords.latitude}, ${coords.longitude}`);
+        } finally {
+          setAddressLoading(false);
+        }
+      },
+      (error) => {
+        let msg = t('Không thể lấy vị trí GPS. Vui lòng bật định vị.');
+        if (error.code === error.PERMISSION_DENIED) {
+          msg = t('Vui lòng cấp quyền truy cập vị trí (GPS) trên trình duyệt để chấm công.');
+        }
+        setLocationError(msg);
+        setAddressLoading(false);
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 0
+      }
+    );
+  };
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const autoCapturedRef = useRef(false);
@@ -104,7 +177,7 @@ export const SmartCheckInModal: React.FC<SmartCheckInModalProps> = ({
       setIsCameraActive(true);
     } catch (err: any) {
       console.error("Camera access error:", err);
-      setCameraError(t('Không thể truy cập camera. Vui lòng cấp quyền camera trong trình duyệt hoặc tải ảnh selfie.'));
+      setCameraError(t('Không thể truy cập camera. Vui lòng cấp quyền camera trong trình duyệt để chấm công.'));
       setIsCameraActive(false);
     }
   };
@@ -283,59 +356,19 @@ export const SmartCheckInModal: React.FC<SmartCheckInModalProps> = ({
       return;
     }
 
-    setSubmitting(true);
-    let coords: { latitude: number; longitude: number } | null = null;
-    try {
-      coords = await new Promise<{ latitude: number; longitude: number }>((resolve, reject) => {
-        if (!navigator.geolocation) {
-          reject(new Error(t('Trình duyệt của bạn không hỗ trợ định vị GPS.')));
-          return;
-        }
-        navigator.geolocation.getCurrentPosition(
-          (position) => {
-            resolve({
-              latitude: position.coords.latitude,
-              longitude: position.coords.longitude
-            });
-          },
-          (error) => {
-            let msg = t('Không thể lấy vị trí GPS. Vui lòng bật định vị.');
-            if (error.code === error.PERMISSION_DENIED) {
-              msg = t('Vui lòng cấp quyền truy cập vị trí (GPS) trên trình duyệt để chấm công.');
-            }
-            reject(new Error(msg));
-          },
-          {
-            enableHighAccuracy: true,
-            timeout: 10000,
-            maximumAge: 0
-          }
-        );
-      });
-    } catch (gpsError: any) {
-      toast.error(gpsError.message);
-      setSubmitting(false);
+    if (locationError) {
+      toast.error(locationError);
       return;
     }
 
-    let addressStr = '';
-    if (coords) {
-      try {
-        const geoUrl = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${coords.latitude}&lon=${coords.longitude}&accept-language=vi`;
-        const geoRes = await fetch(geoUrl, {
-          headers: {
-            'Accept-Language': 'vi',
-            'User-Agent': 'RichLandCRM/1.0'
-          }
-        });
-        if (geoRes.ok) {
-          const geoData = await geoRes.json();
-          addressStr = geoData.display_name || '';
-        }
-      } catch (addrErr) {
-        console.warn("Failed to reverse-geocode coordinates:", addrErr);
-      }
+    if (addressLoading || !gpsCoords) {
+      toast.error(t('Đang xác thực vị trí GPS. Vui lòng đợi trong giây lát...'));
+      return;
     }
+
+    setSubmitting(true);
+    const coords = gpsCoords;
+    const addressStr = currentAddress;
 
     try {
       const compressToWebP = (dataUrl: string): Promise<Blob> => {
@@ -397,12 +430,13 @@ export const SmartCheckInModal: React.FC<SmartCheckInModalProps> = ({
         setSuccessMeta({ time: timeStr, date: dateStr, isLate });
         setIsSuccessScreen(true);
 
-        // Auto close modal after 2s
+        onCheckInSuccess();
+
+        // Auto close modal after 1s
         setTimeout(() => {
           setIsSuccessScreen(false);
-          onCheckInSuccess();
           onClose();
-        }, 2000);
+        }, 1000);
       } else {
         toast.error(res.message || t('Check-in thất bại'));
       }
@@ -419,10 +453,15 @@ export const SmartCheckInModal: React.FC<SmartCheckInModalProps> = ({
     <CustomModal
       isOpen={isOpen}
       onClose={onClose}
-      title={isSuccessScreen ? '' : t("CHẤM CÔNG HÀNG NGÀY")}
+      title={isSuccessScreen ? '' : (
+        <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <Fingerprint size={20} color="#BD1D2D" />
+          <span>{t("CHẤM CÔNG HÀNG NGÀY")}</span>
+        </span>
+      )}
       width="100%"
       maxWidth="500px"
-      fullScreenOnMobile={true}
+      fullScreenOnMobile={false}
       modalClassName="checkin-modal-dark"
     >
       {/* 1. Already Checked-In State */}
@@ -531,13 +570,10 @@ export const SmartCheckInModal: React.FC<SmartCheckInModalProps> = ({
             <span>{successMeta?.time || ''} • {successMeta?.date || ''}</span>
           </div>
 
-          {/* 2s Animated Countdown Progress Bar */}
-          <div style={{ width: '100%', maxWidth: '260px', height: 4, background: 'var(--color-border-light)', borderRadius: 99, overflow: 'hidden' }}>
-            <div className="checkin-progress-bar" style={{ height: '100%', background: 'linear-gradient(90deg, #10b981, #059669)', borderRadius: 99 }} />
+          {/* 1s Animated Countdown Progress Bar */}
+          <div style={{ width: '100%', maxWidth: '260px', height: 4, background: 'var(--color-border-light)', borderRadius: 99, overflow: 'hidden', margin: '0 auto 1.5rem auto' }}>
+            <div className="checkin-progress-bar" style={{ height: '100%', background: 'linear-gradient(90deg, #10b981, #059669)', borderRadius: 99, animation: 'checkin-progress-fill 1s linear forwards' }} />
           </div>
-          <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 8 }}>
-            {t('Tự động đóng sau 2 giây...')}
-          </span>
         </div>
       ) : (
         /* 3. Main Scanner & Camera Check-in Flow */
@@ -690,32 +726,6 @@ export const SmartCheckInModal: React.FC<SmartCheckInModalProps> = ({
                       >
                         {t('Kích hoạt Camera')}
                       </button>
-                      <label style={{ cursor: 'pointer', display: 'inline-flex', alignItems: 'center' }}>
-                        <input
-                          type="file"
-                          accept="image/*"
-                          capture="user"
-                          style={{ display: 'none' }}
-                          onChange={(e) => {
-                            const file = e.target.files?.[0];
-                            if (file) {
-                              const reader = new FileReader();
-                              reader.onload = (ev) => {
-                                const res = ev.target?.result as string;
-                                if (res) {
-                                  setCapturedImage(res);
-                                  stopCamera();
-                                  if (!isLate) submitCheckIn(res);
-                                }
-                              };
-                              reader.readAsDataURL(file);
-                            }
-                          }}
-                        />
-                        <span className="btn outline sm" style={{ borderRadius: '20px', borderColor: 'rgba(255,255,255,0.3)', color: '#fff' }}>
-                          {t('Tải ảnh selfie')}
-                        </span>
-                      </label>
                     </div>
                   </div>
                 )}
@@ -754,48 +764,85 @@ export const SmartCheckInModal: React.FC<SmartCheckInModalProps> = ({
 
             {/* Captured Actions or Manual Retake */}
             {capturedImage && (
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, marginTop: '1rem', marginBottom: '0.5rem' }}>
-                <div style={{ display: 'flex', gap: 10, justifyContent: 'center', width: '100%' }}>
-                  <button
-                    type="button"
-                    className="btn outline sm"
-                    onClick={startCamera}
-                    disabled={submitting}
-                    style={{ borderRadius: '20px', padding: '6px 18px', fontSize: '0.78rem', display: 'inline-flex', alignItems: 'center', gap: 4 }}
-                  >
-                    <RefreshCw size={14} />
-                    {t('Quét lại')}
-                  </button>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, marginTop: '1.75rem', marginBottom: '0.5rem', width: '100%' }}>
+                <button
+                  type="button"
+                  className="btn primary"
+                  disabled={submitting || !!locationError || addressLoading}
+                  onClick={() => submitCheckIn()}
+                  style={{
+                    backgroundColor: (!!locationError || addressLoading) ? '#4b5563' : '#BD1D2D',
+                    color: '#fff',
+                    borderRadius: '24px',
+                    padding: '12px 36px',
+                    fontWeight: 700,
+                    fontSize: '0.95rem',
+                    boxShadow: (!!locationError || addressLoading) ? 'none' : '0 4px 15px rgba(189, 29, 45, 0.4)',
+                    border: 'none',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '8px',
+                    width: '100%',
+                    maxWidth: '340px',
+                    cursor: (submitting || !!locationError || addressLoading) ? 'not-allowed' : 'pointer'
+                  }}
+                >
+                  {submitting ? (
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                      <RefreshCw size={16} className="spin" /> {t('Đang gửi...')}
+                    </span>
+                  ) : (
+                    t('Xác nhận Chấm công')
+                  )}
+                </button>
 
-                  <button
-                    type="button"
-                    className="btn primary sm"
-                    disabled={submitting || (isLate && !checkInReason.trim())}
-                    onClick={() => submitCheckIn()}
-                    style={{
-                      backgroundColor: '#BD1D2D',
-                      color: '#fff',
-                      borderRadius: '20px',
-                      padding: '8px 24px',
-                      fontWeight: 700,
-                      boxShadow: '0 4px 15px rgba(189, 29, 45, 0.4)',
-                      border: 'none',
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '6px'
-                    }}
-                  >
-                    {submitting ? (
-                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                        <RefreshCw size={14} className="spin" /> {t('Đang gửi...')}
-                      </span>
-                    ) : (
-                      t('Xác nhận Chấm công')
-                    )}
-                  </button>
-                </div>
+                <span
+                  onClick={submitting ? undefined : startCamera}
+                  style={{
+                    fontSize: '0.85rem',
+                    color: 'var(--color-text-light)',
+                    textDecoration: 'underline',
+                    cursor: submitting ? 'not-allowed' : 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    opacity: submitting ? 0.5 : 0.8,
+                    marginTop: '4px'
+                  }}
+                >
+                  <RefreshCw size={12} />
+                  {t('Quét lại')}
+                </span>
               </div>
             )}
+          </div>
+
+          {/* GPS Location Status Block */}
+          <div style={{
+            display: 'flex',
+            alignItems: 'flex-start',
+            gap: '8px',
+            background: 'var(--color-bg-alt)',
+            padding: '12px 14px',
+            borderRadius: '12px',
+            border: '1px solid var(--color-border-light)',
+            width: '100%',
+            boxSizing: 'border-box',
+            marginBottom: '0.5rem'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 22, height: 22, borderRadius: '50%', background: locationError ? 'rgba(239, 68, 68, 0.15)' : 'rgba(189, 29, 45, 0.1)', flexShrink: 0, marginTop: '2px' }}>
+              <MapPin size={14} color={locationError ? '#ef4444' : '#BD1D2D'} />
+            </div>
+            <div style={{ flex: 1, minWidth: 0, textAlign: 'left' }}>
+              <div style={{ fontSize: '0.75rem', fontWeight: 700, color: locationError ? '#ef4444' : 'var(--color-text)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                {locationError ? t('LỖI ĐỊNH VỊ (GPS BẮT BUỘC)') : t('VỊ TRÍ CHẤM CÔNG')}
+                {addressLoading && <RefreshCw size={10} className="spin" style={{ marginLeft: '4px' }} />}
+              </div>
+              <div style={{ fontSize: '0.75rem', color: 'var(--color-text)', marginTop: '4px', wordBreak: 'break-word', opacity: 0.9, lineHeight: 1.4 }}>
+                {addressLoading ? t('Đang xác định vị trí...') : (locationError || currentAddress || t('Không tìm thấy địa chỉ'))}
+              </div>
+            </div>
           </div>
 
           {/* Bottom Area: Late Reason & Control Buttons */}

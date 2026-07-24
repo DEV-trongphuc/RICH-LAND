@@ -7,7 +7,7 @@ import styles from './CustomModal.module.css';
 interface CustomModalProps {
   isOpen: boolean;
   onClose: () => void;
-  title?: string;
+  title?: React.ReactNode;
   width?: string | number;
   maxWidth?: string | number;
   size?: 'small' | 'medium' | 'large' | string;

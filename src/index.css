@@ -5263,7 +5263,7 @@ a,
   background: linear-gradient(180deg, #ffffff 0%, #fff2f4 100%) !important;
   color: var(--color-text) !important;
   border: 1px solid rgba(189, 29, 45, 0.12) !important;
-  box-shadow: 0 25px 60px rgba(189, 29, 45, 0.1) !important;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(189, 29, 45, 0.08) !important;
   max-width: 500px !important;
 }
 

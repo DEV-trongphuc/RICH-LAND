@@ -1897,7 +1897,7 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', width: '100%', borderTop: '1px solid var(--color-border-light)', paddingTop: '12px', fontSize: '0.78rem', color: 'var(--color-text)' }}>
                 {previewCheckIn.latitude && (
                   <div style={{ display: 'flex', alignItems: 'flex-start', gap: '6px' }}>
-                    <MapPin size={14} style={{ color: 'var(--color-success)', marginTop: '2px', flexShrink: 0 }} />
+                    <MapPin size={14} style={{ color: '#4b5563', marginTop: '2px', flexShrink: 0 }} />
                     <div style={{ lineHeight: 1.4, textAlign: 'left' }}>
                       <a
                         href={`https://www.google.com/maps?q=${previewCheckIn.latitude},${previewCheckIn.longitude}`}
@@ -1917,7 +1917,7 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
                 )}
                 {previewCheckIn.checkout_latitude && (
                   <div style={{ display: 'flex', alignItems: 'flex-start', gap: '6px', marginTop: '4px' }}>
-                    <MapPin size={14} style={{ color: 'var(--color-danger)', marginTop: '2px', flexShrink: 0 }} />
+                    <MapPin size={14} style={{ color: '#4b5563', marginTop: '2px', flexShrink: 0 }} />
                     <div style={{ lineHeight: 1.4, textAlign: 'left' }}>
                       <a
                         href={`https://www.google.com/maps?q=${previewCheckIn.checkout_latitude},${previewCheckIn.checkout_longitude}`}
@@ -1934,6 +1934,17 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
                       )}
                     </div>
                   </div>
+                )}
+                {/* Google Map Position embed */}
+                {previewCheckIn.latitude && (
+                  <iframe
+                    src={`https://maps.google.com/maps?q=${previewCheckIn.latitude},${previewCheckIn.longitude}&z=16&output=embed`}
+                    width="100%"
+                    height="180"
+                    style={{ border: 0, borderRadius: '8px', marginTop: '10px', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}
+                    allowFullScreen={false}
+                    loading="lazy"
+                  />
                 )}
               </div>
             )}
@@ -2185,7 +2196,7 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
                                       marginTop: '6px',
                                       textAlign: 'left'
                                     }}>
-                                      <MapPin size={12} style={{ color: 'var(--color-success)', marginTop: '2px', flexShrink: 0 }} />
+                                      <MapPin size={12} style={{ color: '#4b5563', marginTop: '2px', flexShrink: 0 }} />
                                       <div style={{ lineHeight: 1.3 }}>
                                         <a
                                           href={`https://www.google.com/maps?q=${row.latitude},${row.longitude}`}
@@ -2210,7 +2221,7 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
                                       marginTop: '6px',
                                       textAlign: 'left'
                                     }}>
-                                      <MapPin size={12} style={{ color: 'var(--color-danger)', marginTop: '2px', flexShrink: 0 }} />
+                                      <MapPin size={12} style={{ color: '#4b5563', marginTop: '2px', flexShrink: 0 }} />
                                       <div style={{ lineHeight: 1.3 }}>
                                         <a
                                           href={`https://www.google.com/maps?q=${row.checkout_latitude},${row.checkout_longitude}`}

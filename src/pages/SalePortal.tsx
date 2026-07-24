@@ -1304,7 +1304,19 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
   const [loadingLeaves, setLoadingLeaves] = useState(false);
 
   const [profileActiveTab, setProfileActiveTab] = useState(() => window.innerWidth < 768 ? '' : 'personal');
+  const [renderedTab, setRenderedTab] = useState(profileActiveTab);
   const profileLoadedIdRef = useRef<string | number | null>(null);
+
+  useEffect(() => {
+    if (profileActiveTab) {
+      setRenderedTab(profileActiveTab);
+    } else {
+      const timer = setTimeout(() => {
+        setRenderedTab('');
+      }, 300);
+      return () => clearTimeout(timer);
+    }
+  }, [profileActiveTab]);
 
   const [isMobileDateMenuOpen, setIsMobileDateMenuOpen] = useState(false);
   const mobileDateMenuRef = useRef<HTMLDivElement>(null);
@@ -3278,9 +3290,14 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
       const customEvent = e as CustomEvent;
       setPortalVacationMode(customEvent.detail);
     };
+    const handleCheckInChange = () => {
+      loadCheckInStatus();
+    };
     window.addEventListener('vacation-status-changed', handleVacationChange);
+    window.addEventListener('checkin-status-changed', handleCheckInChange);
     return () => {
       window.removeEventListener('vacation-status-changed', handleVacationChange);
+      window.removeEventListener('checkin-status-changed', handleCheckInChange);
     };
   }, []);
 
@@ -10538,32 +10555,24 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: isMobile ? '1rem' : '1rem', padding: isMobile ? '0.25rem 0' : '0.5rem 0' }}>
         {/* Sticky Header block */}
-        {(!isMobile || profileActiveTab) && (
+        {!isMobile && (
           <div style={{
             position: 'sticky',
-            top: isMobile ? '-1.25rem' : '-1.5rem',
+            top: '-1.5rem',
             zIndex: 100,
             background: 'var(--color-bg)',
-            padding: isMobile ? '1rem 0 0.75rem 0' : '1.5rem 0 1rem 0',
+            padding: '1.5rem 0 1rem 0',
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
             borderBottom: '1px solid var(--color-border)',
-            margin: isMobile ? '-1.25rem 0 1rem 0' : '-1.5rem 0 1.5rem 0',
+            margin: '-1.5rem 0 1.5rem 0',
             gap: '12px'
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
-              {isMobile && profileActiveTab && (
-                <button 
-                  onClick={() => setProfileActiveTab('')} 
-                  style={{ border: 'none', background: 'transparent', padding: '4px', cursor: 'pointer', color: 'var(--color-text)', display: 'flex', alignItems: 'center' }}
-                >
-                  <ChevronLeft size={20} />
-                </button>
-              )}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', minWidth: 0 }}>
                 <h2 style={{ 
-                  fontSize: isMobile ? '1.1rem' : '1.5rem', 
+                  fontSize: '1.5rem', 
                   fontWeight: 800, 
                   color: 'var(--color-text)', 
                   margin: 0,
@@ -10571,49 +10580,36 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                   overflow: 'hidden',
                   textOverflow: 'ellipsis'
                 }}>
-                  {isMobile ? getTabLabel(profileActiveTab) : t('QUẢN LÝ TÀI KHOẢN')}
+                  {t('QUẢN LÝ TÀI KHOẢN')}
                 </h2>
-                {!isMobile && (
-                  <p style={{ fontSize: '0.875rem', color: 'var(--color-text-light)', margin: 0 }}>
-                    {t('Cấu hình thông tin cá nhân, ảnh đại diện và thời gian trực nhận lead tự động.')}
-                  </p>
-                )}
+                <p style={{ fontSize: '0.875rem', color: 'var(--color-text-light)', margin: 0 }}>
+                  {t('Cấu hình thông tin cá nhân, ảnh đại diện và thời gian trực nhận lead tự động.')}
+                </p>
               </div>
             </div>
 
-            {(!isMobile || profileActiveTab) && (
-              <button
-                className="btn primary"
-                style={isMobile ? { 
-                  height: '36px', 
-                  width: '44px', 
-                  borderRadius: '10px', 
-                  padding: '0', 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  justifyContent: 'center', 
-                  flexShrink: 0
-                } : { 
-                  height: '38px', 
-                  padding: '0 1.5rem', 
-                  borderRadius: '8px', 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  gap: '6px', 
-                  flexShrink: 0,
-                  fontSize: '0.875rem'
-                }}
-                onClick={handleSaveProfile}
-                disabled={savingProfile || isUploadingAvatar}
-              >
-                {savingProfile ? (
-                  <RefreshCw size={isMobile ? 16 : 14} className="spin" />
-                ) : (
-                  <Save size={isMobile ? 16 : 14} />
-                )}
-                {!isMobile && (savingProfile ? t('Đang lưu...') : t('Lưu thiết lập'))}
-              </button>
-            )}
+            <button
+              className="btn primary"
+              style={{ 
+                height: '38px', 
+                padding: '0 1.5rem', 
+                borderRadius: '8px', 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: '6px', 
+                flexShrink: 0,
+                fontSize: '0.875rem'
+              }}
+              onClick={handleSaveProfile}
+              disabled={savingProfile || isUploadingAvatar}
+            >
+              {savingProfile ? (
+                <RefreshCw size={14} className="spin" />
+              ) : (
+                <Save size={14} />
+              )}
+              {savingProfile ? t('Đang lưu...') : t('Lưu thiết lập')}
+            </button>
           </div>
         )}
 
@@ -10624,15 +10620,19 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
           border: '1px solid var(--color-border-light)',
           boxShadow: '0 4px 20px rgba(0,0,0,0.02)',
           display: 'flex',
-          flexDirection: isMobile ? 'column' : 'row',
-          overflow: 'visible',
+          flexDirection: isMobile ? 'row' : 'row',
+          overflow: isMobile ? 'hidden' : 'visible',
           minHeight: isMobile ? 'auto' : '650px',
-          margin: '0'
+          margin: '0',
+          width: isMobile ? '200%' : '100%',
+          transform: isMobile ? ((profileActiveTab || renderedTab) ? 'translateX(-50%)' : 'translateX(0)') : 'none',
+          transition: isMobile ? 'transform 0.35s cubic-bezier(0.4, 0, 0.2, 1)' : 'none'
         }}>
           {/* LEFT SIDEBAR: Avatar & Tabs */}
-          {(!isMobile || !profileActiveTab) && (
+          {(!isMobile || true) && (
             <div style={isMobile ? {
-              width: '100%',
+              width: '50%',
+              flexShrink: 0,
               display: 'flex',
               flexDirection: 'column',
               gap: '1.25rem',
@@ -11152,9 +11152,11 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
           )}
 
           {/* RIGHT CONTENT AREA */}
-          {(!isMobile || profileActiveTab) && (
+          {(!isMobile || profileActiveTab || renderedTab) && (
             <div className={styles.contentArea} style={{
-              flex: 1,
+              flex: isMobile ? 'none' : 1,
+              width: isMobile ? '50%' : 'auto',
+              flexShrink: isMobile ? 0 : 1,
               padding: isMobile ? '1rem' : '2rem',
               background: isMobile ? 'transparent' : 'var(--color-surface)',
               overflowY: 'auto',
@@ -11166,8 +11168,68 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
               borderTopLeftRadius: '0px',
               borderBottomLeftRadius: '0px'
             }}>
+              {/* Mobile Sticky Header block inside Content Area */}
+              {isMobile && (profileActiveTab || renderedTab) && (
+                <div style={{
+                  position: 'sticky',
+                  top: '-1rem',
+                  zIndex: 100,
+                  background: 'var(--color-bg)',
+                  padding: '0.5rem 0 0.75rem 0',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  borderBottom: '1px solid var(--color-border)',
+                  margin: '-1rem 0 1rem 0',
+                  gap: '12px'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
+                    <button 
+                      onClick={() => setProfileActiveTab('')} 
+                      style={{ border: 'none', background: 'transparent', padding: '4px', cursor: 'pointer', color: 'var(--color-text)', display: 'flex', alignItems: 'center' }}
+                    >
+                      <ChevronLeft size={20} />
+                    </button>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', minWidth: 0 }}>
+                      <h2 style={{ 
+                        fontSize: '1.1rem', 
+                        fontWeight: 800, 
+                        color: 'var(--color-text)', 
+                        margin: 0,
+                        whiteSpace: 'nowrap',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis'
+                      }}>
+                        {getTabLabel(profileActiveTab || renderedTab)}
+                      </h2>
+                    </div>
+                  </div>
+
+                  <button
+                    className="btn primary"
+                    style={{ 
+                      height: '36px', 
+                      width: '44px', 
+                      borderRadius: '10px', 
+                      padding: '0', 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      justifyContent: 'center', 
+                      flexShrink: 0
+                    }}
+                    onClick={handleSaveProfile}
+                    disabled={savingProfile || isUploadingAvatar}
+                  >
+                    {savingProfile ? (
+                      <RefreshCw size={16} className="spin" />
+                    ) : (
+                      <Save size={16} />
+                    )}
+                  </button>
+                </div>
+              )}
             {/* 1. PERSONAL INFO */}
-            {profileActiveTab === 'personal' && (
+            {renderedTab === 'personal' && (
               <div className="card animate-fade-in" style={cardContainerStyle(isMobile)}>
                 <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-text)', textTransform: 'uppercase', letterSpacing: '0.5px', margin: '0 0 0.5rem 0', display: 'flex', alignItems: 'center', gap: 8 }}>
                   <User size={16} color="var(--color-primary)" /> {t('Thông tin cá nhân')}
@@ -11337,7 +11399,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
             )}
 
             {/* 2. ERP PROFILE */}
-            {profileActiveTab === 'erp' && (
+            {renderedTab === 'erp' && (
               <div className="card animate-fade-in" style={{ padding: '2rem', display: 'flex', flexDirection: 'column', gap: '1.5rem', background: 'var(--color-surface)', borderRadius: '12px', border: '1px solid var(--color-border-light)', boxShadow: '0 4px 20px rgba(0,0,0,0.02)' }}>
                 <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-text)', textTransform: 'uppercase', letterSpacing: '0.5px', margin: '0 0 0.5rem 0', display: 'flex', alignItems: 'center', gap: 8 }}>
                   <Layers size={16} color="var(--color-primary)" /> {t('Thông tin nhân sự & ERP')}
@@ -11480,7 +11542,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
             )}
 
             {/* TÀI SẢN CẤP PHÁT TAB */}
-            {profileActiveTab === 'assets' && (
+            {renderedTab === 'assets' && (
               <AssignedAssetsSection
                 assets={profileAssets}
                 onChange={() => {}}
@@ -11488,7 +11550,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
               />
             )}
 
-            {profileActiveTab === 'certificates' && (
+            {renderedTab === 'certificates' && (
               <div className="card animate-fade-in" style={{ padding: '2rem', display: 'flex', flexDirection: 'column', gap: '1.5rem', background: 'var(--color-surface)', borderRadius: '16px', border: '1px solid var(--color-border-light)', boxShadow: '0 4px 20px rgba(0,0,0,0.02)' }}>
                 <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-text)', textTransform: 'uppercase', letterSpacing: '0.5px', margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
                   <Award size={18} color="var(--color-primary)" />
@@ -11709,7 +11771,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
               </div>
             )}
 
-            {profileActiveTab === 'hr_records' && (
+            {renderedTab === 'hr_records' && (
               <div className="card animate-fade-in" style={{ padding: '2rem', display: 'flex', flexDirection: 'column', gap: '1.5rem', background: 'var(--color-surface)', borderRadius: '16px', border: '1px solid var(--color-border-light)', boxShadow: '0 4px 20px rgba(0,0,0,0.02)' }}>
                 <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-text)', textTransform: 'uppercase', letterSpacing: '0.5px', margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
                   <AlertCircle size={18} color="var(--color-primary)" />
@@ -11951,7 +12013,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
             )}
 
             {/* 3. CONTACT & LOGIN */}
-            {profileActiveTab === 'contact' && (
+            {renderedTab === 'contact' && (
               <div className="card animate-fade-in" style={{ padding: '2rem', display: 'flex', flexDirection: 'column', gap: '1.5rem', background: 'var(--color-surface)', borderRadius: '12px', border: '1px solid var(--color-border-light)', boxShadow: '0 4px 20px rgba(0,0,0,0.02)' }}>
                 <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-text)', textTransform: 'uppercase', letterSpacing: '0.5px', margin: '0 0 0.5rem 0', display: 'flex', alignItems: 'center', gap: 8 }}>
                   <Server size={16} color="var(--color-primary)" /> {t('Thông tin liên hệ')}
@@ -12019,7 +12081,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
             )}
 
             {/* SECURITY & ACCOUNT TAB (TÀI KHOẢN & BẢO MẬT) */}
-            {profileActiveTab === 'security' && (
+            {renderedTab === 'security' && (
               <div className="card animate-fade-in" style={{ padding: '2rem', display: 'flex', flexDirection: 'column', gap: '1.5rem', background: 'var(--color-surface)', borderRadius: '12px', border: '1px solid var(--color-border-light)', boxShadow: '0 4px 20px rgba(0,0,0,0.02)' }}>
                 <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-text)', textTransform: 'uppercase', letterSpacing: '0.5px', margin: '0 0 0.5rem 0', display: 'flex', alignItems: 'center', gap: 8 }}>
                   <ShieldCheck size={16} color="var(--color-primary)" /> {t('Tài khoản & Bảo mật')}
@@ -12223,7 +12285,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
             )}
 
             {/* 4. BANKING & PAYMENTS */}
-            {profileActiveTab === 'payment' && (
+            {renderedTab === 'payment' && (
               <div className="card animate-fade-in" style={{ padding: '2rem', display: 'flex', flexDirection: 'column', gap: '1.5rem', background: 'var(--color-surface)', borderRadius: '12px', border: '1px solid var(--color-border-light)', boxShadow: '0 4px 20px rgba(0,0,0,0.02)' }}>
                 <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-text)', textTransform: 'uppercase', letterSpacing: '0.5px', margin: '0 0 0.5rem 0', display: 'flex', alignItems: 'center', gap: 8 }}>
                   <Receipt size={16} color="var(--color-primary)" /> {t('Thanh toán & Thuế')}
@@ -12289,7 +12351,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
             )}
 
             {/* 5. EMERGENCY CONTACT (Merged into Contact & Account) */}
-            {(profileActiveTab === 'contact' || profileActiveTab === 'emergency') && (
+            {(renderedTab === 'contact' || renderedTab === 'emergency') && (
               <div className="card animate-fade-in" style={{ padding: '2rem', display: 'flex', flexDirection: 'column', gap: '1.5rem', background: 'var(--color-surface)', borderRadius: '12px', border: '1px solid var(--color-border-light)', boxShadow: '0 4px 20px rgba(0,0,0,0.02)' }}>
                 <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-text)', textTransform: 'uppercase', letterSpacing: '0.5px', margin: '0 0 0.5rem 0', display: 'flex', alignItems: 'center', gap: 8 }}>
                   <Scale size={16} color="var(--color-primary)" /> {t('Liên hệ khẩn cấp')}
@@ -12391,7 +12453,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
             )}
 
             {/* 6. WORK SCHEDULE & DATA ROTATION */}
-            {profileActiveTab === 'schedule' && (
+            {renderedTab === 'schedule' && (
               <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
                 {['sale', 'manager'].includes(String(effectiveRole).toLowerCase()) && (
                   <>
@@ -12481,223 +12543,6 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                       )}
                     </div>
 
-                    {/* Weekend Shift Registration Card */}
-                    {weekendShiftAllow && (
-                      <div className="card" style={{
-                        padding: '1.5rem',
-                        background: 'var(--color-surface)',
-                        border: '1px solid var(--color-border-light)',
-                        borderRadius: '16px',
-                        boxShadow: '0 4px 20px rgba(0, 0, 0, 0.02), inset 0 1px 0 rgba(255, 255, 255, 0.6)',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: '1rem',
-                        transition: 'all 0.3s ease'
-                      }}>
-                        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
-                          <div style={{
-                            width: '40px',
-                            height: '40px',
-                            borderRadius: '10px',
-                            background: 'rgba(16, 185, 129, 0.08)',
-                            display: 'grid',
-                            placeItems: 'center',
-                            flexShrink: 0
-                          }}>
-                            <Calendar size={20} color="var(--color-success)" style={{ display: 'block', width: '20px', height: '20px', margin: 'auto' }} />
-                          </div>
-                          <div style={{ flex: 1 }}>
-                            <h3 style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--color-text)', margin: 0, letterSpacing: '-0.01em' }}>
-                              {t('ĐĂNG KÝ TRỰC CUỐI TUẦN')}
-                            </h3>
-                            <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', marginTop: 4, marginBottom: 0, lineHeight: '1.45' }}>
-                              {t('Đăng ký nhận lead trong các ngày Thứ Bảy và Chủ Nhật.')}
-                            </p>
-                          </div>
-                        </div>
-
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                          {/* Saturday */}
-                          {weekendShiftSat && (() => {
-                            const satWorkConfig = editWorkSchedule?.["6"] || editWorkSchedule?.[6];
-                            const isSatWorkday = satWorkConfig?.active;
-                            const satHours = isSatWorkday ? `${satWorkConfig.start} - ${satWorkConfig.end}` : '';
-
-                            return (
-                              <div style={{
-                                display: 'flex',
-                                justifyContent: 'space-between',
-                                alignItems: 'center',
-                                background: 'var(--color-bg-alt)',
-                                padding: '10px 14px',
-                                borderRadius: '12px',
-                                border: '1px solid var(--color-border-light)'
-                              }}>
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                                  <span style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text)' }}>
-                                    {t('Thứ Bảy')} ({new Date(weekendShiftSat.date).toLocaleDateString('vi-VN')})
-                                  </span>
-                                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', alignItems: 'center' }}>
-                                    {isSatWorkday && (
-                                      <span style={{
-                                        fontSize: '0.7rem',
-                                        fontWeight: 600,
-                                        color: 'var(--color-text-muted)',
-                                        background: 'rgba(100, 116, 139, 0.08)',
-                                        padding: '2px 8px',
-                                        borderRadius: '4px'
-                                      }}>
-                                        {t('Lịch hành chính:')} {satHours}
-                                      </span>
-                                    )}
-                                    {weekendShiftSat.deadline_time && (
-                                      <span style={{
-                                        fontSize: '0.7rem',
-                                        color: 'var(--color-text-muted)',
-                                        background: 'rgba(100, 116, 139, 0.04)',
-                                        padding: '2px 8px',
-                                        borderRadius: '4px',
-                                        border: '1px solid var(--color-border-light)'
-                                      }}>
-                                        {t('Hạn đăng ký:')} {new Date(weekendShiftSat.deadline_time).toLocaleString('vi-VN')}
-                                      </span>
-                                    )}
-                                  </div>
-                                </div>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                  {(!isMobile || weekendShiftSat.registered) && (
-                                    <span style={{
-                                      fontSize: '0.8rem',
-                                      fontWeight: 700,
-                                      color: weekendShiftSat.registered ? (weekendShiftSat.approved ? 'var(--color-success)' : 'var(--color-warning)') : 'var(--color-text-muted)',
-                                      background: weekendShiftSat.registered ? (weekendShiftSat.approved ? 'rgba(16, 185, 129, 0.1)' : 'rgba(245, 158, 11, 0.1)') : 'rgba(100, 116, 139, 0.08)',
-                                      padding: '3px 8px',
-                                      borderRadius: '6px'
-                                    }}>
-                                      {weekendShiftSat.registered ? (weekendShiftSat.approved ? t('Đã duyệt trực') : t('Chờ duyệt')) : t('Chưa đăng ký')}
-                                    </span>
-                                  )}
-                                  {['sale', 'manager'].includes(String(effectiveRole).toLowerCase()) && (
-                                    <div style={{ opacity: weekendShiftSat.can_toggle ? 1 : 0.6 }}>
-                                      <ToggleSwitch
-                                        checked={weekendShiftSat.registered}
-                                        onChange={() => {
-                                          if (!weekendShiftSat.can_toggle) {
-                                            toast.error(t('Đã quá hạn đăng ký trực cuối tuần cho Thứ Bảy!'));
-                                            return;
-                                          }
-                                          handleToggleWeekendShift(weekendShiftSat.date, weekendShiftSat.registered);
-                                        }}
-                                      />
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
-                            );
-                          })()}
-
-                          {/* Sunday */}
-                          {weekendShiftSun && (() => {
-                            const sunWorkConfig = editWorkSchedule?.["7"] || editWorkSchedule?.[7];
-                            const isSunWorkday = sunWorkConfig?.active;
-                            const sunHours = isSunWorkday ? `${sunWorkConfig.start} - ${sunWorkConfig.end}` : '';
-
-                            return (
-                              <div style={{
-                                display: 'flex',
-                                justifyContent: 'space-between',
-                                alignItems: 'center',
-                                background: 'var(--color-bg-alt)',
-                                padding: '10px 14px',
-                                borderRadius: '12px',
-                                border: '1px solid var(--color-border-light)'
-                              }}>
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                                  <span style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text)' }}>
-                                    {t('Chủ Nhật')} ({new Date(weekendShiftSun.date).toLocaleDateString('vi-VN')})
-                                  </span>
-                                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', alignItems: 'center' }}>
-                                    {isSunWorkday && (
-                                      <span style={{
-                                        fontSize: '0.7rem',
-                                        fontWeight: 600,
-                                        color: 'var(--color-text-muted)',
-                                        background: 'rgba(100, 116, 139, 0.08)',
-                                        padding: '2px 8px',
-                                        borderRadius: '4px'
-                                      }}>
-                                        {t('Lịch hành chính:')} {sunHours}
-                                      </span>
-                                    )}
-                                    {weekendShiftSun.deadline_time && (
-                                      <span style={{
-                                        fontSize: '0.7rem',
-                                        color: 'var(--color-text-muted)',
-                                        background: 'rgba(100, 116, 139, 0.04)',
-                                        padding: '2px 8px',
-                                        borderRadius: '4px',
-                                        border: '1px solid var(--color-border-light)'
-                                      }}>
-                                        {t('Hạn đăng ký:')} {new Date(weekendShiftSun.deadline_time).toLocaleString('vi-VN')}
-                                      </span>
-                                    )}
-                                  </div>
-                                </div>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                  {(!isMobile || weekendShiftSun.registered) && (
-                                    <span style={{
-                                      fontSize: '0.8rem',
-                                      fontWeight: 700,
-                                      color: weekendShiftSun.registered ? (weekendShiftSun.approved ? 'var(--color-success)' : 'var(--color-warning)') : 'var(--color-text-muted)',
-                                      background: weekendShiftSun.registered ? (weekendShiftSun.approved ? 'rgba(16, 185, 129, 0.1)' : 'rgba(245, 158, 11, 0.1)') : 'rgba(100, 116, 139, 0.08)',
-                                      padding: '3px 8px',
-                                      borderRadius: '6px'
-                                    }}>
-                                      {weekendShiftSun.registered ? (weekendShiftSun.approved ? t('Đã duyệt trực') : t('Chờ duyệt')) : t('Chưa đăng ký')}
-                                    </span>
-                                  )}
-                                  {['sale', 'manager'].includes(String(effectiveRole).toLowerCase()) && (
-                                    <div style={{ opacity: weekendShiftSun.can_toggle ? 1 : 0.6 }}>
-                                      <ToggleSwitch
-                                        checked={weekendShiftSun.registered}
-                                        onChange={() => {
-                                          if (!weekendShiftSun.can_toggle) {
-                                            toast.error(t('Đã quá hạn đăng ký trực cuối tuần cho Chủ Nhật!'));
-                                            return;
-                                          }
-                                          handleToggleWeekendShift(weekendShiftSun.date, weekendShiftSun.registered);
-                                        }}
-                                      />
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
-                            );
-                          })()}
-                        </div>
-
-                        {((weekendShiftSat && !weekendShiftSat.can_toggle && !weekendShiftSat.registered) || 
-                          (weekendShiftSun && !weekendShiftSun.can_toggle && !weekendShiftSun.registered)) && (
-                          <div style={{
-                            background: 'var(--color-danger-light)', 
-                            color: 'var(--color-danger)', 
-                            padding: '10px 14px',
-                            borderRadius: '10px', 
-                            border: '1px solid rgba(239, 68, 68, 0.2)', 
-                            fontSize: '0.78rem', 
-                            display: 'flex', 
-                            alignItems: 'center', 
-                            gap: 8,
-                            marginTop: '4px'
-                          }}>
-                            <Info size={14} />
-                            <span>
-                              {t('Đã quá hạn đăng ký trực cuối tuần. Bạn không thể thay đổi trạng thái đăng ký của các ngày đã quá hạn.')}
-                            </span>
-                          </div>
-                        )}
-                      </div>
-                    )}
                     {/* Night Shift Registration Card */}
                     <div className="card" style={{
                       padding: '1.5rem',
@@ -12776,9 +12621,10 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                               </span>
                             </div>
                             <div style={{
-                              display: 'grid',
-                              gridTemplateColumns: 'repeat(7, 1fr)',
-                              gap: isMobile ? '4px' : '6px',
+                              display: isMobile ? 'flex' : 'grid',
+                              flexDirection: isMobile ? 'column' : 'initial',
+                              gridTemplateColumns: isMobile ? 'none' : 'repeat(7, 1fr)',
+                              gap: isMobile ? '6px' : '6px',
                               marginTop: '2px'
                             }}>
                               {past7Days.map((item) => (
@@ -12786,24 +12632,24 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                                   key={item.dateStr}
                                   style={{
                                     display: 'flex',
-                                    flexDirection: 'column',
+                                    flexDirection: isMobile ? 'row' : 'column',
                                     alignItems: 'center',
-                                    justifyContent: 'center',
-                                    padding: '6px 2px',
+                                    justifyContent: isMobile ? 'space-between' : 'center',
+                                    padding: isMobile ? '6px 12px' : '6px 2px',
                                     borderRadius: '8px',
                                     background: item.isRegistered ? 'rgba(139, 92, 246, 0.1)' : 'var(--color-surface)',
                                     border: item.isRegistered ? '1px solid #8b5cf6' : '1px solid var(--color-border-light)',
-                                    textAlign: 'center'
+                                    textAlign: isMobile ? 'left' : 'center'
                                   }}
                                 >
-                                  <span style={{ fontSize: '0.68rem', color: 'var(--color-text-muted)', fontWeight: 500 }}>
-                                    {item.dayLabel}
+                                  <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 500 }}>
+                                    {isMobile ? `${t('Ngày')} ${item.dayLabel}` : item.dayLabel}
                                   </span>
                                   <span style={{
-                                    fontSize: '0.72rem',
+                                    fontSize: '0.75rem',
                                     fontWeight: 700,
                                     color: item.isRegistered ? '#8b5cf6' : 'var(--color-text-muted)',
-                                    marginTop: '2px'
+                                    marginTop: isMobile ? '0' : '2px'
                                   }}>
                                     {item.isRegistered ? t('Đã trực') : t('Nghỉ')}
                                   </span>
@@ -12814,67 +12660,59 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                         );
                       })()}
 
-                      <div style={{
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
-                        background: 'var(--color-bg-alt)',
-                        padding: '10px 14px',
-                        borderRadius: '12px',
-                        border: '1px solid var(--color-border-light)'
-                      }}>
-                        <span style={{ fontSize: '0.8125rem', fontWeight: 500, color: 'var(--color-text-light)' }}>
-                          {t('Đăng ký trực hôm nay:')}
-                        </span>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                          {(!isMobile || nightShiftRegistered) && (
-                            <span style={{
-                              fontSize: '0.8rem',
-                              fontWeight: 700,
-                              color: nightShiftRegistered 
-                                ? 'var(--color-success)' 
-                                : ((nightShiftCanToggle && !isTodayWeekend) ? 'var(--color-text-muted)' : (isTodayWeekend ? 'var(--color-text-muted)' : 'var(--color-danger)')),
-                              background: nightShiftRegistered 
-                                ? 'rgba(16, 185, 129, 0.1)' 
-                                : ((nightShiftCanToggle && !isTodayWeekend) ? 'rgba(100, 116, 139, 0.08)' : (isTodayWeekend ? 'rgba(100, 116, 139, 0.08)' : 'var(--color-danger-light)')),
-                              padding: '3px 8px',
-                              borderRadius: '6px'
-                            }}>
-                              {nightShiftRegistered 
-                                ? t('Đã đăng ký trực') 
-                                : ((nightShiftCanToggle && !isTodayWeekend) ? t('Chưa đăng ký') : (isTodayWeekend ? t('Nghỉ trực ca đêm') : t('Đã hết hạn đăng ký')))}
-                            </span>
-                          )}
-                          {['sale', 'manager'].includes(String(effectiveRole).toLowerCase()) && (
-                            <div style={{ opacity: (nightShiftCanToggle && !isTodayWeekend && !togglingNightShift) ? 1 : 0.6, pointerEvents: togglingNightShift ? 'none' : 'auto' }}>
-                              <ToggleSwitch
-                                checked={nightShiftRegistered}
-                                disabled={togglingNightShift || !nightShiftCanToggle || isTodayWeekend}
-                                onChange={() => {
-                                  if (togglingNightShift) return;
-                                  if (isTodayWeekend) {
-                                    toast.error(t('Hôm nay là cuối tuần, vui lòng đăng ký trực cuối tuần ở trên!'));
-                                    return;
-                                  }
-                                  if (!nightShiftCanToggle) {
-                                    toast.error(t('Đã quá hạn đăng ký trực ca đêm hôm nay!'));
-                                    return;
-                                  }
-                                  setShowNightShiftConfirmModal(true);
-                                }}
-                              />
-                            </div>
-                          )}
-                        </div>
-                      </div>
-
-                      {(!nightShiftCanToggle || isTodayWeekend) && (
+                      {!isTodayWeekend && (
                         <div style={{
-                          background: isTodayWeekend ? 'rgba(100, 116, 139, 0.08)' : 'var(--color-danger-light)',
-                          color: isTodayWeekend ? 'var(--color-text-muted)' : 'var(--color-danger)',
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                          background: 'var(--color-bg-alt)',
+                          padding: '10px 14px',
+                          borderRadius: '12px',
+                          border: '1px solid var(--color-border-light)'
+                        }}>
+                          <span style={{ fontSize: '0.8125rem', fontWeight: 500, color: 'var(--color-text-light)' }}>
+                            {t('Đăng ký trực hôm nay:')}
+                          </span>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                            {(!isMobile || nightShiftRegistered) && (
+                              <span style={{
+                                fontSize: '0.8rem',
+                                fontWeight: 700,
+                                color: nightShiftRegistered ? 'var(--color-success)' : (nightShiftCanToggle ? 'var(--color-text-muted)' : 'var(--color-danger)'),
+                                background: nightShiftRegistered ? 'rgba(16, 185, 129, 0.1)' : (nightShiftCanToggle ? 'rgba(100, 116, 139, 0.08)' : 'var(--color-danger-light)'),
+                                padding: '3px 8px',
+                                borderRadius: '6px'
+                              }}>
+                                {nightShiftRegistered ? t('Đã đăng ký trực') : (nightShiftCanToggle ? t('Chưa đăng ký') : t('Đã hết hạn đăng ký'))}
+                              </span>
+                            )}
+                            {['sale', 'manager'].includes(String(effectiveRole).toLowerCase()) && (
+                              <div style={{ opacity: (nightShiftCanToggle && !togglingNightShift) ? 1 : 0.6, pointerEvents: togglingNightShift ? 'none' : 'auto' }}>
+                                <ToggleSwitch
+                                  checked={nightShiftRegistered}
+                                  disabled={togglingNightShift || !nightShiftCanToggle}
+                                  onChange={() => {
+                                    if (togglingNightShift) return;
+                                    if (!nightShiftCanToggle) {
+                                      toast.error(t('Đã quá hạn đăng ký trực ca đêm hôm nay!'));
+                                      return;
+                                    }
+                                    setShowNightShiftConfirmModal(true);
+                                  }}
+                                />
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+
+                      {(!nightShiftCanToggle && !isTodayWeekend) && (
+                        <div style={{
+                          background: 'var(--color-danger-light)',
+                          color: 'var(--color-danger)',
                           padding: '10px 14px',
                           borderRadius: '10px',
-                          border: isTodayWeekend ? '1px solid var(--color-border-light)' : '1px solid rgba(239, 68, 68, 0.2)',
+                          border: '1px solid rgba(239, 68, 68, 0.2)',
                           fontSize: '0.78rem',
                           display: 'flex',
                           alignItems: 'center',
@@ -12882,13 +12720,305 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                         }}>
                           <Info size={14} />
                           <span>
-                            {isTodayWeekend 
-                              ? t('Hôm nay là cuối tuần. Vui lòng đăng ký trực cuối tuần ở trên.')
-                              : t(`Quá hạn đăng ký (${nightShiftDeadline}). Bạn không thể thay đổi đăng ký trực ca đêm hôm nay.`)}
+                            {t(`Quá hạn đăng ký (${nightShiftDeadline}). Bạn không thể thay đổi đăng ký trực ca đêm hôm nay.`)}
                           </span>
                         </div>
                       )}
                     </div>
+
+                    {/* Weekend Shift Registration Card */}
+                    {weekendShiftAllow && (
+                      <div className="card" style={{
+                        padding: '1.5rem',
+                        background: 'var(--color-surface)',
+                        border: '1px solid var(--color-border-light)',
+                        borderRadius: '16px',
+                        boxShadow: '0 4px 20px rgba(0, 0, 0, 0.02), inset 0 1px 0 rgba(255, 255, 255, 0.6)',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '1rem',
+                        transition: 'all 0.3s ease'
+                      }}>
+                        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+                          <div style={{
+                            width: '40px',
+                            height: '40px',
+                            borderRadius: '10px',
+                            background: 'rgba(16, 185, 129, 0.08)',
+                            display: 'grid',
+                            placeItems: 'center',
+                            flexShrink: 0
+                          }}>
+                            <Calendar size={20} color="var(--color-success)" style={{ display: 'block', width: '20px', height: '20px', margin: 'auto' }} />
+                          </div>
+                          <div style={{ flex: 1 }}>
+                            <h3 style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--color-text)', margin: 0, letterSpacing: '-0.01em' }}>
+                              {t('ĐĂNG KÝ TRỰC CUỐI TUẦN')}
+                            </h3>
+                            <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', marginTop: 4, marginBottom: 0, lineHeight: '1.45' }}>
+                              {t('Đăng ký nhận lead trong các ngày Thứ Bảy và Chủ Nhật.')}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                          {/* Saturday */}
+                          {weekendShiftSat && (() => {
+                            const satWorkConfig = editWorkSchedule?.["6"] || editWorkSchedule?.[6];
+                            const isSatWorkday = satWorkConfig?.active;
+                            const satHours = isSatWorkday ? `${satWorkConfig.start} - ${satWorkConfig.end}` : '';
+
+                            return (
+                              <div style={{
+                                display: 'flex',
+                                flexDirection: isMobile ? 'column' : 'row',
+                                justifyContent: 'space-between',
+                                alignItems: isMobile ? 'stretch' : 'center',
+                                background: 'var(--color-bg-alt)',
+                                padding: isMobile ? '12px 14px' : '10px 14px',
+                                borderRadius: '12px',
+                                border: '1px solid var(--color-border-light)',
+                                gap: isMobile ? '10px' : '0'
+                              }}>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: 1 }}>
+                                  {isMobile ? (
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', marginBottom: '4px' }}>
+                                      <span style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text)' }}>
+                                        {t('Thứ Bảy')} ({new Date(weekendShiftSat.date).toLocaleDateString('vi-VN')})
+                                      </span>
+                                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                        <span style={{
+                                          fontSize: '0.75rem',
+                                          fontWeight: 700,
+                                          color: weekendShiftSat.registered ? (weekendShiftSat.approved ? 'var(--color-success)' : 'var(--color-warning)') : 'var(--color-text-muted)',
+                                          background: weekendShiftSat.registered ? (weekendShiftSat.approved ? 'rgba(16, 185, 129, 0.1)' : 'rgba(245, 158, 11, 0.1)') : 'rgba(100, 116, 139, 0.08)',
+                                          padding: '2px 8px',
+                                          borderRadius: '6px'
+                                        }}>
+                                          {weekendShiftSat.registered ? (weekendShiftSat.approved ? t('Đã duyệt trực') : t('Chờ duyệt')) : t('Chưa đăng ký')}
+                                        </span>
+                                        {['sale', 'manager'].includes(String(effectiveRole).toLowerCase()) && (
+                                          <div style={{ opacity: weekendShiftSat.can_toggle ? 1 : 0.6 }}>
+                                            <ToggleSwitch
+                                              checked={weekendShiftSat.registered}
+                                              onChange={() => {
+                                                if (!weekendShiftSat.can_toggle) {
+                                                  toast.error(t('Đã quá hạn đăng ký trực cuối tuần cho Thứ Bảy!'));
+                                                  return;
+                                                }
+                                                handleToggleWeekendShift(weekendShiftSat.date, weekendShiftSat.registered);
+                                              }}
+                                            />
+                                          </div>
+                                        )}
+                                      </div>
+                                    </div>
+                                  ) : (
+                                    <span style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text)' }}>
+                                      {t('Thứ Bảy')} ({new Date(weekendShiftSat.date).toLocaleDateString('vi-VN')})
+                                    </span>
+                                  )}
+                                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', alignItems: 'center' }}>
+                                    {isSatWorkday && (
+                                      <span style={{
+                                        fontSize: '0.7rem',
+                                        fontWeight: 600,
+                                        color: 'var(--color-text-muted)',
+                                        background: 'rgba(100, 116, 139, 0.08)',
+                                        padding: '2px 8px',
+                                        borderRadius: '4px'
+                                      }}>
+                                        {t('Lịch hành chính:')} {satHours}
+                                      </span>
+                                    )}
+                                    {weekendShiftSat.deadline_time && (
+                                      <span style={{
+                                        fontSize: '0.7rem',
+                                        color: 'var(--color-text-muted)',
+                                        background: 'rgba(100, 116, 139, 0.04)',
+                                        padding: '2px 8px',
+                                        borderRadius: '4px',
+                                        border: '1px solid var(--color-border-light)'
+                                      }}>
+                                        {t('Hạn đăng ký:')} {new Date(weekendShiftSat.deadline_time).toLocaleString('vi-VN')}
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                                {!isMobile && (
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                    {(!isMobile || weekendShiftSat.registered) && (
+                                      <span style={{
+                                        fontSize: '0.8rem',
+                                        fontWeight: 700,
+                                        color: weekendShiftSat.registered ? (weekendShiftSat.approved ? 'var(--color-success)' : 'var(--color-warning)') : 'var(--color-text-muted)',
+                                        background: weekendShiftSat.registered ? (weekendShiftSat.approved ? 'rgba(16, 185, 129, 0.1)' : 'rgba(245, 158, 11, 0.1)') : 'rgba(100, 116, 139, 0.08)',
+                                        padding: '3px 8px',
+                                        borderRadius: '6px'
+                                      }}>
+                                        {weekendShiftSat.registered ? (weekendShiftSat.approved ? t('Đã duyệt trực') : t('Chờ duyệt')) : t('Chưa đăng ký')}
+                                      </span>
+                                    )}
+                                    {['sale', 'manager'].includes(String(effectiveRole).toLowerCase()) && (
+                                      <div style={{ opacity: weekendShiftSat.can_toggle ? 1 : 0.6 }}>
+                                        <ToggleSwitch
+                                          checked={weekendShiftSat.registered}
+                                          onChange={() => {
+                                            if (!weekendShiftSat.can_toggle) {
+                                              toast.error(t('Đã quá hạn đăng ký trực cuối tuần cho Thứ Bảy!'));
+                                              return;
+                                            }
+                                            handleToggleWeekendShift(weekendShiftSat.date, weekendShiftSat.registered);
+                                          }}
+                                        />
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })()}
+
+                          {/* Sunday */}
+                          {weekendShiftSun && (() => {
+                            const sunWorkConfig = editWorkSchedule?.["7"] || editWorkSchedule?.[7];
+                            const isSunWorkday = sunWorkConfig?.active;
+                            const sunHours = isSunWorkday ? `${sunWorkConfig.start} - ${sunWorkConfig.end}` : '';
+
+                            return (
+                              <div style={{
+                                display: 'flex',
+                                flexDirection: isMobile ? 'column' : 'row',
+                                justifyContent: 'space-between',
+                                alignItems: isMobile ? 'stretch' : 'center',
+                                background: 'var(--color-bg-alt)',
+                                padding: isMobile ? '12px 14px' : '10px 14px',
+                                borderRadius: '12px',
+                                border: '1px solid var(--color-border-light)',
+                                gap: isMobile ? '10px' : '0'
+                              }}>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: 1 }}>
+                                  {isMobile ? (
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', marginBottom: '4px' }}>
+                                      <span style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text)' }}>
+                                        {t('Chủ Nhật')} ({new Date(weekendShiftSun.date).toLocaleDateString('vi-VN')})
+                                      </span>
+                                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                        <span style={{
+                                          fontSize: '0.75rem',
+                                          fontWeight: 700,
+                                          color: weekendShiftSun.registered ? (weekendShiftSun.approved ? 'var(--color-success)' : 'var(--color-warning)') : 'var(--color-text-muted)',
+                                          background: weekendShiftSun.registered ? (weekendShiftSun.approved ? 'rgba(16, 185, 129, 0.1)' : 'rgba(245, 158, 11, 0.1)') : 'rgba(100, 116, 139, 0.08)',
+                                          padding: '2px 8px',
+                                          borderRadius: '6px'
+                                        }}>
+                                          {weekendShiftSun.registered ? (weekendShiftSun.approved ? t('Đã duyệt trực') : t('Chờ duyệt')) : t('Chưa đăng ký')}
+                                        </span>
+                                        {['sale', 'manager'].includes(String(effectiveRole).toLowerCase()) && (
+                                          <div style={{ opacity: weekendShiftSun.can_toggle ? 1 : 0.6 }}>
+                                            <ToggleSwitch
+                                              checked={weekendShiftSun.registered}
+                                              onChange={() => {
+                                                if (!weekendShiftSun.can_toggle) {
+                                                  toast.error(t('Đã quá hạn đăng ký trực cuối tuần cho Chủ Nhật!'));
+                                                  return;
+                                                }
+                                                handleToggleWeekendShift(weekendShiftSun.date, weekendShiftSun.registered);
+                                              }}
+                                            />
+                                          </div>
+                                        )}
+                                      </div>
+                                    </div>
+                                  ) : (
+                                    <span style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text)' }}>
+                                      {t('Chủ Nhật')} ({new Date(weekendShiftSun.date).toLocaleDateString('vi-VN')})
+                                    </span>
+                                  )}
+                                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', alignItems: 'center' }}>
+                                    {isSunWorkday && (
+                                      <span style={{
+                                        fontSize: '0.7rem',
+                                        fontWeight: 600,
+                                        color: 'var(--color-text-muted)',
+                                        background: 'rgba(100, 116, 139, 0.08)',
+                                        padding: '2px 8px',
+                                        borderRadius: '4px'
+                                      }}>
+                                        {t('Lịch hành chính:')} {sunHours}
+                                      </span>
+                                    )}
+                                    {weekendShiftSun.deadline_time && (
+                                      <span style={{
+                                        fontSize: '0.7rem',
+                                        color: 'var(--color-text-muted)',
+                                        background: 'rgba(100, 116, 139, 0.04)',
+                                        padding: '2px 8px',
+                                        borderRadius: '4px',
+                                        border: '1px solid var(--color-border-light)'
+                                      }}>
+                                        {t('Hạn đăng ký:')} {new Date(weekendShiftSun.deadline_time).toLocaleString('vi-VN')}
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                                {!isMobile && (
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                    {(!isMobile || weekendShiftSun.registered) && (
+                                      <span style={{
+                                        fontSize: '0.8rem',
+                                        fontWeight: 700,
+                                        color: weekendShiftSun.registered ? (weekendShiftSun.approved ? 'var(--color-success)' : 'var(--color-warning)') : 'var(--color-text-muted)',
+                                        background: weekendShiftSun.registered ? (weekendShiftSun.approved ? 'rgba(16, 185, 129, 0.1)' : 'rgba(245, 158, 11, 0.1)') : 'rgba(100, 116, 139, 0.08)',
+                                        padding: '3px 8px',
+                                        borderRadius: '6px'
+                                      }}>
+                                        {weekendShiftSun.registered ? (weekendShiftSun.approved ? t('Đã duyệt trực') : t('Chờ duyệt')) : t('Chưa đăng ký')}
+                                      </span>
+                                    )}
+                                    {['sale', 'manager'].includes(String(effectiveRole).toLowerCase()) && (
+                                      <div style={{ opacity: weekendShiftSun.can_toggle ? 1 : 0.6 }}>
+                                        <ToggleSwitch
+                                          checked={weekendShiftSun.registered}
+                                          onChange={() => {
+                                            if (!weekendShiftSun.can_toggle) {
+                                              toast.error(t('Đã quá hạn đăng ký trực cuối tuần cho Chủ Nhật!'));
+                                              return;
+                                            }
+                                            handleToggleWeekendShift(weekendShiftSun.date, weekendShiftSun.registered);
+                                          }}
+                                        />
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })()}
+                        </div>
+
+                        {((weekendShiftSat && !weekendShiftSat.can_toggle && !weekendShiftSat.registered) || 
+                          (weekendShiftSun && !weekendShiftSun.can_toggle && !weekendShiftSun.registered)) && (
+                          <div style={{
+                            background: 'var(--color-danger-light)', 
+                            color: 'var(--color-danger)', 
+                            padding: '10px 14px',
+                            borderRadius: '10px', 
+                            border: '1px solid rgba(239, 68, 68, 0.2)', 
+                            fontSize: '0.78rem', 
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            gap: 8,
+                            marginTop: '4px'
+                          }}>
+                            <Info size={14} />
+                            <span>
+                              {t('Đã quá hạn đăng ký trực cuối tuần. Bạn không thể thay đổi trạng thái đăng ký của các ngày đã quá hạn.')}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    )}
                     {/* Holiday Shift Registration Card */}
                     {holidayShifts.length > 0 && (
                       <div className="card" style={{
@@ -13166,7 +13296,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                                     gap: isMobile ? '1px' : '2px',
                                     transition: 'all 0.2s',
                                     textAlign: 'center',
-                                    minHeight: isMobile ? '48px' : '70px',
+                                    minHeight: isMobile ? '38px' : '70px',
                                     boxSizing: 'border-box',
                                     userSelect: 'none'
                                   }}
@@ -13180,20 +13310,22 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                                   </span>
                                   
                                   {/* Status badge */}
-                                  <span style={{
-                                    fontSize: isMobile ? '0.42rem' : '0.62rem',
-                                    fontWeight: 700,
-                                    padding: isMobile ? '1px 2px' : '1px 3px',
-                                    borderRadius: isMobile ? '3px' : '4px',
-                                    marginTop: '2px',
-                                    whiteSpace: 'nowrap',
-                                    lineHeight: 1,
-                                    letterSpacing: isMobile ? '-0.02em' : 'normal',
-                                    color: statusColor,
-                                    background: statusBg
-                                  }}>
-                                    {statusText}
-                                  </span>
+                                  {!isMobile && (
+                                    <span style={{
+                                      fontSize: isMobile ? '0.42rem' : '0.62rem',
+                                      fontWeight: 700,
+                                      padding: isMobile ? '1px 2px' : '1px 3px',
+                                      borderRadius: isMobile ? '3px' : '4px',
+                                      marginTop: '2px',
+                                      whiteSpace: 'nowrap',
+                                      lineHeight: 1,
+                                      letterSpacing: isMobile ? '-0.02em' : 'normal',
+                                      color: statusColor,
+                                      background: statusBg
+                                    }}>
+                                      {statusText}
+                                    </span>
+                                  )}
                                 </div>
                               );
                             })}
@@ -13588,7 +13720,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
             )}
 
             {/* 7. DOCUMENTS & CONTRACTS */}
-            {profileActiveTab === 'documents' && (
+            {renderedTab === 'documents' && (
               <div className="card animate-fade-in" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem', background: 'var(--color-surface)', borderRadius: '16px', border: '1px solid var(--color-border-light)', boxShadow: '0 4px 20px rgba(0,0,0,0.02)' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-text)', margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
