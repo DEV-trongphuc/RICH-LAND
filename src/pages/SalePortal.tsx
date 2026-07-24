@@ -11172,15 +11172,17 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
               {isMobile && (profileActiveTab || renderedTab) && (
                 <div style={{
                   position: 'sticky',
-                  top: '-1rem',
+                  top: '0',
                   zIndex: 100,
                   background: 'var(--color-surface)',
-                  padding: '1.5rem 1.5rem 0.75rem 1.5rem',
+                  padding: '12px 16px',
                   display: 'flex',
                   justifyContent: 'space-between',
                   alignItems: 'center',
-                  borderBottom: '1px solid var(--color-border)',
-                  margin: '-1rem -1rem 1rem -1rem',
+                  borderRadius: '12px',
+                  border: '1px solid var(--color-border-light)',
+                  boxShadow: 'var(--shadow-sm)',
+                  marginBottom: '12px',
                   gap: '12px'
                 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
