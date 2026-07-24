@@ -10667,22 +10667,6 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                 borderBottomLeftRadius: '16px'
               }}
             >
-              width: '250px',
-              borderRight: '1px solid var(--color-border-light)',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '1.25rem',
-              padding: '1.5rem 1rem',
-              flexShrink: 0,
-              background: 'var(--color-bg-alt)',
-              position: 'sticky',
-              top: '5rem',
-              alignSelf: 'flex-start',
-              zIndex: 10,
-              borderTopLeftRadius: '16px',
-              borderTopRightRadius: '0px',
-              borderBottomLeftRadius: '16px'
-            }}>
               {isMobile ? (
                 /* ── Mobile OS Settings Card-Style Standalone Avatar Card ── */
                 <div 
