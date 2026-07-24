@@ -11240,7 +11240,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
               )}
             {/* 1. PERSONAL INFO */}
             {renderedTab === 'personal' && (
-              <div className="card animate-fade-in" style={cardContainerStyle(isMobile)}>
+              <div className={isMobile ? "animate-fade-in" : "card animate-fade-in"} style={cardContainerStyle(isMobile)}>
                 <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-text)', textTransform: 'uppercase', letterSpacing: '0.5px', margin: '0 0 0.5rem 0', display: 'flex', alignItems: 'center', gap: 8 }}>
                   <User size={16} color="var(--color-primary)" /> {t('Thông tin cá nhân')}
                 </h3>
@@ -11410,7 +11410,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
 
             {/* 2. ERP PROFILE */}
             {renderedTab === 'erp' && (
-              <div className="card animate-fade-in" style={{ padding: '2rem', display: 'flex', flexDirection: 'column', gap: '1.5rem', background: 'var(--color-surface)', borderRadius: '12px', border: '1px solid var(--color-border-light)', boxShadow: '0 4px 20px rgba(0,0,0,0.02)' }}>
+              <div className={isMobile ? "animate-fade-in" : "card animate-fade-in"} style={cardContainerStyle(isMobile)}>
                 <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-text)', textTransform: 'uppercase', letterSpacing: '0.5px', margin: '0 0 0.5rem 0', display: 'flex', alignItems: 'center', gap: 8 }}>
                   <Layers size={16} color="var(--color-primary)" /> {t('Thông tin nhân sự & ERP')}
                 </h3>
@@ -11561,7 +11561,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
             )}
 
             {renderedTab === 'certificates' && (
-              <div className="card animate-fade-in" style={{ padding: '2rem', display: 'flex', flexDirection: 'column', gap: '1.5rem', background: 'var(--color-surface)', borderRadius: '16px', border: '1px solid var(--color-border-light)', boxShadow: '0 4px 20px rgba(0,0,0,0.02)' }}>
+              <div className={isMobile ? "animate-fade-in" : "card animate-fade-in"} style={cardContainerStyle(isMobile, '16px')}>
                 <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-text)', textTransform: 'uppercase', letterSpacing: '0.5px', margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
                   <Award size={18} color="var(--color-primary)" />
                   {t('BẰNG CẤP & CHỨNG CHỈ HÀNH NGHỀ')}
@@ -11782,7 +11782,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
             )}
 
             {renderedTab === 'hr_records' && (
-              <div className="card animate-fade-in" style={{ padding: '2rem', display: 'flex', flexDirection: 'column', gap: '1.5rem', background: 'var(--color-surface)', borderRadius: '16px', border: '1px solid var(--color-border-light)', boxShadow: '0 4px 20px rgba(0,0,0,0.02)' }}>
+              <div className={isMobile ? "animate-fade-in" : "card animate-fade-in"} style={cardContainerStyle(isMobile, '16px')}>
                 <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-text)', textTransform: 'uppercase', letterSpacing: '0.5px', margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
                   <AlertCircle size={18} color="var(--color-primary)" />
                   {t('KHEN THƯỞNG, CẢNH CÁO & KỶ LUẬT')}
@@ -12024,7 +12024,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
 
             {/* 3. CONTACT & LOGIN */}
             {renderedTab === 'contact' && (
-              <div className="card animate-fade-in" style={{ padding: '2rem', display: 'flex', flexDirection: 'column', gap: '1.5rem', background: 'var(--color-surface)', borderRadius: '12px', border: '1px solid var(--color-border-light)', boxShadow: '0 4px 20px rgba(0,0,0,0.02)' }}>
+              <div className={isMobile ? "animate-fade-in" : "card animate-fade-in"} style={cardContainerStyle(isMobile)}>
                 <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-text)', textTransform: 'uppercase', letterSpacing: '0.5px', margin: '0 0 0.5rem 0', display: 'flex', alignItems: 'center', gap: 8 }}>
                   <Server size={16} color="var(--color-primary)" /> {t('Thông tin liên hệ')}
                 </h3>
@@ -12092,7 +12092,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
 
             {/* SECURITY & ACCOUNT TAB (TÀI KHOẢN & BẢO MẬT) */}
             {renderedTab === 'security' && (
-              <div className="card animate-fade-in" style={{ padding: '2rem', display: 'flex', flexDirection: 'column', gap: '1.5rem', background: 'var(--color-surface)', borderRadius: '12px', border: '1px solid var(--color-border-light)', boxShadow: '0 4px 20px rgba(0,0,0,0.02)' }}>
+              <div className={isMobile ? "animate-fade-in" : "card animate-fade-in"} style={cardContainerStyle(isMobile)}>
                 <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-text)', textTransform: 'uppercase', letterSpacing: '0.5px', margin: '0 0 0.5rem 0', display: 'flex', alignItems: 'center', gap: 8 }}>
                   <ShieldCheck size={16} color="var(--color-primary)" /> {t('Tài khoản & Bảo mật')}
                 </h3>
@@ -12296,7 +12296,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
 
             {/* 4. BANKING & PAYMENTS */}
             {renderedTab === 'payment' && (
-              <div className="card animate-fade-in" style={{ padding: '2rem', display: 'flex', flexDirection: 'column', gap: '1.5rem', background: 'var(--color-surface)', borderRadius: '12px', border: '1px solid var(--color-border-light)', boxShadow: '0 4px 20px rgba(0,0,0,0.02)' }}>
+              <div className={isMobile ? "animate-fade-in" : "card animate-fade-in"} style={cardContainerStyle(isMobile)}>
                 <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-text)', textTransform: 'uppercase', letterSpacing: '0.5px', margin: '0 0 0.5rem 0', display: 'flex', alignItems: 'center', gap: 8 }}>
                   <Receipt size={16} color="var(--color-primary)" /> {t('Thanh toán & Thuế')}
                 </h3>
@@ -12362,7 +12362,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
 
             {/* 5. EMERGENCY CONTACT (Merged into Contact & Account) */}
             {(renderedTab === 'contact' || renderedTab === 'emergency') && (
-              <div className="card animate-fade-in" style={{ padding: '2rem', display: 'flex', flexDirection: 'column', gap: '1.5rem', background: 'var(--color-surface)', borderRadius: '12px', border: '1px solid var(--color-border-light)', boxShadow: '0 4px 20px rgba(0,0,0,0.02)' }}>
+              <div className={isMobile ? "animate-fade-in" : "card animate-fade-in"} style={cardContainerStyle(isMobile)}>
                 <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-text)', textTransform: 'uppercase', letterSpacing: '0.5px', margin: '0 0 0.5rem 0', display: 'flex', alignItems: 'center', gap: 8 }}>
                   <Scale size={16} color="var(--color-primary)" /> {t('Liên hệ khẩn cấp')}
                 </h3>
@@ -13731,7 +13731,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
 
             {/* 7. DOCUMENTS & CONTRACTS */}
             {renderedTab === 'documents' && (
-              <div className="card animate-fade-in" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem', background: 'var(--color-surface)', borderRadius: '16px', border: '1px solid var(--color-border-light)', boxShadow: '0 4px 20px rgba(0,0,0,0.02)' }}>
+              <div className={isMobile ? "animate-fade-in" : "card animate-fade-in"} style={cardContainerStyle(isMobile, '16px')}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-text)', margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
                     <FileText size={18} color="var(--color-primary)" />
