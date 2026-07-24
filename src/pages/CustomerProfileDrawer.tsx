@@ -6429,15 +6429,11 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                             }} />
                           </div>
                           <div className="form-group">
-                            <label className="form-label">Loại khách hàng</label>
-                            <CustomSelect
-                              options={[
-                                { value: '', label: '— Chưa chọn —' },
-                                { value: 'individual', label: 'Cá nhân (Individual)' },
-                                { value: 'corporate', label: 'Doanh nghiệp (Corporate)' }
-                              ]}
-                              value={formData.customer_type || ''}
-                              onChange={val => setFormData((prev: any) => ({ ...prev, customer_type: val as string }))}
+                            <AddressSelect
+                              label="Địa chỉ"
+                              value={formData.address || ''}
+                              onChange={addr => setFormData((prev: any) => ({ ...prev, address: addr }))}
+                              placeholder="Chọn địa chỉ liên hệ..."
                             />
                           </div>
                           <div className="form-group">
@@ -6732,14 +6728,6 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                         </div>
                       </div>
 
-                      <div className="card-panel">
-                        <h4 className="panel-title">Địa chỉ</h4>
-                        <AddressSelect
-                          value={formData.address || ''}
-                          onChange={addr => setFormData((prev: any) => ({ ...prev, address: addr }))}
-                          placeholder="Chọn địa chỉ liên hệ..."
-                        />
-                      </div>
 
                       <div className="card-panel">
                         <h4 className="panel-title">Phân loại & Trạng thái Sales</h4>
