@@ -10632,10 +10632,10 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
             <motion.div
               key="menu"
               {...(isMobile ? {
-                initial: { opacity: 0, x: -15 },
-                animate: { opacity: 1, x: 0 },
-                exit: { opacity: 0, x: -15 },
-                transition: { duration: 0.22, ease: 'easeInOut' }
+                initial: { opacity: 0 },
+                animate: { opacity: 1 },
+                exit: { opacity: 0 },
+                transition: { duration: 0.15 }
               } : {})}
               style={isMobile ? {
                 width: '100%',
@@ -11167,10 +11167,10 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
             <motion.div
               key="subpage"
               {...(isMobile ? {
-                initial: { opacity: 0, x: 20 },
-                animate: { opacity: 1, x: 0 },
-                exit: { opacity: 0, x: 20 },
-                transition: { duration: 0.25, ease: 'easeOut' }
+                initial: { opacity: 0, y: 10 },
+                animate: { opacity: 1, y: 0 },
+                exit: { opacity: 0, y: 10 },
+                transition: { duration: 0.18, ease: 'easeOut' }
               } : {})}
               className={styles.contentArea}
               style={{

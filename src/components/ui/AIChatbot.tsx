@@ -1322,28 +1322,34 @@ Bạn có thể gõ rõ từ khóa hoặc click vào các gợi ý bên dưới 
                 ))}
                 
                 {isTyping && (
-                  <div 
-                    style={{ 
-                      display: 'flex', 
-                      alignItems: 'center', 
-                      gap: 10, 
-                      paddingLeft: 40,
+                  <div
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'flex-start',
+                      alignItems: 'flex-start',
+                      gap: 10,
                       animation: 'slide-up-fade 0.3s ease forwards'
                     }}
+                    className="message-appear"
                   >
-                    <div style={{ display: 'flex', gap: 4 }}>
-                      {renderBotAvatar(24, false)}
-                      <div style={{
-                        padding: '8px 12px',
-                        borderRadius: '12px 12px 12px 2px',
+                    {renderBotAvatar(30, false)}
+                    <div
+                      style={{
+                        maxWidth: '82%',
+                        padding: '12px 18px',
+                        borderRadius: '18px 18px 18px 2px',
                         background: 'var(--chatbot-bubble-bot-bg)',
+                        color: 'var(--chatbot-text)',
+                        fontSize: '0.875rem',
+                        lineHeight: '1.6',
+                        boxShadow: '0 4px 15px rgba(0,0,0,0.02)',
                         border: '1px solid var(--chatbot-bubble-bot-border)',
                         display: 'flex',
                         alignItems: 'center',
                         gap: 6
-                      }}>
-                        <span style={{ fontSize: '0.78rem', color: 'var(--chatbot-text-muted)' }} className="dot-typing">{t('AI đang trả lời')}</span>
-                      </div>
+                      }}
+                    >
+                      <span style={{ fontSize: '0.78rem', color: 'var(--chatbot-text-muted)' }} className="dot-typing">{t('AI đang trả lời')}</span>
                     </div>
                   </div>
                 )}
