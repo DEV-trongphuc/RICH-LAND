@@ -10620,30 +10620,53 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
           border: isMobile ? 'none' : '1px solid var(--color-border-light)',
           boxShadow: isMobile ? 'none' : '0 4px 20px rgba(0,0,0,0.02)',
           display: 'flex',
-          flexDirection: isMobile ? 'row' : 'row',
-          overflow: isMobile ? 'hidden' : 'visible',
+          flexDirection: isMobile ? 'column' : 'row',
+          overflow: isMobile ? 'visible' : 'visible',
           minHeight: isMobile ? 'auto' : '650px',
           margin: '0',
-          width: isMobile ? '200%' : '100%',
-          transform: isMobile ? ((profileActiveTab || renderedTab) ? 'translateX(-50%)' : 'translateX(0)') : 'none',
-          transition: isMobile ? 'transform 0.35s cubic-bezier(0.4, 0, 0.2, 1)' : 'none'
+          width: '100%'
         }}>
+          <AnimatePresence mode="wait">
           {/* LEFT SIDEBAR: Avatar & Tabs */}
-          {(!isMobile || true) && (
-            <div style={isMobile ? {
-              width: 'calc(50% - 8px)',
-              marginRight: '8px',
-              flexShrink: 0,
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '1.25rem',
-              padding: '1.25rem 1.25rem',
-              background: 'var(--color-surface)',
-              borderRadius: '16px',
-              border: '1px solid var(--color-border-light)',
-              boxShadow: 'var(--shadow-sm)',
-              boxSizing: 'border-box'
-            } : {
+          {(!isMobile || !profileActiveTab) && (
+            <motion.div
+              key="menu"
+              {...(isMobile ? {
+                initial: { opacity: 0, x: -15 },
+                animate: { opacity: 1, x: 0 },
+                exit: { opacity: 0, x: -15 },
+                transition: { duration: 0.22, ease: 'easeInOut' }
+              } : {})}
+              style={isMobile ? {
+                width: '100%',
+                flexShrink: 0,
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '1.25rem',
+                padding: '1.25rem 1.25rem',
+                background: 'var(--color-surface)',
+                borderRadius: '16px',
+                border: '1px solid var(--color-border-light)',
+                boxShadow: 'var(--shadow-sm)',
+                boxSizing: 'border-box'
+              } : {
+                width: '250px',
+                borderRight: '1px solid var(--color-border-light)',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '1.25rem',
+                padding: '1.5rem 1rem',
+                flexShrink: 0,
+                background: 'var(--color-bg-alt)',
+                position: 'sticky',
+                top: '5rem',
+                alignSelf: 'flex-start',
+                zIndex: 10,
+                borderTopLeftRadius: '16px',
+                borderTopRightRadius: '0px',
+                borderBottomLeftRadius: '16px'
+              }}
+            >
               width: '250px',
               borderRight: '1px solid var(--color-border-light)',
               display: 'flex',
@@ -11152,43 +11175,52 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                   </>
                 )}
               </div>
-            </div>
+            </motion.div>
           )}
 
           {/* RIGHT CONTENT AREA */}
-          {(!isMobile || profileActiveTab || renderedTab) && (
-            <div className={styles.contentArea} style={{
-              flex: isMobile ? 'none' : 1,
-              width: isMobile ? 'calc(50% - 8px)' : 'auto',
-              marginLeft: isMobile ? '8px' : '0',
-              flexShrink: isMobile ? 0 : 1,
-              padding: isMobile ? '1rem' : '2rem',
-              background: 'var(--color-surface)',
-              borderRadius: '16px',
-              border: isMobile ? '1px solid var(--color-border-light)' : 'none',
-              boxShadow: isMobile ? 'var(--shadow-sm)' : 'none',
-              overflowY: 'auto',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '1.5rem',
-              borderTopRightRadius: '16px',
-              borderBottomRightRadius: '16px',
-              borderTopLeftRadius: '16px',
-              borderBottomLeftRadius: '16px'
-            }}>
+          {(!isMobile || profileActiveTab) && (
+            <motion.div
+              key="subpage"
+              {...(isMobile ? {
+                initial: { opacity: 0, x: 20 },
+                animate: { opacity: 1, x: 0 },
+                exit: { opacity: 0, x: 20 },
+                transition: { duration: 0.25, ease: 'easeOut' }
+              } : {})}
+              className={styles.contentArea}
+              style={{
+                flex: isMobile ? 'none' : 1,
+                width: isMobile ? '100%' : 'auto',
+                flexShrink: isMobile ? 0 : 1,
+                padding: isMobile ? '1.25rem' : '2rem',
+                background: 'var(--color-surface)',
+                borderRadius: '16px',
+                border: isMobile ? '1px solid var(--color-border-light)' : 'none',
+                boxShadow: isMobile ? 'var(--shadow-sm)' : 'none',
+                overflowY: 'auto',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '1.5rem',
+                borderTopRightRadius: '16px',
+                borderBottomRightRadius: '16px',
+                borderTopLeftRadius: '16px',
+                borderBottomLeftRadius: '16px'
+              }}
+            >
               {/* Mobile Sticky Header block inside Content Area */}
-              {isMobile && (profileActiveTab || renderedTab) && (
+              {isMobile && (profileActiveTab) && (
                 <div style={{
                   position: 'sticky',
-                  top: '-1rem',
+                  top: '-1.25rem',
                   zIndex: 100,
                   background: 'var(--color-surface)',
-                  padding: '1.5rem 1.5rem 0.75rem 1.5rem',
+                  padding: '1.25rem 1.25rem 0.75rem 1.25rem',
                   display: 'flex',
                   justifyContent: 'space-between',
                   alignItems: 'center',
                   borderBottom: '1px solid var(--color-border)',
-                  margin: '-1rem -1rem 1.25rem -1rem',
+                  margin: '-1.25rem -1.25rem 1.25rem -1.25rem',
                   borderTopLeftRadius: '16px',
                   borderTopRightRadius: '16px',
                   gap: '12px'
@@ -13892,9 +13924,10 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                 </div>
               </div>
             )}
-          </div>
+          </motion.div>
         )}
-      </div>
+      </AnimatePresence>
+    </div>
     </div>
     );
   };
