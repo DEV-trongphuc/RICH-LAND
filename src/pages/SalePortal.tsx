@@ -10632,9 +10632,9 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
             <motion.div
               key="menu"
               {...(isMobile ? {
-                initial: { opacity: 0.8, x: -24 },
+                initial: { opacity: 0.8, x: -12 },
                 animate: { opacity: 1, x: 0 },
-                exit: { opacity: 0.8, x: -24 },
+                exit: { opacity: 0.8, x: -12 },
                 transition: { duration: 0.2, ease: [0.25, 0.1, 0.25, 1] }
               } : {})}
               style={isMobile ? {
@@ -10648,7 +10648,8 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                 borderRadius: '16px',
                 border: '1px solid var(--color-border-light)',
                 boxShadow: 'var(--shadow-sm)',
-                boxSizing: 'border-box'
+                boxSizing: 'border-box',
+                willChange: 'transform, opacity'
               } : {
                 width: '250px',
                 borderRight: '1px solid var(--color-border-light)',
@@ -11167,10 +11168,10 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
             <motion.div
               key="subpage"
               {...(isMobile ? {
-                initial: { opacity: 0.8, x: 24 },
+                initial: { opacity: 0.8, x: 12 },
                 animate: { opacity: 1, x: 0 },
-                exit: { opacity: 0.8, x: 24 },
-                transition: { duration: 0.22, ease: [0.25, 0.1, 0.25, 1] }
+                exit: { opacity: 0.8, x: 12 },
+                transition: { duration: 0.2, ease: [0.25, 0.1, 0.25, 1] }
               } : {})}
               className={styles.contentArea}
               style={{
@@ -11189,7 +11190,8 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                 borderTopRightRadius: '16px',
                 borderBottomRightRadius: '16px',
                 borderTopLeftRadius: '16px',
-                borderBottomLeftRadius: '16px'
+                borderBottomLeftRadius: '16px',
+                willChange: 'transform, opacity'
               }}
             >
               {/* Mobile Sticky Header block inside Content Area */}
