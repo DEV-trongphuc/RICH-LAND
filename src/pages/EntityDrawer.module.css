@@ -193,6 +193,9 @@
     height: auto !important;
     flex: none !important;
   }
+  :global(.card-panel) {
+    padding: 1rem !important;
+  }
 }
 
 /* Internal Components */
