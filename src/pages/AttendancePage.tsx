@@ -2783,7 +2783,14 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
 
       {/* Meeting Proof Modal */}
       {meetingToComplete && createPortal(
-        <div 
+        <>
+          <style>{`
+            .proof-modal-overlay {
+              z-index: 1000000000 !important;
+            }
+          `}</style>
+          <div 
+            className="proof-modal-overlay" 
           style={{
             position: 'fixed',
             inset: 0,
@@ -2945,7 +2952,8 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
               </button>
             </div>
           </div>
-        </div>,
+        </div>
+        </>,
         document.body
       )}
 

@@ -17267,7 +17267,14 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
 
       {/* Meeting Proof Modal */}
       {meetingToComplete && createPortal(
-        <div 
+        <>
+          <style>{`
+            .proof-modal-overlay {
+              z-index: 1000000000 !important;
+            }
+          `}</style>
+          <div 
+            className="proof-modal-overlay" 
           style={{
             position: 'fixed',
             inset: 0,
@@ -17436,7 +17443,8 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
               </button>
             </div>
           </motion.div>
-        </div>,
+        </div>
+        </>,
         document.body
       )}
 
