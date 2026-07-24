@@ -3237,9 +3237,10 @@ const ConsultantsInner = () => {
                             <h4 className="panel-title" style={{ margin: 0, fontSize: '0.95rem', fontWeight: 800, color: 'var(--color-text)' }}>{t('Thông tin nhóm')}</h4>
                           </div>
 
-                          <div className="grid grid-2" style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '1.25rem' }}>
+                          {/* Row 1: Avatar & Team Name side-by-side */}
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem', width: '100%', marginBottom: '0.25rem' }}>
                             {/* Avatar Nhóm Upload */}
-                            <div className="form-group" style={{ gridColumn: 'span 2', textAlign: 'left' }}>
+                            <div className="form-group" style={{ textAlign: 'left', flexShrink: 0 }}>
                               <label className="form-label" style={{ fontWeight: 650, fontSize: '0.8rem', color: 'var(--color-text-muted)', marginBottom: 6, display: 'block' }}>
                                 {t('Avatar nhóm')}
                               </label>
@@ -3281,7 +3282,7 @@ const ConsultantsInner = () => {
                                       }}
                                     >
                                       <Paperclip size={14} />
-                                      {isUploadingTeamAvatar ? t('Đang xử lý...') : t('Tải ảnh avatar nhóm')}
+                                      {isUploadingTeamAvatar ? t('Đang xử lý...') : t('Tải ảnh')}
                                       <input
                                         type="file"
                                         accept="image/*"
@@ -3305,7 +3306,7 @@ const ConsultantsInner = () => {
                                           cursor: 'pointer'
                                         }}
                                       >
-                                        {t('Gỡ bỏ avatar')}
+                                        {t('Gỡ bỏ')}
                                       </button>
                                     )}
                                   </div>
@@ -3313,7 +3314,8 @@ const ConsultantsInner = () => {
                               </div>
                             </div>
 
-                            <div className="form-group" style={{ gridColumn: 'span 2', textAlign: 'left' }}>
+                            {/* Tên nhóm */}
+                            <div className="form-group" style={{ textAlign: 'left', flex: 1 }}>
                               <label className="form-label" style={{ fontWeight: 650, fontSize: '0.8rem', color: 'var(--color-text-muted)', marginBottom: 6, display: 'block' }}>{t('Tên nhóm')} <span style={{ color: 'var(--color-danger)' }}>*</span></label>
                               <input 
                                 className="form-input"
@@ -3325,6 +3327,9 @@ const ConsultantsInner = () => {
                                 style={{ width: '100%' }}
                               />
                             </div>
+                          </div>
+
+                          <div className="grid grid-2" style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '1.25rem' }}>
 
                             <div className="form-group" ref={leaderDropdownRef} style={{ position: 'relative', textAlign: 'left' }}>
                               <label className="form-label" style={{ fontWeight: 650, fontSize: '0.8rem', color: 'var(--color-text-muted)', marginBottom: 6, display: 'block' }}>{t('Manager')}</label>
@@ -3615,10 +3620,13 @@ const ConsultantsInner = () => {
                               <div className="custom-scrollbar" style={{ 
                                 border: '1px solid var(--color-border-light)', 
                                 borderRadius: '8px', 
-                                maxHeight: '120px', 
+                                maxHeight: '150px', 
                                 overflowY: 'auto',
                                 background: 'var(--color-bg)',
-                                padding: '4px'
+                                padding: '8px',
+                                display: 'grid',
+                                gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))',
+                                gap: '6px'
                               }}>
                                 {projects.length === 0 ? (
                                   <div style={{ padding: '0.75rem', textAlign: 'center', color: 'var(--color-text-muted)', fontSize: '0.75rem' }}>
