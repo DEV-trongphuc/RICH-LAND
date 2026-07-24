@@ -72,6 +72,7 @@ const getDefaultPermissionsForRole = (role: string) => {
       cooperation: { read: 'all', write: 'all', delete: 'all' },
       quotes: { read: 'all', write: 'all', delete: 'all' },
       projects: { read: 'all', write: 'all', delete: 'all' },
+      companies: { read: 'all', write: 'all', delete: 'all' },
       settings: { read: 'all', write: 'all', delete: 'all' }
     };
   }
@@ -82,6 +83,7 @@ const getDefaultPermissionsForRole = (role: string) => {
       cooperation: { read: 'all', write: 'all', delete: 'all' },
       quotes: { read: 'all', write: 'all', delete: 'all' },
       projects: { read: 'all', write: 'all', delete: 'none' },
+      companies: { read: 'all', write: 'all', delete: 'none' },
       settings: { read: 'none', write: 'none', delete: 'none' }
     };
   }
@@ -92,6 +94,7 @@ const getDefaultPermissionsForRole = (role: string) => {
       cooperation: { read: 'team', write: 'own', delete: 'none' },
       quotes: { read: 'team', write: 'team', delete: 'none' },
       projects: { read: 'all', write: 'none', delete: 'none' },
+      companies: { read: 'team', write: 'team', delete: 'none' },
       settings: { read: 'none', write: 'none', delete: 'none' }
     };
   }
@@ -102,6 +105,7 @@ const getDefaultPermissionsForRole = (role: string) => {
       cooperation: { read: 'all', write: 'all', delete: 'none' },
       quotes: { read: 'all', write: 'all', delete: 'none' },
       projects: { read: 'all', write: 'all', delete: 'none' },
+      companies: { read: 'all', write: 'all', delete: 'none' },
       settings: { read: 'all', write: 'all', delete: 'none' }
     };
   }
@@ -112,6 +116,7 @@ const getDefaultPermissionsForRole = (role: string) => {
       cooperation: { read: 'own', write: 'own', delete: 'none' },
       quotes: { read: 'own', write: 'own', delete: 'none' },
       projects: { read: 'all', write: 'none', delete: 'none' },
+      companies: { read: 'all', write: 'none', delete: 'none' },
       settings: { read: 'none', write: 'none', delete: 'none' }
     };
   }
@@ -122,6 +127,7 @@ const getDefaultPermissionsForRole = (role: string) => {
     cooperation: { read: 'all', write: 'none', delete: 'none' },
     quotes: { read: 'all', write: 'none', delete: 'none' },
     projects: { read: 'all', write: 'none', delete: 'none' },
+    companies: { read: 'all', write: 'none', delete: 'none' },
     settings: { read: 'none', write: 'none', delete: 'none' }
   };
 };
@@ -3640,6 +3646,7 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
                           { key: 'deals', label: 'Đặt cọc & Hợp đồng (Deals/Deposits)' },
                           { key: 'cooperation', label: 'Phiếu Hợp tác (Cooperation Slips)' },
                           { key: 'quotes', label: 'Báo giá & Hóa đơn (Quotes/Invoices)' },
+                          { key: 'companies', label: 'Đại lý & Đối tác (Partners/Agencies)' },
                           { key: 'projects', label: 'Dự án & Roster (Projects)' },
                           { key: 'settings', label: 'Cấu hình & Tích hợp (Settings)' }
                         ].map((mod) => {

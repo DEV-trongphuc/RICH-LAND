@@ -60,7 +60,7 @@ export const CompaniesPage: React.FC = () => {
     } catch (e: any) {
       setCompanies([]);
       setTotal(0);
-      addToast('Không thể tải danh sách công ty', 'error');
+      addToast('Không thể tải danh sách đại lý/đối tác', 'error');
     } finally {
       setLoading(false);
     }
@@ -106,36 +106,36 @@ export const CompaniesPage: React.FC = () => {
     try {
       if (editItem) {
         await api.put(`/companies/${editItem.id}`, formData);
-        addToast('Đã cập nhật công ty', 'success');
+        addToast('Đã cập nhật đại lý/đối tác', 'success');
       } else {
         await api.post('/companies', formData);
-        addToast('Đã thêm công ty mới', 'success');
+        addToast('Đã thêm đại lý/đối tác mới', 'success');
       }
       if (!editItem) {
         setShowModal(false);
       }
       fetchCompanies();
     } catch (err: any) {
-      addToast(err.response?.data?.message || 'Lỗi khi lưu công ty', 'error');
+      addToast(err.response?.data?.message || 'Lỗi khi lưu đối tác', 'error');
       throw err;
     }
   };
 
   const confirmDelete = (co: any) => {
     showConfirm({
-      title: 'Xóa công ty?',
-      message: `Bạn có chắc chắn muốn xóa vĩnh viễn công ty "${co.name}"? Thao tác này không thể hoàn tác.`,
+      title: 'Xóa đối tác?',
+      message: `Bạn có chắc chắn muốn xóa vĩnh viễn đối tác "${co.name}"? Thao tác này không thể hoàn tác.`,
       isDanger: true,
-      impactInfo: `Cảnh báo: Xóa công ty sẽ gỡ bỏ liên kết với ${co.contact_count || 0} liên hệ và toàn bộ lịch sử hoạt động liên quan.`,
+      impactInfo: `Cảnh báo: Xóa đối tác sẽ gỡ bỏ liên kết với ${co.contact_count || 0} liên hệ liên quan.`,
       confirmText: 'Xác nhận xóa',
       onConfirm: async () => {
         try {
           setDeleting(true);
           await api.delete(`/companies/${co.id}`);
-          addToast('Đã xóa công ty thành công', 'success');
+          addToast('Đã xóa đối tác thành công', 'success');
           fetchCompanies();
         } catch (e: any) {
-          addToast('Lỗi khi xóa công ty', 'error');
+          addToast('Lỗi khi xóa đối tác', 'error');
         } finally {
           setDeleting(false);
           closeConfirm();
@@ -144,18 +144,25 @@ export const CompaniesPage: React.FC = () => {
     });
   };
 
+  const getTierLabel = (tier: string) => {
+    if (!tier) return 'Đại lý F1';
+    const t = String(tier).toLowerCase();
+    if (t === 'ctv') return 'CTV / Môi giới';
+    return 'Đại lý ' + t.toUpperCase();
+  };
+
   return (
     <div className="page-container anim-fade-up">
       <div className="page-header" style={{ display: 'flex', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', width: '100%', gap: '8px', marginBottom: '1.5rem' }}>
         <div>
-          <h1 className="page-title" style={{ fontSize: isMobile ? '1.45rem' : '1.75rem' }}>Công ty</h1>
-          <p className="page-subtitle" style={{ fontSize: '0.8rem' }}>{loading ? '...' : `${total} công ty khách hàng`}</p>
+          <h1 className="page-title" style={{ fontSize: isMobile ? '1.45rem' : '1.75rem' }}>Đại lý & Đối tác</h1>
+          <p className="page-subtitle" style={{ fontSize: '0.8rem' }}>{loading ? '...' : `${total} đại lý, CTV liên kết`}</p>
         </div>
         {!isSale && (
           <button 
             className="btn primary" 
             onClick={openCreate} 
-            title="Thêm công ty" 
+            title="Thêm Đối tác" 
             style={{ 
               padding: isMobile ? '8px' : '8px 16px', 
               display: 'flex', 
@@ -168,7 +175,7 @@ export const CompaniesPage: React.FC = () => {
             }}
           >
             <Plus size={16} />
-            {!isMobile && <span>Thêm công ty</span>}
+            {!isMobile && <span>Thêm Đối tác</span>}
           </button>
         )}
       </div>
@@ -181,7 +188,7 @@ export const CompaniesPage: React.FC = () => {
           <div style={{ position: 'relative', flex: 1, minWidth: 0 }}>
             <input
               type="text"
-              placeholder="Tìm tên công ty, ngành nghề..."
+              placeholder="Tìm tên đại lý, khu vực thế mạnh..."
               value={search}
               onChange={e => setSearch(e.target.value)}
               className="form-input"
@@ -248,107 +255,106 @@ export const CompaniesPage: React.FC = () => {
                 />
                 <div style={{
                   position: 'absolute',
-                  top: '48px',
                   right: 0,
-                  width: '180px',
-                  backgroundColor: 'var(--color-surface)',
-                  border: '1px solid var(--color-border)',
+                  top: '46px',
+                  background: 'var(--color-surface)',
+                  border: '1px solid var(--color-border-light)',
                   borderRadius: '12px',
                   boxShadow: 'var(--shadow-lg)',
                   padding: '8px',
                   display: 'flex',
                   flexDirection: 'column',
                   gap: '4px',
-                  zIndex: 1000
+                  zIndex: 1000,
+                  minWidth: '150px'
                 }}>
-                  <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', padding: '4px 8px', textTransform: 'uppercase' }}>
+                  <div style={{ padding: '6px 8px', fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--color-text-muted)', letterSpacing: '0.05em' }}>
                     Trạng thái
                   </div>
-                  {[
-                    { value: '', label: 'Tất cả' },
-                    { value: 'active', label: 'Hoạt động' },
-                    { value: 'inactive', label: 'Ngừng' },
-                    { value: 'prospect', label: 'Tiềm năng' }
-                  ].map(item => {
-                    const isSelected = statusFilter === item.value;
-                    return (
-                      <button
-                        key={item.value}
-                        onClick={() => {
-                          setStatusFilter(item.value);
-                          setShowFiltersMenu(false);
-                        }}
-                        style={{
-                          width: '100%',
-                          textAlign: 'left',
-                          padding: '8px 12px',
-                          fontSize: '0.85rem',
-                          borderRadius: '8px',
-                          border: 'none',
-                          cursor: 'pointer',
-                          background: isSelected ? 'var(--color-primary-light)' : 'transparent',
-                          color: isSelected ? 'var(--color-primary)' : 'var(--color-text)',
-                          fontWeight: isSelected ? 700 : 500
-                        }}
-                      >
-                        {item.label}
-                      </button>
-                    );
-                  })}
+                  <button 
+                    onClick={() => { setStatusFilter(''); setShowFiltersMenu(false); }}
+                    style={{
+                      padding: '8px 12px', fontSize: '0.8125rem', textAlign: 'left', borderRadius: '6px', border: 'none', cursor: 'pointer',
+                      background: statusFilter === '' ? 'var(--color-bg)' : 'transparent',
+                      color: 'var(--color-text)', fontWeight: statusFilter === '' ? 700 : 500
+                    }}
+                  >
+                    Tất cả
+                  </button>
+                  {STATUSES.map(st => (
+                    <button 
+                      key={st}
+                      onClick={() => { setStatusFilter(st); setShowFiltersMenu(false); }}
+                      style={{
+                        padding: '8px 12px', fontSize: '0.8125rem', textAlign: 'left', borderRadius: '6px', border: 'none', cursor: 'pointer',
+                        background: statusFilter === st ? 'var(--color-bg)' : 'transparent',
+                        color: 'var(--color-text)', fontWeight: statusFilter === st ? 700 : 500
+                      }}
+                    >
+                      {ST_LABEL[st]}
+                    </button>
+                  ))}
                 </div>
               </>
             )}
           </div>
 
-        </div>
+          {/* Toggle View Mode Button */}
+          <button
+            onClick={() => setViewMode(viewMode === 'card' ? 'list' : 'card')}
+            className="btn outline"
+            style={{
+              height: '42px',
+              width: '42px',
+              padding: 0,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              borderRadius: '10px',
+              border: '1px solid var(--color-border)'
+            }}
+            title={viewMode === 'card' ? "Xem dạng danh sách" : "Xem dạng lưới card"}
+          >
+            {viewMode === 'card' ? <List size={20} /> : <LayoutGrid size={20} />}
+          </button>
 
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', flexWrap: 'wrap', gap: '8px' }}>
-          <div className="hide-on-mobile" style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-            {['', ...STATUSES].map(s => (
-              <button
-                key={s || 'all'}
-                onClick={() => setStatusFilter(s)}
-                className={`btn sm ${statusFilter === s ? 'primary' : 'outline'}`}
-              >
-                {s ? ST_LABEL[s] : 'Tất cả'}
-              </button>
-            ))}
-          </div>
-
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginLeft: 'auto' }}>
-            <div style={{ display: 'flex', background: 'var(--color-bg)', borderRadius: '8px', padding: '2px', border: '1px solid var(--color-border)' }}>
-              <button
-                className="btn ghost sm"
-                style={{ padding: '0.4rem 0.6rem', borderRadius: '6px', background: viewMode === 'card' ? 'var(--color-surface)' : 'transparent' }}
-                onClick={() => setViewMode('card')} title="Dạng thẻ"
-              ><LayoutGrid size={14} /></button>
-              <button
-                className="btn ghost sm"
-                style={{ padding: '0.4rem 0.6rem', borderRadius: '6px', background: viewMode === 'list' ? 'var(--color-surface)' : 'transparent' }}
-                onClick={() => setViewMode('list')} title="Dạng danh sách"
-              ><List size={14} /></button>
-            </div>
-          </div>
+          {!isSale && (
+            <button
+              onClick={() => setShowImportExport(true)}
+              className="btn outline"
+              style={{
+                height: '42px',
+                width: '42px',
+                padding: 0,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                borderRadius: '10px',
+                border: '1px solid var(--color-border)'
+              }}
+              title="Xuất dữ liệu"
+            >
+              <Download size={20} />
+            </button>
+          )}
         </div>
       </div>
 
-      {/* Loading skeleton */}
       {loading && (
-        <div className={viewMode === 'card' ? 'grid-cards-responsive' : ''} style={{ display: viewMode === 'card' ? undefined : 'grid', gridTemplateColumns: viewMode === 'card' ? undefined : '1fr', gap: '1rem' }}>
-          {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="skeleton" style={{ height: viewMode === 'card' ? 180 : 56, borderRadius: 'var(--radius-lg)' }} />
-          ))}
+        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '4rem' }}>
+          <Loader2 size={36} className="spin" style={{ color: 'var(--color-primary)' }} />
         </div>
       )}
 
-      {/* Card View */}
+      {/* Card Grid View */}
       {!loading && viewMode === 'card' && (
-        <div className="grid-cards-responsive" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(390px, 1fr))' }}>
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fill, minmax(280px, 1fr))',
+          gap: '1rem'
+        }}>
           <AnimatePresence>
             {companies.map(co => {
-              // Debug representative data in console
-              console.log('Company Card Render:', { id: co.id, name: co.name, rep_id: co.dedicated_rep_id, rep_name: co.rep_name, rep_avatar: co.rep_avatar });
-              
               return (
                 <motion.div
                   key={co.id}
@@ -378,17 +384,11 @@ export const CompaniesPage: React.FC = () => {
                           </h3>
                           <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginTop: '4px' }}>
                             <span className="badge sm" style={{ background: '#f3f4f6', color: '#6b7280', fontSize: '0.65rem', padding: '2px 6px' }}>
-                              {co.industry || 'Chưa xác định'}
+                              {getTierLabel(co.tier)}
                             </span>
-                            {co.sla_level && (
-                              <span className="badge sm" style={{
-                                background: co.sla_level === 'platinum' ? 'rgba(168, 85, 247, 0.15)' : co.sla_level === 'gold' ? 'rgba(234, 179, 8, 0.15)' : 'rgba(107, 114, 128, 0.15)',
-                                color: co.sla_level === 'platinum' ? '#a855f7' : co.sla_level === 'gold' ? '#eab308' : '#6b7280',
-                                fontSize: '0.65rem',
-                                padding: '2px 6px',
-                                fontWeight: 700
-                              }}>
-                                SLA: {co.sla_level.toUpperCase()}
+                            {co.parent_name && (
+                              <span className="badge sm" style={{ background: 'rgba(59, 130, 246, 0.12)', color: '#2563eb', fontSize: '0.65rem', padding: '2px 6px', fontWeight: 700 }}>
+                                Thuộc: {co.parent_name}
                               </span>
                             )}
                           </div>
@@ -420,17 +420,17 @@ export const CompaniesPage: React.FC = () => {
                         <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={co.email}>{co.email || 'Chưa có Email'}</span>
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.75rem', color: 'var(--color-text-muted)', minWidth: 0 }}>
-                        <Globe size={12} style={{ opacity: 0.6, flexShrink: 0 }} />
-                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={co.website}>{co.website || 'Chưa có Website'}</span>
-                      </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.75rem', color: 'var(--color-text-muted)', minWidth: 0 }}>
                         <MapPin size={12} style={{ opacity: 0.6, flexShrink: 0 }} />
                         <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={co.address || co.city}>{co.address || co.city || 'Chưa có địa chỉ'}</span>
                       </div>
-                      {co.tax_id && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.75rem', color: 'var(--color-text-muted)', minWidth: 0 }}>
+                        <Users size={12} style={{ opacity: 0.6, flexShrink: 0 }} />
+                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{co.agent_count || 0} sales</span>
+                      </div>
+                      {co.focus_markets && (
                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.75rem', color: 'var(--color-text-muted)', minWidth: 0, gridColumn: 'span 2' }}>
-                          <span style={{ fontWeight: 600, fontSize: '0.7rem', background: 'rgba(0, 0, 0, 0.05)', padding: '2px 6px', borderRadius: '4px', flexShrink: 0 }}>MST</span>
-                          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{co.tax_id}</span>
+                          <span style={{ fontWeight: 700, fontSize: '0.65rem', background: 'rgba(163, 20, 34, 0.08)', color: 'var(--color-primary)', padding: '2px 6px', borderRadius: '4px', flexShrink: 0 }}>Thế mạnh</span>
+                          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={co.focus_markets}>{co.focus_markets}</span>
                         </div>
                       )}
                     </div>
@@ -440,21 +440,12 @@ export const CompaniesPage: React.FC = () => {
                       <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                         <span style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.65rem', color: 'var(--color-text-muted)' }} title="Người liên hệ">
                           <Users size={11} />
-                          {co.contact_count || 0}
+                          {co.contact_count || 0} liên hệ
                         </span>
-                        <span style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.65rem', color: 'var(--color-text-muted)' }} title="Quy mô">
-                          <Briefcase size={11} />
-                          {co.size || '1-10'} nv
-                        </span>
-                        {co.stage_name && (
-                          <span className="badge sm" style={{ background: (co.stage_color || '#BD1D2D') + '15', color: co.stage_color || '#BD1D2D', fontSize: '0.6rem', padding: '1px 4px' }}>
-                            {co.stage_name}
-                          </span>
-                        )}
                       </div>
                       {co.dedicated_rep_id && (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }} title={`Chuyên viên chăm sóc: ${co.rep_name || 'Chưa rõ'}`}>
-                          <span style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)' }}>Chuyên viên:</span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }} title={`Người phụ trách: ${co.rep_name || 'Chưa rõ'}`}>
+                          <span style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)' }}>Phụ trách:</span>
                           <Avatar name={co.rep_name || 'CV'} src={co.rep_avatar} size={22} />
                         </div>
                       )}
@@ -467,9 +458,9 @@ export const CompaniesPage: React.FC = () => {
           {total === 0 && (
             <div className="empty-state" style={{ gridColumn: '1/-1' }}>
               <Building2 size={40} />
-              <h3>Chưa có công ty nào</h3>
-              <p>Thêm công ty đầu tiên để bắt đầu quản lý khách hàng doanh nghiệp.</p>
-              <button className="btn primary mt-4" onClick={openCreate}><Plus size={16} /> Thêm công ty</button>
+              <h3>Chưa có đối tác nào</h3>
+              <p>Thêm đại lý F1/F2 hoặc CTV liên kết đầu tiên.</p>
+              {!isSale && <button className="btn primary mt-4" onClick={openCreate}><Plus size={16} /> Thêm Đối tác</button>}
             </div>
           )}
         </div>
@@ -498,11 +489,12 @@ export const CompaniesPage: React.FC = () => {
             <table style={{ width: '100%', minWidth: 700 }}>
               <thead>
                 <tr style={{ position: 'sticky', top: 0, zIndex: 10, background: 'var(--color-bg)', borderBottom: '1px solid var(--color-border)' }}>
-                  <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: 0.5 }}>Công ty</th>
-                  <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: 0.5 }}>Liên hệ</th>
-                  <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: 0.5 }}>Phân loại</th>
+                  <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: 0.5 }}>Đại lý / Đối tác</th>
+                  <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: 0.5 }}>Hotline / Email</th>
+                  <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: 0.5 }}>Cấp đại lý</th>
+                  <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: 0.5 }}>Thế mạnh</th>
+                  <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: 0.5 }}>Số lượng Sales</th>
                   <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: 0.5 }}>Trạng thái</th>
-                  <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: 0.5 }}>Dự kiến</th>
                   <th style={{ borderBottom: '1px solid var(--color-border)' }}></th>
                 </tr>
               </thead>
@@ -521,7 +513,7 @@ export const CompaniesPage: React.FC = () => {
                           <Avatar name={co.name} src={co.logo_url} size={32} />
                           <div>
                             <p style={{ fontWeight: 600, fontSize: '0.875rem', color: 'var(--color-text)' }}>{co.name}</p>
-                            <p className="text-xs text-light" style={{ color: 'var(--color-text-muted)', marginTop: '2px' }}>{co.website || co.city}</p>
+                            <p className="text-xs text-light" style={{ color: 'var(--color-text-muted)', marginTop: '2px' }}>{co.city || 'Chưa cập nhật tỉnh thành'}</p>
                           </div>
                         </div>
                       </td>
@@ -533,26 +525,20 @@ export const CompaniesPage: React.FC = () => {
                       </td>
                       <td style={{ padding: '1rem' }}>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                          <p style={{ fontSize: '0.875rem', color: 'var(--color-text)', fontWeight: 500 }}>{co.industry || '—'}</p>
-                          {co.size && <p className="text-xs text-light" style={{ color: 'var(--color-text-muted)' }}>Quy mô: {co.size}</p>}
+                          <p style={{ fontSize: '0.875rem', color: 'var(--color-text)', fontWeight: 600 }}>{getTierLabel(co.tier)}</p>
+                          {co.parent_name && (
+                            <p className="text-xs text-light" style={{ color: '#2563eb', fontWeight: 500 }}>Thuộc: {co.parent_name}</p>
+                          )}
                         </div>
+                      </td>
+                      <td style={{ padding: '1rem' }}>
+                        <span style={{ fontSize: '0.875rem', color: 'var(--color-text)' }}>{co.focus_markets || '—'}</span>
+                      </td>
+                      <td style={{ padding: '1rem' }}>
+                        <span style={{ fontSize: '0.875rem', color: 'var(--color-text)', fontWeight: 600 }}>{co.agent_count || 0} sales</span>
                       </td>
                       <td style={{ padding: '1rem' }}>
                         <span className={`badge ${ST_CLASS[co.status] || 'info'}`}>{ST_LABEL[co.status] || co.status}</span>
-                      </td>
-                      <td style={{ padding: '1rem' }}>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                          <span style={{ fontWeight: 700, fontSize: '0.875rem', color: 'var(--color-primary)' }}>
-                            {co.expected_revenue > 0 ? new Intl.NumberFormat('vi-VN').format(co.expected_revenue) + ' đ' : '—'}
-                          </span>
-                          {co.stage_name && (
-                            <div>
-                              <span className="badge sm" style={{ background: (co.stage_color || '#a31422') + '15', color: co.stage_color || '#a31422', padding: '2px 8px', fontSize: '0.7rem' }}>
-                                {co.stage_name}
-                              </span>
-                            </div>
-                          )}
-                        </div>
                       </td>
                       <td style={{ padding: '1rem', textAlign: 'right' }} onClick={e => e.stopPropagation()}>
                         {!isSale && (
@@ -566,7 +552,7 @@ export const CompaniesPage: React.FC = () => {
                   ))}
                 </AnimatePresence>
                 {total === 0 && (
-                  <tr><td colSpan={6} style={{ textAlign: 'center', padding: '3rem', color: 'var(--color-text-muted)' }}>Không tìm thấy công ty nào.</td></tr>
+                  <tr><td colSpan={7} style={{ textAlign: 'center', padding: '3rem', color: 'var(--color-text-muted)' }}>Không tìm thấy đối tác nào.</td></tr>
                 )}
               </tbody>
             </table>
@@ -602,7 +588,7 @@ export const CompaniesPage: React.FC = () => {
       <ImportExportModal 
         isOpen={showImportExport} 
         onClose={() => setShowImportExport(false)} 
-        entityName="Công ty" 
+        entityName="Đối tác" 
         onExport={(format) => {
           const authRaw = localStorage.getItem('minth-auth');
           const authToken = authRaw ? JSON.parse(authRaw)?.state?.accessToken : '';

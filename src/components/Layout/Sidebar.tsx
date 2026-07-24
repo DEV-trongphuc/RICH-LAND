@@ -51,7 +51,7 @@ export const SIDEBAR_GROUPS: SidebarGroup[] = [
       { name: 'Giỏ hàng', href: '/inventory', icon: Boxes },
       { name: 'Chiến dịch', href: '/projects?tab=campaigns', icon: Layers },
       { name: 'Tài liệu', href: '/files', icon: File },
-      { name: 'Công ty', href: '/companies', icon: Building2 },
+      { name: 'Đối tác', href: '/companies', icon: Building2 },
       { name: 'Chủ đầu tư', href: '/suppliers', icon: Truck }
     ]
   },

@@ -671,80 +671,13 @@ export const DealsPage: React.FC = () => {
         <div>
           <h1 className="page-title" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <Target size={24} color="var(--color-primary)" />
-            Pipeline {pipelineView === 'deals' ? 'Cơ hội' : (pipelineView === 'contacts' ? 'Khách hàng' : 'Doanh nghiệp')}
+            Pipeline Khách hàng
           </h1>
           <p className="page-subtitle" style={{ fontSize: '0.9375rem', marginTop: '4px' }}>
             <strong>{Object.values(items).flat().length}</strong> thẻ đang quản lý · Tổng giá trị dự kiến: <strong style={{ color: 'var(--color-primary)', fontSize: '1.25rem', marginLeft: '4px' }}>{FMT(totalRevenue)}</strong>
           </p>
         </div>
         <div style={{ flex: 1 }} />
-
-        {/* Desktop Pipeline Tabs Switcher (Moved to Left) */}
-        <div className="hide-on-mobile" style={{ 
-          display: 'flex', 
-          background: 'var(--color-border-light)', 
-          border: '1px solid var(--color-border)',
-          padding: '2px', 
-          borderRadius: '8px', 
-          gap: '2px',
-          height: '38px', 
-          marginRight: '0.5rem', 
-          position: 'relative',
-          width: 'fit-content',
-          alignItems: 'center',
-          boxSizing: 'border-box'
-        }}>
-          {/* Sliding Pill Background Indicator */}
-          <div style={{
-            position: 'absolute',
-            top: '2px',
-            bottom: '2px',
-            width: '140px',
-            borderRadius: '6px',
-            background: 'var(--color-surface)',
-            boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
-            transition: 'transform 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
-            transform: `translateX(${
-              pipelineView === 'contacts' ? '0px' : '142px'
-            })`,
-            zIndex: 1
-          }} />
-
-          {[
-            { id: 'contacts', label: 'Khách hàng', icon: <Users size={14} /> },
-            { id: 'companies', label: 'Doanh nghiệp', icon: <Building2 size={14} /> }
-          ].map(tab => {
-            const isSelected = pipelineView === tab.id;
-            return (
-              <button
-                key={tab.id}
-                onClick={() => setPipelineView(tab.id as any)}
-                style={{
-                  width: '140px',
-                  height: '32px',
-                  borderRadius: '6px',
-                  border: 'none',
-                  fontSize: '0.825rem',
-                  fontWeight: 700,
-                  cursor: 'pointer',
-                  background: 'transparent',
-                  color: isSelected ? 'var(--color-text)' : 'var(--color-text-light)',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '6px',
-                  position: 'relative',
-                  zIndex: 2,
-                  transition: 'color 0.25s ease',
-                  outline: 'none'
-                }}
-              >
-                {tab.icon}
-                <span>{tab.label}</span>
-              </button>
-            );
-          })}
-        </div>
 
         <div style={{
           display: 'flex',
@@ -754,17 +687,6 @@ export const DealsPage: React.FC = () => {
           justifyContent: isMobile ? 'space-between' : 'flex-end',
           marginTop: isMobile ? '0.75rem' : 0
         }}>
-          {/* Mobile Pipeline Selector Dropdown */}
-          <div className="mobile-only" style={{ width: 145 }}>
-            <CustomSelect
-              value={pipelineView}
-              onChange={val => setPipelineView(val as any)}
-              options={[
-                { value: 'contacts', label: 'Khách hàng' },
-                { value: 'companies', label: 'Doanh nghiệp' }
-              ]}
-            />
-          </div>
 
           {/* Kanban vs List Toggle (Moved to Right) */}
           <div style={{ 

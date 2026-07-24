@@ -29,10 +29,10 @@ const TABS = [
   { id: 'info', label: 'Thông tin', icon: <Building2 size={16} /> },
   { id: 'activities', label: 'Hoạt động', icon: <History size={16} /> },
   { id: 'contacts', label: 'Liên hệ', icon: <Users size={16} /> },
-  { id: 'deals', label: 'Cơ hội', icon: <Briefcase size={16} /> },
-  { id: 'invoices', label: 'Hóa đơn', icon: <FileText size={16} /> },
-  { id: 'expenses', label: 'Chi phí', icon: <Plus size={16} /> },
-  { id: 'docs', label: 'Tài liệu', icon: <FileBadge size={16} /> },
+  { id: 'deals', label: 'Giao dịch Bán', icon: <Briefcase size={16} /> },
+  { id: 'invoices', label: 'Phí hoa hồng', icon: <FileText size={16} /> },
+  { id: 'expenses', label: 'Chi trả đối tác', icon: <Plus size={16} /> },
+  { id: 'docs', label: 'Hợp đồng & Tài liệu', icon: <FileBadge size={16} /> },
   { id: 'settings', label: 'Thiết lập', icon: <Settings size={16} /> },
 ];
 
@@ -41,7 +41,7 @@ export const CompanyDrawer: React.FC<CompanyDrawerProps> = ({ isOpen, onClose, e
   const navigate = useNavigate();
   const isSale = currentUser && ['sales', 'sale'].includes((currentUser.role || '').toLowerCase());
   const isViewer = currentUser?.role === 'viewer';
-  const disableEdit = isViewer;
+  const disableEdit = isViewer || isSale;
   const { addToast, showConfirm } = useUIStore();
   const [isMobileOrTablet, setIsMobileOrTablet] = useState(window.innerWidth <= 1024);
 
@@ -76,8 +76,11 @@ export const CompanyDrawer: React.FC<CompanyDrawerProps> = ({ isOpen, onClose, e
   const [errors, setErrors] = useState<Record<string, boolean>>({});
 
   const visibleTabs = useMemo(() => {
+    if (isSale) {
+      return TABS.filter(t => ['info', 'contacts', 'docs', 'activities'].includes(t.id));
+    }
     return disableEdit ? TABS.filter(t => t.id !== 'settings') : TABS;
-  }, [disableEdit]);
+  }, [disableEdit, isSale]);
 
   const [users, setUsers] = useState<any[]>([]);
   const [loadingUsers, setLoadingUsers] = useState(false);
@@ -94,10 +97,26 @@ export const CompanyDrawer: React.FC<CompanyDrawerProps> = ({ isOpen, onClose, e
     }
   };
 
+  const [allCompanies, setAllCompanies] = useState<any[]>([]);
+  const [loadingAllCompanies, setLoadingAllCompanies] = useState(false);
+
+  const fetchAllCompanies = async () => {
+    setLoadingAllCompanies(true);
+    try {
+      const res = await api.get('/companies', { params: { limit: 1000 } });
+      setAllCompanies(res.data.data?.items || res.data.data || []);
+    } catch {
+      setAllCompanies([]);
+    } finally {
+      setLoadingAllCompanies(false);
+    }
+  };
+
   useEffect(() => {
     if (isOpen) {
       document.body.style.overflow = 'hidden';
       fetchUsers();
+      fetchAllCompanies();
     } else {
       document.body.style.overflow = '';
     }
@@ -109,6 +128,22 @@ export const CompanyDrawer: React.FC<CompanyDrawerProps> = ({ isOpen, onClose, e
   const [baseData, setBaseData] = useState<any>(entity || {});
   const [baseTags, setBaseTags] = useState<string[]>(entity?.tags || []);
 
+  const tierOptions = [
+    { value: 'f1', label: 'Đại lý F1' },
+    { value: 'f2', label: 'Đại lý F2' },
+    { value: 'f3', label: 'Đại lý F3' },
+    { value: 'ctv', label: 'CTV & Môi giới' }
+  ];
+
+  const parentOptions = useMemo(() => {
+    return allCompanies
+      .filter(c => c.id !== entity?.id && String(c.tier || 'f1').toLowerCase() === 'f1')
+      .map(c => ({
+        value: c.id,
+        label: `${c.name} (${String(c.tier || 'f1').toUpperCase()})`
+      }));
+  }, [allCompanies, entity]);
+
   const hasChanges = useMemo(() => {
     if (!entity) return false;
     if (JSON.stringify(tags) !== JSON.stringify(baseTags)) return true;
@@ -116,7 +151,8 @@ export const CompanyDrawer: React.FC<CompanyDrawerProps> = ({ isOpen, onClose, e
     const fieldsToCompare = [
       'name', 'email', 'phone', 'website', 'tax_id', 'address', 'city', 'ward', 'status', 'notes',
       'industry', 'size', 'stage_id', 'expected_revenue', 'social_link', 'legal_representative', 'erp_code',
-      'sla_level', 'wholesale_price', 'vat_exempt', 'dedicated_rep_id'
+      'sla_level', 'wholesale_price', 'vat_exempt', 'dedicated_rep_id',
+      'tier', 'parent_id', 'commission_rate', 'focus_markets', 'agent_count'
     ];
     
     for (const key of fieldsToCompare) {
@@ -143,7 +179,7 @@ export const CompanyDrawer: React.FC<CompanyDrawerProps> = ({ isOpen, onClose, e
 
       if (!formData.name || !formData.name.trim()) {
         newErrors.name = true;
-        addToast('Tên công ty là bắt buộc.', 'error');
+        addToast('Tên đại lý/đối tác là bắt buộc.', 'error');
       }
 
       const payload = { ...formData, tags };
@@ -176,11 +212,11 @@ export const CompanyDrawer: React.FC<CompanyDrawerProps> = ({ isOpen, onClose, e
       setFormData(updated);
       setBaseData(updated);
       setBaseTags(updated.tags || []);
-      addToast('Đã cập nhật thông tin công ty thành công', 'success');
+      addToast('Đã cập nhật thông tin đối tác thành công', 'success');
       onSave(updated);
     } catch (e: any) {
       console.error("SAVE COMPANY ERROR:", e);
-      addToast(e.response?.data?.message || e.message || 'Lỗi khi lưu thông tin công ty', 'error');
+      addToast(e.response?.data?.message || e.message || 'Lỗi khi lưu thông tin đối tác', 'error');
     } finally {
       setIsSaving(false);
     }
@@ -434,7 +470,7 @@ export const CompanyDrawer: React.FC<CompanyDrawerProps> = ({ isOpen, onClose, e
                 </button>
                 <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', margin: '0 0.5rem', overflow: 'hidden' }}>
                   <h3 style={{ fontSize: '0.9rem', fontWeight: 800, color: 'var(--color-text)', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                    {activeTab ? (visibleTabs.find(t => t.id === activeTab)?.label || 'Chi tiết') : (formData?.name || 'Tên Công Ty')}
+                    {activeTab ? (visibleTabs.find(t => t.id === activeTab)?.label || 'Chi tiết') : (formData?.name || 'Tên Đối tác')}
                   </h3>
                 </div>
                 <button
@@ -497,9 +533,9 @@ export const CompanyDrawer: React.FC<CompanyDrawerProps> = ({ isOpen, onClose, e
                     )}
                   </div>
                   <div>
-                    <h2 className={styles.title}>{formData?.name || 'Tên Công Ty'}</h2>
+                    <h2 className={styles.title}>{formData?.name || 'Tên Đối tác'}</h2>
                     <p className={styles.subtitle} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <Briefcase size={14} /> {formData?.industry || 'Chưa cập nhật ngành nghề'} · MST: {formData?.tax_id || 'Chưa cập nhật'}
+                      <Briefcase size={14} /> {formData?.tier ? formData.tier.toUpperCase() : 'F1'} · {formData?.focus_markets || 'Chưa cập nhật thế mạnh'} · MST: {formData?.tax_id || 'Chưa cập nhật'}
                     </p>
                     <div style={{ 
                       display: 'flex', 
@@ -584,13 +620,13 @@ export const CompanyDrawer: React.FC<CompanyDrawerProps> = ({ isOpen, onClose, e
                       if (entity?.id) {
                         const updateRes = await api.put(`api.php?action=companies/${entity.id}`, { logo_url: newLogoUrl });
                         if (updateRes.data?.success) {
-                          addToast('Cập nhật logo công ty thành công.', 'success');
+                          addToast('Cập nhật logo đối tác thành công.', 'success');
                           if (onSave) {
                             onSave(updateRes.data.data);
                           }
                         }
                       } else {
-                        addToast('Đã tải lên logo công ty.', 'success');
+                        addToast('Đã tải lên logo đối tác.', 'success');
                       }
                     }
                   } catch (err: any) {
@@ -658,7 +694,7 @@ export const CompanyDrawer: React.FC<CompanyDrawerProps> = ({ isOpen, onClose, e
                   {/* Right: Basic Info */}
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: 1, minWidth: 0 }}>
                     <h2 style={{ fontSize: '1.05rem', fontWeight: 800, color: 'var(--color-text)', margin: '0 0 2px 0', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                      {formData?.name || 'Tên Công Ty'}
+                      {formData?.name || 'Tên Đối tác'}
                     </h2>
                     <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: '6px' }}>
                       <Phone size={12} style={{ color: 'var(--color-primary)', flexShrink: 0 }} /> {formData?.phone || 'Chưa có SĐT'}
@@ -685,7 +721,7 @@ export const CompanyDrawer: React.FC<CompanyDrawerProps> = ({ isOpen, onClose, e
                 }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
                     <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <Briefcase size={12} /> {formData?.industry || 'Chưa cập nhật ngành nghề'}
+                      <Briefcase size={12} /> {formData?.focus_markets || 'Chưa cập nhật thế mạnh'}
                     </span>
                     <span className={`badge ${formData?.status === 'active' ? 'success' : formData?.status === 'inactive' ? 'danger' : 'warning'}`} style={{ fontSize: '0.7rem', padding: '2px 8px' }}>
                       {formData?.status === 'active' ? 'Hoạt động' : formData?.status === 'inactive' ? 'Ngừng' : 'Tiềm năng'}
@@ -847,14 +883,14 @@ export const CompanyDrawer: React.FC<CompanyDrawerProps> = ({ isOpen, onClose, e
                   <fieldset disabled={disableEdit} style={{ border: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '1.5rem', width: '100%' }} className="animate-fade">
                     <div className="card-panel">
                       <div className="flex items-center justify-between mb-4">
-                        <h4 className="panel-title" style={{ margin: 0 }}>Hồ sơ Doanh nghiệp</h4>
+                        <h4 className="panel-title" style={{ margin: 0 }}>Hồ sơ Đại lý & Đối tác</h4>
                       </div>
                       <div className="grid grid-2">
                         <div className="form-group" style={{ gridColumn: 'span 2' }}>
-                          <label className="form-label">Tên công ty <span style={{ color: 'var(--color-danger)' }}>*</span></label>
+                          <label className="form-label">Tên Đại lý / Đối tác <span style={{ color: 'var(--color-danger)' }}>*</span></label>
                           <input 
                             className="form-input" 
-                            placeholder="Tên đầy đủ của doanh nghiệp..." 
+                            placeholder="Tên đầy đủ của đại lý hoặc đối tác..." 
                             value={formData?.name || ''} 
                             onChange={e => {
                               setFormData((prev: any) => ({ ...prev, name: e.target.value }));
@@ -868,86 +904,104 @@ export const CompanyDrawer: React.FC<CompanyDrawerProps> = ({ isOpen, onClose, e
                             }}
                           />
                         </div>
+                        
                         <div className="form-group">
-                          <label className="form-label">Mã số thuế (Tax ID)</label>
-                          <input className="form-input" placeholder="Nhập MST..." value={formData?.tax_id || ''} onChange={e => setFormData((prev: any) => ({ ...prev, tax_id: e.target.value }))} />
-                        </div>
-                        <div className="form-group">
-                          <label className="form-label">Ngành nghề (Industry)</label>
-                          <input className="form-input" placeholder="Ví dụ: Công nghệ, Bán lẻ, Tài chính..." value={formData?.industry || ''} onChange={e => setFormData((prev: any) => ({ ...prev, industry: e.target.value }))} />
-                        </div>
-                        <div className="form-group">
-                          <label className="form-label">Quy mô công ty</label>
+                          <label className="form-label">Phân loại / Cấp đại lý</label>
                           <CustomSelect 
-                            options={[
-                              { value: '1-10', label: '1-10 nhân viên' },
-                              { value: '11-50', label: '11-50 nhân viên' },
-                              { value: '51-200', label: '51-200 nhân viên' },
-                              { value: '201-500', label: '201-500 nhân viên' },
-                              { value: '500+', label: 'Hơn 500 nhân viên' }
-                            ]}
-                            value={formData?.size || ''}
-                            onChange={val => setFormData((prev: any) => ({ ...prev, size: val as string }))}
-                            placeholder="Chọn quy mô..."
+                            options={tierOptions}
+                            value={formData?.tier || 'f1'}
+                            onChange={val => {
+                              setFormData((prev: any) => ({ 
+                                ...prev, 
+                                tier: val as string,
+                                parent_id: (val === 'f2' || val === 'f3') ? prev.parent_id : null 
+                              }));
+                            }}
+                            placeholder="Chọn cấp đại lý..."
                           />
                         </div>
+
+                        {(formData?.tier === 'f2' || formData?.tier === 'f3') && (
+                          <div className="form-group">
+                            <label className="form-label">Đại lý F1 cấp trên trực tiếp</label>
+                            <CustomSelect 
+                              options={parentOptions}
+                              value={formData?.parent_id || ''}
+                              onChange={val => setFormData((prev: any) => ({ ...prev, parent_id: val }))}
+                              placeholder="Chọn đại lý F1..."
+                            />
+                          </div>
+                        )}
+
                         <div className="form-group">
-                          <label className="form-label">Trạng thái Khách hàng</label>
+                          <label className="form-label">Khu vực / Dự án thế mạnh</label>
+                          <input 
+                            className="form-input" 
+                            placeholder="Ví dụ: Đất nền Long An, Căn hộ Q2..." 
+                            value={formData?.focus_markets || ''} 
+                            onChange={e => setFormData((prev: any) => ({ ...prev, focus_markets: e.target.value }))} 
+                          />
+                        </div>
+
+                        <div className="form-group">
+                          <label className="form-label">Số lượng Sales đối tác</label>
+                          <input 
+                            className="form-input" 
+                            type="number"
+                            placeholder="Nhập số lượng nhân sự..." 
+                            value={formData?.agent_count || 0} 
+                            onChange={e => setFormData((prev: any) => ({ ...prev, agent_count: parseInt(e.target.value) || 0 }))} 
+                          />
+                        </div>
+
+                        <div className="form-group">
+                          <label className="form-label">Trạng thái đối tác</label>
                           <CustomSelect 
                             options={[
-                              { value: 'prospect', label: 'Tiềm năng (Prospect)' },
-                              { value: 'active', label: 'Đang hoạt động (Active)' },
-                              { value: 'inactive', label: 'Ngừng hoạt động (Inactive)' }
+                              { value: 'prospect', label: 'Tiềm năng' },
+                              { value: 'active', label: 'Đang hoạt động' },
+                              { value: 'inactive', label: 'Ngừng hoạt động' }
                             ]}
                             value={formData?.status || 'prospect'}
                             onChange={val => setFormData((prev: any) => ({ ...prev, status: val as string }))}
                           />
                         </div>
                         <div className="form-group">
-                          <label className="form-label">Giai đoạn Pipeline</label>
-                          <CustomSelect 
-                            options={[
-                              { value: 1, label: 'Giai đoạn mới' },
-                              { value: 2, label: 'Đã liên hệ' },
-                              { value: 3, label: 'Đang thương lượng' },
-                              { value: 4, label: 'Gửi báo giá' },
-                              { value: 5, label: 'Chốt thành công' },
-                              { value: 6, label: 'Thất bại' },
-                            ]}
-                            value={formData?.stage_id || ''}
-                            onChange={val => setFormData((prev: any) => ({ ...prev, stage_id: val }))}
-                            placeholder="Chọn giai đoạn..."
-                          />
+                          <label className="form-label">Người liên hệ đầu mối</label>
+                          <input className="form-input" placeholder="Tên người liên hệ..." value={formData?.legal_representative || ''} onChange={e => setFormData((prev: any) => ({ ...prev, legal_representative: e.target.value }))} />
                         </div>
+
                         <div className="form-group">
-                          <label className="form-label">Người đại diện pháp luật</label>
-                          <input className="form-input" placeholder="Tên người đại diện..." value={formData?.legal_representative || ''} onChange={e => setFormData((prev: any) => ({ ...prev, legal_representative: e.target.value }))} />
+                          <label className="form-label">Mã số thuế (Tax ID)</label>
+                          <input className="form-input" placeholder="Nhập MST..." value={formData?.tax_id || ''} onChange={e => setFormData((prev: any) => ({ ...prev, tax_id: e.target.value }))} />
                         </div>
-                        <div className="form-group">
-                          <label className="form-label">Mã ERP doanh nghiệp</label>
-                          <input className="form-input" placeholder="Nhập mã ERP..." value={formData?.erp_code || ''} onChange={e => setFormData((prev: any) => ({ ...prev, erp_code: e.target.value }))} />
-                        </div>
-                        <div className="form-group">
-                          <label className="form-label">Doanh thu dự kiến</label>
-                          <CurrencyInput
-                            value={formData?.expected_revenue || 0}
-                            onChange={val => setFormData((prev: any) => ({ ...prev, expected_revenue: val }))}
-                            placeholder="VD: 1.500.000.000"
-                          />
-                        </div>
+
+                        {!isSale && (
+                          <div className="form-group">
+                            <label className="form-label">Tỷ lệ phí liên kết (%)</label>
+                            <input 
+                              className="form-input" 
+                              type="number"
+                              step="0.01"
+                              placeholder="Ví dụ: 70" 
+                              value={formData?.commission_rate || 0.00} 
+                              onChange={e => setFormData((prev: any) => ({ ...prev, commission_rate: parseFloat(e.target.value) || 0.00 }))} 
+                            />
+                          </div>
+                        )}
                       </div>
 
                       <div style={{ borderTop: '1px solid var(--color-border-light)', margin: '1.25rem 0', paddingTop: '1.25rem' }}></div>
                       
-                      <h4 className="panel-title" style={{ fontSize: '0.9rem', marginBottom: '1rem' }}>Thông tin Liên lạc & Trụ sở</h4>
+                      <h4 className="panel-title" style={{ fontSize: '0.9rem', marginBottom: '1rem' }}>Thông tin Liên hệ & Trụ sở</h4>
                       <div className="grid grid-2">
                         <div className="form-group">
                           <label className="form-label">Điện thoại Hotline</label>
                           <input className="form-input" type="tel" placeholder="028 xxx xxxx" value={formData?.phone || ''} onChange={e => setFormData((prev: any) => ({ ...prev, phone: e.target.value }))} />
                         </div>
                         <div className="form-group">
-                          <label className="form-label">Email Doanh nghiệp</label>
-                          <input className="form-input" type="email" placeholder="info@congty.com" value={formData?.email || ''} onChange={e => setFormData((prev: any) => ({ ...prev, email: e.target.value }))} />
+                          <label className="form-label">Email Liên hệ</label>
+                          <input className="form-input" type="email" placeholder="info@dai-ly.com" value={formData?.email || ''} onChange={e => setFormData((prev: any) => ({ ...prev, email: e.target.value }))} />
                         </div>
                         <div className="form-group">
                           <label className="form-label">Website</label>
@@ -973,7 +1027,7 @@ export const CompanyDrawer: React.FC<CompanyDrawerProps> = ({ isOpen, onClose, e
                       <h4 className="panel-title">Ghi chú chi tiết</h4>
                       <textarea
                         className="form-input"
-                        placeholder="Nhập ghi chú hoặc mô tả chi tiết về doanh nghiệp này..."
+                        placeholder="Nhập ghi chú hoặc mô tả chi tiết về đại lý/đối tác này..."
                         rows={4}
                         value={formData?.notes || ''}
                         onChange={e => setFormData((prev: any) => ({ ...prev, notes: e.target.value }))}
@@ -1082,7 +1136,7 @@ export const CompanyDrawer: React.FC<CompanyDrawerProps> = ({ isOpen, onClose, e
                             </div>
                           ))
                         ) : (
-                          <div style={{ gridColumn: 'span 2', color: 'var(--color-text-muted)', fontSize: '0.875rem' }}>Chưa có trường tùy chỉnh nào được cấu hình cho Công ty.</div>
+                          <div style={{ gridColumn: 'span 2', color: 'var(--color-text-muted)', fontSize: '0.875rem' }}>Chưa có trường tùy chỉnh nào được cấu hình cho Đối tác.</div>
                         )}
                       </div>
                     </div>
@@ -1101,7 +1155,7 @@ export const CompanyDrawer: React.FC<CompanyDrawerProps> = ({ isOpen, onClose, e
                     ) : activities.length === 0 ? (
                       <EmptyCard 
                         title="Chưa có hoạt động" 
-                        description="Ghi lại các cuộc gọi, họp hoặc email với công ty này."
+                        description="Ghi lại các cuộc gọi, họp hoặc email với đối tác này."
                         icon={<Calendar size={32} />}
                       />
                     ) : (
@@ -1296,8 +1350,8 @@ export const CompanyDrawer: React.FC<CompanyDrawerProps> = ({ isOpen, onClose, e
                     ) : deals.length === 0 ? (
                       <div className="card-panel" style={{ textAlign: 'center', padding: '2rem', color: 'var(--color-text-muted)' }}>
                         <Briefcase size={32} style={{ margin: '0 auto 1rem', opacity: 0.4 }} />
-                        <p style={{ fontWeight: 600 }}>Chưa có hợp đồng nào</p>
-                        <p style={{ fontSize: '0.8rem', marginTop: '0.25rem' }}>Module này dùng để quản lý các giao dịch cụ thể.</p>
+                        <p style={{ fontWeight: 600 }}>Chưa có giao dịch bán nào</p>
+                        <p style={{ fontSize: '0.8rem', marginTop: '0.25rem' }}>Quản lý các giao dịch của đại lý/đối tác này.</p>
                       </div>
                     ) : (
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
@@ -1318,7 +1372,7 @@ export const CompanyDrawer: React.FC<CompanyDrawerProps> = ({ isOpen, onClose, e
                 {activeTab === 'invoices' && (
                   <div className="animate-fade">
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
-                      <h4 className="panel-title" style={{ margin: 0 }}>Lịch sử Hóa đơn & Thanh toán</h4>
+                      <h4 className="panel-title" style={{ margin: 0 }}>Lịch sử Chi trả & Hoa hồng</h4>
                       {!disableEdit && (
                         <button 
                           className="btn primary sm" 
@@ -1347,7 +1401,7 @@ export const CompanyDrawer: React.FC<CompanyDrawerProps> = ({ isOpen, onClose, e
                     ) : invoices.length === 0 ? (
                       <div className="card-panel" style={{ textAlign: 'center', padding: '2rem', color: 'var(--color-text-muted)' }}>
                         <FileText size={32} style={{ margin: '0 auto 1rem', opacity: 0.4 }} />
-                        <p style={{ fontWeight: 600 }}>Chưa có hóa đơn nào</p>
+                        <p style={{ fontWeight: 600 }}>Chưa có bản ghi hoa hồng nào</p>
                       </div>
                     ) : (
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
@@ -1372,7 +1426,7 @@ export const CompanyDrawer: React.FC<CompanyDrawerProps> = ({ isOpen, onClose, e
                 {activeTab === 'expenses' && (
                   <div className="animate-fade">
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
-                      <h4 className="panel-title" style={{ margin: 0 }}>Quản lý Chi phí Doanh nghiệp</h4>
+                      <h4 className="panel-title" style={{ margin: 0 }}>Lịch sử Chi trả & Thưởng đối tác</h4>
                       {!disableEdit && (
                         <button 
                           className="btn primary sm" 
@@ -1391,7 +1445,7 @@ export const CompanyDrawer: React.FC<CompanyDrawerProps> = ({ isOpen, onClose, e
                             onClose();
                           }}
                         >
-                          <Plus size={14}/> Thêm chi phí
+                          <Plus size={14}/> Thêm chi phí chi trả
                         </button>
                       )}
                     </div>
@@ -1402,7 +1456,7 @@ export const CompanyDrawer: React.FC<CompanyDrawerProps> = ({ isOpen, onClose, e
                     ) : expenses.length === 0 ? (
                       <div className="card-panel" style={{ textAlign: 'center', padding: '2rem', color: 'var(--color-text-muted)' }}>
                         <Plus size={32} style={{ margin: '0 auto 1rem', opacity: 0.4 }} />
-                        <p style={{ fontWeight: 600 }}>Chưa ghi nhận chi phí nào</p>
+                        <p style={{ fontWeight: 600 }}>Chưa ghi nhận chi phí chi trả nào</p>
                       </div>
                     ) : (
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
@@ -1499,16 +1553,16 @@ export const CompanyDrawer: React.FC<CompanyDrawerProps> = ({ isOpen, onClose, e
                 {activeTab === 'settings' && (
                   <div className="animate-fade" style={{ textAlign: 'left' }}>
                     <div className="card-panel mb-4">
-                      <h4 className="panel-title">Thiết lập B2B (Company Settings)</h4>
-                      <p className="text-sm text-light mb-4">Cấu hình các tùy chọn ưu đãi và mức độ chăm sóc dành riêng cho pháp nhân này.</p>
+                      <h4 className="panel-title">Thiết lập Đối tác (Partner Settings)</h4>
+                      <p className="text-sm text-light mb-4">Cấu hình các tùy chọn ưu đãi và phân nhóm đại lý đối tác.</p>
                       
                       <div className="form-group mb-4">
-                        <label className="form-label">Phân cấp khách hàng (SLA Level)</label>
+                        <label className="form-label">Cấp độ liên kết (Partnership Level)</label>
                         <CustomSelect 
                           options={[
-                            { value: 'standard', label: 'Standard (Phản hồi 24h)' },
-                            { value: 'gold', label: 'Gold (Phản hồi 12h + Hỗ trợ tận nơi)' },
-                            { value: 'platinum', label: 'Platinum (Phản hồi 2h + Chuyên viên riêng)' }
+                            { value: 'standard', label: 'Standard (Đại lý thông thường)' },
+                            { value: 'gold', label: 'Gold (Đại lý Vàng - Chiến lược)' },
+                            { value: 'platinum', label: 'Platinum (Đại lý Bạch kim - Độc quyền)' }
                           ]}
                           value={formData.sla_level || 'standard'}
                           onChange={(val) => {
@@ -1518,7 +1572,7 @@ export const CompanyDrawer: React.FC<CompanyDrawerProps> = ({ isOpen, onClose, e
                       </div>
 
                       <div className="form-group mb-4">
-                        <label className="form-label">Chuyên viên chăm sóc riêng (Dedicated Care Representative)</label>
+                        <label className="form-label">Chuyên viên hỗ trợ đối tác (Partner Support Representative)</label>
                         <CustomSelect 
                           options={users.map(u => ({ 
                             value: String(u.id), 
@@ -1535,12 +1589,12 @@ export const CompanyDrawer: React.FC<CompanyDrawerProps> = ({ isOpen, onClose, e
                       </div>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '1rem' }}>
                         <CustomCheckbox 
-                          label={<div><span style={{ fontWeight: 600, display: 'block' }}>Áp dụng Bảng giá Đại lý (Wholesale)</span><span style={{ fontSize: '0.8rem', color: 'var(--color-text-light)' }}>Công ty này sẽ tự động nhận báo giá đã chiết khấu.</span></div>}
+                          label={<div><span style={{ fontWeight: 600, display: 'block' }}>Áp dụng chính sách Đại lý</span><span style={{ fontSize: '0.8rem', color: 'var(--color-text-light)' }}>Đại lý này sẽ nhận rổ hàng ưu tiên và chiết khấu nội bộ.</span></div>}
                           checked={!!formData.wholesale_price}
                           onChange={(checked) => setFormData({ ...formData, wholesale_price: checked })}
                         />
                         <CustomCheckbox 
-                          label={<div><span style={{ fontWeight: 600, display: 'block' }}>Miễn trừ thuế GTGT (VAT Exempt)</span><span style={{ fontSize: '0.8rem', color: 'var(--color-text-light)' }}>Áp dụng cho doanh nghiệp chế xuất, khu phi thuế quan.</span></div>}
+                          label={<div><span style={{ fontWeight: 600, display: 'block' }}>Miễn trừ thuế GTGT (VAT Exempt)</span><span style={{ fontSize: '0.8rem', color: 'var(--color-text-light)' }}>Áp dụng khi đại lý tự xuất hóa đơn VAT đặc biệt.</span></div>}
                           checked={!!formData.vat_exempt}
                           onChange={(checked) => setFormData({ ...formData, vat_exempt: checked })}
                         />
@@ -1552,7 +1606,7 @@ export const CompanyDrawer: React.FC<CompanyDrawerProps> = ({ isOpen, onClose, e
                 {activeTab === 'tags' && (
                   <div className="animate-fade">
                     <div className="card-panel">
-                      <p className="text-sm text-light mb-4">Quản lý Tags và phân nhóm công ty khách hàng.</p>
+                      <p className="text-sm text-light mb-4">Quản lý Tags và phân nhóm đối tác.</p>
                       <div className="form-group mb-4">
                         <label className="form-label">Thêm Tag</label>
                         <CustomSelect 
@@ -1588,7 +1642,7 @@ export const CompanyDrawer: React.FC<CompanyDrawerProps> = ({ isOpen, onClose, e
                       disabled={!hasChanges || isSaving}
                       onClick={handleSave}
                     >
-                      {isSaving ? 'Đang lưu...' : (hasChanges ? 'Lưu thông tin Công ty' : 'Đã đồng bộ')}
+                      {isSaving ? 'Đang lưu...' : (hasChanges ? 'Lưu thông tin Đối tác' : 'Đã đồng bộ')}
                     </button>
                   </>
                 )}

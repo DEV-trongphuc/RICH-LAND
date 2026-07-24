@@ -18,7 +18,7 @@ $apply = (isset($_GET['apply']) && $_GET['apply'] === 'true')
       || (isset($_POST['execute_migration']) && $_POST['execute_migration'] === '1')
       || ($isCli && in_array('--apply', $argv));
 
-$targetVersion = 190;
+$targetVersion = 191;
 $currentVersion = 186;
 
 // Query current DB version
@@ -355,8 +355,20 @@ try {
     // Add default setting for lead_max_recall_attempts
     $conn->query("INSERT INTO system_settings (setting_key, setting_value) VALUES ('lead_max_recall_attempts', '2') ON DUPLICATE KEY UPDATE setting_value = IFNULL(setting_value, '2')");
 
+    // 8.8. Add partner distribution network columns to companies (Version 191)
+    $chkTier = $conn->query("SHOW COLUMNS FROM `companies` LIKE 'tier'");
+    if (!$chkTier || $chkTier->num_rows == 0) {
+        $conn->query("ALTER TABLE `companies` 
+            ADD COLUMN `tier` VARCHAR(50) DEFAULT 'f1' COMMENT 'Cấp đại lý: f1, f2, f3, ctv', 
+            ADD COLUMN `parent_id` INT NULL COMMENT 'Đại lý cấp trên trực tiếp', 
+            ADD COLUMN `commission_rate` DECIMAL(5,2) DEFAULT 0.00 COMMENT 'Tỷ lệ hoa hồng liên kết %', 
+            ADD COLUMN `focus_markets` TEXT NULL COMMENT 'Phân khúc/Thị trường thế mạnh', 
+            ADD COLUMN `agent_count` INT DEFAULT 0 COMMENT 'Số lượng sales'");
+        $logMsg("Đã bổ sung các cột phân cấp đại lý (tier, parent_id, commission_rate, focus_markets, agent_count) vào bảng companies.", "success");
+    }
+
     // 9. Update DB version in system_settings
-    $conn->query("INSERT INTO system_settings (setting_key, setting_value) VALUES ('db_version', '190') ON DUPLICATE KEY UPDATE setting_value = '190'");
+    $conn->query("INSERT INTO system_settings (setting_key, setting_value) VALUES ('db_version', '191') ON DUPLICATE KEY UPDATE setting_value = '191'");
     
     $logMsg("Hệ thống đã duy trì cấu trúc Cơ sở dữ liệu ở phiên bản mới nhất: " . $targetVersion, "success");
 
