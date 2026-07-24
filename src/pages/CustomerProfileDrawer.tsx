@@ -768,12 +768,60 @@ const ActivityComments: React.FC<{
 };
 
 const DrawerSkeleton = () => {
+  const isMobile = window.innerWidth <= 1024;
+  
+  if (isMobile) {
+    return (
+      <div style={{
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        height: '100%',
+        minHeight: '350px',
+        gap: '16px',
+        background: 'transparent',
+        padding: '2rem 1rem',
+        boxSizing: 'border-box',
+        width: '100%'
+      }}>
+        <div style={{
+          width: '56px',
+          height: '56px',
+          borderRadius: '16px',
+          background: 'var(--color-surface)',
+          boxShadow: '0 8px 20px rgba(0,0,0,0.06)',
+          display: 'grid',
+          placeItems: 'center',
+          border: '1px solid var(--color-border-light)'
+        }}>
+          <Loader2 
+            size={28} 
+            style={{ 
+              animation: 'spin 1s linear infinite', 
+              color: 'var(--color-primary)', 
+              display: 'block' 
+            }} 
+          />
+        </div>
+        <span style={{ 
+          fontSize: '0.825rem', 
+          fontWeight: 700, 
+          color: 'var(--color-text-muted)', 
+          letterSpacing: '0.02em' 
+        }}>
+          Đang tải dữ liệu hồ sơ...
+        </span>
+      </div>
+    );
+  }
+
   return (
     <div className="skeleton-wrapper" style={{ display: 'flex', flex: 1, gap: '2rem', height: '100%', background: 'var(--color-surface)' }}>
       {/* Sidebar Skeleton */}
       <div className="skeleton-sidebar" style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', width: '250px', borderRight: '1px solid var(--color-border-light)', padding: '1.5rem 1rem' }}>
         {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(i => (
-          <div key={i} className="skeleton" style={{ width: '100%', height: '36px', borderRadius: '8px' }}></div>
+          <Skeleton key={i} width="100%" height={36} borderRadius={8} />
         ))}
       </div>
 
@@ -782,52 +830,16 @@ const DrawerSkeleton = () => {
         <div className="skeleton-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
           {[1, 2, 3, 4, 5, 6].map(i => (
             <div key={i} style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-              <div className="skeleton" style={{ width: '30%', height: '14px', borderRadius: '4px' }}></div>
-              <div className="skeleton" style={{ width: '100%', height: '38px', borderRadius: '8px' }}></div>
+              <Skeleton width="30%" height={14} borderRadius={4} />
+              <Skeleton width="100%" height={38} borderRadius={8} />
             </div>
           ))}
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '1rem' }}>
-          <div className="skeleton" style={{ width: '15%', height: '14px', borderRadius: '4px' }}></div>
-          <div className="skeleton" style={{ width: '100%', height: '120px', borderRadius: '8px' }}></div>
+          <Skeleton width="15%" height={14} borderRadius={4} />
+          <Skeleton width="100%" height={120} borderRadius={8} />
         </div>
       </div>
-
-      <style>{`
-        @keyframes pulse {
-          0% { opacity: 0.6; }
-          50% { opacity: 1; }
-          100% { opacity: 0.6; }
-        }
-        @media (max-width: 1024px) {
-          .skeleton-wrapper {
-            flex-direction: column !important;
-            gap: 1.5rem !important;
-            padding: 1rem !important;
-          }
-          .skeleton-sidebar {
-            width: 100% !important;
-            border-right: none !important;
-            padding: 0 0 0.5rem 0 !important;
-            flex-direction: row !important;
-            overflow-x: auto;
-            border-bottom: 1px solid var(--color-border-light);
-            flex-shrink: 0;
-            gap: 0.75rem !important;
-          }
-          .skeleton-sidebar > div {
-            width: 100px !important;
-            flex-shrink: 0;
-          }
-          .skeleton-content {
-            padding: 0 !important;
-          }
-          .skeleton-grid {
-            grid-template-columns: 1fr !important;
-            gap: 1rem !important;
-          }
-        }
-      `}</style>
     </div>
   );
 };
@@ -1278,17 +1290,74 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
     const isMobile = window.innerWidth <= 1024;
     return isMobile ? '' : 'info';
   });
-  const [renderedTab, setRenderedTab] = useState<string>(activeTab);
+  const [tabRenderReady, setTabRenderReady] = useState(true);
+  const [drawerOpenComplete, setDrawerOpenComplete] = useState(false);
+
   useEffect(() => {
-    if (activeTab) {
-      setRenderedTab(activeTab);
-    } else {
-      const timer = setTimeout(() => {
-        setRenderedTab('');
-      }, 300);
-      return () => clearTimeout(timer);
+    if (!isOpen) {
+      setDrawerOpenComplete(false);
     }
-  }, [activeTab]);
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (contact?.id) {
+      setDrawerOpenComplete(false);
+    }
+  }, [contact?.id]);
+  
+  useEffect(() => {
+    if (isMobileOrTablet && activeTab) {
+      setTabRenderReady(false);
+    } else {
+      setTabRenderReady(true);
+    }
+  }, [activeTab, isMobileOrTablet]);
+
+  const renderTabSkeleton = (tabId: string) => {
+    return (
+      <div style={{
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        height: '100%',
+        minHeight: '350px',
+        gap: '16px',
+        background: 'transparent',
+        padding: '2rem 1rem',
+        boxSizing: 'border-box'
+      }}>
+        <div style={{
+          width: '56px',
+          height: '56px',
+          borderRadius: '16px',
+          background: 'var(--color-surface)',
+          boxShadow: '0 8px 20px rgba(0,0,0,0.06)',
+          display: 'grid',
+          placeItems: 'center',
+          border: '1px solid var(--color-border-light)'
+        }}>
+          <Loader2 
+            size={28} 
+            style={{ 
+              animation: 'spin 1s linear infinite', 
+              color: 'var(--color-primary)', 
+              display: 'block' 
+            }} 
+          />
+        </div>
+        <span style={{ 
+          fontSize: '0.825rem', 
+          fontWeight: 700, 
+          color: 'var(--color-text-muted)', 
+          letterSpacing: '0.02em' 
+        }}>
+          Đang tải dữ liệu...
+        </span>
+      </div>
+    );
+  };
+
   const [taskViewMode, setTaskViewMode] = useState<'kanban' | 'list'>('kanban');
   const [showManageModal, setShowManageModal] = useState(false);
   const [selectedDepForManage, setSelectedDepForManage] = useState<any | null>(null);
@@ -4166,6 +4235,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
       await fetchCoopSlip();
 
       if (hasCoopSalesCheck && createCoopSlipChoice) {
+        setTabRenderReady(false);
         setActiveTab('cooperation');
       }
     } catch (e: any) {
@@ -4654,6 +4724,9 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
             <motion.div
               className={styles.drawer}
               {...drawerMotionProps}
+              onAnimationComplete={() => {
+                setDrawerOpenComplete(true);
+              }}
               style={{
                 left: isMobileOrTablet ? 0 : 'var(--sidebar-width, 220px)',
                 right: 0,
@@ -5388,7 +5461,10 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                     <div className={styles.profileActionsSection}>
                       {/* Lead Score inline card */}
                       <div 
-                        onClick={() => setActiveTab('scoring')}
+                        onClick={() => {
+                          setTabRenderReady(false);
+                          setActiveTab('scoring');
+                        }}
                         style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                         title="Xem chi tiết Scoring"
                       >
@@ -5425,33 +5501,31 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
               {!isMobileOrTablet && pipelineStepperBar}
 
               {/* ── Layout Split: Left Sidebar Tabs & Content ── */}
-              <div 
-                className={styles.drawerBody}
-                style={isMobileOrTablet ? {
-                  display: 'flex',
-                  flexDirection: 'row',
-                  overflow: 'hidden',
-                  width: '200%',
-                  transform: activeTab ? 'translateX(-50%)' : 'translateX(0)',
-                  transition: 'transform 0.3s cubic-bezier(0.25, 0.1, 0.25, 1)'
-                } : undefined}
-              >
-                {loadingContactDetails ? (
+              <div className={styles.drawerBody}>
+                {!drawerOpenComplete || loadingContactDetails ? (
                   <DrawerSkeleton />
                 ) : (
                   <>
-                    {(!isMobileOrTablet || true) && (
-                      <div
-                        className={styles.sidebarTabs}
-                        style={isMobileOrTablet ? { 
-                          width: 'calc(50% - 8px)', 
-                          marginRight: '8px', 
-                          gap: '0.25rem', 
-                          padding: '12px 12px 100px 12px', 
-                          overflowY: 'auto',
-                          flexShrink: 0 
-                        } : { gap: '0.25rem', overflowY: 'auto' }}
-                      >
+                    <AnimatePresence>
+                      {(!isMobileOrTablet || !activeTab) && (
+                        <motion.div
+                          initial={isMobileOrTablet ? { opacity: 0, x: -30 } : undefined}
+                          animate={isMobileOrTablet ? { opacity: 1, x: 0 } : undefined}
+                          exit={isMobileOrTablet ? { opacity: 0, x: -30 } : undefined}
+                          transition={{ type: 'spring', damping: 28, stiffness: 300 }}
+                          className={styles.sidebarTabs}
+                          style={isMobileOrTablet ? { 
+                            width: '100%', 
+                            gap: '0.25rem', 
+                            padding: '12px 12px 100px 12px', 
+                            overflowY: 'auto',
+                            position: activeTab ? 'absolute' : 'relative',
+                            top: 0,
+                            left: 0,
+                            height: '100%',
+                            zIndex: 1
+                          } : { gap: '0.25rem', overflowY: 'auto' }}
+                        >
                         {isMobileOrTablet ? (
                           <div style={{ display: 'flex', flexDirection: 'column', width: '100%' }}>
                             {/* Compact Mobile Profile Info Card */}
@@ -5494,7 +5568,10 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
 
                                 {/* Far Right: Score Ring */}
                                 <div 
-                                  onClick={() => setActiveTab('scoring')}
+                                  onClick={() => {
+                                    setTabRenderReady(false);
+                                    setActiveTab('scoring');
+                                  }}
                                   style={{ cursor: 'pointer', flexShrink: 0 }}
                                 >
                                   <LeadScoreRing score={score} size={32} showLabel={true} />
@@ -5729,7 +5806,10 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                         <button
                                           key={tab.id}
                                           className="os-list-item"
-                                          onClick={() => setActiveTab(tab.id)}
+                                          onClick={() => {
+                                            setTabRenderReady(false);
+                                            setActiveTab(tab.id);
+                                          }}
                                         >
                                           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                                             {renderColoredTabIcon(tab.id, tab.icon)}
@@ -5987,27 +6067,41 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                             </div>
                           </>
                         )}
-                        </div>
+                        </motion.div>
                       )}
+                    </AnimatePresence>
 
                 {/* Content Area */}
                 <AnimatePresence>
-                  {(!isMobileOrTablet || activeTab || renderedTab) && (
-                    <div 
+                  {(!isMobileOrTablet || activeTab) && (
+                    <motion.div 
+                      key={activeTab || 'content'}
+                      initial={isMobileOrTablet ? { opacity: 0, x: 30 } : undefined}
+                      animate={isMobileOrTablet ? { opacity: 1, x: 0 } : undefined}
+                      exit={isMobileOrTablet ? { opacity: 0, x: 30 } : undefined}
+                      transition={{ type: 'spring', damping: 28, stiffness: 300 }}
                       className={styles.contentArea} 
                       style={isMobileOrTablet ? { 
-                        width: 'calc(50% - 8px)', 
-                        marginLeft: '8px', 
+                        width: '100%', 
                         minWidth: 0, 
                         boxSizing: 'border-box', 
                         padding: '0', 
                         display: 'flex', 
                         flexDirection: 'column', 
-                        flex: 'none', 
+                        flex: 1, 
                         overflowY: 'auto', 
                         overflowX: 'hidden',
-                        flexShrink: 0
+                        position: !activeTab ? 'absolute' : 'relative',
+                        top: 0,
+                        left: 0,
+                        height: '100%',
+                        zIndex: 2
                       } : undefined}
+                      onAnimationComplete={() => {
+                        if (isMobileOrTablet) {
+                          setTabRenderReady(true);
+                        }
+                      }}
                     >
                     {isMobileOrTablet && activeTab && (
                       <div style={{
@@ -6045,9 +6139,12 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                     )}
 
                     <div style={isMobileOrTablet ? { padding: '12px 12px 100px 12px', flex: 1, width: '100%', minWidth: 0, boxSizing: 'border-box', overflowX: 'hidden' } : undefined}>
-
-                  {/* INFO TAB */}
-                  {activeTab === 'info' && (
+                      {isMobileOrTablet && !tabRenderReady ? (
+                        renderTabSkeleton(activeTab)
+                      ) : (
+                        <>
+                          {/* INFO TAB */}
+                          {activeTab === 'info' && (
                     <div className="animate-fade" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
                       {/* Quick Stats Dashboard */}
                       <div style={{ display: 'grid', gridTemplateColumns: isMobileOrTablet ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)', gap: '0.75rem' }}>
@@ -10468,10 +10565,12 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                       )}
                     </div>
                   )}
-
+                        </>
+                      )}
                     </div>
-                    </div>
-                  )}
+                  </motion.div>
+                )}
+              </AnimatePresence>
               </>
             )}
           </div>

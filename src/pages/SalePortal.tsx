@@ -10625,7 +10625,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
           minHeight: isMobile ? 'auto' : '650px',
           margin: '0',
           width: isMobile ? '200%' : '100%',
-          transform: isMobile ? (profileActiveTab ? 'translateX(-50%)' : 'translateX(0)') : 'none',
+          transform: isMobile ? ((profileActiveTab || renderedTab) ? 'translateX(-50%)' : 'translateX(0)') : 'none',
           transition: isMobile ? 'transform 0.3s cubic-bezier(0.25, 0.1, 0.25, 1)' : 'none'
         }}>
           {/* LEFT SIDEBAR: Avatar & Tabs */}
