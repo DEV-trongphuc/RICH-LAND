@@ -11197,13 +11197,21 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                   margin: '-1.25rem 0 1.25rem 0',
                   gap: '12px'
                 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
-                    <button 
-                      onClick={() => setProfileActiveTab('')} 
-                      style={{ border: 'none', background: 'transparent', padding: '4px', cursor: 'pointer', color: 'var(--color-text)', display: 'flex', alignItems: 'center' }}
-                    >
-                      <ChevronLeft size={20} />
-                    </button>
+                  <button 
+                    onClick={() => setProfileActiveTab('')} 
+                    style={{
+                      border: 'none',
+                      background: 'transparent',
+                      padding: '4px 12px 4px 4px',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      minWidth: 0,
+                      textAlign: 'left'
+                    }}
+                  >
+                    <ChevronLeft size={20} style={{ color: 'var(--color-primary)', flexShrink: 0 }} />
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', minWidth: 0 }}>
                       <h2 style={{ 
                         fontSize: '1.1rem', 
@@ -11217,7 +11225,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                         {getTabLabel(profileActiveTab || renderedTab)}
                       </h2>
                     </div>
-                  </div>
+                  </button>
 
                   <button
                     className="btn primary"

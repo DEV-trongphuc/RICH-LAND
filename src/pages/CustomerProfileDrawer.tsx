@@ -6000,18 +6000,18 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                             border: 'none',
                             display: 'flex',
                             alignItems: 'center',
-                            justifyContent: 'center',
+                            gap: '8px',
                             cursor: 'pointer',
-                            color: 'var(--color-primary)',
-                            padding: '4px',
-                            marginLeft: '-4px'
+                            padding: '6px 12px 6px 4px',
+                            marginLeft: '-4px',
+                            textAlign: 'left'
                           }}
                         >
-                          <ChevronLeft size={20} />
+                          <ChevronLeft size={20} style={{ color: 'var(--color-primary)', flexShrink: 0 }} />
+                          <span style={{ fontWeight: 700, fontSize: '0.95rem', color: 'var(--color-text)' }}>
+                            {TABS.find(t => t.id === activeTab)?.label || ''}
+                          </span>
                         </button>
-                        <span style={{ fontWeight: 700, fontSize: '0.95rem', color: 'var(--color-text)' }}>
-                          {TABS.find(t => t.id === activeTab)?.label || ''}
-                        </span>
                       </div>
                     )}
 
