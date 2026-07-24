@@ -242,7 +242,8 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
       const yearMonth = `${currentYear}-${String(currentMonth).padStart(2, '0')}`;
       const uidParam = filterUser !== 'all' ? filterUser : '';
       const actRes = await api.get(`/activities?limit=1000&year_month=${yearMonth}&user_id=${uidParam}`);
-      const list = actRes.data?.data || actRes.data || [];
+      const actData = actRes.data?.data;
+      const list = Array.isArray(actData?.items) ? actData.items : (Array.isArray(actData) ? actData : (Array.isArray(actRes.data) ? actRes.data : []));
       setCalendarActivities(list);
     } catch (err: any) {
       console.error('Error fetching calendar check-ins:', err);
@@ -254,7 +255,8 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
   const fetchContactsList = async () => {
     try {
       const res = await api.get('/contacts?limit=1000');
-      const list = res.data?.data?.items || res.data?.data || [];
+      const conData = res.data?.data;
+      const list = Array.isArray(conData?.items) ? conData.items : (Array.isArray(conData) ? conData : (Array.isArray(res.data) ? res.data : []));
       setContactsList(list);
     } catch (e) {
       console.error('Error fetching contacts:', e);
