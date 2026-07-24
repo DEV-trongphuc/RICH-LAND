@@ -11175,7 +11175,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                   top: '-1rem',
                   zIndex: 100,
                   background: 'var(--color-surface)',
-                  padding: '0.5rem 1rem 0.75rem 1rem',
+                  padding: '1.5rem 1.5rem 0.75rem 1.5rem',
                   display: 'flex',
                   justifyContent: 'space-between',
                   alignItems: 'center',
