@@ -177,7 +177,7 @@ interface SalePortalProps {
   searchParams?: URLSearchParams;
   setSearchParams?: any;
   location?: any;
-  activeTabProp?: 'dashboard' | 'workspace' | 'data' | 'tickets' | 'schedule' | 'calendar' | 'fair-share' | 'databank' | 'invoices' | 'projects' | 'files' | 'consultants';
+  activeTabProp?: 'dashboard' | 'workspace' | 'data' | 'tickets' | 'schedule' | 'calendar' | 'fair-share' | 'databank' | 'invoices' | 'projects' | 'files' | 'consultants' | 'attendance-portal';
   embedMode?: boolean;
 }
 
@@ -461,7 +461,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
   const [profileDrawerTab, setProfileDrawerTab] = useState<string>('info');
 
   // Tab & Layout states
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'workspace' | 'data' | 'tickets' | 'schedule' | 'calendar' | 'fair-share' | 'databank' | 'invoices' | 'projects' | 'files' | 'consultants'>(activeTabProp || 'dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'workspace' | 'data' | 'tickets' | 'schedule' | 'calendar' | 'fair-share' | 'databank' | 'invoices' | 'projects' | 'files' | 'consultants' | 'attendance-portal'>(activeTabProp || 'dashboard');
   const [sourceViewMode, setSourceViewMode] = useState<'connection' | 'lead'>('connection');
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
@@ -1277,6 +1277,19 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
   const [dayDetails, setDayDetails] = useState<any>(null);
   const [dayDetailsLoading, setDayDetailsLoading] = useState(false);
   const [activeCalendarModalTab, setActiveCalendarModalTab] = useState<'sales' | 'tickets'>('sales');
+
+  // Scheduler activities & note states
+  const [calendarActivities, setCalendarActivities] = useState<any[]>([]);
+  const [schedulerModalOpen, setSchedulerModalOpen] = useState(false);
+  const [selectedSchedulerDate, setSelectedSchedulerDate] = useState<string | null>(null);
+  const [schedulerModalTab, setSchedulerModalTab] = useState<'scheduler' | 'details'>('scheduler');
+  const [diaryNoteText, setDiaryNoteText] = useState('');
+  const [newActivityType, setNewActivityType] = useState<'task' | 'meeting' | 'call'>('task');
+  const [newActivitySubject, setNewActivitySubject] = useState('');
+  const [newActivityBody, setNewActivityBody] = useState('');
+  const [newActivityContactId, setNewActivityContactId] = useState<string>('');
+  const [savingActivity, setSavingActivity] = useState(false);
+  const [contactsList, setContactsList] = useState<any[]>([]);
 
   // Ticket detail modal states
   const [selectedDetailTicket, setSelectedDetailTicket] = useState<any>(null);
@@ -3966,10 +3979,29 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
       if (json.success) {
         setCalendarData(json.data || {});
       }
+
+      // Concurrently fetch the monthly activities (tasks, meetings, calls, notes)
+      const startDateStr = `${year}-${String(month).padStart(2, '0')}-01 00:00:00`;
+      const endDateStr = `${year}-${String(month).padStart(2, '0')}-${new Date(year, month, 0).getDate()} 23:59:59`;
+      const actRes = await api.get('/activities', {
+        params: {
+          start_date: startDateStr,
+          end_date: endDateStr,
+          limit: 300
+        }
+      });
+      setCalendarActivities(actRes.data?.data?.items || actRes.data?.data || []);
+
+      // Fetch contacts list for dropdown once if not loaded
+      if (contactsList.length === 0) {
+        const conRes = await api.get('/contacts?limit=1000');
+        setContactsList(conRes.data?.data?.items || conRes.data?.data || []);
+      }
     } catch (e: any) {
       console.error('Lỗi tải thống kê lịch biểu: ', e.message);
+    } finally {
+      setCalendarLoading(false);
     }
-    setCalendarLoading(false);
   };
 
   useEffect(() => {
@@ -10239,7 +10271,11 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
       days.push(
         <div
           key={d}
-          onClick={() => handleDateClick(dateStr)}
+          onClick={() => {
+            setSelectedSchedulerDate(dateStr);
+            setSchedulerModalTab('details');
+            setSchedulerModalOpen(true);
+          }}
           style={{
             borderRight: '1px solid var(--color-border)',
             borderBottom: '1px solid var(--color-border)',
@@ -10271,7 +10307,135 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
               color: isToday ? 'white' : 'var(--color-text-light)'
             }}>{d}</span>
             {isToday && <span style={{ fontSize: '0.65rem', fontWeight: 600, color: 'var(--color-primary)' }}>{t('Hôm nay')}</span>}
+            
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setSelectedSchedulerDate(dateStr);
+                setSchedulerModalTab('scheduler');
+                setSchedulerModalOpen(true);
+              }}
+              className="quick-add-btn btn primary sm icon-only"
+              style={{
+                width: '18px',
+                height: '18px',
+                borderRadius: '50%',
+                padding: 0,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '0.75rem',
+                fontWeight: 700,
+                border: 'none',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.15)',
+                cursor: 'pointer',
+                marginLeft: 'auto'
+              }}
+              title={t('Thêm nhanh công việc/ghi chú')}
+            >
+              +
+            </button>
           </div>
+
+          {/* Render Scheduler Activities */}
+          {(() => {
+            const dayActivities = calendarActivities.filter(a => a.due_date && a.due_date.startsWith(dateStr));
+            if (dayActivities.length === 0) return null;
+            return (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', marginTop: '2px', width: '100%', marginBottom: '4px' }}>
+                {dayActivities.slice(0, 3).map((a: any) => {
+                  const isDone = a.status === 'done';
+                  const isMeeting = a.type === 'meeting';
+                  const isNote = a.type === 'note';
+                  const isCall = a.type === 'call';
+                  
+                  let bg = 'rgba(142, 142, 147, 0.08)';
+                  let border = 'rgba(142, 142, 147, 0.2)';
+                  let color = 'var(--color-text)';
+                  let icon = '📝';
+                  
+                  if (isMeeting) {
+                    bg = 'rgba(59, 130, 246, 0.08)';
+                    border = 'rgba(59, 130, 246, 0.2)';
+                    color = '#2563eb';
+                    icon = '🤝';
+                  } else if (isNote) {
+                    bg = 'rgba(16, 185, 129, 0.08)';
+                    border = 'rgba(16, 185, 129, 0.2)';
+                    color = '#10b981';
+                    icon = '📓';
+                  } else if (isCall) {
+                    bg = 'rgba(245, 158, 11, 0.08)';
+                    border = 'rgba(245, 158, 11, 0.2)';
+                    color = '#d97706';
+                    icon = '📞';
+                  }
+                  
+                  return (
+                    <div
+                      key={a.id}
+                      onClick={(e) => {
+                        if (a.contact_id) {
+                          e.stopPropagation();
+                          setProfileContact({ id: a.contact_id });
+                        }
+                      }}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '4px',
+                        fontSize: '0.65rem',
+                        padding: '2px 4px',
+                        borderRadius: '4px',
+                        border: `1px solid ${border}`,
+                        backgroundColor: bg,
+                        color: color,
+                        fontWeight: 650,
+                        textDecoration: isDone ? 'line-through' : 'none',
+                        opacity: isDone ? 0.65 : 1,
+                        cursor: a.contact_id ? 'pointer' : 'default',
+                        width: '100%',
+                        overflow: 'hidden'
+                      }}
+                      className="calendar-activity-item"
+                      title={`${a.subject}: ${a.body || ''}`}
+                    >
+                      <span style={{ fontSize: '0.7rem', flexShrink: 0 }}>{icon}</span>
+                      <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {a.subject}
+                      </span>
+                      {a.contact_id && (
+                        <div 
+                          style={{ 
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            gap: '2px', 
+                            backgroundColor: 'var(--color-surface)',
+                            padding: '0 3px',
+                            borderRadius: '3px',
+                            border: '1px solid var(--color-border-light)',
+                            marginLeft: '2px',
+                            flexShrink: 0
+                          }}
+                        >
+                          <Avatar src={resolveAttachmentUrl(a.contact_avatar)} name={a.contact_name} size={12} />
+                          <span style={{ fontSize: '0.58rem', fontWeight: 700, maxWidth: '35px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {a.contact_name}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+                {dayActivities.length > 3 && (
+                  <div style={{ fontSize: '0.6rem', color: 'var(--color-text-muted)', fontWeight: 700, textAlign: 'center' }}>
+                    +{dayActivities.length - 3} {t('nhiệm vụ khác')}
+                  </div>
+                )}
+              </div>
+            );
+          })()}
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '4px', alignContent: 'end' }}>
             {dayData.distributed > 0 && (
@@ -10339,6 +10503,18 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
 
     return (
       <div style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }} className="fade-in-view">
+        <style>{`
+          .calendar-day-cell .quick-add-btn {
+            opacity: 0;
+            transition: opacity 0.15s ease-in-out;
+          }
+          .calendar-day-cell:hover .quick-add-btn {
+            opacity: 1;
+          }
+          .calendar-day-cell:hover {
+            box-shadow: inset 0 0 0 1px var(--color-primary);
+          }
+        `}</style>
         {/* Calendar Header / Control */}
         <div className="mobile-stack" style={{
           display: 'flex',
@@ -13972,7 +14148,8 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                   items: [
                     { name: 'Nhật ký Data', key: 'data', icon: Database },
                     { name: 'Khách hàng CRM', key: 'crm-contacts', icon: Users, route: '/contacts' },
-                    { name: 'Lịch biểu', key: 'calendar', icon: Calendar },
+                    { name: 'Lịch trình', key: 'calendar', icon: Calendar },
+                    { name: 'Chấm công', key: 'attendance-portal', icon: Clock },
                     { name: 'Ticket Lỗi Data', key: 'tickets', icon: Ticket, badgeCount: data.stats.tickets_pending },
                     { name: 'Ticket Hỗ Trợ', key: 'support-tickets', icon: LifeBuoy, route: '/support-tickets' }
                   ]
@@ -14241,7 +14418,8 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                   items: [
                     { name: 'Nhật ký Data', key: 'data', icon: Database },
                     { name: 'Khách hàng CRM', key: 'crm-contacts', icon: Users, route: '/contacts' },
-                    { name: 'Lịch biểu', key: 'calendar', icon: Calendar },
+                    { name: 'Lịch trình', key: 'calendar', icon: Calendar },
+                    { name: 'Chấm công', key: 'attendance-portal', icon: Clock },
                     { name: 'Ticket Lỗi Data', key: 'tickets', icon: Ticket, badgeCount: data.stats.tickets_pending },
                     { name: 'Ticket Hỗ Trợ', key: 'support-tickets', icon: LifeBuoy, route: '/support-tickets' }
                   ]
@@ -14913,120 +15091,76 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
               {activeTab === 'databank' && renderDatabankView()}
               {activeTab === 'calendar' && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                  {/* Title & Sub-tabs header row */}
-                  <div style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    marginBottom: '0.5rem',
-                    flexWrap: 'wrap',
-                    gap: '1rem',
-                    width: '100%'
-                  }}>
-                    <div>
-                      <h1 className="page-title" style={{ margin: 0 }}>{t('Lịch biểu & Chấm công')}</h1>
-                    </div>
-                    <div style={{
-                      display: 'inline-flex',
-                      background: 'var(--color-border-light)',
-                      border: '1px solid var(--color-border)',
-                      padding: '2px',
-                      borderRadius: '8px',
-                      position: 'relative',
-                      gap: '2px'
-                    }}>
-                      <button
-                        onClick={() => setCalendarSubTab('calendar')}
-                        style={{
-                          padding: '6px 16px',
-                          borderRadius: '6px',
-                          fontSize: '0.8125rem',
-                          fontWeight: 700,
-                          background: 'transparent',
-                          color: calendarSubTab === 'calendar' ? 'var(--color-text)' : 'var(--color-text-light)',
-                          border: 'none',
-                          outline: 'none',
-                          boxShadow: 'none',
-                          cursor: 'pointer',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '6px',
-                          transition: 'color 0.2s',
-                          position: 'relative'
-                        }}
-                      >
-                        {calendarSubTab === 'calendar' && (
-                          <motion.div 
-                            layoutId="activeCalendarSubTabIndicator"
-                            style={{
-                              position: 'absolute',
-                              top: 0,
-                              left: 0,
-                              right: 0,
-                              bottom: 0,
-                              background: 'var(--color-surface)',
-                              borderRadius: '6px',
-                              boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
-                              zIndex: 1
-                            }}
-                            transition={{ type: 'spring', stiffness: 380, damping: 30 }}
-                          />
-                        )}
-                        <span style={{ position: 'relative', zIndex: 2, display: 'flex', alignItems: 'center', gap: '6px' }}>
-                          <Calendar size={14} />
-                          {t('Lịch biểu')}
-                        </span>
-                      </button>
-                      <button
-                        onClick={() => setCalendarSubTab('attendance')}
-                        style={{
-                          padding: '6px 16px',
-                          borderRadius: '6px',
-                          fontSize: '0.8125rem',
-                          fontWeight: 700,
-                          background: 'transparent',
-                          color: calendarSubTab === 'attendance' ? 'var(--color-text)' : 'var(--color-text-light)',
-                          border: 'none',
-                          outline: 'none',
-                          boxShadow: 'none',
-                          cursor: 'pointer',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '6px',
-                          transition: 'color 0.2s',
-                          position: 'relative'
-                        }}
-                      >
-                        {calendarSubTab === 'attendance' && (
-                          <motion.div 
-                            layoutId="activeCalendarSubTabIndicator"
-                            style={{
-                              position: 'absolute',
-                              top: 0,
-                              left: 0,
-                              right: 0,
-                              bottom: 0,
-                              background: 'var(--color-surface)',
-                              borderRadius: '6px',
-                              boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
-                              zIndex: 1
-                            }}
-                            transition={{ type: 'spring', stiffness: 380, damping: 30 }}
-                          />
-                        )}
-                        <span style={{ position: 'relative', zIndex: 2, display: 'flex', alignItems: 'center', gap: '6px' }}>
-                          <Clock size={14} />
-                          {t('Chấm công')}
-                        </span>
-                      </button>
-                    </div>
+                  {/* Title */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.25rem' }}>
+                    <h1 className="page-title" style={{ margin: 0 }}>{t('Lịch trình công việc')}</h1>
                   </div>
+
+                  {/* 4 StatCards */}
+                  {(() => {
+                    const noteCount = calendarActivities.filter(a => a.type === 'note').length;
+                    const taskCount = calendarActivities.filter(a => a.type === 'task').length;
+                    const meetingCount = calendarActivities.filter(a => a.type === 'meeting').length;
+                    const callCount = calendarActivities.filter(a => a.type === 'call').length;
+
+                    return (
+                      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(4, 1fr)', gap: '1rem', marginBottom: '0.5rem' }}>
+                        {/* Card 1: Ghi chú & Nhật ký */}
+                        <div className="stat-card" style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '1rem 1.25rem', borderRadius: '12px', background: 'var(--color-surface)', border: '1px solid var(--color-border)', boxShadow: 'var(--shadow-sm)' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '42px', height: '42px', borderRadius: '10px', background: 'rgba(16, 185, 129, 0.12)', color: '#10b981' }}>
+                            <FileText size={20} />
+                          </div>
+                          <div style={{ display: 'flex', flexDirection: 'column' }}>
+                            <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', fontWeight: 700 }}>{t('Ghi chú & Nhật ký')}</span>
+                            <span style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--color-text)' }}>{noteCount}</span>
+                          </div>
+                        </div>
+
+                        {/* Card 2: Công việc quan trọng */}
+                        <div className="stat-card" style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '1rem 1.25rem', borderRadius: '12px', background: 'var(--color-surface)', border: '1px solid var(--color-border)', boxShadow: 'var(--shadow-sm)' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '42px', height: '42px', borderRadius: '10px', background: 'rgba(59, 130, 246, 0.12)', color: '#3b82f6' }}>
+                            <CheckSquare size={20} />
+                          </div>
+                          <div style={{ display: 'flex', flexDirection: 'column' }}>
+                            <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', fontWeight: 700 }}>{t('Công việc quan trọng')}</span>
+                            <span style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--color-text)' }}>{taskCount}</span>
+                          </div>
+                        </div>
+
+                        {/* Card 3: Lịch gặp gỡ */}
+                        <div className="stat-card" style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '1rem 1.25rem', borderRadius: '12px', background: 'var(--color-surface)', border: '1px solid var(--color-border)', boxShadow: 'var(--shadow-sm)' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '42px', height: '42px', borderRadius: '10px', background: 'rgba(139, 92, 246, 0.12)', color: '#8b5cf6' }}>
+                            <Users size={20} />
+                          </div>
+                          <div style={{ display: 'flex', flexDirection: 'column' }}>
+                            <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', fontWeight: 700 }}>{t('Lịch gặp gỡ')}</span>
+                            <span style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--color-text)' }}>{meetingCount}</span>
+                          </div>
+                        </div>
+
+                        {/* Card 4: Cuộc gọi liên hệ */}
+                        <div className="stat-card" style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '1rem 1.25rem', borderRadius: '12px', background: 'var(--color-surface)', border: '1px solid var(--color-border)', boxShadow: 'var(--shadow-sm)' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '42px', height: '42px', borderRadius: '10px', background: 'rgba(245, 158, 11, 0.12)', color: '#f59e0b' }}>
+                            <Phone size={20} />
+                          </div>
+                          <div style={{ display: 'flex', flexDirection: 'column' }}>
+                            <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', fontWeight: 700 }}>{t('Cuộc gọi liên hệ')}</span>
+                            <span style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--color-text)' }}>{callCount}</span>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
 
                   {/* View body */}
                   <div style={{ flex: 1 }}>
-                    {calendarSubTab === 'calendar' ? renderCalendarView() : <AttendancePage embedMode={true} />}
+                    {renderCalendarView()}
                   </div>
                 </div>
+              )}
+
+              {activeTab === 'attendance-portal' && (
+                <AttendancePage embedMode={true} />
               )}
               {activeTab === 'fair-share' && <FairShareAudit forceActive={true} />}
               {activeTab === 'tickets' && renderTicketsView()}
@@ -16360,6 +16494,367 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
           fetchWorkspaceTasks();
         }}
       />
+
+      {schedulerModalOpen && selectedSchedulerDate && (
+        <CustomModal
+          isOpen={schedulerModalOpen}
+          onClose={() => {
+            setSchedulerModalOpen(false);
+            setDiaryNoteText('');
+            setNewActivitySubject('');
+            setNewActivityBody('');
+            setNewActivityContactId('');
+          }}
+          title={`${t('Lịch trình & Báo cáo ngày')} ${selectedSchedulerDate.split('-').reverse().join('/')}`}
+          width="760px"
+        >
+          <div style={{ display: 'flex', flexDirection: 'column', minHeight: '380px' }}>
+            {/* Modal Sub-tabs */}
+            <div style={{ display: 'flex', borderBottom: '1px solid var(--color-border-light)', marginBottom: '1.25rem', gap: '1.5rem' }}>
+              <button
+                type="button"
+                onClick={() => setSchedulerModalTab('details')}
+                style={{
+                  padding: '8px 4px 12px 4px',
+                  fontSize: '0.875rem',
+                  fontWeight: 700,
+                  color: schedulerModalTab === 'details' ? 'var(--color-primary)' : 'var(--color-text-light)',
+                  border: 'none',
+                  background: 'transparent',
+                  borderBottom: schedulerModalTab === 'details' ? '2px solid var(--color-primary)' : '2px solid transparent',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px'
+                }}
+              >
+                📋 {t('Công việc trong ngày')}
+                <span style={{
+                  fontSize: '0.625rem',
+                  padding: '2px 6px',
+                  borderRadius: '10px',
+                  background: schedulerModalTab === 'details' ? 'var(--color-primary-light)' : 'var(--color-bg)',
+                  color: schedulerModalTab === 'details' ? 'var(--color-primary)' : 'var(--color-text-muted)',
+                  fontWeight: 600
+                }}>
+                  {calendarActivities.filter(a => a.due_date && a.due_date.startsWith(selectedSchedulerDate)).length}
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setSchedulerModalTab('scheduler')}
+                style={{
+                  padding: '8px 4px 12px 4px',
+                  fontSize: '0.875rem',
+                  fontWeight: 700,
+                  color: schedulerModalTab === 'scheduler' ? 'var(--color-primary)' : 'var(--color-text-light)',
+                  border: 'none',
+                  background: 'transparent',
+                  borderBottom: schedulerModalTab === 'scheduler' ? '2px solid var(--color-primary)' : '2px solid transparent',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px'
+                }}
+              >
+                ➕ {t('Thêm ghi chú / Công việc')}
+              </button>
+            </div>
+
+            {/* Modal Body content */}
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+              {schedulerModalTab === 'details' ? (
+                /* Tab 1: Day Details (check-list of activities) */
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', overflowY: 'auto', maxHeight: '400px', paddingRight: '4px' }}>
+                  {(() => {
+                    const dayActivities = calendarActivities.filter(a => a.due_date && a.due_date.startsWith(selectedSchedulerDate));
+                    if (dayActivities.length === 0) {
+                      return (
+                        <div style={{ textAlign: 'center', padding: '3rem 1rem', color: 'var(--color-text-muted)' }}>
+                          <AlertCircle size={32} style={{ display: 'block', margin: '0 auto 8px', opacity: 0.4 }} />
+                          <p style={{ fontSize: '0.8125rem' }}>{t('Không có công việc hay ghi chú nào trong ngày này.')}</p>
+                          <button
+                            type="button"
+                            className="btn primary sm"
+                            onClick={() => setSchedulerModalTab('scheduler')}
+                            style={{ marginTop: '8px' }}
+                          >
+                            {t('Tạo ngay')}
+                          </button>
+                        </div>
+                      );
+                    }
+                    return dayActivities.map((a: any) => {
+                      const isDone = a.status === 'done';
+                      const isMeeting = a.type === 'meeting';
+                      const isNote = a.type === 'note';
+                      const isCall = a.type === 'call';
+                      let typeLabel = t('Nhiệm vụ');
+                      let colorClass = 'info';
+                      if (isMeeting) { typeLabel = t('Gặp gỡ'); colorClass = 'primary'; }
+                      else if (isNote) { typeLabel = t('Nhật ký'); colorClass = 'success'; }
+                      else if (isCall) { typeLabel = t('Cuộc gọi'); colorClass = 'warning'; }
+
+                      // Inline toggle status to complete / incomplete
+                      const toggleActivityStatus = async () => {
+                        try {
+                          const nextStatus = isDone ? 'planned' : 'done';
+                          const res = await api.put(`/activities/${a.id}`, { status: nextStatus });
+                          if (res.data.success || res.data.id) {
+                            toast.success(t('Đã cập nhật trạng thái!'));
+                            fetchCalendarStats(); // refresh activities list
+                          }
+                        } catch (err: any) {
+                          toast.error(t('Không thể cập nhật trạng thái'));
+                        }
+                      };
+
+                      return (
+                        <div key={a.id} style={{
+                          padding: '12px',
+                          background: 'var(--color-bg-light)',
+                          border: '1px solid var(--color-border)',
+                          borderRadius: '10px',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '6px'
+                        }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              <input
+                                type="checkbox"
+                                checked={isDone}
+                                onChange={toggleActivityStatus}
+                                style={{ width: '15px', height: '15px', cursor: 'pointer' }}
+                              />
+                              <span className={`badge ${colorClass}`} style={{ fontSize: '0.65rem', padding: '2px 8px' }}>
+                                {typeLabel}
+                              </span>
+                            </div>
+                            <span style={{ fontSize: '0.68rem', color: 'var(--color-text-muted)', fontFamily: 'monospace' }}>
+                              {a.due_date ? new Date(a.due_date).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) : ''}
+                            </span>
+                          </div>
+                          <div style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)', textDecoration: isDone ? 'line-through' : 'none', opacity: isDone ? 0.6 : 1 }}>
+                            {a.subject}
+                          </div>
+                          {a.body && <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', margin: '2px 0 0 0', whiteSpace: 'pre-wrap', lineHeight: 1.4 }}>{a.body}</p>}
+                          
+                          {a.contact_id && (
+                            <div 
+                              onClick={() => {
+                                setSchedulerModalOpen(false);
+                                setProfileContact({ id: a.contact_id });
+                              }}
+                              style={{ 
+                                display: 'flex', 
+                                alignItems: 'center', 
+                                gap: '6px', 
+                                background: 'var(--color-surface)',
+                                padding: '4px 8px',
+                                borderRadius: '6px',
+                                border: '1px solid var(--color-border-light)',
+                                marginTop: '4px',
+                                alignSelf: 'flex-start',
+                                cursor: 'pointer'
+                              }}
+                            >
+                              <Avatar src={resolveAttachmentUrl(a.contact_avatar)} name={a.contact_name} size={18} />
+                              <span style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--color-primary)' }}>{a.contact_name}</span>
+                              <span style={{ fontSize: '0.65rem', color: 'var(--color-text-light)' }}>({t('Khách hàng')})</span>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    });
+                  })()}
+                </div>
+              ) : (
+                /* Tab 2: Scheduler Creation Form */
+                <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '1.25rem' }}>
+                  {/* Add Note/Diary */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', padding: '12px', background: 'var(--color-bg-light)', border: '1px solid var(--color-border)', borderRadius: '12px' }}>
+                    <h5 style={{ fontWeight: 700, fontSize: '0.8125rem', color: 'var(--color-text)', margin: 0 }}>
+                      📓 {t('Viết nhật ký / Báo cáo ngày')}
+                    </h5>
+                    <textarea
+                      placeholder={t('Nhập ghi chú công việc hoặc báo cáo tình hình ngày hôm nay...')}
+                      value={diaryNoteText}
+                      onChange={(e) => setDiaryNoteText(e.target.value)}
+                      style={{
+                        width: '100%',
+                        height: '110px',
+                        borderRadius: '8px',
+                        border: '1px solid var(--color-border)',
+                        padding: '8px',
+                        fontSize: '0.78rem',
+                        backgroundColor: 'var(--color-surface)',
+                        color: 'var(--color-text)',
+                        resize: 'none',
+                        outline: 'none'
+                      }}
+                    />
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        if (!diaryNoteText.trim()) return;
+                        setSavingActivity(true);
+                        try {
+                          const payload = {
+                            type: 'note',
+                            subject: `[Nhật ký] ${diaryNoteText.trim().substring(0, 40)}${diaryNoteText.trim().length > 40 ? '...' : ''}`,
+                            body: diaryNoteText.trim(),
+                            due_date: `${selectedSchedulerDate} ${new Date().toLocaleTimeString('vi-VN', { hour12: false })}`,
+                            status: 'done',
+                            priority: 'medium'
+                          };
+                          const res = await api.post('/activities', payload);
+                          if (res.data.success || res.data.id) {
+                            toast.success(t('Đã lưu nhật ký thành công!'));
+                            setDiaryNoteText('');
+                            fetchCalendarStats(); // reload
+                            setSchedulerModalTab('details'); // switch back
+                          }
+                        } catch (err: any) {
+                          toast.error(t('Lỗi khi lưu nhật ký'));
+                        } finally {
+                          setSavingActivity(false);
+                        }
+                      }}
+                      disabled={savingActivity || !diaryNoteText.trim()}
+                      className="btn success sm"
+                      style={{ alignSelf: 'flex-end', fontSize: '0.75rem', padding: '6px 12px', borderRadius: '6px' }}
+                    >
+                      {savingActivity ? t('Đang lưu...') : t('Lưu nhật ký')}
+                    </button>
+                  </div>
+
+                  {/* Add Important Task */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', padding: '12px', background: 'var(--color-bg-light)', border: '1px solid var(--color-border)', borderRadius: '12px' }}>
+                    <h5 style={{ fontWeight: 700, fontSize: '0.8125rem', color: 'var(--color-text)', margin: 0 }}>
+                      🚀 {t('Tạo công việc quan trọng')}
+                    </h5>
+                    
+                    <div style={{ display: 'flex', gap: '6px' }}>
+                      {(['task', 'meeting', 'call'] as const).map(tType => (
+                        <button
+                          key={tType}
+                          type="button"
+                          onClick={() => setNewActivityType(tType)}
+                          style={{
+                            flex: 1,
+                            fontSize: '0.68rem',
+                            fontWeight: 700,
+                            padding: '4px 0',
+                            borderRadius: '6px',
+                            border: newActivityType === tType ? 'none' : '1px solid var(--color-border)',
+                            background: newActivityType === tType ? 'var(--color-primary)' : 'var(--color-surface)',
+                            color: newActivityType === tType ? 'white' : 'var(--color-text-muted)',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          {tType === 'task' ? t('Nhiệm vụ') : tType === 'meeting' ? t('Gặp gỡ') : t('Cuộc gọi')}
+                        </button>
+                      ))}
+                    </div>
+
+                    <input
+                      type="text"
+                      placeholder={t('Tiêu đề công việc/cuộc hẹn...')}
+                      value={newActivitySubject}
+                      onChange={(e) => setNewActivitySubject(e.target.value)}
+                      style={{
+                        width: '100%',
+                        borderRadius: '6px',
+                        border: '1px solid var(--color-border)',
+                        padding: '6px 8px',
+                        fontSize: '0.75rem',
+                        backgroundColor: 'var(--color-surface)',
+                        color: 'var(--color-text)',
+                        outline: 'none'
+                      }}
+                    />
+
+                    <input
+                      type="text"
+                      placeholder={t('Mô tả chi tiết (nếu có)...')}
+                      value={newActivityBody}
+                      onChange={(e) => setNewActivityBody(e.target.value)}
+                      style={{
+                        width: '100%',
+                        borderRadius: '6px',
+                        border: '1px solid var(--color-border)',
+                        padding: '6px 8px',
+                        fontSize: '0.75rem',
+                        backgroundColor: 'var(--color-surface)',
+                        color: 'var(--color-text)',
+                        outline: 'none'
+                      }}
+                    />
+
+                    <CustomSelect
+                      options={[
+                        { value: '', label: t('Liên kết Khách hàng (Không có)') },
+                        ...contactsList.map(c => ({
+                          value: String(c.id),
+                          label: `${c.first_name || ''} ${c.last_name || ''}`.trim() || c.phone || '',
+                          avatar: resolveAttachmentUrl(c.avatar_url)
+                        }))
+                      ]}
+                      value={newActivityContactId}
+                      onChange={(val) => setNewActivityContactId(String(val))}
+                      searchable={true}
+                      showAvatars={true}
+                      width="100%"
+                    />
+
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        if (!newActivitySubject.trim()) return;
+                        setSavingActivity(true);
+                        try {
+                          const payload = {
+                            type: newActivityType,
+                            subject: newActivitySubject.trim(),
+                            body: newActivityBody.trim() || null,
+                            due_date: `${selectedSchedulerDate} 09:00:00`,
+                            status: 'planned',
+                            priority: 'high',
+                            related_type: newActivityContactId ? 'contact' : null,
+                            related_id: newActivityContactId ? Number(newActivityContactId) : null
+                          };
+                          const res = await api.post('/activities', payload);
+                          if (res.data.success || res.data.id) {
+                            toast.success(t('Đã tạo công việc thành công!'));
+                            setNewActivitySubject('');
+                            setNewActivityBody('');
+                            setNewActivityContactId('');
+                            fetchCalendarStats(); // reload
+                            setSchedulerModalTab('details'); // switch back
+                          }
+                        } catch (err: any) {
+                          toast.error(t('Lỗi khi tạo công việc'));
+                        } finally {
+                          setSavingActivity(false);
+                        }
+                      }}
+                      disabled={savingActivity || !newActivitySubject.trim()}
+                      className="btn primary sm"
+                      style={{ alignSelf: 'flex-end', fontSize: '0.75rem', padding: '6px 12px', borderRadius: '6px', marginTop: '6px' }}
+                    >
+                      {savingActivity ? t('Đang lưu...') : t('Tạo công việc')}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </CustomModal>
+      )}
 
       {/* Interactive Explanation Modals */}
       <CustomModal
