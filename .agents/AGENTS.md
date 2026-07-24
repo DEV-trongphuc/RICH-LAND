@@ -25,4 +25,5 @@
 * **Rule**: Bất kỳ file script kiểm thử PHP nào được viết sau này chỉ cần chèn dòng khởi tạo:
   `require_once __DIR__ . '/test_bootstrap.php';` (hoặc `require_once __DIR__ . '/../test_bootstrap.php';`)
 * **Feature**: Tự động mở toàn bộ kết nối CSDL (`$conn` MySQLi & `$pdo`), nạp sẵn toàn bộ thư viện nghiệp vụ (`webhook_logic.php`, `NotificationService`, `mailer.php`, `zalo_bot.php`, `telegram_bot.php`) và cung cấp sẵn bộ hàm kiểm thử tiêu chuẩn `assertTest()`, `assertDbField()`, `printTestSummary()`.
-
+## 7. Quy tắc Cấm Tự Động Deploy
+* **Rule**: Tác vụ Deploy (`npm run deploy`) chỉ được thực hiện khi có yêu cầu bằng chữ viết cụ thể của người dùng cho phép chạy deploy. Tuyệt đối không tự động chạy deploy dưới mọi hình thức khác.
