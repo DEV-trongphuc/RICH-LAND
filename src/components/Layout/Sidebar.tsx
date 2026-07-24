@@ -36,7 +36,7 @@ export const SIDEBAR_GROUPS: SidebarGroup[] = [
     items: [
       { name: 'Khách hàng', href: '/contacts', icon: Users },
       { name: 'Pipeline', href: '/deals', icon: TrendingUp },
-      { name: 'Lịch biểu', href: '/calendar', icon: Calendar },
+      { name: 'Lịch trình', href: '/calendar', icon: Calendar },
       { name: 'Nhật ký Data', href: '/data', icon: Database, hideForRoles: ['sale'] },
       { name: 'Đối soát công bằng', href: '/fair-share', icon: Scale, hideForRoles: ['sale', 'sales', 'viewer'] },
       { name: 'AI Pre-screener', href: '/gatekeeper', icon: Filter, adminOnly: true, badgeKey: 'gatekeeper', hideForRoles: ['manager', 'assistant', 'sale', 'sales'] },

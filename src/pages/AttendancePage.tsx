@@ -94,9 +94,7 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
   const [calendarCheckIns, setCalendarCheckIns] = useState<any[]>([]);
   const [calendarShifts, setCalendarShifts] = useState<any[]>([]);
   const [calendarLoading, setCalendarLoading] = useState(false);
-  const [calendarActivities, setCalendarActivities] = useState<any[]>([]);
-  const [showContactDrawer, setShowContactDrawer] = useState(false);
-  const [selectedContact, setSelectedContact] = useState<any>(null);
+
 
   // Theme support
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
@@ -232,17 +230,7 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
         }
       }
 
-      // Fetch activities (tasks, meetings, calls, notes) for the current month
-      const startDate = `${currentYear}-${String(currentMonth).padStart(2, '0')}-01 00:00:00`;
-      const endDate = `${currentYear}-${String(currentMonth).padStart(2, '0')}-${new Date(currentYear, currentMonth, 0).getDate()} 23:59:59`;
-      const actRes = await api.get('/activities', {
-        params: {
-          start_date: startDate,
-          end_date: endDate,
-          limit: 300
-        }
-      });
-      setCalendarActivities(actRes.data?.data?.items || actRes.data?.data || []);
+
     } catch (err: any) {
       console.error('Error fetching calendar check-ins:', err);
     } finally {
@@ -1187,282 +1175,7 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
     );
   };
 
-  const renderSchedulerTabContent = () => {
-    const dayActivities = calendarActivities.filter(a => a.due_date && a.due_date.startsWith(selectedDateForDetail || ''));
 
-    // Handle adding note / diary
-    const handleAddDiaryNote = async () => {
-      if (!diaryNoteText.trim()) {
-        toast.error(t('Vui lòng nhập nội dung ghi chú/nhật ký'));
-        return;
-      }
-      setSavingActivity(true);
-      try {
-        const payload = {
-          type: 'note',
-          subject: `[Nhật ký] ${diaryNoteText.trim().substring(0, 40)}${diaryNoteText.trim().length > 40 ? '...' : ''}`,
-          body: diaryNoteText.trim(),
-          due_date: `${selectedDateForDetail} ${new Date().toLocaleTimeString('vi-VN', { hour12: false })}`,
-          status: 'done',
-          priority: 'medium'
-        };
-        const res = await api.post('/activities', payload);
-        if (res.data.success || res.data.id) {
-          toast.success(t('Đã lưu nhật ký thành công!'));
-          setDiaryNoteText('');
-          fetchCalendarCheckIns(); // Refresh calendar to show new note
-        }
-      } catch (err: any) {
-        toast.error(err.response?.data?.message || t('Lỗi khi lưu nhật ký'));
-      } finally {
-        setSavingActivity(false);
-      }
-    };
-
-    // Handle creating task/meeting/call
-    const handleCreateTask = async () => {
-      if (!newActivitySubject.trim()) {
-        toast.error(t('Vui lòng nhập tiêu đề công việc'));
-        return;
-      }
-      setSavingActivity(true);
-      try {
-        const payload = {
-          type: newActivityType,
-          subject: newActivitySubject.trim(),
-          body: newActivityBody.trim() || null,
-          due_date: `${selectedDateForDetail} 09:00:00`, // Default to morning of that day
-          status: 'planned',
-          priority: 'high',
-          related_type: newActivityContactId ? 'contact' : null,
-          related_id: newActivityContactId ? Number(newActivityContactId) : null
-        };
-        const res = await api.post('/activities', payload);
-        if (res.data.success || res.data.id) {
-          toast.success(t('Đã tạo công việc quan trọng thành công!'));
-          setNewActivitySubject('');
-          setNewActivityBody('');
-          setNewActivityContactId('');
-          fetchCalendarCheckIns(); // Refresh calendar
-        }
-      } catch (err: any) {
-        toast.error(err.response?.data?.message || t('Lỗi khi tạo công việc'));
-      } finally {
-        setSavingActivity(false);
-      }
-    };
-
-    return (
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', height: '100%', maxHeight: '420px', overflowY: 'auto', paddingRight: '4px' }} className="custom-scrollbar">
-        {/* 1. Activities List */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-          <h4 style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--color-text)', margin: 0, display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <span>📋</span>
-            <span>{t('Công việc & Nhật ký trong ngày')}</span>
-          </h4>
-          
-          {dayActivities.length === 0 ? (
-            <div style={{ padding: '1.5rem', textAlign: 'center', background: 'var(--color-bg-light)', borderRadius: '10px', color: 'var(--color-text-light)', fontSize: '0.78rem' }}>
-              {t('Chưa có công việc hoặc nhật ký nào được ghi nhận cho ngày này.')}
-            </div>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              {dayActivities.map((a: any) => {
-                const isMeeting = a.type === 'meeting';
-                const isNote = a.type === 'note';
-                const isCall = a.type === 'call';
-                let typeLabel = t('Nhiệm vụ');
-                let colorClass = 'info';
-                if (isMeeting) { typeLabel = t('Gặp gỡ'); colorClass = 'primary'; }
-                else if (isNote) { typeLabel = t('Nhật ký'); colorClass = 'success'; }
-                else if (isCall) { typeLabel = t('Cuộc gọi'); colorClass = 'warning'; }
-
-                return (
-                  <div key={a.id} style={{
-                    padding: '10px 12px',
-                    background: 'var(--color-bg-light)',
-                    border: '1px solid var(--color-border)',
-                    borderRadius: '10px',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: '6px'
-                  }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span className={`badge ${colorClass}`} style={{ fontSize: '0.65rem', padding: '2px 8px' }}>
-                        {typeLabel}
-                      </span>
-                      <span style={{ fontSize: '0.68rem', color: 'var(--color-text-muted)', fontFamily: 'monospace' }}>
-                        {a.due_date ? new Date(a.due_date).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) : ''}
-                      </span>
-                    </div>
-                    <div style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text)' }}>{a.subject}</div>
-                    {a.body && <p style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)', margin: '2px 0 0 0', whiteSpace: 'pre-wrap', lineHeight: 1.4 }}>{a.body}</p>}
-                    
-                    {a.contact_id && (
-                      <div 
-                        onClick={() => {
-                          setSelectedContact({ id: a.contact_id });
-                          setShowContactDrawer(true);
-                        }}
-                        style={{ 
-                          display: 'flex', 
-                          alignItems: 'center', 
-                          gap: '6px', 
-                          background: 'var(--color-surface)',
-                          padding: '4px 8px',
-                          borderRadius: '6px',
-                          border: '1px solid var(--color-border-light)',
-                          marginTop: '4px',
-                          alignSelf: 'flex-start',
-                          cursor: 'pointer'
-                        }}
-                        title={t('Xem chi tiết khách hàng')}
-                      >
-                        <Avatar src={resolveAttachmentUrl(a.contact_avatar)} name={a.contact_name} size={18} />
-                        <span style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--color-primary)' }}>{a.contact_name}</span>
-                        <span style={{ fontSize: '0.65rem', color: 'var(--color-text-light)' }}>({t('Khách hàng')})</span>
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-
-        {/* Divider */}
-        <div style={{ height: '1px', background: 'var(--color-border-light)', margin: '4px 0' }} />
-
-        {/* 2. Quick Actions */}
-        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '1.25rem' }}>
-          {/* Add Daily Diary Note */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', padding: '12px', background: 'var(--color-bg-light)', border: '1px solid var(--color-border)', borderRadius: '12px' }}>
-            <h5 style={{ fontWeight: 700, fontSize: '0.8125rem', color: 'var(--color-text)', margin: 0 }}>
-              📓 {t('Viết nhật ký / Báo cáo ngày')}
-            </h5>
-            <textarea
-              placeholder={t('Nhập ghi chú công việc hoặc báo cáo tình hình ngày hôm nay...')}
-              value={diaryNoteText}
-              onChange={(e) => setDiaryNoteText(e.target.value)}
-              style={{
-                width: '100%',
-                height: '75px',
-                borderRadius: '8px',
-                border: '1px solid var(--color-border)',
-                padding: '8px',
-                fontSize: '0.78rem',
-                backgroundColor: 'var(--color-surface)',
-                color: 'var(--color-text)',
-                resize: 'none',
-                outline: 'none'
-              }}
-            />
-            <button
-              type="button"
-              onClick={handleAddDiaryNote}
-              disabled={savingActivity || !diaryNoteText.trim()}
-              className="btn success sm"
-              style={{ alignSelf: 'flex-end', fontSize: '0.75rem', padding: '6px 12px', borderRadius: '6px' }}
-            >
-              {savingActivity ? t('Đang lưu...') : t('Lưu nhật ký')}
-            </button>
-          </div>
-
-          {/* Add Important Task / Meeting */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', padding: '12px', background: 'var(--color-bg-light)', border: '1px solid var(--color-border)', borderRadius: '12px' }}>
-            <h5 style={{ fontWeight: 700, fontSize: '0.8125rem', color: 'var(--color-text)', margin: 0 }}>
-              🚀 {t('Tạo công việc quan trọng')}
-            </h5>
-            
-            <div style={{ display: 'flex', gap: '6px' }}>
-              {(['task', 'meeting', 'call'] as const).map(tType => (
-                <button
-                  key={tType}
-                  type="button"
-                  onClick={() => setNewActivityType(tType)}
-                  style={{
-                    flex: 1,
-                    fontSize: '0.68rem',
-                    fontWeight: 700,
-                    padding: '4px 0',
-                    borderRadius: '6px',
-                    border: newActivityType === tType ? 'none' : '1px solid var(--color-border)',
-                    background: newActivityType === tType ? 'var(--color-primary)' : 'var(--color-surface)',
-                    color: newActivityType === tType ? 'white' : 'var(--color-text-muted)',
-                    cursor: 'pointer'
-                  }}
-                >
-                  {tType === 'task' ? t('Nhiệm vụ') : tType === 'meeting' ? t('Gặp gỡ') : t('Cuộc gọi')}
-                </button>
-              ))}
-            </div>
-
-            <input
-              type="text"
-              placeholder={t('Tiêu đề công việc/cuộc hẹn...')}
-              value={newActivitySubject}
-              onChange={(e) => setNewActivitySubject(e.target.value)}
-              style={{
-                width: '100%',
-                borderRadius: '6px',
-                border: '1px solid var(--color-border)',
-                padding: '6px 8px',
-                fontSize: '0.75rem',
-                backgroundColor: 'var(--color-surface)',
-                color: 'var(--color-text)',
-                outline: 'none'
-              }}
-            />
-
-            <input
-              type="text"
-              placeholder={t('Mô tả chi tiết (nếu có)...')}
-              value={newActivityBody}
-              onChange={(e) => setNewActivityBody(e.target.value)}
-              style={{
-                width: '100%',
-                borderRadius: '6px',
-                border: '1px solid var(--color-border)',
-                padding: '6px 8px',
-                fontSize: '0.75rem',
-                backgroundColor: 'var(--color-surface)',
-                color: 'var(--color-text)',
-                outline: 'none'
-              }}
-            />
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-              <CustomSelect
-                options={[
-                  { value: '', label: t('Liên kết Khách hàng (Không có)') },
-                  ...contactsList.map(c => ({
-                    value: String(c.id),
-                    label: `${c.first_name || ''} ${c.last_name || ''}`.trim() || c.phone || '',
-                    avatar: resolveAttachmentUrl(c.avatar_url)
-                  }))
-                ]}
-                value={newActivityContactId}
-                onChange={(val) => setNewActivityContactId(String(val))}
-                searchable={true}
-                showAvatars={true}
-                width="100%"
-              />
-            </div>
-
-            <button
-              type="button"
-              onClick={handleCreateTask}
-              disabled={savingActivity || !newActivitySubject.trim()}
-              className="btn primary sm"
-              style={{ alignSelf: 'flex-end', fontSize: '0.75rem', padding: '6px 12px', borderRadius: '6px', marginTop: 'auto' }}
-            >
-              {savingActivity ? t('Đang lưu...') : t('Tạo công việc')}
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  };
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
@@ -2393,37 +2106,7 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
                 );
               })()}
 
-              <button
-                type="button"
-                onClick={() => setModalTab('scheduler' as any)}
-                style={{
-                  padding: isMobile ? '8px 2px 10px 2px' : '8px 4px 12px 4px',
-                  fontSize: isMobile ? '0.72rem' : '0.875rem',
-                  fontWeight: 700,
-                  color: (modalTab as string) === 'scheduler' ? 'var(--color-primary)' : 'var(--color-text-light)',
-                  border: 'none',
-                  background: 'transparent',
-                  borderBottom: (modalTab as string) === 'scheduler' ? '2px solid var(--color-primary)' : '2px solid transparent',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: isMobile ? '3px' : '6px'
-                }}
-              >
-                <Calendar size={isMobile ? 13 : 16} />
-                {t('Lịch trình & Ghi chú')}
-                <span style={{
-                  fontSize: '0.625rem',
-                  padding: isMobile ? '1px 4px' : '2px 6px',
-                  borderRadius: '10px',
-                  background: (modalTab as string) === 'scheduler' ? 'var(--color-primary-light)' : 'var(--color-bg)',
-                  color: (modalTab as string) === 'scheduler' ? 'var(--color-primary)' : 'var(--color-text-muted)',
-                  fontWeight: 600
-                }}>
-                  {selectedDateForDetail ? calendarActivities.filter(a => a.due_date && a.due_date.startsWith(selectedDateForDetail)).length : 0}
-                </span>
-              </button>
+
             </div>
 
             {/* Tab content body */}
@@ -2883,8 +2566,7 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
                     </>
                   )}
                 </div>
-              ) : (modalTab as string) === 'scheduler' ? (
-                renderSchedulerTabContent()
+
               ) : (
                 /* Sub-tab 3: Duty Shift Log */
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
@@ -3076,14 +2758,7 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
           <button className="btn primary" onClick={() => setShowInfoModal(false)} style={{ minWidth: 100 }}>{t("Đồng ý")}</button>
         </div>
       </CustomModal>
-      {showContactDrawer && (
-        <CustomerProfileDrawer 
-          isOpen={showContactDrawer}
-          onClose={() => setShowContactDrawer(false)}
-          contact={selectedContact}
-          onUpdate={() => fetchCalendarCheckIns()}
-        />
-      )}
+
     </div>
   );
 };
