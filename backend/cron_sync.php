@@ -2994,12 +2994,12 @@ function sendShiftRemindersAndCheckInAlerts($conn) {
                                 $chkCheckin->close();
                                 
                                 if (!$alreadyCheckedIn) {
-                                    $msg = "⏰ Đã đến giờ chấm công! Vui lòng thực hiện chấm công đi làm đúng giờ quy định. Chúc bạn một ngày làm việc hiệu quả!";
+                                    $msg = "ĐÃ ĐẾN GIỜ CHẤM CÔNG";
                                     
                                     // 1. Send Web In-App Notification Bell (Isolated)
                                     if ($getSaleMatrixSetting($conn, $userId, 'ATTENDANCE_REMINDER', 'bell')) {
                                         try {
-                                            $insNotif = $conn->prepare("INSERT INTO notifications (user_id, tenant_id, title, body, type, link) VALUES (?, 1, '⏰ Nhắc nhở chấm công', ?, 'attendance_reminder', '/attendance')");
+                                            $insNotif = $conn->prepare("INSERT INTO notifications (user_id, tenant_id, title, body, type, link) VALUES (?, 1, '⏰ ĐÃ ĐẾN GIỜ CHẤM CÔNG', ?, 'attendance_reminder', '/attendance')");
                                             if ($insNotif) {
                                                 $insNotif->bind_param("is", $userId, $msg);
                                                 $insNotif->execute();
@@ -3025,7 +3025,7 @@ function sendShiftRemindersAndCheckInAlerts($conn) {
                                     if ($getSaleMatrixSetting($conn, $userId, 'ATTENDANCE_REMINDER', 'telegram')) {
                                         try {
                                             if (!empty($telegramBotToken) && !empty($user['telegram_chat_id']) && function_exists('sendTelegramMessage')) {
-                                                $tgText = "⏰ <b>[ NHẮC NHỞ CHẤM CÔNG ]</b>\n\nXin chào <b>" . htmlspecialchars($user['full_name']) . "</b>,\nĐã đến giờ chấm công cho ca làm việc hôm nay (" . $workStart . ")!\nVui lòng truy cập hệ thống để thực hiện chấm công đúng giờ.\nChúc bạn một ngày làm việc hiệu quả!";
+                                                $tgText = "⏰ <b>ĐÃ ĐẾN GIỜ CHẤM CÔNG</b> (Ca " . $workStart . ")";
                                                 sendTelegramMessage($telegramBotToken, $user['telegram_chat_id'], $tgText);
                                             }
                                         } catch (Throwable $eTg) {
@@ -3037,12 +3037,9 @@ function sendShiftRemindersAndCheckInAlerts($conn) {
                                     if ($getSaleMatrixSetting($conn, $userId, 'ATTENDANCE_REMINDER', 'email')) {
                                         try {
                                             if (!empty($user['email']) && function_exists('sendEmailNotification')) {
-                                                $emailSubject = "[RICH LAND] Nhắc nhở chấm công đi làm";
-                                                $emailTitle = "NHẮC NHỞ CHẤM CÔNG";
-                                                $emailContent = "Chào <strong>" . htmlspecialchars($user['full_name']) . "</strong>,<br/><br/>" .
-                                                                "Đã đến giờ chấm công cho ca làm việc hôm nay (lúc " . htmlspecialchars($workStart) . ").<br/>" .
-                                                                "Vui lòng truy cập hệ thống để thực hiện điểm danh/chấm công đúng giờ quy định.<br/><br/>" .
-                                                                "Chúc bạn một ngày làm việc hiệu quả!";
+                                                $emailSubject = "⏰ ĐÃ ĐẾN GIỜ CHẤM CÔNG";
+                                                $emailTitle = "ĐÃ ĐẾN GIỜ CHẤM CÔNG";
+                                                $emailContent = "Đã đến giờ chấm công cho ca làm việc hôm nay (lúc " . htmlspecialchars($workStart) . "). Vui lòng truy cập hệ thống để thực hiện điểm danh/chấm công đúng giờ.";
                                                 sendEmailNotification($user['email'], $emailSubject, $emailTitle, $emailContent, 'Chấm công ngay', true);
                                             }
                                         } catch (Throwable $eMail) {
