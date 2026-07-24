@@ -1303,6 +1303,9 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
   const [selectedSchedulerDate, setSelectedSchedulerDate] = useState<string | null>(null);
   const [schedulerModalTab, setSchedulerModalTab] = useState<'diary' | 'tasks'>('diary');
   const [diaryNoteText, setDiaryNoteText] = useState('');
+  const [diaryContactId, setDiaryContactId] = useState<string>('');
+  const [showDiaryForm, setShowDiaryForm] = useState(false);
+  const [showTaskForm, setShowTaskForm] = useState(false);
   const [newActivityType, setNewActivityType] = useState<'task' | 'meeting' | 'call'>('task');
   const [newActivitySubject, setNewActivitySubject] = useState('');
   const [newActivityBody, setNewActivityBody] = useState('');
@@ -16545,10 +16548,11 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                   transition: 'all 0.2s',
                   display: 'flex',
                   alignItems: 'center',
-                  gap: '6px'
+                  gap: '8px'
                 }}
               >
-                📓 {t('Báo cáo & Nhật ký')}
+                <FileText size={16} />
+                {t('Báo cáo & Nhật ký')}
                 <span style={{
                   fontSize: '0.625rem',
                   padding: '2px 6px',
@@ -16576,10 +16580,11 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                   transition: 'all 0.2s',
                   display: 'flex',
                   alignItems: 'center',
-                  gap: '6px'
+                  gap: '8px'
                 }}
               >
-                🚀 {t('Công việc & Lịch hẹn')}
+                <CheckSquare size={16} />
+                {t('Công việc & Lịch hẹn')}
                 <span style={{
                   fontSize: '0.625rem',
                   padding: '2px 6px',
@@ -16598,67 +16603,125 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
               {schedulerModalTab === 'diary' ? (
                 /* Tab 1: Notes & Diary */
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-                  {/* Diary creation form */}
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', padding: '16px', background: 'var(--color-bg-light)', border: '1px solid var(--color-border)', borderRadius: '12px' }}>
-                    <h5 style={{ fontWeight: 700, fontSize: '0.8125rem', color: 'var(--color-text)', margin: 0 }}>
-                      📓 {t('Viết nhật ký / Báo cáo ngày')}
-                    </h5>
-                    <textarea
-                      placeholder={t('Nhập ghi chú công việc hoặc báo cáo tình hình ngày hôm nay...')}
-                      value={diaryNoteText}
-                      onChange={(e) => setDiaryNoteText(e.target.value)}
-                      style={{
-                        width: '100%',
-                        height: '90px',
-                        borderRadius: '8px',
-                        border: '1px solid var(--color-border)',
-                        padding: '10px',
-                        fontSize: '0.8125rem',
-                        backgroundColor: 'var(--color-surface)',
-                        color: 'var(--color-text)',
-                        resize: 'none',
-                        outline: 'none',
-                        lineHeight: 1.4
-                      }}
-                    />
+                  {/* Diary Toggle Form */}
+                  {!showDiaryForm ? (
                     <button
                       type="button"
-                      onClick={async () => {
-                        if (!diaryNoteText.trim()) return;
-                        setSavingActivity(true);
-                        try {
-                          const payload = {
-                            type: 'note',
-                            subject: `[Nhật ký] ${diaryNoteText.trim().substring(0, 40)}${diaryNoteText.trim().length > 40 ? '...' : ''}`,
-                            body: diaryNoteText.trim(),
-                            due_date: `${selectedSchedulerDate} ${new Date().toLocaleTimeString('vi-VN', { hour12: false })}`,
-                            status: 'done',
-                            priority: 'medium'
-                          };
-                          const res = await api.post('/activities', payload);
-                          if (res.data.success || res.data.id) {
-                            toast.success(t('Đã lưu nhật ký thành công!'));
-                            setDiaryNoteText('');
-                            fetchCalendarStats(); // reload
-                          }
-                        } catch (err: any) {
-                          toast.error(t('Lỗi khi lưu nhật ký'));
-                        } finally {
-                          setSavingActivity(false);
-                        }
+                      className="btn sm primary"
+                      onClick={() => setShowDiaryForm(true)}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        alignSelf: 'flex-start',
+                        fontSize: '0.78rem',
+                        padding: '6px 12px',
+                        borderRadius: '6px',
+                        fontWeight: 600
                       }}
-                      disabled={savingActivity || !diaryNoteText.trim()}
-                      className="btn success sm"
-                      style={{ alignSelf: 'flex-end', fontSize: '0.78rem', padding: '6px 14px', borderRadius: '6px', fontWeight: 600 }}
                     >
-                      {savingActivity ? t('Đang lưu...') : t('Lưu nhật ký')}
+                      <Plus size={14} />
+                      {t('Thêm nhật ký mới')}
                     </button>
-                  </div>
+                  ) : (
+                    /* Diary creation form */
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', padding: '16px', background: 'var(--color-bg-light)', border: '1px solid var(--color-border)', borderRadius: '12px' }}>
+                      <h5 style={{ fontWeight: 700, fontSize: '0.8125rem', color: 'var(--color-text)', margin: 0 }}>
+                        {t('Viết nhật ký / Báo cáo ngày')}
+                      </h5>
+                      <textarea
+                        placeholder={t('Nhập ghi chú công việc hoặc báo cáo tình hình ngày hôm nay...')}
+                        value={diaryNoteText}
+                        onChange={(e) => setDiaryNoteText(e.target.value)}
+                        style={{
+                          width: '100%',
+                          height: '90px',
+                          borderRadius: '8px',
+                          border: '1px solid var(--color-border)',
+                          padding: '10px',
+                          fontSize: '0.8125rem',
+                          backgroundColor: 'var(--color-surface)',
+                          color: 'var(--color-text)',
+                          resize: 'none',
+                          outline: 'none',
+                          lineHeight: 1.4
+                        }}
+                      />
+                      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr auto', gap: '8px', alignItems: 'center' }}>
+                        <CustomSelect
+                          options={[
+                            { value: '', label: t('Liên kết Khách hàng (Không có)') },
+                            ...contactsList.map(c => ({
+                              value: String(c.id),
+                              label: `${c.first_name || ''} ${c.last_name || ''}`.trim() || c.phone || '',
+                              avatar: resolveAttachmentUrl(c.avatar_url)
+                            }))
+                          ]}
+                          value={diaryContactId}
+                          onChange={(val) => setDiaryContactId(String(val))}
+                          searchable={true}
+                          showAvatars={true}
+                          width="100%"
+                        />
+
+                        <div style={{ display: 'flex', gap: '6px' }}>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setShowDiaryForm(false);
+                              setDiaryNoteText('');
+                              setDiaryContactId('');
+                            }}
+                            className="btn sm"
+                            style={{ border: '1px solid var(--color-border)', background: 'transparent', color: 'var(--color-text-muted)', fontSize: '0.78rem', padding: '6px 12px', borderRadius: '6px' }}
+                          >
+                            {t('Hủy')}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              if (!diaryNoteText.trim()) return;
+                              setSavingActivity(true);
+                              try {
+                                const payload = {
+                                  type: 'note',
+                                  subject: `[Nhật ký] ${diaryNoteText.trim().substring(0, 40)}${diaryNoteText.trim().length > 40 ? '...' : ''}`,
+                                  body: diaryNoteText.trim(),
+                                  due_date: `${selectedSchedulerDate} ${new Date().toLocaleTimeString('vi-VN', { hour12: false })}`,
+                                  status: 'done',
+                                  priority: 'medium',
+                                  related_type: diaryContactId ? 'contact' : null,
+                                  related_id: diaryContactId ? Number(diaryContactId) : null
+                                };
+                                const res = await api.post('/activities', payload);
+                                if (res.data.success || res.data.id) {
+                                  toast.success(t('Đã lưu nhật ký thành công!'));
+                                  setDiaryNoteText('');
+                                  setDiaryContactId('');
+                                  setShowDiaryForm(false);
+                                  fetchCalendarStats(); // reload
+                                }
+                              } catch (err: any) {
+                                toast.error(t('Lỗi khi lưu nhật ký'));
+                              } finally {
+                                setSavingActivity(false);
+                              }
+                            }}
+                            disabled={savingActivity || !diaryNoteText.trim()}
+                            className="btn success sm"
+                            style={{ fontSize: '0.78rem', padding: '6px 14px', borderRadius: '6px', fontWeight: 600 }}
+                          >
+                            {savingActivity ? t('Đang lưu...') : t('Lưu nhật ký')}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
 
                   {/* Notes List for the day */}
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                     <h5 style={{ fontWeight: 700, fontSize: '0.8125rem', color: 'var(--color-text-muted)', margin: '4px 0 0 0' }}>
-                      📋 {t('Nhật ký đã ghi nhận')}
+                      {t('Nhật ký đã ghi nhận')}
                     </h5>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', overflowY: 'auto', maxHeight: '200px', paddingRight: '4px' }}>
                       {(() => {
@@ -16698,15 +16761,39 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                                     }
                                   }
                                 }}
-                                style={{ border: 'none', background: 'transparent', color: 'var(--color-danger)', fontSize: '0.75rem', cursor: 'pointer', opacity: 0.7 }}
+                                style={{ border: 'none', background: 'transparent', color: 'var(--color-danger)', display: 'flex', alignItems: 'center', cursor: 'pointer', opacity: 0.7 }}
                                 title={t('Xóa')}
                               >
-                                🗑️
+                                <Trash2 size={14} />
                               </button>
                             </div>
                             <div style={{ fontSize: '0.8rem', color: 'var(--color-text)', whiteSpace: 'pre-wrap', lineHeight: 1.4 }}>
                               {formatActivityBody(a.body) || a.subject}
                             </div>
+                            {a.contact_id && (
+                              <div 
+                                onClick={() => {
+                                  setSchedulerModalOpen(false);
+                                  setProfileContact({ id: a.contact_id });
+                                }}
+                                style={{ 
+                                  display: 'flex', 
+                                  alignItems: 'center', 
+                                  gap: '6px', 
+                                  background: 'var(--color-bg-light)',
+                                  padding: '4px 8px',
+                                  borderRadius: '6px',
+                                  border: '1px solid var(--color-border-light)',
+                                  marginTop: '6px',
+                                  alignSelf: 'flex-start',
+                                  cursor: 'pointer'
+                                }}
+                              >
+                                <Avatar src={resolveAttachmentUrl(a.contact_avatar)} name={a.contact_name} size={18} />
+                                <span style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--color-primary)' }}>{a.contact_name}</span>
+                                <span style={{ fontSize: '0.65rem', color: 'var(--color-text-light)' }}>({t('Khách hàng')})</span>
+                              </div>
+                            )}
                           </div>
                         ));
                       })()}
@@ -16716,130 +16803,168 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
               ) : (
                 /* Tab 2: Tasks & Appointments */
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-                  {/* Task creation form */}
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', padding: '16px', background: 'var(--color-bg-light)', border: '1px solid var(--color-border)', borderRadius: '12px' }}>
-                    <h5 style={{ fontWeight: 700, fontSize: '0.8125rem', color: 'var(--color-text)', margin: 0 }}>
-                      🚀 {t('Tạo công việc quan trọng')}
-                    </h5>
-                    
-                    <div style={{ display: 'flex', gap: '6px' }}>
-                      {(['task', 'meeting', 'call'] as const).map(tType => (
-                        <button
-                          key={tType}
-                          type="button"
-                          onClick={() => setNewActivityType(tType)}
+                  {/* Task Toggle Form */}
+                  {!showTaskForm ? (
+                    <button
+                      type="button"
+                      className="btn sm primary"
+                      onClick={() => setShowTaskForm(true)}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        alignSelf: 'flex-start',
+                        fontSize: '0.78rem',
+                        padding: '6px 12px',
+                        borderRadius: '6px',
+                        fontWeight: 600
+                      }}
+                    >
+                      <Plus size={14} />
+                      {t('Thêm công việc mới')}
+                    </button>
+                  ) : (
+                    /* Task creation form */
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', padding: '16px', background: 'var(--color-bg-light)', border: '1px solid var(--color-border)', borderRadius: '12px' }}>
+                      <h5 style={{ fontWeight: 700, fontSize: '0.8125rem', color: 'var(--color-text)', margin: 0 }}>
+                        {t('Tạo công việc quan trọng')}
+                      </h5>
+                      
+                      <div style={{ display: 'flex', gap: '6px' }}>
+                        {(['task', 'meeting', 'call'] as const).map(tType => (
+                          <button
+                            key={tType}
+                            type="button"
+                            onClick={() => setNewActivityType(tType)}
+                            style={{
+                              flex: 1,
+                              fontSize: '0.75rem',
+                              fontWeight: 700,
+                              padding: '6px 0',
+                              borderRadius: '8px',
+                              border: newActivityType === tType ? 'none' : '1px solid var(--color-border)',
+                              background: newActivityType === tType ? 'var(--color-primary)' : 'var(--color-surface)',
+                              color: newActivityType === tType ? 'white' : 'var(--color-text-muted)',
+                              cursor: 'pointer',
+                              transition: 'all 0.15s'
+                            }}
+                          >
+                            {tType === 'task' ? t('Nhiệm vụ') : tType === 'meeting' ? t('Gặp gỡ') : t('Cuộc gọi')}
+                          </button>
+                        ))}
+                      </div>
+
+                      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '8px' }}>
+                        <input
+                          type="text"
+                          placeholder={t('Tiêu đề công việc/cuộc hẹn...')}
+                          value={newActivitySubject}
+                          onChange={(e) => setNewActivitySubject(e.target.value)}
                           style={{
-                            flex: 1,
-                            fontSize: '0.75rem',
-                            fontWeight: 700,
-                            padding: '6px 0',
-                            borderRadius: '8px',
-                            border: newActivityType === tType ? 'none' : '1px solid var(--color-border)',
-                            background: newActivityType === tType ? 'var(--color-primary)' : 'var(--color-surface)',
-                            color: newActivityType === tType ? 'white' : 'var(--color-text-muted)',
-                            cursor: 'pointer',
-                            transition: 'all 0.15s'
+                            borderRadius: '6px',
+                            border: '1px solid var(--color-border)',
+                            padding: '8px',
+                            fontSize: '0.8125rem',
+                            backgroundColor: 'var(--color-surface)',
+                            color: 'var(--color-text)',
+                            outline: 'none'
                           }}
-                        >
-                          {tType === 'task' ? t('Nhiệm vụ') : tType === 'meeting' ? t('Gặp gỡ') : t('Cuộc gọi')}
-                        </button>
-                      ))}
-                    </div>
+                        />
 
-                    <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '8px' }}>
-                      <input
-                        type="text"
-                        placeholder={t('Tiêu đề công việc/cuộc hẹn...')}
-                        value={newActivitySubject}
-                        onChange={(e) => setNewActivitySubject(e.target.value)}
-                        style={{
-                          borderRadius: '6px',
-                          border: '1px solid var(--color-border)',
-                          padding: '8px',
-                          fontSize: '0.8125rem',
-                          backgroundColor: 'var(--color-surface)',
-                          color: 'var(--color-text)',
-                          outline: 'none'
-                        }}
-                      />
+                        <input
+                          type="text"
+                          placeholder={t('Mô tả chi tiết (nếu có)...')}
+                          value={newActivityBody}
+                          onChange={(e) => setNewActivityBody(e.target.value)}
+                          style={{
+                            borderRadius: '6px',
+                            border: '1px solid var(--color-border)',
+                            padding: '8px',
+                            fontSize: '0.8125rem',
+                            backgroundColor: 'var(--color-surface)',
+                            color: 'var(--color-text)',
+                            outline: 'none'
+                          }}
+                        />
+                      </div>
 
-                      <input
-                        type="text"
-                        placeholder={t('Mô tả chi tiết (nếu có)...')}
-                        value={newActivityBody}
-                        onChange={(e) => setNewActivityBody(e.target.value)}
-                        style={{
-                          borderRadius: '6px',
-                          border: '1px solid var(--color-border)',
-                          padding: '8px',
-                          fontSize: '0.8125rem',
-                          backgroundColor: 'var(--color-surface)',
-                          color: 'var(--color-text)',
-                          outline: 'none'
-                        }}
-                      />
-                    </div>
+                      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr auto', gap: '8px', alignItems: 'center' }}>
+                        <CustomSelect
+                          options={[
+                            { value: '', label: t('Liên kết Khách hàng (Không có)') },
+                            ...contactsList.map(c => ({
+                              value: String(c.id),
+                              label: `${c.first_name || ''} ${c.last_name || ''}`.trim() || c.phone || '',
+                              avatar: resolveAttachmentUrl(c.avatar_url)
+                            }))
+                          ]}
+                          value={newActivityContactId}
+                          onChange={(val) => setNewActivityContactId(String(val))}
+                          searchable={true}
+                          showAvatars={true}
+                          width="100%"
+                        />
 
-                    <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr auto', gap: '8px', alignItems: 'center' }}>
-                      <CustomSelect
-                        options={[
-                          { value: '', label: t('Liên kết Khách hàng (Không có)') },
-                          ...contactsList.map(c => ({
-                            value: String(c.id),
-                            label: `${c.first_name || ''} ${c.last_name || ''}`.trim() || c.phone || '',
-                            avatar: resolveAttachmentUrl(c.avatar_url)
-                          }))
-                        ]}
-                        value={newActivityContactId}
-                        onChange={(val) => setNewActivityContactId(String(val))}
-                        searchable={true}
-                        showAvatars={true}
-                        width="100%"
-                      />
-
-                      <button
-                        type="button"
-                        onClick={async () => {
-                          if (!newActivitySubject.trim()) return;
-                          setSavingActivity(true);
-                          try {
-                            const payload = {
-                              type: newActivityType,
-                              subject: newActivitySubject.trim(),
-                              body: newActivityBody.trim() || null,
-                              due_date: `${selectedSchedulerDate} 09:00:00`,
-                              status: 'planned',
-                              priority: 'high',
-                              related_type: newActivityContactId ? 'contact' : null,
-                              related_id: newActivityContactId ? Number(newActivityContactId) : null
-                            };
-                            const res = await api.post('/activities', payload);
-                            if (res.data.success || res.data.id) {
-                              toast.success(t('Đã tạo công việc thành công!'));
+                        <div style={{ display: 'flex', gap: '6px' }}>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setShowTaskForm(false);
                               setNewActivitySubject('');
                               setNewActivityBody('');
                               setNewActivityContactId('');
-                              fetchCalendarStats(); // reload
-                            }
-                          } catch (err: any) {
-                            toast.error(t('Lỗi khi tạo công việc'));
-                          } finally {
-                            setSavingActivity(false);
-                          }
-                        }}
-                        disabled={savingActivity || !newActivitySubject.trim()}
-                        className="btn primary sm"
-                        style={{ fontSize: '0.78rem', padding: '8px 16px', borderRadius: '6px', fontWeight: 600, height: '36px' }}
-                      >
-                        {savingActivity ? t('Đang lưu...') : t('Tạo công việc')}
-                      </button>
+                            }}
+                            className="btn sm"
+                            style={{ border: '1px solid var(--color-border)', background: 'transparent', color: 'var(--color-text-muted)', fontSize: '0.78rem', padding: '8px 12px', borderRadius: '6px' }}
+                          >
+                            {t('Hủy')}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              if (!newActivitySubject.trim()) return;
+                              setSavingActivity(true);
+                              try {
+                                const payload = {
+                                  type: newActivityType,
+                                  subject: newActivitySubject.trim(),
+                                  body: newActivityBody.trim() || null,
+                                  due_date: `${selectedSchedulerDate} 09:00:00`,
+                                  status: 'planned',
+                                  priority: 'high',
+                                  related_type: newActivityContactId ? 'contact' : null,
+                                  related_id: newActivityContactId ? Number(newActivityContactId) : null
+                                };
+                                const res = await api.post('/activities', payload);
+                                if (res.data.success || res.data.id) {
+                                  toast.success(t('Đã tạo công việc thành công!'));
+                                  setNewActivitySubject('');
+                                  setNewActivityBody('');
+                                  setNewActivityContactId('');
+                                  setShowTaskForm(false);
+                                  fetchCalendarStats(); // reload
+                                }
+                              } catch (err: any) {
+                                toast.error(t('Lỗi khi tạo công việc'));
+                              } finally {
+                                setSavingActivity(false);
+                              }
+                            }}
+                            disabled={savingActivity || !newActivitySubject.trim()}
+                            className="btn primary sm"
+                            style={{ fontSize: '0.78rem', padding: '8px 16px', borderRadius: '6px', fontWeight: 600, height: '36px' }}
+                          >
+                            {savingActivity ? t('Đang lưu...') : t('Tạo công việc')}
+                          </button>
+                        </div>
+                      </div>
                     </div>
-                  </div>
+                  )}
 
                   {/* Tasks List */}
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                     <h5 style={{ fontWeight: 700, fontSize: '0.8125rem', color: 'var(--color-text-muted)', margin: 0 }}>
-                      📋 {t('Danh sách công việc & lịch hẹn')}
+                      {t('Danh sách công việc & lịch hẹn')}
                     </h5>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', overflowY: 'auto', maxHeight: '200px', paddingRight: '4px' }}>
                       {(() => {
@@ -16913,10 +17038,10 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                                         }
                                       }
                                     }}
-                                    style={{ border: 'none', background: 'transparent', color: 'var(--color-danger)', fontSize: '0.75rem', cursor: 'pointer', opacity: 0.7 }}
+                                    style={{ border: 'none', background: 'transparent', color: 'var(--color-danger)', display: 'flex', alignItems: 'center', cursor: 'pointer', opacity: 0.7 }}
                                     title={t('Xóa')}
                                   >
-                                    🗑️
+                                    <Trash2 size={14} />
                                   </button>
                                 </div>
                               </div>
