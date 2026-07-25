@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { 
   X, CheckSquare, Check, Paperclip, Link2, MessageSquare, Calendar, User, Clock, 
   Settings, AlertCircle, Trash2, Plus, Send, Share2, FileText, Globe,
-  Bold, Italic, List, ListOrdered, 
+  Bold, Italic, List, ListOrdered, Image as ImageIcon, 
   Users, RefreshCw, Layers, CheckSquare2, Info, Receipt, Scale, ArrowUpRight, Search, Save, Bell, BellOff,
   Eye, ExternalLink, UserPlus, UserCheck, Edit3, Play, Sparkles, ArrowRight, Building2, Megaphone, Loader2, RotateCcw,
   CheckCircle2, XCircle, Camera
@@ -253,6 +253,121 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
       editorRef.current.innerHTML = erpMeta?.description || '';
     }
   }, [erpMeta?.description]);
+
+  const handleEditorUploadImage = () => {
+    let savedRange = null;
+    const sel = window.getSelection();
+    if (sel && sel.rangeCount > 0) {
+      savedRange = sel.getRangeAt(0).cloneRange();
+    }
+
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.onchange = async (e) => {
+      const target = e.target as HTMLInputElement;
+      const file = target.files?.[0];
+      if (!file) return;
+
+      const toastId = toast.loading(t('Đang tải ảnh lên...'));
+      const fd = new FormData();
+      fd.append('file', file);
+
+      try {
+        const res = await api.post('/upload', fd, {
+          headers: { 'Content-Type': 'multipart/form-data' }
+        });
+        const fileUrl = res.data?.data?.url || res.data?.url;
+        if (res.data && res.data.success && fileUrl) {
+          toast.success(t('Tải ảnh lên thành công!'), { id: toastId });
+
+          if (editorRef.current) {
+            editorRef.current.focus();
+            if (savedRange) {
+              const selection = window.getSelection();
+              if (selection) {
+                selection.removeAllRanges();
+                selection.addRange(savedRange);
+              }
+            }
+          }
+
+          document.execCommand('insertImage', false, fileUrl);
+
+          if (editorRef.current) {
+            const html = editorRef.current.innerHTML;
+            setErpMeta((prev) => ({ ...prev, description: html }));
+            handleSaveMeta({ ...erpMeta, description: html });
+          }
+        } else {
+          toast.error(res.data?.message || t('Lỗi tải tệp lên'), { id: toastId });
+        }
+      } catch (err) {
+        toast.error(t('Lỗi kết nối tải tệp: ') + err.message, { id: toastId });
+      }
+    };
+    input.click();
+  };
+
+  const handleEditorPaste = async (e) => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+
+    let imageFile = null;
+    for (let i = 0; i < items.length; i++) {
+      if (items[i].type.indexOf('image') !== -1) {
+        imageFile = items[i].getAsFile();
+        break;
+      }
+    }
+
+    if (imageFile) {
+      e.preventDefault();
+      
+      let savedRange = null;
+      const sel = window.getSelection();
+      if (sel && sel.rangeCount > 0) {
+        savedRange = sel.getRangeAt(0).cloneRange();
+      }
+
+      const toastId = toast.loading(t('Đang tải ảnh chụp màn hình lên...'));
+      const fd = new FormData();
+      fd.append('file', imageFile);
+
+      try {
+        const res = await api.post('/upload', fd, {
+          headers: { 'Content-Type': 'multipart/form-data' }
+        });
+        const fileUrl = res.data?.data?.url || res.data?.url;
+        if (res.data && res.data.success && fileUrl) {
+          toast.success(t('Tải ảnh lên thành công!'), { id: toastId });
+
+          if (editorRef.current) {
+            editorRef.current.focus();
+            if (savedRange) {
+              const selection = window.getSelection();
+              if (selection) {
+                selection.removeAllRanges();
+                selection.addRange(savedRange);
+              }
+            }
+          }
+
+          document.execCommand('insertImage', false, fileUrl);
+
+          if (editorRef.current) {
+            const html = editorRef.current.innerHTML;
+            setErpMeta((prev) => ({ ...prev, description: html }));
+            handleSaveMeta({ ...erpMeta, description: html });
+          }
+        } else {
+          toast.error(res.data?.message || t('Lỗi tải tệp lên'), { id: toastId });
+        }
+      } catch (err) {
+        toast.error(t('Lỗi kết nối tải tệp: ') + err.message, { id: toastId });
+      }
+    }
+  };
   const [isEditingDesc, setIsEditingDesc] = useState(false);
 
   const renderFormattedText = (text) => {
@@ -1571,6 +1686,13 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
                 .rich-text-editor-content li {
                   margin-bottom: 0.25rem !important;
                 }
+                .rich-text-editor-content img {
+                  max-width: 100% !important;
+                  height: auto !important;
+                  border-radius: 8px !important;
+                  margin: 8px 0 !important;
+                  display: block !important;
+                }
               `}</style>
               <label style={cardLabelStyle}>
                 {t('Mô tả chi tiết')}
@@ -1639,6 +1761,15 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
                   <button
                     type="button"
                     onMouseDown={(e) => e.preventDefault()}
+                    onClick={handleEditorUploadImage}
+                    style={{ padding: '6px 8px', borderRadius: '4px', border: 'none', background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-text)' }}
+                    title={t('Tải ảnh lên')}
+                  >
+                    <ImageIcon size={15} />
+                  </button>
+                  <button
+                    type="button"
+                    onMouseDown={(e) => e.preventDefault()}
                     onClick={() => handleEditorCommand('insertUnorderedList')}
                     style={{ padding: '6px 8px', borderRadius: '4px', border: 'none', background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-text)' }}
                     title={t('Danh sách dấu đầu dòng')}
@@ -1680,6 +1811,7 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
                     setErpMeta((prev) => ({ ...prev, description: html }));
                     handleSaveMeta({ ...erpMeta, description: html });
                   }}
+                  onPaste={handleEditorPaste}
                   onClick={(e) => {
                     const target = e.target as HTMLElement;
                     if (target && target.tagName === 'A') {
