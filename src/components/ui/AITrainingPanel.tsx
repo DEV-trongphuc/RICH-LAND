@@ -1649,7 +1649,7 @@ export const AITrainingPanel: React.FC = () => {
       {showContextModal && (
         <div style={{
           position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-          backgroundColor: 'rgba(0, 0, 0, 0.5)', zIndex: 99999,
+          backgroundColor: 'rgba(0, 0, 0, 0.5)', zIndex: 9999999,
           display: 'flex', alignItems: 'center', justifyContent: 'center'
         }}>
           <div className="card" style={{ width: '100%', maxWidth: '460px', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem', margin: '1rem', maxHeight: '80vh' }}>
@@ -1831,7 +1831,7 @@ export const AITrainingPanel: React.FC = () => {
       {showUploadModal && (
         <div style={{
           position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-          backgroundColor: 'rgba(0, 0, 0, 0.5)', zIndex: 99999,
+          backgroundColor: 'rgba(0, 0, 0, 0.5)', zIndex: 9999999,
           display: 'flex', alignItems: 'center', justifyContent: 'center'
         }}>
           <div className="card" style={{ width: '100%', maxWidth: '500px', padding: '2rem', display: 'flex', flexDirection: 'column', gap: '1.25rem', margin: '1rem' }}>
@@ -1881,10 +1881,10 @@ export const AITrainingPanel: React.FC = () => {
       {showManualModal && (
         <div style={{
           position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-          backgroundColor: 'rgba(0, 0, 0, 0.5)', zIndex: 99999,
+          backgroundColor: 'rgba(0, 0, 0, 0.5)', zIndex: 9999999,
           display: 'flex', alignItems: 'center', justifyContent: 'center'
         }}>
-          <div className="card" style={{ width: '100%', maxWidth: '600px', padding: '2rem', display: 'flex', flexDirection: 'column', gap: '1.25rem', margin: '1rem' }}>
+          <div className="card" style={{ width: '100%', maxWidth: '820px', padding: '2rem', display: 'flex', flexDirection: 'column', gap: '1.25rem', margin: '1rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <h3 style={{ margin: 0, fontSize: '1.125rem', fontWeight: 700 }}>Huấn luyện tri thức (Nhập tay)</h3>
               <button type="button" onClick={() => setShowManualModal(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-muted)' }}>
@@ -1937,7 +1937,7 @@ export const AITrainingPanel: React.FC = () => {
       {showWebModal && (
         <div style={{
           position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-          backgroundColor: 'rgba(0, 0, 0, 0.5)', zIndex: 99999,
+          backgroundColor: 'rgba(0, 0, 0, 0.5)', zIndex: 9999999,
           display: 'flex', alignItems: 'center', justifyContent: 'center'
         }}>
           <div className="card" style={{ width: '100%', maxWidth: '600px', padding: '2rem', display: 'flex', flexDirection: 'column', gap: '1.25rem', margin: '1rem' }}>
@@ -1992,7 +1992,7 @@ export const AITrainingPanel: React.FC = () => {
       {showFolderModal && (
         <div style={{
           position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-          backgroundColor: 'rgba(0, 0, 0, 0.5)', zIndex: 99999,
+          backgroundColor: 'rgba(0, 0, 0, 0.5)', zIndex: 9999999,
           display: 'flex', alignItems: 'center', justifyContent: 'center'
         }}>
           <div className="card" style={{ width: '100%', maxWidth: '400px', padding: '2rem', display: 'flex', flexDirection: 'column', gap: '1.25rem', margin: '1rem' }}>
@@ -2029,10 +2029,10 @@ export const AITrainingPanel: React.FC = () => {
       {showEditModal && editingDoc && (
         <div style={{
           position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-          backgroundColor: 'rgba(0, 0, 0, 0.5)', zIndex: 99999,
+          backgroundColor: 'rgba(0, 0, 0, 0.5)', zIndex: 9999999,
           display: 'flex', alignItems: 'center', justifyContent: 'center'
         }}>
-          <div className="card" style={{ width: '100%', maxWidth: '600px', padding: '2rem', display: 'flex', flexDirection: 'column', gap: '1.25rem', margin: '1rem' }}>
+          <div className="card" style={{ width: '100%', maxWidth: '820px', padding: '2rem', display: 'flex', flexDirection: 'column', gap: '1.25rem', margin: '1rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <h3 style={{ margin: 0, fontSize: '1.125rem', fontWeight: 700 }}>Chỉnh sửa dữ liệu huấn luyện</h3>
               <button type="button" onClick={() => { setShowEditModal(false); setEditingDoc(null); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-muted)' }}>
