@@ -1565,7 +1565,7 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
                   flexDirection: 'column',
                   overflow: 'hidden',
                   background: 'var(--color-surface)',
-                  minHeight: '180px'
+                  minHeight: '260px'
                 }}
               >
                 {/* Editor Toolbar */}
@@ -1583,6 +1583,7 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
                 >
                   <button
                     type="button"
+                    onMouseDown={(e) => e.preventDefault()}
                     onClick={() => handleEditorCommand('bold')}
                     style={{ padding: '6px 8px', borderRadius: '4px', border: 'none', background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-text)' }}
                     title={t('In đậm')}
@@ -1591,6 +1592,7 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
                   </button>
                   <button
                     type="button"
+                    onMouseDown={(e) => e.preventDefault()}
                     onClick={() => handleEditorCommand('italic')}
                     style={{ padding: '6px 8px', borderRadius: '4px', border: 'none', background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-text)' }}
                     title={t('In nghiêng')}
@@ -1599,6 +1601,7 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
                   </button>
                   <button
                     type="button"
+                    onMouseDown={(e) => e.preventDefault()}
                     onClick={() => handleEditorCommand('underline')}
                     style={{ padding: '6px 8px', borderRadius: '4px', border: 'none', background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-text)' }}
                     title={t('Gạch chân')}
@@ -1608,6 +1611,7 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
                   <div style={{ width: '1px', height: '16px', background: 'var(--color-border)', margin: '0 4px' }} />
                   <button
                     type="button"
+                    onMouseDown={(e) => e.preventDefault()}
                     onClick={handleEditorAddLink}
                     style={{ padding: '6px 8px', borderRadius: '4px', border: 'none', background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-text)' }}
                     title={t('Chèn liên kết')}
@@ -1616,6 +1620,7 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
                   </button>
                   <button
                     type="button"
+                    onMouseDown={(e) => e.preventDefault()}
                     onClick={() => handleEditorCommand('insertUnorderedList')}
                     style={{ padding: '6px 8px', borderRadius: '4px', border: 'none', background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-text)' }}
                     title={t('Danh sách dấu đầu dòng')}
@@ -1624,6 +1629,7 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
                   </button>
                   <button
                     type="button"
+                    onMouseDown={(e) => e.preventDefault()}
                     onClick={() => handleEditorCommand('insertOrderedList')}
                     style={{ padding: '6px 8px', borderRadius: '4px', border: 'none', background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-text)' }}
                     title={t('Danh sách số')}
@@ -1632,6 +1638,7 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
                   </button>
                   <button
                     type="button"
+                    onMouseDown={(e) => e.preventDefault()}
                     onClick={() => handleEditorCommand('removeFormat')}
                     style={{ padding: '6px 8px', borderRadius: '4px', border: 'none', background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-text-muted)' }}
                     title={t('Xóa định dạng')}
@@ -1660,7 +1667,7 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
                   }}
                   style={{
                     padding: '12px 14px',
-                    minHeight: '120px',
+                    minHeight: '200px',
                     outline: 'none',
                     fontSize: '0.85rem',
                     lineHeight: '1.6',
