@@ -152,7 +152,7 @@ if (!function_exists('runRecurringTasksCron')) {
                 $link = $row['link'] ?: null;
 
                 $stmtInsert->bind_param(
-                    "iiissssssisiiis",
+                    "iiisssssisiiis",
                     $tenantId,
                     $userId,
                     $createdBy,
