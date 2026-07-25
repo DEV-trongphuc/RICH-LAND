@@ -729,7 +729,17 @@ export const DealDrawer: React.FC<DealDrawerProps> = ({ isOpen, onClose, deal, o
                                   <strong style={{ fontSize: '0.875rem' }}>{n.author_name || n.user_name || 'Hệ thống'}</strong>
                                   <span className="text-xs text-muted">{n.created_at ? new Date(n.created_at).toLocaleString('vi-VN') : ''}</span>
                                 </div>
-                                <p style={{ fontSize: '0.875rem', margin: 0, whiteSpace: 'pre-wrap' }}>{renderFormattedText(n.body)}</p>
+                                {n.body && /<[a-z][\s\S]*>/i.test(n.body) ? (
+                                  <div 
+                                    className="rich-text-editor-content"
+                                    dangerouslySetInnerHTML={{ __html: n.body }}
+                                    style={{ fontSize: '0.875rem', margin: 0 }}
+                                  />
+                                ) : (
+                                  <div style={{ fontSize: '0.875rem', margin: 0, whiteSpace: 'pre-wrap' }}>
+                                    {renderFormattedText(n.body)}
+                                  </div>
+                                )}
                               </div>
                             </div>
                           ))}

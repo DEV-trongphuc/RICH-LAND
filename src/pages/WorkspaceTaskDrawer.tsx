@@ -2678,7 +2678,17 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
                                 <span style={{ fontSize: isReply ? '0.75rem' : '0.8rem', fontWeight: 800, color: 'var(--color-text)' }}>{commUser?.full_name || comment.user_name || 'Đồng nghiệp'}</span>
                                 <span style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)', fontWeight: 500 }}>{new Date(comment.created_at).toLocaleString('vi-VN')}</span>
                               </div>
-                              <p style={{ fontSize: isReply ? '0.78rem' : '0.825rem', color: 'var(--color-text-light)', margin: '4px 0 0', lineHeight: '1.45', whiteSpace: 'pre-wrap' }}>{renderCommentContent(comment.content)}</p>
+                              {comment.content && /<[a-z][\s\S]*>/i.test(comment.content) ? (
+                                <div 
+                                  className="rich-text-editor-content"
+                                  dangerouslySetInnerHTML={{ __html: comment.content }}
+                                  style={{ fontSize: isReply ? '0.78rem' : '0.825rem', color: 'var(--color-text-light)', margin: '4px 0 0', lineHeight: '1.45' }}
+                                />
+                              ) : (
+                                <div style={{ fontSize: isReply ? '0.78rem' : '0.825rem', color: 'var(--color-text-light)', margin: '4px 0 0', lineHeight: '1.45', whiteSpace: 'pre-wrap' }}>
+                                  {renderCommentContent(comment.content)}
+                                </div>
+                              )}
                               {commentParsedAtts.length > 0 && (
                                 <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginTop: '8px' }}>
                                   {commentParsedAtts.map((url: any, aIdx: number) => {

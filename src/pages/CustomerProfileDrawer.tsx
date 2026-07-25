@@ -254,6 +254,9 @@ const renderColoredTabIcon = (tabId: string, IconComponent: any) => {
 
 const renderFormattedText = (text: string, users: any[], onMentionClick?: (e: React.MouseEvent, name: string) => void) => {
   if (!text) return '';
+  if (/<[a-z][\s\S]*>/i.test(text)) {
+    return <span className="rich-text-editor-content" dangerouslySetInnerHTML={{ __html: text }} style={{ display: 'block', wordBreak: 'break-word' }} />;
+  }
   // Regex matches URLs or @mentions (supporting unicode characters and parentheses like @Minh_Khôi_(Manager))
   const regex = /(https?:\/\/[^\s]+|@[\p{L}\p{N}_()]+)/gu;
   const parts = text.split(regex);
@@ -648,7 +651,7 @@ const ActivityComments: React.FC<{
                         )}
                       </div>
                     </div>
-                    {c.content && <p style={{ fontSize: isReply ? '0.8125rem' : '0.875rem', color: 'var(--color-text-light)', lineHeight: 1.5, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{renderFormattedText(c.content, users, onMentionClick)}</p>}
+                    {c.content && <div style={{ fontSize: isReply ? '0.8125rem' : '0.875rem', color: 'var(--color-text-light)', lineHeight: 1.5, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{renderFormattedText(c.content, users, onMentionClick)}</div>}
                     {c.attachments && c.attachments.map((att: string, i: number) => {
                       const isImg = /\.(jpg|jpeg|png|gif|webp)$/i.test(att);
                       const fullUrl = resolveAttachmentUrl(att);
@@ -1021,7 +1024,7 @@ const TimelineItem = React.memo<TimelineItemProps>(({
           return (
             <div style={{ padding: '0.5rem 0.75rem', background: 'var(--color-bg)', borderRadius: 'var(--radius-md)', marginTop: '0.375rem', border: '1px solid var(--color-border-light)' }}>
               {displayNoteText && (
-                <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-light)', lineHeight: 1.5, margin: 0 }}>{formatNote(displayNoteText)}</p>
+                <div style={{ fontSize: '0.8125rem', color: 'var(--color-text-light)', lineHeight: 1.5, margin: 0 }}>{formatNote(displayNoteText)}</div>
               )}
 
               {linkUrl && (
@@ -1202,6 +1205,9 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
 
   const renderFormattedText = (text: string) => {
     if (!text) return '';
+    if (/<[a-z][\s\S]*>/i.test(text)) {
+      return <span className="rich-text-editor-content" dangerouslySetInnerHTML={{ __html: text }} style={{ display: 'block', wordBreak: 'break-word' }} />;
+    }
     // Regex matches URLs or @mentions (supporting unicode characters and parentheses like @Minh_Khôi_(Manager))
     const regex = /(https?:\/\/[^\s]+|@[\p{L}\p{N}_()]+)/gu;
     const parts = text.split(regex);
@@ -2755,6 +2761,9 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
 
   const formatNote = (text: string) => {
     if (!text) return '';
+    if (/<[a-z][\s\S]*>/i.test(text)) {
+      return <span className="rich-text-editor-content" dangerouslySetInnerHTML={{ __html: text }} style={{ display: 'block', wordBreak: 'break-word' }} />;
+    }
     const parts = text.split(/(@[a-zA-Z0-9_\u00C0-\u1EF9]+)/g);
     return parts.map((part, i) => {
       if (part.startsWith('@')) {
@@ -7061,9 +7070,9 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                 {t('Ghi chú / Thông tin ban đầu từ Marketing')}
                               </h4>
                             </div>
-                            <p style={{ fontSize: '0.875rem', color: '#1e3a8a', whiteSpace: 'pre-wrap', margin: 0, lineHeight: 1.5, fontWeight: 500 }}>
+                            <div style={{ fontSize: '0.875rem', color: '#1e3a8a', whiteSpace: 'pre-wrap', margin: 0, lineHeight: 1.5, fontWeight: 500 }}>
                               {formatNote(formData.notes)}
-                            </p>
+                            </div>
                           </div>
                         )}
 
@@ -7177,7 +7186,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                     <div>
                                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.75rem' }}>
                                         <div style={{ flex: 1 }}>
-                                          <p style={{ fontSize: '0.9rem', lineHeight: 1.5, color: 'var(--color-text)', whiteSpace: 'pre-wrap' }}>{formatNote(n.text)}</p>
+                                          <div style={{ fontSize: '0.9rem', lineHeight: 1.5, color: 'var(--color-text)', whiteSpace: 'pre-wrap' }}>{formatNote(n.text)}</div>
                                         
                                         {/* Hiển thị thông tin ghi chú cấu trúc Bếp Đun Nước */}
                                         {(n.channel || n.stuck_tag || n.sale_temperature || n.note_type === 'quality' || n.documents_sent) && (

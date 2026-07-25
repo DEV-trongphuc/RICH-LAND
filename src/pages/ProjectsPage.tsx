@@ -742,9 +742,17 @@ export default function ProjectsPage() {
               <span style={{ fontSize: '0.68rem', color: 'var(--color-text-muted)' }}>{comment.created_at ? new Date(comment.created_at).toLocaleString('vi-VN') : ''}</span>
             </div>
             {comment.body ? (
-              <p style={{ margin: 0, color: 'var(--color-text-light)', whiteSpace: 'pre-wrap', lineHeight: '1.4' }}>
-                {renderFormattedText(comment.body)}
-              </p>
+              /<[a-z][\s\S]*>/i.test(comment.body) ? (
+                <div 
+                  className="rich-text-editor-content"
+                  dangerouslySetInnerHTML={{ __html: comment.body }}
+                  style={{ margin: 0, color: 'var(--color-text-light)', lineHeight: '1.4' }}
+                />
+              ) : (
+                <div style={{ margin: 0, color: 'var(--color-text-light)', whiteSpace: 'pre-wrap', lineHeight: '1.4' }}>
+                  {renderFormattedText(comment.body)}
+                </div>
+              )
             ) : null}
 
             {/* Attachments rendering */}

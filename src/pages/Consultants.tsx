@@ -3984,9 +3984,17 @@ const ConsultantsInner = () => {
                                   <span style={{ fontWeight: 800, color: 'var(--color-text)', textAlign: 'left' }}>{comment.user_name || 'Thành viên'}</span>
                                   <span style={{ fontSize: '0.68rem', color: 'var(--color-text-muted)' }}>{comment.created_at ? new Date(comment.created_at).toLocaleString('vi-VN') : ''}</span>
                                 </div>
-                                <p style={{ margin: 0, color: 'var(--color-text-light)', whiteSpace: 'pre-wrap', lineHeight: '1.4', textAlign: 'left' }}>
-                                  {cleanBody}
-                                </p>
+                                {cleanBody && /<[a-z][\s\S]*>/i.test(cleanBody) ? (
+                                   <div 
+                                     className="rich-text-editor-content"
+                                     dangerouslySetInnerHTML={{ __html: cleanBody }}
+                                     style={{ margin: 0, color: 'var(--color-text-light)', lineHeight: '1.4', textAlign: 'left' }}
+                                   />
+                                 ) : (
+                                   <div style={{ margin: 0, color: 'var(--color-text-light)', whiteSpace: 'pre-wrap', lineHeight: '1.4', textAlign: 'left' }}>
+                                     {cleanBody}
+                                   </div>
+                                 )}
                                 
                                 {/* Attachments rendering */}
                                 {atts.length > 0 && (
