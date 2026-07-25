@@ -19,7 +19,7 @@ export const AITrainingPage: React.FC = () => {
           </div>
           <div>
             <h1 style={{ fontSize: '1.5rem', fontWeight: 800, margin: 0, color: 'var(--color-text)' }}>
-              Trung tâm Tri thức AI (AI Knowledge Base)
+              AI Knowledge Base
             </h1>
             <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', margin: '4px 0 0 0' }}>
               Huấn luyện tri thức doanh nghiệp, quản lý dữ liệu đối chiếu RAG và kiểm thử mô hình chatbot Gemini.
