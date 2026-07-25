@@ -103,7 +103,7 @@ if (!function_exists('generate_embedding')) {
     function generate_embedding($text, $apiKey) {
         if (empty($text)) return null;
         $payload = [
-            'model' => 'models/text-embedding-004',
+            'model' => 'models/gemini-embedding-001',
             'content' => [
                 'parts' => [[
                     'text' => $text
@@ -111,8 +111,8 @@ if (!function_exists('generate_embedding')) {
             ]
         ];
 
-        // 1. Try v1beta models/text-embedding-004 first
-        $url = "https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent?key=" . $apiKey;
+        // 1. Try v1beta models/gemini-embedding-001 first
+        $url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-001:embedContent?key=" . $apiKey;
 
         $ch = curl_init($url);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
@@ -128,7 +128,7 @@ if (!function_exists('generate_embedding')) {
         if (!$response) return null;
         $resJson = json_decode($response, true);
         
-        // 2. Fallback to v1beta models/embedding-001 if text-embedding-004 is unavailable
+        // 2. Fallback to v1beta models/embedding-001 if gemini-embedding-001 is unavailable
         if (empty($resJson['embedding']['values'])) {
             $url = "https://generativelanguage.googleapis.com/v1beta/models/embedding-001:embedContent?key=" . $apiKey;
             $payload['model'] = 'models/embedding-001';
@@ -161,15 +161,15 @@ if (!function_exists('generate_batch_embeddings')) {
         ];
         foreach ($texts as $text) {
             $payload['requests'][] = [
-                'model' => 'models/text-embedding-004',
+                'model' => 'models/gemini-embedding-001',
                 'content' => [
                     'parts' => [['text' => $text]]
                 ]
             ];
         }
 
-        // 1. Try v1beta models/text-embedding-004:batchEmbedContents first
-        $url = "https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:batchEmbedContents?key=" . $apiKey;
+        // 1. Try v1beta models/gemini-embedding-001:batchEmbedContents first
+        $url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-001:batchEmbedContents?key=" . $apiKey;
 
         $ch = curl_init($url);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
@@ -193,7 +193,7 @@ if (!function_exists('generate_batch_embeddings')) {
             }
         }
 
-        // 2. Fallback to v1beta models/embedding-001:batchEmbedContents if text-embedding-004 is unavailable
+        // 2. Fallback to v1beta models/embedding-001:batchEmbedContents if gemini-embedding-001 is unavailable
         $payload = [
             'requests' => []
         ];
