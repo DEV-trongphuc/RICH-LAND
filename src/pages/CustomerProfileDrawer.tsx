@@ -1487,7 +1487,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
     };
   }, [setIsSubmitting, setShowDealModal]);
   const lastLoadedContactIdRef = React.useRef<number | null>(null);
-  const [formData, setFormData] = useState<any>({});
+  const [formData, setFormData] = useState<any>(() => contact || {});
   const [showScoringSystemModal, setShowScoringSystemModal] = useState(false);
   const [tags, setTags] = useState<string[]>([]);
   const [baseData, setBaseData] = useState<any>(contact || {});
@@ -5500,17 +5500,17 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
 
               {/* ── Layout Split: Left Sidebar Tabs & Content ── */}
               <div className={styles.drawerBody}>
-                {!drawerOpenComplete || loadingContactDetails ? (
+                {loadingContactDetails && !formData.id ? (
                   <DrawerSkeleton />
                 ) : (
                   <>
                     <AnimatePresence>
                       {(!isMobileOrTablet || !activeTab) && (
                         <motion.div
-                          initial={isMobileOrTablet ? (drawerOpenComplete ? { opacity: 0, x: -30 } : { opacity: 1 }) : undefined}
-                          animate={isMobileOrTablet ? { opacity: 1, x: 0 } : undefined}
-                          exit={isMobileOrTablet ? { opacity: 0, x: -30 } : undefined}
-                          transition={{ type: 'spring', damping: 28, stiffness: 300 }}
+                          initial={isMobileOrTablet ? (drawerOpenComplete ? { x: '-100%' } : { x: 0 }) : undefined}
+                          animate={isMobileOrTablet ? { x: 0 } : undefined}
+                          exit={isMobileOrTablet ? { x: '-100%' } : undefined}
+                          transition={{ type: 'tween', ease: 'easeInOut', duration: 0.3 }}
                           className={styles.sidebarTabs}
                           style={isMobileOrTablet ? { 
                             width: '100%', 
@@ -6074,10 +6074,10 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                   {(!isMobileOrTablet || activeTab) && (
                     <motion.div 
                       key={activeTab || 'content'}
-                      initial={isMobileOrTablet ? (drawerOpenComplete ? { opacity: 0, x: 30 } : { opacity: 1 }) : undefined}
-                      animate={isMobileOrTablet ? { opacity: 1, x: 0 } : undefined}
-                      exit={isMobileOrTablet ? { opacity: 0, x: 30 } : undefined}
-                      transition={{ type: 'spring', damping: 28, stiffness: 300 }}
+                      initial={isMobileOrTablet ? (drawerOpenComplete ? { x: '100%' } : { x: 0 }) : undefined}
+                      animate={isMobileOrTablet ? { x: 0 } : undefined}
+                      exit={isMobileOrTablet ? { x: '100%' } : undefined}
+                      transition={{ type: 'tween', ease: 'easeInOut', duration: 0.3 }}
                       className={styles.contentArea} 
                       style={isMobileOrTablet ? { 
                         width: '100%', 
