@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { 
   Sparkles, Database, FileText, Globe, Upload, Trash2, Edit2, Play, 
   RefreshCw, Send, Sliders, MessageSquare, Plus, Info, X, 
@@ -1646,7 +1647,7 @@ export const AITrainingPanel: React.FC = () => {
       )}
 
       {/* SELECT MODAL: CHỌN DỰ ÁN HOẶC CHIẾN DỊCH */}
-      {showContextModal && (
+      {showContextModal && typeof document !== 'undefined' && createPortal(
         <div style={{
           position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
           backgroundColor: 'rgba(0, 0, 0, 0.5)', zIndex: 9999999,
@@ -1824,11 +1825,12 @@ export const AITrainingPanel: React.FC = () => {
               <button type="button" className="btn outline sm" onClick={() => setShowContextModal(false)}>Đóng</button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* MODAL 0: TẢI TÀI LIỆU LÊN */}
-      {showUploadModal && (
+      {showUploadModal && typeof document !== 'undefined' && createPortal(
         <div style={{
           position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
           backgroundColor: 'rgba(0, 0, 0, 0.5)', zIndex: 9999999,
@@ -1874,11 +1876,12 @@ export const AITrainingPanel: React.FC = () => {
               <button type="button" className="btn outline" onClick={() => setShowUploadModal(false)} disabled={uploadingFile}>Đóng</button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* MODAL 1: NHẬP HỒ SƠ THỦ CÔNG */}
-      {showManualModal && (
+      {showManualModal && typeof document !== 'undefined' && createPortal(
         <div style={{
           position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
           backgroundColor: 'rgba(0, 0, 0, 0.5)', zIndex: 9999999,
@@ -1892,34 +1895,48 @@ export const AITrainingPanel: React.FC = () => {
               </button>
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-              <label style={{ fontSize: '0.8125rem', fontWeight: 700 }}>Tiêu đề khối tri thức</label>
-              <input type="text" className="form-input" placeholder="Ví dụ: Chính sách chiết khấu đợt 1" value={manualTitle} onChange={e => setManualTitle(e.target.value)} />
-            </div>
+            <div style={{ display: 'flex', gap: '1.5rem', marginTop: '0.5rem' }}>
+              {/* Left Column: Metadata */}
+              <div style={{ flex: '0 0 280px', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <label style={{ fontSize: '0.8125rem', fontWeight: 700 }}>Tiêu đề khối tri thức</label>
+                  <input type="text" className="form-input" placeholder="Ví dụ: Chính sách chiết khấu đợt 1" value={manualTitle} onChange={e => setManualTitle(e.target.value)} />
+                </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-              <label style={{ fontSize: '0.8125rem', fontWeight: 700 }}>Lưu vào thư mục (Tùy chọn)</label>
-              <select
-                value={manualFolderId}
-                onChange={e => setManualFolderId(e.target.value)}
-                className="form-input"
-              >
-                <option value="">-- Lưu riêng lẻ ở thư mục gốc (Root) --</option>
-                {folderOptions.map(f => (
-                  <option key={f.id} value={f.id}>{f.name}</option>
-                ))}
-              </select>
-            </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <label style={{ fontSize: '0.8125rem', fontWeight: 700 }}>Lưu vào thư mục (Tùy chọn)</label>
+                  <select
+                    value={manualFolderId}
+                    onChange={e => setManualFolderId(e.target.value)}
+                    className="form-input"
+                  >
+                    <option value="">-- Lưu riêng lẻ ở thư mục gốc (Root) --</option>
+                    {folderOptions.map(f => (
+                      <option key={f.id} value={f.id}>{f.name}</option>
+                    ))}
+                  </select>
+                </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-              <label style={{ fontSize: '0.8125rem', fontWeight: 700 }}>Tags phân loại (ngăn cách bằng dấu phẩy)</label>
-              <input type="text" className="form-input" placeholder="Ví dụ: chietkhau, diamondcity" value={manualTags} onChange={e => setManualTags(e.target.value)} />
-              <span style={{ fontSize: '0.6875rem', color: 'var(--color-text-muted)' }}>AI sẽ tự động đọc hiểu và phân tích ngữ cảnh để lấy tài liệu này khi người dùng hỏi các nội dung liên quan.</span>
-            </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <label style={{ fontSize: '0.8125rem', fontWeight: 700 }}>Tags phân loại (ngăn cách bằng dấu phẩy)</label>
+                  <input type="text" className="form-input" placeholder="Ví dụ: chietkhau, diamondcity" value={manualTags} onChange={e => setManualTags(e.target.value)} />
+                  <span style={{ fontSize: '0.6875rem', color: 'var(--color-text-muted)', lineHeight: 1.3 }}>
+                    AI sẽ tự động đọc hiểu và phân tích ngữ cảnh để lấy tài liệu này khi người dùng hỏi các nội dung liên quan.
+                  </span>
+                </div>
+              </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-              <label style={{ fontSize: '0.8125rem', fontWeight: 700 }}>Nội dung tri thức</label>
-              <textarea className="form-input" rows={8} placeholder="Nhập hoặc dán nội dung chi tiết để AI ghi nhớ..." value={manualContent} onChange={e => setManualContent(e.target.value)} />
+              {/* Right Column: Main Content Editor */}
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <label style={{ fontSize: '0.8125rem', fontWeight: 700 }}>Nội dung tri thức</label>
+                <textarea 
+                  className="form-input" 
+                  style={{ flex: 1, minHeight: '320px', resize: 'vertical' }} 
+                  placeholder="Nhập hoặc dán nội dung chi tiết để AI ghi nhớ..." 
+                  value={manualContent} 
+                  onChange={e => setManualContent(e.target.value)} 
+                />
+              </div>
             </div>
 
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1rem' }}>
@@ -1930,11 +1947,12 @@ export const AITrainingPanel: React.FC = () => {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* MODAL 2: CÀO WEBSITE */}
-      {showWebModal && (
+      {showWebModal && typeof document !== 'undefined' && createPortal(
         <div style={{
           position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
           backgroundColor: 'rgba(0, 0, 0, 0.5)', zIndex: 9999999,
@@ -1954,8 +1972,8 @@ export const AITrainingPanel: React.FC = () => {
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-              <label style={{ fontSize: '0.8125rem', fontWeight: 700 }}>Đường dẫn URL (website/landing page)</label>
-              <input type="url" className="form-input" placeholder="https://..." value={webUrl} onChange={e => setWebUrl(e.target.value)} />
+              <label style={{ fontSize: '0.8125rem', fontWeight: 700 }}>Đường dẫn URL chi tiết (AI sẽ tự động tải nội dung)</label>
+              <input type="url" className="form-input" placeholder="Ví dụ: https://richland.com.vn/gioi-thieu" value={webUrl} onChange={e => setWebUrl(e.target.value)} />
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
@@ -1985,11 +2003,12 @@ export const AITrainingPanel: React.FC = () => {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* MODAL 3: TẠO THƯ MỤC */}
-      {showFolderModal && (
+      {showFolderModal && typeof document !== 'undefined' && createPortal(
         <div style={{
           position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
           backgroundColor: 'rgba(0, 0, 0, 0.5)', zIndex: 9999999,
@@ -2022,11 +2041,12 @@ export const AITrainingPanel: React.FC = () => {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* MODAL 4: CHỈNH SỬA TÀI LIỆU */}
-      {showEditModal && editingDoc && (
+      {showEditModal && editingDoc && typeof document !== 'undefined' && createPortal(
         <div style={{
           position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
           backgroundColor: 'rgba(0, 0, 0, 0.5)', zIndex: 9999999,
@@ -2040,33 +2060,44 @@ export const AITrainingPanel: React.FC = () => {
               </button>
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-              <label style={{ fontSize: '0.8125rem', fontWeight: 700 }}>Tiêu đề khối tri thức</label>
-              <input type="text" className="form-input" value={editingDoc.name} onChange={e => setEditingDoc({ ...editingDoc, name: e.target.value })} />
-            </div>
+            <div style={{ display: 'flex', gap: '1.5rem', marginTop: '0.5rem' }}>
+              {/* Left Column: Metadata */}
+              <div style={{ flex: '0 0 280px', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <label style={{ fontSize: '0.8125rem', fontWeight: 700 }}>Tiêu đề khối tri thức</label>
+                  <input type="text" className="form-input" value={editingDoc.name} onChange={e => setEditingDoc({ ...editingDoc, name: e.target.value })} />
+                </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-              <label style={{ fontSize: '0.8125rem', fontWeight: 700 }}>Tags phân loại</label>
-              <input type="text" className="form-input" value={editingDoc.tags || ''} onChange={e => setEditingDoc({ ...editingDoc, tags: e.target.value })} />
-            </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <label style={{ fontSize: '0.8125rem', fontWeight: 700 }}>Tags phân loại</label>
+                  <input type="text" className="form-input" value={editingDoc.tags || ''} onChange={e => setEditingDoc({ ...editingDoc, tags: e.target.value })} />
+                </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-              <label style={{ fontSize: '0.8125rem', fontWeight: 700 }}>Di chuyển vào thư mục</label>
-              <select
-                value={editingDoc.parent_id || ''}
-                onChange={e => setEditingDoc({ ...editingDoc, parent_id: e.target.value })}
-                className="form-input"
-              >
-                <option value="">-- Thư mục gốc (Root) --</option>
-                {folderOptions.map(f => (
-                  <option key={f.id} value={f.id}>{f.name}</option>
-                ))}
-              </select>
-            </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <label style={{ fontSize: '0.8125rem', fontWeight: 700 }}>Di chuyển vào thư mục</label>
+                  <select
+                    value={editingDoc.parent_id || ''}
+                    onChange={e => setEditingDoc({ ...editingDoc, parent_id: e.target.value })}
+                    className="form-input"
+                  >
+                    <option value="">-- Thư mục gốc (Root) --</option>
+                    {folderOptions.map(f => (
+                      <option key={f.id} value={f.id}>{f.name}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-              <label style={{ fontSize: '0.8125rem', fontWeight: 700 }}>Nội dung chi tiết</label>
-              <textarea className="form-input" rows={8} value={editingDoc.content || ''} onChange={e => setEditingDoc({ ...editingDoc, content: e.target.value })} />
+              {/* Right Column: Main Content Editor */}
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <label style={{ fontSize: '0.8125rem', fontWeight: 700 }}>Nội dung chi tiết</label>
+                <textarea 
+                  className="form-input" 
+                  style={{ flex: 1, minHeight: '320px', resize: 'vertical' }} 
+                  value={editingDoc.content || ''} 
+                  onChange={e => setEditingDoc({ ...editingDoc, content: e.target.value })} 
+                />
+              </div>
             </div>
 
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1rem' }}>
@@ -2076,7 +2107,8 @@ export const AITrainingPanel: React.FC = () => {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
