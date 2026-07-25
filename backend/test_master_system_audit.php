@@ -1,5 +1,12 @@
 <?php
 // backend/test_master_system_audit.php
+ini_set('display_errors', 1);
+error_reporting(E_ALL);
+if (ob_get_level()) {
+    ob_end_clean();
+}
+ob_implicit_flush(true);
+
 require_once __DIR__ . '/test_bootstrap.php';
 
 header('Content-Type: text/plain; charset=utf-8');
