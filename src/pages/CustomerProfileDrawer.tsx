@@ -4568,9 +4568,9 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
   }, [isOpen]);
 
   const drawerMotionProps = {
-    initial: isMobileOrTablet ? { y: '100%' } : { x: '100%' },
-    animate: { y: 0, x: 0 },
-    exit: isMobileOrTablet ? { y: '100%' } : { x: '100%' },
+    initial: isMobileOrTablet ? { y: '100%' } : { opacity: 0, x: '250px' },
+    animate: { y: 0, x: 0, opacity: 1 },
+    exit: isMobileOrTablet ? { y: '100%' } : { opacity: 0, x: '250px' },
     transition: { type: 'spring' as const, damping: 30, stiffness: 250, mass: 0.8 },
     drag: isMobileOrTablet ? ('y' as const) : false,
     dragConstraints: { top: 0 },
