@@ -22,7 +22,8 @@ assertTest("Vietnamese format string '3.500.000.000' sanitized to float 35000000
 echo "\n--- TEST 2: Datetime Parsing Mismatches ---\n";
 $isoDate = "2026-07-25T02:14:19.271Z";
 $parsedDate = date('Y-m-d H:i:s', strtotime($isoDate));
-assertTest("ISO date parsed to MySQL DATETIME format", $parsedDate === '2026-07-25 02:14:19');
+// Note: Asia/Ho_Chi_Minh timezone is UTC+7, so 02:14:19Z shifts to 09:14:19
+assertTest("ISO date parsed to MySQL DATETIME format", $parsedDate === '2026-07-25 09:14:19');
 
 $invalidDate = "invalid-date-string";
 $parsedInvalid = strtotime($invalidDate);
