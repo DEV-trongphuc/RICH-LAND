@@ -5178,418 +5178,221 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
           </div>
         )}
 
-        {uncontactedCount > 0 && (
-          <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            style={{
-              background: 'rgba(239, 68, 68, 0.05)',
-              border: '1px solid rgba(239, 68, 68, 0.25)',
-              borderRadius: isMobile ? '10px' : '16px',
-              padding: isMobile ? '8px 12px' : '1.25rem 1.5rem',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              gap: isMobile ? '8px' : '1rem',
-              cursor: 'pointer',
-              boxShadow: '0 4px 20px -6px rgba(239, 68, 68, 0.08)',
-              transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
-              marginBottom: '0.75rem'
-            }}
-            whileHover={{ 
-              scale: 1.005, 
-              borderColor: 'rgba(239, 68, 68, 0.45)',
-              boxShadow: '0 8px 30px -6px rgba(239, 68, 68, 0.15)'
-            }}
-            onClick={() => {
-              navigate('/contacts?status=not_contacted');
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? '8px' : '1rem', flex: 1, minWidth: 0 }}>
-              <div style={{
-                background: 'rgba(239, 68, 68, 0.12)',
-                color: '#ef4444',
-                width: isMobile ? 32 : 44,
-                height: isMobile ? 32 : 44,
-                borderRadius: '50%',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                flexShrink: 0,
-                boxShadow: 'inset 0 2px 4px rgba(239, 68, 68, 0.06)'
-              }}>
-                <AlertCircle size={isMobile ? 16 : 24} className="animate-pulse" />
-              </div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <span style={{ fontWeight: 800, fontSize: isMobile ? '0.8rem' : '1rem', color: 'var(--color-text)', display: 'block', letterSpacing: '-0.01em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {isMobile ? t('Liên hệ khách hàng mới') : t('Yêu cầu liên hệ khách hàng mới')}
-                </span>
-                <span style={{ fontSize: isMobile ? '0.72rem' : '0.85rem', color: 'var(--color-text-muted)', marginTop: isMobile ? 1 : 4, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {isMobile ? (
-                    <>Có <strong style={{ color: '#ef4444', fontSize: '1.2em', fontWeight: 800 }}>{uncontactedCount}</strong> khách hàng chưa liên hệ.</>
-                  ) : (
-                    <>Bạn đang có <strong style={{ color: '#ef4444', fontSize: '1.2em', fontWeight: 800 }}>{uncontactedCount}</strong> data khách hàng chưa liên hệ. Vui lòng kiểm tra và liên hệ ngay.</>
-                  )}
-                </span>
-              </div>
-            </div>
-            <div style={{ 
-              display: 'flex', 
-              alignItems: 'center', 
-              justifyContent: 'center',
-              width: isMobile ? '26px' : undefined,
-              height: isMobile ? '26px' : undefined,
-              gap: isMobile ? '0' : '6px', 
-              color: '#ef4444', 
-              fontWeight: 800, 
-              fontSize: '0.875rem',
-              background: 'rgba(239, 68, 68, 0.08)',
-              padding: isMobile ? '0' : '8px 16px',
-              borderRadius: isMobile ? '50%' : '10px',
-              transition: 'background 0.2s',
-              flexShrink: 0
-            }}>
-              {!isMobile && <span>Xem ngay</span>}
-              <ChevronRight size={isMobile ? 12 : 16} />
-            </div>
-          </motion.div>
-        )}
-
-        {pendingCoopsCount > 0 && (
-          <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            style={{
-              background: 'rgba(16, 185, 129, 0.05)',
-              border: '1px solid rgba(16, 185, 129, 0.25)',
-              borderRadius: isMobile ? '10px' : '16px',
-              padding: isMobile ? '8px 12px' : '1.25rem 1.5rem',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              gap: isMobile ? '8px' : '1rem',
-              cursor: 'pointer',
-              boxShadow: '0 4px 20px -6px rgba(16, 185, 129, 0.08)',
-              transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
-              marginBottom: '0.75rem'
-            }}
-            whileHover={{ 
-              scale: 1.005, 
-              borderColor: 'rgba(16, 185, 129, 0.45)',
-              boxShadow: '0 8px 30px -6px rgba(16, 185, 129, 0.15)'
-            }}
-            onClick={() => {
-              const firstSlipId = pendingCoopSlips[0]?.id;
-              if (firstSlipId) {
-                navigate(`/cooperation-slips?sign_id=${firstSlipId}`);
-              } else {
-                navigate('/cooperation-slips');
-              }
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? '8px' : '1rem', flex: 1, minWidth: 0 }}>
-              <div style={{
-                background: 'rgba(16, 185, 129, 0.12)',
-                color: '#10b981',
-                width: isMobile ? 32 : 44,
-                height: isMobile ? 32 : 44,
-                borderRadius: '50%',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                flexShrink: 0,
-                boxShadow: 'inset 0 2px 4px rgba(16, 185, 129, 0.06)'
-              }}>
-                <Scale size={isMobile ? 16 : 24} className="animate-pulse" />
-              </div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <span style={{ fontWeight: 800, fontSize: isMobile ? '0.8rem' : '1rem', color: 'var(--color-text)', display: 'block', letterSpacing: '-0.01em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {isMobile ? t('Ký phiếu hợp tác') : t('Yêu cầu ký phiếu hợp tác chia hoa hồng')}
-                </span>
-                <span style={{ fontSize: isMobile ? '0.72rem' : '0.85rem', color: 'var(--color-text-muted)', marginTop: isMobile ? 1 : 4, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {isMobile 
-                    ? `Có ${pendingCoopsCount} phiếu chờ ký xác nhận.` 
-                    : `Bạn đang có ${pendingCoopsCount} phiếu hợp tác hoa hồng đang chờ ký xác nhận. Vui lòng ký ngay.`}
-                </span>
-              </div>
-            </div>
-            <div style={{ 
-              display: 'flex', 
-              alignItems: 'center', 
-              justifyContent: 'center',
-              width: isMobile ? '26px' : undefined,
-              height: isMobile ? '26px' : undefined,
-              gap: isMobile ? '0' : '6px', 
-              color: '#10b981', 
-              fontWeight: 800, 
-              fontSize: '0.875rem',
-              background: 'rgba(16, 185, 129, 0.08)',
-              padding: isMobile ? '0' : '8px 16px',
-              borderRadius: isMobile ? '50%' : '10px',
-              transition: 'background 0.2s',
-              flexShrink: 0
-            }}>
-              {!isMobile && <span>Ký ngay</span>}
-              <ChevronRight size={isMobile ? 12 : 16} />
-            </div>
-          </motion.div>
-        )}
-
-        {/* 2-Card Header Layout: AI Priority + Upcoming Meetings */}
+        {/* Unified Alert & Suggestion Center */}
         {(() => {
+          const hasUncontacted = uncontactedCount > 0;
+          const hasCoops = pendingCoopsCount > 0;
+          
           const todayStr = new Date().toISOString().slice(0, 10);
           const uid = currentUser?.id ? Number(currentUser.id) : 0;
-
           const isMyTask = (t: any) => {
             if (!uid) return false;
             const assignee = Number(t.assignee_id || t.user_id || 0);
             return assignee === uid;
           };
-
           const myOverdueCount = (wsTasks || []).filter((t: any) => t.status !== 'done' && isMyTask(t) && t.due_date && t.due_date.slice(0, 10) < todayStr).length;
           const myDueTodayCount = (wsTasks || []).filter((t: any) => t.status !== 'done' && isMyTask(t) && t.due_date && t.due_date.slice(0, 10) === todayStr).length;
           const myHighPriorityTask = (wsTasks || []).find((t: any) => t.status !== 'done' && isMyTask(t) && (t.priority === 'high' || t.priority === 'urgent'));
-
           const totalOverdueCount = workspaceStats.overdue || 0;
           const totalDueTodayCount = workspaceStats.dueToday || 0;
           const teamHighPriorityTask = (wsTasks || []).find((t: any) => t.status !== 'done' && (t.priority === 'high' || t.priority === 'urgent'));
 
-          const renderAiMessage = () => {
-            let count = 0;
-            let label = '';
-            let fullPrefix = '';
-            let fullSuffix = '';
-
-            if (myOverdueCount > 0) {
-              count = myOverdueCount;
-              fullPrefix = 'Hôm nay bạn có ';
-              fullSuffix = ' công việc quá hạn cần xử lý gấp.';
-              label = 'việc quá hạn cần làm';
-            } else if (myHighPriorityTask) {
-              count = 1;
-              fullPrefix = 'Bạn có ';
-              fullSuffix = ` công việc ưu tiên cao (${myHighPriorityTask.subject || 'Nhiệm vụ quan trọng'}) cần tập trung xử lý ngay.`;
-              label = 'việc ưu tiên cao';
-            } else if (myDueTodayCount > 0) {
-              count = myDueTodayCount;
-              fullPrefix = 'Hôm nay bạn có ';
-              fullSuffix = ' công việc đến hạn cần hoàn thành đúng kế hoạch.';
-              label = 'việc đến hạn';
-            } else if (totalOverdueCount > 0) {
-              count = totalOverdueCount;
-              fullPrefix = 'Toàn đội ngũ hiện có ';
-              fullSuffix = ' công việc quá hạn cần đôn đốc xử lý.';
-              label = 'việc quá hạn đội ngũ';
-            } else if (teamHighPriorityTask) {
-              count = 1;
-              fullPrefix = 'Hệ thống có ';
-              fullSuffix = ` công việc ưu tiên cao (${teamHighPriorityTask.subject || 'Nhiệm vụ quan trọng'}) cần theo dõi.`;
-              label = 'việc ưu tiên cao';
-            } else if (totalDueTodayCount > 0) {
-              count = totalDueTodayCount;
-              fullPrefix = 'Hôm nay toàn đội ngũ có ';
-              fullSuffix = ' công việc đến hạn cần hoàn thành.';
-              label = 'việc đến hạn';
-            } else {
-              count = 0;
-              label = 'việc cần làm';
-              fullPrefix = 'Hệ thống vận hành tối ưu. Các công việc hiện được sắp xếp đúng kế hoạch.';
-            }
-
-            if (isMobile) {
-              return (
-                <>
-                  <span style={{ color: 'var(--color-primary, #BD1D2D)', fontWeight: 800 }}>{count}</span> {label}
-                </>
-              );
-            }
-
-            if (count > 0) {
-              return (
-                <>
-                  {fullPrefix}
-                  <span style={{ color: 'var(--color-primary, #BD1D2D)', fontWeight: 800 }}>{count}</span>
-                  {fullSuffix}
-                </>
-              );
-            }
-
-            return fullPrefix;
-          };
+          // Calculate AI Priority Message
+          let aiCount = 0;
+          let aiLabel = '';
+          let aiMessage = '';
+          if (myOverdueCount > 0) {
+            aiCount = myOverdueCount;
+            aiMessage = `Hôm nay bạn có ${myOverdueCount} công việc quá hạn cần xử lý gấp.`;
+          } else if (myHighPriorityTask) {
+            aiCount = 1;
+            aiMessage = `Bạn có công việc ưu tiên cao (${myHighPriorityTask.subject || 'Nhiệm vụ quan trọng'}) cần xử lý.`;
+          } else if (myDueTodayCount > 0) {
+            aiCount = myDueTodayCount;
+            aiMessage = `Hôm nay bạn có ${myDueTodayCount} công việc đến hạn cần hoàn thành.`;
+          } else if (totalOverdueCount > 0) {
+            aiCount = totalOverdueCount;
+            aiMessage = `Toàn đội ngũ hiện có ${totalOverdueCount} công việc quá hạn cần đôn đốc.`;
+          } else if (teamHighPriorityTask) {
+            aiCount = 1;
+            aiMessage = `Có công việc ưu tiên cao của đội ngũ (${teamHighPriorityTask.subject || 'Nhiệm vụ quan trọng'}) cần theo dõi.`;
+          } else if (totalDueTodayCount > 0) {
+            aiCount = totalDueTodayCount;
+            aiMessage = `Hôm nay toàn đội ngũ có ${totalDueTodayCount} công việc đến hạn cần hoàn thành.`;
+          } else {
+            aiMessage = 'Hệ thống vận hành tối ưu. Các công việc hiện được sắp xếp đúng kế hoạch.';
+          }
 
           const meetingCount = upcomingMeetingsList.length;
 
-          const renderMeetingMessage = () => {
-            if (isMobile) {
-              return (
-                <>
-                  <span style={{ color: '#2563EB', fontWeight: 800 }}>{meetingCount}</span> {meetingCount > 0 ? 'cuộc hẹn' : 'cuộc hẹn'}
-                </>
-              );
-            }
-
-            if (meetingCount > 0) {
-              return (
-                <>
-                  Có <span style={{ color: '#2563EB', fontWeight: 800 }}>{meetingCount}</span> cuộc hẹn gặp khách hàng đã được lên lịch trong kế hoạch.
-                </>
-              );
-            }
-
-            return t('Chưa có lịch hẹn');
-          };
+          // Check if there is anything to show
+          const hasAnyAlert = hasUncontacted || hasCoops || aiCount > 0 || meetingCount > 0;
+          if (!hasAnyAlert) return null;
 
           return (
             <div style={{
-              display: 'grid',
-              gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(auto-fit, minmax(320px, 1fr))',
-              gap: isMobile ? '8px' : '1rem',
-              marginBottom: '0.75rem'
+              background: 'var(--color-surface)',
+              border: '1px solid var(--color-border-light)',
+              borderRadius: '16px',
+              padding: isMobile ? '12px 14px' : '1rem 1.5rem',
+              marginBottom: '1rem',
+              boxShadow: 'var(--shadow-sm)',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '12px',
+              position: 'relative',
+              overflow: 'hidden'
             }}>
-              {/* CARD 1: GỢI Ý ƯU TIÊN TỪ AI */}
-              <div style={{
-                background: 'linear-gradient(135deg, rgba(189, 29, 45, 0.05) 0%, rgba(189, 29, 45, 0.1) 100%)',
-                border: '1px solid rgba(189, 29, 45, 0.25)',
-                borderRadius: isMobile ? '12px' : '16px',
-                padding: isMobile ? '8px 10px' : '0.875rem 1.25rem',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                gap: isMobile ? '6px' : '1rem',
-                boxShadow: '0 4px 16px rgba(189, 29, 45, 0.06)',
-                backdropFilter: 'blur(8px)',
-                position: 'relative',
-                overflow: 'hidden'
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? '6px' : '12px', flex: 1, minWidth: 0 }}>
-                  <div style={{
-                    width: isMobile ? '28px' : '40px',
-                    height: isMobile ? '28px' : '40px',
-                    borderRadius: isMobile ? '8px' : '12px',
-                    background: 'linear-gradient(135deg, #E52E3D 0%, #BD1D2D 100%)',
-                    color: '#ffffff',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    flexShrink: 0,
-                    boxShadow: '0 4px 12px rgba(189, 29, 45, 0.35)'
-                  }}>
-                    <Sparkles size={isMobile ? 14 : 20} />
-                  </div>
-                  <div style={{ minWidth: 0, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                    <span style={{ fontSize: isMobile ? '0.625rem' : '0.725rem', fontWeight: 800, color: 'var(--color-primary, #BD1D2D)', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', lineHeight: 1.15 }}>
-                      {isMobile ? t('GỢI Ý AI') : t('GỢI Ý ƯU TIÊN TỪ AI')}
-                    </span>
-                    <span style={{ fontSize: isMobile ? '0.725rem' : '0.875rem', fontWeight: 600, color: 'var(--color-text)', overflow: 'hidden', textOverflow: 'ellipsis', display: 'block', whiteSpace: 'nowrap', marginTop: '2px', lineHeight: 1.15 }}>
-                      {renderAiMessage()}
-                    </span>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={handleStartFocusSession}
-                  style={{
-                    background: 'linear-gradient(135deg, #E52E3D 0%, #BD1D2D 100%)',
-                    border: 'none',
-                    color: '#ffffff',
-                    padding: isMobile ? '5px 10px' : '8px 16px',
-                    fontSize: isMobile ? '0.68rem' : '0.8rem',
-                    fontWeight: 700,
-                    borderRadius: '20px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '4px',
-                    cursor: 'pointer',
-                    whiteSpace: 'nowrap',
-                    flexShrink: 0,
-                    boxShadow: '0 3px 10px rgba(189, 29, 45, 0.3)',
-                    transition: 'transform 0.2s, box-shadow 0.2s'
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.transform = 'translateY(-1px)';
-                    e.currentTarget.style.boxShadow = '0 5px 14px rgba(189, 29, 45, 0.4)';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.transform = 'translateY(0)';
-                    e.currentTarget.style.boxShadow = '0 3px 10px rgba(189, 29, 45, 0.3)';
-                  }}
-                >
-                  <Play size={isMobile ? 10 : 13} fill="#ffffff" />
-                  <span>{isMobile ? t('Xử lý') : t('Xử lý ngay')}</span>
-                </button>
+              {/* Header */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', borderBottom: '1px solid var(--color-border-light)', paddingBottom: '10px' }}>
+                <Sparkles size={16} style={{ color: 'var(--color-primary)' }} />
+                <span style={{ fontSize: '0.85rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.03em', color: 'var(--color-text)' }}>
+                  {t('Cảnh báo & Gợi ý xử lý')}
+                </span>
               </div>
 
-              {/* CARD 2: CUỘC HẸN GẶP SẮP DIỄN RA */}
-              <div style={{
-                background: 'linear-gradient(135deg, rgba(37, 99, 235, 0.05) 0%, rgba(79, 70, 229, 0.08) 100%)',
-                border: '1px solid rgba(37, 99, 235, 0.22)',
-                borderRadius: isMobile ? '12px' : '16px',
-                padding: isMobile ? '8px 10px' : '0.875rem 1.25rem',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                gap: isMobile ? '6px' : '1rem',
-                boxShadow: '0 4px 16px rgba(37, 99, 235, 0.06)',
-                backdropFilter: 'blur(8px)',
-                position: 'relative',
-                overflow: 'hidden'
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? '6px' : '12px', flex: 1, minWidth: 0 }}>
-                  <div style={{
-                    width: isMobile ? '28px' : '40px',
-                    height: isMobile ? '28px' : '40px',
-                    borderRadius: isMobile ? '8px' : '12px',
-                    background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
-                    color: '#ffffff',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    flexShrink: 0,
-                    boxShadow: '0 4px 12px rgba(37, 99, 235, 0.35)'
-                  }}>
-                    <Calendar size={isMobile ? 14 : 20} />
+              {/* Alert Items Stack */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                {/* 1. Uncontacted leads alert */}
+                {hasUncontacted && (
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', flexWrap: isMobile ? 'wrap' : 'nowrap', padding: '4px 0' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0, flex: 1 }}>
+                      <div style={{ width: 28, height: 28, borderRadius: '50%', background: 'rgba(239, 68, 68, 0.08)', color: '#ef4444', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        <AlertCircle size={15} />
+                      </div>
+                      <span style={{ fontSize: '0.825rem', color: 'var(--color-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {t('Yêu cầu liên hệ khách hàng mới: ')}
+                        <strong style={{ color: '#ef4444', fontWeight: 800 }}>{uncontactedCount}</strong>
+                        {t(' data chưa liên hệ.')}
+                      </span>
+                    </div>
+                    <button
+                      onClick={() => navigate('/contacts?status=not_contacted')}
+                      style={{
+                        padding: '4px 10px',
+                        fontSize: '0.75rem',
+                        fontWeight: 700,
+                        background: 'rgba(239, 68, 68, 0.08)',
+                        color: '#ef4444',
+                        border: 'none',
+                        borderRadius: '6px',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '2px',
+                        marginLeft: 'auto'
+                      }}
+                    >
+                      {t('Xem ngay')} <ChevronRight size={12} />
+                    </button>
                   </div>
-                  <div style={{ minWidth: 0, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                    <span style={{ fontSize: isMobile ? '0.625rem' : '0.725rem', fontWeight: 800, color: '#2563eb', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', lineHeight: 1.15 }}>
-                      {isMobile ? t('LỊCH HẸN') : t('LỊCH HẸN GẶP SẮP DIỄN RA')}
-                    </span>
-                    <span style={{ fontSize: isMobile ? '0.725rem' : '0.875rem', fontWeight: 600, color: 'var(--color-text)', overflow: 'hidden', textOverflow: 'ellipsis', display: 'block', whiteSpace: 'nowrap', marginTop: '2px', lineHeight: 1.15 }}>
-                      {renderMeetingMessage()}
-                    </span>
+                )}
+
+                {/* 2. Cooperation slips alert */}
+                {hasCoops && (
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', flexWrap: isMobile ? 'wrap' : 'nowrap', padding: '4px 0', borderTop: '1px dashed var(--color-border-light)', paddingTop: '10px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0, flex: 1 }}>
+                      <div style={{ width: 28, height: 28, borderRadius: '50%', background: 'rgba(16, 185, 129, 0.08)', color: '#10b981', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        <Scale size={15} />
+                      </div>
+                      <span style={{ fontSize: '0.825rem', color: 'var(--color-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {t('Yêu cầu ký phiếu hợp tác: ')}
+                        <strong style={{ color: '#10b981', fontWeight: 800 }}>{pendingCoopsCount}</strong>
+                        {t(' phiếu đang chờ bạn ký.')}
+                      </span>
+                    </div>
+                    <button
+                      onClick={() => {
+                        const firstSlipId = pendingCoopSlips[0]?.id;
+                        navigate(firstSlipId ? `/cooperation-slips?sign_id=${firstSlipId}` : '/cooperation-slips');
+                      }}
+                      style={{
+                        padding: '4px 10px',
+                        fontSize: '0.75rem',
+                        fontWeight: 700,
+                        background: 'rgba(16, 185, 129, 0.08)',
+                        color: '#10b981',
+                        border: 'none',
+                        borderRadius: '6px',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '2px',
+                        marginLeft: 'auto'
+                      }}
+                    >
+                      {t('Ký ngay')} <ChevronRight size={12} />
+                    </button>
                   </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setShowUpcomingMeetingsModal(true)}
-                  style={{
-                    background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
-                    border: 'none',
-                    color: '#ffffff',
-                    padding: isMobile ? '5px 10px' : '8px 16px',
-                    fontSize: isMobile ? '0.68rem' : '0.8rem',
-                    fontWeight: 700,
-                    borderRadius: '20px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '4px',
-                    cursor: 'pointer',
-                    whiteSpace: 'nowrap',
-                    flexShrink: 0,
-                    boxShadow: '0 3px 10px rgba(37, 99, 235, 0.3)',
-                    transition: 'transform 0.2s, box-shadow 0.2s'
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.transform = 'translateY(-1px)';
-                    e.currentTarget.style.boxShadow = '0 5px 14px rgba(37, 99, 235, 0.4)';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.transform = 'translateY(0)';
-                    e.currentTarget.style.boxShadow = '0 3px 10px rgba(37, 99, 235, 0.3)';
-                  }}
-                >
-                  <Eye size={isMobile ? 10 : 13} />
-                  <span>{isMobile ? t('Xem') : t('Xem danh sách')}</span>
-                </button>
+                )}
+
+                {/* 3. AI suggestion alert */}
+                {aiCount > 0 && (
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', flexWrap: isMobile ? 'wrap' : 'nowrap', padding: '4px 0', borderTop: '1px dashed var(--color-border-light)', paddingTop: '10px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0, flex: 1 }}>
+                      <div style={{ width: 28, height: 28, borderRadius: '50%', background: 'rgba(189, 29, 45, 0.08)', color: 'var(--color-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        <Sparkles size={14} />
+                      </div>
+                      <span style={{ fontSize: '0.825rem', color: 'var(--color-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {aiMessage}
+                      </span>
+                    </div>
+                    <button
+                      onClick={handleStartFocusSession}
+                      style={{
+                        padding: '4px 10px',
+                        fontSize: '0.75rem',
+                        fontWeight: 700,
+                        background: 'linear-gradient(135deg, #E52E3D 0%, #BD1D2D 100%)',
+                        color: '#ffffff',
+                        border: 'none',
+                        borderRadius: '6px',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '2px',
+                        marginLeft: 'auto'
+                      }}
+                    >
+                      <Play size={10} fill="#ffffff" /> {t('Xử lý ngay')}
+                    </button>
+                  </div>
+                )}
+
+                {/* 4. Upcoming meetings alert */}
+                {meetingCount > 0 && (
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', flexWrap: isMobile ? 'wrap' : 'nowrap', padding: '4px 0', borderTop: '1px dashed var(--color-border-light)', paddingTop: '10px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0, flex: 1 }}>
+                      <div style={{ width: 28, height: 28, borderRadius: '50%', background: 'rgba(37, 99, 235, 0.08)', color: '#2563eb', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        <Calendar size={14} />
+                      </div>
+                      <span style={{ fontSize: '0.825rem', color: 'var(--color-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {t('Lịch hẹn sắp diễn ra: ')}
+                        <strong style={{ color: '#2563eb', fontWeight: 800 }}>{meetingCount}</strong>
+                        {t(' cuộc hẹn gặp khách hàng đã lên lịch.')}
+                      </span>
+                    </div>
+                    <button
+                      onClick={() => setShowUpcomingMeetingsModal(true)}
+                      style={{
+                        padding: '4px 10px',
+                        fontSize: '0.75rem',
+                        fontWeight: 700,
+                        background: 'rgba(37, 99, 235, 0.08)',
+                        color: '#2563eb',
+                        border: 'none',
+                        borderRadius: '6px',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '2px',
+                        marginLeft: 'auto'
+                      }}
+                    >
+                      {t('Xem danh sách')} <ChevronRight size={12} />
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           );
