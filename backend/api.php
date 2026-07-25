@@ -11114,6 +11114,42 @@ switch ($action) {
         }
         break;
 
+    case 'get_db_schema':
+        if (empty($decodedUser['role']) || ($decodedUser['role'] !== 'admin' && $decodedUser['role'] !== 'superadmin' && $decodedUser['role'] !== 'super_admin')) {
+            echo json_encode(['success' => false, 'message' => 'Quyền truy cập bị từ chối. Chỉ dành cho Admin.']);
+            break;
+        }
+        $schemaPath = __DIR__ . '/db_schema.json';
+        if (file_exists($schemaPath)) {
+            $data = json_decode(file_get_contents($schemaPath), true);
+            echo json_encode(['success' => true, 'schema' => $data['schema']]);
+        } else {
+            try {
+                $tablesRes = $conn->query("SHOW TABLES");
+                $schema = [];
+                while ($tRow = $tablesRes->fetch_row()) {
+                    $tableName = $tRow[0];
+                    $colsRes = $conn->query("SHOW COLUMNS FROM `$tableName`");
+                    $columns = [];
+                    while ($cRow = $colsRes->fetch_assoc()) {
+                        $columns[] = [
+                            'field'   => $cRow['Field'],
+                            'type'    => $cRow['Type'],
+                            'null'    => $cRow['Null'],
+                            'key'     => $cRow['Key'],
+                            'default' => $cRow['Default'],
+                            'extra'   => $cRow['Extra']
+                        ];
+                    }
+                    $schema[$tableName] = $columns;
+                }
+                echo json_encode(['success' => true, 'schema' => $schema]);
+            } catch (Exception $e) {
+                echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+            }
+        }
+        break;
+
     case 'optimize_db':
         if (empty($decodedUser['role']) || ($decodedUser['role'] !== 'admin' && $decodedUser['role'] !== 'superadmin' && $decodedUser['role'] !== 'super_admin')) {
             echo json_encode(['success' => false, 'message' => 'Quyền truy cập bị từ chối. Chỉ dành cho Admin.']);

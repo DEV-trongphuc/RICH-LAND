@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import dbSchemaJson from '../assets/db_schema.json';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useUIStore } from '../store/uiStore';
@@ -209,7 +210,8 @@ const SettingsInner = () => {
       items: [
         { value: 'ai_assistant', label: t('Trợ lý AI (Gemini)'), icon: <Zap size={15} /> },
         { value: 'workflow_templates', label: t('Mẫu Quy trình'), icon: <FileText size={15} /> },
-        { value: 'database_maintenance', label: t('Bảo trì Database'), icon: <Database size={15} /> }
+        { value: 'database_maintenance', label: t('Bảo trì Database'), icon: <Database size={15} /> },
+        { value: 'database_erd', label: t('Sơ đồ ERD trực quan'), icon: <Activity size={15} /> }
       ]
     }
   ];
@@ -465,6 +467,31 @@ const SettingsInner = () => {
   const [loadingDb, setLoadingDb] = useState(false);
   const [dbActionRunning, setDbActionRunning] = useState(false);
   const [dbLogs, setDbLogs] = useState<string[]>([]);
+
+  // Database ERD State & Fetching
+  const [dbSchema, setDbSchema] = useState<Record<string, any>>(dbSchemaJson.schema || {});
+  const [selectedErdTable, setSelectedErdTable] = useState<string>('');
+  const [erdSearchQuery, setErdSearchQuery] = useState<string>('');
+  const [loadingSchema, setLoadingSchema] = useState(false);
+
+  const fetchDbSchema = async () => {
+    setLoadingSchema(true);
+    setTimeout(() => {
+      setDbSchema(dbSchemaJson.schema || {});
+      toast.success('Đã làm mới dữ liệu từ file cấu trúc tĩnh');
+      setLoadingSchema(false);
+    }, 300);
+  };
+
+  useEffect(() => {
+    if (activeTab === 'database_erd') {
+      const schemaData = dbSchemaJson.schema || {};
+      setDbSchema(schemaData);
+      if (Object.keys(schemaData).length > 0 && !selectedErdTable) {
+        setSelectedErdTable(schemaData['users'] ? 'users' : Object.keys(schemaData)[0]);
+      }
+    }
+  }, [activeTab]);
 
   const fetchDbStats = async () => {
     setLoadingDb(true);
@@ -2101,9 +2128,22 @@ const SettingsInner = () => {
         }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', flex: 1 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <h1 className="page-title" style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: isMobile ? '1.15rem' : '1.5rem', margin: 0, fontWeight: 800 }}>
-                <Settings2 size={isMobile ? 20 : 24} color="var(--color-primary)" /> {t('Cài đặt')}
-              </h1>
+              {activeTab === 'database_erd' ? (
+                <h1 className="page-title" style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: isMobile ? '1.15rem' : '1.5rem', margin: 0, fontWeight: 800 }}>
+                  <button 
+                    onClick={() => setActiveTab('business_limits')}
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--color-primary)', fontSize: '1rem', fontWeight: 600, padding: 0 }}
+                  >
+                    <ArrowLeft size={16} /> {t('Quay lại Cài đặt')}
+                  </button>
+                  <span style={{ color: 'var(--color-border)', margin: '0 8px' }}>|</span>
+                  <Settings2 size={isMobile ? 20 : 24} color="var(--color-primary)" /> {t('Sơ đồ ERD trực quan')}
+                </h1>
+              ) : (
+                <h1 className="page-title" style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: isMobile ? '1.15rem' : '1.5rem', margin: 0, fontWeight: 800 }}>
+                  <Settings2 size={isMobile ? 20 : 24} color="var(--color-primary)" /> {t('Cài đặt')}
+                </h1>
+              )}
               {dbVersion && (
                 <span style={{
                   fontSize: '0.725rem',
@@ -2403,7 +2443,7 @@ const SettingsInner = () => {
           style={{ 
             width: '280px', 
             flexShrink: 0, 
-            display: 'flex', 
+            display: activeTab === 'database_erd' ? 'none' : 'flex', 
             flexDirection: 'column', 
             gap: '1.25rem',
             position: 'sticky',
@@ -8068,6 +8108,381 @@ function doPost(e) {
                 </div>
               </div>
             </div>
+
+            {/* ===== TAB: DATABASE ERD DIAGRAM ===== */}
+            <div style={{ display: activeTab === 'database_erd' ? 'block' : 'none' }} className="subtab-enter-active">
+              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '260px 1fr', gap: '1.5rem', marginTop: 0 }}>
+                {/* Left side: Search & Table list */}
+                <div className="card" style={{ padding: '1.25rem', height: isMobile ? 'auto' : 'calc(100vh - 120px)', display: 'flex', flexDirection: 'column', gap: '1rem', overflowY: 'auto' }}>
+                  <div>
+                    <h4 style={{ fontSize: '0.875rem', fontWeight: 800, margin: '0 0 8px', color: 'var(--color-text)' }}>{t('Danh sách Bảng')}</h4>
+                    <div style={{ position: 'relative' }}>
+                      <input
+                        type="text"
+                        className="form-input"
+                        placeholder={t("Tìm kiếm bảng...")}
+                        value={erdSearchQuery}
+                        onChange={e => setErdSearchQuery(e.target.value)}
+                        style={{ height: '36px', paddingLeft: '12px', paddingRight: '32px', fontSize: '0.8125rem' }}
+                      />
+                      <Search size={14} style={{ position: 'absolute', right: '10px', top: '11px', color: 'var(--color-text-muted)' }} />
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', overflowY: 'auto', flex: 1 }}>
+                    {loadingSchema ? (
+                      Array.from({ length: 8 }).map((_, i) => (
+                        <Skeleton key={i} height={36} style={{ marginBottom: '6px' }} />
+                      ))
+                    ) : (
+                      Object.keys(dbSchema)
+                        .filter(tName => tName.toLowerCase().includes(erdSearchQuery.toLowerCase()))
+                        .map(tableName => {
+                          const isSelected = selectedErdTable === tableName;
+                          const stats = dbTables.find(tbl => tbl.name.toLowerCase() === tableName.toLowerCase());
+                          const rowCount = stats && stats.rows > 0 ? stats.rows : null;
+                          return (
+                            <div
+                              key={tableName}
+                              onClick={() => setSelectedErdTable(tableName)}
+                              style={{
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                alignItems: 'center',
+                                padding: '8px 12px',
+                                borderRadius: '8px',
+                                cursor: 'pointer',
+                                background: isSelected ? 'rgba(189, 29, 45, 0.08)' : 'transparent',
+                                border: isSelected ? '1px solid rgba(189, 29, 45, 0.3)' : '1px solid transparent',
+                                transition: 'all 0.2s',
+                                userSelect: 'none'
+                              }}
+                              className="table-item-hover"
+                            >
+                              <span style={{
+                                fontSize: '0.8125rem',
+                                fontWeight: isSelected ? 700 : 500,
+                                color: isSelected ? 'var(--color-primary)' : 'var(--color-text)'
+                              }}>
+                                {tableName}
+                              </span>
+                              {rowCount !== null && (
+                                <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', background: 'var(--color-bg)', padding: '2px 6px', borderRadius: '4px' }}>
+                                  {rowCount.toLocaleString()}
+                                </span>
+                              )}
+                            </div>
+                          );
+                        })
+                    )}
+                  </div>
+                </div>
+
+                {/* Right side: ERD visualization and columns */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                  {loadingSchema ? (
+                    <div className="card" style={{ padding: '2rem' }}>
+                      {Array.from({ length: 6 }).map((_, i) => (
+                        <Skeleton key={i} height={20} style={{ marginBottom: '12px' }} />
+                      ))}
+                    </div>
+                  ) : !selectedErdTable || !dbSchema[selectedErdTable] ? (
+                    <div className="card" style={{ padding: '3rem', textAlign: 'center', color: 'var(--color-text-muted)' }}>
+                      <Database size={40} style={{ marginBottom: '1rem', opacity: 0.5 }} />
+                      <p>{t('Vui lòng chọn một bảng để xem cấu trúc và mối liên hệ')}</p>
+                    </div>
+                  ) : (
+                    <>
+                      {/* Section 1: Interactive Local Relation Map */}
+                      <div className="card" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <div>
+                            <h3 style={{ fontSize: '1.125rem', fontWeight: 800, margin: 0, color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                              <span style={{ display: 'inline-flex', background: 'rgba(189, 29, 45, 0.1)', color: 'var(--color-primary)', padding: 6, borderRadius: 8 }}>
+                                <Activity size={16} />
+                              </span>
+                              {t('Bản đồ Mối quan hệ liên kết')} ({selectedErdTable})
+                            </h3>
+                            <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', margin: '4px 0 0' }}>
+                              {t('Nhấp chuột vào bất kỳ bảng liên quan nào để chuyển hướng xem cấu trúc bảng đó.')}
+                            </p>
+                          </div>
+                          <button
+                            type="button"
+                            className="btn outline"
+                            onClick={fetchDbSchema}
+                            disabled={loadingSchema}
+                            style={{ padding: '6px 12px', fontSize: '0.75rem', height: '32px' }}
+                          >
+                            {t('Tải lại')}
+                          </button>
+                        </div>
+
+                        {/* SVG relationship canvas */}
+                        {(() => {
+                          // Simple heuristic relationship solver
+                          const getRelationships = (currentTable) => {
+                            const parents = [];
+                            const children = [];
+
+                            if (!dbSchema || !dbSchema[currentTable]) return { parents, children };
+
+                            dbSchema[currentTable].forEach((col) => {
+                              const colName = col.field.toLowerCase();
+                              if (colName === 'tenant_id' && dbSchema['tenants']) {
+                                parents.push({ table: 'tenants', fromCol: col.field, toCol: 'id' });
+                              } else if (colName === 'doc_id' && dbSchema['ai_training_docs']) {
+                                parents.push({ table: 'ai_training_docs', fromCol: col.field, toCol: 'id' });
+                              } else if (colName === 'project_id' && dbSchema['projects']) {
+                                parents.push({ table: 'projects', fromCol: col.field, toCol: 'id' });
+                              } else if (colName === 'company_id' && dbSchema['companies']) {
+                                parents.push({ table: 'companies', fromCol: col.field, toCol: 'id' });
+                              } else if (colName === 'contact_id' && dbSchema['contacts']) {
+                                parents.push({ table: 'contacts', fromCol: col.field, toCol: 'id' });
+                              } else if (colName === 'deal_id' && dbSchema['deals']) {
+                                parents.push({ table: 'deals', fromCol: col.field, toCol: 'id' });
+                              } else if (colName === 'quote_id' && dbSchema['quotes']) {
+                                parents.push({ table: 'quotes', fromCol: col.field, toCol: 'id' });
+                              } else if (colName === 'invoice_id' && dbSchema['invoices']) {
+                                parents.push({ table: 'invoices', fromCol: col.field, toCol: 'id' });
+                              } else if (colName === 'team_id' && dbSchema['teams']) {
+                                parents.push({ table: 'teams', fromCol: col.field, toCol: 'id' });
+                              } else if (colName === 'round_id' && dbSchema['distribution_rounds']) {
+                                parents.push({ table: 'distribution_rounds', fromCol: col.field, toCol: 'id' });
+                              } else if (colName === 'consultant_id' && dbSchema['consultants']) {
+                                parents.push({ table: 'consultants', fromCol: col.field, toCol: 'id' });
+                              } else if (colName === 'parent_id') {
+                                parents.push({ table: currentTable, fromCol: col.field, toCol: 'id' });
+                              } else if (['user_id', 'created_by', 'owner_id', 'approver_id'].includes(colName) && dbSchema['users']) {
+                                parents.push({ table: 'users', fromCol: col.field, toCol: 'id' });
+                              }
+                            });
+
+                            Object.keys(dbSchema).forEach((otherTable) => {
+                              if (otherTable === currentTable) return;
+                              dbSchema[otherTable].forEach((col) => {
+                                const colName = col.field.toLowerCase();
+                                if (colName === 'tenant_id') return;
+
+                                let matches = false;
+                                let toCol = 'id';
+                                if (currentTable === 'users' && ['user_id', 'created_by', 'owner_id', 'approver_id'].includes(colName)) {
+                                  matches = true;
+                                } else if (currentTable === 'ai_training_docs' && colName === 'doc_id') {
+                                  matches = true;
+                                } else if (currentTable === 'projects' && colName === 'project_id') {
+                                  matches = true;
+                                } else if (currentTable === 'companies' && colName === 'company_id') {
+                                  matches = true;
+                                } else if (currentTable === 'contacts' && colName === 'contact_id') {
+                                  matches = true;
+                                } else if (currentTable === 'deals' && colName === 'deal_id') {
+                                  matches = true;
+                                } else if (currentTable === 'quotes' && colName === 'quote_id') {
+                                  matches = true;
+                                } else if (currentTable === 'invoices' && colName === 'invoice_id') {
+                                  matches = true;
+                                } else if (currentTable === 'teams' && colName === 'team_id') {
+                                  matches = true;
+                                } else if (currentTable === 'distribution_rounds' && colName === 'round_id') {
+                                  matches = true;
+                                } else if (currentTable === 'consultants' && colName === 'consultant_id') {
+                                  matches = true;
+                                }
+
+                                if (matches) {
+                                  children.push({ table: otherTable, fromCol: col.field, toCol });
+                                }
+                              });
+                            });
+
+                            return { parents, children };
+                          };
+
+                          const { parents, children } = getRelationships(selectedErdTable);
+                          const svgWidth = 850;
+                          const svgHeight = Math.max(260, Math.max(parents.length, children.length) * 60 + 40);
+                          
+                          const cardH = 46;
+                          const getCardW = (tableName) => Math.max(160, tableName.length * 8.5);
+                          
+                          const centerCardW = getCardW(selectedErdTable);
+                          const centerNode = { x: (svgWidth - centerCardW) / 2, y: (svgHeight - cardH) / 2 };
+                          
+                          const parentsCoords = parents.map((p, idx) => {
+                            const totalH = parents.length * 60;
+                            const startY = (svgHeight - totalH) / 2 + 10;
+                            return {
+                              table: p.table,
+                              fromCol: p.fromCol,
+                              toCol: p.toCol,
+                              x: 30,
+                              y: startY + idx * 60,
+                              cardW: getCardW(p.table)
+                            };
+                          });
+
+                          const childrenCoords = children.map((c, idx) => {
+                            const totalH = children.length * 60;
+                            const startY = (svgHeight - totalH) / 2 + 10;
+                            const nodeCardW = getCardW(c.table);
+                            return {
+                              table: c.table,
+                              fromCol: c.fromCol,
+                              toCol: c.toCol,
+                              x: svgWidth - nodeCardW - 30,
+                              y: startY + idx * 60,
+                              cardW: nodeCardW
+                            };
+                          });
+
+                          return (
+                            <div style={{ overflowX: 'auto', background: 'var(--color-bg)', border: '1px solid var(--color-border)', borderRadius: '12px', padding: '1rem' }}>
+                              <svg width="100%" height={svgHeight} viewBox={`0 0 ${svgWidth} ${svgHeight}`} style={{ minWidth: '700px', display: 'block', margin: '0 auto' }}>
+                                <defs>
+                                  <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                                    <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--color-text-muted)" />
+                                  </marker>
+                                </defs>
+
+                                {/* Draw parent connectors (left to center) */}
+                                {parentsCoords.map((p, idx) => {
+                                  const startX = p.x + p.cardW;
+                                  const startY = p.y + cardH / 2;
+                                  const endX = centerNode.x;
+                                  const endY = centerNode.y + cardH / 2 + (idx - (parents.length - 1) / 2) * 5;
+                                  return (
+                                    <g key={`p-conn-${idx}`}>
+                                      <path
+                                        d={`M ${startX} ${startY} C ${(startX + endX) / 2} ${startY}, ${(startX + endX) / 2} ${endY}, ${endX} ${endY}`}
+                                        fill="none"
+                                        stroke="var(--color-border)"
+                                        strokeWidth="1.5"
+                                        markerEnd="url(#arrow)"
+                                      />
+                                      <text x={(startX + endX) / 2} y={(startY + endY) / 2 - 4} fontSize="9px" fill="var(--color-text-muted)" textAnchor="middle">
+                                        {p.fromCol} → {p.toCol}
+                                      </text>
+                                    </g>
+                                  );
+                                })}
+
+                                {/* Draw child connectors (right to center) */}
+                                {childrenCoords.map((c, idx) => {
+                                  const startX = c.x;
+                                  const startY = c.y + cardH / 2;
+                                  const endX = centerNode.x + centerCardW;
+                                  const endY = centerNode.y + cardH / 2 + (idx - (children.length - 1) / 2) * 5;
+                                  return (
+                                    <g key={`c-conn-${idx}`}>
+                                      <path
+                                        d={`M ${startX} ${startY} C ${(startX + endX) / 2} ${startY}, ${(startX + endX) / 2} ${endY}, ${endX} ${endY}`}
+                                        fill="none"
+                                        stroke="var(--color-border)"
+                                        strokeWidth="1.5"
+                                        markerEnd="url(#arrow)"
+                                      />
+                                      <text x={(startX + endX) / 2} y={(startY + endY) / 2 - 4} fontSize="9px" fill="var(--color-text-muted)" textAnchor="middle">
+                                        {c.fromCol} → {c.toCol}
+                                      </text>
+                                    </g>
+                                  );
+                                })}
+
+                                {/* Render parent nodes */}
+                                {parentsCoords.map((p, idx) => (
+                                  <g key={`parent-node-${idx}`} style={{ cursor: 'pointer' }} onClick={() => setSelectedErdTable(p.table)}>
+                                    <rect x={p.x} y={p.y} width={p.cardW} height={cardH} rx="8" fill="var(--color-surface)" stroke="var(--color-border)" strokeWidth="1.5" />
+                                    <text x={p.x + p.cardW/2} y={p.y + cardH/2 + 4} fontSize="11px" fontWeight="600" fill="var(--color-text)" textAnchor="middle">
+                                      {p.table}
+                                    </text>
+                                    <circle cx={p.x} cy={p.y + cardH/2} r="3" fill="var(--color-primary)" />
+                                  </g>
+                                ))}
+
+                                {/* Render central node */}
+                                <g>
+                                  <rect
+                                    x={centerNode.x}
+                                    y={centerNode.y}
+                                    width={centerCardW}
+                                    height={cardH}
+                                    rx="10"
+                                    fill="var(--color-surface)"
+                                    stroke="var(--color-primary)"
+                                    strokeWidth="2"
+                                    style={{ filter: 'drop-shadow(0px 0px 8px rgba(189,29,45,0.15))' }}
+                                  />
+                                  <text x={centerNode.x + centerCardW/2} y={centerNode.y + cardH/2 + 4} fontSize="12px" fontWeight="800" fill="var(--color-primary)" textAnchor="middle">
+                                    {selectedErdTable}
+                                  </text>
+                                  <circle cx={centerNode.x} cy={centerNode.y + cardH/2} r="4" fill="var(--color-primary)" />
+                                  <circle cx={centerNode.x + centerCardW} cy={centerNode.y + cardH/2} r="4" fill="var(--color-primary)" />
+                                </g>
+
+                                {/* Render child nodes */}
+                                {childrenCoords.map((c, idx) => (
+                                  <g key={`child-node-${idx}`} style={{ cursor: 'pointer' }} onClick={() => setSelectedErdTable(c.table)}>
+                                    <rect x={c.x} y={c.y} width={c.cardW} height={cardH} rx="8" fill="var(--color-surface)" stroke="var(--color-border)" strokeWidth="1.5" />
+                                    <text x={c.x + c.cardW/2} y={c.y + cardH/2 + 4} fontSize="11px" fontWeight="600" fill="var(--color-text)" textAnchor="middle">
+                                      {c.table}
+                                    </text>
+                                    <circle cx={c.x + c.cardW} cy={c.y + cardH/2} r="3" fill="var(--color-primary)" />
+                                  </g>
+                                ))}
+                              </svg>
+                            </div>
+                          );
+                        })()}
+                      </div>
+
+                      {/* Section 2: Detailed Column definitions */}
+                      <div className="card" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                        <h4 style={{ fontSize: '0.95rem', fontWeight: 800, margin: 0, color: 'var(--color-text)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                          {t('Định nghĩa chi tiết Cấu trúc bảng')}
+                        </h4>
+                        <div style={{ overflowX: 'auto', border: '1px solid var(--color-border-light)', borderRadius: '12px' }}>
+                          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem' }}>
+                            <thead>
+                              <tr style={{ background: 'var(--color-bg-light)', borderBottom: '1px solid var(--color-border)' }}>
+                                <th style={{ padding: '10px 16px', fontWeight: 700, color: 'var(--color-text-muted)', textAlign: 'left' }}>{t('Trường (Field)')}</th>
+                                <th style={{ padding: '10px 16px', fontWeight: 700, color: 'var(--color-text-muted)', textAlign: 'left' }}>{t('Kiểu dữ liệu (Type)')}</th>
+                                <th style={{ padding: '10px 16px', fontWeight: 700, color: 'var(--color-text-muted)', textAlign: 'center' }}>{t('Rỗng (Null)')}</th>
+                                <th style={{ padding: '10px 16px', fontWeight: 700, color: 'var(--color-text-muted)', textAlign: 'center' }}>{t('Khóa (Key)')}</th>
+                                <th style={{ padding: '10px 16px', fontWeight: 700, color: 'var(--color-text-muted)', textAlign: 'left' }}>{t('Mặc định (Default)')}</th>
+                                <th style={{ padding: '10px 16px', fontWeight: 700, color: 'var(--color-text-muted)', textAlign: 'left' }}>{t('Mở rộng (Extra)')}</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {dbSchema[selectedErdTable].map((col, idx) => {
+                                const isKey = !!col.key;
+                                return (
+                                  <tr key={idx} style={{ borderBottom: idx < dbSchema[selectedErdTable].length - 1 ? '1px solid var(--color-border-light)' : 'none', background: idx % 2 === 0 ? 'transparent' : 'var(--color-bg-light-alpha)' }}>
+                                    <td style={{ padding: '10px 16px', fontWeight: 600, color: 'var(--color-text)' }}>
+                                      <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                        {col.field}
+                                        {col.key === 'PRI' && <span style={{ fontSize: '0.65rem', background: 'rgba(217,119,6,0.1)', color: '#D97706', padding: '1px 5px', borderRadius: '4px', fontWeight: 700 }}>PK</span>}
+                                        {col.key === 'MUL' && <span style={{ fontSize: '0.65rem', background: 'rgba(59,130,246,0.1)', color: '#3B82F6', padding: '1px 5px', borderRadius: '4px', fontWeight: 700 }}>FK</span>}
+                                      </span>
+                                    </td>
+                                    <td style={{ padding: '10px 16px', fontFamily: 'monospace', color: 'var(--color-text-muted)' }}>{col.type}</td>
+                                    <td style={{ padding: '10px 16px', textAlign: 'center', color: col.null === 'YES' ? '#10B981' : 'var(--color-text-muted)' }}>{col.null}</td>
+                                    <td style={{ padding: '10px 16px', textAlign: 'center', fontWeight: 700, color: 'var(--color-primary)' }}>{col.key}</td>
+                                    <td style={{ padding: '10px 16px', color: 'var(--color-text-muted)' }}>{col.default === null ? 'NULL' : col.default}</td>
+                                    <td style={{ padding: '10px 16px', color: 'var(--color-text-muted)', fontStyle: 'italic' }}>{col.extra}</td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>
+
           </div>
         )}
           </motion.div>
