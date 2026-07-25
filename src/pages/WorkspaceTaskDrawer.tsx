@@ -228,6 +228,7 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
   // Resource adding state
   const [showAddChecklist, setShowAddChecklist] = useState(false);
   const editorRef = React.useRef(null);
+  const isFocusedRef = React.useRef(false);
 
   const handleEditorCommand = (command, value = '') => {
     document.execCommand(command, false, value);
@@ -245,6 +246,13 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
       handleEditorCommand('createLink', absoluteUrl);
     }
   };
+
+  // Sync description from backend ONLY when user is not actively typing/focused
+  useEffect(() => {
+    if (!isFocusedRef.current && editorRef.current) {
+      editorRef.current.innerHTML = erpMeta?.description || '';
+    }
+  }, [erpMeta?.description]);
   const [isEditingDesc, setIsEditingDesc] = useState(false);
 
   const renderFormattedText = (text) => {
@@ -1554,6 +1562,16 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
 
             {/* Mô tả chi tiết */}
             <div className="card" style={cardStyle}>
+              <style>{`
+                .rich-text-editor-content ul, .rich-text-editor-content ol {
+                  padding-left: 1.5rem !important;
+                  margin: 0.5rem 0 !important;
+                  list-style-position: outside !important;
+                }
+                .rich-text-editor-content li {
+                  margin-bottom: 0.25rem !important;
+                }
+              `}</style>
               <label style={cardLabelStyle}>
                 {t('Mô tả chi tiết')}
               </label>
@@ -1653,7 +1671,11 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
                   ref={editorRef}
                   contentEditable
                   dangerouslySetInnerHTML={{ __html: erpMeta.description || '' }}
+                  onFocus={() => {
+                    isFocusedRef.current = true;
+                  }}
                   onBlur={(e) => {
+                    isFocusedRef.current = false;
                     const html = e.currentTarget.innerHTML;
                     setErpMeta((prev) => ({ ...prev, description: html }));
                     handleSaveMeta({ ...erpMeta, description: html });
