@@ -421,7 +421,11 @@ class ActivityController {
         if ($type)     { $where[]='a.type=?';    $params[]=$type; }
         if ($status)   { $where[]='a.status=?';  $params[]=$status; }
         if ($uid)      { $where[]='a.user_id=?'; $params[]=(int)$uid; }
-        if ($teamId)   { $where[]='a.user_id IN (SELECT id FROM users WHERE team_id = ?)'; $params[]=(int)$teamId; }
+        if ($teamId)   { 
+            $where[] = '(a.user_id IN (SELECT id FROM users WHERE team_id = ?) OR (a.related_type = \'team\' AND a.related_id = ?))'; 
+            $params[] = (int)$teamId; 
+            $params[] = (int)$teamId; 
+        }
         if ($relType && $relId) {
             if ($relType === 'contact') {
                 $where[] = '((a.related_type = ? AND a.related_id = ?) OR a.contact_id = ?)';
