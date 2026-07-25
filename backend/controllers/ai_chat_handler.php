@@ -221,14 +221,35 @@ try {
                         $chunkVector = json_decode($row['vector'], true);
                         $normB = (float)($row['vector_norm'] ?? 0.0);
                         
-                        if (is_array($chunkVector) && $normB > 0.0 && $normQ > 0.0) {
-                            $dotProduct = 0.0;
-                            $dim = count($queryVector);
-                            for ($i = 0; $i < $dim; $i++) {
-                                $dotProduct += $queryVector[$i] * $chunkVector[$i];
+                        if (is_array($chunkVector)) {
+                            // Self-healing fallback: Calculate normB dynamically for old chunks and update DB
+                            if ($normB <= 0.0) {
+                                foreach ($chunkVector as $v) {
+                                    $normB += $v * $v;
+                                }
+                                $normB = sqrt($normB);
+                                
+                                if ($normB > 0.0) {
+                                    $upStmt = $conn->prepare("UPDATE ai_training_chunks SET vector_norm = ? WHERE id = ?");
+                                    if ($upStmt) {
+                                        $upStmt->bind_param("di", $normB, $id);
+                                        $upStmt->execute();
+                                        $upStmt->close();
+                                    }
+                                }
                             }
-                            $sim = $dotProduct / ($normQ * $normB);
-                            $vectorScores[$id] = $sim;
+
+                            if ($normB > 0.0 && $normQ > 0.0) {
+                                $dotProduct = 0.0;
+                                $dim = count($queryVector);
+                                for ($i = 0; $i < $dim; $i++) {
+                                    $dotProduct += $queryVector[$i] * $chunkVector[$i];
+                                }
+                                $sim = $dotProduct / ($normQ * $normB);
+                                $vectorScores[$id] = $sim;
+                            } else {
+                                $vectorScores[$id] = 0.0;
+                            }
                         } else {
                             $vectorScores[$id] = 0.0;
                         }
