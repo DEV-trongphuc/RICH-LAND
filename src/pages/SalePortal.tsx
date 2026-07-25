@@ -5369,7 +5369,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                       }}
                       className="hover-lift"
                     >
-                      <Play size={10} fill="var(--color-primary)" /> {t('Xử lý ngay')}
+                      {t('Xử lý ngay')} <ChevronRight size={12} />
                     </button>
                   </div>
                 )}
