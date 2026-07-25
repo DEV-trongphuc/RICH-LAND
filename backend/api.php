@@ -60,6 +60,158 @@ require_once 'config.php';
 require_once 'db_connect.php';
 require_once 'permission_matrix_helper.php';
 
+// ==========================================
+// VECTOR RAG HELPER FUNCTIONS FOR GEMINI API
+// ==========================================
+
+if (!function_exists('extract_pdf_text_via_gemini')) {
+    function extract_pdf_text_via_gemini($filePath, $apiKey) {
+        $fullPath = $_SERVER['DOCUMENT_ROOT'] . $filePath;
+        if (!file_exists($fullPath)) {
+            $fullPath = __DIR__ . '/..' . $filePath;
+            if (!file_exists($fullPath)) {
+                $fullPath = __DIR__ . $filePath;
+            }
+        }
+        
+        if (!file_exists($fullPath)) {
+            error_log("extract_pdf_text_via_gemini: File not found at " . $fullPath);
+            return "";
+        }
+        
+        $data = file_get_contents($fullPath);
+        if (empty($data)) {
+            return "";
+        }
+        
+        $base64 = base64_encode($data);
+        $payload = [
+            'contents' => [[
+                'parts' => [
+                    [
+                        'inlineData' => [
+                            'mimeType' => 'application/pdf',
+                            'data' => $base64
+                        ]
+                    ],
+                    [
+                        'text' => 'Hãy trích xuất và trả về toàn bộ nội dung văn bản (text) tiếng Việt có trong tài liệu PDF này dưới dạng văn bản thô (raw text) đầy đủ nhất có thể. Không thêm bình luận, tiêu đề phụ, hay bất kỳ giải thích nào khác.'
+                    ]
+                ]
+            ]],
+            'generationConfig' => [
+                'temperature' => 0.1
+            ]
+        ];
+
+        $url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=" . $apiKey;
+
+        $ch = curl_init($url);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));
+        curl_setopt($ch, CURLOPT_TIMEOUT, 60);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
+        $response = curl_exec($ch);
+        curl_close($ch);
+
+        if (!$response) return "";
+        $resJson = json_decode($response, true);
+        return $resJson['candidates'][0]['content']['parts'][0]['text'] ?? '';
+    }
+}
+
+if (!function_exists('fetch_web_content')) {
+    function fetch_web_content($url) {
+        $opts = [
+            'http' => [
+                'method' => 'GET',
+                'header' => "User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36\r\n",
+                'timeout' => 15
+            ]
+        ];
+        $context = stream_context_create($opts);
+        $html = @file_get_contents($url, false, $context);
+        if (empty($html)) return '';
+        
+        $html = preg_replace('/<script\b[^>]*>(.*?)<\/script>/is', '', $html);
+        $html = preg_replace('/<style\b[^>]*>(.*?)<\/style>/is', '', $html);
+        $text = strip_tags($html);
+        $text = html_entity_decode($text, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        $text = preg_replace('/\s+/', ' ', $text);
+        return trim($text);
+    }
+}
+
+if (!function_exists('chunk_text')) {
+    function chunk_text($text, $chunkSize = 700, $chunkOverlap = 150) {
+        $chunks = [];
+        $length = mb_strlen($text, 'UTF-8');
+        if ($length <= $chunkSize) {
+            return [$text];
+        }
+        $start = 0;
+        while ($start < $length) {
+            $chunk = mb_substr($text, $start, $chunkSize, 'UTF-8');
+            $chunks[] = $chunk;
+            $start += ($chunkSize - $chunkOverlap);
+        }
+        return $chunks;
+    }
+}
+
+if (!function_exists('generate_embedding')) {
+    function generate_embedding($text, $apiKey) {
+        if (empty($text)) return null;
+        $payload = [
+            'model' => 'models/text-embedding-004',
+            'content' => [
+                'parts' => [[
+                    'text' => $text
+                ]]
+            ]
+        ];
+
+        $url = "https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent?key=" . $apiKey;
+
+        $ch = curl_init($url);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));
+        curl_setopt($ch, CURLOPT_TIMEOUT, 15);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
+        $response = curl_exec($ch);
+        curl_close($ch);
+
+        if (!$response) return null;
+        $resJson = json_decode($response, true);
+        return $resJson['embedding']['values'] ?? null;
+    }
+}
+
+if (!function_exists('cosine_similarity')) {
+    function cosine_similarity($vec1, $vec2) {
+        if (!is_array($vec1) || !is_array($vec2) || count($vec1) !== count($vec2)) {
+            return 0.0;
+        }
+        $dotProduct = 0.0;
+        $normA = 0.0;
+        $normB = 0.0;
+        $count = count($vec1);
+        for ($i = 0; $i < $count; $i++) {
+            $dotProduct += $vec1[$i] * $vec2[$i];
+            $normA += $vec1[$i] * $vec1[$i];
+            $normB += $vec2[$i] * $vec2[$i];
+        }
+        if ($normA == 0.0 || $normB == 0.0) {
+            return 0.0;
+        }
+        return $dotProduct / (sqrt($normA) * sqrt($normB));
+    }
+}
+
 // Safe CORS origin matching
 $httpOrigin = $_SERVER['HTTP_ORIGIN'] ?? '';
 $allowedOrigins = [
@@ -11496,6 +11648,21 @@ switch ($action) {
                 $conn->query("ALTER TABLE ai_training_docs ADD COLUMN `version` INT DEFAULT 1");
             }
 
+            // Auto-create ai_training_chunks table if not exists
+            $tableCheck = $conn->query("SHOW TABLES LIKE 'ai_training_chunks'");
+            if (!$tableCheck || $tableCheck->num_rows === 0) {
+                $conn->query("CREATE TABLE IF NOT EXISTS `ai_training_chunks` (
+                    `id` INT AUTO_INCREMENT PRIMARY KEY,
+                    `tenant_id` INT DEFAULT 1,
+                    `doc_id` INT NOT NULL,
+                    `chunk_index` INT NOT NULL,
+                    `content` TEXT NOT NULL,
+                    `vector` LONGTEXT NOT NULL,
+                    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (`doc_id`) REFERENCES `ai_training_docs`(`id`) ON DELETE CASCADE
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;");
+            }
+
             $createdBy = $decodedUser['name'] ?? 'Admin';
             $actionType = '';
             if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -11698,14 +11865,153 @@ switch ($action) {
             }
             elseif ($actionType === 'train_docs') {
                 $docIds = $input['doc_ids'] ?? [];
-                if (!empty($docIds) && is_array($docIds)) {
-                    $ids = array_map('intval', $docIds);
-                    $idsPlaceholder = implode(',', $ids);
-                    if (!empty($idsPlaceholder)) {
-                        $conn->query("UPDATE ai_training_docs SET status = 'trained' WHERE id IN ($idsPlaceholder)");
+                if (empty($docIds) || !is_array($docIds)) {
+                    echo json_encode(['success' => false, 'message' => 'Không có tài liệu nào để huấn luyện']);
+                    break;
+                }
+
+                $apiKey = get_system_setting($conn, 'gemini_api_key');
+                if (empty($apiKey)) {
+                    echo json_encode(['success' => false, 'message' => 'Vui lòng cấu hình Gemini API Key trước khi huấn luyện']);
+                    break;
+                }
+
+                // Load RAG settings for chunk_size and chunk_overlap
+                $chunkSize = 700;
+                $chunkOverlap = 150;
+                $rStmt = $conn->prepare("SELECT setting_value FROM system_settings WHERE setting_key = 'rag_settings' LIMIT 1");
+                if ($rStmt) {
+                    $rStmt->execute();
+                    $rRes = $rStmt->get_result()->fetch_assoc();
+                    $rStmt->close();
+                    if ($rRes && !empty($rRes['setting_value'])) {
+                        $ragSettings = json_decode($rRes['setting_value'], true);
+                        $chunkSize = isset($ragSettings['chunk_size']) ? (int)$ragSettings['chunk_size'] : 700;
+                        $chunkOverlap = isset($ragSettings['chunk_overlap']) ? (int)$ragSettings['chunk_overlap'] : 150;
                     }
                 }
-                echo json_encode(['success' => true, 'message' => 'Đã hoàn tất huấn luyện tài liệu']);
+
+                $successCount = 0;
+                $errorMsg = '';
+
+                foreach ($docIds as $idVal) {
+                    $id = (int)$idVal;
+                    if ($id <= 0) continue;
+
+                    // Query the document details
+                    $stmt = $conn->prepare("SELECT name, content, source_type, file_path FROM ai_training_docs WHERE id = ? AND tenant_id = 1");
+                    if (!$stmt) continue;
+                    $stmt->bind_param("i", $id);
+                    $stmt->execute();
+                    $doc = $stmt->get_result()->fetch_assoc();
+                    $stmt->close();
+
+                    if (!$doc) continue;
+
+                    $rawText = '';
+                    $sourceType = $doc['source_type'];
+
+                    // 1. Text extraction based on document type
+                    if ($sourceType === 'file') {
+                        $filePath = $doc['file_path'];
+                        $ext = strtolower(pathinfo($filePath, PATHINFO_EXTENSION));
+                        if ($ext === 'txt') {
+                            // Local TXT file
+                            $fullPath = $_SERVER['DOCUMENT_ROOT'] . $filePath;
+                            if (!file_exists($fullPath)) {
+                                $fullPath = __DIR__ . '/..' . $filePath;
+                                if (!file_exists($fullPath)) {
+                                    $fullPath = __DIR__ . $filePath;
+                                }
+                            }
+                            if (file_exists($fullPath)) {
+                                $rawText = file_get_contents($fullPath);
+                            }
+                        } elseif ($ext === 'pdf') {
+                            // PDF file - extract via Gemini multimodal OCR
+                            $rawText = extract_pdf_text_via_gemini($filePath, $apiKey);
+                            if (strpos($rawText, 'Lỗi:') === 0 || empty($rawText)) {
+                                $errorMsg = "Không thể đọc văn bản từ PDF. Vui lòng kiểm tra API Key.";
+                                $conn->query("UPDATE ai_training_docs SET status = 'error' WHERE id = $id");
+                                continue;
+                            }
+                        } else {
+                            $rawText = $doc['content']; // Fallback
+                        }
+                    } elseif ($sourceType === 'web') {
+                        // Crawl web URL if content starts with URL_TO_CRAWL:
+                        $contentField = $doc['content'];
+                        if (strpos($contentField, 'URL_TO_CRAWL: ') === 0) {
+                            $urlToFetch = trim(substr($contentField, 14));
+                            $rawText = fetch_web_content($urlToFetch);
+                            if (empty($rawText)) {
+                                $errorMsg = "Không thể lấy nội dung từ đường dẫn website: " . $urlToFetch;
+                                $conn->query("UPDATE ai_training_docs SET status = 'error' WHERE id = $id");
+                                continue;
+                            }
+                        } else {
+                            $rawText = $contentField;
+                        }
+                    } else {
+                        // Manual text document
+                        $rawText = $doc['content'];
+                    }
+
+                    if (empty($rawText)) {
+                        $errorMsg = "Nội dung tài liệu trống";
+                        $conn->query("UPDATE ai_training_docs SET status = 'error' WHERE id = $id");
+                        continue;
+                    }
+
+                    // Save the extracted text back into `content` in the database to display in preview mode
+                    $upStmt = $conn->prepare("UPDATE ai_training_docs SET content = ? WHERE id = ?");
+                    if ($upStmt) {
+                        $upStmt->bind_param("si", $rawText, $id);
+                        $upStmt->execute();
+                        $upStmt->close();
+                    }
+
+                    // Delete existing chunks for this doc first to prevent duplication
+                    $conn->query("DELETE FROM ai_training_chunks WHERE doc_id = $id");
+
+                    // 2. Chunk text
+                    $chunks = chunk_text($rawText, $chunkSize, $chunkOverlap);
+
+                    // 3. Generate embeddings and save chunks
+                    $hasError = false;
+                    foreach ($chunks as $idx => $chunk) {
+                        $chunk = trim($chunk);
+                        if (empty($chunk)) continue;
+
+                        $vector = generate_embedding($chunk, $apiKey);
+                        if ($vector === null) {
+                            $hasError = true;
+                            break;
+                        }
+
+                        $vectorJson = json_encode($vector);
+                        $cStmt = $conn->prepare("INSERT INTO ai_training_chunks (tenant_id, doc_id, chunk_index, content, vector) VALUES (1, ?, ?, ?, ?)");
+                        if ($cStmt) {
+                            $cStmt->bind_param("iiss", $id, $idx, $chunk, $vectorJson);
+                            $cStmt->execute();
+                            $cStmt->close();
+                        }
+                    }
+
+                    if ($hasError) {
+                        $errorMsg = "Lỗi khi gọi API tạo Vector Embedding của Google Gemini.";
+                        $conn->query("UPDATE ai_training_docs SET status = 'error' WHERE id = $id");
+                    } else {
+                        $conn->query("UPDATE ai_training_docs SET status = 'trained' WHERE id = $id");
+                        $successCount++;
+                    }
+                }
+
+                if ($successCount > 0) {
+                    echo json_encode(['success' => true, 'message' => "Đã hoàn tất huấn luyện thành công $successCount tài liệu!"]);
+                } else {
+                    echo json_encode(['success' => false, 'message' => !empty($errorMsg) ? $errorMsg : 'Huấn luyện thất bại']);
+                }
             }
             elseif ($actionType === 'upload_training_file') {
                 if (!isset($_FILES['file'])) {
@@ -11944,32 +12250,71 @@ switch ($action) {
 
             $ragContext = '';
             if ($ragEnabled === 1) {
-                $dStmt = $conn->prepare("SELECT name, content, tags, source_type FROM ai_training_docs WHERE tenant_id = 1 AND is_active = 1 AND source_type != 'folder' ORDER BY id ASC");
-                if ($dStmt) {
-                    $dStmt->execute();
-                    $dRes = $dStmt->get_result();
-                    $docsText = [];
-                    while ($dRow = $dRes->fetch_assoc()) {
-                        $docTypeLabel = ($dRow['source_type'] === 'web') ? 'Website' : (($dRow['source_type'] === 'file') ? 'Tệp đính kèm' : 'Văn bản hướng dẫn');
-                        $docText = "=== TÀI LIỆU HƯỚNG DẪN / TRI THỨC ĐÀO TẠO ===\n" .
-                                   "Tiêu đề: " . $dRow['name'] . "\n" .
-                                   "Loại: " . $docTypeLabel . "\n" .
-                                   "Thẻ phân loại: " . $dRow['tags'] . "\n" .
-                                   "Nội dung:\n" . $dRow['content'] . "\n" .
-                                   "==========================================";
-                        $docsText[] = $docText;
-                    }
-                    $dStmt->close();
-                    if (!empty($docsText)) {
-                        $ragContext = implode("\n\n", $docsText);
+                // 1. Generate vector embedding for the user's message
+                $queryVector = generate_embedding($message, $apiKey);
+
+                if (!empty($queryVector)) {
+                    // 2. Fetch all chunks from active documents
+                    $cStmt = $conn->prepare("
+                        SELECT c.content, c.vector, d.name AS doc_name, d.tags, d.source_type
+                        FROM ai_training_chunks c
+                        JOIN ai_training_docs d ON c.doc_id = d.id
+                        WHERE d.tenant_id = 1 AND d.is_active = 1 AND d.status = 'trained'
+                    ");
+                    if ($cStmt) {
+                        $cStmt->execute();
+                        $cRes = $cStmt->get_result();
+                        
+                        $similarityThreshold = isset($ragSettings['similarity_threshold']) ? (float)$ragSettings['similarity_threshold'] : 0.45;
+                        $topK = isset($ragSettings['top_k']) ? (int)$ragSettings['top_k'] : 8;
+
+                        $candidates = [];
+                        while ($cRow = $cRes->fetch_assoc()) {
+                            $chunkVector = json_decode($cRow['vector'], true);
+                            if (is_array($chunkVector)) {
+                                $sim = cosine_similarity($queryVector, $chunkVector);
+                                if ($sim >= $similarityThreshold) {
+                                    $candidates[] = [
+                                        'content' => $cRow['content'],
+                                        'doc_name' => $cRow['doc_name'],
+                                        'tags' => $cRow['tags'],
+                                        'source_type' => $cRow['source_type'],
+                                        'score' => $sim
+                                    ];
+                                }
+                            }
+                        }
+                        $cStmt->close();
+
+                        // 3. Sort candidates by similarity score in descending order
+                        usort($candidates, function($a, $b) {
+                            return $b['score'] <=> $a['score'];
+                        });
+
+                        // 4. Select top K candidates and format the text
+                        $selectedCandidates = array_slice($candidates, 0, $topK);
+                        if (!empty($selectedCandidates)) {
+                            $docsText = [];
+                            foreach ($selectedCandidates as $idx => $cand) {
+                                $docTypeLabel = ($cand['source_type'] === 'web') ? 'Website' : (($cand['source_type'] === 'file') ? 'Tệp đính kèm' : 'Văn bản hướng dẫn');
+                                $pctScore = round($cand['score'] * 100, 1);
+                                $docText = "=== [ĐOẠN TRÍ THỨC KHỚP THỨ " . ($idx + 1) . " - ĐỘ TƯƠNG ĐỒNG: " . $pctScore . "%] ===\n" .
+                                           "Nguồn tài liệu: " . $cand['doc_name'] . " (" . $docTypeLabel . ")\n" .
+                                           "Thẻ phân loại: " . $cand['tags'] . "\n" .
+                                           "Nội dung:\n" . $cand['content'] . "\n" .
+                                           "============================================";
+                                $docsText[] = $docText;
+                            }
+                            $ragContext = implode("\n\n", $docsText);
+                        }
                     }
                 }
             }
 
             if (!empty($ragContext)) {
-                $systemInstruction .= "\n\n=== KIẾN THỨC ĐÃ ĐÀO TẠO / TÀI LIỆU VẬN HÀNH HỆ THỐNG ===\n" .
-                    "Dưới đây là các tài liệu hướng dẫn và tri thức vận hành của hệ thống Rich Land. " .
-                    "Hãy sử dụng tri thức này để trả lời các thắc mắc chung hoặc chi tiết của người dùng:\n" .
+                $systemInstruction .= "\n\n=== NGỮ CẢNH TRI THỨC ĐỐI CHIẾU THỰC TẾ (RAG) ===\n" .
+                    "Dưới đây là các phần thông tin tri thức phù hợp nhất được truy vấn từ cơ sở dữ liệu dựa trên độ tương đồng ngữ nghĩa. " .
+                    "Hãy ưu tiên sử dụng các thông tin này để đối chiếu và trả lời thắc mắc của người dùng:\n" .
                     $ragContext;
             }
 
