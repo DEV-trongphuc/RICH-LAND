@@ -4780,21 +4780,31 @@ function doPost(e) {
                               </span>
                             </div>
 
-                            <div>
-                              <label className="form-label" style={{ fontWeight: 600, fontSize: '0.75rem' }}>{t('Thời gian giãn cách thử lại')}</label>
+                            <div style={{ opacity: leadMaxRecallAttempts < 2 ? 0.62 : 1, transition: 'opacity 0.15s ease-in-out' }}>
+                              <label className="form-label" style={{ fontWeight: 600, fontSize: '0.75rem', color: leadMaxRecallAttempts < 2 ? 'var(--color-text-muted)' : 'var(--color-text)' }}>{t('Thời gian giãn cách thử lại')}</label>
                               <div style={{ display: 'flex', alignItems: 'center', position: 'relative' }}>
                                 <input
                                   type="number"
                                   className="form-input"
-                                  style={{ paddingRight: '3.5rem', height: '34px', fontSize: '0.8125rem' }}
+                                  style={{ 
+                                    paddingRight: '3.5rem', 
+                                    height: '34px', 
+                                    fontSize: '0.8125rem',
+                                    cursor: leadMaxRecallAttempts < 2 ? 'not-allowed' : 'text',
+                                    backgroundColor: leadMaxRecallAttempts < 2 ? 'var(--color-bg-light, #f8fafc)' : 'white'
+                                  }}
                                   value={leadRecallCooldownMinutes}
                                   onChange={e => setLeadRecallCooldownMinutes(Number(e.target.value))}
                                   min={0}
+                                  disabled={leadMaxRecallAttempts < 2}
+                                  title={leadMaxRecallAttempts < 2 ? t('Chỉ khả dụng khi số lần thử lại tối đa từ 2 trở lên') : ''}
                                 />
                                 <span style={{ position: 'absolute', right: '12px', fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>{t('phút')}</span>
                               </div>
                               <span style={{ fontSize: '0.6875rem', color: 'var(--color-text-muted)', marginTop: '4px', display: 'block', lineHeight: 1.3 }}>
-                                {t('Thời gian tối thiểu chờ trước khi chia lại cho cùng Sale.')}
+                                {leadMaxRecallAttempts < 2 
+                                  ? t('Không cần giãn cách do số lần thử lại tối đa nhỏ hơn 2.')
+                                  : t('Thời gian tối thiểu chờ trước khi chia lại cho cùng Sale.')}
                               </span>
                             </div>
                           </div>
