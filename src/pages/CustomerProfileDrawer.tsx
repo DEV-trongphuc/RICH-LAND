@@ -1962,6 +1962,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
   }, [formData.collaborator_ids, contact?.collaborator_ids, users]);
 
   const [decayDays, setDecayDays] = useState<number>(5);
+  const [scoringRules, setScoringRules] = useState<any>(null);
   const handleSaveTTL1 = async (updatedData: typeof ttl1Data) => {
     setIsSavingTTL1(true);
     const count = Object.values(updatedData).filter(Boolean).length;
@@ -2486,6 +2487,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
       });
       fetchData();
       addToast(`Đã cập nhật trạng thái pipeline của ${fullName || 'khách hàng'} sang "${targetLabel}" thành công!`, 'success');
+      onUpdate?.({ ...formData, pipeline_status: targetId, status: calculatedStatus });
       window.dispatchEvent(new CustomEvent('contact-updated'));
     } catch (e: any) {
       setFormData((prev: any) => ({ 
@@ -3038,6 +3040,8 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
             }).then(() => {
               setFormData(prev => ({ ...prev, expected_revenue: totalRev, win_probability: avgProb }));
               setBaseData(prev => ({ ...prev, expected_revenue: totalRev, win_probability: avgProb }));
+              onUpdate?.({ ...formData, expected_revenue: totalRev, win_probability: avgProb });
+              window.dispatchEvent(new CustomEvent('contact-updated'));
             }).catch(err => console.error("Error syncing contact metrics:", err));
           }
         }
@@ -3343,6 +3347,11 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                 console.error('Failed to parse pipeline stages from settings', e);
               }
             }
+            if (res.data.lead_scoring_rules) {
+              try {
+                setScoringRules(JSON.parse(res.data.lead_scoring_rules));
+              } catch(e) {}
+            }
           }
         })
         .catch(() => {});
@@ -3366,59 +3375,88 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
     let s = 0;
     const r: any[] = [];
     
+    const rulesConfig = scoringRules || {
+      base_score: 10,
+      title_c_level: 20,
+      title_other: 5,
+      phone: 15,
+      mobile: 10,
+      both_phones: 10,
+      email: 10,
+      social_link: 10,
+      birthday: 10,
+      gender: 5,
+      customer_type: 5,
+      address: 15,
+      source_website: 15,
+      source_referral: 20,
+      project_id: 15,
+      company_id: 5,
+      industry: 5,
+      budget_range: 10,
+      revenue_high: 35,
+      revenue_medium: 20,
+      win_prob_high: 10,
+      status_qualified_customer: 15,
+      ttl1_completed: 25,
+      notes_long: 10,
+      has_tags: 10,
+      decay_no_interaction: -15
+    };
+
     // Base score
-    s += 10;
-    r.push({ rule: 'Điểm khởi tạo (Mặc định)', pts: 10, type: 'System' });
+    s += Number(rulesConfig.base_score ?? 10);
+    r.push({ rule: 'Điểm khởi tạo (Mặc định)', pts: Number(rulesConfig.base_score ?? 10), type: 'System' });
 
     // Job Title
     const title = (formData.job_title || '').toLowerCase();
     if (title.includes('giám đốc') || title.includes('ceo') || title.includes('sáng lập') || title.includes('founder') || title.includes('chủ tịch')) {
-      s += 20; r.push({ rule: 'Chức danh C-Level (Giám đốc/CEO/Founder/Chủ tịch)', pts: 20, type: 'Demographic' });
+      s += Number(rulesConfig.title_c_level ?? 20); r.push({ rule: 'Chức danh C-Level (Giám đốc/CEO/Founder/Chủ tịch)', pts: Number(rulesConfig.title_c_level ?? 20), type: 'Demographic' });
     } else if (title) {
-      s += 5; r.push({ rule: 'Có thông tin chức vụ', pts: 5, type: 'Demographic' });
+      s += Number(rulesConfig.title_other ?? 5); r.push({ rule: 'Có thông tin chức vụ', pts: Number(rulesConfig.title_other ?? 5), type: 'Demographic' });
     }
 
     // Phone / Contact Info
-    if (formData.phone) { s += 15; r.push({ rule: 'Cung cấp số điện thoại chính', pts: 15, type: 'Demographic' }); }
-    if (formData.mobile) { s += 10; r.push({ rule: 'Cung cấp số điện thoại phụ', pts: 10, type: 'Demographic' }); }
-    if (formData.phone && formData.mobile) { s += 10; r.push({ rule: 'Có cả 2 số liên hệ (Độ tin cậy cao)', pts: 10, type: 'Demographic' }); }
-    if (formData.email) { s += 10; r.push({ rule: 'Cung cấp Email', pts: 10, type: 'Demographic' }); }
-    if (formData.zalo_link || formData.fb_link) { s += 10; r.push({ rule: 'Có liên kết mạng xã hội (Zalo/Facebook)', pts: 10, type: 'Demographic' }); }
-    if (formData.birthday) { s += 10; r.push({ rule: 'Có thông tin ngày sinh (Hỗ trợ sinh nhật)', pts: 10, type: 'Demographic' }); }
-    if (formData.gender) { s += 5; r.push({ rule: 'Có thông tin giới tính', pts: 5, type: 'Demographic' }); }
-    if (formData.customer_type) { s += 5; r.push({ rule: 'Xác định loại khách hàng (Cá nhân/Doanh nghiệp)', pts: 5, type: 'Demographic' }); }
+    if (formData.phone) { s += Number(rulesConfig.phone ?? 15); r.push({ rule: 'Cung cấp số điện thoại chính', pts: Number(rulesConfig.phone ?? 15), type: 'Demographic' }); }
+    if (formData.mobile) { s += Number(rulesConfig.mobile ?? 10); r.push({ rule: 'Cung cấp số điện thoại phụ', pts: Number(rulesConfig.mobile ?? 10), type: 'Demographic' }); }
+    if (formData.phone && formData.mobile) { s += Number(rulesConfig.both_phones ?? 10); r.push({ rule: 'Có cả 2 số liên hệ (Độ tin cậy cao)', pts: Number(rulesConfig.both_phones ?? 10), type: 'Demographic' }); }
+    if (formData.email) { s += Number(rulesConfig.email ?? 10); r.push({ rule: 'Cung cấp Email', pts: Number(rulesConfig.email ?? 10), type: 'Demographic' }); }
+    if (formData.zalo_link || formData.fb_link) { s += Number(rulesConfig.social_link ?? 10); r.push({ rule: 'Có liên kết mạng xã hội (Zalo/Facebook)', pts: Number(rulesConfig.social_link ?? 10), type: 'Demographic' }); }
+    if (formData.birthday) { s += Number(rulesConfig.birthday ?? 10); r.push({ rule: 'Có thông tin ngày sinh (Hỗ trợ sinh nhật)', pts: Number(rulesConfig.birthday ?? 10), type: 'Demographic' }); }
+    if (formData.gender) { s += Number(rulesConfig.gender ?? 5); r.push({ rule: 'Có thông tin giới tính', pts: Number(rulesConfig.gender ?? 5), type: 'Demographic' }); }
+    if (formData.customer_type) { s += Number(rulesConfig.customer_type ?? 5); r.push({ rule: 'Xác định loại khách hàng (Cá nhân/Doanh nghiệp)', pts: Number(rulesConfig.customer_type ?? 5), type: 'Demographic' }); }
 
     // Address
-    if (formData.address) { s += 15; r.push({ rule: 'Có thông tin địa chỉ đầy đủ', pts: 15, type: 'Demographic' }); }
+    if (formData.address) { s += Number(rulesConfig.address ?? 15); r.push({ rule: 'Có thông tin địa chỉ đầy đủ', pts: Number(rulesConfig.address ?? 15), type: 'Demographic' }); }
 
     // Source
-    if (formData.source === 'website') { s += 15; r.push({ rule: 'Nguồn khách từ Website', pts: 15, type: 'Behavioral' }); }
-    if (formData.source === 'referral' || formData.source === 'gioi_thieu') { s += 20; r.push({ rule: 'Khách được giới thiệu (Referral)', pts: 20, type: 'Behavioral' }); }
+    if (formData.source === 'website') { s += Number(rulesConfig.source_website ?? 15); r.push({ rule: 'Nguồn khách từ Website', pts: Number(rulesConfig.source_website ?? 15), type: 'Behavioral' }); }
+    if (formData.source === 'referral' || formData.source === 'gioi_thieu') { s += Number(rulesConfig.source_referral ?? 20); r.push({ rule: 'Khách được giới thiệu (Referral)', pts: Number(rulesConfig.source_referral ?? 20), type: 'Behavioral' }); }
 
     // Projects / Companies / Segmentations
-    if (formData.project_id) { s += 15; r.push({ rule: 'Liên kết dự án quan tâm', pts: 15, type: 'Behavioral' }); }
-    if (formData.company_id) { s += 5; r.push({ rule: 'Liên kết công ty đối tác', pts: 5, type: 'Behavioral' }); }
-    if (formData.industry) { s += 5; r.push({ rule: 'Xác định ngành nghề kinh doanh', pts: 5, type: 'Demographic' }); }
-    if (formData.budget_range) { s += 10; r.push({ rule: 'Xác định phân khúc ngân sách', pts: 10, type: 'Behavioral' }); }
+    if (formData.project_id) { s += Number(rulesConfig.project_id ?? 15); r.push({ rule: 'Liên kết dự án quan tâm', pts: Number(rulesConfig.project_id ?? 15), type: 'Behavioral' }); }
+    if (formData.company_id) { s += Number(rulesConfig.company_id ?? 5); r.push({ rule: 'Liên kết công ty đối tác', pts: Number(rulesConfig.company_id ?? 5), type: 'Behavioral' }); }
+    if (formData.industry) { s += Number(rulesConfig.industry ?? 5); r.push({ rule: 'Xác định ngành nghề kinh doanh', pts: Number(rulesConfig.industry ?? 5), type: 'Demographic' }); }
+    if (formData.budget_range) { s += Number(rulesConfig.budget_range ?? 10); r.push({ rule: 'Xác định phân khúc ngân sách', pts: Number(rulesConfig.budget_range ?? 10), type: 'Behavioral' }); }
 
     // Revenue & Probability
     const revenue = Number(formData.expected_revenue) || 0;
     if (revenue > 500000000) {
-      s += 35; r.push({ rule: 'Kỳ vọng doanh thu lớn (> 500 Triệu)', pts: 35, type: 'Behavioral' });
+      s += Number(rulesConfig.revenue_high ?? 35); r.push({ rule: 'Kỳ vọng doanh thu lớn (> 500 Triệu)', pts: Number(rulesConfig.revenue_high ?? 35), type: 'Behavioral' });
     } else if (revenue > 100000000) {
-      s += 20; r.push({ rule: 'Kỳ vọng doanh thu lớn (> 100 Triệu)', pts: 20, type: 'Behavioral' });
+      s += Number(rulesConfig.revenue_medium ?? 20); r.push({ rule: 'Kỳ vọng doanh thu lớn (> 100 Triệu)', pts: Number(rulesConfig.revenue_medium ?? 20), type: 'Behavioral' });
     }
-    if (Number(formData.win_probability) > 70) { s += 10; r.push({ rule: 'Xác suất chốt giao dịch cao (>70%)', pts: 10, type: 'Behavioral' }); }
+    if (Number(formData.win_probability) > 70) { s += Number(rulesConfig.win_prob_high ?? 10); r.push({ rule: 'Xác suất chốt giao dịch cao (>70%)', pts: Number(rulesConfig.win_prob_high ?? 10), type: 'Behavioral' }); }
 
     // State & TTL1
-    if (formData.status === 'qualified' || formData.status === 'customer') { s += 15; r.push({ rule: 'Xác nhận trạng thái chất lượng', pts: 15, type: 'Behavioral' }); }
-    if (formData.ttl1_completed === 1) { s += 25; r.push({ rule: 'Đã hoàn thành xác minh điều kiện gặp (TTL1)', pts: 25, type: 'Behavioral' }); }
+    if (formData.status === 'qualified' || formData.status === 'customer') { s += Number(rulesConfig.status_qualified_customer ?? 15); r.push({ rule: 'Xác nhận trạng thái chất lượng', pts: Number(rulesConfig.status_qualified_customer ?? 15), type: 'Behavioral' }); }
+    if (formData.ttl1_completed === 1) { s += Number(rulesConfig.ttl1_completed ?? 25); r.push({ rule: 'Đã hoàn thành xác minh điều kiện gặp (TTL1)', pts: Number(rulesConfig.ttl1_completed ?? 25), type: 'Behavioral' }); }
 
     // Content Enrichment
-    if (formData.notes && formData.notes.trim().length > 10) { s += 10; r.push({ rule: 'Có ghi chú chi tiết về nhu cầu', pts: 10, type: 'Behavioral' }); }
-    if (tags && tags.length > 0) { s += 10; r.push({ rule: 'Đã gắn thẻ phân loại (Tags)', pts: 10, type: 'Behavioral' }); }
+    if (formData.notes && formData.notes.trim().length > 10) { s += Number(rulesConfig.notes_long ?? 10); r.push({ rule: 'Có ghi chú chi tiết về nhu cầu', pts: Number(rulesConfig.notes_long ?? 10), type: 'Behavioral' }); }
+    if (tags && tags.length > 0) { s += Number(rulesConfig.has_tags ?? 10); r.push({ rule: 'Đã gắn thẻ phân loại (Tags)', pts: Number(rulesConfig.has_tags ?? 10), type: 'Behavioral' }); }
 
-    // Temperature Decay rule: -15 points after 5 days of inactivity
+    // Temperature Decay rule
     let lastInteractionTime = contact?.last_contact || contact?.updated_at || formData.created_at;
     if (drawerActivities && drawerActivities.length > 0) {
       const latestActivity = drawerActivities.reduce((latest, current) => {
@@ -3435,8 +3473,8 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
     const isDecayed = lastInteractionTime ? (new Date().getTime() - new Date(lastInteractionTime).getTime() > fiveDaysInMs) : false;
 
     if (isDecayed) {
-      s -= 15;
-      r.push({ rule: `Rớt nhiệt do quá ${decayDays} ngày không tương tác`, pts: -15, type: 'Decay' });
+      s += Number(rulesConfig.decay_no_interaction ?? -15);
+      r.push({ rule: `Rớt nhiệt do quá ${decayDays} ngày không tương tác`, pts: Number(rulesConfig.decay_no_interaction ?? -15), type: 'Decay' });
     }
 
     return { score: Math.min(100, Math.max(0, s)), rules: r };
@@ -3445,7 +3483,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
     formData.zalo_link, formData.fb_link, formData.birthday, formData.address, formData.source, formData.project_id,
     formData.company_id, formData.industry, formData.budget_range, formData.expected_revenue, formData.win_probability,
     formData.status, formData.ttl1_completed, formData.notes, tags,
-    formData.created_at, contact?.last_contact, contact?.updated_at, drawerActivities, decayDays
+    formData.created_at, contact?.last_contact, contact?.updated_at, drawerActivities, decayDays, scoringRules
   ]);
 
   const timeline = useMemo(() => {
@@ -8588,34 +8626,64 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                   </tr>
                                 </thead>
                                 <tbody>
-                                  {[
-                                    { rule: 'Điểm khởi tạo', type: 'System', pts: 10, desc: 'Điểm cơ bản cho mỗi liên hệ mới' },
-                                    { rule: 'Chức danh C-Level (Giám đốc/CEO/Founder/Chủ tịch)', type: 'Demographic', pts: 20, desc: 'Giám đốc, CEO, Founder, Chủ tịch...' },
-                                    { rule: 'Có thông tin chức vụ', type: 'Demographic', pts: 5, desc: 'Có điền chức danh khác' },
-                                    { rule: 'Cung cấp số điện thoại chính', type: 'Demographic', pts: 15, desc: 'Có số điện thoại chính' },
-                                    { rule: 'Cung cấp số điện thoại phụ', type: 'Demographic', pts: 10, desc: 'Có số điện thoại phụ' },
-                                    { rule: 'Có cả 2 số liên hệ', type: 'Demographic', pts: 10, desc: 'Cung cấp cả số chính và số phụ' },
-                                    { rule: 'Cung cấp Email', type: 'Demographic', pts: 10, desc: 'Có trường Email' },
-                                    { rule: 'Xác định loại khách hàng', type: 'Demographic', pts: 5, desc: 'Cá nhân hoặc Doanh nghiệp' },
-                                    { rule: 'Có thông tin giới tính', type: 'Demographic', pts: 5, desc: 'Xác định giới tính khách hàng' },
-                                    { rule: 'Liên kết Zalo / Facebook', type: 'Demographic', pts: 10, desc: 'Có điền link Zalo hoặc Facebook' },
-                                    { rule: 'Có thông tin ngày sinh', type: 'Demographic', pts: 10, desc: 'Giúp lập kế hoạch chúc mừng sinh nhật' },
-                                    { rule: 'Có thông tin địa chỉ đầy đủ', type: 'Demographic', pts: 15, desc: 'Thuận tiện ký hợp đồng trực tiếp' },
-                                    { rule: 'Xác định ngành nghề kinh doanh', type: 'Demographic', pts: 5, desc: 'Có trường Ngành nghề kinh doanh' },
-                                    { rule: 'Nguồn khách từ Website', type: 'Behavioral', pts: 15, desc: 'Nguồn Inbound đăng ký qua web' },
-                                    { rule: 'Khách được giới thiệu (Referral)', type: 'Behavioral', pts: 20, desc: 'Được ghi nhận nguồn giới thiệu' },
-                                    { rule: 'Liên kết dự án quan tâm', type: 'Behavioral', pts: 15, desc: 'Chọn dự án bất động sản cụ thể' },
-                                    { rule: 'Liên kết công ty đối tác', type: 'Behavioral', pts: 5, desc: 'Gắn liên kết đối tác công ty' },
-                                    { rule: 'Xác định phân khúc ngân sách', type: 'Behavioral', pts: 10, desc: 'Có lựa chọn phân khúc ngân sách' },
-                                    { rule: 'Kỳ vọng doanh thu > 100 Triệu', type: 'Behavioral', pts: 20, desc: 'Kỳ vọng giao dịch từ 100Tr đến 500Tr VNĐ' },
-                                    { rule: 'Kỳ vọng doanh thu lớn (> 500 Triệu)', type: 'Behavioral', pts: 35, desc: 'Kỳ vọng giao dịch trên 500Tr VNĐ' },
-                                    { rule: 'Xác suất chốt giao dịch cao (>70%)', type: 'Behavioral', pts: 10, desc: 'Xác suất chốt deals trên 70%' },
-                                    { rule: 'Xác nhận trạng thái chất lượng', type: 'Behavioral', pts: 15, desc: 'Trạng thái Qualified hoặc Customer' },
-                                    { rule: 'Đã hoàn thành xác minh (TTL1)', type: 'Behavioral', pts: 25, desc: 'Đạt điều kiện gặp gỡ tư vấn trực tiếp' },
-                                    { rule: 'Có ghi chú chi tiết nhu cầu', type: 'Behavioral', pts: 10, desc: 'Nội dung ghi chú có độ dài trên 10 ký tự' },
-                                    { rule: 'Đã gắn thẻ phân loại (Tags)', type: 'Behavioral', pts: 10, desc: 'Sử dụng nhãn phân loại khách hàng' },
-                                    { rule: 'Rớt nhiệt (Inactivity Decay)', type: 'Decay', pts: -15, desc: 'Không có tương tác nào trong vòng 5 ngày' }
-                                  ].map((item, idx) => (
+                                  {(() => {
+                                    const rulesConfig = scoringRules || {
+                                      base_score: 10,
+                                      title_c_level: 20,
+                                      title_other: 5,
+                                      phone: 15,
+                                      mobile: 10,
+                                      both_phones: 10,
+                                      email: 10,
+                                      social_link: 10,
+                                      birthday: 10,
+                                      gender: 5,
+                                      customer_type: 5,
+                                      address: 15,
+                                      source_website: 15,
+                                      source_referral: 20,
+                                      project_id: 15,
+                                      company_id: 5,
+                                      industry: 5,
+                                      budget_range: 10,
+                                      revenue_high: 35,
+                                      revenue_medium: 20,
+                                      win_prob_high: 10,
+                                      status_qualified_customer: 15,
+                                      ttl1_completed: 25,
+                                      notes_long: 10,
+                                      has_tags: 10,
+                                      decay_no_interaction: -15
+                                    };
+                                    return [
+                                      { rule: 'Điểm khởi tạo', type: 'System', pts: Number(rulesConfig.base_score ?? 10), desc: 'Điểm cơ bản cho mỗi liên hệ mới' },
+                                      { rule: 'Chức danh C-Level (Giám đốc/CEO/Founder/Chủ tịch)', type: 'Demographic', pts: Number(rulesConfig.title_c_level ?? 20), desc: 'Giám đốc, CEO, Founder, Chủ tịch...' },
+                                      { rule: 'Có thông tin chức vụ', type: 'Demographic', pts: Number(rulesConfig.title_other ?? 5), desc: 'Có điền chức danh khác' },
+                                      { rule: 'Cung cấp số điện thoại chính', type: 'Demographic', pts: Number(rulesConfig.phone ?? 15), desc: 'Có số điện thoại chính' },
+                                      { rule: 'Cung cấp số điện thoại phụ', type: 'Demographic', pts: Number(rulesConfig.mobile ?? 10), desc: 'Có số điện thoại phụ' },
+                                      { rule: 'Có cả 2 số liên hệ', type: 'Demographic', pts: Number(rulesConfig.both_phones ?? 10), desc: 'Cung cấp cả số chính và số phụ' },
+                                      { rule: 'Cung cấp Email', type: 'Demographic', pts: Number(rulesConfig.email ?? 10), desc: 'Có trường Email' },
+                                      { rule: 'Xác định loại khách hàng', type: 'Demographic', pts: Number(rulesConfig.customer_type ?? 5), desc: 'Cá nhân hoặc Doanh nghiệp' },
+                                      { rule: 'Có thông tin giới tính', type: 'Demographic', pts: Number(rulesConfig.gender ?? 5), desc: 'Xác định giới tính khách hàng' },
+                                      { rule: 'Liên kết Zalo / Facebook', type: 'Demographic', pts: Number(rulesConfig.social_link ?? 10), desc: 'Có điền link Zalo hoặc Facebook' },
+                                      { rule: 'Có thông tin ngày sinh', type: 'Demographic', pts: Number(rulesConfig.birthday ?? 10), desc: 'Giúp lập kế hoạch chúc mừng sinh nhật' },
+                                      { rule: 'Có thông tin địa chỉ đầy đủ', type: 'Demographic', pts: Number(rulesConfig.address ?? 15), desc: 'Thuận tiện ký hợp đồng trực tiếp' },
+                                      { rule: 'Xác định ngành nghề kinh doanh', type: 'Demographic', pts: Number(rulesConfig.industry ?? 5), desc: 'Có trường Ngành nghề kinh doanh' },
+                                      { rule: 'Nguồn khách từ Website', type: 'Behavioral', pts: Number(rulesConfig.source_website ?? 15), desc: 'Nguồn Inbound đăng ký qua web' },
+                                      { rule: 'Khách được giới thiệu (Referral)', type: 'Behavioral', pts: Number(rulesConfig.source_referral ?? 20), desc: 'Được ghi nhận nguồn giới thiệu' },
+                                      { rule: 'Liên kết dự án quan tâm', type: 'Behavioral', pts: Number(rulesConfig.project_id ?? 15), desc: 'Chọn dự án bất động sản cụ thể' },
+                                      { rule: 'Liên kết công ty đối tác', type: 'Behavioral', pts: Number(rulesConfig.company_id ?? 5), desc: 'Gắn liên kết đối tác công ty' },
+                                      { rule: 'Xác định phân khúc ngân sách', type: 'Behavioral', pts: Number(rulesConfig.budget_range ?? 10), desc: 'Có lựa chọn phân khúc ngân sách' },
+                                      { rule: 'Kỳ vọng doanh thu > 100 Triệu', type: 'Behavioral', pts: Number(rulesConfig.revenue_medium ?? 20), desc: 'Kỳ vọng giao dịch từ 100Tr đến 500Tr VNĐ' },
+                                      { rule: 'Kỳ vọng doanh thu lớn (> 500 Triệu)', type: 'Behavioral', pts: Number(rulesConfig.revenue_high ?? 35), desc: 'Kỳ vọng giao dịch trên 500Tr VNĐ' },
+                                      { rule: 'Xác suất chốt giao dịch cao (>70%)', type: 'Behavioral', pts: Number(rulesConfig.win_prob_high ?? 10), desc: 'Xác suất chốt deals trên 70%' },
+                                      { rule: 'Xác nhận trạng thái chất lượng', type: 'Behavioral', pts: Number(rulesConfig.status_qualified_customer ?? 15), desc: 'Trạng thái Qualified hoặc Customer' },
+                                      { rule: 'Đã hoàn thành xác minh (TTL1)', type: 'Behavioral', pts: Number(rulesConfig.ttl1_completed ?? 25), desc: 'Đạt điều kiện gặp gỡ tư vấn trực tiếp' },
+                                      { rule: 'Có ghi chú chi tiết nhu cầu', type: 'Behavioral', pts: Number(rulesConfig.notes_long ?? 10), desc: 'Nội dung ghi chú có độ dài trên 10 ký tự' },
+                                      { rule: 'Đã gắn thẻ phân loại (Tags)', type: 'Behavioral', pts: Number(rulesConfig.has_tags ?? 10), desc: 'Sử dụng nhãn phân loại khách hàng' },
+                                      { rule: 'Rớt nhiệt (Inactivity Decay)', type: 'Decay', pts: Number(rulesConfig.decay_no_interaction ?? -15), desc: `Không có tương tác nào trong vòng ${decayDays} ngày` }
+                                    ];
+                                  })().map((item, idx) => (
                                     <tr key={idx} style={{ borderBottom: '1px solid var(--color-border-light)', background: idx % 2 === 0 ? 'transparent' : 'var(--color-bg-light)' }}>
                                       <td style={{ padding: '10px 14px' }}>
                                         <div style={{ fontWeight: 700, color: 'var(--color-text)' }}>{t(item.rule)}</div>
@@ -11348,6 +11416,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                       });
                       fetchData();
                       addToast(`Đã cập nhật Pipeline thành ${targetLabel}`, 'success');
+                      onUpdate?.({ ...formData, pipeline_status: targetId, status: calculatedStatus });
                       window.dispatchEvent(new CustomEvent('contact-updated'));
                     } catch (e: any) {
                       // Rollback optimistic update
@@ -12014,23 +12083,25 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
       </AnimatePresence>
 
       {/* Task Details & Creation Drawer */}
-      <Suspense fallback={null}>
-        <WorkspaceTaskDrawer
-          isOpen={selectedTaskForDetails !== null}
-          onClose={() => {
-            setSelectedTaskForDetails(null);
-            setShowAssigneeDropdown(false);
-            setShowParticipantDropdown(false);
-            setShowApproverDropdown(false);
-          }}
-          task={selectedTaskForDetails}
-          onUpdate={() => {
-            fetchData();
-          }}
-          users={users}
-          zIndex={zIndex ? zIndex + 100 : undefined}
-        />
-      </Suspense>
+      {selectedTaskForDetails !== null && (
+        <Suspense fallback={null}>
+          <WorkspaceTaskDrawer
+            isOpen={selectedTaskForDetails !== null}
+            onClose={() => {
+              setSelectedTaskForDetails(null);
+              setShowAssigneeDropdown(false);
+              setShowParticipantDropdown(false);
+              setShowApproverDropdown(false);
+            }}
+            task={selectedTaskForDetails}
+            onUpdate={() => {
+              fetchData();
+            }}
+            users={users}
+            zIndex={zIndex ? zIndex + 100 : undefined}
+          />
+        </Suspense>
+      )}
 
 {/* CREATE TICKET MODAL */}
       <AnimatePresence>

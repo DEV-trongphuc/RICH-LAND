@@ -118,9 +118,11 @@ export const TicketsPage: React.FC = () => {
     };
     window.addEventListener('ticket-resolved', handleRefresh);
     window.addEventListener('ticket-updated', handleRefresh);
+    window.addEventListener('contact-updated', handleRefresh);
     return () => {
       window.removeEventListener('ticket-resolved', handleRefresh);
       window.removeEventListener('ticket-updated', handleRefresh);
+      window.removeEventListener('contact-updated', handleRefresh);
     };
   }, []);
 
@@ -655,13 +657,15 @@ export const TicketsPage: React.FC = () => {
         users={users}
         onOpenContact={(contactData) => setSelectedContactForDrawer(contactData)}
       />
-      <Suspense fallback={null}>
-        <CustomerProfileDrawer
-          isOpen={!!selectedContactForDrawer}
-          onClose={() => setSelectedContactForDrawer(null)}
-          contact={selectedContactForDrawer}
-        />
-      </Suspense>
+      {selectedContactForDrawer && (
+        <Suspense fallback={null}>
+          <CustomerProfileDrawer
+            isOpen={!!selectedContactForDrawer}
+            onClose={() => setSelectedContactForDrawer(null)}
+            contact={selectedContactForDrawer}
+          />
+        </Suspense>
+      )}
     </div>
   );
 };

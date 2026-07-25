@@ -792,29 +792,33 @@ export const ActivitiesPage: React.FC = () => {
         </div>
       </CustomModal>
 
-      <Suspense fallback={null}>
-        <CustomerProfileDrawer
-          isOpen={!!profileContact}
-          onClose={() => setProfileContact(null)}
-          contact={profileContact}
-          onUpdate={() => {}}
-          zIndex={selectedTaskForDrawer ? 1000300 : undefined}
-        />
-      </Suspense>
+      {profileContact && (
+        <Suspense fallback={null}>
+          <CustomerProfileDrawer
+            isOpen={!!profileContact}
+            onClose={() => setProfileContact(null)}
+            contact={profileContact}
+            onUpdate={() => {}}
+            zIndex={selectedTaskForDrawer ? 1000300 : undefined}
+          />
+        </Suspense>
+      )}
 
-      <Suspense fallback={null}>
-        <WorkspaceTaskDrawer
-          isOpen={!!selectedTaskForDrawer}
-          onClose={() => setSelectedTaskForDrawer(null)}
-          task={selectedTaskForDrawer}
-          onUpdate={() => {
-            fetchActivities();
-            setSelectedTaskForDrawer(null);
-          }}
-          users={users}
-          onOpenContact={(contactId) => setProfileContact({ id: contactId })}
-        />
-      </Suspense>
+      {selectedTaskForDrawer && (
+        <Suspense fallback={null}>
+          <WorkspaceTaskDrawer
+            isOpen={!!selectedTaskForDrawer}
+            onClose={() => setSelectedTaskForDrawer(null)}
+            task={selectedTaskForDrawer}
+            onUpdate={() => {
+              fetchActivities();
+              setSelectedTaskForDrawer(null);
+            }}
+            users={users}
+            onOpenContact={(contactId) => setProfileContact({ id: contactId })}
+          />
+        </Suspense>
+      )}
 
     </div>
   );

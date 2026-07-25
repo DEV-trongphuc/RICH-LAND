@@ -1867,7 +1867,7 @@ export const AITrainingPanel: React.FC = () => {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
               <label style={{ fontSize: '0.8125rem', fontWeight: 700 }}>Tags phân loại (ngăn cách bằng dấu phẩy)</label>
               <input type="text" className="form-input" placeholder="Ví dụ: chietkhau, diamondcity" value={manualTags} onChange={e => setManualTags(e.target.value)} />
-              <span style={{ fontSize: '0.6875rem', color: 'var(--color-text-muted)' }}>AI sẽ ưu tiên lấy tài liệu này nếu khách hỏi từ khóa trùng với tag này.</span>
+              <span style={{ fontSize: '0.6875rem', color: 'var(--color-text-muted)' }}>AI sẽ tự động đọc hiểu và phân tích ngữ cảnh để lấy tài liệu này khi người dùng hỏi các nội dung liên quan.</span>
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>

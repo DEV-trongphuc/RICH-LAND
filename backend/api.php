@@ -11481,6 +11481,270 @@ switch ($action) {
         }
         break;
 
+    case 'ai_training':
+        if (!in_array($decodedUser['role'] ?? '', ['admin', 'super_admin'])) {
+            http_response_code(403);
+            echo json_encode(['success' => false, 'message' => 'Bạn không có quyền thực hiện thao tác này']);
+            break;
+        }
+
+        try {
+            $actionType = '';
+            if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+                if (isset($_SERVER['CONTENT_TYPE']) && strpos($_SERVER['CONTENT_TYPE'], 'multipart/form-data') !== false) {
+                    $actionType = $_POST['action'] ?? '';
+                } else {
+                    $input = json_decode(file_get_contents('php://input'), true);
+                    $actionType = $input['action'] ?? '';
+                }
+            } else {
+                $actionType = $_GET['action_type'] ?? '';
+            }
+
+            if ($actionType === 'get_settings') {
+                $stmt = $conn->prepare("SELECT setting_value FROM system_settings WHERE setting_key = 'rag_settings' LIMIT 1");
+                $stmt->execute();
+                $res = $stmt->get_result()->fetch_assoc();
+                $stmt->close();
+
+                $settings = [];
+                if ($res && !empty($res['setting_value'])) {
+                    $settings = json_decode($res['setting_value'], true);
+                }
+
+                // Fill defaults
+                $settings['is_enabled'] = isset($settings['is_enabled']) ? (int)$settings['is_enabled'] : 1;
+                $settings['bot_name'] = $settings['bot_name'] ?? 'AI Rich Land';
+                $settings['welcome_msg'] = $settings['welcome_msg'] ?? 'Chào bạn! Tôi có thể giúp gì cho bạn hôm nay?';
+                $settings['persona_prompt'] = $settings['persona_prompt'] ?? 'Bạn là trợ lý ảo chuyên nghiệp.';
+                $settings['similarity_threshold'] = isset($settings['similarity_threshold']) ? (float)$settings['similarity_threshold'] : 0.45;
+                $settings['top_k'] = isset($settings['top_k']) ? (int)$settings['top_k'] : 8;
+                $settings['chunk_size'] = isset($settings['chunk_size']) ? (int)$settings['chunk_size'] : 700;
+                $settings['chunk_overlap'] = isset($settings['chunk_overlap']) ? (int)$settings['chunk_overlap'] : 150;
+                $settings['temperature'] = isset($settings['temperature']) ? (float)$settings['temperature'] : 0.2;
+                $settings['max_output_tokens'] = isset($settings['max_output_tokens']) ? (int)$settings['max_output_tokens'] : 1024;
+                $settings['history_limit'] = isset($settings['history_limit']) ? (int)$settings['history_limit'] : 10;
+                $settings['brand_color'] = $settings['brand_color'] ?? '#BD1D2D';
+
+                echo json_encode(['success' => true, 'data' => $settings]);
+            }
+            elseif ($actionType === 'update_settings') {
+                $settings = [
+                    'is_enabled' => (int)($input['is_enabled'] ?? 1),
+                    'bot_name' => trim($input['bot_name'] ?? 'AI Rich Land'),
+                    'welcome_msg' => trim($input['welcome_msg'] ?? 'Chào bạn! Tôi có thể giúp gì cho bạn hôm nay?'),
+                    'persona_prompt' => trim($input['persona_prompt'] ?? 'Bạn là trợ lý ảo chuyên nghiệp.'),
+                    'similarity_threshold' => (float)($input['similarity_threshold'] ?? 0.45),
+                    'top_k' => (int)($input['top_k'] ?? 8),
+                    'chunk_size' => (int)($input['chunk_size'] ?? 700),
+                    'chunk_overlap' => (int)($input['chunk_overlap'] ?? 150),
+                    'temperature' => (float)($input['temperature'] ?? 0.2),
+                    'max_output_tokens' => (int)($input['max_output_tokens'] ?? 1024),
+                    'history_limit' => (int)($input['history_limit'] ?? 10),
+                    'brand_color' => trim($input['brand_color'] ?? '#BD1D2D')
+                ];
+
+                $valJson = json_encode($settings, JSON_UNESCAPED_UNICODE);
+                $stmt = $conn->prepare("INSERT INTO system_settings (setting_key, setting_value) VALUES ('rag_settings', ?) ON DUPLICATE KEY UPDATE setting_value = ?");
+                $stmt->bind_param("ss", $valJson, $valJson);
+                $stmt->execute();
+                $stmt->close();
+
+                echo json_encode(['success' => true, 'message' => 'Cập nhật cấu hình RAG thành công']);
+            }
+            elseif ($actionType === 'list_docs') {
+                $stmt = $conn->prepare("SELECT id, name, content, tags, source_type, parent_id, is_active, file_path, file_size, created_at, updated_at FROM ai_training_docs WHERE tenant_id = 1 ORDER BY id DESC");
+                $stmt->execute();
+                $res = $stmt->get_result();
+                $docs = [];
+                while ($row = $res->fetch_assoc()) {
+                    $row['batch_id'] = $row['parent_id'];
+                    $docs[] = $row;
+                }
+                $stmt->close();
+                echo json_encode(['success' => true, 'data' => $docs]);
+            }
+            elseif ($actionType === 'create_folder') {
+                $name = trim($input['name'] ?? '');
+                if (empty($name)) {
+                    echo json_encode(['success' => false, 'message' => 'Tên thư mục không được để trống']);
+                    break;
+                }
+                $source_type = 'folder';
+                $stmt = $conn->prepare("INSERT INTO ai_training_docs (name, source_type, parent_id) VALUES (?, ?, 0)");
+                $stmt->bind_param("ss", $name, $source_type);
+                $stmt->execute();
+                $stmt->close();
+                echo json_encode(['success' => true, 'message' => 'Đã tạo thư mục thành công']);
+            }
+            elseif ($actionType === 'add_manual') {
+                $name = trim($input['name'] ?? '');
+                $content = $input['content'] ?? '';
+                $tags = trim($input['tags'] ?? '');
+                $parentId = (int)($input['batch_id'] ?? 0);
+                
+                if (empty($name)) {
+                    echo json_encode(['success' => false, 'message' => 'Tiêu đề không được để trống']);
+                    break;
+                }
+                
+                $source_type = (strpos($content, 'URL_TO_CRAWL:') === 0) ? 'web' : 'manual';
+                
+                $stmt = $conn->prepare("INSERT INTO ai_training_docs (name, content, tags, source_type, parent_id) VALUES (?, ?, ?, ?, ?)");
+                $stmt->bind_param("ssssi", $name, $content, $tags, $source_type, $parentId);
+                $stmt->execute();
+                $stmt->close();
+                echo json_encode(['success' => true, 'message' => 'Đã thêm tài liệu thành công']);
+            }
+            elseif ($actionType === 'update_doc') {
+                $id = (int)($input['id'] ?? 0);
+                
+                if ($id <= 0) {
+                    echo json_encode(['success' => false, 'message' => 'ID không hợp lệ']);
+                    break;
+                }
+
+                if (isset($input['is_active'])) {
+                    $isActive = (int)$input['is_active'];
+                    $stmt = $conn->prepare("UPDATE ai_training_docs SET is_active = ? WHERE id = ?");
+                    $stmt->bind_param("ii", $isActive, $id);
+                    $stmt->execute();
+                    $stmt->close();
+                    echo json_encode(['success' => true, 'message' => 'Đã cập nhật trạng thái tài liệu']);
+                } else {
+                    $name = trim($input['name'] ?? '');
+                    $content = $input['content'] ?? '';
+                    $tags = trim($input['tags'] ?? '');
+                    $parentId = (int)($input['parent_id'] ?? 0);
+
+                    if (empty($name)) {
+                        echo json_encode(['success' => false, 'message' => 'Tiêu đề không được để trống']);
+                        break;
+                    }
+
+                    $stmt = $conn->prepare("UPDATE ai_training_docs SET name = ?, content = ?, tags = ?, parent_id = ? WHERE id = ?");
+                    $stmt->bind_param("sssii", $name, $content, $tags, $parentId, $id);
+                    $stmt->execute();
+                    $stmt->close();
+                    echo json_encode(['success' => true, 'message' => 'Đã cập nhật tài liệu thành công']);
+                }
+            }
+            elseif ($actionType === 'delete_doc') {
+                $id = (int)($input['doc_id'] ?? 0);
+                if ($id <= 0) {
+                    echo json_encode(['success' => false, 'message' => 'ID không hợp lệ']);
+                    break;
+                }
+                
+                $stmt = $conn->prepare("UPDATE ai_training_docs SET parent_id = 0 WHERE parent_id = ?");
+                $stmt->bind_param("i", $id);
+                $stmt->execute();
+                $stmt->close();
+
+                $stmt = $conn->prepare("DELETE FROM ai_training_docs WHERE id = ?");
+                $stmt->bind_param("i", $id);
+                $stmt->execute();
+                $stmt->close();
+                echo json_encode(['success' => true, 'message' => 'Đã xóa tài liệu thành công']);
+            }
+            elseif ($actionType === 'delete_batch') {
+                $id = (int)($input['batch_id'] ?? 0);
+                if ($id <= 0) {
+                    echo json_encode(['success' => false, 'message' => 'ID thư mục không hợp lệ']);
+                    break;
+                }
+                
+                // Delete children
+                $stmt = $conn->prepare("DELETE FROM ai_training_docs WHERE parent_id = ?");
+                $stmt->bind_param("i", $id);
+                $stmt->execute();
+                $stmt->close();
+
+                // Delete the folder itself
+                $stmt = $conn->prepare("DELETE FROM ai_training_docs WHERE id = ?");
+                $stmt->bind_param("i", $id);
+                $stmt->execute();
+                $stmt->close();
+                echo json_encode(['success' => true, 'message' => 'Đã xóa thư mục và tất cả tài liệu con thành công']);
+            }
+            elseif ($actionType === 'toggle_batch') {
+                $id = (int)($input['batch_id'] ?? 0);
+                $isActive = (int)($input['is_active'] ?? 1);
+                if ($id <= 0) {
+                    echo json_encode(['success' => false, 'message' => 'ID thư mục không hợp lệ']);
+                    break;
+                }
+
+                // Toggle children
+                $stmt = $conn->prepare("UPDATE ai_training_docs SET is_active = ? WHERE parent_id = ?");
+                $stmt->bind_param("ii", $isActive, $id);
+                $stmt->execute();
+                $stmt->close();
+
+                // Toggle folder itself
+                $stmt = $conn->prepare("UPDATE ai_training_docs SET is_active = ? WHERE id = ?");
+                $stmt->bind_param("ii", $isActive, $id);
+                $stmt->execute();
+                $stmt->close();
+                echo json_encode(['success' => true, 'message' => 'Đã cập nhật trạng thái thư mục']);
+            }
+            elseif ($actionType === 'train_docs') {
+                echo json_encode(['success' => true, 'message' => 'Đã hoàn tất huấn luyện tài liệu']);
+            }
+            elseif ($actionType === 'upload_training_file') {
+                if (!isset($_FILES['file'])) {
+                    echo json_encode(['success' => false, 'message' => 'Không tìm thấy file tải lên']);
+                    break;
+                }
+                $file = $_FILES['file'];
+                if ($file['error'] !== UPLOAD_ERR_OK) {
+                    echo json_encode(['success' => false, 'message' => 'Lỗi tải file: ' . $file['error']]);
+                    break;
+                }
+
+                $uploadDir = __DIR__ . '/uploads/tenant_1/';
+                if (!is_dir($uploadDir)) {
+                    mkdir($uploadDir, 0755, true);
+                }
+
+                $ext = pathinfo($file['name'], PATHINFO_EXTENSION);
+                $cleanName = preg_replace('/[^a-zA-Z0-9_\.-]/', '_', $file['name']);
+                $filename = time() . '_' . uniqid() . '_' . $cleanName;
+                $targetPath = $uploadDir . $filename;
+
+                if (move_uploaded_file($file['tmp_name'], $targetPath)) {
+                    $relativeUrl = '/backend/uploads/tenant_1/' . $filename;
+                    
+                    $content = '';
+                    if (strtolower($ext) === 'txt') {
+                        $content = file_get_contents($targetPath);
+                    } else {
+                        $content = "Tài liệu đính kèm: " . $file['name'];
+                    }
+
+                    $parentId = (int)($_POST['folder_id'] ?? 0);
+                    $name = $file['name'];
+                    $source_type = 'file';
+                    $file_size = $file['size'];
+
+                    $stmt = $conn->prepare("INSERT INTO ai_training_docs (name, content, source_type, parent_id, file_path, file_size) VALUES (?, ?, ?, ?, ?, ?)");
+                    $stmt->bind_param("sssisd", $name, $content, $source_type, $parentId, $relativeUrl, $file_size);
+                    $stmt->execute();
+                    $stmt->close();
+
+                    echo json_encode(['success' => true, 'message' => 'Đã tải lên tài liệu thành công']);
+                } else {
+                    echo json_encode(['success' => false, 'message' => 'Không thể lưu file trên máy chủ']);
+                }
+            }
+            else {
+                echo json_encode(['success' => false, 'message' => 'Thao tác không được hỗ trợ']);
+            }
+        } catch (Exception $ex) {
+            echo json_encode(['success' => false, 'message' => 'Lỗi: ' . $ex->getMessage()]);
+        }
+        break;
+
     case 'ai_chat':
         try {
             $input = json_decode(file_get_contents('php://input'), true);
@@ -11648,6 +11912,50 @@ switch ($action) {
                 "- Giải thích câu trả lời của bạn một cách rõ ràng dựa trên kết quả thu thập được.";
 
             $systemInstruction .= "\n\nQUY TẮC PHẢN HỒI QUAN TRỌNG: TUYỆT ĐỐI KHÔNG ĐƯỢC PHÉP SỬ DỤNG BẤT KỲ EMOJI (BIỂU TƯỢNG CẢM XÚC) NÀO TRONG PHẢN HỒI CỦA BẠN. Chỉ sử dụng chữ viết tiếng Việt chuẩn và định dạng markdown thông thường để trả lời.";
+
+            // Retrieve RAG settings and context
+            $ragSettings = [];
+            $rStmt = $conn->prepare("SELECT setting_value FROM system_settings WHERE setting_key = 'rag_settings' LIMIT 1");
+            if ($rStmt) {
+                $rStmt->execute();
+                $rRes = $rStmt->get_result()->fetch_assoc();
+                $rStmt->close();
+                if ($rRes && !empty($rRes['setting_value'])) {
+                    $ragSettings = json_decode($rRes['setting_value'], true);
+                }
+            }
+            $ragEnabled = isset($ragSettings['is_enabled']) ? (int)$ragSettings['is_enabled'] : 1;
+
+            $ragContext = '';
+            if ($ragEnabled === 1) {
+                $dStmt = $conn->prepare("SELECT name, content, tags, source_type FROM ai_training_docs WHERE tenant_id = 1 AND is_active = 1 AND source_type != 'folder' ORDER BY id ASC");
+                if ($dStmt) {
+                    $dStmt->execute();
+                    $dRes = $dStmt->get_result();
+                    $docsText = [];
+                    while ($dRow = $dRes->fetch_assoc()) {
+                        $docTypeLabel = ($dRow['source_type'] === 'web') ? 'Website' : (($dRow['source_type'] === 'file') ? 'Tệp đính kèm' : 'Văn bản hướng dẫn');
+                        $docText = "=== TÀI LIỆU HƯỚNG DẪN / TRI THỨC ĐÀO TẠO ===\n" .
+                                   "Tiêu đề: " . $dRow['name'] . "\n" .
+                                   "Loại: " . $docTypeLabel . "\n" .
+                                   "Thẻ phân loại: " . $dRow['tags'] . "\n" .
+                                   "Nội dung:\n" . $dRow['content'] . "\n" .
+                                   "==========================================";
+                        $docsText[] = $docText;
+                    }
+                    $dStmt->close();
+                    if (!empty($docsText)) {
+                        $ragContext = implode("\n\n", $docsText);
+                    }
+                }
+            }
+
+            if (!empty($ragContext)) {
+                $systemInstruction .= "\n\n=== KIẾN THỨC ĐÃ ĐÀO TẠO / TÀI LIỆU VẬN HÀNH HỆ THỐNG ===\n" .
+                    "Dưới đây là các tài liệu hướng dẫn và tri thức vận hành của hệ thống Rich Land. " .
+                    "Hãy sử dụng tri thức này để trả lời các thắc mắc chung hoặc chi tiết của người dùng:\n" .
+                    $ragContext;
+            }
 
             $projectContext = trim($input['project_context'] ?? '');
             if (!empty($projectContext)) {

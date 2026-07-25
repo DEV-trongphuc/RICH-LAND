@@ -164,6 +164,22 @@ CREATE TABLE IF NOT EXISTS `project_documents` (
   FOREIGN KEY (`uploaded_by`) REFERENCES `users` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- 5.1. Table: ai_training_docs (AI RAG and system training documents)
+CREATE TABLE IF NOT EXISTS `ai_training_docs` (
+  `id` INT AUTO_INCREMENT PRIMARY KEY,
+  `tenant_id` INT NOT NULL DEFAULT 1,
+  `name` VARCHAR(255) NOT NULL,
+  `content` LONGTEXT DEFAULT NULL,
+  `tags` VARCHAR(255) DEFAULT NULL,
+  `source_type` ENUM('manual', 'web', 'file', 'folder') NOT NULL,
+  `parent_id` INT DEFAULT 0,
+  `is_active` TINYINT(1) DEFAULT 1,
+  `file_path` VARCHAR(500) DEFAULT NULL,
+  `file_size` BIGINT UNSIGNED DEFAULT 0,
+  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 -- 6. Table: persons (Intake - Chống trùng lặp theo SĐT - Module 1)
 CREATE TABLE IF NOT EXISTS `persons` (
   `id` int(11) NOT NULL AUTO_INCREMENT,

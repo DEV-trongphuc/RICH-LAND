@@ -184,7 +184,8 @@ const SettingsInner = () => {
         { value: 'duplicate_filter', label: t('Nhận diện & Lọc trùng'), icon: <Search size={15} /> },
         { value: 'blacklist', label: t('Danh sách đen & Loại trừ'), icon: <Shield size={15} /> },
         { value: 'tag_management', label: t('Quản lý Thẻ (Tags)'), icon: <Tag size={15} /> },
-        { value: 'legacy_mapping', label: t('Ánh xạ dữ liệu cũ'), icon: <FileSpreadsheet size={15} /> }
+        { value: 'legacy_mapping', label: t('Ánh xạ dữ liệu cũ'), icon: <FileSpreadsheet size={15} /> },
+        { value: 'lead_scoring', label: t('Quy tắc Lead Scoring'), icon: <Scale size={15} /> }
       ]
     },
     {
@@ -272,6 +273,7 @@ const SettingsInner = () => {
 
     // Blacklist
     { id: 'blacklist_config', tab: 'blacklist', category: t('Dữ liệu & Vòng đời'), subtab: t('Danh sách đen & Loại trừ'), title: t('Danh sách đen (Blacklist SĐT/Email rác)'), desc: t('Chặn các số điện thoại/email spam hoặc loại trừ khỏi chiến dịch Broadcast'), keywords: ['blacklist', 'danh sách đen', 'rác', 'spam', 'broadcast', 'chặn'] },
+    { id: 'lead_scoring', tab: 'lead_scoring', category: t('Dữ liệu & Vòng đời'), subtab: t('Quy tắc Lead Scoring'), title: t('Quy tắc chấm điểm Lead Scoring'), desc: t('Cấu hình điểm số cho các tiêu chí nhân khẩu học, hành vi và suy giảm độ nhiệt'), keywords: ['scoring', 'lead score', 'điểm', 'nóng', 'lạnh', 'tiêu chí'] },
 
     // Giao tiếp & Báo cáo
     { id: 'email_config', tab: 'email_config', category: t('Giao tiếp & Báo cáo'), subtab: t('Cấu hình Gửi Email'), desc: t('Cấu hình Google Apps Script hoặc Amazon SES SMTP gửi email hệ thống'), keywords: ['email', 'smtp', 'ses', 'gmail', 'appscript', 'test email'] },
@@ -564,6 +566,36 @@ const SettingsInner = () => {
     quote_invoice: { enable_team_leader: true, designated_roles: ['director'], notify_admin: false }
   });
 
+  // Lead Scoring Config
+  const [leadScoringRules, setLeadScoringRules] = useState<Record<string, number>>({
+    base_score: 10,
+    title_c_level: 20,
+    title_other: 5,
+    phone: 15,
+    mobile: 10,
+    both_phones: 10,
+    email: 10,
+    social_link: 10,
+    birthday: 10,
+    gender: 5,
+    customer_type: 5,
+    address: 15,
+    source_website: 15,
+    source_referral: 20,
+    project_id: 15,
+    company_id: 5,
+    industry: 5,
+    budget_range: 10,
+    revenue_high: 35,
+    revenue_medium: 20,
+    win_prob_high: 10,
+    status_qualified_customer: 15,
+    ttl1_completed: 25,
+    notes_long: 10,
+    has_tags: 10,
+    decay_no_interaction: -15
+  });
+
   // Ticket Auto-Approve config
   const [ticketAutoApproveEnabled, setTicketAutoApproveEnabled] = useState(false);
   const [ticketAutoApproveKeywords, setTicketAutoApproveKeywords] = useState('');
@@ -702,6 +734,11 @@ const SettingsInner = () => {
         }
         if (json.data.deal_opportunity_status) setDealOpportunityStatus(json.data.deal_opportunity_status);
         if (json.data.deal_won_status) setDealWonStatus(json.data.deal_won_status);
+        if (json.data.lead_scoring_rules) {
+          try {
+            setLeadScoringRules(JSON.parse(json.data.lead_scoring_rules));
+          } catch(e) {}
+        }
         if (json.data.db_version) setDbVersion(json.data.db_version);
         if (json.data.email_provider) {
           setProvider(json.data.email_provider);
@@ -1383,9 +1420,10 @@ const SettingsInner = () => {
       ai_screener_rules: aiScreenerRules,
       ai_screener_rounds: aiScreenerRounds.join(','),
       ai_screener_mode: aiScreenerMode,
-      ai_screener_manual_action: aiScreenerManualAction,
+       ai_screener_manual_action: aiScreenerManualAction,
       ai_screener_manual_rules: aiScreenerManualRules,
-      approval_matrix_config: JSON.stringify(approvalMatrixConfig)
+      approval_matrix_config: JSON.stringify(approvalMatrixConfig),
+      lead_scoring_rules: JSON.stringify(leadScoringRules)
     };
 
     Object.keys(securityTimers).forEach(statusSlug => {
@@ -1410,7 +1448,8 @@ const SettingsInner = () => {
         security_timers: 'Đồng hồ bảo mật',
         capi_settings: 'Cài đặt CAPI',
         gemini_ai: 'Cấu hình Gemini AI',
-        approval_matrix: 'Ma trận phê duyệt'
+        approval_matrix: 'Ma trận phê duyệt',
+        lead_scoring: 'Quy tắc Lead Scoring'
       };
       const currentTabLabel = tabLabels[activeTab] || 'Cài đặt hệ thống';
 
@@ -2803,7 +2842,6 @@ const SettingsInner = () => {
                         <tr style={{ background: 'var(--color-border-light)' }}>
                           <th style={{ padding: '10px 16px', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', borderBottom: '1px solid var(--color-border)', textAlign: 'left' }}>{t('Tag')}</th>
                           <th style={{ padding: '10px 16px', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', borderBottom: '1px solid var(--color-border)', textAlign: 'left' }}>{t('Màu sắc')}</th>
-                          <th style={{ padding: '10px 16px', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', borderBottom: '1px solid var(--color-border)', textAlign: 'left' }}>{t('Áp dụng cho')}</th>
                           <th style={{ padding: '10px 16px', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', borderBottom: '1px solid var(--color-border)', textAlign: 'center' }}>{t('Số lượt sử dụng')}</th>
                           <th style={{ padding: '10px 16px', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', borderBottom: '1px solid var(--color-border)', textAlign: 'center', width: '100px' }}>{t('Thao tác')}</th>
                         </tr>
@@ -2831,9 +2869,7 @@ const SettingsInner = () => {
                                 <span style={{ fontFamily: 'monospace', fontSize: '0.8125rem', color: 'var(--color-text)' }}>{tag.color}</span>
                               </div>
                             </td>
-                            <td style={{ padding: '12px 16px', fontSize: '0.8125rem', color: 'var(--color-text)' }}>
-                              {tag.entity_type === 'contacts' ? t('Khách hàng') : tag.entity_type === 'companies' ? t('Doanh nghiệp') : t('Tất cả')}
-                            </td>
+
                             <td style={{ padding: '12px 16px', textAlign: 'center', fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text-light)' }}>
                               {tag.count || 0}
                             </td>
@@ -7385,6 +7421,280 @@ function doPost(e) {
               </div>
             </div>
 
+            {/* ===== TAB: LEAD SCORING ===== */}
+            <div style={{ display: activeTab === 'lead_scoring' ? 'block' : 'none' }} className="subtab-enter-active">
+              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 320px', gap: '1.5rem', alignItems: 'start' }}>
+                
+                {/* Left Column: Form Configuration */}
+                <div className="card" style={{ padding: '1.5rem', marginTop: 0, display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+                  <div>
+                    <h3 style={{ fontSize: '1.125rem', fontWeight: 700, marginBottom: '0.5rem', color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <span style={{ display: 'inline-flex', background: 'var(--color-primary)', color: 'white', padding: 4, borderRadius: 6 }}>
+                        <Scale size={16} />
+                      </span>
+                      {t('Hệ thống quy tắc chấm điểm Lead Scoring')}
+                    </h3>
+                    <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', margin: 0, lineHeight: 1.5 }}>
+                      {t('Tùy chỉnh cấu hình trọng số điểm (cộng/trừ) cho các tiêu chí thông tin hồ sơ và hành vi tương tác để phân loại độ nóng/ấm/lạnh của Khách hàng tiềm năng.')}
+                    </p>
+                  </div>
+
+                  {/* Category 1: Base Score & Inactivity Decay */}
+                  <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '1rem' }}>
+                    <div style={{
+                      background: 'var(--color-bg-secondary)',
+                      border: '1px solid var(--color-border)',
+                      borderRadius: '12px',
+                      padding: '1rem',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: '1rem'
+                    }}>
+                      <div>
+                        <div style={{ fontWeight: 700, fontSize: '0.8125rem', color: 'var(--color-text)' }}>{t('Điểm khởi tạo (Base Score)')}</div>
+                        <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', marginTop: '2px' }}>{t('Gán mặc định cho mỗi liên hệ mới')}</div>
+                      </div>
+                      <input
+                        type="number"
+                        className="form-input"
+                        style={{ width: '80px', textAlign: 'right', fontWeight: 700, fontSize: '0.875rem' }}
+                        value={leadScoringRules.base_score ?? 0}
+                        onChange={e => setLeadScoringRules(prev => ({ ...prev, base_score: Number(e.target.value) }))}
+                      />
+                    </div>
+
+                    <div style={{
+                      background: 'rgba(239, 68, 68, 0.04)',
+                      border: '1px solid rgba(239, 68, 68, 0.15)',
+                      borderRadius: '12px',
+                      padding: '1rem',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: '1rem'
+                    }}>
+                      <div>
+                        <div style={{ fontWeight: 700, fontSize: '0.8125rem', color: '#dc2626' }}>{t('Điểm rớt nhiệt (Decay)')}</div>
+                        <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', marginTop: '2px' }}>{t('Trừ khi không tương tác quá 5 ngày')}</div>
+                      </div>
+                      <input
+                        type="number"
+                        className="form-input"
+                        style={{ width: '80px', textAlign: 'right', fontWeight: 700, color: '#dc2626', borderColor: 'rgba(239, 68, 68, 0.2)', background: 'transparent' }}
+                        value={leadScoringRules.decay_no_interaction ?? 0}
+                        onChange={e => setLeadScoringRules(prev => ({ ...prev, decay_no_interaction: Number(e.target.value) }))}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Category 2: Demographics */}
+                  <div>
+                    <h4 style={{ fontSize: '0.85rem', fontWeight: 800, color: '#2563eb', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: 6, borderBottom: '1px solid var(--color-border-light)', paddingBottom: '6px', marginBottom: '1rem', letterSpacing: '0.05em' }}>
+                      <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#2563eb' }} />
+                      {t('Thông tin hồ sơ (Demographics)')}
+                    </h4>
+                    
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: '0.75rem' }}>
+                      {[
+                        { key: 'title_c_level', label: 'Chức danh C-Level', desc: 'Giám đốc, CEO, Founder, Chủ tịch...' },
+                        { key: 'title_other', label: 'Có thông tin chức vụ', desc: 'Có khai báo chức danh khác' },
+                        { key: 'phone', label: 'Số điện thoại chính', desc: 'Có số điện thoại chính' },
+                        { key: 'mobile', label: 'Số điện thoại phụ', desc: 'Có số điện thoại phụ (mobile)' },
+                        { key: 'both_phones', label: 'Có cả 2 số liên hệ', desc: 'Cung cấp cả số chính và phụ' },
+                        { key: 'email', label: 'Cung cấp Email', desc: 'Có điền trường Email liên hệ' },
+                        { key: 'customer_type', label: 'Xác định loại khách hàng', desc: 'Phân loại Cá nhân/Doanh nghiệp' },
+                        { key: 'gender', label: 'Có thông tin giới tính', desc: 'Xác định giới tính khách hàng' },
+                        { key: 'social_link', label: 'Liên kết Zalo / Facebook', desc: 'Có liên kết tài khoản MXH' },
+                        { key: 'birthday', label: 'Có thông tin ngày sinh', desc: 'Có ghi nhận ngày sinh nhật' },
+                        { key: 'address', label: 'Có thông tin địa chỉ', desc: 'Khai báo chi tiết địa chỉ nơi ở' },
+                        { key: 'industry', label: 'Xác định ngành nghề', desc: 'Có khai báo ngành nghề kinh doanh' }
+                      ].map(item => (
+                        <div key={item.key} style={{
+                          background: 'var(--color-bg-secondary)',
+                          border: '1px solid var(--color-border-light)',
+                          borderRadius: '8px',
+                          padding: '0.75rem',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          gap: '0.75rem'
+                        }}
+                        className="score-rule-item-card"
+                        >
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontWeight: 600, fontSize: '0.8rem', color: 'var(--color-text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{t(item.label)}</div>
+                            <div style={{ fontSize: '0.68rem', color: 'var(--color-text-muted)', marginTop: '2px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={t(item.desc)}>{t(item.desc)}</div>
+                          </div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                            <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>+</span>
+                            <input
+                              type="number"
+                              className="form-input"
+                              style={{ width: '55px', height: '28px', padding: '0 6px', textAlign: 'right', fontSize: '0.75rem', fontWeight: 700 }}
+                              value={leadScoringRules[item.key] ?? 0}
+                              onChange={e => setLeadScoringRules(prev => ({ ...prev, [item.key]: Number(e.target.value) }))}
+                            />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Category 3: Behavioral */}
+                  <div>
+                    <h4 style={{ fontSize: '0.85rem', fontWeight: 800, color: '#059669', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: 6, borderBottom: '1px solid var(--color-border-light)', paddingBottom: '6px', marginBottom: '1rem', letterSpacing: '0.05em' }}>
+                      <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#059669' }} />
+                      {t('Hành vi & Tương tác (Behavioral)')}
+                    </h4>
+                    
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: '0.75rem' }}>
+                      {[
+                        { key: 'source_website', label: 'Nguồn khách từ Website', desc: 'Lead đổ từ Website Inbound' },
+                        { key: 'source_referral', label: 'Nguồn được Giới thiệu', desc: 'Khách hàng có người giới thiệu' },
+                        { key: 'project_id', label: 'Liên kết dự án quan tâm', desc: 'Chọn dự án BĐS cụ thể' },
+                        { key: 'company_id', label: 'Liên kết công ty đối tác', desc: 'Có liên kết với một Công ty' },
+                        { key: 'budget_range', label: 'Xác định phân khúc ngân sách', desc: 'Có khai báo tầm tài chính' },
+                        { key: 'revenue_high', label: 'Kỳ vọng doanh thu lớn (>500M)', desc: 'Giá trị deal dự kiến trên 500Tr' },
+                        { key: 'revenue_medium', label: 'Kỳ vọng doanh thu (>100M)', desc: 'Giá trị deal từ 100Tr - 500Tr' },
+                        { key: 'win_prob_high', label: 'Xác suất chốt deals (>70%)', desc: 'Xác suất chốt deal trên 70%' },
+                        { key: 'status_qualified_customer', label: 'Trạng thái chất lượng', desc: 'Trạng thái Qualified/Customer' },
+                        { key: 'ttl1_completed', label: 'Hoàn thành xác minh TTL1', desc: 'Đạt điều kiện gặp gỡ trực tiếp' },
+                        { key: 'notes_long', label: 'Ghi chú chi tiết nhu cầu', desc: 'Ghi chú dài trên 10 ký tự' },
+                        { key: 'has_tags', label: 'Đã gắn thẻ phân loại (Tags)', desc: 'Đã gắn ít nhất 1 thẻ tag' }
+                      ].map(item => (
+                        <div key={item.key} style={{
+                          background: 'var(--color-bg-secondary)',
+                          border: '1px solid var(--color-border-light)',
+                          borderRadius: '8px',
+                          padding: '0.75rem',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          gap: '0.75rem'
+                        }}
+                        className="score-rule-item-card"
+                        >
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontWeight: 600, fontSize: '0.8rem', color: 'var(--color-text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{t(item.label)}</div>
+                            <div style={{ fontSize: '0.68rem', color: 'var(--color-text-muted)', marginTop: '2px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={t(item.desc)}>{t(item.desc)}</div>
+                          </div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                            <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>+</span>
+                            <input
+                              type="number"
+                              className="form-input"
+                              style={{ width: '55px', height: '28px', padding: '0 6px', textAlign: 'right', fontSize: '0.75rem', fontWeight: 700 }}
+                              value={leadScoringRules[item.key] ?? 0}
+                              onChange={e => setLeadScoringRules(prev => ({ ...prev, [item.key]: Number(e.target.value) }))}
+                            />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Right Column: Dynamic Scorecard Preview */}
+                <div style={{ position: 'sticky', top: '1rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                  
+                  {/* Gauge Summary Card */}
+                  <div className="card" style={{ padding: '1.25rem', marginTop: 0, background: 'var(--color-surface)', display: 'flex', flexDirection: 'column', gap: '1.25rem', border: '1px solid var(--color-border)' }}>
+                    <h4 style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--color-text)', margin: 0 }}>
+                      {t('Tổng điểm tích lũy')}
+                    </h4>
+                    
+                    {(() => {
+                      const totalPositive = Object.entries(leadScoringRules).reduce((sum, [k, v]) => {
+                        if (k === 'decay_no_interaction') return sum;
+                        return sum + (Number(v) || 0);
+                      }, 0);
+                      
+                      const demoPositive = [
+                        'title_c_level', 'title_other', 'phone', 'mobile', 'both_phones', 'email', 
+                        'customer_type', 'gender', 'social_link', 'birthday', 'address', 'industry'
+                      ].reduce((sum, key) => sum + (Number(leadScoringRules[key]) || 0), 0);
+
+                      const behaviorPositive = [
+                        'source_website', 'source_referral', 'project_id', 'company_id', 'budget_range', 
+                        'revenue_high', 'revenue_medium', 'win_prob_high', 'status_qualified_customer', 
+                        'ttl1_completed', 'notes_long', 'has_tags'
+                      ].reduce((sum, key) => sum + (Number(leadScoringRules[key]) || 0), 0);
+                      
+                      const baseScore = Number(leadScoringRules.base_score) || 0;
+                      
+                      return (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                          <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
+                            <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{t('Điểm tối đa có thể đạt:')}</span>
+                            <span style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--color-primary)' }}>
+                              {totalPositive} <span style={{ fontSize: '0.8rem', fontWeight: 600 }}>pts</span>
+                            </span>
+                          </div>
+
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.725rem', color: 'var(--color-text-muted)' }}>
+                              <span>{t('Điểm khởi đầu')}</span>
+                              <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>{baseScore} pts</span>
+                            </div>
+                            <div style={{ height: '4px', background: 'var(--color-bg-secondary)', borderRadius: '2px', overflow: 'hidden' }}>
+                              <div style={{ height: '100%', background: 'var(--color-text-light)', width: `${totalPositive ? (baseScore / totalPositive) * 100 : 0}%` }} />
+                            </div>
+                          </div>
+
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.725rem', color: 'var(--color-text-muted)' }}>
+                              <span>{t('Hồ sơ (Demographics)')}</span>
+                              <span style={{ fontWeight: 600, color: '#2563eb' }}>{demoPositive} pts</span>
+                            </div>
+                            <div style={{ height: '4px', background: 'var(--color-bg-secondary)', borderRadius: '2px', overflow: 'hidden' }}>
+                              <div style={{ height: '100%', background: '#2563eb', width: `${totalPositive ? (demoPositive / totalPositive) * 100 : 0}%` }} />
+                            </div>
+                          </div>
+
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.725rem', color: 'var(--color-text-muted)' }}>
+                              <span>{t('Hành vi (Behavioral)')}</span>
+                              <span style={{ fontWeight: 600, color: '#059669' }}>{behaviorPositive} pts</span>
+                            </div>
+                            <div style={{ height: '4px', background: 'var(--color-bg-secondary)', borderRadius: '2px', overflow: 'hidden' }}>
+                              <div style={{ height: '100%', background: '#059669', width: `${totalPositive ? (behaviorPositive / totalPositive) * 100 : 0}%` }} />
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })()}
+                  </div>
+
+                  {/* Heat Ranges Card */}
+                  <div className="card" style={{ padding: '1.25rem', marginTop: 0, background: 'var(--color-surface)', display: 'flex', flexDirection: 'column', gap: '0.875rem', border: '1px solid var(--color-border)' }}>
+                    <h4 style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--color-text)', margin: 0 }}>
+                      {t('Xếp hạng độ nhiệt')}
+                    </h4>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.625rem' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 10px', borderRadius: '8px', background: 'rgba(239, 68, 68, 0.05)', border: '1px solid rgba(239, 68, 68, 0.08)' }}>
+                        <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#ef4444' }} />
+                        <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#ef4444' }}>{t('Rất Nóng:')}</span>
+                        <span style={{ fontSize: '0.75rem', fontWeight: 700, marginLeft: 'auto', color: '#ef4444' }}>80 - 100 pts</span>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 10px', borderRadius: '8px', background: 'rgba(245, 158, 11, 0.05)', border: '1px solid rgba(245, 158, 11, 0.08)' }}>
+                        <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#f59e0b' }} />
+                        <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#f59e0b' }}>{t('Tiềm Năng:')}</span>
+                        <span style={{ fontSize: '0.75rem', fontWeight: 700, marginLeft: 'auto', color: '#f59e0b' }}>50 - 79 pts</span>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 10px', borderRadius: '8px', background: 'rgba(59, 130, 246, 0.05)', border: '1px solid rgba(59, 130, 246, 0.08)' }}>
+                        <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#3b82f6' }} />
+                        <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#3b82f6' }}>{t('Lạnh:')}</span>
+                        <span style={{ fontSize: '0.75rem', fontWeight: 700, marginLeft: 'auto', color: '#3b82f6' }}>0 - 49 pts</span>
+                      </div>
+                    </div>
+                  </div>
+
+                </div>
+
+              </div>
+            </div>
+
             {/* ===== TAB: BLACKLIST & EXCLUSION ===== */}
             <div style={{ display: activeTab === 'blacklist' ? 'block' : 'none' }} className="subtab-enter-active">
               <div className="card" style={{ padding: '1.5rem', marginTop: 0 }}>
@@ -8178,18 +8488,7 @@ function doPost(e) {
               </div>
             </div>
 
-            <div>
-              <label className="form-label" style={{ fontWeight: 600 }}>{t('Đối tượng áp dụng')}</label>
-              <select
-                className="form-input"
-                value={tagForm.entity_type}
-                onChange={e => setTagForm({ ...tagForm, entity_type: e.target.value })}
-              >
-                <option value="all">{t('Tất cả (Khách hàng & Doanh nghiệp)')}</option>
-                <option value="contacts">{t('Chỉ Khách hàng')}</option>
-                <option value="companies">{t('Chỉ Doanh nghiệp')}</option>
-              </select>
-            </div>
+
 
             <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
               <button type="button" className="btn outline" onClick={() => setShowTagModal(false)}>{t('Hủy')}</button>

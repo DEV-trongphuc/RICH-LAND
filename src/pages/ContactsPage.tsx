@@ -40,72 +40,101 @@ const getInteractionTime = (lastContact: string | null, updatedAt: string, creat
   return lastContact;
 };
 
-const calcScore = (c: any) => {
+const calcScore = (c: any, rules: any, decayDays = 5) => {
   if (!c) return 0;
+  const r = rules || {
+    base_score: 10,
+    title_c_level: 20,
+    title_other: 5,
+    phone: 15,
+    mobile: 10,
+    both_phones: 10,
+    email: 10,
+    social_link: 10,
+    birthday: 10,
+    gender: 5,
+    customer_type: 5,
+    address: 15,
+    source_website: 15,
+    source_referral: 20,
+    project_id: 15,
+    company_id: 5,
+    industry: 5,
+    budget_range: 10,
+    revenue_high: 35,
+    revenue_medium: 20,
+    win_prob_high: 10,
+    status_qualified_customer: 15,
+    ttl1_completed: 25,
+    notes_long: 10,
+    has_tags: 10,
+    decay_no_interaction: -15
+  };
+  
   let s = 0;
   
   // 1. Điểm khởi tạo (Mặc định)
-  s += 10;
+  s += Number(r.base_score ?? 10);
 
   // 2. Chức danh
   const title = (c.job_title || '').toLowerCase();
   if (title.includes('giám đốc') || title.includes('ceo') || title.includes('sáng lập') || title.includes('founder') || title.includes('chủ tịch')) {
-    s += 20;
+    s += Number(r.title_c_level ?? 20);
   } else if (title) {
-    s += 5;
+    s += Number(r.title_other ?? 5);
   }
 
   // 3. Số điện thoại & Thông tin liên hệ
-  if (c.phone) s += 15;
-  if (c.mobile) s += 10;
-  if (c.phone && c.mobile) s += 10;
-  if (c.email) s += 10;
-  if (c.zalo_link || c.fb_link) s += 10;
-  if (c.birthday) s += 10;
-  if (c.gender) s += 5;
-  if (c.customer_type) s += 5;
+  if (c.phone) s += Number(r.phone ?? 15);
+  if (c.mobile) s += Number(r.mobile ?? 10);
+  if (c.phone && c.mobile) s += Number(r.both_phones ?? 10);
+  if (c.email) s += Number(r.email ?? 10);
+  if (c.zalo_link || c.fb_link) s += Number(r.social_link ?? 10);
+  if (c.birthday) s += Number(r.birthday ?? 10);
+  if (c.gender) s += Number(r.gender ?? 5);
+  if (c.customer_type) s += Number(r.customer_type ?? 5);
 
   // 4. Địa chỉ
-  if (c.address) s += 15;
+  if (c.address) s += Number(r.address ?? 15);
 
   // 5. Nguồn
-  if (c.source === 'website') s += 15;
-  if (c.source === 'referral' || c.source === 'gioi_thieu') s += 20;
+  if (c.source === 'website') s += Number(r.source_website ?? 15);
+  if (c.source === 'referral' || c.source === 'gioi_thieu') s += Number(r.source_referral ?? 20);
 
   // 6. Liên kết dự án/công ty/phân khúc
-  if (c.project_id) s += 15;
-  if (c.company_id) s += 5;
-  if (c.industry) s += 5;
-  if (c.budget_range) s += 10;
+  if (c.project_id) s += Number(r.project_id ?? 15);
+  if (c.company_id) s += Number(r.company_id ?? 5);
+  if (c.industry) s += Number(r.industry ?? 5);
+  if (c.budget_range) s += Number(r.budget_range ?? 10);
 
   // 7. Kỳ vọng doanh thu & Xác suất
   const revenue = Number(c.expected_revenue) || 0;
   if (revenue > 500000000) {
-    s += 35;
+    s += Number(r.revenue_high ?? 35);
   } else if (revenue > 100000000) {
-    s += 20;
+    s += Number(r.revenue_medium ?? 20);
   }
-  if (Number(c.win_probability) > 70) s += 10;
+  if (Number(c.win_probability) > 70) s += Number(r.win_prob_high ?? 10);
 
   // 8. Trạng thái & TTL1
-  if (c.status === 'qualified' || c.status === 'customer') s += 15;
-  if (Number(c.ttl1_completed) === 1) s += 25;
+  if (c.status === 'qualified' || c.status === 'customer') s += Number(r.status_qualified_customer ?? 15);
+  if (Number(c.ttl1_completed) === 1) s += Number(r.ttl1_completed ?? 25);
 
   // 9. Ghi chú & Thẻ
-  if (c.notes && c.notes.trim().length > 10) s += 10;
+  if (c.notes && c.notes.trim().length > 10) s += Number(r.notes_long ?? 10);
   
   const tagList = typeof c.tags === 'string' 
     ? c.tags.split(',').filter(Boolean) 
     : (Array.isArray(c.tags) ? c.tags : []);
-  if (tagList.length > 0) s += 10;
+  if (tagList.length > 0) s += Number(r.has_tags ?? 10);
 
-  // 10. Rớt nhiệt do quá 5 ngày không tương tác
+  // 10. Rớt nhiệt do quá X ngày không tương tác
   const lastInteractionTime = c.last_contact || c.updated_at || c.created_at;
   if (lastInteractionTime) {
-    const fiveDaysInMs = 5 * 24 * 60 * 60 * 1000;
-    const isDecayed = (new Date().getTime() - new Date(lastInteractionTime).getTime()) > fiveDaysInMs;
+    const decayDaysInMs = decayDays * 24 * 60 * 60 * 1000;
+    const isDecayed = (new Date().getTime() - new Date(lastInteractionTime).getTime()) > decayDaysInMs;
     if (isDecayed) {
-      s -= 15;
+      s += Number(r.decay_no_interaction ?? -15);
     }
   }
 
@@ -199,6 +228,8 @@ export const ContactsPage: React.FC = () => {
     };
   }, []);
   const [contacts, setContacts] = useState<any[]>([]);
+  const [scoringRules, setScoringRules] = useState<any>(null);
+  const [decayDays, setDecayDays] = useState<number>(5);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const debouncedSearch = useDebounce(search.trim(), 300); // 300ms debounce
@@ -479,7 +510,7 @@ export const ContactsPage: React.FC = () => {
       const r = await api.get('/contacts', { params });
       const data = r.data.data;
       const items = data.items || [];
-      setContacts(items.map((c: any) => ({ ...c, score: calcScore(c) })));
+      setContacts(items.map((c: any) => ({ ...c, score: calcScore(c, scoringRules, decayDays) })));
       setTotal(data.total || items.length);
     } catch (e: any) {
       setContacts([]);
@@ -553,6 +584,22 @@ export const ContactsPage: React.FC = () => {
             const d = usersRes.data.data;
             const list = Array.isArray(d) ? d : (d?.items || []);
             setUsers(list);
+          }
+        }
+        // Load lead scoring rules and decay days from settings
+        const settingsRes = await api.get('/api.php?action=get_settings').catch(() => null);
+        if (settingsRes && settingsRes.data?.success && settingsRes.data?.data) {
+          if (settingsRes.data.data.lead_scoring_rules) {
+            try {
+              const parsed = JSON.parse(settingsRes.data.data.lead_scoring_rules);
+              setScoringRules(parsed);
+            } catch(e) {}
+          }
+          if (settingsRes.data.data.temperature_decay_days) {
+            const parsedDays = parseInt(settingsRes.data.data.temperature_decay_days, 10);
+            if (!isNaN(parsedDays) && parsedDays > 0) {
+              setDecayDays(parsedDays);
+            }
           }
         }
       } catch (err) {
@@ -2207,23 +2254,25 @@ export const ContactsPage: React.FC = () => {
       )}
 
       {/* 360° Profile Drawer */}
-      <Suspense fallback={null}>
-        <CustomerProfileDrawer
-          isOpen={!!profileContact}
-          onClose={() => setProfileContact(null)}
-          contact={profileContact}
-          onUpdate={updated => {
-            if (updated === null) {
-              setContacts(p => p.filter(c => c.id !== profileContact?.id));
-              setProfileContact(null);
-              fetchData();
-              return;
-            }
-            setContacts(p=>p.map(c=>c.id===updated?.id?{...c,...updated,score:calcScore(updated)}:c));
-            setProfileContact(prev => prev && prev.id === updated?.id ? { ...prev, ...updated } : prev);
-          }}
-        />
-      </Suspense>
+      {profileContact && (
+        <Suspense fallback={null}>
+          <CustomerProfileDrawer
+            isOpen={!!profileContact}
+            onClose={() => setProfileContact(null)}
+            contact={profileContact}
+            onUpdate={updated => {
+              if (updated === null) {
+                setContacts(p => p.filter(c => c.id !== profileContact?.id));
+                setProfileContact(null);
+                fetchData();
+                return;
+              }
+              setContacts(p=>p.map(c=>c.id===updated?.id?{...c,...updated,score:calcScore(updated, scoringRules, decayDays)}:c));
+              setProfileContact(prev => prev && prev.id === updated?.id ? { ...prev, ...updated } : prev);
+            }}
+          />
+        </Suspense>
+      )}
       
       {reportModalOpen && selectedContactForReport && (
         <CustomModal

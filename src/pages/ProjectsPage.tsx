@@ -1027,9 +1027,17 @@ export default function ProjectsPage() {
         loadLinkedTasks('campaign', editingCampaign.id);
       }
     };
+    const handleContactUpdated = () => {
+      if (editingProject && editingProject.id) {
+        loadProjectRoster(editingProject.id);
+      }
+      loadProjects();
+    };
     window.addEventListener('task-updated', handleTaskUpdated);
+    window.addEventListener('contact-updated', handleContactUpdated);
     return () => {
       window.removeEventListener('task-updated', handleTaskUpdated);
+      window.removeEventListener('contact-updated', handleContactUpdated);
     };
   }, [editingProject?.id, editingCampaign?.id]);
 
@@ -8065,37 +8073,41 @@ export default function ProjectsPage() {
         )}
       </CustomModal>
 
-      <Suspense fallback={null}>
-        <WorkspaceTaskDrawer
-          isOpen={!!selectedTaskForDrawer}
-          onClose={() => {
-            setSelectedTaskForDrawer(null);
-            const params = new URLSearchParams(window.location.search);
-            params.delete('task_id');
-            navigate(`${window.location.pathname}${params.toString() ? '?' + params.toString() : ''}`, { replace: true });
-          }}
-          task={selectedTaskForDrawer}
-          onUpdate={() => {
-            window.dispatchEvent(new CustomEvent('task-updated'));
-          }}
-          users={users}
-          onOpenContact={(contactId) => {
-            setSelectedContactForDrawer({ id: contactId });
-          }}
-        />
-      </Suspense>
+      {selectedTaskForDrawer && (
+        <Suspense fallback={null}>
+          <WorkspaceTaskDrawer
+            isOpen={!!selectedTaskForDrawer}
+            onClose={() => {
+              setSelectedTaskForDrawer(null);
+              const params = new URLSearchParams(window.location.search);
+              params.delete('task_id');
+              navigate(`${window.location.pathname}${params.toString() ? '?' + params.toString() : ''}`, { replace: true });
+            }}
+            task={selectedTaskForDrawer}
+            onUpdate={() => {
+              window.dispatchEvent(new CustomEvent('task-updated'));
+            }}
+            users={users}
+            onOpenContact={(contactId) => {
+              setSelectedContactForDrawer({ id: contactId });
+            }}
+          />
+        </Suspense>
+      )}
 
-      <Suspense fallback={null}>
-        <CustomerProfileDrawer
-          isOpen={!!selectedContactForDrawer}
-          onClose={() => setSelectedContactForDrawer(null)}
-          contact={selectedContactForDrawer}
-          onUpdate={() => {
-            window.dispatchEvent(new CustomEvent('contact-updated'));
-          }}
-          zIndex={selectedTaskForDrawer ? 1000300 : undefined}
-        />
-      </Suspense>
+      {selectedContactForDrawer && (
+        <Suspense fallback={null}>
+          <CustomerProfileDrawer
+            isOpen={!!selectedContactForDrawer}
+            onClose={() => setSelectedContactForDrawer(null)}
+            contact={selectedContactForDrawer}
+            onUpdate={() => {
+              window.dispatchEvent(new CustomEvent('contact-updated'));
+            }}
+            zIndex={selectedTaskForDrawer ? 1000300 : undefined}
+          />
+        </Suspense>
+      )}
     </div>
   );
 }

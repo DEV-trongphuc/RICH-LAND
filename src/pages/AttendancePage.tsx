@@ -276,6 +276,21 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
     }
   }, [viewMode, currentMonth, currentYear, filterUser, filterStatus]);
 
+  useEffect(() => {
+    const handleContactUpdated = () => {
+      fetchCheckInsList();
+      if (viewMode === 'calendar') {
+        fetchCalendarCheckIns();
+      } else if ((viewMode as string) === 'registrations') {
+        fetchRegistrations();
+      }
+    };
+    window.addEventListener('contact-updated', handleContactUpdated);
+    return () => {
+      window.removeEventListener('contact-updated', handleContactUpdated);
+    };
+  }, [viewMode, currentMonth, currentYear, filterUser, filterStatus]);
+
   const fetchRegistrations = async () => {
     if (!canApprove) return;
     setRegistrationsLoading(true);
@@ -2769,19 +2784,21 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
         </div>
       </CustomModal>
 
-      <Suspense fallback={null}>
-        <CustomerProfileDrawer
-          isOpen={!!selectedContact}
-          onClose={() => {
-            setSelectedContact(null);
-            fetchCalendarCheckIns();
-          }}
-          contact={selectedContact}
-          onUpdate={() => {
-            fetchCalendarCheckIns();
-          }}
-        />
-      </Suspense>
+      {selectedContact && (
+        <Suspense fallback={null}>
+          <CustomerProfileDrawer
+            isOpen={!!selectedContact}
+            onClose={() => {
+              setSelectedContact(null);
+              fetchCalendarCheckIns();
+            }}
+            contact={selectedContact}
+            onUpdate={() => {
+              fetchCalendarCheckIns();
+            }}
+          />
+        </Suspense>
+      )}
 
       {/* Meeting Proof Modal */}
       {meetingToComplete && createPortal(
