@@ -1038,9 +1038,12 @@ export const AITrainingPanel: React.FC = () => {
                         return (
                           <React.Fragment key={row.id}>
                             {/* Folder Row */}
-                            <tr style={{ borderBottom: '1px solid var(--color-border-light)', background: 'rgba(245, 158, 11, 0.02)' }}>
+                            <tr 
+                              onClick={() => toggleFolderExpand(row.id)}
+                              style={{ borderBottom: '1px solid var(--color-border-light)', background: 'rgba(245, 158, 11, 0.02)', cursor: 'pointer' }}
+                            >
                               <td style={{ padding: '12px 8px', fontWeight: 700, color: 'var(--color-text)' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }} onClick={() => toggleFolderExpand(row.id)}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                                   {isExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
                                   <Folder size={18} color="#f59e0b" fill="#f59e0b" />
                                   <span>{row.name}</span>
@@ -1061,13 +1064,13 @@ export const AITrainingPanel: React.FC = () => {
                               <td style={{ padding: '12px 8px', color: 'var(--color-text-muted)', fontSize: '0.75rem' }}>
                                 {formatDocDate(row.updated_at)}
                               </td>
-                              <td style={{ padding: '12px 8px' }}>
+                              <td style={{ padding: '12px 8px' }} onClick={e => e.stopPropagation()}>
                                 <ToggleSwitch 
                                   active={isFolderActive} 
                                   onChange={() => handleToggleFolder(row.id, isFolderActive ? 1 : 0)} 
                                 />
                               </td>
-                              <td style={{ padding: '12px 8px', textAlign: 'right' }}>
+                              <td style={{ padding: '12px 8px', textAlign: 'right' }} onClick={e => e.stopPropagation()}>
                                 <button 
                                   type="button"
                                   className="btn outline sm text-danger" 
@@ -1094,7 +1097,11 @@ export const AITrainingPanel: React.FC = () => {
                                 members.map((member: AIDoc) => {
                                   const isTraining = trainingDocs[member.id] || member.status === 'processing';
                                   return (
-                                    <tr key={member.id} style={{ borderBottom: '1px solid var(--color-border-light)' }}>
+                                    <tr 
+                                      key={member.id} 
+                                      onClick={() => handleEditDoc(member)}
+                                      style={{ borderBottom: '1px solid var(--color-border-light)', cursor: 'pointer' }}
+                                    >
                                       <td style={{ padding: '10px 8px 10px 36px', fontWeight: 600, color: 'var(--color-text)' }}>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                                           <CornerDownRight size={14} color="var(--color-text-muted)" style={{ flexShrink: 0 }} />
@@ -1131,14 +1138,14 @@ export const AITrainingPanel: React.FC = () => {
                                       <td style={{ padding: '10px 8px', color: 'var(--color-text-muted)', fontSize: '0.75rem' }}>
                                         {formatDocDate(member.updated_at)}
                                       </td>
-                                      <td style={{ padding: '10px 8px' }}>
+                                      <td style={{ padding: '10px 8px' }} onClick={e => e.stopPropagation()}>
                                         <ToggleSwitch 
                                           active={Number(member.is_active) === 1} 
                                           onChange={() => handleToggleDoc(member.id, Number(member.is_active) || 0)} 
                                           disabled={member.status !== 'trained'}
                                         />
                                       </td>
-                                      <td style={{ padding: '10px 8px', textAlign: 'right' }}>
+                                      <td style={{ padding: '10px 8px', textAlign: 'right' }} onClick={e => e.stopPropagation()}>
                                         <div style={{ display: 'inline-flex', gap: '6px' }}>
                                           <button 
                                             type="button"
@@ -1181,7 +1188,11 @@ export const AITrainingPanel: React.FC = () => {
                       // Root Document Row
                       const isTraining = trainingDocs[row.id] || row.status === 'processing';
                       return (
-                        <tr key={row.id} style={{ borderBottom: '1px solid var(--color-border-light)' }}>
+                        <tr 
+                          key={row.id} 
+                          onClick={() => handleEditDoc(row)}
+                          style={{ borderBottom: '1px solid var(--color-border-light)', cursor: 'pointer' }}
+                        >
                           <td style={{ padding: '12px 8px', fontWeight: 700, color: 'var(--color-text)' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                               {(row.source_type === 'upload' || row.source_type === 'file') && <FileText size={16} color="#64748b" />}
@@ -1222,14 +1233,14 @@ export const AITrainingPanel: React.FC = () => {
                           <td style={{ padding: '12px 8px', color: 'var(--color-text-muted)', fontSize: '0.75rem' }}>
                             {formatDocDate(row.updated_at)}
                           </td>
-                          <td style={{ padding: '12px 8px' }}>
+                          <td style={{ padding: '12px 8px' }} onClick={e => e.stopPropagation()}>
                             <ToggleSwitch 
                               active={Number(row.is_active) === 1} 
                               onChange={() => handleToggleDoc(row.id, Number(row.is_active) || 0)} 
                               disabled={row.status !== 'trained'}
                             />
                           </td>
-                          <td style={{ padding: '12px 8px', textAlign: 'right' }}>
+                          <td style={{ padding: '12px 8px', textAlign: 'right' }} onClick={e => e.stopPropagation()}>
                             <div style={{ display: 'inline-flex', gap: '6px' }}>
                               <button 
                                 type="button"
@@ -1887,7 +1898,7 @@ export const AITrainingPanel: React.FC = () => {
           backgroundColor: 'rgba(0, 0, 0, 0.5)', zIndex: 9999999,
           display: 'flex', alignItems: 'center', justifyContent: 'center'
         }}>
-          <div className="card" style={{ width: '100%', maxWidth: '820px', padding: '2rem', display: 'flex', flexDirection: 'column', gap: '1.25rem', margin: '1rem' }}>
+          <div className="card" style={{ width: '100%', maxWidth: '1000px', padding: '2rem', display: 'flex', flexDirection: 'column', gap: '1.25rem', margin: '1rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <h3 style={{ margin: 0, fontSize: '1.125rem', fontWeight: 700 }}>Huấn luyện tri thức (Nhập tay)</h3>
               <button type="button" onClick={() => setShowManualModal(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-muted)' }}>
@@ -1897,7 +1908,7 @@ export const AITrainingPanel: React.FC = () => {
 
             <div style={{ display: 'flex', gap: '1.5rem', marginTop: '0.5rem' }}>
               {/* Left Column: Metadata */}
-              <div style={{ flex: '0 0 280px', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+              <div style={{ flex: '0 0 300px', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                   <label style={{ fontSize: '0.8125rem', fontWeight: 700 }}>Tiêu đề khối tri thức</label>
                   <input type="text" className="form-input" placeholder="Ví dụ: Chính sách chiết khấu đợt 1" value={manualTitle} onChange={e => setManualTitle(e.target.value)} />
@@ -2052,7 +2063,7 @@ export const AITrainingPanel: React.FC = () => {
           backgroundColor: 'rgba(0, 0, 0, 0.5)', zIndex: 9999999,
           display: 'flex', alignItems: 'center', justifyContent: 'center'
         }}>
-          <div className="card" style={{ width: '100%', maxWidth: '820px', padding: '2rem', display: 'flex', flexDirection: 'column', gap: '1.25rem', margin: '1rem' }}>
+          <div className="card" style={{ width: '100%', maxWidth: '1000px', padding: '2rem', display: 'flex', flexDirection: 'column', gap: '1.25rem', margin: '1rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <h3 style={{ margin: 0, fontSize: '1.125rem', fontWeight: 700 }}>Chỉnh sửa dữ liệu huấn luyện</h3>
               <button type="button" onClick={() => { setShowEditModal(false); setEditingDoc(null); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-muted)' }}>
@@ -2062,7 +2073,7 @@ export const AITrainingPanel: React.FC = () => {
 
             <div style={{ display: 'flex', gap: '1.5rem', marginTop: '0.5rem' }}>
               {/* Left Column: Metadata */}
-              <div style={{ flex: '0 0 280px', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+              <div style={{ flex: '0 0 300px', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                   <label style={{ fontSize: '0.8125rem', fontWeight: 700 }}>Tiêu đề khối tri thức</label>
                   <input type="text" className="form-input" value={editingDoc.name} onChange={e => setEditingDoc({ ...editingDoc, name: e.target.value })} />
