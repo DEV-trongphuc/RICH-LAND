@@ -46,7 +46,7 @@ $requiredVectorCacheCols = ['hash', 'vector', 'vector_norm'];
 verifyTableColumns($conn, 'ai_vector_cache', $requiredVectorCacheCols);
 
 // 4. Kiểm tra bảng ai_rag_search_cache
-$requiredSearchCacheCols = ['question_hash', 'question', 'retrieved_context', 'generated_answer', 'created_at'];
+$requiredSearchCacheCols = ['query_hash', 'results', 'created_at'];
 verifyTableColumns($conn, 'ai_rag_search_cache', $requiredSearchCacheCols);
 
 
