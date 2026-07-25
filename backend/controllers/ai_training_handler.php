@@ -317,61 +317,123 @@ try {
                 $upStmt->close();
             }
 
-            // Delete existing chunks for this doc first to prevent duplication
-            $conn->query("DELETE FROM ai_training_chunks WHERE doc_id = $id");
-
             // 2. Chunk text
             $chunks = chunk_text($rawText, $chunkSize, $chunkOverlap);
 
-            // 3. Generate embeddings in batches of 100 and save chunks
+            // 3. Generate embeddings with incremental cache lookup & batching
             $hasError = false;
-            $chunkBatches = array_chunk($chunks, 100);
-            
-            foreach ($chunkBatches as $batchIdx => $batchChunks) {
-                $batchChunks = array_values(array_filter(array_map('trim', $batchChunks)));
-                if (empty($batchChunks)) continue;
+            $processedChunks = [];
+            $uncachedChunks = [];
+            $uncachedIndices = [];
 
-                $vectors = generate_batch_embeddings($batchChunks, $apiKey);
+            foreach ($chunks as $idx => $chunk) {
+                $chunk = trim($chunk);
+                if (empty($chunk)) continue;
 
-                if (empty($vectors) || count($vectors) !== count($batchChunks)) {
-                    $hasError = true;
-                    break;
+                $hash = md5('models/gemini-embedding-001|v1beta|' . mb_strtolower($chunk));
+                $vector = null;
+                $vectorNorm = 0.0;
+
+                // Check cache first
+                $stmtCache = $conn->prepare("SELECT vector, vector_norm FROM ai_vector_cache WHERE hash = ? LIMIT 1");
+                if ($stmtCache) {
+                    $stmtCache->bind_param("s", $hash);
+                    $stmtCache->execute();
+                    $resCache = $stmtCache->get_result()->fetch_assoc();
+                    $stmtCache->close();
+                    if ($resCache && !empty($resCache['vector'])) {
+                        $vector = json_decode($resCache['vector'], true);
+                        $vectorNorm = (float)($resCache['vector_norm'] ?? 0.0);
+                    }
                 }
 
-                foreach ($batchChunks as $idx => $chunk) {
-                    $vector = $vectors[$idx];
-                    if ($vector === null) {
+                if (is_array($vector) && $vectorNorm > 0.0) {
+                    $processedChunks[$idx] = [
+                        'content' => $chunk,
+                        'vector' => $vector,
+                        'norm' => $vectorNorm
+                    ];
+                } else {
+                    $uncachedChunks[] = $chunk;
+                    $uncachedIndices[] = $idx;
+                }
+            }
+
+            // Call Gemini API only for cache misses
+            if (!empty($uncachedChunks)) {
+                $chunkBatches = array_chunk($uncachedChunks, 100);
+                $batchIndexOffset = 0;
+
+                foreach ($chunkBatches as $batchIdx => $batchChunks) {
+                    // Pacing delay to avoid Gemini RPM limit (HTTP 429)
+                    if ($batchIdx > 0) {
+                        usleep(300000); // 300ms
+                    }
+
+                    $vectors = generate_batch_embeddings($batchChunks, $apiKey);
+                    if (empty($vectors) || count($vectors) !== count($batchChunks)) {
                         $hasError = true;
                         break;
                     }
-                    $vectorJson = json_encode($vector);
-                    $chunkIndex = ($batchIdx * 100) + $idx;
 
-                    // Calculate vector norm
-                    $vectorNorm = 0.0;
-                    if (is_array($vector)) {
-                        foreach ($vector as $v) {
-                            $vectorNorm += $v * $v;
+                    foreach ($batchChunks as $idx => $chunk) {
+                        $vector = $vectors[$idx];
+                        if ($vector === null) {
+                            $hasError = true;
+                            break;
                         }
-                        $vectorNorm = sqrt($vectorNorm);
-                    }
 
+                        // Calculate norm
+                        $vectorNorm = 0.0;
+                        if (is_array($vector)) {
+                            foreach ($vector as $v) {
+                                $vectorNorm += $v * $v;
+                            }
+                            $vectorNorm = sqrt($vectorNorm);
+                        }
+
+                        $originalIdx = $uncachedIndices[$batchIndexOffset + $idx];
+                        $processedChunks[$originalIdx] = [
+                            'content' => $chunk,
+                            'vector' => $vector,
+                            'norm' => $vectorNorm
+                        ];
+
+                        // Cache the vector & norm for future use
+                        $hash = md5('models/gemini-embedding-001|v1beta|' . mb_strtolower($chunk));
+                        $vectorJson = json_encode($vector);
+                        $stmtSaveCache = $conn->prepare("INSERT INTO ai_vector_cache (hash, vector, vector_norm) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE vector = ?, vector_norm = ?");
+                        if ($stmtSaveCache) {
+                            $stmtSaveCache->bind_param("ssssd", $hash, $vectorJson, $vectorNorm, $vectorJson, $vectorNorm);
+                            $stmtSaveCache->execute();
+                            $stmtSaveCache->close();
+                        }
+                    }
+                    if ($hasError) break;
+                    $batchIndexOffset += count($batchChunks);
+                }
+            }
+
+            // Save all chunks to training chunks table
+            if (!$hasError) {
+                // Delete existing chunks for this doc first to prevent duplication
+                $conn->query("DELETE FROM ai_training_chunks WHERE doc_id = $id");
+
+                foreach ($processedChunks as $chunkIndex => $pChunk) {
+                    $vectorJson = json_encode($pChunk['vector']);
                     $cStmt = $conn->prepare("INSERT INTO ai_training_chunks (tenant_id, doc_id, chunk_index, content, vector, vector_norm) VALUES (1, ?, ?, ?, ?, ?)");
                     if ($cStmt) {
-                        $cStmt->bind_param("iissd", $id, $chunkIndex, $chunk, $vectorJson, $vectorNorm);
+                        $cStmt->bind_param("iissd", $id, $chunkIndex, $pChunk['content'], $vectorJson, $pChunk['norm']);
                         $cStmt->execute();
                         $cStmt->close();
                     }
                 }
-                if ($hasError) break;
-            }
 
-            if ($hasError) {
-                $errorMsg = "Lỗi khi gọi API tạo Vector Embedding của Google Gemini.";
-                $conn->query("UPDATE ai_training_docs SET status = 'error' WHERE id = $id");
-            } else {
                 $conn->query("UPDATE ai_training_docs SET status = 'trained' WHERE id = $id");
                 $successCount++;
+            } else {
+                $errorMsg = "Lỗi khi gọi API tạo Vector Embedding của Google Gemini.";
+                $conn->query("UPDATE ai_training_docs SET status = 'error' WHERE id = $id");
             }
         }
 
