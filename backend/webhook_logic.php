@@ -1632,7 +1632,7 @@ function sendDirectSaleLeadNotification($conn, $leadId, $assignedToId, $roundId 
 
     try {
         // 1. Get Sale info (zalo_chat_id, email, telegram_chat_id, name)
-        $saleStmt = $conn->prepare("SELECT id, name, email, zalo_chat_id, telegram_chat_id FROM users WHERE id = ?");
+        $saleStmt = $conn->prepare("SELECT id, full_name AS name, email, zalo_chat_id, telegram_chat_id FROM users WHERE id = ?");
         if (!$saleStmt) return;
         $saleStmt->bind_param("i", $assignedToId);
         $saleStmt->execute();

@@ -1410,7 +1410,7 @@ class ContactController {
         // Get list of unique users in quyen_truy_cap for this contact
         // including active and revoked helpers
         $stmt = $this->db->prepare("
-            SELECT DISTINCT q.user_id, u.full_name, u.name, u.username, u.role
+            SELECT DISTINCT q.user_id, u.full_name, u.username, u.role
             FROM quyen_truy_cap q
             JOIN users u ON q.user_id = u.id
             WHERE q.contact_id = ? AND q.user_id != ?
@@ -1419,7 +1419,7 @@ class ContactController {
         $helpers = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
 
         // Always include the owner at the top of the collaborators list
-        $stmtOwner = $this->db->prepare("SELECT id, full_name, name, username, role FROM users WHERE id = ?");
+        $stmtOwner = $this->db->prepare("SELECT id, full_name, username, role FROM users WHERE id = ?");
         $stmtOwner->execute([$ownerId]);
         $owner = $stmtOwner->fetch(PDO::FETCH_ASSOC);
 

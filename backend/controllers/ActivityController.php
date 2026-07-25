@@ -1111,15 +1111,10 @@ class ActivityController {
             $p[] = $auth['user_id'];
             $p[] = $auth['user_id'];
         }
-        // Fetch activity proof photo & description files
-        $stmtFullAct = $this->db->prepare("SELECT proof_photo_url, attachments, description FROM activities WHERE id = ? AND tenant_id = ?");
+        // Fetch activity proof photo & description files (Skipping legacy proof/attachments)
+        $stmtFullAct = $this->db->prepare("SELECT id FROM activities WHERE id = ? AND tenant_id = ?");
         $stmtFullAct->execute([$id, $auth['tenant_id']]);
         $fullAct = $stmtFullAct->fetch(PDO::FETCH_ASSOC);
-        if ($fullAct) {
-            if (!empty($fullAct['proof_photo_url'])) deleteServerFile($fullAct['proof_photo_url']);
-            if (!empty($fullAct['attachments'])) deleteAttachmentFiles($fullAct['attachments']);
-            if (!empty($fullAct['description'])) deleteAttachmentFiles($fullAct['description']);
-        }
 
         // Fetch activity comments attachments & content
         $actCommentsStmt = $this->db->prepare("SELECT attachments, content FROM activity_comments WHERE activity_id = ? AND tenant_id = ?");
@@ -1328,7 +1323,7 @@ class ActivityController {
         $b = getBody();
         $reason = $b['reason'] ?? 'Hủy cuộc họp';
 
-        $stmt = $this->db->prepare("UPDATE activities SET status='cancelled', note=CONCAT(COALESCE(note,''), '\n[Lý do hủy]: ', ?), updated_at=NOW() WHERE id=? AND tenant_id=?");
+        $stmt = $this->db->prepare("UPDATE activities SET status='cancelled', body=CONCAT(COALESCE(body,''), '\n[Lý do hủy]: ', ?), updated_at=NOW() WHERE id=? AND tenant_id=?");
         $stmt->execute([$reason, $id, $auth['tenant_id']]);
 
         logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'CANCEL_MEETING', 'activity', $id, json_encode(['reason' => $reason]));

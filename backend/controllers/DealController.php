@@ -563,8 +563,8 @@ class DealController {
 
             // Copy custom field values from the old deal to the new deal
             $stmtCF = $this->db->prepare("
-                INSERT INTO custom_field_values (custom_field_id, entity_id, value_text, value_number, value_date, value_json, created_at, updated_at)
-                SELECT custom_field_id, ?, value_text, value_number, value_date, value_json, NOW(), NOW()
+                INSERT INTO custom_field_values (custom_field_id, entity_id, value_text, value_number, value_date, value_json, updated_at)
+                SELECT custom_field_id, ?, value_text, value_number, value_date, value_json, NOW()
                 FROM custom_field_values
                 WHERE entity_id = ?
             ");

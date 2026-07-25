@@ -364,10 +364,10 @@ class QuoteController {
             $invId = $this->db->lastInsertId();
 
             // 3. Create Invoice Items
-            $insItem = $this->db->prepare("INSERT INTO invoice_items (invoice_id, product_id, name, quantity, unit_price, discount, subtotal) VALUES (?, ?, ?, ?, ?, ?, ?)");
+            $insItem = $this->db->prepare("INSERT INTO invoice_items (invoice_id, product_id, name, quantity, unit_price, subtotal) VALUES (?, ?, ?, ?, ?, ?)");
             foreach ($items as $item) {
                 $insItem->execute([
-                    $invId, $item['product_id'], $item['name'], $item['quantity'], $item['unit_price'], $item['discount'], $item['subtotal']
+                    $invId, $item['product_id'], $item['name'], $item['quantity'], $item['unit_price'], $item['subtotal']
                 ]);
             }
 
