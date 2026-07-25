@@ -50,6 +50,29 @@ const formatDocDate = (dateStr?: string) => {
   return dateStr;
 };
 
+const renderContentWithLinks = (text: string) => {
+  if (!text) return '';
+  const urlRegex = /(https?:\/\/[^\s]+)/g;
+  const parts = text.split(urlRegex);
+  return parts.map((part, index) => {
+    if (part.match(urlRegex)) {
+      return (
+        <a 
+          key={index} 
+          href={part} 
+          target="_blank" 
+          rel="noopener noreferrer" 
+          style={{ color: '#BD1D2D', textDecoration: 'underline', fontWeight: 600 }}
+          onClick={e => e.stopPropagation()}
+        >
+          {part}
+        </a>
+      );
+    }
+    return part;
+  });
+};
+
 const ToggleSwitch = React.memo(({ active, onChange, disabled }: { active: boolean; onChange: () => void; disabled?: boolean }) => (
   <div 
     onClick={(e) => { e.stopPropagation(); if (!disabled) onChange(); }}
@@ -204,6 +227,8 @@ export const AITrainingPanel: React.FC = () => {
   const [showEditModal, setShowEditModal] = useState(false);
   const [showFolderModal, setShowFolderModal] = useState(false);
   const [editingDoc, setEditingDoc] = useState<AIDoc | null>(null);
+  const [manualEditorMode, setManualEditorMode] = useState<'edit' | 'preview'>('edit');
+  const [editEditorMode, setEditEditorMode] = useState<'edit' | 'preview'>('edit');
 
   // Context Selection Modal States
   const [showContextModal, setShowContextModal] = useState(false);
@@ -852,7 +877,7 @@ export const AITrainingPanel: React.FC = () => {
         }
         .resizable-textarea-wrapper:focus-within {
           border-color: var(--color-primary) !important;
-          box-shadow: 0 0 0 4px var(--color-primary-glow) !important;
+          box-shadow: 0 0 0 2px rgba(189, 29, 45, 0.15) !important;
         }
         .document-editor-textarea {
           width: 100% !important;
@@ -2025,13 +2050,54 @@ export const AITrainingPanel: React.FC = () => {
 
               {/* Right Column: Main Content Editor */}
               <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '8px', height: '100%' }}>
-                <label style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)' }}>Nội dung tri thức</label>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <label style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)' }}>Nội dung tri thức</label>
+                  <div style={{ display: 'flex', gap: '4px', background: 'var(--color-bg-light)', padding: '2px', borderRadius: '8px' }}>
+                    <button
+                      type="button"
+                      onClick={() => setManualEditorMode('edit')}
+                      style={{
+                        padding: '4px 10px',
+                        fontSize: '0.75rem',
+                        fontWeight: 600,
+                        border: 'none',
+                        borderRadius: '6px',
+                        cursor: 'pointer',
+                        background: manualEditorMode === 'edit' ? 'white' : 'transparent',
+                        color: manualEditorMode === 'edit' ? 'var(--color-text)' : 'var(--color-text-muted)',
+                        boxShadow: manualEditorMode === 'edit' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+                        transition: 'all 0.2s'
+                      }}
+                    >
+                      Soạn thảo
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setManualEditorMode('preview')}
+                      style={{
+                        padding: '4px 10px',
+                        fontSize: '0.75rem',
+                        fontWeight: 600,
+                        border: 'none',
+                        borderRadius: '6px',
+                        cursor: 'pointer',
+                        background: manualEditorMode === 'preview' ? 'white' : 'transparent',
+                        color: manualEditorMode === 'preview' ? 'var(--color-text)' : 'var(--color-text-muted)',
+                        boxShadow: manualEditorMode === 'preview' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+                        transition: 'all 0.2s'
+                      }}
+                    >
+                      Xem trước
+                    </button>
+                  </div>
+                </div>
+
                 <div 
                   className="resizable-textarea-wrapper" 
                   style={{ 
                     flex: 1, 
                     height: '100%', 
-                    background: '#fff', 
+                    background: '#f8fafc', 
                     border: '1px solid var(--color-border)', 
                     borderRadius: '16px', 
                     padding: '1.25rem',
@@ -2040,12 +2106,28 @@ export const AITrainingPanel: React.FC = () => {
                     flexDirection: 'column'
                   }}
                 >
-                  <textarea 
-                    className="document-editor-textarea" 
-                    placeholder="Nhập hoặc dán nội dung chi tiết để AI ghi nhớ..." 
-                    value={manualContent} 
-                    onChange={e => setManualContent(e.target.value)} 
-                  />
+                  {manualEditorMode === 'edit' ? (
+                    <textarea 
+                      className="document-editor-textarea" 
+                      placeholder="Nhập hoặc dán nội dung chi tiết để AI ghi nhớ..." 
+                      value={manualContent} 
+                      onChange={e => setManualContent(e.target.value)} 
+                    />
+                  ) : (
+                    <div 
+                      style={{ 
+                        width: '100%', 
+                        height: '100%', 
+                        overflowY: 'auto', 
+                        whiteSpace: 'pre-wrap', 
+                        fontSize: '0.9375rem', 
+                        lineHeight: 1.6,
+                        color: 'var(--color-text)' 
+                      }}
+                    >
+                      {renderContentWithLinks(manualContent)}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -2273,13 +2355,54 @@ export const AITrainingPanel: React.FC = () => {
 
               {/* Right Column: Main Content Editor */}
               <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '8px', height: '100%' }}>
-                <label style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)' }}>Nội dung chi tiết</label>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <label style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)' }}>Nội dung chi tiết</label>
+                  <div style={{ display: 'flex', gap: '4px', background: 'var(--color-bg-light)', padding: '2px', borderRadius: '8px' }}>
+                    <button
+                      type="button"
+                      onClick={() => setEditEditorMode('edit')}
+                      style={{
+                        padding: '4px 10px',
+                        fontSize: '0.75rem',
+                        fontWeight: 600,
+                        border: 'none',
+                        borderRadius: '6px',
+                        cursor: 'pointer',
+                        background: editEditorMode === 'edit' ? 'white' : 'transparent',
+                        color: editEditorMode === 'edit' ? 'var(--color-text)' : 'var(--color-text-muted)',
+                        boxShadow: editEditorMode === 'edit' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+                        transition: 'all 0.2s'
+                      }}
+                    >
+                      Soạn thảo
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setEditEditorMode('preview')}
+                      style={{
+                        padding: '4px 10px',
+                        fontSize: '0.75rem',
+                        fontWeight: 600,
+                        border: 'none',
+                        borderRadius: '6px',
+                        cursor: 'pointer',
+                        background: editEditorMode === 'preview' ? 'white' : 'transparent',
+                        color: editEditorMode === 'preview' ? 'var(--color-text)' : 'var(--color-text-muted)',
+                        boxShadow: editEditorMode === 'preview' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+                        transition: 'all 0.2s'
+                      }}
+                    >
+                      Xem trước
+                    </button>
+                  </div>
+                </div>
+
                 <div 
                   className="resizable-textarea-wrapper" 
                   style={{ 
                     flex: 1, 
                     height: '100%', 
-                    background: '#fff', 
+                    background: '#f8fafc', 
                     border: '1px solid var(--color-border)', 
                     borderRadius: '16px', 
                     padding: '1.25rem',
@@ -2288,11 +2411,27 @@ export const AITrainingPanel: React.FC = () => {
                     flexDirection: 'column'
                   }}
                 >
-                  <textarea 
-                    className="document-editor-textarea" 
-                    value={editingDoc.content || ''} 
-                    onChange={e => setEditingDoc({ ...editingDoc, content: e.target.value })} 
-                  />
+                  {editEditorMode === 'edit' ? (
+                    <textarea 
+                      className="document-editor-textarea" 
+                      value={editingDoc.content || ''} 
+                      onChange={e => setEditingDoc({ ...editingDoc, content: e.target.value })} 
+                    />
+                  ) : (
+                    <div 
+                      style={{ 
+                        width: '100%', 
+                        height: '100%', 
+                        overflowY: 'auto', 
+                        whiteSpace: 'pre-wrap', 
+                        fontSize: '0.9375rem', 
+                        lineHeight: 1.6,
+                        color: 'var(--color-text)' 
+                      }}
+                    >
+                      {renderContentWithLinks(editingDoc.content || '')}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
