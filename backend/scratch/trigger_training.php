@@ -77,7 +77,7 @@ foreach ($chunkBatches as $batchIdx => $batchChunks) {
 
         $cStmt = $conn->prepare("INSERT INTO ai_training_chunks (tenant_id, doc_id, chunk_index, content, vector, vector_norm) VALUES (1, ?, ?, ?, ?, ?)");
         if ($cStmt) {
-            $cStmt->bind_param("iisssd", $id, $chunkIndex, $chunk, $vectorJson, $vectorNorm);
+            $cStmt->bind_param("iissd", $id, $chunkIndex, $chunk, $vectorJson, $vectorNorm);
             $cStmt->execute();
             $cStmt->close();
             echo "Saved chunk #$chunkIndex with norm $vectorNorm\n";
