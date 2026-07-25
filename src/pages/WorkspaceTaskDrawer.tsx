@@ -226,6 +226,30 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
 
   // Resource adding state
   const [showAddChecklist, setShowAddChecklist] = useState(false);
+  const [isEditingDesc, setIsEditingDesc] = useState(false);
+
+  const renderFormattedText = (text) => {
+    if (!text) return '';
+    const urlRegex = /(https?:\/\/[^\s]+)/g;
+    const parts = text.split(urlRegex);
+    return parts.map((part, index) => {
+      if (part.match(urlRegex)) {
+        return (
+          <a
+            key={index}
+            href={part}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{ color: 'var(--color-primary)', textDecoration: 'underline', wordBreak: 'break-all' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {part}
+          </a>
+        );
+      }
+      return part;
+    });
+  };
   const [showAddLink, setShowAddLink] = useState(false);
   const [newLinkLabel, setNewLinkLabel] = useState('');
   const [newLinkUrl, setNewLinkUrl] = useState('');
@@ -1490,11 +1514,11 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
         {/* Drawer Body - 2 Columns Layout */}
         <div style={{ display: 'flex', flexDirection: isMobileOrTablet ? 'column' : 'row', flex: 1, overflowY: 'auto', padding: isMobileOrTablet ? '1rem 1rem 100px 1rem' : (embedMode ? '1rem 1rem 4.5rem 1rem' : '1.5rem 1.5rem 4.5rem 1.5rem'), gap: isMobileOrTablet ? '1rem' : (embedMode ? '1rem' : '1.5rem') }} className={`custom-scrollbar ${embedMode ? 'focus-right-column' : ''}`}>
           
-          {/* Left Column (3/5) */}
-          <div style={{ flex: isMobileOrTablet ? 'none' : 3, display: 'flex', flexDirection: 'column', gap: isMobileOrTablet ? '1rem' : (embedMode ? '1rem' : '1.5rem'), minWidth: 0 }}>
+          {/* Left Column (7) */}
+          <div style={{ flex: isMobileOrTablet ? 'none' : 7, display: 'flex', flexDirection: 'column', gap: isMobileOrTablet ? '1rem' : (embedMode ? '1rem' : '1.5rem'), minWidth: 0 }}>
             
             {/* Tên công việc */}
-            <div className="card" style={cardStyle}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', padding: '0 0.5rem' }}>
               <label style={cardLabelStyle}>
                 {t('Tên công việc')}
               </label>
@@ -1505,24 +1529,70 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
                 onChange={(e) => setFormData((prev: any) => ({ ...prev, subject: e.target.value }))}
                 onBlur={(e) => handleUpdateField('subject', e.target.value)}
                 placeholder={t('Nhập tên công việc...')}
-                style={{ fontSize: '0.85rem', padding: '10px 14px', borderRadius: '8px', border: '1px solid var(--color-border)' }}
+                style={{ 
+                  fontSize: '1.35rem', 
+                  fontWeight: 700, 
+                  padding: '6px 0', 
+                  borderRadius: 0, 
+                  border: 'none', 
+                  borderBottom: '1px solid transparent', 
+                  background: 'transparent',
+                  boxShadow: 'none',
+                  outline: 'none',
+                  color: 'var(--color-text)',
+                  width: '100%'
+                }}
               />
             </div>
 
             {/* Mô tả chi tiết */}
-            <div className="card" style={cardStyle}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', padding: '0 0.5rem' }}>
               <label style={cardLabelStyle}>
                 {t('Mô tả chi tiết')}
               </label>
-              <textarea
-                className="form-input"
-                rows={4}
-                value={erpMeta.description || ''}
-                onChange={(e) => setErpMeta({ ...erpMeta, description: e.target.value })}
-                onBlur={() => handleSaveMeta(erpMeta)}
-                placeholder={t('Chưa có mô tả...')}
-                style={{ fontSize: '0.85rem', padding: '10px 14px', minHeight: '120px', borderRadius: '8px', border: '1px solid var(--color-border)', resize: 'vertical' }}
-              />
+              {!isEditingDesc ? (
+                <div
+                  onClick={() => setIsEditingDesc(true)}
+                  style={{
+                    fontSize: '0.875rem',
+                    padding: '8px 0',
+                    minHeight: '120px',
+                    cursor: 'text',
+                    whiteSpace: 'pre-wrap',
+                    wordBreak: 'break-word',
+                    color: erpMeta.description ? 'var(--color-text)' : 'var(--color-text-muted)'
+                  }}
+                >
+                  {erpMeta.description ? renderFormattedText(erpMeta.description) : t('Chưa có mô tả... Click để chỉnh sửa')}
+                </div>
+              ) : (
+                <textarea
+                  className="form-input"
+                  rows={4}
+                  autoFocus
+                  value={erpMeta.description || ''}
+                  onChange={(e) => setErpMeta({ ...erpMeta, description: e.target.value })}
+                  onBlur={() => {
+                    handleSaveMeta(erpMeta);
+                    setIsEditingDesc(false);
+                  }}
+                  placeholder={t('Chưa có mô tả...')}
+                  style={{ 
+                    fontSize: '0.875rem', 
+                    padding: '8px 0', 
+                    minHeight: '120px', 
+                    borderRadius: 0, 
+                    border: 'none', 
+                    borderBottom: '1px solid transparent', 
+                    background: 'transparent',
+                    boxShadow: 'none',
+                    outline: 'none',
+                    resize: 'vertical',
+                    width: '100%',
+                    color: 'var(--color-text)'
+                  }}
+                />
+              )}
             </div>
 
             {/* Checklist công việc con */}
@@ -2455,8 +2525,8 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
             <div style={{ height: '5rem', flexShrink: 0 }} />
           </div>
 
-          {/* Right Column (2/5) */}
-          <div style={{ flex: isMobileOrTablet ? 'none' : 2, display: 'flex', flexDirection: 'column', gap: isMobileOrTablet ? '1rem' : (embedMode ? '1rem' : '1.5rem'), minWidth: 0 }}>
+          {/* Right Column (3) */}
+          <div style={{ flex: isMobileOrTablet ? 'none' : 3, display: 'flex', flexDirection: 'column', gap: isMobileOrTablet ? '1rem' : (embedMode ? '1rem' : '1.5rem'), minWidth: 0 }}>
             
             {/* Tiến độ công việc */}
             <div className="card" style={cardStyle}>
