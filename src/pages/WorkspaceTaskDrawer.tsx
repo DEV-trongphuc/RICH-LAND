@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { 
   X, CheckSquare, Check, Paperclip, Link2, MessageSquare, Calendar, User, Clock, 
-  Settings, AlertCircle, Trash2, Plus, Send, Share2, FileText, Globe, 
+  Settings, AlertCircle, Trash2, Plus, Send, Share2, FileText, Globe,
+  Bold, Italic, List, ListOrdered, 
   Users, RefreshCw, Layers, CheckSquare2, Info, Receipt, Scale, ArrowUpRight, Search, Save, Bell, BellOff,
   Eye, ExternalLink, UserPlus, UserCheck, Edit3, Play, Sparkles, ArrowRight, Building2, Megaphone, Loader2, RotateCcw,
   CheckCircle2, XCircle, Camera
@@ -226,6 +227,24 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
 
   // Resource adding state
   const [showAddChecklist, setShowAddChecklist] = useState(false);
+  const editorRef = React.useRef(null);
+
+  const handleEditorCommand = (command, value = '') => {
+    document.execCommand(command, false, value);
+    if (editorRef.current) {
+      const html = editorRef.current.innerHTML;
+      setErpMeta((prev) => ({ ...prev, description: html }));
+    }
+  };
+
+  const handleEditorAddLink = () => {
+    const url = prompt(t('Nhập đường dẫn URL (ví dụ: https://example.com):'));
+    if (url) {
+      // Ensure absolute URL prefix
+      const absoluteUrl = url.match(/^https?:\/\//) ? url : 'https://' + url;
+      handleEditorCommand('createLink', absoluteUrl);
+    }
+  };
   const [isEditingDesc, setIsEditingDesc] = useState(false);
 
   const renderFormattedText = (text) => {
@@ -1539,50 +1558,119 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
                 {t('Mô tả chi tiết')}
               </label>
               <div 
-                onClick={() => {
-                  if (!isEditingDesc) setIsEditingDesc(true);
-                }}
                 style={{ 
-                  fontSize: '0.85rem', 
-                  padding: '10px 14px', 
-                  minHeight: '120px', 
                   borderRadius: '8px', 
-                  border: '1px solid var(--color-border)',
-                  background: 'transparent',
-                  cursor: isEditingDesc ? 'default' : 'text',
-                  display: 'flex',
-                  flexDirection: 'column'
+                  border: '1px solid var(--color-border)', 
+                  display: 'flex', 
+                  flexDirection: 'column',
+                  overflow: 'hidden',
+                  background: 'var(--color-surface)',
+                  minHeight: '180px'
                 }}
               >
-                {!isEditingDesc ? (
-                  <div style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', flex: 1 }}>
-                    {erpMeta.description ? renderFormattedText(erpMeta.description) : <span style={{ color: 'var(--color-text-muted)' }}>{t('Chưa có mô tả... Click để chỉnh sửa')}</span>}
-                  </div>
-                ) : (
-                  <textarea
-                    autoFocus
-                    value={erpMeta.description || ''}
-                    onChange={(e) => setErpMeta({ ...erpMeta, description: e.target.value })}
-                    onBlur={() => {
-                      handleSaveMeta(erpMeta);
-                      setIsEditingDesc(false);
-                    }}
-                    placeholder={t('Chưa có mô tả...')}
-                    style={{ 
-                      fontSize: '0.85rem', 
-                      border: 'none', 
-                      background: 'transparent',
-                      boxShadow: 'none',
-                      outline: 'none',
-                      resize: 'vertical',
-                      width: '100%',
-                      minHeight: '100px',
-                      padding: 0,
-                      margin: 0,
-                      color: 'var(--color-text)'
-                    }}
-                  />
-                )}
+                {/* Editor Toolbar */}
+                <div 
+                  style={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    gap: '4px', 
+                    padding: '6px 8px', 
+                    background: 'var(--color-bg)', 
+                    borderBottom: '1px solid var(--color-border)',
+                    flexWrap: 'wrap',
+                    userSelect: 'none'
+                  }}
+                >
+                  <button
+                    type="button"
+                    onClick={() => handleEditorCommand('bold')}
+                    style={{ padding: '6px 8px', borderRadius: '4px', border: 'none', background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-text)' }}
+                    title={t('In đậm')}
+                  >
+                    <Bold size={15} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleEditorCommand('italic')}
+                    style={{ padding: '6px 8px', borderRadius: '4px', border: 'none', background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-text)' }}
+                    title={t('In nghiêng')}
+                  >
+                    <Italic size={15} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleEditorCommand('underline')}
+                    style={{ padding: '6px 8px', borderRadius: '4px', border: 'none', background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-text)' }}
+                    title={t('Gạch chân')}
+                  >
+                    <span style={{ textDecoration: 'underline', fontWeight: 'bold', fontSize: '14px', lineHeight: '1' }}>U</span>
+                  </button>
+                  <div style={{ width: '1px', height: '16px', background: 'var(--color-border)', margin: '0 4px' }} />
+                  <button
+                    type="button"
+                    onClick={handleEditorAddLink}
+                    style={{ padding: '6px 8px', borderRadius: '4px', border: 'none', background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-text)' }}
+                    title={t('Chèn liên kết')}
+                  >
+                    <Link2 size={15} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleEditorCommand('insertUnorderedList')}
+                    style={{ padding: '6px 8px', borderRadius: '4px', border: 'none', background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-text)' }}
+                    title={t('Danh sách dấu đầu dòng')}
+                  >
+                    <List size={15} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleEditorCommand('insertOrderedList')}
+                    style={{ padding: '6px 8px', borderRadius: '4px', border: 'none', background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-text)' }}
+                    title={t('Danh sách số')}
+                  >
+                    <ListOrdered size={15} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleEditorCommand('removeFormat')}
+                    style={{ padding: '6px 8px', borderRadius: '4px', border: 'none', background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-text-muted)' }}
+                    title={t('Xóa định dạng')}
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                </div>
+
+                {/* contenteditable text area */}
+                <div
+                  key={task.id}
+                  ref={editorRef}
+                  contentEditable
+                  dangerouslySetInnerHTML={{ __html: erpMeta.description || '' }}
+                  onBlur={(e) => {
+                    const html = e.currentTarget.innerHTML;
+                    setErpMeta((prev) => ({ ...prev, description: html }));
+                    handleSaveMeta({ ...erpMeta, description: html });
+                  }}
+                  onClick={(e) => {
+                    const target = e.target as HTMLElement;
+                    if (target && target.tagName === 'A') {
+                      e.preventDefault();
+                      window.open(target.getAttribute('href') || '', '_blank');
+                    }
+                  }}
+                  style={{
+                    padding: '12px 14px',
+                    minHeight: '120px',
+                    outline: 'none',
+                    fontSize: '0.85rem',
+                    lineHeight: '1.6',
+                    overflowY: 'auto',
+                    color: 'var(--color-text)',
+                    background: 'transparent',
+                    flex: 1
+                  }}
+                  className="rich-text-editor-content"
+                />
               </div>
             </div>
 
