@@ -188,7 +188,7 @@ const RAGSlider = ({
 };
 
 export const AITrainingPanel: React.FC = () => {
-  const [subtab, setSubtab] = useState<'docs' | 'rag' | 'sandbox'>('docs');
+  const [subtab, setSubtab] = useState<'docs' | 'rag'>('docs');
   const [docs, setDocs] = useState<AIDoc[]>([]);
   const [loadingDocs, setLoadingDocs] = useState(false);
   const [trainingDocs, setTrainingDocs] = useState<Record<string, boolean>>({});
@@ -230,11 +230,7 @@ export const AITrainingPanel: React.FC = () => {
   const [manualEditorMode, setManualEditorMode] = useState<'edit' | 'preview'>('edit');
   const [editEditorMode, setEditEditorMode] = useState<'edit' | 'preview'>('edit');
 
-  // Context Selection Modal States
-  const [showContextModal, setShowContextModal] = useState(false);
-  const [contextTab, setContextTab] = useState<'project' | 'campaign'>('project');
-  const [contextSearchQuery, setContextSearchQuery] = useState('');
-  const [selectedContextLabel, setSelectedContextLabel] = useState('Không kèm ngữ cảnh (Chat chung)');
+
 
   // Form inputs
   const [manualTitle, setManualTitle] = useState('');
@@ -261,58 +257,14 @@ export const AITrainingPanel: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState<string>('all');
 
-  // Sandbox State
-  const [sandboxMessages, setSandboxMessages] = useState<any[]>([
-    { id: '1', sender: 'bot', text: 'Chào anh/chị! Đây là Sandbox để thử nghiệm tri thức AI. Nhập câu hỏi bên dưới để xem AI trả lời thế nào sau khi được huấn luyện.', timestamp: new Date() }
-  ]);
-  const [sandboxInput, setSandboxInput] = useState('');
-  const [sandboxLoading, setSandboxLoading] = useState(false);
-  const [projectsList, setProjectsList] = useState<any[]>([]);
-  const [campaignsList, setCampaignsList] = useState<any[]>([]);
-  const [selectedProjectContext, setSelectedProjectContext] = useState<string>('');
-  const [loadingProjects, setLoadingProjects] = useState(false);
-  const [loadingCampaigns, setLoadingCampaigns] = useState(false);
 
-  const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     fetchDocs();
     fetchRAGSettings();
-    loadProjects();
-    loadCampaigns();
   }, []);
 
-  useEffect(() => {
-    if (subtab === 'sandbox') {
-      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }
-  }, [sandboxMessages, sandboxLoading, subtab]);
 
-  const loadProjects = async () => {
-    setLoadingProjects(true);
-    try {
-      const res = await fetchAPI('projects');
-      const list = Array.isArray(res) ? res : (res?.data || []);
-      setProjectsList(list);
-    } catch (e) {
-      console.error('Failed to load projects for sandbox:', e);
-    } finally {
-      setLoadingProjects(false);
-    }
-  };
-
-  const loadCampaigns = async () => {
-    setLoadingCampaigns(true);
-    try {
-      const res = await fetchAPI('campaigns');
-      const list = res.success ? (res.data || []) : (Array.isArray(res) ? res : []);
-      setCampaignsList(list);
-    } catch (e) {
-      console.error('Failed to load campaigns for sandbox:', e);
-    } finally {
-      setLoadingCampaigns(false);
-    }
-  };
 
   const fetchDocs = async () => {
     setLoadingDocs(true);
@@ -704,43 +656,7 @@ export const AITrainingPanel: React.FC = () => {
     }
   };
 
-  const handleSendSandbox = async () => {
-    if (!sandboxInput.trim() || sandboxLoading) return;
-    const userMsg = sandboxInput;
-    setSandboxInput('');
-    setSandboxMessages(prev => [...prev, { id: Date.now().toString(), sender: 'user', text: userMsg, timestamp: new Date() }]);
-    setSandboxLoading(true);
 
-    try {
-      const historyPayload = sandboxMessages
-        .slice(-8)
-        .filter(msg => msg.id !== '1')
-        .map(msg => ({
-          role: msg.sender === 'user' ? 'user' : 'model',
-          text: msg.text
-        }));
-
-      const res = await fetchAPI('ai_chat', {
-        method: 'POST',
-        body: JSON.stringify({
-          message: userMsg,
-          history: historyPayload,
-          project_context: selectedProjectContext
-        })
-      });
-
-      if (res && res.success && res.data && res.data.reply) {
-        setSandboxMessages(prev => [...prev, { id: (Date.now() + 1).toString(), sender: 'bot', text: res.data.reply, timestamp: new Date() }]);
-      } else {
-        setSandboxMessages(prev => [...prev, { id: (Date.now() + 1).toString(), sender: 'bot', text: 'Xin lỗi, tôi gặp sự cố kết nối máy chủ hoặc API Key bị lỗi.', timestamp: new Date() }]);
-      }
-    } catch (e: any) {
-      console.error(e);
-      setSandboxMessages(prev => [...prev, { id: (Date.now() + 1).toString(), sender: 'bot', text: 'Lỗi hệ thống: ' + e.message, timestamp: new Date() }]);
-    } finally {
-      setSandboxLoading(false);
-    }
-  };
 
   const toggleFolderExpand = (folderId: string) => {
     setExpandedFolders(prev => ({ ...prev, [folderId]: !prev[folderId] }));
@@ -900,95 +816,71 @@ export const AITrainingPanel: React.FC = () => {
           outline: none !important;
         }
       `}</style>
-      {/* Subtab Navigation */}
+      {/* Subtab Navigation & Quick Actions */}
       <div style={{
         display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
         borderBottom: '1px solid var(--color-border-light)',
         paddingBottom: '0.5rem',
-        gap: '1.5rem',
-        marginBottom: '1rem'
+        marginBottom: '1rem',
+        flexWrap: 'wrap',
+        gap: '1rem'
       }}>
-        <button
-          type="button"
-          onClick={() => setSubtab('docs')}
-          style={{
-            background: 'none',
-            border: 'none',
-            padding: '8px 12px',
-            fontSize: '0.875rem',
-            fontWeight: 700,
-            cursor: 'pointer',
-            color: subtab === 'docs' ? '#BD1D2D' : 'var(--color-text-muted)',
-            borderBottom: subtab === 'docs' ? '2.5px solid #BD1D2D' : '2.5px solid transparent',
-            transition: 'all 0.2s',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 6
-          }}
-        >
-          <Folder size={16} />
-          Kho Tài Liệu RAG
-        </button>
-        <button
-          type="button"
-          onClick={() => setSubtab('rag')}
-          style={{
-            background: 'none',
-            border: 'none',
-            padding: '8px 12px',
-            fontSize: '0.875rem',
-            fontWeight: 700,
-            cursor: 'pointer',
-            color: subtab === 'rag' ? '#BD1D2D' : 'var(--color-text-muted)',
-            borderBottom: subtab === 'rag' ? '2.5px solid #BD1D2D' : '2.5px solid transparent',
-            transition: 'all 0.2s',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 6
-          }}
-        >
-          <Sliders size={16} />
-          Thông số RAG & Cấu hình
-        </button>
-        <button
-          type="button"
-          onClick={() => setSubtab('sandbox')}
-          style={{
-            background: 'none',
-            border: 'none',
-            padding: '8px 12px',
-            fontSize: '0.875rem',
-            fontWeight: 700,
-            cursor: 'pointer',
-            color: subtab === 'sandbox' ? '#BD1D2D' : 'var(--color-text-muted)',
-            borderBottom: subtab === 'sandbox' ? '2.5px solid #BD1D2D' : '2.5px solid transparent',
-            transition: 'all 0.2s',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 6
-          }}
-        >
-          <MessageSquare size={16} />
-          Live Sandbox (Thử nghiệm)
-        </button>
-      </div>
+        {/* Left Side: Subtabs */}
+        <div style={{ display: 'flex', gap: '1.5rem' }}>
+          <button
+            type="button"
+            onClick={() => setSubtab('docs')}
+            style={{
+              background: 'none',
+              border: 'none',
+              padding: '8px 12px',
+              fontSize: '0.875rem',
+              fontWeight: 700,
+              cursor: 'pointer',
+              color: subtab === 'docs' ? '#BD1D2D' : 'var(--color-text-muted)',
+              borderBottom: subtab === 'docs' ? '2.5px solid #BD1D2D' : '2.5px solid transparent',
+              transition: 'all 0.2s',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6
+            }}
+          >
+            <Folder size={16} />
+            Kho Tài Liệu RAG
+          </button>
+          <button
+            type="button"
+            onClick={() => setSubtab('rag')}
+            style={{
+              background: 'none',
+              border: 'none',
+              padding: '8px 12px',
+              fontSize: '0.875rem',
+              fontWeight: 700,
+              cursor: 'pointer',
+              color: subtab === 'rag' ? '#BD1D2D' : 'var(--color-text-muted)',
+              borderBottom: subtab === 'rag' ? '2.5px solid #BD1D2D' : '2.5px solid transparent',
+              transition: 'all 0.2s',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6
+            }}
+          >
+            <Sliders size={16} />
+            Thông số RAG & Cấu hình
+          </button>
+        </div>
 
-      {/* Tab Content: HUẤN LUYỆN TRÍ THỨC (DOCS) */}
-      {subtab === 'docs' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-          {/* Quick Actions Button Bar */}
-          <div style={{
-            display: 'flex',
-            gap: '0.75rem',
-            flexWrap: 'wrap',
-            marginBottom: '0.5rem',
-            justifyContent: 'flex-end'
-          }}>
+        {/* Right Side: Quick Action Buttons (Only shown when active tab is docs) */}
+        {subtab === 'docs' && (
+          <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
             <button 
               type="button"
               className="btn primary sm" 
               onClick={() => setShowUploadModal(true)}
-              style={{ display: 'flex', alignItems: 'center', gap: 6, height: '36px', background: '#BD1D2D', borderColor: '#BD1D2D' }}
+              style={{ display: 'flex', alignItems: 'center', gap: 6, height: '36px', background: '#BD1D2D', borderColor: '#BD1D2D', borderRadius: '10px' }}
             >
               <Upload size={14} />
               Tải tệp tin
@@ -997,7 +889,7 @@ export const AITrainingPanel: React.FC = () => {
               type="button"
               className="btn outline sm"
               onClick={() => setShowManualModal(true)}
-              style={{ display: 'flex', alignItems: 'center', gap: 6, height: '36px' }}
+              style={{ display: 'flex', alignItems: 'center', gap: 6, height: '36px', borderRadius: '10px' }}
             >
               <Plus size={14} />
               Nhập thủ công (Q&A)
@@ -1006,7 +898,7 @@ export const AITrainingPanel: React.FC = () => {
               type="button"
               className="btn outline sm"
               onClick={() => setShowWebModal(true)}
-              style={{ display: 'flex', alignItems: 'center', gap: 6, height: '36px' }}
+              style={{ display: 'flex', alignItems: 'center', gap: 6, height: '36px', borderRadius: '10px' }}
             >
               <Globe size={14} />
               Cào website
@@ -1015,12 +907,18 @@ export const AITrainingPanel: React.FC = () => {
               type="button"
               className="btn outline sm"
               onClick={() => setShowFolderModal(true)}
-              style={{ display: 'flex', alignItems: 'center', gap: 6, height: '36px' }}
+              style={{ display: 'flex', alignItems: 'center', gap: 6, height: '36px', borderRadius: '10px' }}
             >
               <FolderPlus size={14} />
               Tạo thư mục
             </button>
           </div>
+        )}
+      </div>
+
+      {/* Tab Content: HUẤN LUYỆN TRÍ THỨC (DOCS) */}
+      {subtab === 'docs' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
 
           {/* Search, Filter & Table */}
           <div className="card" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
@@ -1566,352 +1464,8 @@ export const AITrainingPanel: React.FC = () => {
         </div>
       )}
 
-      {/* Tab Content: LIVE SANDBOX CHAT */}
-      {subtab === 'sandbox' && (
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 320px', gap: '1.5rem', height: '620px', alignItems: 'stretch' }}>
-          {/* Chat Pane */}
-          <div className="card" style={{ padding: '0', display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden', border: '1px solid var(--color-border-light)' }}>
-            {/* Header */}
-            <div style={{ padding: '1rem 1.25rem', borderBottom: '1px solid var(--color-border-light)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--color-bg-light)' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                <div style={{ background: 'rgba(189, 29, 45, 0.08)', color: '#BD1D2D', padding: 8, borderRadius: '50%' }}>
-                  <Bot size={20} />
-                </div>
-                <div>
-                  <div style={{ fontWeight: 800, fontSize: '0.875rem', color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 6 }}>
-                    {settings.bot_name}
-                    <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#10b981', display: 'inline-block' }}></div>
-                  </div>
-                  <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>Hệ thống kiểm thử tri thức</span>
-                </div>
-              </div>
-              <button 
-                type="button"
-                className="btn outline sm"
-                onClick={() => setSandboxMessages([{ id: '1', sender: 'bot', text: 'Chào anh/chị! Đây là Sandbox để thử nghiệm tri thức AI. Nhập câu hỏi bên dưới để xem AI trả lời thế nào sau khi được huấn luyện.', timestamp: new Date() }])}
-                style={{ padding: '6px 12px', fontSize: '0.75rem', borderRadius: '8px' }}
-              >
-                Xóa lịch sử
-              </button>
-            </div>
 
-            {/* Message Body */}
-            <div style={{ flex: 1, padding: '1.5rem', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '1.25rem', background: '#f8fafc' }}>
-              {sandboxMessages.map(msg => {
-                const isBot = msg.sender === 'bot';
-                return (
-                  <div key={msg.id} style={{
-                    display: 'flex',
-                    justifyContent: isBot ? 'flex-start' : 'flex-end',
-                    width: '100%',
-                    gap: 10
-                  }}>
-                    {isBot && (
-                      <div style={{ width: 32, height: 32, borderRadius: '50%', background: '#BD1D2D', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxShadow: '0 2px 4px rgba(189,29,45,0.15)' }}>
-                        <Bot size={16} />
-                      </div>
-                    )}
-                    <div style={{
-                      maxWidth: '75%',
-                      background: isBot ? 'white' : 'linear-gradient(135deg, #BD1D2D 0%, #8b101b 100%)',
-                      color: isBot ? 'var(--color-text)' : 'white',
-                      padding: '12px 16px',
-                      borderRadius: isBot ? '4px 16px 16px 16px' : '16px 16px 4px 16px',
-                      border: isBot ? '1px solid #e2e8f0' : 'none',
-                      fontSize: '0.8125rem',
-                      lineHeight: 1.55,
-                      whiteSpace: 'pre-wrap',
-                      boxShadow: isBot ? '0 1px 3px rgba(0,0,0,0.05)' : '0 2px 6px rgba(189,29,45,0.15)'
-                    }}>
-                      {msg.text}
-                    </div>
-                    {!isBot && (
-                      <div style={{ width: 32, height: 32, borderRadius: '50%', background: '#64748b', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                        <User size={16} />
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-              {sandboxLoading && (
-                <div style={{ display: 'flex', justifyContent: 'flex-start', gap: 10 }}>
-                  <div style={{ width: 32, height: 32, borderRadius: '50%', background: '#BD1D2D', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                    <Bot size={16} />
-                  </div>
-                  <div style={{
-                    background: 'white',
-                    color: 'var(--color-text-muted)',
-                    padding: '12px 16px',
-                    borderRadius: '4px 16px 16px 16px',
-                    border: '1px solid #e2e8f0',
-                    fontSize: '0.8125rem',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 8,
-                    boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
-                  }}>
-                    <RefreshCw size={12} className="spin" />
-                    AI đang phân tích & đối chiếu tri thức...
-                  </div>
-                </div>
-              )}
-              <div ref={messagesEndRef} />
-            </div>
 
-            {/* Input Footer */}
-            <div style={{ padding: '1.25rem', borderTop: '1px solid var(--color-border-light)', display: 'flex', gap: '0.75rem', background: 'white' }}>
-              <input
-                type="text"
-                className="form-input"
-                placeholder="Hỏi AI về pháp lý, mặt bằng, bảng giá..."
-                value={sandboxInput}
-                onChange={e => setSandboxInput(e.target.value)}
-                onKeyDown={e => { if (e.key === 'Enter') handleSendSandbox(); }}
-                disabled={sandboxLoading}
-                style={{ flex: 1, height: '42px', borderRadius: '10px' }}
-              />
-              <button 
-                type="button"
-                className="btn primary" 
-                onClick={handleSendSandbox}
-                disabled={sandboxLoading || !sandboxInput.trim()}
-                style={{ minWidth: '60px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#BD1D2D', borderColor: '#BD1D2D', borderRadius: '10px' }}
-              >
-                <Send size={16} />
-              </button>
-            </div>
-          </div>
-
-          {/* Sandbox Context Settings Sidebar */}
-          <div className="card" style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1.25rem', border: '1px solid var(--color-border-light)' }}>
-            <h4 style={{ margin: 0, fontSize: '0.875rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: 10, borderBottom: '1px solid var(--color-border-light)', paddingBottom: '0.5rem', color: 'var(--color-text)' }}>
-              <div style={{ background: 'rgba(189, 29, 45, 0.08)', color: '#BD1D2D', padding: 6, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <SlidersHorizontal size={14} />
-              </div>
-              Ngữ cảnh thử nghiệm
-            </h4>
-            <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', margin: 0, lineHeight: 1.4 }}>
-              Chọn bộ dữ liệu cụ thể của dự án/chiến dịch Richland để "ép" AI trả lời dựa trên tệp tài liệu tương ứng.
-            </p>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-              <label style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)' }}>
-                Bối cảnh dự án & chiến dịch
-              </label>
-              <div 
-                onClick={() => { setContextSearchQuery(''); setShowContextModal(true); }}
-                style={{
-                  padding: '10px 12px',
-                  border: '1px solid var(--color-border)',
-                  borderRadius: '10px',
-                  background: 'white',
-                  cursor: 'pointer',
-                  fontSize: '0.8125rem',
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  fontWeight: 600
-                }}
-              >
-                <span style={{ color: selectedProjectContext ? 'var(--color-text)' : 'var(--color-text-muted)', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap', maxWidth: '220px' }}>
-                  {selectedContextLabel}
-                </span>
-                <ChevronDown size={14} color="var(--color-text-muted)" style={{ flexShrink: 0 }} />
-              </div>
-            </div>
-
-            <div style={{ background: 'rgba(59, 130, 246, 0.04)', border: '1px solid rgba(59, 130, 246, 0.12)', padding: '0.75rem', borderRadius: '8px', display: 'flex', gap: 8, marginTop: 'auto' }}>
-              <Info size={14} color="#3b82f6" style={{ flexShrink: 0, marginTop: '2px' }} />
-              <p style={{ fontSize: '0.6875rem', color: '#1d4ed8', margin: 0, lineHeight: 1.4 }}>
-                Khi chat trong Sandbox, hệ thống sẽ gọi trực tiếp mô hình Gemini và chạy bộ đối chiếu tương đồng Cosine trên CSDL thật của bạn để kiểm thử.
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* SELECT MODAL: CHỌN DỰ ÁN HOẶC CHIẾN DỊCH */}
-      {showContextModal && typeof document !== 'undefined' && createPortal(
-        <div style={{
-          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-          backgroundColor: 'rgba(0, 0, 0, 0.5)', zIndex: 9999999,
-          display: 'flex', alignItems: 'center', justifyContent: 'center'
-        }}>
-          <div className="card" style={{ width: '100%', maxWidth: '460px', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem', margin: '1rem', maxHeight: '80vh' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--color-border-light)', paddingBottom: '0.75rem' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <div style={{ background: 'rgba(16, 185, 129, 0.08)', color: '#10b981', padding: 6, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <Database size={16} />
-                </div>
-                <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 800, color: 'var(--color-text)' }}>Chọn bối cảnh tri thức</h3>
-              </div>
-              <button type="button" onClick={() => setShowContextModal(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-muted)' }}>
-                <X size={18} />
-              </button>
-            </div>
-
-            {/* Tabs for Projects vs Campaigns */}
-            <div style={{ display: 'flex', borderBottom: '1px solid var(--color-border-light)', paddingBottom: '2px', gap: '1rem' }}>
-              <button
-                type="button"
-                onClick={() => { setContextTab('project'); setContextSearchQuery(''); }}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  padding: '6px 8px',
-                  fontSize: '0.8125rem',
-                  fontWeight: 700,
-                  cursor: 'pointer',
-                  color: contextTab === 'project' ? '#BD1D2D' : 'var(--color-text-muted)',
-                  borderBottom: contextTab === 'project' ? '2px solid #BD1D2D' : '2px solid transparent'
-                }}
-              >
-                Dự án BĐS
-              </button>
-              <button
-                type="button"
-                onClick={() => { setContextTab('campaign'); setContextSearchQuery(''); }}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  padding: '6px 8px',
-                  fontSize: '0.8125rem',
-                  fontWeight: 700,
-                  cursor: 'pointer',
-                  color: contextTab === 'campaign' ? '#BD1D2D' : 'var(--color-text-muted)',
-                  borderBottom: contextTab === 'campaign' ? '2px solid #BD1D2D' : '2px solid transparent'
-                }}
-              >
-                Chiến dịch Marketing
-              </button>
-            </div>
-
-            {/* Search Input */}
-            <input
-              type="text"
-              className="form-input"
-              placeholder={`Tìm kiếm ${contextTab === 'project' ? 'dự án' : 'chiến dịch'}...`}
-              value={contextSearchQuery}
-              onChange={e => setContextSearchQuery(e.target.value)}
-              style={{ fontSize: '0.8125rem', padding: '8px 12px', height: '36px' }}
-              autoFocus
-            />
-
-            {/* List area */}
-            <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '4px', minHeight: '200px', maxHeight: '350px', paddingRight: '4px' }}>
-              {/* Option: Clear Context */}
-              <div
-                onClick={() => {
-                  setSelectedProjectContext('');
-                  setSelectedContextLabel('Không kèm ngữ cảnh (Chat chung)');
-                  setShowContextModal(false);
-                }}
-                style={{
-                  padding: '10px 12px',
-                  borderRadius: '8px',
-                  cursor: 'pointer',
-                  fontSize: '0.8125rem',
-                  background: selectedProjectContext === '' ? 'rgba(189, 29, 45, 0.05)' : 'transparent',
-                  border: selectedProjectContext === '' ? '1px solid rgba(189, 29, 45, 0.15)' : '1px solid #e2e8f0',
-                  color: selectedProjectContext === '' ? '#BD1D2D' : 'var(--color-text-muted)',
-                  fontWeight: selectedProjectContext === '' ? 700 : 500,
-                  textAlign: 'center',
-                  marginBottom: '6px'
-                }}
-              >
-                -- Không kèm ngữ cảnh (Chat chung) --
-              </div>
-
-              {contextTab === 'project' ? (
-                projectsList.length === 0 ? (
-                  <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--color-text-muted)', fontSize: '0.75rem' }}>Không có dự án nào</div>
-                ) : (
-                  projectsList
-                    .filter(p => p.name.toLowerCase().includes(contextSearchQuery.toLowerCase()))
-                    .map(p => {
-                      const ctxValue = `TÊN DỰ ÁN: ${p.name}\nQUY MÔ: ${p.scale_unit_count || 'Chưa cập nhật'} căn hộ\nVỊ TRÍ: ${p.location || 'Chưa rõ'}\nCHỦ ĐẦU TƯ: ${p.developer || 'Richland'}`;
-                      const isSelected = selectedProjectContext === ctxValue;
-
-                      return (
-                        <div
-                          key={p.id}
-                          onClick={() => {
-                            setSelectedProjectContext(ctxValue);
-                            setSelectedContextLabel(`Dự án: ${p.name}`);
-                            setShowContextModal(false);
-                          }}
-                          style={{
-                            padding: '10px 12px',
-                            borderRadius: '8px',
-                            cursor: 'pointer',
-                            fontSize: '0.8125rem',
-                            background: isSelected ? 'rgba(189, 29, 45, 0.05)' : 'white',
-                            border: isSelected ? '1px solid rgba(189, 29, 45, 0.15)' : '1px solid #e2e8f0',
-                            display: 'flex',
-                            flexDirection: 'column',
-                            gap: 2,
-                            transition: 'all 0.15s'
-                          }}
-                          className="context-item"
-                        >
-                          <span style={{ fontWeight: 700, color: isSelected ? '#BD1D2D' : 'var(--color-text)' }}>{p.name}</span>
-                          <span style={{ fontSize: '0.725rem', color: 'var(--color-text-muted)' }}>
-                            Vị trí: {p.location || 'Chưa rõ'} | CĐT: {p.developer || 'Richland'}
-                          </span>
-                        </div>
-                      );
-                    })
-                )
-              ) : (
-                campaignsList.length === 0 ? (
-                  <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--color-text-muted)', fontSize: '0.75rem' }}>Không có chiến dịch nào</div>
-                ) : (
-                  campaignsList
-                    .filter(c => c.name.toLowerCase().includes(contextSearchQuery.toLowerCase()))
-                    .map(c => {
-                      const ctxValue = `CHIẾN DỊCH: ${c.name}\nMÃ: ${c.code || '—'}`;
-                      const isSelected = selectedProjectContext === ctxValue;
-
-                      return (
-                        <div
-                          key={c.id}
-                          onClick={() => {
-                            setSelectedProjectContext(ctxValue);
-                            setSelectedContextLabel(`Chiến dịch: ${c.name}`);
-                            setShowContextModal(false);
-                          }}
-                          style={{
-                            padding: '10px 12px',
-                            borderRadius: '8px',
-                            cursor: 'pointer',
-                            fontSize: '0.8125rem',
-                            background: isSelected ? 'rgba(189, 29, 45, 0.05)' : 'white',
-                            border: isSelected ? '1px solid rgba(189, 29, 45, 0.15)' : '1px solid #e2e8f0',
-                            display: 'flex',
-                            flexDirection: 'column',
-                            gap: 2,
-                            transition: 'all 0.15s'
-                          }}
-                          className="context-item"
-                        >
-                          <span style={{ fontWeight: 700, color: isSelected ? '#BD1D2D' : 'var(--color-text)' }}>{c.name}</span>
-                          <span style={{ fontSize: '0.725rem', color: 'var(--color-text-muted)' }}>
-                            Mã: {c.code || '—'}
-                          </span>
-                        </div>
-                      );
-                    })
-                )
-              )}
-            </div>
-
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
-              <button type="button" className="btn outline sm" onClick={() => setShowContextModal(false)}>Đóng</button>
-            </div>
-          </div>
-        </div>,
-        document.body
-      )}
 
       {/* MODAL 0: TẢI TÀI LIỆU LÊN */}
       {showUploadModal && typeof document !== 'undefined' && createPortal(
