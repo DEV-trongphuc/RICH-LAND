@@ -9,6 +9,7 @@ import {
 import { fetchAPI } from '../../utils/api';
 import toast from 'react-hot-toast';
 import { EmptyCard } from './EmptyCard';
+import { CustomSelect } from './CustomSelect';
 
 interface AIDoc {
   id: string;
@@ -975,18 +976,20 @@ export const AITrainingPanel: React.FC = () => {
                 onChange={e => setSearchTerm(e.target.value)}
                 style={{ flex: 1, minWidth: '220px' }}
               />
-              <select
-                className="form-input"
+              <CustomSelect
+                options={[
+                  { value: 'all', label: 'Tất cả định dạng' },
+                  { value: 'upload', label: 'Tệp tải lên' },
+                  { value: 'manual', label: 'Nhập thủ công' },
+                  { value: 'web', label: 'Website cào' },
+                  { value: 'folder', label: 'Thư mục' }
+                ]}
                 value={filterType}
-                onChange={e => setFilterType(e.target.value)}
-                style={{ width: '160px' }}
-              >
-                <option value="all">Tất cả định dạng</option>
-                <option value="upload">Tệp tải lên</option>
-                <option value="manual">Nhập thủ công</option>
-                <option value="web">Website cào</option>
-                <option value="folder">Thư mục</option>
-              </select>
+                onChange={val => setFilterType(val || 'all')}
+                searchable={false}
+                placeholder="Định dạng..."
+                width="160px"
+              />
               <button type="button" className="btn outline" onClick={fetchDocs} disabled={loadingDocs} style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
                 <RefreshCw size={14} className={loadingDocs ? 'spin' : ''} />
                 Làm mới
@@ -1309,7 +1312,7 @@ export const AITrainingPanel: React.FC = () => {
                   value={settings.persona_prompt}
                   onChange={e => setSettings({ ...settings, persona_prompt: e.target.value })}
                   placeholder="VD: Bạn là trợ lý AI chuyên nghiệp của Richland..."
-                  style={{ fontSize: '0.8125rem', lineHeight: 1.5, flex: 1, minHeight: '260px' }}
+                  style={{ fontSize: '0.8125rem', lineHeight: 1.5, minHeight: '260px', width: '100%', resize: 'vertical' }}
                 />
                 <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px' }}>
                   Định nghĩa hành vi, xưng hô, phạm vi trả lời của AI. Tránh để AI tự ý trả lời các thông tin ngoài tri thức đã được huấn luyện.
@@ -1857,16 +1860,17 @@ export const AITrainingPanel: React.FC = () => {
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
               <label style={{ fontSize: '0.8125rem', fontWeight: 700 }}>Chọn thư mục lưu trữ (Tùy chọn)</label>
-              <select
+              <CustomSelect 
+                options={[
+                  { value: '', label: '-- Thư mục gốc (Root) --' },
+                  ...folderOptions.map(f => ({ value: String(f.id), label: f.name }))
+                ]}
                 value={uploadFolderId}
-                onChange={e => setUploadFolderId(e.target.value)}
-                className="form-input"
-              >
-                <option value="">-- Thư mục gốc (Root) --</option>
-                {folderOptions.map(f => (
-                  <option key={f.id} value={f.id}>{f.name}</option>
-                ))}
-              </select>
+                onChange={val => setUploadFolderId(val || '')}
+                searchable={true}
+                placeholder="Chọn thư mục..."
+                width="100%"
+              />
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', border: '2px dashed var(--color-border)', borderRadius: '12px', padding: '2rem', textAlign: 'center', background: 'var(--color-bg-light)', cursor: 'pointer' }} onClick={() => fileInputRef.current?.click()}>
@@ -1898,7 +1902,7 @@ export const AITrainingPanel: React.FC = () => {
           backgroundColor: 'rgba(0, 0, 0, 0.5)', zIndex: 9999999,
           display: 'flex', alignItems: 'center', justifyContent: 'center'
         }}>
-          <div className="card" style={{ width: '100%', maxWidth: '1000px', padding: '2rem', display: 'flex', flexDirection: 'column', gap: '1.25rem', margin: '1rem' }}>
+          <div className="card" style={{ width: '100%', maxWidth: '1000px', height: '90vh', padding: '2rem', display: 'flex', flexDirection: 'column', gap: '1.25rem', margin: '1rem', overflow: 'hidden' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <h3 style={{ margin: 0, fontSize: '1.125rem', fontWeight: 700 }}>Huấn luyện tri thức (Nhập tay)</h3>
               <button type="button" onClick={() => setShowManualModal(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-muted)' }}>
@@ -1906,9 +1910,9 @@ export const AITrainingPanel: React.FC = () => {
               </button>
             </div>
 
-            <div style={{ display: 'flex', gap: '1.5rem', marginTop: '0.5rem' }}>
+            <div style={{ display: 'flex', gap: '1.5rem', marginTop: '0.5rem', flex: 1, minHeight: 0 }}>
               {/* Left Column: Metadata */}
-              <div style={{ flex: '0 0 300px', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+              <div style={{ flex: '0 0 300px', display: 'flex', flexDirection: 'column', gap: '1.25rem', overflowY: 'auto', maxHeight: '100%' }}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                   <label style={{ fontSize: '0.8125rem', fontWeight: 700 }}>Tiêu đề khối tri thức</label>
                   <input type="text" className="form-input" placeholder="Ví dụ: Chính sách chiết khấu đợt 1" value={manualTitle} onChange={e => setManualTitle(e.target.value)} />
@@ -1916,16 +1920,17 @@ export const AITrainingPanel: React.FC = () => {
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                   <label style={{ fontSize: '0.8125rem', fontWeight: 700 }}>Lưu vào thư mục (Tùy chọn)</label>
-                  <select
+                  <CustomSelect 
+                    options={[
+                      { value: '', label: '-- Lưu riêng lẻ ở thư mục gốc (Root) --' },
+                      ...folderOptions.map(f => ({ value: String(f.id), label: f.name }))
+                    ]}
                     value={manualFolderId}
-                    onChange={e => setManualFolderId(e.target.value)}
-                    className="form-input"
-                  >
-                    <option value="">-- Lưu riêng lẻ ở thư mục gốc (Root) --</option>
-                    {folderOptions.map(f => (
-                      <option key={f.id} value={f.id}>{f.name}</option>
-                    ))}
-                  </select>
+                    onChange={val => setManualFolderId(val || '')}
+                    searchable={true}
+                    placeholder="Chọn thư mục..."
+                    width="100%"
+                  />
                 </div>
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
@@ -1938,11 +1943,11 @@ export const AITrainingPanel: React.FC = () => {
               </div>
 
               {/* Right Column: Main Content Editor */}
-              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '6px', height: '100%' }}>
                 <label style={{ fontSize: '0.8125rem', fontWeight: 700 }}>Nội dung tri thức</label>
                 <textarea 
                   className="form-input" 
-                  style={{ flex: 1, minHeight: '320px', resize: 'vertical' }} 
+                  style={{ width: '100%', height: 'calc(100% - 28px)', minHeight: '320px', resize: 'vertical' }} 
                   placeholder="Nhập hoặc dán nội dung chi tiết để AI ghi nhớ..." 
                   value={manualContent} 
                   onChange={e => setManualContent(e.target.value)} 
@@ -1989,16 +1994,17 @@ export const AITrainingPanel: React.FC = () => {
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
               <label style={{ fontSize: '0.8125rem', fontWeight: 700 }}>Lưu vào thư mục (Tùy chọn)</label>
-              <select
+              <CustomSelect 
+                options={[
+                  { value: '', label: '-- Lưu riêng lẻ ở thư mục gốc (Root) --' },
+                  ...folderOptions.map(f => ({ value: String(f.id), label: f.name }))
+                ]}
                 value={webFolderId}
-                onChange={e => setWebFolderId(e.target.value)}
-                className="form-input"
-              >
-                <option value="">-- Lưu riêng lẻ ở thư mục gốc (Root) --</option>
-                {folderOptions.map(f => (
-                  <option key={f.id} value={f.id}>{f.name}</option>
-                ))}
-              </select>
+                onChange={val => setWebFolderId(val || '')}
+                searchable={true}
+                placeholder="Chọn thư mục..."
+                width="100%"
+              />
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
@@ -2063,7 +2069,7 @@ export const AITrainingPanel: React.FC = () => {
           backgroundColor: 'rgba(0, 0, 0, 0.5)', zIndex: 9999999,
           display: 'flex', alignItems: 'center', justifyContent: 'center'
         }}>
-          <div className="card" style={{ width: '100%', maxWidth: '1000px', padding: '2rem', display: 'flex', flexDirection: 'column', gap: '1.25rem', margin: '1rem' }}>
+          <div className="card" style={{ width: '100%', maxWidth: '1000px', height: '90vh', padding: '2rem', display: 'flex', flexDirection: 'column', gap: '1.25rem', margin: '1rem', overflow: 'hidden' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <h3 style={{ margin: 0, fontSize: '1.125rem', fontWeight: 700 }}>Chỉnh sửa dữ liệu huấn luyện</h3>
               <button type="button" onClick={() => { setShowEditModal(false); setEditingDoc(null); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-muted)' }}>
@@ -2071,9 +2077,9 @@ export const AITrainingPanel: React.FC = () => {
               </button>
             </div>
 
-            <div style={{ display: 'flex', gap: '1.5rem', marginTop: '0.5rem' }}>
+            <div style={{ display: 'flex', gap: '1.5rem', marginTop: '0.5rem', flex: 1, minHeight: 0 }}>
               {/* Left Column: Metadata */}
-              <div style={{ flex: '0 0 300px', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+              <div style={{ flex: '0 0 300px', display: 'flex', flexDirection: 'column', gap: '1.25rem', overflowY: 'auto', maxHeight: '100%' }}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                   <label style={{ fontSize: '0.8125rem', fontWeight: 700 }}>Tiêu đề khối tri thức</label>
                   <input type="text" className="form-input" value={editingDoc.name} onChange={e => setEditingDoc({ ...editingDoc, name: e.target.value })} />
@@ -2086,25 +2092,26 @@ export const AITrainingPanel: React.FC = () => {
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                   <label style={{ fontSize: '0.8125rem', fontWeight: 700 }}>Di chuyển vào thư mục</label>
-                  <select
+                  <CustomSelect 
+                    options={[
+                      { value: '', label: '-- Thư mục gốc (Root) --' },
+                      ...folderOptions.map(f => ({ value: String(f.id), label: f.name }))
+                    ]}
                     value={editingDoc.parent_id || ''}
-                    onChange={e => setEditingDoc({ ...editingDoc, parent_id: e.target.value })}
-                    className="form-input"
-                  >
-                    <option value="">-- Thư mục gốc (Root) --</option>
-                    {folderOptions.map(f => (
-                      <option key={f.id} value={f.id}>{f.name}</option>
-                    ))}
-                  </select>
+                    onChange={val => setEditingDoc({ ...editingDoc, parent_id: val || '' })}
+                    searchable={true}
+                    placeholder="Di chuyển vào thư mục..."
+                    width="100%"
+                  />
                 </div>
               </div>
 
               {/* Right Column: Main Content Editor */}
-              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '6px', height: '100%' }}>
                 <label style={{ fontSize: '0.8125rem', fontWeight: 700 }}>Nội dung chi tiết</label>
                 <textarea 
                   className="form-input" 
-                  style={{ flex: 1, minHeight: '320px', resize: 'vertical' }} 
+                  style={{ width: '100%', height: 'calc(100% - 28px)', minHeight: '320px', resize: 'vertical' }} 
                   value={editingDoc.content || ''} 
                   onChange={e => setEditingDoc({ ...editingDoc, content: e.target.value })} 
                 />
