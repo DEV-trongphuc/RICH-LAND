@@ -5199,28 +5199,51 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
 
           // Calculate AI Priority Message
           let aiCount = 0;
-          let aiLabel = '';
-          let aiMessage = '';
+          let aiMessage: React.ReactNode = '';
           if (myOverdueCount > 0) {
             aiCount = myOverdueCount;
-            aiMessage = `Hôm nay bạn có ${myOverdueCount} công việc quá hạn cần xử lý gấp.`;
+            aiMessage = (
+              <>
+                Hôm nay bạn có <strong style={{ color: 'var(--color-primary)', fontWeight: 800 }}>{myOverdueCount}</strong> công việc quá hạn cần xử lý gấp.
+              </>
+            );
           } else if (myHighPriorityTask) {
             aiCount = 1;
-            aiMessage = `Bạn có công việc ưu tiên cao (${myHighPriorityTask.subject || 'Nhiệm vụ quan trọng'}) cần xử lý.`;
+            aiMessage = (
+              <>
+                Bạn có công việc ưu tiên cao (<strong style={{ fontWeight: 800 }}>{myHighPriorityTask.subject || 'Nhiệm vụ quan trọng'}</strong>) cần xử lý.
+              </>
+            );
           } else if (myDueTodayCount > 0) {
             aiCount = myDueTodayCount;
-            aiMessage = `Hôm nay bạn có ${myDueTodayCount} công việc đến hạn cần hoàn thành.`;
+            aiMessage = (
+              <>
+                Hôm nay bạn có <strong style={{ color: 'var(--color-primary)', fontWeight: 800 }}>{myDueTodayCount}</strong> công việc đến hạn cần hoàn thành.
+              </>
+            );
           } else if (totalOverdueCount > 0) {
             aiCount = totalOverdueCount;
-            aiMessage = `Toàn đội ngũ hiện có ${totalOverdueCount} công việc quá hạn cần đôn đốc.`;
+            aiMessage = (
+              <>
+                Toàn đội ngũ hiện có <strong style={{ color: 'var(--color-primary)', fontWeight: 800 }}>{totalOverdueCount}</strong> công việc quá hạn cần đôn đốc.
+              </>
+            );
           } else if (teamHighPriorityTask) {
             aiCount = 1;
-            aiMessage = `Có công việc ưu tiên cao của đội ngũ (${teamHighPriorityTask.subject || 'Nhiệm vụ quan trọng'}) cần theo dõi.`;
+            aiMessage = (
+              <>
+                Có công việc ưu tiên cao của đội ngũ (<strong style={{ fontWeight: 800 }}>{teamHighPriorityTask.subject || 'Nhiệm vụ quan trọng'}</strong>) cần theo dõi.
+              </>
+            );
           } else if (totalDueTodayCount > 0) {
             aiCount = totalDueTodayCount;
-            aiMessage = `Hôm nay toàn đội ngũ có ${totalDueTodayCount} công việc đến hạn cần hoàn thành.`;
+            aiMessage = (
+              <>
+                Hôm nay toàn đội ngũ có <strong style={{ color: 'var(--color-primary)', fontWeight: 800 }}>{totalDueTodayCount}</strong> công việc đến hạn cần hoàn thành.
+              </>
+            );
           } else {
-            aiMessage = 'Hệ thống vận hành tối ưu. Các công việc hiện được sắp xếp đúng kế hoạch.';
+            aiMessage = t('Hệ thống vận hành tối ưu. Các công việc hiện được sắp xếp đúng kế hoạch.');
           }
 
           const meetingCount = upcomingMeetingsList.length;
@@ -5228,6 +5251,22 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
           // Check if there is anything to show
           const hasAnyAlert = hasUncontacted || hasCoops || aiCount > 0 || meetingCount > 0;
           if (!hasAnyAlert) return null;
+
+          const actionBtnStyle = {
+            height: '30px',
+            borderRadius: '20px',
+            border: 'none',
+            padding: '0 12px',
+            fontSize: '0.725rem',
+            fontWeight: 700,
+            cursor: 'pointer',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '4px',
+            transition: 'all 0.2s',
+            flexShrink: 0,
+            marginLeft: 'auto'
+          };
 
           return (
             <div style={{
@@ -5269,19 +5308,11 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                     <button
                       onClick={() => navigate('/contacts?status=not_contacted')}
                       style={{
-                        padding: '4px 10px',
-                        fontSize: '0.75rem',
-                        fontWeight: 700,
+                        ...actionBtnStyle,
                         background: 'rgba(239, 68, 68, 0.08)',
-                        color: '#ef4444',
-                        border: 'none',
-                        borderRadius: '6px',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '2px',
-                        marginLeft: 'auto'
+                        color: '#ef4444'
                       }}
+                      className="hover-lift"
                     >
                       {t('Xem ngay')} <ChevronRight size={12} />
                     </button>
@@ -5307,19 +5338,11 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                         navigate(firstSlipId ? `/cooperation-slips?sign_id=${firstSlipId}` : '/cooperation-slips');
                       }}
                       style={{
-                        padding: '4px 10px',
-                        fontSize: '0.75rem',
-                        fontWeight: 700,
+                        ...actionBtnStyle,
                         background: 'rgba(16, 185, 129, 0.08)',
-                        color: '#10b981',
-                        border: 'none',
-                        borderRadius: '6px',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '2px',
-                        marginLeft: 'auto'
+                        color: '#10b981'
                       }}
+                      className="hover-lift"
                     >
                       {t('Ký ngay')} <ChevronRight size={12} />
                     </button>
@@ -5340,21 +5363,13 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                     <button
                       onClick={handleStartFocusSession}
                       style={{
-                        padding: '4px 10px',
-                        fontSize: '0.75rem',
-                        fontWeight: 700,
-                        background: 'linear-gradient(135deg, #E52E3D 0%, #BD1D2D 100%)',
-                        color: '#ffffff',
-                        border: 'none',
-                        borderRadius: '6px',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '2px',
-                        marginLeft: 'auto'
+                        ...actionBtnStyle,
+                        background: 'rgba(189, 29, 45, 0.08)',
+                        color: 'var(--color-primary)'
                       }}
+                      className="hover-lift"
                     >
-                      <Play size={10} fill="#ffffff" /> {t('Xử lý ngay')}
+                      <Play size={10} fill="var(--color-primary)" /> {t('Xử lý ngay')}
                     </button>
                   </div>
                 )}
@@ -5363,31 +5378,23 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                 {meetingCount > 0 && (
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', flexWrap: isMobile ? 'wrap' : 'nowrap', padding: '4px 0', borderTop: '1px dashed var(--color-border-light)', paddingTop: '10px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0, flex: 1 }}>
-                      <div style={{ width: 28, height: 28, borderRadius: '50%', background: 'rgba(37, 99, 235, 0.08)', color: '#2563eb', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      <div style={{ width: 28, height: 28, borderRadius: '50%', background: 'rgba(245, 158, 11, 0.08)', color: '#d97706', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                         <Calendar size={14} />
                       </div>
                       <span style={{ fontSize: '0.825rem', color: 'var(--color-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         {t('Lịch hẹn sắp diễn ra: ')}
-                        <strong style={{ color: '#2563eb', fontWeight: 800 }}>{meetingCount}</strong>
+                        <strong style={{ color: '#d97706', fontWeight: 800 }}>{meetingCount}</strong>
                         {t(' cuộc hẹn gặp khách hàng đã lên lịch.')}
                       </span>
                     </div>
                     <button
                       onClick={() => setShowUpcomingMeetingsModal(true)}
                       style={{
-                        padding: '4px 10px',
-                        fontSize: '0.75rem',
-                        fontWeight: 700,
-                        background: 'rgba(37, 99, 235, 0.08)',
-                        color: '#2563eb',
-                        border: 'none',
-                        borderRadius: '6px',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '2px',
-                        marginLeft: 'auto'
+                        ...actionBtnStyle,
+                        background: 'rgba(245, 158, 11, 0.08)',
+                        color: '#d97706'
                       }}
+                      className="hover-lift"
                     >
                       {t('Xem danh sách')} <ChevronRight size={12} />
                     </button>
