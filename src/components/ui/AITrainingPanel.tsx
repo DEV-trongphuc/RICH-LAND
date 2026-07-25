@@ -997,13 +997,13 @@ export const AITrainingPanel: React.FC = () => {
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem' }}>
                 <thead>
                   <tr style={{ borderBottom: '1px solid var(--color-border)', textAlign: 'left' }}>
-                    <th style={{ padding: '12px 8px', color: 'var(--color-text-muted)', fontWeight: 800 }}>TÊN TRI THỨC / THƯ MỤC</th>
-                    <th style={{ padding: '12px 8px', color: 'var(--color-text-muted)', fontWeight: 800 }}>ĐỊNH DẠNG</th>
-                    <th style={{ padding: '12px 8px', color: 'var(--color-text-muted)', fontWeight: 800 }}>TAGS / MỤC CON</th>
-                    <th style={{ padding: '12px 8px', color: 'var(--color-text-muted)', fontWeight: 800 }}>TRẠNG THÁI</th>
-                    <th style={{ padding: '12px 8px', color: 'var(--color-text-muted)', fontWeight: 800 }}>CẬP NHẬT</th>
-                    <th style={{ padding: '12px 8px', color: 'var(--color-text-muted)', fontWeight: 800 }}>KÍCH HOẠT</th>
-                    <th style={{ padding: '12px 8px', color: 'var(--color-text-muted)', fontWeight: 800, textAlign: 'right' }}>THAO TÁC</th>
+                    <th style={{ padding: '12px 8px', color: 'var(--color-text-muted)', fontWeight: 800, width: '30%' }}>TÊN TRI THỨC / THƯ MỤC</th>
+                    <th style={{ padding: '12px 8px', color: 'var(--color-text-muted)', fontWeight: 800, width: '10%' }}>ĐỊNH DẠNG</th>
+                    <th style={{ padding: '12px 8px', color: 'var(--color-text-muted)', fontWeight: 800, width: '15%' }}>TAGS / MỤC CON</th>
+                    <th style={{ padding: '12px 8px', color: 'var(--color-text-muted)', fontWeight: 800, width: '12%' }}>TRẠNG THÁI</th>
+                    <th style={{ padding: '12px 8px', color: 'var(--color-text-muted)', fontWeight: 800, width: '15%' }}>CẬP NHẬT</th>
+                    <th style={{ padding: '12px 8px', color: 'var(--color-text-muted)', fontWeight: 800, width: '8%' }}>KÍCH HOẠT</th>
+                    <th style={{ padding: '12px 8px', color: 'var(--color-text-muted)', fontWeight: 800, textAlign: 'right', width: '10%', minWidth: '150px' }}>THAO TÁC</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1097,9 +1097,9 @@ export const AITrainingPanel: React.FC = () => {
                                       <td style={{ padding: '10px 8px 10px 36px', fontWeight: 600, color: 'var(--color-text)' }}>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                                           <CornerDownRight size={14} color="var(--color-text-muted)" style={{ flexShrink: 0 }} />
-                                          {(member.source_type === 'upload' || member.source_type === 'file') && <FileText size={16} color="#3b82f6" />}
-                                          {member.source_type === 'manual' && <FileText size={16} color="#10b981" />}
-                                          {member.source_type === 'web' && <Globe size={16} color="#f59e0b" />}
+                                          {(member.source_type === 'upload' || member.source_type === 'file') && <FileText size={16} color="#64748b" />}
+                                          {member.source_type === 'manual' && <FileText size={16} color="#64748b" />}
+                                          {member.source_type === 'web' && <Globe size={16} color="#64748b" />}
                                           <span style={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap', display: 'inline-block', maxWidth: '240px' }} title={member.name}>
                                             {member.name}
                                           </span>
@@ -1183,9 +1183,9 @@ export const AITrainingPanel: React.FC = () => {
                         <tr key={row.id} style={{ borderBottom: '1px solid var(--color-border-light)' }}>
                           <td style={{ padding: '12px 8px', fontWeight: 700, color: 'var(--color-text)' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                              {(row.source_type === 'upload' || row.source_type === 'file') && <FileText size={16} color="#3b82f6" />}
-                              {row.source_type === 'manual' && <FileText size={16} color="#10b981" />}
-                              {row.source_type === 'web' && <Globe size={16} color="#f59e0b" />}
+                              {(row.source_type === 'upload' || row.source_type === 'file') && <FileText size={16} color="#64748b" />}
+                              {row.source_type === 'manual' && <FileText size={16} color="#64748b" />}
+                              {row.source_type === 'web' && <Globe size={16} color="#64748b" />}
                               <span style={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap', display: 'inline-block', maxWidth: '300px' }} title={row.name}>
                                 {row.name}
                               </span>
