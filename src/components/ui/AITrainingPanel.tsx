@@ -12,7 +12,7 @@ import { EmptyCard } from './EmptyCard';
 interface AIDoc {
   id: string;
   name: string;
-  source_type: 'upload' | 'web' | 'manual' | 'folder';
+  source_type: 'upload' | 'file' | 'web' | 'manual' | 'folder';
   status: 'pending' | 'trained' | 'error' | 'processing';
   created_at: string;
   updated_at?: string;
@@ -37,6 +37,15 @@ interface RAGSettings {
   brand_color: string;
 }
 
+const formatDocDate = (dateStr?: string) => {
+  if (!dateStr) return '—';
+  const t = dateStr.split(/[- :T.]/);
+  if (t.length >= 5) {
+    return `${t[3]}:${t[4]} ${t[2]}/${t[1]}/${t[0]}`;
+  }
+  return dateStr;
+};
+
 const ToggleSwitch = React.memo(({ active, onChange, disabled }: { active: boolean; onChange: () => void; disabled?: boolean }) => (
   <div 
     onClick={(e) => { e.stopPropagation(); if (!disabled) onChange(); }}
@@ -44,7 +53,7 @@ const ToggleSwitch = React.memo(({ active, onChange, disabled }: { active: boole
       width: '36px',
       height: '20px',
       borderRadius: '10px',
-      backgroundColor: active ? '#BD1D2D' : 'var(--color-border)',
+      backgroundColor: active ? '#10b981' : 'var(--color-border)',
       padding: '2px',
       cursor: disabled ? 'not-allowed' : 'pointer',
       display: 'inline-flex',
@@ -156,6 +165,7 @@ export const AITrainingPanel: React.FC = () => {
   const [docs, setDocs] = useState<AIDoc[]>([]);
   const [loadingDocs, setLoadingDocs] = useState(false);
   const [trainingDocs, setTrainingDocs] = useState<Record<string, boolean>>({});
+  const [trainingProgress, setTrainingProgress] = useState<Record<string, string>>({});
   const [expandedFolders, setExpandedFolders] = useState<Record<string, boolean>>({});
 
   // RAG Settings State
@@ -491,6 +501,20 @@ export const AITrainingPanel: React.FC = () => {
 
   const handleTrainDoc = async (docId: string) => {
     setTrainingDocs(prev => ({ ...prev, [docId]: true }));
+    setTrainingProgress(prev => ({ ...prev, [docId]: 'Đang đọc...' }));
+
+    const t1 = setTimeout(() => {
+      setTrainingProgress(prev => ({ ...prev, [docId]: 'Trích xuất...' }));
+    }, 300);
+
+    const t2 = setTimeout(() => {
+      setTrainingProgress(prev => ({ ...prev, [docId]: 'Tạo vector...' }));
+    }, 600);
+
+    const t3 = setTimeout(() => {
+      setTrainingProgress(prev => ({ ...prev, [docId]: 'Lưu RAG...' }));
+    }, 900);
+
     try {
       const res = await fetchAPI('ai_training', {
         method: 'POST',
@@ -500,6 +524,9 @@ export const AITrainingPanel: React.FC = () => {
           doc_ids: [docId]
         })
       });
+
+      await new Promise(resolve => setTimeout(resolve, 1200));
+
       if (res && res.success) {
         toast.success('Huấn luyện thành công!');
         fetchDocs();
@@ -509,7 +536,15 @@ export const AITrainingPanel: React.FC = () => {
     } catch (e: any) {
       toast.error('Lỗi huấn luyện: ' + e.message);
     } finally {
+      clearTimeout(t1);
+      clearTimeout(t2);
+      clearTimeout(t3);
       setTrainingDocs(prev => ({ ...prev, [docId]: false }));
+      setTrainingProgress(prev => {
+        const copy = { ...prev };
+        delete copy[docId];
+        return copy;
+      });
     }
   };
 
@@ -964,8 +999,9 @@ export const AITrainingPanel: React.FC = () => {
                   <tr style={{ borderBottom: '1px solid var(--color-border)', textAlign: 'left' }}>
                     <th style={{ padding: '12px 8px', color: 'var(--color-text-muted)', fontWeight: 800 }}>TÊN TRI THỨC / THƯ MỤC</th>
                     <th style={{ padding: '12px 8px', color: 'var(--color-text-muted)', fontWeight: 800 }}>ĐỊNH DẠNG</th>
-                    <th style={{ padding: '12px 8px', color: 'var(--color-text-muted)', fontWeight: 800 }}>TAGS</th>
+                    <th style={{ padding: '12px 8px', color: 'var(--color-text-muted)', fontWeight: 800 }}>TAGS / MỤC CON</th>
                     <th style={{ padding: '12px 8px', color: 'var(--color-text-muted)', fontWeight: 800 }}>TRẠNG THÁI</th>
+                    <th style={{ padding: '12px 8px', color: 'var(--color-text-muted)', fontWeight: 800 }}>CẬP NHẬT</th>
                     <th style={{ padding: '12px 8px', color: 'var(--color-text-muted)', fontWeight: 800 }}>KÍCH HOẠT</th>
                     <th style={{ padding: '12px 8px', color: 'var(--color-text-muted)', fontWeight: 800, textAlign: 'right' }}>THAO TÁC</th>
                   </tr>
@@ -973,14 +1009,14 @@ export const AITrainingPanel: React.FC = () => {
                 <tbody>
                   {loadingDocs ? (
                     <tr>
-                      <td colSpan={6} style={{ padding: '2rem', textAlign: 'center', color: 'var(--color-text-muted)' }}>
+                      <td colSpan={7} style={{ padding: '2rem', textAlign: 'center', color: 'var(--color-text-muted)' }}>
                         <RefreshCw size={24} className="spin" style={{ margin: '0 auto 10px auto' }} />
                         Đang tải danh sách tri thức từ hệ thống...
                       </td>
                     </tr>
                   ) : groupedDocs.length === 0 ? (
                     <tr>
-                      <td colSpan={6} style={{ padding: '2.5rem 1rem' }}>
+                      <td colSpan={7} style={{ padding: '2.5rem 1rem' }}>
                         <EmptyCard
                           icon={<Database size={36} color="#BD1D2D" />}
                           title="Không tìm thấy tài liệu tri thức nào"
@@ -1017,8 +1053,13 @@ export const AITrainingPanel: React.FC = () => {
                                   Thư mục
                                 </span>
                               </td>
+                              <td style={{ padding: '12px 8px', fontWeight: 600, color: 'var(--color-text-muted)' }}>
+                                {members.length} tài liệu
+                              </td>
                               <td style={{ padding: '12px 8px' }}>—</td>
-                              <td style={{ padding: '12px 8px' }}>—</td>
+                              <td style={{ padding: '12px 8px', color: 'var(--color-text-muted)', fontSize: '0.75rem' }}>
+                                {formatDocDate(row.updated_at)}
+                              </td>
                               <td style={{ padding: '12px 8px' }}>
                                 <ToggleSwitch 
                                   active={isFolderActive} 
@@ -1041,7 +1082,7 @@ export const AITrainingPanel: React.FC = () => {
                             {isExpanded && (
                               members.length === 0 ? (
                                 <tr>
-                                  <td colSpan={6} style={{ padding: '10px 8px 10px 36px', color: 'var(--color-text-muted)', fontSize: '0.75rem' }}>
+                                  <td colSpan={7} style={{ padding: '10px 8px 10px 36px', color: 'var(--color-text-muted)', fontSize: '0.75rem' }}>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                                       <CornerDownRight size={14} color="var(--color-text-muted)" />
                                       <span>Thư mục trống. Hãy chỉnh sửa tài liệu và chọn thư mục này để gom nhóm.</span>
@@ -1056,8 +1097,8 @@ export const AITrainingPanel: React.FC = () => {
                                       <td style={{ padding: '10px 8px 10px 36px', fontWeight: 600, color: 'var(--color-text)' }}>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                                           <CornerDownRight size={14} color="var(--color-text-muted)" style={{ flexShrink: 0 }} />
-                                          {member.source_type === 'upload' && <FileText size={16} color="#3b82f6" />}
-                                          {member.source_type === 'manual' && <Sparkles size={16} color="#10b981" />}
+                                          {(member.source_type === 'upload' || member.source_type === 'file') && <FileText size={16} color="#3b82f6" />}
+                                          {member.source_type === 'manual' && <FileText size={16} color="#10b981" />}
                                           {member.source_type === 'web' && <Globe size={16} color="#f59e0b" />}
                                           <span style={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap', display: 'inline-block', maxWidth: '240px' }} title={member.name}>
                                             {member.name}
@@ -1066,7 +1107,7 @@ export const AITrainingPanel: React.FC = () => {
                                       </td>
                                       <td style={{ padding: '10px 8px' }}>
                                         <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
-                                          {member.source_type === 'upload' ? 'File tải lên' : member.source_type === 'manual' ? 'Nhập tay' : 'Website'}
+                                          {(member.source_type === 'upload' || member.source_type === 'file') ? 'File tải lên' : member.source_type === 'manual' ? 'Nhập tay' : 'Website'}
                                         </span>
                                       </td>
                                       <td style={{ padding: '10px 8px', color: 'var(--color-text-muted)' }}>
@@ -1078,13 +1119,16 @@ export const AITrainingPanel: React.FC = () => {
                                       </td>
                                       <td style={{ padding: '10px 8px' }}>
                                         <span className="badge" style={{
-                                          background: member.status === 'trained' ? 'rgba(16, 185, 129, 0.08)' : member.status === 'processing' ? 'rgba(59, 130, 246, 0.08)' : member.status === 'error' ? 'rgba(239, 68, 68, 0.08)' : 'rgba(107, 114, 128, 0.08)',
-                                          color: member.status === 'trained' ? '#10b981' : member.status === 'processing' ? '#3b82f6' : member.status === 'error' ? '#ef4444' : '#6b7280',
+                                          background: (trainingProgress[member.id] || member.status === 'processing') ? 'rgba(59, 130, 246, 0.08)' : member.status === 'trained' ? 'rgba(16, 185, 129, 0.08)' : member.status === 'error' ? 'rgba(239, 68, 68, 0.08)' : 'rgba(107, 114, 128, 0.08)',
+                                          color: (trainingProgress[member.id] || member.status === 'processing') ? '#3b82f6' : member.status === 'trained' ? '#10b981' : member.status === 'error' ? '#ef4444' : '#6b7280',
                                           fontSize: '0.75rem',
                                           fontWeight: 700
                                         }}>
-                                          {member.status === 'trained' ? 'Đã học' : member.status === 'processing' ? 'Đang tạo vector...' : member.status === 'error' ? 'Lỗi RAG' : 'Chờ học'}
+                                          {trainingProgress[member.id] ? trainingProgress[member.id] : (member.status === 'trained' ? 'Đã học' : member.status === 'processing' ? 'Đang tạo vector...' : member.status === 'error' ? 'Lỗi RAG' : 'Chờ học')}
                                         </span>
+                                      </td>
+                                      <td style={{ padding: '10px 8px', color: 'var(--color-text-muted)', fontSize: '0.75rem' }}>
+                                        {formatDocDate(member.updated_at)}
                                       </td>
                                       <td style={{ padding: '10px 8px' }}>
                                         <ToggleSwitch 
@@ -1139,8 +1183,8 @@ export const AITrainingPanel: React.FC = () => {
                         <tr key={row.id} style={{ borderBottom: '1px solid var(--color-border-light)' }}>
                           <td style={{ padding: '12px 8px', fontWeight: 700, color: 'var(--color-text)' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                              {row.source_type === 'upload' && <FileText size={16} color="#3b82f6" />}
-                              {row.source_type === 'manual' && <Sparkles size={16} color="#10b981" />}
+                              {(row.source_type === 'upload' || row.source_type === 'file') && <FileText size={16} color="#3b82f6" />}
+                              {row.source_type === 'manual' && <FileText size={16} color="#10b981" />}
                               {row.source_type === 'web' && <Globe size={16} color="#f59e0b" />}
                               <span style={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap', display: 'inline-block', maxWidth: '300px' }} title={row.name}>
                                 {row.name}
@@ -1149,12 +1193,12 @@ export const AITrainingPanel: React.FC = () => {
                           </td>
                           <td style={{ padding: '12px 8px' }}>
                             <span className="badge" style={{
-                              background: row.source_type === 'upload' ? 'rgba(59, 130, 246, 0.08)' : row.source_type === 'manual' ? 'rgba(16, 185, 129, 0.08)' : 'rgba(245, 158, 11, 0.08)',
-                              color: row.source_type === 'upload' ? '#3b82f6' : row.source_type === 'manual' ? '#10b981' : '#f59e0b',
+                              background: (row.source_type === 'upload' || row.source_type === 'file') ? 'rgba(59, 130, 246, 0.08)' : row.source_type === 'manual' ? 'rgba(16, 185, 129, 0.08)' : 'rgba(245, 158, 11, 0.08)',
+                              color: (row.source_type === 'upload' || row.source_type === 'file') ? '#3b82f6' : row.source_type === 'manual' ? '#10b981' : '#f59e0b',
                               fontSize: '0.75rem',
                               fontWeight: 700
                             }}>
-                              {row.source_type === 'upload' ? 'File tải lên' : row.source_type === 'manual' ? 'Nhập tay' : 'Website'}
+                              {(row.source_type === 'upload' || row.source_type === 'file') ? 'File tải lên' : row.source_type === 'manual' ? 'Nhập tay' : 'Website'}
                             </span>
                           </td>
                           <td style={{ padding: '12px 8px', color: 'var(--color-text-muted)' }}>
@@ -1166,13 +1210,16 @@ export const AITrainingPanel: React.FC = () => {
                           </td>
                           <td style={{ padding: '12px 8px' }}>
                             <span className="badge" style={{
-                              background: row.status === 'trained' ? 'rgba(16, 185, 129, 0.08)' : row.status === 'processing' ? 'rgba(59, 130, 246, 0.08)' : row.status === 'error' ? 'rgba(239, 68, 68, 0.08)' : 'rgba(107, 114, 128, 0.08)',
-                              color: row.status === 'trained' ? '#10b981' : row.status === 'processing' ? '#3b82f6' : row.status === 'error' ? '#ef4444' : '#6b7280',
+                              background: (trainingProgress[row.id] || row.status === 'processing') ? 'rgba(59, 130, 246, 0.08)' : row.status === 'trained' ? 'rgba(16, 185, 129, 0.08)' : row.status === 'error' ? 'rgba(239, 68, 68, 0.08)' : 'rgba(107, 114, 128, 0.08)',
+                              color: (trainingProgress[row.id] || row.status === 'processing') ? '#3b82f6' : row.status === 'trained' ? '#10b981' : row.status === 'error' ? '#ef4444' : '#6b7280',
                               fontSize: '0.75rem',
                               fontWeight: 700
                             }}>
-                              {row.status === 'trained' ? 'Đã học' : row.status === 'processing' ? 'Đang tạo vector...' : row.status === 'error' ? 'Lỗi RAG' : 'Chờ học'}
+                              {trainingProgress[row.id] ? trainingProgress[row.id] : (row.status === 'trained' ? 'Đã học' : row.status === 'processing' ? 'Đang tạo vector...' : row.status === 'error' ? 'Lỗi RAG' : 'Chờ học')}
                             </span>
+                          </td>
+                          <td style={{ padding: '12px 8px', color: 'var(--color-text-muted)', fontSize: '0.75rem' }}>
+                            {formatDocDate(row.updated_at)}
                           </td>
                           <td style={{ padding: '12px 8px' }}>
                             <ToggleSwitch 
