@@ -59,158 +59,7 @@ require_once 'env.php';
 require_once 'config.php';
 require_once 'db_connect.php';
 require_once 'permission_matrix_helper.php';
-
-// ==========================================
-// VECTOR RAG HELPER FUNCTIONS FOR GEMINI API
-// ==========================================
-
-if (!function_exists('extract_pdf_text_via_gemini')) {
-    function extract_pdf_text_via_gemini($filePath, $apiKey) {
-        $fullPath = $_SERVER['DOCUMENT_ROOT'] . $filePath;
-        if (!file_exists($fullPath)) {
-            $fullPath = __DIR__ . '/..' . $filePath;
-            if (!file_exists($fullPath)) {
-                $fullPath = __DIR__ . $filePath;
-            }
-        }
-        
-        if (!file_exists($fullPath)) {
-            error_log("extract_pdf_text_via_gemini: File not found at " . $fullPath);
-            return "";
-        }
-        
-        $data = file_get_contents($fullPath);
-        if (empty($data)) {
-            return "";
-        }
-        
-        $base64 = base64_encode($data);
-        $payload = [
-            'contents' => [[
-                'parts' => [
-                    [
-                        'inlineData' => [
-                            'mimeType' => 'application/pdf',
-                            'data' => $base64
-                        ]
-                    ],
-                    [
-                        'text' => 'Hãy trích xuất và trả về toàn bộ nội dung văn bản (text) tiếng Việt có trong tài liệu PDF này dưới dạng văn bản thô (raw text) đầy đủ nhất có thể. Không thêm bình luận, tiêu đề phụ, hay bất kỳ giải thích nào khác.'
-                    ]
-                ]
-            ]],
-            'generationConfig' => [
-                'temperature' => 0.1
-            ]
-        ];
-
-        $url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=" . $apiKey;
-
-        $ch = curl_init($url);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_POST, true);
-        curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));
-        curl_setopt($ch, CURLOPT_TIMEOUT, 60);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
-        $response = curl_exec($ch);
-        curl_close($ch);
-
-        if (!$response) return "";
-        $resJson = json_decode($response, true);
-        return $resJson['candidates'][0]['content']['parts'][0]['text'] ?? '';
-    }
-}
-
-if (!function_exists('fetch_web_content')) {
-    function fetch_web_content($url) {
-        $opts = [
-            'http' => [
-                'method' => 'GET',
-                'header' => "User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36\r\n",
-                'timeout' => 15
-            ]
-        ];
-        $context = stream_context_create($opts);
-        $html = @file_get_contents($url, false, $context);
-        if (empty($html)) return '';
-        
-        $html = preg_replace('/<script\b[^>]*>(.*?)<\/script>/is', '', $html);
-        $html = preg_replace('/<style\b[^>]*>(.*?)<\/style>/is', '', $html);
-        $text = strip_tags($html);
-        $text = html_entity_decode($text, ENT_QUOTES | ENT_HTML5, 'UTF-8');
-        $text = preg_replace('/\s+/', ' ', $text);
-        return trim($text);
-    }
-}
-
-if (!function_exists('chunk_text')) {
-    function chunk_text($text, $chunkSize = 700, $chunkOverlap = 150) {
-        $chunks = [];
-        $length = mb_strlen($text, 'UTF-8');
-        if ($length <= $chunkSize) {
-            return [$text];
-        }
-        $start = 0;
-        while ($start < $length) {
-            $chunk = mb_substr($text, $start, $chunkSize, 'UTF-8');
-            $chunks[] = $chunk;
-            $start += ($chunkSize - $chunkOverlap);
-        }
-        return $chunks;
-    }
-}
-
-if (!function_exists('generate_embedding')) {
-    function generate_embedding($text, $apiKey) {
-        if (empty($text)) return null;
-        $payload = [
-            'model' => 'models/text-embedding-004',
-            'content' => [
-                'parts' => [[
-                    'text' => $text
-                ]]
-            ]
-        ];
-
-        $url = "https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent?key=" . $apiKey;
-
-        $ch = curl_init($url);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_POST, true);
-        curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));
-        curl_setopt($ch, CURLOPT_TIMEOUT, 15);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
-        $response = curl_exec($ch);
-        curl_close($ch);
-
-        if (!$response) return null;
-        $resJson = json_decode($response, true);
-        return $resJson['embedding']['values'] ?? null;
-    }
-}
-
-if (!function_exists('cosine_similarity')) {
-    function cosine_similarity($vec1, $vec2) {
-        if (!is_array($vec1) || !is_array($vec2) || count($vec1) !== count($vec2)) {
-            return 0.0;
-        }
-        $dotProduct = 0.0;
-        $normA = 0.0;
-        $normB = 0.0;
-        $count = count($vec1);
-        for ($i = 0; $i < $count; $i++) {
-            $dotProduct += $vec1[$i] * $vec2[$i];
-            $normA += $vec1[$i] * $vec1[$i];
-            $normB += $vec2[$i] * $vec2[$i];
-        }
-        if ($normA == 0.0 || $normB == 0.0) {
-            return 0.0;
-        }
-        return $dotProduct / (sqrt($normA) * sqrt($normB));
-    }
-}
+require_once __DIR__ . '/utils/rag_helpers.php';
 
 // Safe CORS origin matching
 $httpOrigin = $_SERVER['HTTP_ORIGIN'] ?? '';
@@ -11977,25 +11826,38 @@ switch ($action) {
                     // 2. Chunk text
                     $chunks = chunk_text($rawText, $chunkSize, $chunkOverlap);
 
-                    // 3. Generate embeddings and save chunks
+                    // 3. Generate embeddings in batches of 100 and save chunks
                     $hasError = false;
-                    foreach ($chunks as $idx => $chunk) {
-                        $chunk = trim($chunk);
-                        if (empty($chunk)) continue;
+                    $chunkBatches = array_chunk($chunks, 100);
+                    
+                    foreach ($chunkBatches as $batchIdx => $batchChunks) {
+                        $batchChunks = array_values(array_filter(array_map('trim', $batchChunks)));
+                        if (empty($batchChunks)) continue;
 
-                        $vector = generate_embedding($chunk, $apiKey);
-                        if ($vector === null) {
+                        $vectors = generate_batch_embeddings($batchChunks, $apiKey);
+
+                        if (empty($vectors) || count($vectors) !== count($batchChunks)) {
                             $hasError = true;
                             break;
                         }
 
-                        $vectorJson = json_encode($vector);
-                        $cStmt = $conn->prepare("INSERT INTO ai_training_chunks (tenant_id, doc_id, chunk_index, content, vector) VALUES (1, ?, ?, ?, ?)");
-                        if ($cStmt) {
-                            $cStmt->bind_param("iiss", $id, $idx, $chunk, $vectorJson);
-                            $cStmt->execute();
-                            $cStmt->close();
+                        foreach ($batchChunks as $idx => $chunk) {
+                            $vector = $vectors[$idx];
+                            if ($vector === null) {
+                                $hasError = true;
+                                break;
+                            }
+                            $vectorJson = json_encode($vector);
+                            $chunkIndex = ($batchIdx * 100) + $idx;
+
+                            $cStmt = $conn->prepare("INSERT INTO ai_training_chunks (tenant_id, doc_id, chunk_index, content, vector) VALUES (1, ?, ?, ?, ?)");
+                            if ($cStmt) {
+                                $cStmt->bind_param("iiss", $id, $chunkIndex, $chunk, $vectorJson);
+                                $cStmt->execute();
+                                $cStmt->close();
+                            }
                         }
+                        if ($hasError) break;
                     }
 
                     if ($hasError) {
