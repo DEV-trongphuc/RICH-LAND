@@ -347,9 +347,18 @@ try {
                     $vectorJson = json_encode($vector);
                     $chunkIndex = ($batchIdx * 100) + $idx;
 
-                    $cStmt = $conn->prepare("INSERT INTO ai_training_chunks (tenant_id, doc_id, chunk_index, content, vector) VALUES (1, ?, ?, ?, ?)");
+                    // Calculate vector norm
+                    $vectorNorm = 0.0;
+                    if (is_array($vector)) {
+                        foreach ($vector as $v) {
+                            $vectorNorm += $v * $v;
+                        }
+                        $vectorNorm = sqrt($vectorNorm);
+                    }
+
+                    $cStmt = $conn->prepare("INSERT INTO ai_training_chunks (tenant_id, doc_id, chunk_index, content, vector, vector_norm) VALUES (1, ?, ?, ?, ?, ?)");
                     if ($cStmt) {
-                        $cStmt->bind_param("iiss", $id, $chunkIndex, $chunk, $vectorJson);
+                        $cStmt->bind_param("iisssd", $id, $chunkIndex, $chunk, $vectorJson, $vectorNorm);
                         $cStmt->execute();
                         $cStmt->close();
                     }

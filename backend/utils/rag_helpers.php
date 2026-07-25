@@ -102,6 +102,26 @@ if (!function_exists('chunk_text')) {
 if (!function_exists('generate_embedding')) {
     function generate_embedding($text, $apiKey) {
         if (empty($text)) return null;
+
+        // Try to fetch from local database cache first
+        global $conn;
+        $hash = md5('models/gemini-embedding-001|v1beta|' . mb_strtolower(trim($text)));
+        if (isset($conn) && $conn instanceof mysqli) {
+            $stmt = $conn->prepare("SELECT vector FROM ai_vector_cache WHERE hash = ? LIMIT 1");
+            if ($stmt) {
+                $stmt->bind_param("s", $hash);
+                $stmt->execute();
+                $res = $stmt->get_result()->fetch_assoc();
+                $stmt->close();
+                if ($res && !empty($res['vector'])) {
+                    $cachedVec = json_decode($res['vector'], true);
+                    if (is_array($cachedVec)) {
+                        return $cachedVec;
+                    }
+                }
+            }
+        }
+
         $payload = [
             'model' => 'models/gemini-embedding-001',
             'content' => [
@@ -149,7 +169,18 @@ if (!function_exists('generate_embedding')) {
             }
         }
         
-        return $resJson['embedding']['values'] ?? null;
+        $vectorValues = $resJson['embedding']['values'] ?? null;
+        if (is_array($vectorValues) && !empty($vectorValues) && isset($conn) && $conn instanceof mysqli) {
+            $vectorJson = json_encode($vectorValues);
+            $stmt = $conn->prepare("INSERT INTO ai_vector_cache (hash, vector) VALUES (?, ?) ON DUPLICATE KEY UPDATE vector = ?");
+            if ($stmt) {
+                $stmt->bind_param("sss", $hash, $vectorJson, $vectorJson);
+                $stmt->execute();
+                $stmt->close();
+            }
+        }
+        
+        return $vectorValues;
     }
 }
 

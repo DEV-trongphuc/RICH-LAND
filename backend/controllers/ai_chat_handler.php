@@ -137,189 +137,224 @@ try {
 
     $ragContext = '';
     if ($ragEnabled === 1) {
-        // 1. Generate vector embedding for the user's message using the new gemini-embedding-001
-        $queryVector = generate_embedding($message, $apiKey);
-
-        if (!empty($queryVector)) {
-            // 2. Build FTS terms and relaxed query for Boolean search
-            $cleanQuery = preg_replace('/[^\p{L}\p{N}\s]/u', ' ', $message);
-            $queryWords = array_slice(array_filter(explode(' ', mb_strtolower($cleanQuery)), function ($w) {
-                return mb_strlen($w) >= 2;
-            }), 0, 10);
-            $relaxedQuery = "";
-            foreach ($queryWords as $w) {
-                $relaxedQuery .= "$w* ";
+        $normalizedMsg = mb_strtolower(trim($message));
+        $cacheKey = md5('tenant_1|' . $normalizedMsg);
+        
+        $cacheHit = false;
+        $stmt = $conn->prepare("SELECT results FROM ai_rag_search_cache WHERE query_hash = ? AND created_at > (NOW() - INTERVAL 7 DAY) LIMIT 1");
+        if ($stmt) {
+            $stmt->bind_param("s", $cacheKey);
+            $stmt->execute();
+            $res = $stmt->get_result()->fetch_assoc();
+            $stmt->close();
+            if ($res && !empty($res['results'])) {
+                $ragContext = $res['results'];
+                $cacheHit = true;
             }
-            $relaxedQuery = trim($relaxedQuery);
+        }
 
-            // 3. Query candidate pool from database using FTS (Natural Language + Boolean)
-            // Limit candidate size to prevent OOM
-            $cStmt = $conn->prepare("
-                (SELECT c.id, c.content, c.vector, d.name AS doc_name, d.tags, d.source_type, COALESCE(d.updated_at, d.created_at) as doc_updated_at,
-                    MATCH(c.content) AGAINST(? IN NATURAL LANGUAGE MODE) as fts_score
-                FROM ai_training_chunks c
-                JOIN ai_training_docs d ON c.doc_id = d.id
-                WHERE d.tenant_id = 1 AND d.is_active = 1 AND d.status = 'trained'
-                ORDER BY fts_score DESC
-                LIMIT 150)
-                UNION
-                (SELECT c.id, c.content, c.vector, d.name AS doc_name, d.tags, d.source_type, COALESCE(d.updated_at, d.created_at) as doc_updated_at,
-                    MATCH(c.content) AGAINST(? IN BOOLEAN MODE) as fts_score
-                FROM ai_training_chunks c
-                JOIN ai_training_docs d ON c.doc_id = d.id
-                WHERE d.tenant_id = 1 AND d.is_active = 1 AND d.status = 'trained'
-                ORDER BY fts_score DESC
-                LIMIT 100)
-            ");
+        if (!$cacheHit) {
+            // 1. Generate vector embedding for the user's message using the new gemini-embedding-001
+            $queryVector = generate_embedding($message, $apiKey);
 
-            if ($cStmt) {
-                $cStmt->bind_param("ss", $cleanQuery, $relaxedQuery);
-                $cStmt->execute();
-                $cRes = $cStmt->get_result();
-                
-                $similarityThreshold = isset($ragSettings['similarity_threshold']) ? (float)$ragSettings['similarity_threshold'] : 0.45;
-                $topK = isset($ragSettings['top_k']) ? (int)$ragSettings['top_k'] : 8;
+            if (!empty($queryVector)) {
+                // 2. Build FTS terms and relaxed query for Boolean search
+                $cleanQuery = preg_replace('/[^\p{L}\p{N}\s]/u', ' ', $message);
+                $queryWords = array_slice(array_filter(explode(' ', mb_strtolower($cleanQuery)), function ($w) {
+                    return mb_strlen($w) >= 2;
+                }), 0, 10);
+                $relaxedQuery = "";
+                foreach ($queryWords as $w) {
+                    $relaxedQuery .= "$w* ";
+                }
+                $relaxedQuery = trim($relaxedQuery);
 
-                $rawResults = [];
-                $maxFtsScore = 1.0;
-                while ($cRow = $cRes->fetch_assoc()) {
-                    $cRow['fts_score'] = (float)($cRow['fts_score'] ?? 0);
-                    if ($cRow['fts_score'] > $maxFtsScore) {
-                        $maxFtsScore = $cRow['fts_score'];
+                // 3. Query candidate pool from database using FTS (Natural Language + Boolean)
+                // Limit candidate size to prevent OOM
+                $cStmt = $conn->prepare("
+                    (SELECT c.id, c.content, c.vector, c.vector_norm, d.name AS doc_name, d.tags, d.source_type, COALESCE(d.updated_at, d.created_at) as doc_updated_at,
+                        MATCH(c.content) AGAINST(? IN NATURAL LANGUAGE MODE) as fts_score
+                    FROM ai_training_chunks c
+                    JOIN ai_training_docs d ON c.doc_id = d.id
+                    WHERE d.tenant_id = 1 AND d.is_active = 1 AND d.status = 'trained'
+                    ORDER BY fts_score DESC
+                    LIMIT 150)
+                    UNION
+                    (SELECT c.id, c.content, c.vector, c.vector_norm, d.name AS doc_name, d.tags, d.source_type, COALESCE(d.updated_at, d.created_at) as doc_updated_at,
+                        MATCH(c.content) AGAINST(? IN BOOLEAN MODE) as fts_score
+                    FROM ai_training_chunks c
+                    JOIN ai_training_docs d ON c.doc_id = d.id
+                    WHERE d.tenant_id = 1 AND d.is_active = 1 AND d.status = 'trained'
+                    ORDER BY fts_score DESC
+                    LIMIT 100)
+                ");
+
+                if ($cStmt) {
+                    $cStmt->bind_param("ss", $cleanQuery, $relaxedQuery);
+                    $cStmt->execute();
+                    $cRes = $cStmt->get_result();
+                    
+                    $similarityThreshold = isset($ragSettings['similarity_threshold']) ? (float)$ragSettings['similarity_threshold'] : 0.45;
+                    $topK = isset($ragSettings['top_k']) ? (int)$ragSettings['top_k'] : 8;
+
+                    $rawResults = [];
+                    $maxFtsScore = 1.0;
+                    while ($cRow = $cRes->fetch_assoc()) {
+                        $cRow['fts_score'] = (float)($cRow['fts_score'] ?? 0);
+                        if ($cRow['fts_score'] > $maxFtsScore) {
+                            $maxFtsScore = $cRow['fts_score'];
+                        }
+                        $rawResults[] = $cRow;
                     }
-                    $rawResults[] = $cRow;
-                }
-                $cStmt->close();
+                    $cStmt->close();
 
-                // Compute cosine similarity for the candidate pool only
-                $vectorScores = [];
-                $normQ = 0.0;
-                foreach ($queryVector as $val) {
-                    $normQ += $val * $val;
-                }
-                $normQ = sqrt($normQ);
-
-                foreach ($rawResults as $row) {
-                    $id = $row['id'];
-                    $chunkVector = json_decode($row['vector'], true);
-                    if (is_array($chunkVector)) {
-                        $sim = cosine_similarity($queryVector, $chunkVector);
-                        $vectorScores[$id] = $sim;
-                    } else {
-                        $vectorScores[$id] = 0.0;
+                    // Compute cosine similarity for the candidate pool only
+                    $vectorScores = [];
+                    $normQ = 0.0;
+                    foreach ($queryVector as $val) {
+                        $normQ += $val * $val;
                     }
-                }
+                    $normQ = sqrt($normQ);
 
-                // Rank candidates by Vector and FTS separately to get Ranks for RRF
-                $rankedByVector = $rawResults;
-                uasort($rankedByVector, function ($a, $b) use ($vectorScores) {
-                    $scoreA = $vectorScores[$a['id']] ?? 0;
-                    $scoreB = $vectorScores[$b['id']] ?? 0;
-                    return $scoreB <=> $scoreA;
-                });
-
-                $rankedByKeyword = $rawResults;
-                uasort($rankedByKeyword, function ($a, $b) {
-                    return $b['fts_score'] <=> $a['fts_score'];
-                });
-
-                $vectorRanks = [];
-                $rankIdx = 1;
-                foreach ($rankedByVector as $r) {
-                    $vectorRanks[$r['id']] = $rankIdx++;
-                }
-
-                $keywordRanks = [];
-                $rankIdx = 1;
-                foreach ($rankedByKeyword as $r) {
-                    $keywordRanks[$r['id']] = $rankIdx++;
-                }
-
-                // Reciprocal Rank Fusion (RRF) reranking
-                $k = 60; // Standard RRF constant
-                $candidates = [];
-                $messageLower = mb_strtolower($message);
-
-                foreach ($rawResults as $row) {
-                    $id = $row['id'];
-                    $rankV = $vectorRanks[$id] ?? 999;
-                    $rankK = $keywordRanks[$id] ?? 999;
-
-                    $rrfScore = (1 / ($k + $rankV)) + (1 / ($k + $rankK));
-
-                    // Consolidate final score: normalize RRF score (from 0.03 range) to 0-100 range
-                    $finalScore = $rrfScore * 1800; // standard RRF scale factor
-
-                    // Recency Boost
-                    $recencyBoost = 1.0;
-                    if (!empty($row['doc_updated_at'])) {
-                        $updatedTs = strtotime($row['doc_updated_at']);
-                        if ($updatedTs > 0) {
-                            $daysSinceUpdate = max(0, (time() - $updatedTs) / 86400);
-                            if ($daysSinceUpdate <= 7) {
-                                $recencyBoost = 1.30;
-                            } elseif ($daysSinceUpdate <= 30) {
-                                $recencyBoost = 1.15;
-                            } elseif ($daysSinceUpdate <= 90) {
-                                $recencyBoost = 1.05;
+                    foreach ($rawResults as $row) {
+                        $id = $row['id'];
+                        $chunkVector = json_decode($row['vector'], true);
+                        $normB = (float)($row['vector_norm'] ?? 0.0);
+                        
+                        if (is_array($chunkVector) && $normB > 0.0 && $normQ > 0.0) {
+                            $dotProduct = 0.0;
+                            $dim = count($queryVector);
+                            for ($i = 0; $i < $dim; $i++) {
+                                $dotProduct += $queryVector[$i] * $chunkVector[$i];
                             }
+                            $sim = $dotProduct / ($normQ * $normB);
+                            $vectorScores[$id] = $sim;
+                        } else {
+                            $vectorScores[$id] = 0.0;
                         }
                     }
-                    $finalScore *= $recencyBoost;
 
-                    // Match boosts
-                    $multiplier = 1.0;
-                    $contentLower = mb_strtolower($row['content']);
-                    
-                    // Exact Phrase
-                    if (mb_strlen($message) > 10 && mb_strpos($contentLower, $messageLower) !== false) {
-                        $multiplier *= 1.5;
-                    }
-                    // Doc Name match
-                    if (stripos($row['doc_name'], $message) !== false) {
-                        $multiplier *= 1.25;
-                    }
-                    // Tag Match
-                    if (!empty($row['tags']) && stripos($row['tags'], $message) !== false) {
-                        $multiplier *= 1.35;
-                    }
-                    
-                    $finalScore *= $multiplier;
+                    // Rank candidates by Vector and FTS separately to get Ranks for RRF
+                    $rankedByVector = $rawResults;
+                    uasort($rankedByVector, function ($a, $b) use ($vectorScores) {
+                        $scoreA = $vectorScores[$a['id']] ?? 0;
+                        $scoreB = $vectorScores[$b['id']] ?? 0;
+                        return $scoreB <=> $scoreA;
+                    });
 
-                    // Only filter if the vector score is above similarity threshold or RRF ranking is extremely high
-                    $vectorScore = $vectorScores[$id] ?? 0.0;
-                    if ($vectorScore >= $similarityThreshold || $finalScore > 50) {
-                        $candidates[] = [
-                            'content' => $row['content'],
-                            'doc_name' => $row['doc_name'],
-                            'tags' => $row['tags'],
-                            'source_type' => $row['source_type'],
-                            'score' => $finalScore,
-                            'vector_score' => $vectorScore
-                        ];
+                    $rankedByKeyword = $rawResults;
+                    uasort($rankedByKeyword, function ($a, $b) {
+                        return $b['fts_score'] <=> $a['fts_score'];
+                    });
+
+                    $vectorRanks = [];
+                    $rankIdx = 1;
+                    foreach ($rankedByVector as $r) {
+                        $vectorRanks[$r['id']] = $rankIdx++;
+                    }
+
+                    $keywordRanks = [];
+                    $rankIdx = 1;
+                    foreach ($rankedByKeyword as $r) {
+                        $keywordRanks[$r['id']] = $rankIdx++;
+                    }
+
+                    // Reciprocal Rank Fusion (RRF) reranking
+                    $k = 60; // Standard RRF constant
+                    $candidates = [];
+                    $messageLower = mb_strtolower($message);
+
+                    foreach ($rawResults as $row) {
+                        $id = $row['id'];
+                        $rankV = $vectorRanks[$id] ?? 999;
+                        $rankK = $keywordRanks[$id] ?? 999;
+
+                        $rrfScore = (1 / ($k + $rankV)) + (1 / ($k + $rankK));
+
+                        // Consolidate final score: normalize RRF score (from 0.03 range) to 0-100 range
+                        $finalScore = $rrfScore * 1800; // standard RRF scale factor
+
+                        // Recency Boost
+                        $recencyBoost = 1.0;
+                        if (!empty($row['doc_updated_at'])) {
+                            $updatedTs = strtotime($row['doc_updated_at']);
+                            if ($updatedTs > 0) {
+                                $daysSinceUpdate = max(0, (time() - $updatedTs) / 86400);
+                                if ($daysSinceUpdate <= 7) {
+                                    $recencyBoost = 1.30;
+                                } elseif ($daysSinceUpdate <= 30) {
+                                    $recencyBoost = 1.15;
+                                } elseif ($daysSinceUpdate <= 90) {
+                                    $recencyBoost = 1.05;
+                                }
+                            }
+                        }
+                        $finalScore *= $recencyBoost;
+
+                        // Match boosts
+                        $multiplier = 1.0;
+                        $contentLower = mb_strtolower($row['content']);
+                        
+                        // Exact Phrase
+                        if (mb_strlen($message) > 10 && mb_strpos($contentLower, $messageLower) !== false) {
+                            $multiplier *= 1.5;
+                        }
+                        // Doc Name match
+                        if (stripos($row['doc_name'], $message) !== false) {
+                            $multiplier *= 1.25;
+                        }
+                        // Tag Match
+                        if (!empty($row['tags']) && stripos($row['tags'], $message) !== false) {
+                            $multiplier *= 1.35;
+                        }
+                        
+                        $finalScore *= $multiplier;
+
+                        // Only filter if the vector score is above similarity threshold or RRF ranking is extremely high
+                        $vectorScore = $vectorScores[$id] ?? 0.0;
+                        if ($vectorScore >= $similarityThreshold || $finalScore > 50) {
+                            $candidates[] = [
+                                'content' => $row['content'],
+                                'doc_name' => $row['doc_name'],
+                                'tags' => $row['tags'],
+                                'source_type' => $row['source_type'],
+                                'score' => $finalScore,
+                                'vector_score' => $vectorScore
+                            ];
+                        }
+                    }
+
+                    // Sort candidates by final consolidated score
+                    usort($candidates, function($a, $b) {
+                        return $b['score'] <=> $a['score'];
+                    });
+
+                    // Select top K candidates and format the text
+                    $selectedCandidates = array_slice($candidates, 0, $topK);
+                    if (!empty($selectedCandidates)) {
+                        $docsText = [];
+                        foreach ($selectedCandidates as $idx => $cand) {
+                            $docTypeLabel = ($cand['source_type'] === 'web') ? 'Website' : (($cand['source_type'] === 'file') ? 'Tệp đính kèm' : 'Văn bản hướng dẫn');
+                            $pctScore = round($cand['vector_score'] * 100, 1);
+                            $docText = "=== [ĐOẠN TRÍ THỨC KHỚP THỨ " . ($idx + 1) . " - ĐỘ TƯƠNG ĐỒNG VECTOR: " . $pctScore . "%] ===\n" .
+                                       "Nguồn tài liệu: " . $cand['doc_name'] . " (" . $docTypeLabel . ")\n" .
+                                       "Thẻ phân loại: " . $cand['tags'] . "\n" .
+                                       "Nội dung:\n" . $cand['content'] . "\n" .
+                                       "============================================";
+                            $docsText[] = $docText;
+                        }
+                        $ragContext = implode("\n\n", $docsText);
                     }
                 }
+            }
 
-                // Sort candidates by final consolidated score
-                usort($candidates, function($a, $b) {
-                    return $b['score'] <=> $a['score'];
-                });
-
-                // Select top K candidates and format the text
-                $selectedCandidates = array_slice($candidates, 0, $topK);
-                if (!empty($selectedCandidates)) {
-                    $docsText = [];
-                    foreach ($selectedCandidates as $idx => $cand) {
-                        $docTypeLabel = ($cand['source_type'] === 'web') ? 'Website' : (($cand['source_type'] === 'file') ? 'Tệp đính kèm' : 'Văn bản hướng dẫn');
-                        $pctScore = round($cand['vector_score'] * 100, 1);
-                        $docText = "=== [ĐOẠN TRÍ THỨC KHỚP THỨ " . ($idx + 1) . " - ĐỘ TƯƠNG ĐỒNG VECTOR: " . $pctScore . "%] ===\n" .
-                                   "Nguồn tài liệu: " . $cand['doc_name'] . " (" . $docTypeLabel . ")\n" .
-                                   "Thẻ phân loại: " . $cand['tags'] . "\n" .
-                                   "Nội dung:\n" . $cand['content'] . "\n" .
-                                   "============================================";
-                        $docsText[] = $docText;
-                    }
-                    $ragContext = implode("\n\n", $docsText);
+            // Save to cache
+            if (!empty($ragContext)) {
+                $stmt = $conn->prepare("INSERT INTO ai_rag_search_cache (query_hash, results) VALUES (?, ?) ON DUPLICATE KEY UPDATE results = ?");
+                if ($stmt) {
+                    $stmt->bind_param("sss", $cacheKey, $ragContext, $ragContext);
+                    $stmt->execute();
+                    $stmt->close();
                 }
             }
         }
