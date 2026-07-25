@@ -529,6 +529,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
   const [wsEndDate, setWsEndDate] = useState('');
   const [wsTasks, setWsTasks] = useState<any[]>([]);
   const [wsTeamId, setWsTeamId] = useState('');
+  const stripHtml = (html: string) => html ? html.replace(/<[^>]*>/g, '').trim() : '';
   const [wsUserId, setWsUserId] = useState('');
   const [wsActivityType, setWsActivityType] = useState('task');
   const [wsRelatedType, setWsRelatedType] = useState('');
@@ -6502,7 +6503,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                         overflow: 'hidden',
                         textOverflow: 'ellipsis'
                       }}>
-                        {description}
+                        {stripHtml(description)}
                       </p>
                     )}
                   </div>
@@ -6828,7 +6829,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                                 overflow: 'hidden',
                                 lineHeight: '1.3'
                               }}>
-                                {description}
+                                {stripHtml(description)}
                               </p>
                             )}
 
