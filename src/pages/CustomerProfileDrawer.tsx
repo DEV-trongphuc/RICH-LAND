@@ -1306,11 +1306,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
   }, [contact?.id]);
   
   useEffect(() => {
-    if (isMobileOrTablet && activeTab) {
-      setTabRenderReady(false);
-    } else {
-      setTabRenderReady(true);
-    }
+    setTabRenderReady(true);
   }, [activeTab, isMobileOrTablet]);
 
   const renderTabSkeleton = (tabId: string) => {
@@ -4235,7 +4231,6 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
       await fetchCoopSlip();
 
       if (hasCoopSalesCheck && createCoopSlipChoice) {
-        setTabRenderReady(false);
         setActiveTab('cooperation');
       }
     } catch (e: any) {
@@ -5466,7 +5461,6 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                       {/* Lead Score inline card */}
                       <div 
                         onClick={() => {
-                          setTabRenderReady(false);
                           setActiveTab('scoring');
                         }}
                         style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
@@ -5513,7 +5507,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                     <AnimatePresence>
                       {(!isMobileOrTablet || !activeTab) && (
                         <motion.div
-                          initial={isMobileOrTablet ? { opacity: 0, x: -30 } : undefined}
+                          initial={isMobileOrTablet ? (drawerOpenComplete ? { opacity: 0, x: -30 } : { opacity: 1 }) : undefined}
                           animate={isMobileOrTablet ? { opacity: 1, x: 0 } : undefined}
                           exit={isMobileOrTablet ? { opacity: 0, x: -30 } : undefined}
                           transition={{ type: 'spring', damping: 28, stiffness: 300 }}
@@ -5573,7 +5567,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                 {/* Far Right: Score Ring */}
                                 <div 
                                   onClick={() => {
-                                    setTabRenderReady(false);
+                                    /* setTabRenderReady(false); */
                                     setActiveTab('scoring');
                                   }}
                                   style={{ cursor: 'pointer', flexShrink: 0 }}
@@ -5811,7 +5805,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                           key={tab.id}
                                           className="os-list-item"
                                           onClick={() => {
-                                            setTabRenderReady(false);
+                                            /* setTabRenderReady(false); */
                                             setActiveTab(tab.id);
                                           }}
                                         >
@@ -6080,7 +6074,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                   {(!isMobileOrTablet || activeTab) && (
                     <motion.div 
                       key={activeTab || 'content'}
-                      initial={isMobileOrTablet ? { opacity: 0, x: 30 } : undefined}
+                      initial={isMobileOrTablet ? (drawerOpenComplete ? { opacity: 0, x: 30 } : { opacity: 1 }) : undefined}
                       animate={isMobileOrTablet ? { opacity: 1, x: 0 } : undefined}
                       exit={isMobileOrTablet ? { opacity: 0, x: 30 } : undefined}
                       transition={{ type: 'spring', damping: 28, stiffness: 300 }}
