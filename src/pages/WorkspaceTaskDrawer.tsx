@@ -226,6 +226,30 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
 
   // Resource adding state
   const [showAddChecklist, setShowAddChecklist] = useState(false);
+  const [isEditingDesc, setIsEditingDesc] = useState(false);
+
+  const renderFormattedText = (text) => {
+    if (!text) return '';
+    const urlRegex = /(https?:\/\/[^\s]+)/g;
+    const parts = text.split(urlRegex);
+    return parts.map((part, index) => {
+      if (part.match(urlRegex)) {
+        return (
+          <a
+            key={index}
+            href={part}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{ color: 'var(--color-primary)', textDecoration: 'underline', wordBreak: 'break-all' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {part}
+          </a>
+        );
+      }
+      return part;
+    });
+  };
   const [showAddLink, setShowAddLink] = useState(false);
   const [newLinkLabel, setNewLinkLabel] = useState('');
   const [newLinkUrl, setNewLinkUrl] = useState('');
@@ -1505,7 +1529,7 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
                 onChange={(e) => setFormData((prev: any) => ({ ...prev, subject: e.target.value }))}
                 onBlur={(e) => handleUpdateField('subject', e.target.value)}
                 placeholder={t('Nhập tên công việc...')}
-                style={{ fontSize: '0.85rem', padding: '10px 14px', borderRadius: '8px', border: '1px solid var(--color-border)' }}
+                style={{ fontSize: '0.85rem', fontWeight: 700, padding: '10px 14px', borderRadius: '8px', border: '1px solid var(--color-border)' }}
               />
             </div>
 
@@ -1514,15 +1538,52 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
               <label style={cardLabelStyle}>
                 {t('Mô tả chi tiết')}
               </label>
-              <textarea
-                className="form-input"
-                rows={4}
-                value={erpMeta.description || ''}
-                onChange={(e) => setErpMeta({ ...erpMeta, description: e.target.value })}
-                onBlur={() => handleSaveMeta(erpMeta)}
-                placeholder={t('Chưa có mô tả...')}
-                style={{ fontSize: '0.85rem', padding: '10px 14px', minHeight: '120px', borderRadius: '8px', border: '1px solid var(--color-border)', resize: 'vertical' }}
-              />
+              <div 
+                onClick={() => {
+                  if (!isEditingDesc) setIsEditingDesc(true);
+                }}
+                style={{ 
+                  fontSize: '0.85rem', 
+                  padding: '10px 14px', 
+                  minHeight: '120px', 
+                  borderRadius: '8px', 
+                  border: '1px solid var(--color-border)',
+                  background: 'transparent',
+                  cursor: isEditingDesc ? 'default' : 'text',
+                  display: 'flex',
+                  flexDirection: 'column'
+                }}
+              >
+                {!isEditingDesc ? (
+                  <div style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', flex: 1 }}>
+                    {erpMeta.description ? renderFormattedText(erpMeta.description) : <span style={{ color: 'var(--color-text-muted)' }}>{t('Chưa có mô tả... Click để chỉnh sửa')}</span>}
+                  </div>
+                ) : (
+                  <textarea
+                    autoFocus
+                    value={erpMeta.description || ''}
+                    onChange={(e) => setErpMeta({ ...erpMeta, description: e.target.value })}
+                    onBlur={() => {
+                      handleSaveMeta(erpMeta);
+                      setIsEditingDesc(false);
+                    }}
+                    placeholder={t('Chưa có mô tả...')}
+                    style={{ 
+                      fontSize: '0.85rem', 
+                      border: 'none', 
+                      background: 'transparent',
+                      boxShadow: 'none',
+                      outline: 'none',
+                      resize: 'vertical',
+                      width: '100%',
+                      minHeight: '100px',
+                      padding: 0,
+                      margin: 0,
+                      color: 'var(--color-text)'
+                    }}
+                  />
+                )}
+              </div>
             </div>
 
             {/* Checklist công việc con */}
