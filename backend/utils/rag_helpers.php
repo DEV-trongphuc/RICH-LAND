@@ -85,17 +85,60 @@ if (!function_exists('fetch_web_content')) {
 if (!function_exists('chunk_text')) {
     function chunk_text($text, $chunkSize = 700, $chunkOverlap = 150) {
         $chunks = [];
+        $text = trim($text);
         $length = mb_strlen($text, 'UTF-8');
         if ($length <= $chunkSize) {
             return [$text];
         }
+        
         $start = 0;
         while ($start < $length) {
-            $chunk = mb_substr($text, $start, $chunkSize, 'UTF-8');
-            $chunks[] = $chunk;
-            $start += ($chunkSize - $chunkOverlap);
+            $endIndex = min($start + $chunkSize, $length);
+            $chunk = mb_substr($text, $start, $endIndex - $start, 'UTF-8');
+            
+            if ($endIndex === $length) {
+                $chunks[] = trim($chunk);
+                break;
+            }
+            
+            // Search for a sentence punctuation boundary within the overlap lookback zone
+            $lookbackZone = mb_substr($chunk, -$chunkOverlap, null, 'UTF-8');
+            $lastPeriod = mb_strrpos($lookbackZone, '.');
+            $lastExcl = mb_strrpos($lookbackZone, '!');
+            $lastQuest = mb_strrpos($lookbackZone, '?');
+            $lastNewline = mb_strrpos($lookbackZone, "\n");
+            
+            $boundaryPos = false;
+            foreach ([$lastPeriod, $lastExcl, $lastQuest, $lastNewline] as $pos) {
+                if ($pos !== false) {
+                    if ($boundaryPos === false || $pos > $boundaryPos) {
+                        $boundaryPos = $pos;
+                    }
+                }
+            }
+            
+            if ($boundaryPos !== false) {
+                // Adjust chunk end index to match sentence boundary (include the punctuation)
+                $cutOffset = ($endIndex - $chunkOverlap) + $boundaryPos + 1;
+                $chunk = mb_substr($text, $start, $cutOffset - $start, 'UTF-8');
+                $chunks[] = trim($chunk);
+                $start = $cutOffset;
+            } else {
+                // Fallback to word space boundary in lookback zone
+                $lastSpace = mb_strrpos($lookbackZone, ' ');
+                if ($lastSpace !== false) {
+                    $cutOffset = ($endIndex - $chunkOverlap) + $lastSpace + 1;
+                    $chunk = mb_substr($text, $start, $cutOffset - $start, 'UTF-8');
+                    $chunks[] = trim($chunk);
+                    $start = $cutOffset;
+                } else {
+                    // Force hard cut if no boundary or space is found
+                    $chunks[] = trim($chunk);
+                    $start += ($chunkSize - $chunkOverlap);
+                }
+            }
         }
-        return $chunks;
+        return array_values(array_filter($chunks));
     }
 }
 
