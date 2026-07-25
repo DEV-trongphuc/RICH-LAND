@@ -11630,7 +11630,7 @@ switch ($action) {
                         break;
                     }
 
-                    $stmt = $conn->prepare("UPDATE ai_training_docs SET name = ?, content = ?, tags = ?, parent_id = ?, version = version + 1 WHERE id = ?");
+                    $stmt = $conn->prepare("UPDATE ai_training_docs SET name = ?, content = ?, tags = ?, parent_id = ?, status = 'pending', version = version + 1 WHERE id = ?");
                     $stmt->bind_param("sssii", $name, $content, $tags, $parentId, $id);
                     $stmt->execute();
                     $stmt->close();

@@ -529,6 +529,48 @@ export const AITrainingPanel: React.FC = () => {
     }
   };
 
+  const handleTrainAllPending = async () => {
+    const pendingDocs = docs.filter(d => d.source_type !== 'folder' && d.status !== 'trained');
+    if (pendingDocs.length === 0) return;
+
+    const docIds = pendingDocs.map(d => d.id);
+    
+    // Set all pending docs as training
+    pendingDocs.forEach(d => {
+      setTrainingDocs(prev => ({ ...prev, [d.id]: true }));
+      setTrainingProgress(prev => ({ ...prev, [d.id]: 'Đang học...' }));
+    });
+
+    try {
+      const res = await fetchAPI('ai_training', {
+        method: 'POST',
+        body: JSON.stringify({
+          action: 'train_docs',
+          property_id: 'richland',
+          doc_ids: docIds
+        })
+      });
+
+      if (res && res.success) {
+        toast.success(`Đã huấn luyện thành công ${docIds.length} tài liệu!`);
+        fetchDocs();
+      } else {
+        toast.error(res?.message || 'Huấn luyện thất bại');
+      }
+    } catch (e: any) {
+      toast.error('Lỗi khi huấn luyện: ' + e.message);
+    } finally {
+      pendingDocs.forEach(d => {
+        setTrainingDocs(prev => ({ ...prev, [d.id]: false }));
+        setTrainingProgress(prev => {
+          const copy = { ...prev };
+          delete copy[d.id];
+          return copy;
+        });
+      });
+    }
+  };
+
   const handleDeleteDoc = async (docId: string) => {
     if (!window.confirm('Bạn có chắc chắn muốn xóa tài liệu huấn luyện này? Chunks vector tương ứng cũng sẽ bị loại bỏ.')) {
       return;
@@ -704,6 +746,7 @@ export const AITrainingPanel: React.FC = () => {
   }, [docs, searchTerm, filterType]);
 
   const folderOptions = docs.filter(d => d.source_type === 'folder');
+  const pendingDocsCount = docs.filter(d => d.source_type !== 'folder' && d.status !== 'trained').length;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', width: '100%' }}>
@@ -949,6 +992,18 @@ export const AITrainingPanel: React.FC = () => {
                 <RefreshCw size={14} className={loadingDocs ? 'spin' : ''} />
                 Làm mới
               </button>
+              {pendingDocsCount > 0 && (
+                <button 
+                  type="button" 
+                  className="btn primary" 
+                  onClick={handleTrainAllPending} 
+                  disabled={loadingDocs} 
+                  style={{ display: 'flex', gap: 6, alignItems: 'center', background: '#10b981', borderColor: '#10b981', borderRadius: '10px' }}
+                >
+                  <Play size={14} fill="white" />
+                  Huấn luyện tất cả ({pendingDocsCount})
+                </button>
+              )}
             </div>
 
             {/* Folders & Documents Tree Table */}
@@ -1105,17 +1160,19 @@ export const AITrainingPanel: React.FC = () => {
                                       </td>
                                       <td style={{ padding: '10px 8px', textAlign: 'right' }} onClick={e => e.stopPropagation()}>
                                         <div style={{ display: 'inline-flex', gap: '6px' }}>
-                                          <button 
-                                            type="button"
-                                            className="btn primary sm" 
-                                            disabled={isTraining}
-                                            onClick={() => handleTrainDoc(member.id)}
-                                            style={{ padding: '4px 8px', borderRadius: '6px', minWidth: 'unset', display: 'flex', gap: 4, alignItems: 'center' }}
-                                            title="Huấn luyện vector"
-                                          >
-                                            {isTraining ? <RefreshCw size={12} className="spin" /> : <Play size={12} fill="white" />}
-                                            Train
-                                          </button>
+                                          {member.status !== 'trained' && (
+                                            <button 
+                                              type="button"
+                                              className="btn primary sm" 
+                                              disabled={isTraining}
+                                              onClick={() => handleTrainDoc(member.id)}
+                                              style={{ padding: '4px 8px', borderRadius: '6px', minWidth: 'unset', display: 'flex', gap: 4, alignItems: 'center' }}
+                                              title="Huấn luyện vector"
+                                            >
+                                              {isTraining ? <RefreshCw size={12} className="spin" /> : <Play size={12} fill="white" />}
+                                              Train
+                                            </button>
+                                          )}
                                           <button 
                                             type="button"
                                             className="btn outline sm" 
@@ -1200,17 +1257,19 @@ export const AITrainingPanel: React.FC = () => {
                           </td>
                           <td style={{ padding: '12px 8px', textAlign: 'right' }} onClick={e => e.stopPropagation()}>
                             <div style={{ display: 'inline-flex', gap: '6px' }}>
-                              <button 
-                                type="button"
-                                className="btn primary sm" 
-                                disabled={isTraining}
-                                onClick={() => handleTrainDoc(row.id)}
-                                style={{ padding: '4px 8px', borderRadius: '6px', minWidth: 'unset', display: 'flex', gap: 4, alignItems: 'center' }}
-                                title="Chạy huấn luyện vector"
-                              >
-                                {isTraining ? <RefreshCw size={12} className="spin" /> : <Play size={12} fill="white" />}
-                                Train
-                              </button>
+                              {row.status !== 'trained' && (
+                                <button 
+                                  type="button" 
+                                  className="btn primary sm" 
+                                  disabled={isTraining}
+                                  onClick={() => handleTrainDoc(row.id)}
+                                  style={{ padding: '4px 8px', borderRadius: '6px', minWidth: 'unset', display: 'flex', gap: 4, alignItems: 'center' }}
+                                  title="Chạy huấn luyện vector"
+                                >
+                                  {isTraining ? <RefreshCw size={12} className="spin" /> : <Play size={12} fill="white" />}
+                                  Train
+                                </button>
+                              )}
                               <button 
                                 type="button"
                                 className="btn outline sm" 
