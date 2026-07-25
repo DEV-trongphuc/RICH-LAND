@@ -11489,6 +11489,14 @@ switch ($action) {
         }
 
         try {
+            // Auto-migrate structure if audit columns are missing
+            $checkCols = $conn->query("SHOW COLUMNS FROM ai_training_docs LIKE 'created_by'");
+            if ($checkCols && $checkCols->num_rows === 0) {
+                $conn->query("ALTER TABLE ai_training_docs ADD COLUMN `created_by` VARCHAR(255) DEFAULT 'System'");
+                $conn->query("ALTER TABLE ai_training_docs ADD COLUMN `version` INT DEFAULT 1");
+            }
+
+            $createdBy = $decodedUser['name'] ?? 'Admin';
             $actionType = '';
             if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 if (isset($_SERVER['CONTENT_TYPE']) && strpos($_SERVER['CONTENT_TYPE'], 'multipart/form-data') !== false) {
@@ -11553,7 +11561,7 @@ switch ($action) {
                 echo json_encode(['success' => true, 'message' => 'Cập nhật cấu hình RAG thành công']);
             }
             elseif ($actionType === 'list_docs') {
-                $stmt = $conn->prepare("SELECT id, name, content, tags, source_type, parent_id, is_active, status, file_path, file_size, created_at, updated_at FROM ai_training_docs WHERE tenant_id = 1 ORDER BY id DESC");
+                $stmt = $conn->prepare("SELECT id, name, content, tags, source_type, parent_id, is_active, status, file_path, file_size, created_at, updated_at, created_by, version FROM ai_training_docs WHERE tenant_id = 1 ORDER BY id DESC");
                 $stmt->execute();
                 $res = $stmt->get_result();
                 $docs = [];
@@ -11571,8 +11579,8 @@ switch ($action) {
                     break;
                 }
                 $source_type = 'folder';
-                $stmt = $conn->prepare("INSERT INTO ai_training_docs (name, source_type, parent_id) VALUES (?, ?, 0)");
-                $stmt->bind_param("ss", $name, $source_type);
+                $stmt = $conn->prepare("INSERT INTO ai_training_docs (name, source_type, parent_id, created_by, version) VALUES (?, ?, 0, ?, 1)");
+                $stmt->bind_param("sss", $name, $source_type, $createdBy);
                 $stmt->execute();
                 $stmt->close();
                 echo json_encode(['success' => true, 'message' => 'Đã tạo thư mục thành công']);
@@ -11590,8 +11598,8 @@ switch ($action) {
                 
                 $source_type = (strpos($content, 'URL_TO_CRAWL:') === 0) ? 'web' : 'manual';
                 
-                $stmt = $conn->prepare("INSERT INTO ai_training_docs (name, content, tags, source_type, parent_id) VALUES (?, ?, ?, ?, ?)");
-                $stmt->bind_param("ssssi", $name, $content, $tags, $source_type, $parentId);
+                $stmt = $conn->prepare("INSERT INTO ai_training_docs (name, content, tags, source_type, parent_id, created_by, version) VALUES (?, ?, ?, ?, ?, ?, 1)");
+                $stmt->bind_param("ssssis", $name, $content, $tags, $source_type, $parentId, $createdBy);
                 $stmt->execute();
                 $stmt->close();
                 echo json_encode(['success' => true, 'message' => 'Đã thêm tài liệu thành công']);
@@ -11622,7 +11630,7 @@ switch ($action) {
                         break;
                     }
 
-                    $stmt = $conn->prepare("UPDATE ai_training_docs SET name = ?, content = ?, tags = ?, parent_id = ? WHERE id = ?");
+                    $stmt = $conn->prepare("UPDATE ai_training_docs SET name = ?, content = ?, tags = ?, parent_id = ?, version = version + 1 WHERE id = ?");
                     $stmt->bind_param("sssii", $name, $content, $tags, $parentId, $id);
                     $stmt->execute();
                     $stmt->close();
@@ -11735,8 +11743,8 @@ switch ($action) {
                     $source_type = 'file';
                     $file_size = $file['size'];
 
-                    $stmt = $conn->prepare("INSERT INTO ai_training_docs (name, content, source_type, parent_id, file_path, file_size) VALUES (?, ?, ?, ?, ?, ?)");
-                    $stmt->bind_param("sssisd", $name, $content, $source_type, $parentId, $relativeUrl, $file_size);
+                    $stmt = $conn->prepare("INSERT INTO ai_training_docs (name, content, source_type, parent_id, file_path, file_size, created_by, version) VALUES (?, ?, ?, ?, ?, ?, ?, 1)");
+                    $stmt->bind_param("sssisds", $name, $content, $source_type, $parentId, $relativeUrl, $file_size, $createdBy);
                     $stmt->execute();
                     $stmt->close();
 

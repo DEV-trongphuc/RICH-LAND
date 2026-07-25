@@ -22,6 +22,8 @@ interface AIDoc {
   content?: string;
   parent_id?: string;
   is_active?: number;
+  created_by?: string;
+  version?: number;
 }
 
 interface RAGSettings {
@@ -2103,6 +2105,24 @@ export const AITrainingPanel: React.FC = () => {
                     placeholder="Di chuyển vào thư mục..."
                     width="100%"
                   />
+                </div>
+
+                <div style={{ 
+                  marginTop: '1.5rem', 
+                  padding: '12px', 
+                  background: 'var(--color-bg-light)', 
+                  border: '1px solid var(--color-border-light)', 
+                  borderRadius: '8px',
+                  fontSize: '0.75rem',
+                  color: 'var(--color-text-muted)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '6px'
+                }}>
+                  <div style={{ fontWeight: 700, color: 'var(--color-text)', marginBottom: '2px' }}>Thông tin lưu trữ:</div>
+                  <div>• Người tạo: <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>{editingDoc.created_by || 'Hệ thống'}</span></div>
+                  <div>• Ngày tạo: <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>{formatDocDate(editingDoc.created_at)}</span></div>
+                  <div>• Lần chỉnh sửa: <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>Lần {editingDoc.version || 1}</span></div>
                 </div>
               </div>
 
