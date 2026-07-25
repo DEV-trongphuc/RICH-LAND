@@ -1292,18 +1292,27 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
   });
   const [tabRenderReady, setTabRenderReady] = useState(true);
   const [drawerOpenComplete, setDrawerOpenComplete] = useState(false);
+  const [hasNavigated, setHasNavigated] = useState(false);
 
   useEffect(() => {
     if (!isOpen) {
       setDrawerOpenComplete(false);
+      setHasNavigated(false);
     }
   }, [isOpen]);
 
   useEffect(() => {
     if (contact?.id) {
       setDrawerOpenComplete(false);
+      setHasNavigated(false);
     }
   }, [contact?.id]);
+
+  useEffect(() => {
+    if (activeTab) {
+      setHasNavigated(true);
+    }
+  }, [activeTab]);
   
   useEffect(() => {
     setTabRenderReady(true);
@@ -5500,14 +5509,14 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
 
               {/* ── Layout Split: Left Sidebar Tabs & Content ── */}
               <div className={styles.drawerBody}>
-                {loadingContactDetails && !formData.id ? (
+                {!drawerOpenComplete || loadingContactDetails ? (
                   <DrawerSkeleton />
                 ) : (
                   <>
                     <AnimatePresence>
                       {(!isMobileOrTablet || !activeTab) && (
                         <motion.div
-                          initial={isMobileOrTablet ? (drawerOpenComplete ? { x: '-100%' } : { x: 0 }) : undefined}
+                          initial={isMobileOrTablet ? (hasNavigated ? { x: '-100%' } : { x: 0 }) : undefined}
                           animate={isMobileOrTablet ? { x: 0 } : undefined}
                           exit={isMobileOrTablet ? { x: '-100%' } : undefined}
                           transition={{ type: 'tween', ease: 'easeInOut', duration: 0.3 }}
@@ -6074,7 +6083,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                   {(!isMobileOrTablet || activeTab) && (
                     <motion.div 
                       key={activeTab || 'content'}
-                      initial={isMobileOrTablet ? (drawerOpenComplete ? { x: '100%' } : { x: 0 }) : undefined}
+                      initial={isMobileOrTablet ? (hasNavigated ? { x: '100%' } : { x: 0 }) : undefined}
                       animate={isMobileOrTablet ? { x: 0 } : undefined}
                       exit={isMobileOrTablet ? { x: '100%' } : undefined}
                       transition={{ type: 'tween', ease: 'easeInOut', duration: 0.3 }}
