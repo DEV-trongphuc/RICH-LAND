@@ -9,28 +9,6 @@ if (!in_array($decodedUser['role'] ?? '', ['admin', 'super_admin'])) {
 }
 
 try {
-    // Auto-migrate structure if audit columns are missing
-    $checkCols = $conn->query("SHOW COLUMNS FROM ai_training_docs LIKE 'created_by'");
-    if ($checkCols && $checkCols->num_rows === 0) {
-        $conn->query("ALTER TABLE ai_training_docs ADD COLUMN `created_by` VARCHAR(255) DEFAULT 'System'");
-        $conn->query("ALTER TABLE ai_training_docs ADD COLUMN `version` INT DEFAULT 1");
-    }
-
-    // Auto-create ai_training_chunks table if not exists
-    $tableCheck = $conn->query("SHOW TABLES LIKE 'ai_training_chunks'");
-    if (!$tableCheck || $tableCheck->num_rows === 0) {
-        $conn->query("CREATE TABLE IF NOT EXISTS `ai_training_chunks` (
-            `id` INT AUTO_INCREMENT PRIMARY KEY,
-            `tenant_id` INT DEFAULT 1,
-            `doc_id` INT NOT NULL,
-            `chunk_index` INT NOT NULL,
-            `content` TEXT NOT NULL,
-            `vector` LONGTEXT NOT NULL,
-            `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (`doc_id`) REFERENCES `ai_training_docs`(`id`) ON DELETE CASCADE
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;");
-    }
-
     $createdBy = $decodedUser['name'] ?? 'Admin';
     $actionType = '';
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {

@@ -1,23 +1,6 @@
 <?php
 // backend/utils/rag_helpers.php
 
-// Auto-create table if not exists
-if (isset($conn) && $conn instanceof mysqli) {
-    $tableCheck = $conn->query("SHOW TABLES LIKE 'ai_training_chunks'");
-    if (!$tableCheck || $tableCheck->num_rows === 0) {
-        $conn->query("CREATE TABLE IF NOT EXISTS `ai_training_chunks` (
-            `id` INT AUTO_INCREMENT PRIMARY KEY,
-            `tenant_id` INT DEFAULT 1,
-            `doc_id` INT NOT NULL,
-            `chunk_index` INT NOT NULL,
-            `content` TEXT NOT NULL,
-            `vector` LONGTEXT NOT NULL,
-            `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (`doc_id`) REFERENCES `ai_training_docs`(`id`) ON DELETE CASCADE
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;");
-    }
-}
-
 if (!function_exists('extract_pdf_text_via_gemini')) {
     function extract_pdf_text_via_gemini($filePath, $apiKey) {
         $fullPath = $_SERVER['DOCUMENT_ROOT'] . $filePath;

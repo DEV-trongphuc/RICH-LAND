@@ -8,7 +8,7 @@ echo "=== KIỂM THỬ HỆ THỐNG VECTOR RAG VÀ SEMANTIC SEARCH ===\n\n";
 // 1. Kiểm tra cấu trúc bảng ai_training_chunks
 $tableCheck = $conn->query("SHOW TABLES LIKE 'ai_training_chunks'");
 $tableExists = ($tableCheck && $tableCheck->num_rows > 0);
-assertTest("Bảng ai_training_chunks được tạo tự động thành công", $tableExists);
+assertTest("Bảng ai_training_chunks tồn tại trong cơ sở dữ liệu", $tableExists);
 
 if ($tableExists) {
     $columnsRes = $conn->query("DESCRIBE ai_training_chunks");
