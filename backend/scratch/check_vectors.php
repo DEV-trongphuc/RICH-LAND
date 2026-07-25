@@ -18,6 +18,16 @@ if (!$doc) {
 
 echo "✅ [FOUND] Document ID: " . $doc['id'] . " | Name: " . $doc['name'] . " | Status: " . $doc['status'] . "\n\n";
 
+// DEBUG: Check all chunk counts in table
+echo "--- DB Table Stats ---\n";
+$stats = $conn->query("SELECT doc_id, COUNT(*) as cnt FROM ai_training_chunks GROUP BY doc_id");
+if ($stats) {
+    while ($row = $stats->fetch_assoc()) {
+        echo "Doc ID: " . $row['doc_id'] . " | Chunks Count: " . $row['cnt'] . "\n";
+    }
+}
+echo "----------------------\n\n";
+
 // 2. Fetch chunks belonging to this document
 $cStmt = $conn->prepare("SELECT id, chunk_index, content, vector, vector_norm FROM ai_training_chunks WHERE doc_id = ? ORDER BY chunk_index ASC");
 if ($cStmt) {
