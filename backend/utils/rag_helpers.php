@@ -111,8 +111,8 @@ if (!function_exists('generate_embedding')) {
             ]
         ];
 
-        // 1. Try v1 models/text-embedding-004 first
-        $url = "https://generativelanguage.googleapis.com/v1/models/text-embedding-004:embedContent?key=" . $apiKey;
+        // 1. Try v1beta models/text-embedding-004 first
+        $url = "https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent?key=" . $apiKey;
 
         $ch = curl_init($url);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
@@ -168,8 +168,8 @@ if (!function_exists('generate_batch_embeddings')) {
             ];
         }
 
-        // 1. Try v1 models/text-embedding-004:batchEmbedContents first
-        $url = "https://generativelanguage.googleapis.com/v1/models/text-embedding-004:batchEmbedContents?key=" . $apiKey;
+        // 1. Try v1beta models/text-embedding-004:batchEmbedContents first
+        $url = "https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:batchEmbedContents?key=" . $apiKey;
 
         $ch = curl_init($url);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
