@@ -1945,6 +1945,14 @@
                 "extra": ""
             },
             {
+                "field": "phone",
+                "type": "varchar(50)",
+                "null": "YES",
+                "key": "",
+                "default": null,
+                "extra": ""
+            },
+            {
                 "field": "role",
                 "type": "enum('super_admin','admin','manager','assistant','sales','viewer','superadmin','director')",
                 "null": "NO",
