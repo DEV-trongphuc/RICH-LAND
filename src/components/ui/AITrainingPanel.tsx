@@ -844,6 +844,36 @@ export const AITrainingPanel: React.FC = () => {
         .rag-premium-slider::-moz-range-thumb:hover {
           transform: scaleY(1.15) scaleX(1.1);
         }
+
+        .resizable-textarea-wrapper {
+          resize: vertical;
+          overflow: hidden;
+          transition: border-color 0.2s, box-shadow 0.2s;
+        }
+        .resizable-textarea-wrapper:focus-within {
+          border-color: var(--color-primary) !important;
+          box-shadow: 0 0 0 4px var(--color-primary-glow) !important;
+        }
+        .document-editor-textarea {
+          width: 100% !important;
+          height: 100% !important;
+          flex: 1 !important;
+          min-height: unset !important;
+          resize: none !important;
+          border: none !important;
+          outline: none !important;
+          padding: 0 !important;
+          background: transparent !important;
+          font-size: 0.9375rem !important;
+          line-height: 1.6 !important;
+          font-family: inherit !important;
+          color: var(--color-text) !important;
+        }
+        .document-editor-textarea:focus {
+          box-shadow: none !important;
+          border: none !important;
+          outline: none !important;
+        }
       `}</style>
       {/* Subtab Navigation */}
       <div style={{
@@ -1308,14 +1338,27 @@ export const AITrainingPanel: React.FC = () => {
                   <label style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text-light)' }}>System Instruction / Persona Prompt</label>
                   <span style={{ fontSize: '0.6875rem', background: 'rgba(189, 29, 45, 0.08)', color: '#BD1D2D', padding: '2px 6px', borderRadius: '4px', fontWeight: 700 }}>Bắt buộc</span>
                 </div>
-                <textarea
-                  className="form-input"
-                  rows={12}
-                  value={settings.persona_prompt}
-                  onChange={e => setSettings({ ...settings, persona_prompt: e.target.value })}
-                  placeholder="VD: Bạn là trợ lý AI chuyên nghiệp của Richland..."
-                  style={{ fontSize: '0.8125rem', lineHeight: 1.5, minHeight: '260px', width: '100%', resize: 'vertical' }}
-                />
+                <div 
+                  className="resizable-textarea-wrapper form-input" 
+                  style={{ 
+                    height: '320px', 
+                    minHeight: '260px', 
+                    width: '100%', 
+                    padding: '0.75rem 1rem', 
+                    background: 'white',
+                    display: 'flex',
+                    flexDirection: 'column'
+                  }}
+                >
+                  <textarea
+                    className="document-editor-textarea"
+                    rows={12}
+                    value={settings.persona_prompt}
+                    onChange={e => setSettings({ ...settings, persona_prompt: e.target.value })}
+                    placeholder="VD: Bạn là trợ lý AI chuyên nghiệp của Richland..."
+                    style={{ fontSize: '0.8125rem', lineHeight: 1.5 }}
+                  />
+                </div>
                 <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px' }}>
                   Định nghĩa hành vi, xưng hô, phạm vi trả lời của AI. Tránh để AI tự ý trả lời các thông tin ngoài tri thức đã được huấn luyện.
                 </span>
@@ -1901,27 +1944,63 @@ export const AITrainingPanel: React.FC = () => {
       {showManualModal && typeof document !== 'undefined' && createPortal(
         <div style={{
           position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-          backgroundColor: 'rgba(0, 0, 0, 0.5)', zIndex: 9999999,
+          backgroundColor: 'rgba(15, 23, 42, 0.4)', backdropFilter: 'blur(4px)', zIndex: 9999999,
           display: 'flex', alignItems: 'center', justifyContent: 'center'
         }}>
-          <div className="card" style={{ width: '100%', maxWidth: '1000px', height: '90vh', padding: '2rem', display: 'flex', flexDirection: 'column', gap: '1.25rem', margin: '1rem', overflow: 'hidden' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h3 style={{ margin: 0, fontSize: '1.125rem', fontWeight: 700 }}>Huấn luyện tri thức (Nhập tay)</h3>
-              <button type="button" onClick={() => setShowManualModal(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-muted)' }}>
+          <div className="card" style={{ width: '100%', maxWidth: '1000px', height: '90vh', padding: '2rem', display: 'flex', flexDirection: 'column', gap: '1.25rem', margin: '1rem', overflow: 'hidden', borderRadius: '24px', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)', border: '1px solid rgba(255, 255, 255, 0.8)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--color-border-light)', paddingBottom: '1rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'rgba(189, 29, 45, 0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <Sparkles size={18} color="#BD1D2D" />
+                </div>
+                <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 700, color: 'var(--color-text)' }}>Huấn luyện tri thức (Nhập tay)</h3>
+              </div>
+              <button 
+                type="button" 
+                onClick={() => setShowManualModal(false)} 
+                style={{ 
+                  background: 'var(--color-bg-light)', 
+                  border: 'none', 
+                  cursor: 'pointer', 
+                  color: 'var(--color-text-muted)',
+                  width: '32px',
+                  height: '32px',
+                  borderRadius: '50%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  transition: 'all 0.2s'
+                }}
+                onMouseEnter={e => { e.currentTarget.style.background = 'rgba(0,0,0,0.05)'; e.currentTarget.style.color = 'var(--color-text)'; }}
+                onMouseLeave={e => { e.currentTarget.style.background = 'var(--color-bg-light)'; e.currentTarget.style.color = 'var(--color-text-muted)'; }}
+              >
                 <X size={18} />
               </button>
             </div>
 
             <div style={{ display: 'flex', gap: '1.5rem', marginTop: '0.5rem', flex: 1, minHeight: 0 }}>
               {/* Left Column: Metadata */}
-              <div style={{ flex: '0 0 300px', display: 'flex', flexDirection: 'column', gap: '1.25rem', overflowY: 'auto', maxHeight: '100%' }}>
+              <div 
+                style={{ 
+                  flex: '0 0 320px', 
+                  display: 'flex', 
+                  flexDirection: 'column', 
+                  gap: '1.25rem', 
+                  background: 'var(--color-bg-light)', 
+                  padding: '1.5rem', 
+                  borderRadius: '16px', 
+                  border: '1px solid var(--color-border-light)',
+                  overflowY: 'auto', 
+                  maxHeight: '100%' 
+                }}
+              >
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  <label style={{ fontSize: '0.8125rem', fontWeight: 700 }}>Tiêu đề khối tri thức</label>
-                  <input type="text" className="form-input" placeholder="Ví dụ: Chính sách chiết khấu đợt 1" value={manualTitle} onChange={e => setManualTitle(e.target.value)} />
+                  <label style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text-muted)' }}>Tiêu đề khối tri thức</label>
+                  <input type="text" className="form-input" placeholder="Ví dụ: Chính sách chiết khấu đợt 1" value={manualTitle} onChange={e => setManualTitle(e.target.value)} style={{ fontWeight: 600 }} />
                 </div>
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  <label style={{ fontSize: '0.8125rem', fontWeight: 700 }}>Lưu vào thư mục (Tùy chọn)</label>
+                  <label style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text-muted)' }}>Lưu vào thư mục (Tùy chọn)</label>
                   <CustomSelect 
                     options={[
                       { value: '', label: '-- Lưu riêng lẻ ở thư mục gốc (Root) --' },
@@ -1936,7 +2015,7 @@ export const AITrainingPanel: React.FC = () => {
                 </div>
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  <label style={{ fontSize: '0.8125rem', fontWeight: 700 }}>Tags phân loại (ngăn cách bằng dấu phẩy)</label>
+                  <label style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text-muted)' }}>Tags phân loại (ngăn cách bằng dấu phẩy)</label>
                   <input type="text" className="form-input" placeholder="Ví dụ: chietkhau, diamondcity" value={manualTags} onChange={e => setManualTags(e.target.value)} />
                   <span style={{ fontSize: '0.6875rem', color: 'var(--color-text-muted)', lineHeight: 1.3 }}>
                     AI sẽ tự động đọc hiểu và phân tích ngữ cảnh để lấy tài liệu này khi người dùng hỏi các nội dung liên quan.
@@ -1945,21 +2024,35 @@ export const AITrainingPanel: React.FC = () => {
               </div>
 
               {/* Right Column: Main Content Editor */}
-              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '6px', height: '100%' }}>
-                <label style={{ fontSize: '0.8125rem', fontWeight: 700 }}>Nội dung tri thức</label>
-                <textarea 
-                  className="form-input" 
-                  style={{ width: '100%', height: 'calc(100% - 28px)', minHeight: '320px', resize: 'vertical' }} 
-                  placeholder="Nhập hoặc dán nội dung chi tiết để AI ghi nhớ..." 
-                  value={manualContent} 
-                  onChange={e => setManualContent(e.target.value)} 
-                />
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '8px', height: '100%' }}>
+                <label style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)' }}>Nội dung tri thức</label>
+                <div 
+                  className="resizable-textarea-wrapper" 
+                  style={{ 
+                    flex: 1, 
+                    height: '100%', 
+                    background: '#fff', 
+                    border: '1px solid var(--color-border)', 
+                    borderRadius: '16px', 
+                    padding: '1.25rem',
+                    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.03)',
+                    display: 'flex',
+                    flexDirection: 'column'
+                  }}
+                >
+                  <textarea 
+                    className="document-editor-textarea" 
+                    placeholder="Nhập hoặc dán nội dung chi tiết để AI ghi nhớ..." 
+                    value={manualContent} 
+                    onChange={e => setManualContent(e.target.value)} 
+                  />
+                </div>
               </div>
             </div>
 
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1rem' }}>
-              <button type="button" className="btn outline" onClick={() => setShowManualModal(false)}>Hủy</button>
-              <button type="button" className="btn primary" onClick={handleAddManual} disabled={submittingManual}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1rem', borderTop: '1px solid var(--color-border-light)', paddingTop: '1rem' }}>
+              <button type="button" className="btn outline" onClick={() => setShowManualModal(false)} style={{ borderRadius: '10px', height: '40px' }}>Hủy</button>
+              <button type="button" className="btn primary" onClick={handleAddManual} disabled={submittingManual} style={{ borderRadius: '10px', height: '40px', background: '#BD1D2D', borderColor: '#BD1D2D' }}>
                 {submittingManual ? <RefreshCw size={14} className="spin" /> : null}
                 Lưu & Huấn luyện
               </button>
@@ -2068,32 +2161,68 @@ export const AITrainingPanel: React.FC = () => {
       {showEditModal && editingDoc && typeof document !== 'undefined' && createPortal(
         <div style={{
           position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-          backgroundColor: 'rgba(0, 0, 0, 0.5)', zIndex: 9999999,
+          backgroundColor: 'rgba(15, 23, 42, 0.4)', backdropFilter: 'blur(4px)', zIndex: 9999999,
           display: 'flex', alignItems: 'center', justifyContent: 'center'
         }}>
-          <div className="card" style={{ width: '100%', maxWidth: '1000px', height: '90vh', padding: '2rem', display: 'flex', flexDirection: 'column', gap: '1.25rem', margin: '1rem', overflow: 'hidden' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h3 style={{ margin: 0, fontSize: '1.125rem', fontWeight: 700 }}>Chỉnh sửa dữ liệu huấn luyện</h3>
-              <button type="button" onClick={() => { setShowEditModal(false); setEditingDoc(null); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-muted)' }}>
+          <div className="card" style={{ width: '100%', maxWidth: '1000px', height: '90vh', padding: '2rem', display: 'flex', flexDirection: 'column', gap: '1.25rem', margin: '1rem', overflow: 'hidden', borderRadius: '24px', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)', border: '1px solid rgba(255, 255, 255, 0.8)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--color-border-light)', paddingBottom: '1rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'rgba(189, 29, 45, 0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <FileText size={18} color="#BD1D2D" />
+                </div>
+                <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 700, color: 'var(--color-text)' }}>Chỉnh sửa dữ liệu huấn luyện</h3>
+              </div>
+              <button 
+                type="button" 
+                onClick={() => { setShowEditModal(false); setEditingDoc(null); }} 
+                style={{ 
+                  background: 'var(--color-bg-light)', 
+                  border: 'none', 
+                  cursor: 'pointer', 
+                  color: 'var(--color-text-muted)',
+                  width: '32px',
+                  height: '32px',
+                  borderRadius: '50%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  transition: 'all 0.2s'
+                }}
+                onMouseEnter={e => { e.currentTarget.style.background = 'rgba(0,0,0,0.05)'; e.currentTarget.style.color = 'var(--color-text)'; }}
+                onMouseLeave={e => { e.currentTarget.style.background = 'var(--color-bg-light)'; e.currentTarget.style.color = 'var(--color-text-muted)'; }}
+              >
                 <X size={18} />
               </button>
             </div>
 
             <div style={{ display: 'flex', gap: '1.5rem', marginTop: '0.5rem', flex: 1, minHeight: 0 }}>
               {/* Left Column: Metadata */}
-              <div style={{ flex: '0 0 300px', display: 'flex', flexDirection: 'column', gap: '1.25rem', overflowY: 'auto', maxHeight: '100%' }}>
+              <div 
+                style={{ 
+                  flex: '0 0 320px', 
+                  display: 'flex', 
+                  flexDirection: 'column', 
+                  gap: '1.25rem', 
+                  background: 'var(--color-bg-light)', 
+                  padding: '1.5rem', 
+                  borderRadius: '16px', 
+                  border: '1px solid var(--color-border-light)',
+                  overflowY: 'auto', 
+                  maxHeight: '100%' 
+                }}
+              >
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  <label style={{ fontSize: '0.8125rem', fontWeight: 700 }}>Tiêu đề khối tri thức</label>
-                  <input type="text" className="form-input" value={editingDoc.name} onChange={e => setEditingDoc({ ...editingDoc, name: e.target.value })} />
+                  <label style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text-muted)' }}>Tiêu đề khối tri thức</label>
+                  <input type="text" className="form-input" value={editingDoc.name} onChange={e => setEditingDoc({ ...editingDoc, name: e.target.value })} style={{ fontWeight: 600 }} />
                 </div>
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  <label style={{ fontSize: '0.8125rem', fontWeight: 700 }}>Tags phân loại</label>
-                  <input type="text" className="form-input" value={editingDoc.tags || ''} onChange={e => setEditingDoc({ ...editingDoc, tags: e.target.value })} />
+                  <label style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text-muted)' }}>Tags phân loại</label>
+                  <input type="text" className="form-input" value={editingDoc.tags || ''} onChange={e => setEditingDoc({ ...editingDoc, tags: e.target.value })} placeholder="Ví dụ: chietkhau, canho" />
                 </div>
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  <label style={{ fontSize: '0.8125rem', fontWeight: 700 }}>Di chuyển vào thư mục</label>
+                  <label style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text-muted)' }}>Di chuyển vào thư mục</label>
                   <CustomSelect 
                     options={[
                       { value: '', label: '-- Thư mục gốc (Root) --' },
@@ -2107,40 +2236,70 @@ export const AITrainingPanel: React.FC = () => {
                   />
                 </div>
 
+                {/* Audit Info Card */}
                 <div style={{ 
-                  marginTop: '1.5rem', 
-                  padding: '12px', 
-                  background: 'var(--color-bg-light)', 
+                  marginTop: 'auto', 
+                  padding: '1rem', 
+                  background: 'white', 
                   border: '1px solid var(--color-border-light)', 
-                  borderRadius: '8px',
+                  borderRadius: '12px',
                   fontSize: '0.75rem',
                   color: 'var(--color-text-muted)',
                   display: 'flex',
                   flexDirection: 'column',
-                  gap: '6px'
+                  gap: '8px',
+                  boxShadow: '0 2px 6px rgba(0,0,0,0.02)'
                 }}>
-                  <div style={{ fontWeight: 700, color: 'var(--color-text)', marginBottom: '2px' }}>Thông tin lưu trữ:</div>
-                  <div>• Người tạo: <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>{editingDoc.created_by || 'Hệ thống'}</span></div>
-                  <div>• Ngày tạo: <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>{formatDocDate(editingDoc.created_at)}</span></div>
-                  <div>• Lần chỉnh sửa: <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>Lần {editingDoc.version || 1}</span></div>
+                  <div style={{ fontWeight: 700, color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: '6px', borderBottom: '1px solid var(--color-border-light)', paddingBottom: '6px', marginBottom: '2px' }}>
+                    <Database size={14} color="#BD1D2D" />
+                    Thông tin lưu trữ
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span>Người tạo:</span>
+                    <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>{editingDoc.created_by || 'Hệ thống'}</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span>Ngày tạo:</span>
+                    <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>{formatDocDate(editingDoc.created_at)}</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span>Lần chỉnh sửa:</span>
+                    <span style={{ fontWeight: 600, color: '#10b981', background: 'rgba(16, 185, 129, 0.08)', padding: '1px 6px', borderRadius: '4px' }}>
+                      Lần {editingDoc.version || 1}
+                    </span>
+                  </div>
                 </div>
               </div>
 
               {/* Right Column: Main Content Editor */}
-              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '6px', height: '100%' }}>
-                <label style={{ fontSize: '0.8125rem', fontWeight: 700 }}>Nội dung chi tiết</label>
-                <textarea 
-                  className="form-input" 
-                  style={{ width: '100%', height: 'calc(100% - 28px)', minHeight: '320px', resize: 'vertical' }} 
-                  value={editingDoc.content || ''} 
-                  onChange={e => setEditingDoc({ ...editingDoc, content: e.target.value })} 
-                />
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '8px', height: '100%' }}>
+                <label style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)' }}>Nội dung chi tiết</label>
+                <div 
+                  className="resizable-textarea-wrapper" 
+                  style={{ 
+                    flex: 1, 
+                    height: '100%', 
+                    background: '#fff', 
+                    border: '1px solid var(--color-border)', 
+                    borderRadius: '16px', 
+                    padding: '1.25rem',
+                    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.03)',
+                    display: 'flex',
+                    flexDirection: 'column'
+                  }}
+                >
+                  <textarea 
+                    className="document-editor-textarea" 
+                    value={editingDoc.content || ''} 
+                    onChange={e => setEditingDoc({ ...editingDoc, content: e.target.value })} 
+                  />
+                </div>
               </div>
             </div>
 
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1rem' }}>
-              <button type="button" className="btn outline" onClick={() => { setShowEditModal(false); setEditingDoc(null); }}>Hủy</button>
-              <button type="button" className="btn primary" onClick={handleUpdateDoc}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1rem', borderTop: '1px solid var(--color-border-light)', paddingTop: '1rem' }}>
+              <button type="button" className="btn outline" onClick={() => { setShowEditModal(false); setEditingDoc(null); }} style={{ borderRadius: '10px', height: '40px' }}>Hủy</button>
+              <button type="button" className="btn primary" onClick={handleUpdateDoc} style={{ borderRadius: '10px', height: '40px', background: '#BD1D2D', borderColor: '#BD1D2D' }}>
                 Cập nhật tri thức
               </button>
             </div>
