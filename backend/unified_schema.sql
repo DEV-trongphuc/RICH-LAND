@@ -591,6 +591,21 @@ CREATE TABLE IF NOT EXISTS `zalo_queue` (
   `last_error` text DEFAULT NULL,
   `lead_id` int(11) DEFAULT NULL,
   `updated_at` datetime DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 28. Table: telegram_queue (DATA App)
+CREATE TABLE IF NOT EXISTS `telegram_queue` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `bot_token` varchar(255) NOT NULL,
+  `chat_id` varchar(255) NOT NULL,
+  `body_text` text NOT NULL,
+  `status` enum('pending','processing','sent','failed') DEFAULT 'pending',
+  `created_at` datetime DEFAULT current_timestamp(),
+  `sent_at` datetime DEFAULT NULL,
+  `attempts` int(11) DEFAULT 0,
+  `last_error` text DEFAULT NULL,
+  `lead_id` int(11) DEFAULT NULL,
+  `updated_at` datetime DEFAULT current_timestamp() ON UPDATE current_timestamp(),
   PRIMARY KEY (`id`),
   FOREIGN KEY (`lead_id`) REFERENCES `leads` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -1628,6 +1643,9 @@ ALTER TABLE `deposits`
 
 ALTER TABLE `zalo_queue`
   ADD KEY `idx_zalo_queue_status_created` (`status`, `created_at`);
+
+ALTER TABLE `telegram_queue`
+  ADD KEY `idx_telegram_queue_status_created` (`status`, `created_at`);
 
 ALTER TABLE `mail_queue`
   ADD KEY `idx_mail_queue_status_created` (`status`, `created_at`);
