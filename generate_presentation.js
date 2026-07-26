@@ -1,7 +1,8 @@
 import pptxgen from "pptxgenjs";
+import fs from "fs";
 
 console.log("=================================================");
-console.log("🚀 THIẾT KẾ ĐA DẠNG LAYOUT CAO CẤP - 60 SLIDE");
+console.log("🚀 THIẾT KẾ ĐA DẠNG LAYOUT MÔ PHỎNG CRM VÀ LOGO");
 console.log("=================================================");
 
 let pptx = new pptxgen();
@@ -42,42 +43,41 @@ function createBaseSlide(title, breadcrumbText) {
         line: { color: COLORS.border, width: 1 }
     });
 
-    // Logo ứng dụng trên Sidebar
-    slide.addShape(pptx.shapes.ROUNDED_RECTANGLE, {
+    // Logo DOMATION (Đơn vị thực hiện) ở đầu Sidebar
+    slide.addImage({
+        path: "https://domation.net/imgs/ICON.png",
         x: 0.15,
-        y: 0.2,
+        y: 0.15,
         w: 0.3,
-        h: 0.3,
-        fill: { color: COLORS.crimson },
-        rectRadius: 0.2
+        h: 0.3
     });
 
-    // Các nút điều hướng mô phỏng trên Sidebar (App Menu Icons)
+    // Các nút điều hướng mô phỏng trên Sidebar với màu sắc của Menu app thật
+    let menuColors = ["3B82F6", "10B981", "8B5CF6", "EC4899", "F59E0B", "BD1D2D"];
     let sidebarIconsY = [0.8, 1.3, 1.8, 2.3, 2.8, 3.3];
     sidebarIconsY.forEach((iconY, idx) => {
-        let isFirst = idx === 0;
         slide.addShape(pptx.shapes.ROUNDED_RECTANGLE, {
             x: 0.18,
             y: iconY,
             w: 0.24,
             h: 0.24,
-            fill: { color: isFirst ? COLORS.crimsonBg : "F1F5F9" },
-            line: { color: isFirst ? COLORS.crimson : COLORS.border, width: 1 },
-            rectRadius: 0.15
+            fill: { color: menuColors[idx] },
+            line: { color: COLORS.white, width: 1 },
+            rectRadius: 0.5
         });
     });
 
-    // 2. THANH TIÊU ĐỀ NGANG PHÍA TRÊN (Top App Header)
+    // 2. THANH TIÊU ĐỀ NGANG PHÍA TRÊN (Top App Header - Nền đỏ thẫm để tôn Logo Rich Land trắng)
     slide.addShape(pptx.shapes.RECTANGLE, {
         x: 0.6,
         y: 0,
         w: 9.4,
         h: 0.6,
-        fill: { color: COLORS.headerBg },
-        line: { color: COLORS.border, width: 1 }
+        fill: { color: COLORS.crimson },
+        line: { color: COLORS.crimson, width: 1 }
     });
 
-    // Breadcrumb định vị vị trí trang
+    // Breadcrumb định vị vị trí trang (chữ trắng/hồng nhạt)
     slide.addText(`RICH LAND CRM   /   ${breadcrumbText.toUpperCase()}`, {
         x: 0.8,
         y: 0.15,
@@ -85,31 +85,21 @@ function createBaseSlide(title, breadcrumbText) {
         h: 0.3,
         fontSize: 8.5,
         fontFace: "Segoe UI",
-        color: COLORS.textMuted,
+        color: "FFC1C1",
         bold: true,
         valign: "middle"
     });
 
-    // Ô tìm kiếm mô phỏng bên phải (Search Input Box)
-    slide.addShape(pptx.shapes.ROUNDED_RECTANGLE, {
-        x: 7.2,
-        y: 0.15,
-        w: 2.2,
-        h: 0.3,
-        fill: { color: "F8FAFC" },
-        line: { color: COLORS.border, width: 1 },
-        rectRadius: 0.15
-    });
-    slide.addText("Search database...", {
-        x: 7.35,
-        y: 0.15,
+    // Logo Rich Land Việt Nam trắng ở góc phải header
+    slide.addImage({
+        path: "https://rich-land.vercel.app/imgs/logo-rich-land-viet-nam-trang.webp",
+        x: 8.0,
+        y: 0.1,
         w: 1.8,
-        h: 0.3,
-        fontSize: 8,
-        fontFace: "Segoe UI",
-        color: COLORS.textMuted,
-        valign: "middle"
+        h: 0.4
     });
+
+    // Ô tìm kiếm mô phỏng bên phải đã được lược bỏ để làm giao diện rộng rãi và thông thoáng hơn
 
     // 3. TIÊU ĐỀ TRANG CHÍNH TRÊN CANVAS
     slide.addText(title, {
@@ -388,11 +378,32 @@ function drawChatBubble(slide, x, y, w, h, sender, message, isBot = false) {
 // ----------------------------------------------------------------------------
 function createCrimsonHeroSlide(title, subtitle, partNum) {
     let slide = pptx.addSlide();
-    slide.background = { color: COLORS.crimson }; 
+    
+    // Nền gradient chuyển sắc đậm cực kỳ sang trọng từ đỏ sẫm sang đen tuyền
+    slide.addShape(pptx.shapes.RECTANGLE, {
+        x: 0,
+        y: 0,
+        w: 10,
+        h: 5.625,
+        fill: {
+            type: "gradient",
+            color: ["9E1B28", "2E0408"],
+            angle: 45
+        }
+    });
+
+    // Logo Rich Land lớn trắng trên trang chuyển tiếp
+    slide.addImage({
+        path: "https://rich-land.vercel.app/imgs/logo-rich-land-viet-nam-trang.webp",
+        x: 1.0,
+        y: 0.4,
+        w: 2.2,
+        h: 0.5
+    });
 
     slide.addText(partNum.toUpperCase(), {
         x: 1.0,
-        y: 1.0,
+        y: 1.1,
         w: 8.0,
         h: 0.3,
         fontSize: 13,
@@ -404,7 +415,7 @@ function createCrimsonHeroSlide(title, subtitle, partNum) {
 
     slide.addText(title, {
         x: 1.0,
-        y: 1.4,
+        y: 1.5,
         w: 8.0,
         h: 1.0,
         fontSize: 30,
@@ -416,7 +427,7 @@ function createCrimsonHeroSlide(title, subtitle, partNum) {
 
     slide.addText(subtitle, {
         x: 1.0,
-        y: 2.6,
+        y: 2.7,
         w: 8.0,
         h: 0.6,
         fontSize: 11.5,
@@ -437,15 +448,16 @@ function addCrimsonFeatures(slide, features) {
 
     features.forEach((feat, idx) => {
         let x = startX + idx * (cardW + gap);
-        let y = 3.3;
+        let y = 3.4;
 
+        // Hộp kính mờ (Glassmorphism Frosted Panel) cực sang trọng trên nền gradient tối
         slide.addShape(pptx.shapes.ROUNDED_RECTANGLE, {
             x: x,
             y: y,
             w: cardW,
             h: cardH,
-            fill: { color: "9C1523" }, 
-            line: { color: "C92A3A", width: 1 },
+            fill: { color: "FFFFFF", transparency: 92 }, 
+            line: { color: "FFFFFF", width: 1, transparency: 75 },
             rectRadius: 0.08
         });
 
@@ -693,24 +705,28 @@ function addTimelineFlow(slide, x, y, w, h, steps) {
 // STYLE 10: VSCode Editor Code Mockups
 // ----------------------------------------------------------------------------
 function drawCodeEditorCard(slide, x, y, w, h, editorTitle, codeLines) {
+    // Vẽ bảng điều khiển quy trình hệ thống sáng sủa, thân thiện với khách hàng
     slide.addShape(pptx.shapes.ROUNDED_RECTANGLE, {
         x: x,
         y: y,
         w: w,
         h: h,
-        fill: { color: "1E293B" }, // VSCode Dark Theme
-        line: { color: "334155", width: 1.5 },
+        fill: { color: "F1F5F9" }, // Màu xám nhạt cao cấp
+        line: { color: COLORS.border, width: 1.5 },
         rectRadius: 0.05
     });
 
+    // Thanh tiêu đề của bảng điều khiển
     slide.addShape(pptx.shapes.RECTANGLE, {
         x: x,
         y: y,
         w: w,
         h: 0.35,
-        fill: { color: "0F172A" }
+        fill: { color: "FFFFFF" },
+        line: { color: COLORS.border, width: 0.5 }
     });
 
+    // 3 nút chấm tròn Mac Style mô phỏng giao diện
     let dotColors = ["EF4444", "F59E0B", "10B981"];
     dotColors.forEach((color, idx) => {
         slide.addShape(pptx.shapes.OVAL, {
@@ -722,32 +738,30 @@ function drawCodeEditorCard(slide, x, y, w, h, editorTitle, codeLines) {
         });
     });
 
-    slide.addText(editorTitle, {
+    slide.addText(editorTitle.toUpperCase(), {
         x: x + 0.7,
         y: y,
         w: w - 1.0,
         h: 0.35,
-        fontSize: 8,
-        fontFace: "Consolas",
-        color: "94A3B8",
+        fontSize: 8.5,
+        fontFace: "Segoe UI",
+        color: "475569",
+        bold: true,
         valign: "middle"
     });
 
-    let codeText = codeLines.map((line, idx) => {
-        let lineNum = (idx + 1).toString().padStart(2, " ");
-        return `${lineNum} |  ${line}`;
-    }).join("\n");
+    let processText = codeLines.map(line => "•  " + line).join("\n\n");
 
-    slide.addText(codeText, {
-        x: x + 0.15,
-        y: y + 0.45,
-        w: w - 0.3,
-        h: h - 0.55,
-        fontSize: 8.2,
-        fontFace: "Consolas",
-        color: "E2E8F0",
+    slide.addText(processText, {
+        x: x + 0.2,
+        y: y + 0.5,
+        w: w - 0.4,
+        h: h - 0.7,
+        fontSize: 8.8,
+        fontFace: "Segoe UI",
+        color: COLORS.textDark,
         valign: "top",
-        lineSpacing: 11
+        lineSpacing: 13
     });
 }
 
@@ -1012,7 +1026,7 @@ function drawPipelineStepper(slide, x, y, w, h, activeStepIdx) {
 }
 
 // ----------------------------------------------------------------------------
-// NEW STYLE 14: 3-Column Feature Grid Layout
+// STYLE 14: 3-Column Feature Grid Layout
 // ----------------------------------------------------------------------------
 function addThreeColumnFeatureGrid(slide, x, y, w, h, cols) {
     let colW = (w - 0.6) / 3;
@@ -1023,7 +1037,7 @@ function addThreeColumnFeatureGrid(slide, x, y, w, h, cols) {
 }
 
 // ----------------------------------------------------------------------------
-// NEW STYLE 15: Full Bleed Stat Header (Top metrics bar, content callback)
+// STYLE 15: Full Bleed Stat Header (Top metrics bar, content callback)
 // ----------------------------------------------------------------------------
 function addFullBleedStatHeader(slide, x, y, w, h, stats, contentFn) {
     let statW = (w - 0.45) / 4;
@@ -1068,7 +1082,7 @@ function addFullBleedStatHeader(slide, x, y, w, h, stats, contentFn) {
 }
 
 // ----------------------------------------------------------------------------
-// NEW STYLE 16: Quadrant Card Grid (2x2 equal sized cards)
+// STYLE 16: Quadrant Card Grid (2x2 equal sized cards)
 // ----------------------------------------------------------------------------
 function addGridCardQuad(slide, x, y, w, h, cards) {
     let cardW = (w - 0.3) / 2;
@@ -1084,15 +1098,1285 @@ function addGridCardQuad(slide, x, y, w, h, cards) {
     });
 }
 
+// ----------------------------------------------------------------------------
+// STYLE 17: App Dashboard Daily Performance Chart Mockup
+// ----------------------------------------------------------------------------
+function drawAppDashboardWidget(slide, x, y, w, h) {
+    // Card Container
+    slide.addShape(pptx.shapes.ROUNDED_RECTANGLE, {
+        x: x,
+        y: y,
+        w: w,
+        h: h,
+        fill: { color: COLORS.cardBg },
+        line: { color: COLORS.border, width: 1 },
+        rectRadius: 0.08
+    });
+
+    // Header Title
+    slide.addText("Hiệu suất xử lý Data theo ngày", {
+        x: x + 0.2,
+        y: y + 0.15,
+        w: w - 2.2,
+        h: 0.25,
+        fontSize: 10.5,
+        fontFace: "Segoe UI",
+        color: COLORS.textDark,
+        bold: true
+    });
+    slide.addText("Biểu đồ thể hiện lưu lượng Data đổ về trong tháng này.", {
+        x: x + 0.2,
+        y: y + 0.4,
+        w: w - 2.2,
+        h: 0.2,
+        fontSize: 7.5,
+        fontFace: "Segoe UI",
+        color: COLORS.textGray
+    });
+
+    // Tabs "Theo ngày" / "Theo giờ"
+    let tabX = x + w - 2.0;
+    slide.addShape(pptx.shapes.ROUNDED_RECTANGLE, {
+        x: tabX,
+        y: y + 0.15,
+        w: 0.8,
+        h: 0.22,
+        fill: { color: COLORS.crimsonBg },
+        line: { color: COLORS.crimson, width: 0.5 },
+        rectRadius: 0.5
+    });
+    slide.addText("Theo ngày", {
+        x: tabX,
+        y: y + 0.15,
+        w: 0.8,
+        h: 0.22,
+        fontSize: 7.5,
+        fontFace: "Segoe UI",
+        color: COLORS.crimson,
+        bold: true,
+        align: "center",
+        valign: "middle"
+    });
+
+    slide.addShape(pptx.shapes.ROUNDED_RECTANGLE, {
+        x: tabX + 0.9,
+        y: y + 0.15,
+        w: 0.8,
+        h: 0.22,
+        fill: { color: "F1F5F9" },
+        rectRadius: 0.5
+    });
+    slide.addText("Theo giờ", {
+        x: tabX + 0.9,
+        y: y + 0.15,
+        w: 0.8,
+        h: 0.22,
+        fontSize: 7.5,
+        fontFace: "Segoe UI",
+        color: COLORS.textGray,
+        align: "center",
+        valign: "middle"
+    });
+
+    // X Axis line
+    let axisY = y + h - 0.5;
+    slide.addShape(pptx.shapes.LINE, {
+        x: x + 0.5,
+        y: axisY,
+        w: w - 1.0,
+        h: 0,
+        line: { color: COLORS.border, width: 1 }
+    });
+
+    // 5 Bars data
+    let barData = [
+        { label: "18/07", val: 6 },
+        { label: "19/07", val: 1 },
+        { label: "22/07", val: 7 },
+        { label: "23/07", val: 17 },
+        { label: "24/07", val: 1 }
+    ];
+    let maxVal = 20;
+    let chartH = h - 1.2; 
+    let colW = (w - 1.0) / barData.length;
+
+    barData.forEach((bar, idx) => {
+        let pct = bar.val / maxVal;
+        let bH = chartH * pct;
+        if (bH < 0.08) bH = 0.08;
+        let bW = 0.18;
+        let bX = x + 0.5 + idx * colW + (colW - bW) / 2;
+        let bY = axisY - bH;
+
+        // Draw Bar shape
+        slide.addShape(pptx.shapes.ROUNDED_RECTANGLE, {
+            x: bX,
+            y: bY,
+            w: bW,
+            h: bH,
+            fill: { color: COLORS.crimson },
+            rectRadius: 0.1
+        });
+
+        // Value text
+        slide.addText(bar.val.toString(), {
+            x: bX - 0.1,
+            y: bY - 0.22,
+            w: bW + 0.2,
+            h: 0.2,
+            fontSize: 8,
+            fontFace: "Segoe UI",
+            color: COLORS.textDark,
+            bold: true,
+            align: "center"
+        });
+
+        // X label
+        slide.addText(bar.label, {
+            x: bX - 0.2,
+            y: axisY + 0.05,
+            w: bW + 0.4,
+            h: 0.2,
+            fontSize: 7.5,
+            fontFace: "Segoe UI",
+            color: COLORS.textGray,
+            align: "center"
+        });
+    });
+}
+
+// ----------------------------------------------------------------------------
+// STYLE 18: Recent Lead Assignments Mockup
+// ----------------------------------------------------------------------------
+function drawRecentAssignmentsWidget(slide, x, y, w, h) {
+    // Card container
+    slide.addShape(pptx.shapes.ROUNDED_RECTANGLE, {
+        x: x,
+        y: y,
+        w: w,
+        h: h,
+        fill: { color: COLORS.cardBg },
+        line: { color: COLORS.border, width: 1 },
+        rectRadius: 0.08
+    });
+
+    // Header
+    slide.addText("Lịch sử giao Data gần đây", {
+        x: x + 0.2,
+        y: y + 0.15,
+        w: w - 1.2,
+        h: 0.25,
+        fontSize: 10,
+        fontFace: "Segoe UI",
+        color: COLORS.textDark,
+        bold: true
+    });
+    slide.addText("Xem tất cả", {
+        x: x + w - 1.0,
+        y: y + 0.15,
+        w: 0.8,
+        h: 0.25,
+        fontSize: 8,
+        fontFace: "Segoe UI",
+        color: COLORS.crimson,
+        bold: true,
+        align: "right"
+    });
+
+    let listData = [
+        { name: "Nguyễn Hải Đăng (Sale)", time: "Huỳnh Trọng Phúc • 15:57:02 24/7/2026" },
+        { name: "Đinh Thanh", time: "Nguyễn Minh Anh • 11:08:01 23/7/2026" },
+        { name: "Đinh Thanh", time: "Võ Hoàng Nam • 11:06:03 23/7/2026" },
+        { name: "Đinh Thanh", time: "Phạm Thu Hà • 11:06:01 23/7/2026" }
+    ];
+
+    let rowH = (h - 0.5) / 4;
+    listData.forEach((row, idx) => {
+        let rY = y + 0.42 + idx * rowH;
+
+        if (idx > 0) {
+            slide.addShape(pptx.shapes.LINE, {
+                x: x + 0.2,
+                y: rY,
+                w: w - 0.4,
+                h: 0,
+                line: { color: COLORS.border, width: 0.5 }
+            });
+        }
+
+        // Avatar placeholder
+        slide.addShape(pptx.shapes.OVAL, {
+            x: x + 0.2,
+            y: rY + 0.1,
+            w: 0.3,
+            h: 0.3,
+            fill: { color: "F1F5F9" },
+            line: { color: COLORS.border, width: 0.5 }
+        });
+        slide.addText(row.name.charAt(0), {
+            x: x + 0.2,
+            y: rY + 0.1,
+            w: 0.3,
+            h: 0.3,
+            fontSize: 9,
+            fontFace: "Segoe UI",
+            color: COLORS.crimson,
+            bold: true,
+            align: "center",
+            valign: "middle"
+        });
+
+        // Name
+        slide.addText(row.name, {
+            x: x + 0.6,
+            y: rY + 0.08,
+            w: w - 2.0,
+            h: 0.18,
+            fontSize: 8.5,
+            fontFace: "Segoe UI",
+            color: COLORS.textDark,
+            bold: true
+        });
+
+        // Details
+        slide.addText(row.time, {
+            x: x + 0.6,
+            y: rY + 0.26,
+            w: w - 2.0,
+            h: 0.16,
+            fontSize: 7.2,
+            fontFace: "Segoe UI",
+            color: COLORS.textGray
+        });
+
+        // Badge pill
+        slide.addShape(pptx.shapes.ROUNDED_RECTANGLE, {
+            x: x + w - 1.5,
+            y: rY + 0.12,
+            w: 1.3,
+            h: 0.2,
+            fill: { color: COLORS.greenBg },
+            rectRadius: 0.5
+        });
+        slide.addText("Vinhomes Cần Giờ", {
+            x: x + w - 1.5,
+            y: rY + 0.12,
+            w: 1.3,
+            h: 0.2,
+            fontSize: 7,
+            fontFace: "Segoe UI",
+            color: COLORS.green,
+            bold: true,
+            align: "center",
+            valign: "middle"
+        });
+    });
+}
+
+// ----------------------------------------------------------------------------
+// NEW STYLE 19: Lead Flow & Acceptance Monitor Panel Mockup
+// ----------------------------------------------------------------------------
+function drawLeadFlowMonitorWidget(slide, x, y, w, h) {
+    // Card container
+    slide.addShape(pptx.shapes.ROUNDED_RECTANGLE, {
+        x: x,
+        y: y,
+        w: w,
+        h: h,
+        fill: { color: COLORS.cardBg },
+        line: { color: COLORS.border, width: 1 },
+        rectRadius: 0.08
+    });
+
+    // Header
+    slide.addText("Giám sát Dòng chảy Phân bổ & Tỷ lệ Tiếp nhận Lead", {
+        x: x + 0.2,
+        y: y + 0.15,
+        w: w - 0.4,
+        h: 0.25,
+        fontSize: 10,
+        fontFace: "Segoe UI",
+        color: COLORS.textDark,
+        bold: true
+    });
+
+    // Table Headers
+    let colY = y + 0.45;
+    let headers = ["NHÂN VIÊN", "LEAD NHẬN", "TỶ LỆ NHẬN", "QUÁ HẠN / THU HỒI", "CHƯA TƯƠNG TÁC", "DÒNG CHẢY (FLOW)"];
+    let colWidths = [1.8, 1.4, 1.2, 1.5, 1.4, 1.5];
+    let startX = x + 0.2;
+
+    headers.forEach((hdr, idx) => {
+        let curX = startX + colWidths.slice(0, idx).reduce((a, b) => a + b, 0);
+        slide.addText(hdr, {
+            x: curX,
+            y: colY,
+            w: colWidths[idx],
+            h: 0.2,
+            fontSize: 7.2,
+            fontFace: "Segoe UI",
+            color: COLORS.textMuted,
+            bold: true
+        });
+    });
+
+    // Row Data
+    let rowData = [
+        { name: "Đinh Thanh", email: "thanhtd.tdt@gmail.com", recv: "17/56 (bỏ qua 39)", rate: "30.4%", recall: "39 (69.6%)", idle: "2/5", flow: 0.6 },
+        { name: "Nguyễn Hải Đăng (Sale)", email: "dom.marketing.vn@gmail.com", recv: "14/34 (bỏ qua 20)", rate: "41.2%", recall: "20 (58.8%)", idle: "5/5", flow: 0.4 }
+    ];
+
+    rowData.forEach((row, rIdx) => {
+        let rY = y + 0.75 + rIdx * 0.7;
+
+        slide.addShape(pptx.shapes.LINE, {
+            x: x + 0.2,
+            y: rY,
+            w: w - 0.4,
+            h: 0,
+            line: { color: COLORS.border, width: 0.5 }
+        });
+
+        let curY = rY + 0.1;
+
+        // Staff
+        slide.addText(row.name, {
+            x: startX,
+            y: curY,
+            w: colWidths[0],
+            h: 0.2,
+            fontSize: 8.5,
+            fontFace: "Segoe UI",
+            color: COLORS.textDark,
+            bold: true
+        });
+        slide.addText(row.email, {
+            x: startX,
+            y: curY + 0.2,
+            w: colWidths[0],
+            h: 0.15,
+            fontSize: 7.2,
+            fontFace: "Segoe UI",
+            color: COLORS.textGray
+        });
+
+        // Lead count
+        let c1X = startX + colWidths[0];
+        slide.addText(row.recv, {
+            x: c1X,
+            y: curY,
+            w: colWidths[1],
+            h: 0.35,
+            fontSize: 8,
+            fontFace: "Segoe UI",
+            color: COLORS.textDark,
+            valign: "middle"
+        });
+
+        // Rate
+        let c2X = c1X + colWidths[1];
+        slide.addShape(pptx.shapes.ROUNDED_RECTANGLE, {
+            x: c2X,
+            y: curY + 0.05,
+            w: 0.7,
+            h: 0.2,
+            fill: { color: COLORS.crimsonBg },
+            rectRadius: 0.5
+        });
+        slide.addText(row.rate, {
+            x: c2X,
+            y: curY + 0.05,
+            w: 0.7,
+            h: 0.2,
+            fontSize: 7.5,
+            fontFace: "Segoe UI",
+            color: COLORS.crimson,
+            bold: true,
+            align: "center",
+            valign: "middle"
+        });
+
+        // Recall
+        let c3X = c2X + colWidths[2];
+        slide.addShape(pptx.shapes.ROUNDED_RECTANGLE, {
+            x: c3X,
+            y: curY + 0.05,
+            w: 0.9,
+            h: 0.2,
+            fill: { color: COLORS.crimsonBg },
+            rectRadius: 0.5
+        });
+        slide.addText(row.recall, {
+            x: c3X,
+            y: curY + 0.05,
+            w: 0.9,
+            h: 0.2,
+            fontSize: 7.5,
+            fontFace: "Segoe UI",
+            color: COLORS.crimson,
+            bold: true,
+            align: "center",
+            valign: "middle"
+        });
+
+        // Idle
+        let c4X = c3X + colWidths[3];
+        let isCritical = row.idle === "5/5";
+        slide.addShape(pptx.shapes.ROUNDED_RECTANGLE, {
+            x: c4X,
+            y: curY + 0.05,
+            w: 0.5,
+            h: 0.2,
+            fill: { color: isCritical ? COLORS.crimsonBg : COLORS.greenBg },
+            rectRadius: 0.5
+        });
+        slide.addText(row.idle, {
+            x: c4X,
+            y: curY + 0.05,
+            w: 0.5,
+            h: 0.2,
+            fontSize: 7.5,
+            fontFace: "Segoe UI",
+            color: isCritical ? COLORS.crimson : COLORS.green,
+            bold: true,
+            align: "center",
+            valign: "middle"
+        });
+
+        // Flow width bar
+        let c5X = c4X + colWidths[4];
+        slide.addShape(pptx.shapes.ROUNDED_RECTANGLE, {
+            x: c5X,
+            y: curY + 0.12,
+            w: 1.2,
+            h: 0.08,
+            fill: { color: "F1F5F9" },
+            rectRadius: 0.5
+        });
+        slide.addShape(pptx.shapes.ROUNDED_RECTANGLE, {
+            x: c5X,
+            y: curY + 0.12,
+            w: 1.2 * row.flow,
+            h: 0.08,
+            fill: { color: COLORS.crimson },
+            rectRadius: 0.5
+        });
+    });
+}
+
+// ----------------------------------------------------------------------------
+// NEW STYLE 20: Quick Navigation Menu Modal Mockup
+// ----------------------------------------------------------------------------
+function drawQuickNavigationMenuWidget(slide, x, y, w, h) {
+    // Modal card
+    slide.addShape(pptx.shapes.ROUNDED_RECTANGLE, {
+        x: x,
+        y: y,
+        w: w,
+        h: h,
+        fill: { color: COLORS.cardBg },
+        line: { color: COLORS.border, width: 1.5 },
+        rectRadius: 0.08
+    });
+
+    slide.addText("✕", {
+        x: x + w - 0.4,
+        y: y + 0.1,
+        w: 0.3,
+        h: 0.3,
+        fontSize: 10,
+        fontFace: "Segoe UI",
+        color: COLORS.textMuted,
+        align: "center"
+    });
+
+    slide.addText("Menu điều hướng nhanh", {
+        x: x + 0.3,
+        y: y + 0.15,
+        w: w - 0.8,
+        h: 0.3,
+        fontSize: 11,
+        fontFace: "Segoe UI",
+        color: COLORS.textDark,
+        bold: true
+    });
+
+    // 7 circular menu buttons
+    let menuItems = [
+        { label: "Dashboard", color: "3B82F6" },
+        { label: "Bàn làm việc", color: "10B981" },
+        { label: "Báo cáo", color: "8B5CF6" },
+        { label: "Khách hàng", color: "EC4899" },
+        { label: "Pipeline", color: "9333EA" },
+        { label: "Giỏ hàng", color: "06B6D4" },
+        { label: "Kho Databank", color: "F59E0B" }
+    ];
+
+    let startX = x + 0.3;
+    let cardW = (w - 0.9) / 4;
+    let cardH = 0.75;
+
+    menuItems.forEach((item, idx) => {
+        let col = idx % 4;
+        let row = Math.floor(idx / 4);
+        let mX = startX + col * (cardW + 0.15);
+        let mY = y + 0.6 + row * (cardH + 0.15);
+
+        slide.addShape(pptx.shapes.OVAL, {
+            x: mX + (cardW - 0.35) / 2,
+            y: mY + 0.08,
+            w: 0.35,
+            h: 0.35,
+            fill: { color: item.color },
+            line: { color: COLORS.white, width: 1 }
+        });
+
+        slide.addText(item.label, {
+            x: mX,
+            y: mY + 0.45,
+            w: cardW,
+            h: 0.2,
+            fontSize: 7.2,
+            fontFace: "Segoe UI",
+            color: COLORS.textDark,
+            bold: true,
+            align: "center"
+        });
+    });
+}
+
+// ----------------------------------------------------------------------------
+// NEW STYLE 21: Full Lead List Table Widget (As seen in screenshot)
+// ----------------------------------------------------------------------------
+function drawLeadListTableWidget(slide, x, y, w, h) {
+    // Outer table card
+    slide.addShape(pptx.shapes.ROUNDED_RECTANGLE, {
+        x: x,
+        y: y,
+        w: w,
+        h: h,
+        fill: { color: COLORS.cardBg },
+        line: { color: COLORS.border, width: 1 },
+        rectRadius: 0.06
+    });
+
+    // Title header
+    slide.addText("Khách hàng tiềm năng (36 liên hệ)", {
+        x: x + 0.2,
+        y: y + 0.15,
+        w: 3.5,
+        h: 0.25,
+        fontSize: 10,
+        fontFace: "Segoe UI",
+        color: COLORS.textDark,
+        bold: true
+    });
+
+    // Top control bar
+    // Search input
+    let controlY = y + 0.45;
+    slide.addShape(pptx.shapes.ROUNDED_RECTANGLE, {
+        x: x + 0.2,
+        y: controlY,
+        w: 3.5,
+        h: 0.26,
+        fill: { color: "F8FAFC" },
+        line: { color: COLORS.border, width: 1 },
+        rectRadius: 0.15
+    });
+    slide.addText("Tìm tên, email, điện thoại...", {
+        x: x + 0.35,
+        y: controlY,
+        w: 3.0,
+        h: 0.26,
+        fontSize: 7.5,
+        fontFace: "Segoe UI",
+        color: COLORS.textMuted,
+        valign: "middle"
+    });
+
+    // Filter button
+    slide.addShape(pptx.shapes.ROUNDED_RECTANGLE, {
+        x: x + 3.8,
+        y: controlY,
+        w: 0.8,
+        h: 0.26,
+        fill: { color: "FFFFFF" },
+        line: { color: COLORS.border, width: 1 },
+        rectRadius: 0.15
+    });
+    slide.addText("Filter / Bộ lọc", {
+        x: x + 3.8,
+        y: controlY,
+        w: 0.8,
+        h: 0.26,
+        fontSize: 7,
+        fontFace: "Segoe UI",
+        color: COLORS.textGray,
+        align: "center",
+        valign: "middle",
+        bold: true
+    });
+
+    // Mới nhất sorter dropdown
+    slide.addShape(pptx.shapes.ROUNDED_RECTANGLE, {
+        x: x + 4.7,
+        y: controlY,
+        w: 1.0,
+        h: 0.26,
+        fill: { color: "FFFFFF" },
+        line: { color: COLORS.border, width: 1 },
+        rectRadius: 0.15
+    });
+    slide.addText("Sắp xếp: Mới nhất ▾", {
+        x: x + 4.7,
+        y: controlY,
+        w: 1.0,
+        h: 0.26,
+        fontSize: 7,
+        fontFace: "Segoe UI",
+        color: COLORS.textGray,
+        align: "center",
+        valign: "middle",
+        bold: true
+    });
+
+    // Columns Header
+    let colY = y + 0.85;
+    let headers = ["LIÊN HỆ", "LIÊN LẠC", "TRẠNG THÁI", "SALE PHỤ TRÁCH", "NGÀY TẠO"];
+    let colWidths = [1.8, 2.2, 1.4, 1.8, 1.4];
+    let startX = x + 0.2;
+
+    headers.forEach((hdr, idx) => {
+        let curX = startX + colWidths.slice(0, idx).reduce((a, b) => a + b, 0);
+        slide.addText(hdr, {
+            x: curX,
+            y: colY,
+            w: colWidths[idx],
+            h: 0.2,
+            fontSize: 7.2,
+            fontFace: "Segoe UI",
+            color: COLORS.textMuted,
+            bold: true
+        });
+    });
+
+    // 4 Rows data
+    let listRows = [
+        { initial: "HP", color: "FBCFE8", name: "Huỳnh Trọng Phúc", tel: "0985741256", mail: "turniodev@gmail.com", sale: "Nguyễn Hải Đăng", time: "2026-07-24 16:00:03" },
+        { initial: "VN", color: "FEE2E2", name: "Võ Hoàng Nam", tel: "0978123456", mail: "hoangnam.v@gmail.com", sale: "Đinh Thanh", time: "2026-07-23 11:08:24" },
+        { initial: "PH", color: "D1FAE5", name: "Phạm Thu Hà", tel: "0901122334", mail: "thuha.work@gmail.com", sale: "Đinh Thanh", time: "2026-07-23 11:08:20" },
+        { initial: "LT", color: "DBEAFE", name: "Lê Thanh Tùng", tel: "0934567812", mail: "thanh.tung01@gmail.com", sale: "Đinh Thanh", time: "2026-07-23 11:08:17" }
+    ];
+
+    let rowH = (h - 1.25) / 4;
+    listRows.forEach((row, rIdx) => {
+        let rY = y + 1.1 + rIdx * rowH;
+
+        slide.addShape(pptx.shapes.LINE, {
+            x: x + 0.2,
+            y: rY,
+            w: w - 0.4,
+            h: 0,
+            line: { color: COLORS.border, width: 0.5 }
+        });
+
+        let curY = rY + 0.08;
+
+        // Col 0: Avatar & Name
+        slide.addShape(pptx.shapes.OVAL, {
+            x: startX,
+            y: curY,
+            w: 0.25,
+            h: 0.25,
+            fill: { color: row.color },
+            line: { color: COLORS.white, width: 0.5 }
+        });
+        slide.addText(row.initial, {
+            x: startX,
+            y: curY,
+            w: 0.25,
+            h: 0.25,
+            fontSize: 7.2,
+            fontFace: "Segoe UI",
+            color: COLORS.textDark,
+            bold: true,
+            align: "center",
+            valign: "middle"
+        });
+        slide.addText(row.name, {
+            x: startX + 0.35,
+            y: curY,
+            w: colWidths[0] - 0.35,
+            h: 0.25,
+            fontSize: 8,
+            fontFace: "Segoe UI",
+            color: COLORS.textDark,
+            bold: true,
+            valign: "middle"
+        });
+
+        // Col 1: Contacts
+        let c1X = startX + colWidths[0];
+        slide.addText(row.tel, {
+            x: c1X,
+            y: curY,
+            w: colWidths[1],
+            h: 0.15,
+            fontSize: 8,
+            fontFace: "Segoe UI",
+            color: COLORS.textDark,
+            bold: true
+        });
+        slide.addText(row.mail, {
+            x: c1X,
+            y: curY + 0.15,
+            w: colWidths[1],
+            h: 0.15,
+            fontSize: 7,
+            fontFace: "Segoe UI",
+            color: COLORS.textGray
+        });
+
+        // Col 2: Status pill
+        let c2X = c1X + colWidths[1];
+        slide.addShape(pptx.shapes.ROUNDED_RECTANGLE, {
+            x: c2X,
+            y: curY + 0.05,
+            w: 0.8,
+            h: 0.2,
+            fill: { color: "EFF6FF" }, 
+            rectRadius: 0.5
+        });
+        slide.addText("Lead mới", {
+            x: c2X,
+            y: curY + 0.05,
+            w: 0.8,
+            h: 0.2,
+            fontSize: 7.2,
+            fontFace: "Segoe UI",
+            color: "1D4ED8",
+            bold: true,
+            align: "center",
+            valign: "middle"
+        });
+
+        // Col 3: Sale
+        let c3X = c2X + colWidths[2];
+        slide.addText(row.sale, {
+            x: c3X,
+            y: curY,
+            w: colWidths[3],
+            h: 0.15,
+            fontSize: 8,
+            fontFace: "Segoe UI",
+            color: COLORS.textDark,
+            bold: true
+        });
+        slide.addText("Tương tác: Vài ngày trước", {
+            x: c3X,
+            y: curY + 0.15,
+            w: colWidths[3],
+            h: 0.15,
+            fontSize: 6.8,
+            fontFace: "Segoe UI",
+            color: COLORS.textMuted
+        });
+
+        // Col 4: Date time
+        let c4X = c3X + colWidths[3];
+        slide.addText(row.time, {
+            x: c4X,
+            y: curY,
+            w: colWidths[4],
+            h: 0.25,
+            fontSize: 7.5,
+            fontFace: "Segoe UI",
+            color: COLORS.textGray,
+            valign: "middle"
+        });
+    });
+}
+
+// ----------------------------------------------------------------------------
+// NEW STYLE 22: Customer Info Slide-out Drawer Panel Mockup
+// ----------------------------------------------------------------------------
+function drawDetailDrawerWidget(slide, x, y, w, h) {
+    // 1. Draw a dimmed background lead table on the left
+    let leftW = w - 3.2;
+    drawLeadListTableWidget(slide, x, y, leftW, h);
+
+    // Semi-transparent overlay to dim the left side
+    slide.addShape(pptx.shapes.RECTANGLE, {
+        x: x,
+        y: y,
+        w: leftW,
+        h: h,
+        fill: { color: "000000", transparency: 30 } // 30% overlay
+    });
+
+    // 2. Draw the Slide-out Drawer on the right
+    let drawerX = x + leftW;
+    let drawerW = 3.2;
+    slide.addShape(pptx.shapes.RECTANGLE, {
+        x: drawerX,
+        y: y,
+        w: drawerW,
+        h: h,
+        fill: { color: "FFFFFF" },
+        line: { color: COLORS.border, width: 1.5 }
+    });
+
+    // Drawer Header Close Button
+    slide.addText("✕ Close", {
+        x: drawerX + drawerW - 0.8,
+        y: y + 0.15,
+        w: 0.7,
+        h: 0.25,
+        fontSize: 8.5,
+        fontFace: "Segoe UI",
+        color: COLORS.textGray,
+        align: "right",
+        bold: true
+    });
+
+    slide.addText("THÔNG TIN CHI TIẾT", {
+        x: drawerX + 0.25,
+        y: y + 0.15,
+        w: 1.5,
+        h: 0.25,
+        fontSize: 8,
+        fontFace: "Segoe UI",
+        color: COLORS.textMuted,
+        bold: true
+    });
+
+    // Client Info Card inside Drawer
+    slide.addText("Huỳnh Trọng Phúc", {
+        x: drawerX + 0.25,
+        y: y + 0.45,
+        w: drawerW - 0.5,
+        h: 0.3,
+        fontSize: 13,
+        fontFace: "Segoe UI",
+        color: COLORS.textDark,
+        bold: true
+    });
+
+    slide.addText("0985741256  |  turniodev@gmail.com", {
+        x: drawerX + 0.25,
+        y: y + 0.75,
+        w: drawerW - 0.5,
+        h: 0.2,
+        fontSize: 7.8,
+        fontFace: "Segoe UI",
+        color: COLORS.textGray
+    });
+
+    // Lead Status Pill
+    slide.addShape(pptx.shapes.ROUNDED_RECTANGLE, {
+        x: drawerX + 0.25,
+        y: y + 1.05,
+        w: 0.9,
+        h: 0.22,
+        fill: { color: "EFF6FF" }, 
+        rectRadius: 0.5
+    });
+    slide.addText("Lead mới", {
+        x: drawerX + 0.25,
+        y: y + 1.05,
+        w: 0.9,
+        h: 0.22,
+        fontSize: 7.5,
+        fontFace: "Segoe UI",
+        color: "1D4ED8",
+        bold: true,
+        align: "center",
+        valign: "middle"
+    });
+
+    // Action buttons inside Drawer
+    let btnY = y + 1.45;
+    let btnTexts = ["Gọi khách (Zalo OA)", "Tạo Phiếu Đặt Cọc", "Thu Hồi Về Kho Chung"];
+    let btnColors = [COLORS.greenBg, COLORS.crimsonBg, "F1F5F9"];
+    let btnTextColors = [COLORS.green, COLORS.crimson, COLORS.textDark];
+
+    btnTexts.forEach((btnText, bIdx) => {
+        let curBtnY = btnY + bIdx * 0.35;
+        slide.addShape(pptx.shapes.ROUNDED_RECTANGLE, {
+            x: drawerX + 0.25,
+            y: curBtnY,
+            w: drawerW - 0.5,
+            h: 0.28,
+            fill: { color: btnColors[bIdx] },
+            rectRadius: 0.2
+        });
+        slide.addText(btnText, {
+            x: drawerX + 0.25,
+            y: curBtnY,
+            w: drawerW - 0.5,
+            h: 0.28,
+            fontSize: 8,
+            fontFace: "Segoe UI",
+            color: btnTextColors[bIdx],
+            bold: true,
+            align: "center",
+            valign: "middle"
+        });
+    });
+
+    // Timeline Logs
+    let logY = btnY + 1.2;
+    slide.addText("NHẬT KÝ HOẠT ĐỘNG (TIMELINE)", {
+        x: drawerX + 0.25,
+        y: logY,
+        w: drawerW - 0.5,
+        h: 0.2,
+        fontSize: 8,
+        fontFace: "Segoe UI",
+        color: COLORS.textMuted,
+        bold: true
+    });
+
+    let logs = [
+        { time: "24/07 16:00", text: "Webhook phân phối Lead thành công." },
+        { time: "24/07 16:01", text: "Sale Nguyễn Hải Đăng tiếp nhận Lead." },
+        { time: "24/07 16:05", text: "Đã gửi tin nhắn Zalo chào mừng tự động." }
+    ];
+
+    logs.forEach((log, lIdx) => {
+        let curLogY = logY + 0.3 + lIdx * 0.45;
+        slide.addText(log.time, {
+            x: drawerX + 0.25,
+            y: curLogY,
+            w: 1.0,
+            h: 0.15,
+            fontSize: 7.2,
+            fontFace: "Segoe UI",
+            color: COLORS.crimson,
+            bold: true
+        });
+        slide.addText(log.text, {
+            x: drawerX + 0.25,
+            y: curLogY + 0.15,
+            w: drawerW - 0.5,
+            h: 0.25,
+            fontSize: 7.2,
+            fontFace: "Segoe UI",
+            color: COLORS.textDark
+        });
+    });
+}
+
+// ----------------------------------------------------------------------------
+// NEW STYLE 23: Workspace & Selfie Check-in Panel Mockup
+// ----------------------------------------------------------------------------
+function drawWorkspaceSelfieWidget(slide, x, y, w, h) {
+    // Card container
+    slide.addShape(pptx.shapes.ROUNDED_RECTANGLE, {
+        x: x,
+        y: y,
+        w: w,
+        h: h,
+        fill: { color: COLORS.cardBg },
+        line: { color: COLORS.border, width: 1 },
+        rectRadius: 0.08
+    });
+
+    // Left Column: Selfie check-in area
+    let leftW = w * 0.45;
+    slide.addText("Trạng thái ca trực", {
+        x: x + 0.2,
+        y: y + 0.15,
+        w: leftW - 0.4,
+        h: 0.25,
+        fontSize: 10,
+        fontFace: "Segoe UI",
+        color: COLORS.textDark,
+        bold: true
+    });
+
+    // Camera gray placeholder square
+    slide.addShape(pptx.shapes.ROUNDED_RECTANGLE, {
+        x: x + 0.2,
+        y: y + 0.5,
+        w: leftW - 0.4,
+        h: h - 1.1,
+        fill: { color: "F1F5F9" },
+        line: { color: COLORS.border, width: 1 },
+        rectRadius: 0.05
+    });
+    // Draw lens circles
+    slide.addShape(pptx.shapes.OVAL, {
+        x: x + (leftW / 2) - 0.3,
+        y: y + 0.9,
+        w: 0.6,
+        h: 0.6,
+        fill: { color: "E2E8F0" },
+        line: { color: COLORS.border, width: 1.5 }
+    });
+    slide.addShape(pptx.shapes.OVAL, {
+        x: x + (leftW / 2) - 0.15,
+        y: y + 1.05,
+        w: 0.3,
+        h: 0.3,
+        fill: { color: "94A3B8" }
+    });
+    // Check-in details text
+    slide.addText("ẢNH SELFIE ĐIỂM DANH CA TRỰC", {
+        x: x + 0.3,
+        y: y + 1.6,
+        w: leftW - 0.6,
+        h: 0.2,
+        fontSize: 7.5,
+        fontFace: "Segoe UI",
+        color: COLORS.textMuted,
+        align: "center",
+        bold: true
+    });
+
+    slide.addShape(pptx.shapes.ROUNDED_RECTANGLE, {
+        x: x + 0.2,
+        y: y + h - 0.5,
+        w: leftW - 0.4,
+        h: 0.35,
+        fill: { color: COLORS.greenBg },
+        rectRadius: 0.1
+    });
+    slide.addText("ĐÃ DUYỆT CHECK-IN: Ca sáng 08:00 AM", {
+        x: x + 0.2,
+        y: y + h - 0.5,
+        w: leftW - 0.4,
+        h: 0.35,
+        fontSize: 7.8,
+        fontFace: "Segoe UI",
+        color: COLORS.green,
+        bold: true,
+        align: "center",
+        valign: "middle"
+    });
+
+    // Right Column: Active shifts roster
+    let rightX = x + leftW + 0.2;
+    let rightW = w - leftW - 0.4;
+
+    slide.addText("Bảng phân ca trực hôm nay", {
+        x: rightX,
+        y: y + 0.15,
+        w: rightW,
+        h: 0.25,
+        fontSize: 10,
+        fontFace: "Segoe UI",
+        color: COLORS.textDark,
+        bold: true
+    });
+
+    let shifts = [
+        { time: "08:00 - 12:00", name: "Ca sáng (Sale Đinh Thanh, Sale Hải Đăng)" },
+        { time: "12:00 - 18:00", name: "Ca chiều (Sale Bùi Hùng, Sale Ngô Hải)" },
+        { time: "18:00 - 24:00", name: "Ca trực đêm (night_shift) (Sale Phạm Cường)" }
+    ];
+
+    shifts.forEach((sh, idx) => {
+        let shY = y + 0.55 + idx * 0.65;
+        slide.addText(sh.time, {
+            x: rightX,
+            y: shY,
+            w: rightW,
+            h: 0.18,
+            fontSize: 7.8,
+            fontFace: "Segoe UI",
+            color: COLORS.crimson,
+            bold: true
+        });
+        slide.addText(sh.name, {
+            x: rightX,
+            y: shY + 0.2,
+            w: rightW,
+            h: 0.3,
+            fontSize: 7.8,
+            fontFace: "Segoe UI",
+            color: COLORS.textDark
+        });
+    });
+}
+
+// ----------------------------------------------------------------------------
+// NEW STYLE 24: AI Training Panel & PDF Uploader Mockup
+// ----------------------------------------------------------------------------
+function drawAITrainingPanelWidget(slide, x, y, w, h) {
+    // Card container
+    slide.addShape(pptx.shapes.ROUNDED_RECTANGLE, {
+        x: x,
+        y: y,
+        w: w,
+        h: h,
+        fill: { color: COLORS.cardBg },
+        line: { color: COLORS.border, width: 1 },
+        rectRadius: 0.08
+    });
+
+    // Left Side: Dotted drop-zone box for uploads
+    let leftW = w * 0.42;
+    slide.addText("Tải tri thức lên hệ thống", {
+        x: x + 0.2,
+        y: y + 0.15,
+        w: leftW - 0.4,
+        h: 0.25,
+        fontSize: 10,
+        fontFace: "Segoe UI",
+        color: COLORS.textDark,
+        bold: true
+    });
+
+    slide.addShape(pptx.shapes.ROUNDED_RECTANGLE, {
+        x: x + 0.2,
+        y: y + 0.5,
+        w: leftW - 0.4,
+        h: h - 0.8,
+        fill: { color: "F8FAFC" },
+        line: { color: COLORS.crimson, width: 1.5, dashType: "dash" },
+        rectRadius: 0.08
+    });
+
+    slide.addText("📥\n\nKéo thả tệp tin PDF, Docx\nhoặc click chọn tệp từ máy tính", {
+        x: x + 0.3,
+        y: y + 0.9,
+        w: leftW - 0.6,
+        h: h - 1.5,
+        fontSize: 8.5,
+        fontFace: "Segoe UI",
+        color: COLORS.textGray,
+        align: "center",
+        valign: "middle",
+        bold: true
+    });
+
+    // Right Side: Learned documents list
+    let rightX = x + leftW + 0.2;
+    let rightW = w - leftW - 0.4;
+
+    slide.addText("Tài liệu tri thức đã học", {
+        x: rightX,
+        y: y + 0.15,
+        w: rightW,
+        h: 0.25,
+        fontSize: 10,
+        fontFace: "Segoe UI",
+        color: COLORS.textDark,
+        bold: true
+    });
+
+    let docs = [
+        { name: "Quy-dinh-du-an-vinhomes.pdf", chunks: "120 đoạn" },
+        { name: "Chinh-sach-ban-hang-can-gio.docx", chunks: "45 đoạn" },
+        { name: "http://rich-land.vn/gioi-thieu", chunks: "12 đoạn" }
+    ];
+
+    docs.forEach((doc, idx) => {
+        let docY = y + 0.55 + idx * 0.65;
+
+        slide.addShape(pptx.shapes.ROUNDED_RECTANGLE, {
+            x: rightX,
+            y: docY,
+            w: rightW,
+            h: 0.5,
+            fill: { color: "F1F5F9" },
+            line: { color: COLORS.border, width: 0.5 },
+            rectRadius: 0.05
+        });
+
+        slide.addText(doc.name, {
+            x: rightX + 0.15,
+            y: docY + 0.08,
+            w: rightW - 1.5,
+            h: 0.2,
+            fontSize: 7.8,
+            fontFace: "Segoe UI",
+            color: COLORS.textDark,
+            bold: true
+        });
+
+        slide.addText(`Chunking: ${doc.chunks}`, {
+            x: rightX + 0.15,
+            y: docY + 0.26,
+            w: rightW - 1.5,
+            h: 0.16,
+            fontSize: 6.8,
+            fontFace: "Segoe UI",
+            color: COLORS.textGray
+        });
+
+        slide.addShape(pptx.shapes.ROUNDED_RECTANGLE, {
+            x: rightX + rightW - 1.1,
+            y: docY + 0.13,
+            w: 0.9,
+            h: 0.22,
+            fill: { color: COLORS.greenBg },
+            rectRadius: 0.5
+        });
+        slide.addText("ĐÃ HỌC (OK)", {
+            x: rightX + rightW - 1.1,
+            y: docY + 0.13,
+            w: 0.9,
+            h: 0.22,
+            fontSize: 7,
+            fontFace: "Segoe UI",
+            color: COLORS.green,
+            bold: true,
+            align: "center",
+            valign: "middle"
+        });
+    });
+}
+
+// ----------------------------------------------------------------------------
+// HELPER: Chèn ảnh màn hình thật của App (nếu có), nếu không có thì vẽ Mockup
+// ----------------------------------------------------------------------------
+function addAppScreenshot(slide, x, y, w, h, fileName, fallbackFn) {
+    let filePath = `C:/Users/LENOVO/.gemini/antigravity-ide/brain/e9c532d6-760d-4225-9cf7-98e98524ed90/${fileName}`;
+    if (fs.existsSync(filePath)) {
+        slide.addImage({
+            path: filePath,
+            x: x,
+            y: y,
+            w: w,
+            h: h
+        });
+    } else {
+        fallbackFn(slide, x, y, w, h);
+    }
+}
+
 
 // ============================================================================
 // KHỞI DỰNG CÁC SLIDE TRÌNH CHIẾU KIẾN TRÚC RICH LAND CRM VỚI STYLE DỰNG SẴN
 // ============================================================================
 
-// Slide 1: Trang bìa (Full-bleed Brand Red Cover)
+// Slide 1: Trang bìa (Full-bleed Dark Crimson Gradient Cover)
 let s1 = pptx.addSlide();
-s1.background = { color: COLORS.crimson }; 
+s1.addShape(pptx.shapes.RECTANGLE, {
+    x: 0,
+    y: 0,
+    w: 10,
+    h: 5.625,
+    fill: {
+        type: "gradient",
+        color: ["9E1B28", "2E0408"], // Rich deep crimson to dark maroon black
+        angle: 45
+    }
+});
 s1.addShape(pptx.shapes.RECTANGLE, { x: 0, y: 0, w: 0.2, h: 5.625, fill: { color: COLORS.white } });
+
+// Logo Rich Land lớn trắng ở trang bìa
+s1.addImage({
+    path: "https://rich-land.vercel.app/imgs/logo-rich-land-viet-nam-trang.webp",
+    x: 0.8,
+    y: 0.6,
+    w: 2.7,
+    h: 0.6
+});
+
 s1.addText("RICH LAND CRM SYSTEM ARCHITECTURE", {
     x: 0.8, y: 1.6, w: 8.5, h: 0.4, fontSize: 13, fontFace: "Segoe UI", color: "FFC1C1", bold: true
 });
@@ -1102,8 +2386,17 @@ s1.addText("KIẾN TRÚC HỆ THỐNG & LUỒNG HOẠT ĐỘNG LÕI", {
 s1.addText("Báo cáo phân tích chuyên sâu về hạ tầng lead, 5 cổng duyệt, quy tắc giao dịch và hàng đợi bất đồng bộ.", {
     x: 0.8, y: 3.4, w: 8.0, h: 0.6, fontSize: 11, fontFace: "Segoe UI", color: "F1F5F9"
 });
-s1.addText("PHIÊN BẢN HỆ THỐNG V1.9.0", {
-    x: 0.8, y: 4.5, w: 8.0, h: 0.3, fontSize: 9, fontFace: "Segoe UI", color: "FFC1C1", bold: true
+
+// Logo DOMATION (Đơn vị thực hiện) ở trang bìa
+s1.addImage({
+    path: "https://domation.net/imgs/ICON.png",
+    x: 0.8,
+    y: 4.3,
+    w: 0.4,
+    h: 0.4
+});
+s1.addText("ĐƠN VỊ THỰC HIỆN: DOMATION  |  HỆ THỐNG PHIÊN BẢN V1.9.0", {
+    x: 1.3, y: 4.35, w: 7.0, h: 0.3, fontSize: 8.5, fontFace: "Segoe UI", color: "FFC1C1", bold: true
 });
 
 // Slide 2: Mục lục (Crimson Hero Slide)
@@ -1119,6 +2412,12 @@ let s3 = createBaseSlide("Tóm Tắt Tổng Quan Chỉ Số Hệ Thống", "Tổ
 addKpiCard(s3, 0.8, 1.4, 2.7, 3.6, "< 50ms", "Thời gian chia lead", "Lead mới được phân bổ tức thời xuống máy của Sale qua 5 Gate bảo mật trong nháy mắt.");
 addKpiCard(s3, 3.85, 1.4, 2.7, 3.6, "99.9 %", "Độ tin cậy hàng đợi", "Các yêu cầu gửi cURL bên thứ ba (Zalo OA, Telegram) được bất đồng bộ hóa 100% tránh nghẽn.");
 addKpiCard(s3, 6.9, 1.4, 2.7, 3.6, "100 %", "Vết kiểm toán", "Toàn bộ dòng tiền đặt cọc, đợt thu milestones, thay đổi chủ lead đều được ký số ghi log bảo mật.");
+
+// Slide 3b: Giao diện Dashboard Quản Trị Hệ Thống thực tế
+let s3b = createBaseSlide("Báo Cáo Giám Sát Hoạt Động (Dashboard)", "Tổng quan");
+addAppScreenshot(s3b, 0.8, 1.4, 8.8, 3.6, "app_dashboard.png", (slide, x, y, w, h) => {
+    drawAppDashboardWidget(slide, x, y, w, h);
+});
 
 // Slide 4: Client-Server Architecture (Timeline Flow)
 let s4 = createBaseSlide("Luồng Kết Nối Kiến Trúc Client - Server", "Kiến trúc");
@@ -1137,45 +2436,32 @@ addSplitComparison(s5, 0.8, 1.4, 8.8, 3.5,
     ["- Ẩn/hiện thẻ DOM thay vì gỡ bỏ hoàn toàn.", "- Giữ trọn vẹn state lọc và vị trí cuộn trang của Sale.", "- Giảm tải 80% số lần gọi API tải lại trang không cần thiết."]
 );
 
-// Slide 6: Single Entry Point (index.php) (Code Editor mockup)
+// Slide 6: Single Entry Point (index.php) (Console card mockup)
 let s6 = createBaseSlide("Cổng API Router Backend index.php", "Backend");
 addCard(s6, 0.8, 1.4, 4.0, 3.6, "Cơ chế Route qua Action", [
     "- Mọi yêu cầu HTTP đổ về tệp backend/index.php duy nhất.",
     "- Phân loại luồng xử lý dựa trên tham số query action.",
     "- Quản lý CORS tập trung, chặn các truy cập ngoài danh sách cho phép."
 ]);
-drawCodeEditorCard(s6, 5.0, 1.4, 4.2, 3.6, "index.php", [
-    "<?php",
-    "require_once 'bootstrap.php';",
-    "$action = $_GET['action'] ?? '';",
-    "switch($action) {",
-    "  case 'lead_create':",
-    "    requireAuth(['sales', 'admin']);",
-    "    handleLeadCreate($conn);",
-    "    break;",
-    "  default:",
-    "    sendResponse(404, 'Action not found');",
-    "}"
+drawCodeEditorCard(s6, 5.0, 1.4, 4.2, 3.6, "Hành động hệ thống", [
+    "Tiếp nhận yêu cầu từ ứng dụng (ví dụ: tạo khách hàng tiềm năng).",
+    "Kiểm tra xem yêu cầu có hợp lệ hay có dấu hiệu tấn công mạng.",
+    "Điều hướng tự động yêu cầu đến đúng bộ phận nghiệp vụ liên quan.",
+    "Trả kết quả nhanh chóng, chính xác dạng bảo mật về cho người dùng."
 ]);
 
-// Slide 7: Authentication Engine (requireAuth) (Code Editor mockup)
+// Slide 7: Authentication Engine (requireAuth) (Console card mockup)
 let s7 = createBaseSlide("Cơ Chế Xác Thực Người Dùng JWT", "Xác thực");
 addCard(s7, 0.8, 1.4, 4.0, 3.6, "requireAuth Middleware", [
     "- Trích xuất Bearer Token từ tiêu đề Authorization.",
     "- Hỗ trợ lấy token từ query string cho các tiến trình kiểm thử nhanh.",
     "- Giải mã cấu trúc token để lấy định danh user và thời gian hết hạn."
 ]);
-drawCodeEditorCard(s7, 5.0, 1.4, 4.2, 3.6, "auth_helper.php", [
-    "function requireAuth($allowedRoles = []) {",
-    "  $headers = getallheaders();",
-    "  $auth = $headers['Authorization'] ?? '';",
-    "  $token = str_replace('Bearer ', '', $auth);",
-    "  $decoded = JWT::decode($token, SECRET_KEY);",
-    "  if (!in_array($decoded->role, $allowedRoles)) {",
-    "    sendResponse(403, 'Permission Denied');",
-    "  }",
-    "  return $decoded;",
-    "}"
+drawCodeEditorCard(s7, 5.0, 1.4, 4.2, 3.6, "Kiểm tra bảo mật", [
+    "Kiểm tra chữ ký số bảo mật của thiết bị gửi yêu cầu.",
+    "Xác minh tài khoản nhân sự đang hoạt động bình thường.",
+    "Đối chiếu quyền hạn xem thông tin của nhóm tài khoản.",
+    "Từ chối ngay lập tức nếu phát hiện truy cập trái phép."
 ]);
 
 // Slide 8: Role Normalization (Grid Table)
@@ -1196,7 +2482,7 @@ addThreeColumnFeatureGrid(s9, 0.8, 1.4, 8.8, 3.6, [
         title: "Lọc tenant_id Scoping",
         lines: [
             "- Mọi bảng ghi liên kết KHTN, user, config đều chứa trường tenant_id.",
-            "- Backend tự động tiêm clause WHERE tenant_id = ? vào tất cả truy vấn SQL SQL."
+            "- Backend tự động tiêm clause WHERE tenant_id = ? vào tất cả truy vấn SQL."
         ]
     },
     {
@@ -1223,7 +2509,7 @@ addCrimsonFeatures(s10, [
     { title: "Chuẩn hóa vai", desc: "Tự động dịch role, user_id và full_name để triệt tiêu lỗi Notice PHP làm gãy luồng API." }
 ]);
 
-// Slide 11: Luồng lead đầu vào (Timeline Flow & Lead Tickets)
+// Slide 11: Luồng lead đầu vào (Timeline Flow, Recent Assignments, and Lead Ticket)
 let s11 = createBaseSlide("Tiến Trình Xử Lý Lead Đầu Vào", "Chia Lead");
 addTimelineFlow(s11, 0.8, 1.4, 8.8, 1.8, [
     { title: "Webhook nhận", desc: "POST lead thô từ Facebook/LP, normalize SĐT." },
@@ -1231,14 +2517,15 @@ addTimelineFlow(s11, 0.8, 1.4, 8.8, 1.8, [
     { title: "getNext Sale", desc: "Xoay vòng Sale hợp lệ qua Roster ca trực." },
     { title: "Gán lead", desc: "Chuyển trạng thái assigned, đếm ngược 120s." }
 ]);
-drawLeadTicketCard(s11, 0.8, 3.5, 4.2, 1.4, "Nguyễn Văn An", "0912345678", "Facebook Ads", "HOT", "Assigned");
-drawLeadTicketCard(s11, 5.4, 3.5, 4.2, 1.4, "Phạm Thị Bình", "0987654321", "Landing Page", "WARM", "Duplicate");
+drawRecentAssignmentsWidget(s11, 0.8, 3.4, 4.2, 1.55);
+drawLeadTicketCard(s11, 5.4, 3.4, 4.2, 1.55, "Nguyễn Văn An", "0912345678", "Facebook Ads", "HOT", "Assigned");
 
-// Slide 12: Round-Robin Distribution (Flowchart)
+// Slide 12: Round-Robin Distribution (Flow steps and Quick Nav menu modal)
 let s12 = createBaseSlide("Vòng Lặp Phân Phối Tròn getNextConsultant", "Chia Lead");
-drawFlowStep(s12, 0.8, 1.8, 2.5, 2.5, "1", "Lấy Sale cuối", "Đọc id Sale nhận lead gần nhất từ distribution_rounds.");
-drawFlowStep(s12, 3.65, 1.8, 2.5, 2.5, "2", "Tăng vị trí +1", "Xoay chỉ mục sang người tiếp theo, tìm trong CSDL.");
-drawFlowStep(s12, 6.5, 1.8, 2.5, 2.5, "3", "Cập nhật khóa", "Ghi nhận Sale ID mới vào rounds làm mốc cho lần sau.", true);
+drawFlowStep(s12, 0.8, 1.5, 3.8, 1.0, "1", "Lấy Sale cuối", "Đọc id Sale nhận lead gần nhất từ distribution_rounds.");
+drawFlowStep(s12, 0.8, 2.6, 3.8, 1.0, "2", "Tăng vị trí +1", "Xoay chỉ mục sang người tiếp theo, tìm trong CSDL.");
+drawFlowStep(s12, 0.8, 3.7, 3.8, 1.0, "3", "Cập nhật khóa", "Ghi nhận Sale ID mới vào rounds làm mốc cho lần sau.", true);
+drawQuickNavigationMenuWidget(s12, 5.1, 1.5, 4.5, 3.25);
 
 // Slide 13: Gate 1: Campaign & Project Roster
 let s13 = createBaseSlide("Gate 1: Dự Án & Roster Chiến Dịch", "5 Gates");
@@ -1288,30 +2575,15 @@ drawSaleProfileCard(s16, 5.0, 1.4, 2.0, 1.7, "Bùi Sale H", "Blocked", 5, 5);
 drawSaleProfileCard(s16, 7.2, 1.4, 2.0, 1.7, "Ngô Sale I", "Active", 2, 5);
 drawLeadTicketCard(s16, 5.0, 3.3, 4.2, 1.7, "Lê Hoàng Long", "0909090909", "Campaign A", "HOT", "Unassigned");
 
-// Slide 17: Gate 5: Quota & Limits (Native Bar Chart)
-let s17 = createBaseSlide("Gate 5: Hạn Mức Lead Theo Cấu Hình", "5 Gates");
+// Slide 17: Gate 5: Quota & Limits (Lead Flow & Acceptance Monitor Panel)
+let s17 = createBaseSlide("Gate 5: Hạn Mức & Giám Sát Dòng Chảy Phân Bổ", "5 Gates");
 addCard(s17, 0.8, 1.4, 4.0, 3.6, "Cài đặt hạn mức (Quota)", [
     "- Hệ thống chặn chia lead nếu vượt giới hạn nhận trong ngày/tháng.",
     "- Hạn mức giờ: tối đa 3 lead nhận mỗi giờ.",
     "- Hạn mức ngày: cấu hình động tùy chiến dịch (mặc định 20 lead).",
-    "- Hạn mức tháng: mặc định tối đa 300 lead nhận."
+    "- Giám sát trực quan tỷ lệ tiếp nhận và tỷ lệ thu hồi quá hạn."
 ]);
-let dataBarChart = [
-    {
-        name: "Hạn mức nhận tối đa",
-        labels: ["Mức Giờ", "Mức Ngày", "Mức Tháng"],
-        values: [3, 20, 300]
-    }
-];
-s17.addChart(pptx.ChartType.bar, dataBarChart, {
-    x: 5.2,
-    y: 1.4,
-    w: 4.3,
-    h: 3.6,
-    showLegend: true,
-    legendPos: "b",
-    chartColors: [COLORS.crimson]
-});
+drawLeadFlowMonitorWidget(s17, 5.0, 1.4, 4.5, 3.6);
 
 // Slide 18: Fallback Routing (3-Column Feature Grid)
 let s18 = createBaseSlide("Định Tuyến Dự Phòng Khi Bị Chặn Toàn Bộ (Fallback)", "Chia Lead");
@@ -1377,7 +2649,7 @@ addCrimsonFeatures(s20, [
 // PHẦN 3: ĐẶT CỌC & BỂ CỌC & CAPI (SLIDE 21 - 30)
 // ============================================================================
 
-// Slide 21: Giao dịch cọc (Pipeline Stepper & Native Line Chart)
+// Slide 21: Giao dịch cọc (Pipeline Stepper & Daily Performance Bar Chart)
 let s21 = createBaseSlide("Quy Trình Đặt Cọc & Phê Duyệt Doanh Thu", "Đặt Cọc");
 drawPipelineStepper(s21, 0.8, 1.4, 8.8, 0.4, 3); // Active at Đặt cọc
 addCard(s21, 0.8, 2.0, 4.0, 3.0, "Thủ tục đặt cọc", [
@@ -1385,27 +2657,7 @@ addCard(s21, 0.8, 2.0, 4.0, 3.0, "Thủ tục đặt cọc", [
     "- Khách hàng chuyển khoản, upload minh chứng UNC lên hệ thống.",
     "- Kế toán kiểm tra tiền nổi trong tài khoản ngân hàng và duyệt approved."
 ]);
-let dataLineChart = [
-    {
-        name: "Phiếu cọc tạo",
-        labels: ["T1", "T2", "T3", "T4", "T5", "T6"],
-        values: [20, 30, 25, 45, 50, 40]
-    },
-    {
-        name: "Phiếu cọc duyệt",
-        labels: ["T1", "T2", "T3", "T4", "T5", "T6"],
-        values: [15, 25, 20, 40, 48, 38]
-    }
-];
-s21.addChart(pptx.ChartType.line, dataLineChart, {
-    x: 5.2,
-    y: 2.0,
-    w: 4.3,
-    h: 3.0,
-    showLegend: true,
-    legendPos: "b",
-    chartColors: [COLORS.crimson, COLORS.green]
-});
+drawAppDashboardWidget(s21, 5.1, 2.0, 4.5, 3.0);
 
 // Slide 22: Chi tiết thông tin phiếu cọc (Grid Table)
 let s22 = createBaseSlide("Lược Đồ Cấu Trúc deposit_milestones", "Đặt Cọc");
@@ -1837,7 +3089,7 @@ addGridCardQuad(s54, 0.8, 1.4, 8.8, 3.6, [
     }
 ]);
 
-// Slide 55: Unified Testing Environment (Full Bleed Stat Header & Code Editor)
+// Slide 55: Unified Testing Environment (Full Bleed Stat Header & Console card mockup)
 let s55 = createBaseSlide("Môi Trường Kiểm Thử Nhất Quán", "DevOps");
 addFullBleedStatHeader(s55, 0.8, 1.4, 8.8, 3.6, [
     { val: "$conn", label: "MySQLi Global" },
@@ -1845,17 +3097,11 @@ addFullBleedStatHeader(s55, 0.8, 1.4, 8.8, 3.6, [
     { val: "Mock Sale", label: "CSDL Row Mock" },
     { val: "Auto rollback", label: "DB Transactions" }
 ], (slide, x, y, w, h) => {
-    drawCodeEditorCard(slide, x, y, w, h, "test_rotation_audit.php", [
-        "require_once __DIR__ . '/test_bootstrap.php';",
-        "try {",
-        "  $conn->begin_transaction();",
-        "  $testLeadId = mockCreateLead($conn);",
-        "  $saleId = getNextConsultantInRound($conn, $testLeadId);",
-        "  assertTest($saleId > 0, 'getNextConsultant returned valid Sale ID');",
-        "  assertDbField($conn, 'leads', 'id', $testLeadId, 'status', 'assigned');",
-        "} finally {",
-        "  $conn->rollback(); // Clean data after test",
-        "}"
+    drawCodeEditorCard(slide, x, y, w, h, "Báo cáo thử nghiệm ca trực", [
+        "Mô phỏng hành động gán lead ngẫu nhiên cho Sale ca trực ngày.",
+        "Tự động rà soát xem lead có về đúng roster đăng ký hay không.",
+        "Xác thực trạng thái lead đã cập nhật trên cơ sở dữ liệu.",
+        "Tự động xóa sạch dữ liệu ảo, giữ môi trường Staging sạch sẽ."
     ]);
 });
 
@@ -1890,20 +3136,18 @@ addFullBleedStatHeader(s57, 0.8, 1.4, 8.8, 3.6, [
     );
 });
 
-// Slide 58: Static Query Scan (Code Editor mockup)
+// Slide 58: Static Query Scan (Console card mockup)
 let s58 = createBaseSlide("Quét Lỗi Cú Pháp Truy Vấn Tĩnh", "DevOps");
 addCard(s58, 0.8, 1.4, 4.0, 3.6, "Công cụ quét SQL Scan", [
     "- Tự động quét toàn bộ mã nguồn PHP để tìm kiếm các từ khóa SQL không hợp lệ.",
     "- Phát hiện các câu lệnh không tương thích với cấu hình chế độ MariaDB Staging.",
     "- Tìm ra các truy vấn SQL viết sai cú pháp trước khi chạy thực tế."
 ]);
-drawCodeEditorCard(s58, 5.0, 1.4, 4.2, 3.6, "sql_scanner.php", [
-    "$sql = \"SELECT * FROM consultants WHERE status = '$status'\";",
-    "// [WARNING] SQL injection hazard detected!",
-    "// Correct usage:",
-    "$stmt = $pdo->prepare('SELECT * FROM consultants WHERE status = ?');",
-    "$stmt->execute([$status]);",
-    "$res = $stmt->fetchAll();"
+drawCodeEditorCard(s58, 5.0, 1.4, 4.2, 3.6, "Bộ quét lỗi tự động", [
+    "Tự động quét cấu trúc câu lệnh trước khi nâng cấp hệ thống.",
+    "Phát hiện sớm các câu lệnh không tương thích với máy chủ chính.",
+    "Cảnh báo nguy cơ bảo mật hoặc rò rỉ dữ liệu thông tin khách hàng.",
+    "Đảm bảo mã nguồn đạt độ an toàn 100% trước khi vận hành."
 ]);
 
 // Slide 59: Git Integration & Deployment (Timeline Flow)
@@ -1921,6 +3165,33 @@ addCrimsonFeatures(s60, [
     { title: "Phase 2: RAG & Chat", desc: "Nạp tri thức tự động bằng Vector, chatbot commands quản lý di động và AI screening." },
     { title: "Phase 3: Mở rộng", desc: "Tích hợp IP Phone, ghi âm cuộc gọi, phân tích Cost Ads sâu (ROAS) đến ad creative cụ thể." }
 ]);
+
+// ============================================================================
+// CHƯƠNG BỔ SUNG: MÔ PHỎNG CHI TIẾT CÁC MÀN HÌNH TRANG APP (SLIDE 61 - 64)
+// ============================================================================
+
+// Slide 61: Giao diện danh sách khách hàng tiềm năng (Chụp ảnh màn hình thực tế)
+let s61 = createBaseSlide("Giao Diện Danh Sách Khách Hàng Tiềm Năng", "Trang App");
+addAppScreenshot(s61, 0.8, 1.4, 8.8, 3.6, "app_contacts.png", (slide, x, y, w, h) => {
+    drawLeadListTableWidget(slide, x, y, w, h);
+});
+
+// Slide 62: Giao diện Drawer chi tiết khách hàng (Mô phỏng Slide-out)
+let s62 = createBaseSlide("Giao Diện Bảng Thông Tin Chi Tiết (Drawer)", "Trang App");
+drawDetailDrawerWidget(s62, 0.8, 1.4, 8.8, 3.6);
+
+// Slide 63: Giao diện Workspace ca trực (Chụp ảnh màn hình thực tế)
+let s63 = createBaseSlide("Giao Diện Bàn Làm Việc (Workspace) & Ca Trực", "Trang App");
+addAppScreenshot(s63, 0.8, 1.4, 8.8, 3.6, "app_workspace.png", (slide, x, y, w, h) => {
+    drawWorkspaceSelfieWidget(slide, x, y, w, h);
+});
+
+// Slide 64: Giao diện AITrainingPanel (Chụp ảnh màn hình thực tế)
+let s64 = createBaseSlide("Giao Diện Huấn Luyện Tri Thức AI (AITraining)", "Trang App");
+addAppScreenshot(s64, 0.8, 1.4, 8.8, 3.6, "app_ai_training.png", (slide, x, y, w, h) => {
+    drawAITrainingPanelWidget(s64, 0.8, 1.4, 8.8, 3.6);
+});
+
 
 // Thêm chân trang slide cho tất cả các slide (chỉ số trang và bản quyền)
 let totalSlides = pptx.slides.length;
@@ -1941,7 +3212,7 @@ pptx.slides.forEach((slide, index) => {
     });
     
     // Dòng bản quyền góc dưới bên trái
-    slide.addText("TÀI LIỆU KIẾN TRÚC KỸ THUẬT RICH LAND CRM — BẢO MẬT NỘI BỘ", {
+    slide.addText("TÀI LIỆU KIẾN TRÚC KỸ THUẬT RICH LAND CRM — ĐƠN VỊ THỰC HIỆN: DOMATION", {
         x: 0.8,
         y: 5.15,
         w: 6.0,
@@ -1954,25 +3225,27 @@ pptx.slides.forEach((slide, index) => {
 });
 
 console.log("💾 Đang xuất tệp trình chiếu PowerPoint...");
-pptx.writeFile({ fileName: "RichLand_System_Architecture_Presentation.pptx" })
-    .then(fileName => {
-        console.log(`\n=================================================`);
-        console.log(`✅ THÀNH CÔNG: Đã tạo file ${fileName}`);
-        console.log(`=================================================`);
-    })
-    .catch(err => {
-        if (err.code === 'EBUSY') {
-            console.warn("⚠️ File chính bị khóa. Đang lưu sang file dự phòng v2...");
-            pptx.writeFile({ fileName: "RichLand_System_Architecture_Presentation_v2.pptx" })
-                .then(fileName => {
-                    console.log(`\n=================================================`);
-                    console.log(`✅ THÀNH CÔNG (DỰ PHÒNG): Đã tạo file ${fileName}`);
-                    console.log(`=================================================`);
-                })
-                .catch(err2 => {
-                    console.error("❌ LỖI NGHIÊM TRỌNG KHI XUẤT FILE:", err2);
-                });
-        } else {
-            console.error("❌ LỖI KHI XUẤT FILE:", err);
-        }
-    });
+function saveWithFallback(version = 1) {
+    let suffix = version === 1 ? "" : `_v${version}`;
+    let fileName = `RichLand_System_Architecture_Presentation${suffix}.pptx`;
+    
+    pptx.writeFile({ fileName: fileName })
+        .then(savedName => {
+            console.log(`\n=================================================`);
+            console.log(`✅ THÀNH CÔNG: Đã tạo file ${savedName}`);
+            console.log(`=================================================`);
+        })
+        .catch(err => {
+            if (err.code === 'EBUSY') {
+                console.warn(`⚠️ Tệp ${fileName} đang bị khóa. Thử tệp dự phòng v${version + 1}...`);
+                if (version < 15) {
+                    saveWithFallback(version + 1);
+                } else {
+                    console.error("❌ LỖI NGHIÊM TRỌNG KHI XUẤT FILE: Vượt quá số lượng tệp dự phòng tối đa (15).");
+                }
+            } else {
+                console.error("❌ LỖI KHI XUẤT FILE:", err);
+            }
+        });
+}
+saveWithFallback(1);
