@@ -1289,6 +1289,7 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
         toast.success(t('Đã duyệt và phân bổ lead thành công!'));
         refreshHeldLeadsAndStats();
         window.dispatchEvent(new Event('ticket-resolved'));
+        window.dispatchEvent(new Event('refresh-pending-counts'));
       } else {
         toast.error(res.message || t('Lỗi khi duyệt lead'));
       }
@@ -1316,6 +1317,7 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
         setHeldActionReason('');
         refreshHeldLeadsAndStats();
         window.dispatchEvent(new Event('ticket-resolved'));
+        window.dispatchEvent(new Event('refresh-pending-counts'));
       } else {
         toast.error(res.message || t('Lỗi khi xác nhận dưới chuẩn'));
       }
@@ -1343,6 +1345,7 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
         setHeldActionReason('');
         refreshHeldLeadsAndStats();
         window.dispatchEvent(new Event('ticket-resolved'));
+        window.dispatchEvent(new Event('refresh-pending-counts'));
       } else {
         toast.error(res.message || t('Lỗi khi chặn lead'));
       }

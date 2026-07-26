@@ -409,8 +409,7 @@ export const Header = ({
       notif.type === 'attendance' || 
       (notif.title && (
         notif.title.toLowerCase().includes('chấm công') || 
-        notif.title.toLowerCase().includes('đi trễ') || 
-        notif.title.toLowerCase().includes('nhận lead')
+        notif.title.toLowerCase().includes('đi trễ')
       )) ||
       (notif.body && (
         notif.body.toLowerCase().includes('chấp thuận') || 
@@ -464,7 +463,7 @@ export const Header = ({
         }
       }
 
-      const activityMatch = targetLink.match(/^\/activities\/(\d+)(?:\?.*)?$/);
+      const activityMatch = targetLink.match(/^\/activities\/(\d+)(?:\?.*)?$/) || targetLink.match(/\/activities\?(?:task_id|id)=(\d+)/);
       if (activityMatch) {
         try {
           const res = await fetchAPI(`activities/${activityMatch[1]}`);
@@ -492,14 +491,13 @@ export const Header = ({
         urlObj.searchParams.set('open_contact_id', contactMatch[1]);
         targetLink = `/contacts?${urlObj.searchParams.toString()}`;
       } else {
-        const activityMatch = targetLink.match(/^\/activities\/(\d+)$/) || targetLink.match(/\/activities\?(?:task_id|id)=(\d+)/);
-        if (activityMatch) {
+        const fallbackActivityMatch = targetLink.match(/^\/activities\/(\d+)$/) || targetLink.match(/\/activities\?(?:task_id|id)=(\d+)/);
+        if (fallbackActivityMatch) {
           if (['sale', 'sales'].includes(user?.role || '')) {
-            urlObj.searchParams.set('task_id', activityMatch[1]);
+            urlObj.searchParams.set('task_id', fallbackActivityMatch[1]);
             targetLink = `/workspace?${urlObj.searchParams.toString()}`;
           } else {
-            urlObj.searchParams.set('id', activityMatch[1]);
-            targetLink = `/activities?${urlObj.searchParams.toString()}`;
+            targetLink = `/`;
           }
         }
         const projectMatch = targetLink.match(/^\/projects\/(\d+)$/) || targetLink.match(/\/projects\?(?:id)=(\d+)/);

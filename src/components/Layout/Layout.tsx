@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useLanguage } from '../../contexts/LanguageContext';
@@ -627,7 +627,7 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
 
 
 
-  useEffect(() => {
+  const fetchPendingCounts = useCallback(() => {
     const role = user?.role as string;
     if (role === 'admin' || role === 'superadmin' || role === 'super_admin' || role === 'director' || role === 'manager') {
       let ticketsCount = 0;
@@ -688,7 +688,22 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
         })
         .catch(err => console.error('Error loading sales coops:', err));
     }
-  }, [user]);
+  }, [user, location.pathname]);
+
+  useEffect(() => {
+    fetchPendingCounts();
+  }, [fetchPendingCounts]);
+
+  useEffect(() => {
+    window.addEventListener('refresh-pending-counts', fetchPendingCounts);
+    window.addEventListener('realtime-update-received', fetchPendingCounts);
+    window.addEventListener('ticket-resolved', fetchPendingCounts);
+    return () => {
+      window.removeEventListener('refresh-pending-counts', fetchPendingCounts);
+      window.removeEventListener('realtime-update-received', fetchPendingCounts);
+      window.removeEventListener('ticket-resolved', fetchPendingCounts);
+    };
+  }, [fetchPendingCounts]);
 
   const getActivityIcon = (item: any) => {
     const size = 18;

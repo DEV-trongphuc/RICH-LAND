@@ -1243,6 +1243,7 @@ export const ExpensesPage: React.FC = () => {
                         addToast('Đã phê duyệt chi phí', 'success');
                         setViewItem(null);
                         fetchExpenses();
+                        window.dispatchEvent(new Event('refresh-pending-counts'));
                       } catch (e: any) {
                         addToast('Lỗi khi phê duyệt chi phí', 'error');
                       }
@@ -1302,6 +1303,7 @@ export const ExpensesPage: React.FC = () => {
                     setRejectReason('');
                     setViewItem(null);
                     fetchExpenses();
+                    window.dispatchEvent(new Event('refresh-pending-counts'));
                   } catch (e: any) {
                     addToast('Lỗi khi từ chối chi phí', 'error');
                   } finally {

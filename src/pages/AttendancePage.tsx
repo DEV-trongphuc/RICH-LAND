@@ -319,6 +319,7 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
       if (res.success) {
         toast.success(t('Phê duyệt đăng ký ca thành công!'));
         fetchRegistrations();
+        window.dispatchEvent(new Event('refresh-pending-counts'));
       } else {
         toast.error(res.message || t('Phê duyệt thất bại'));
       }
@@ -339,6 +340,7 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
       if (res.success) {
         toast.success(t('Từ chối đăng ký ca thành công!'));
         fetchRegistrations();
+        window.dispatchEvent(new Event('refresh-pending-counts'));
       } else {
         toast.error(res.message || t('Từ chối thất bại'));
       }
@@ -362,6 +364,7 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
         if (viewMode === 'calendar') {
           fetchCalendarCheckIns();
         }
+        window.dispatchEvent(new Event('refresh-pending-counts'));
       } else {
         toast.error(res.message || t('Cập nhật trạng thái thất bại'));
       }
@@ -810,7 +813,7 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
                             let bg = isApproved ? (checkInLate ? 'rgba(0, 122, 255, 0.06)' : 'rgba(16, 185, 129, 0.08)') : isPending ? 'rgba(245, 158, 11, 0.06)' : 'rgba(239, 68, 68, 0.06)';
                             let border = isApproved ? (checkInLate ? 'rgba(0, 122, 255, 0.15)' : 'rgba(16, 185, 129, 0.15)') : isPending ? 'rgba(245, 158, 11, 0.2)' : 'rgba(239, 68, 68, 0.2)';
                             let txtColor = isApproved ? (checkInLate ? '#007aff' : '#10b981') : isPending ? '#d97706' : '#ef4444';
-                            let tagLabel = isSales ? (isSupplementary ? t('Cập nhật công') : t('Check-in')) : c.user_name;
+                            let tagLabel = isSales ? (isSupplementary ? (isMobile ? t('C.công') : t('Cập nhật công')) : (isMobile ? t('CI') : t('Check-in'))) : c.user_name;
 
                             if (isSupplementary) {
                               bg = 'rgba(139, 92, 246, 0.08)';
@@ -825,8 +828,8 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
                                   display: 'flex',
                                   flexDirection: 'column',
                                   gap: '2px',
-                                  padding: '5px 8px',
-                                  borderRadius: '8px',
+                                  padding: isMobile ? '3px 4px' : '5px 8px',
+                                  borderRadius: '6px',
                                   border: `1px solid ${border}`,
                                   backgroundColor: bg,
                                   boxShadow: '0 1px 2px rgba(0,0,0,0.02)',
@@ -834,20 +837,20 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
                                 className="single-checkin-tag"
                               >
                                 <div style={{
-                                  fontSize: '0.7rem',
+                                  fontSize: isMobile ? '0.625rem' : '0.7rem',
                                   fontWeight: 600,
                                   color: txtColor,
                                   display: 'flex',
                                   alignItems: 'center',
                                   justifyContent: 'space-between',
-                                  gap: '4px'
+                                  gap: isMobile ? '2px' : '4px'
                                 }}>
-                                  <span style={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap', maxWidth: '80px' }}>
+                                  <span style={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap', maxWidth: isMobile ? '45px' : '80px' }}>
                                     {tagLabel}
                                   </span>
-                                  <div style={{ display: 'flex', alignItems: 'center', gap: '3px', flexShrink: 0 }}>
-                                    <span style={{ fontSize: '0.65rem', fontWeight: 700 }}>{c.check_in_time.substring(0, 5)}</span>
-                                    {c.selfie_url && <Camera size={10} style={{ opacity: 0.8 }} />}
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '2px', flexShrink: 0 }}>
+                                    <span style={{ fontSize: isMobile ? '0.6rem' : '0.65rem', fontWeight: 700 }}>{c.check_in_time.substring(0, 5)}</span>
+                                    {c.selfie_url && <Camera size={isMobile ? 8 : 10} style={{ opacity: 0.8 }} />}
                                   </div>
                                 </div>
                               </div>
@@ -897,19 +900,19 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
                         ) : (
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', marginTop: '2px' }}>
                             {dayShifts.map(s => {
-                              let label = t('Trực đêm');
+                              let label = isMobile ? t('Đêm') : t('Trực đêm');
                               let bg = 'rgba(245, 158, 11, 0.05)';
                               let border = 'rgba(245, 158, 11, 0.2)';
                               let text = '#d97706';
                               let ShiftIcon = Moon;
                               if (s.shift_type === 'weekend') {
-                                label = t('Cuối tuần');
+                                label = isMobile ? t('C.tuần') : t('Cuối tuần');
                                 bg = 'rgba(239, 68, 68, 0.05)';
                                 border = 'rgba(239, 68, 68, 0.2)';
                                 text = '#ef4444';
                                 ShiftIcon = Calendar;
                               } else if (s.shift_type === 'holiday') {
-                                label = s.holiday_name ? `${t('Lễ')} (${s.holiday_name})` : t('Ngày lễ');
+                                label = s.holiday_name ? (isMobile ? t('Lễ') : `${t('Lễ')} (${s.holiday_name})`) : t('Ngày lễ');
                                 bg = 'rgba(239, 68, 68, 0.05)';
                                 border = 'rgba(239, 68, 68, 0.2)';
                                 text = '#ef4444';
@@ -923,19 +926,19 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
                                   display: 'flex',
                                   alignItems: 'center',
                                   justifyContent: 'space-between',
-                                  fontSize: '0.68rem',
-                                  padding: '3px 6px',
+                                  fontSize: isMobile ? '0.625rem' : '0.68rem',
+                                  padding: isMobile ? '2px 4px' : '3px 6px',
                                   borderRadius: '6px',
                                   border: '1px solid ' + border,
                                   backgroundColor: bg,
                                   color: text,
                                   fontWeight: 600
                                 }} title={`${label} (${isAppr ? t('Đã duyệt') : t('Chờ duyệt')})`}>
-                                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap', maxWidth: '85px' }}>
-                                    <ShiftIcon size={10} />
+                                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: isMobile ? '2px' : '4px', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap', maxWidth: isMobile ? '50px' : '85px' }}>
+                                    <ShiftIcon size={isMobile ? 8 : 10} />
                                     {label}
                                   </span>
-                                  <span style={{ fontSize: '0.625rem', opacity: 0.8, fontWeight: 800 }}>
+                                  <span style={{ fontSize: isMobile ? '0.58rem' : '0.625rem', opacity: 0.8, fontWeight: 800 }}>
                                     {isAppr ? '✓' : '?'}
                                   </span>
                                 </div>

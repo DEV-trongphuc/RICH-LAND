@@ -1073,7 +1073,29 @@ export const AITrainingPanel: React.FC = () => {
                               <td style={{ padding: '12px 8px', fontWeight: 600, color: 'var(--color-text-muted)' }}>
                                 {members.length} tài liệu
                               </td>
-                              <td style={{ padding: '12px 8px' }}>—</td>
+                              <td style={{ padding: '12px 8px' }}>
+                                {members.length > 0 ? (
+                                  (() => {
+                                    const trainedCount = members.filter((m: any) => m.status === 'trained').length;
+                                    const isAllTrained = trainedCount === members.length;
+                                    const isNoneTrained = trainedCount === 0;
+                                    return (
+                                      <span className="badge" style={{
+                                        background: isAllTrained ? 'rgba(16, 185, 129, 0.08)' : isNoneTrained ? 'rgba(107, 114, 128, 0.08)' : 'rgba(59, 130, 246, 0.08)',
+                                        color: isAllTrained ? '#10b981' : isNoneTrained ? '#6b7280' : '#3b82f6',
+                                        fontSize: '0.75rem',
+                                        fontWeight: 700
+                                      }}>
+                                        Đã học {trainedCount}/{members.length}
+                                      </span>
+                                    );
+                                  })()
+                                ) : (
+                                  <span className="badge" style={{ background: 'rgba(107, 114, 128, 0.08)', color: '#6b7280', fontSize: '0.75rem', fontWeight: 700 }}>
+                                    Chưa có tài liệu
+                                  </span>
+                                )}
+                              </td>
                               <td style={{ padding: '12px 8px', color: 'var(--color-text-muted)', fontSize: '0.75rem' }}>
                                 {formatDocDate(row.updated_at)}
                               </td>

@@ -814,6 +814,7 @@ export default function CooperationSlipsPage() {
           if (res.success) {
             addToast('Đã từ chối phiếu hợp tác và yêu cầu ký lại', 'success');
             loadData();
+            window.dispatchEvent(new Event('refresh-pending-counts'));
           } else {
             addToast(res.message || 'Lỗi từ chối', 'error');
           }
@@ -908,6 +909,7 @@ export default function CooperationSlipsPage() {
         addToast(action === 'approve' ? 'Đã duyệt yêu cầu chỉnh sửa!' : 'Đã từ chối yêu cầu chỉnh sửa!', 'success');
         setShowHandleRequestModal(false);
         loadData();
+        window.dispatchEvent(new Event('refresh-pending-counts'));
       } else {
         addToast(res.message || 'Lỗi xử lý yêu cầu', 'error');
       }
@@ -2415,6 +2417,7 @@ export default function CooperationSlipsPage() {
                       addToast('Phê duyệt phiếu hoa hồng thành công!', 'success');
                       setApprovalSlip(null);
                       loadData();
+                      window.dispatchEvent(new Event('refresh-pending-counts'));
                     } else {
                       addToast(res.message || 'Lỗi phê duyệt', 'error');
                     }

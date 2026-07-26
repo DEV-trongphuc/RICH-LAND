@@ -3076,9 +3076,26 @@ function sendShiftRemindersAndCheckInAlerts($conn) {
 
     // A. Check-in reminders
     if ($attendanceEnabled === 1) {
+        // Pre-fetch holiday settings to avoid querying inside loop
+        $holidayName = '';
+        $holidaySchedulesJson = '[]';
+        $resHol = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'holiday_schedules' LIMIT 1");
+        if ($resHol && $hRow = $resHol->fetch_assoc()) {
+            $holidaySchedulesJson = !empty($hRow['setting_value']) ? $hRow['setting_value'] : '[]';
+        }
+        $holidays = json_decode($holidaySchedulesJson, true) ?: [];
+        
+        $isHolidayToday = false;
+        foreach ($holidays as $h) {
+            if ($todayStr >= $h['start'] && $todayStr <= $h['end']) {
+                $isHolidayToday = true;
+                break;
+            }
+        }
+        
         // Query active users who have not checked in today
         $userQuery = "
-            SELECT u.id, u.full_name, u.email, u.zalo_chat_id, u.telegram_chat_id,
+            SELECT u.id, u.full_name, u.email, u.zalo_chat_id, u.telegram_chat_id, u.work_schedule,
                    IF(u.use_custom_work_hours = 1, u.work_start_time, (SELECT setting_value FROM system_settings WHERE setting_key = 'global_work_start_time' LIMIT 1)) AS work_start_time
             FROM users u
             WHERE u.status = 'active'
@@ -3087,6 +3104,36 @@ function sendShiftRemindersAndCheckInAlerts($conn) {
         if ($userRes) {
             while ($user = $userRes->fetch_assoc()) {
                 $userId = (int)$user['id'];
+                
+                // 1. Check holiday shift registration
+                if ($isHolidayToday) {
+                    $stmtCheckReg = $conn->prepare("SELECT 1 FROM holiday_shift_registrations WHERE user_id = ? AND shift_date = ? AND approved = 1 LIMIT 1");
+                    if ($stmtCheckReg) {
+                        $stmtCheckReg->bind_param("is", $userId, $todayStr);
+                        $stmtCheckReg->execute();
+                        $hasHolidayShift = (bool)$stmtCheckReg->get_result()->fetch_assoc();
+                        $stmtCheckReg->close();
+                        if (!$hasHolidayShift) {
+                            continue; // Skip reminder: not working on this holiday
+                        }
+                    }
+                }
+                
+                // 2. Check weekend / rest day shift registration
+                $isRestDayToday = isRestDayForUser($conn, $userId, $todayStr);
+                if ($isRestDayToday) {
+                    $stmtCheckReg = $conn->prepare("SELECT 1 FROM weekend_shift_registrations WHERE user_id = ? AND shift_date = ? AND approved = 1 LIMIT 1");
+                    if ($stmtCheckReg) {
+                        $stmtCheckReg->bind_param("is", $userId, $todayStr);
+                        $stmtCheckReg->execute();
+                        $hasWeekendShift = (bool)$stmtCheckReg->get_result()->fetch_assoc();
+                        $stmtCheckReg->close();
+                        if (!$hasWeekendShift) {
+                            continue; // Skip reminder: not working on this rest day
+                        }
+                    }
+                }
+
                 $workStart = $user['work_start_time'] ?: '08:00';
                 
                 // Parse work start time to determine target reminder time
