@@ -58,7 +58,7 @@ class ActivityController {
             $cStmt = $this->db->prepare("
                 SELECT content, attachments 
                 FROM activity_comments 
-                WHERE activity_id = ? AND deleted_at IS NULL 
+                WHERE activity_id = ? 
                 ORDER BY id ASC
             ");
             $cStmt->execute([$actId]);
