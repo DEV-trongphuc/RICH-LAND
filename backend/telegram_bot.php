@@ -215,7 +215,7 @@ function sendLeadReminderTelegramMessageToSale($consultantId, $consultantName, $
 /**
  * Gửi thông báo có Lead mới cho Admin qua Telegram
  */
-function sendLeadAssignedTelegramMessageToAdmin($adminChatId, $adminName, $leadName, $leadPhone, $leadNote = '', $leadSource = '', $leadId = 0, $leadEmail = '', $leadType = '')
+function sendLeadAssignedTelegramMessageToAdmin($adminChatId, $adminName, $leadName, $leadPhone, $leadNote = '', $leadSource = '', $leadId = 0, $leadEmail = '', $leadType = '', $sync = false)
 {
     global $conn;
 
@@ -237,13 +237,13 @@ function sendLeadAssignedTelegramMessageToAdmin($adminChatId, $adminName, $leadN
     }
     $text .= "━━━━━━━━━━━━━━━━━━━━━";
 
-    return sendTelegramMessage($botToken, $adminChatId, $text, $leadId);
+    return sendTelegramMessage($botToken, $adminChatId, $text, $sync, $leadId);
 }
 
 /**
  * Gửi thông báo được bù số cho Sale qua Telegram
  */
-function sendCompensationAddedTelegramMessageToSale($consultantId, $consultantName, $roundName, $amount, $adminName = 'Quản trị viên', $reason = '', $time = '')
+function sendCompensationAddedTelegramMessageToSale($consultantId, $consultantName, $roundName, $amount, $adminName = 'Quản trị viên', $reason = '', $time = '', $sync = false)
 {
     global $conn;
 
@@ -283,13 +283,13 @@ function sendCompensationAddedTelegramMessageToSale($consultantId, $consultantNa
     
     $text .= "━━━━━━━━━━━━━━━━━━━━━";
 
-    return sendTelegramMessage($botToken, $chatId, $text);
+    return sendTelegramMessage($botToken, $chatId, $text, $sync);
 }
 
 /**
  * Gửi thông báo đền bù số cho Admin qua Telegram
  */
-function sendCompensationAddedTelegramMessageToAdmin($adminChatId, $adminName, $consultantName, $roundName, $amount, $operatorName, $reason = '', $time = '')
+function sendCompensationAddedTelegramMessageToAdmin($adminChatId, $adminName, $consultantName, $roundName, $amount, $operatorName, $reason = '', $time = '', $sync = false)
 {
     global $conn;
 
@@ -314,13 +314,13 @@ function sendCompensationAddedTelegramMessageToAdmin($adminChatId, $adminName, $
     }
     $text .= "━━━━━━━━━━━━━━━━━━━━━";
 
-    return sendTelegramMessage($botToken, $adminChatId, $text);
+    return sendTelegramMessage($botToken, $adminChatId, $text, $sync);
 }
 
 /**
  * Gửi thông báo thống kê thu hồi/giải phóng data cho Sale qua Telegram
  */
-function sendTelegramReleaseSummaryMessageToSale($consultantId, $consultantName, $minTimeStr, $maxTimeStr, $count)
+function sendTelegramReleaseSummaryMessageToSale($consultantId, $consultantName, $minTimeStr, $maxTimeStr, $count, $sync = false)
 {
     global $conn;
 
@@ -353,5 +353,5 @@ function sendTelegramReleaseSummaryMessageToSale($consultantId, $consultantName,
         . "💡 <i>Các data bị thu hồi sẽ được đưa vào Kho data chung để chia lại. Vui lòng liên hệ mới kịp thời để tránh mất số.</i>\n"
         . "━━━━━━━━━━━━━━━━━━━━━";
 
-    return sendTelegramMessage($botToken, $chatId, $text);
+    return sendTelegramMessage($botToken, $chatId, $text, $sync);
 }
