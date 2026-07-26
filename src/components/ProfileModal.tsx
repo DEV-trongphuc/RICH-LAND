@@ -17,7 +17,7 @@ export const ProfileModal = () => {
   const [activeTab, setActiveTab] = useState<'profile' | 'password' | 'activity'>('profile');
   
   // Profile State
-  const [profileData, setProfileData] = useState({ name: '', email: '', avatar: '' });
+  const [profileData, setProfileData] = useState({ name: '', email: '', avatar: '', bio: '' });
   
   // Password State
   const [showOldPass, setShowOldPass] = useState(false);
@@ -54,7 +54,8 @@ export const ProfileModal = () => {
       setProfileData({ 
         name: user?.name || '', 
         email: user?.email || user?.username || '',
-        avatar: user?.avatar || ''
+        avatar: user?.avatar || '',
+        bio: user?.bio || ''
       });
       setPassData({ oldPassword: '', newPassword: '', confirmPassword: '' });
       const targetTab = e?.detail?.tab || 'profile';
@@ -138,13 +139,13 @@ export const ProfileModal = () => {
     try {
       const res = await fetchAPI('update_profile', {
         method: 'POST',
-        body: JSON.stringify({ name: profileData.name, avatar: profileData.avatar })
+        body: JSON.stringify({ name: profileData.name, avatar: profileData.avatar, bio: profileData.bio })
       });
       if (res.success) {
         toast.success(t('Cập nhật thông tin thành công!'));
         const token = localStorage.getItem('access_token') || localStorage.getItem('richland_token') || '';
         if (user) {
-          login(token, { ...user, name: profileData.name, avatar: profileData.avatar } as any);
+          login(token, { ...user, name: profileData.name, avatar: profileData.avatar, bio: profileData.bio } as any);
         }
         setIsOpen(false);
       } else {
@@ -297,6 +298,18 @@ export const ProfileModal = () => {
               />
             </div>
             
+            <div className="form-group">
+              <label>{t('Giới thiệu bản thân (Bio)')}</label>
+              <textarea
+                className="form-control"
+                rows={3}
+                style={{ resize: 'none' }}
+                value={profileData.bio}
+                onChange={e => setProfileData({ ...profileData, bio: e.target.value })}
+                placeholder={t("Nhập một vài dòng giới thiệu về bản thân...")}
+              />
+            </div>
+
             <div className="form-group">
               <label>{t('Email / Username đăng nhập')}</label>
               <input

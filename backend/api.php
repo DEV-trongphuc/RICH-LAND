@@ -2973,7 +2973,7 @@ switch ($action) {
 
         $consultantProfile = null;
         if ($targetUserId > 0) {
-            $stmtP = $conn->prepare("SELECT id, full_name AS name, email, status, leave_start, leave_end, work_start_time, work_end_time, work_schedule, avatar_url AS avatar, vacation_mode, dob, gender, citizen_id, address, bank_name, bank_account, extra_fields_json FROM users WHERE id = ?");
+            $stmtP = $conn->prepare("SELECT id, full_name AS name, email, status, leave_start, leave_end, work_start_time, work_end_time, work_schedule, avatar_url AS avatar, vacation_mode, dob, gender, citizen_id, address, bank_name, bank_account, extra_fields_json, bio FROM users WHERE id = ?");
             $stmtP->bind_param("i", $targetUserId);
             $stmtP->execute();
             $consultantProfile = $stmtP->get_result()->fetch_assoc();
@@ -13079,7 +13079,8 @@ switch ($action) {
             'bank_name' => ['col' => 'bank_name', 'type' => 's'],
             'bank_account' => ['col' => 'bank_account', 'type' => 's'],
             'phone' => ['col' => 'phone', 'type' => 's'],
-            'extra_fields_json' => ['col' => 'extra_fields_json', 'type' => 's']
+            'extra_fields_json' => ['col' => 'extra_fields_json', 'type' => 's'],
+            'bio' => ['col' => 'bio', 'type' => 's']
         ];
         
         foreach ($allowedFields as $key => $meta) {
@@ -13172,7 +13173,7 @@ switch ($action) {
             exit;
         }
 
-        $stmtP = $conn->prepare("SELECT u.id, u.full_name AS name, u.email, a.role, u.job_title, u.status, u.leave_start, u.leave_end, u.work_start_time, u.work_end_time, u.work_schedule, u.avatar_url AS avatar, u.signature_url, u.vacation_mode, u.dob, u.gender, u.citizen_id, u.address, u.bank_name, u.bank_account, u.zalo_chat_id, u.telegram_chat_id, u.overtime_mode, u.permissions_json, u.extra_fields_json, u.manager_behavior_mode, u.use_custom_work_hours FROM users u LEFT JOIN accounts a ON u.id = a.id WHERE u.id = ?");
+        $stmtP = $conn->prepare("SELECT u.id, u.full_name AS name, u.email, a.role, u.job_title, u.status, u.leave_start, u.leave_end, u.work_start_time, u.work_end_time, u.work_schedule, u.avatar_url AS avatar, u.signature_url, u.vacation_mode, u.dob, u.gender, u.citizen_id, u.address, u.bank_name, u.bank_account, u.zalo_chat_id, u.telegram_chat_id, u.overtime_mode, u.permissions_json, u.extra_fields_json, u.manager_behavior_mode, u.use_custom_work_hours, u.bio FROM users u LEFT JOIN accounts a ON u.id = a.id WHERE u.id = ?");
         $stmtP->bind_param("i", $targetUserId);
         $stmtP->execute();
         $consultantProfile = $stmtP->get_result()->fetch_assoc();
@@ -13383,6 +13384,7 @@ switch ($action) {
         $use_custom_work_hours = isset($input['use_custom_work_hours']) ? (int)$input['use_custom_work_hours'] : 0;
         $extra_fields_json = isset($input['extra_fields_json']) ? (is_array($input['extra_fields_json']) ? json_encode($input['extra_fields_json']) : trim($input['extra_fields_json'])) : null;
         if ($extra_fields_json === '') $extra_fields_json = null;
+        $bio = isset($input['bio']) ? trim($input['bio']) : null;
 
         // 1. Update users table
         if (isset($input['signature_url'])) {
@@ -13396,17 +13398,17 @@ switch ($action) {
             $stmtSig->close();
         }
 
-        $stmt = $conn->prepare("UPDATE users SET full_name=?, work_start_time=?, work_end_time=?, work_schedule=?, avatar_url=?, dob=?, gender=?, citizen_id=?, address=?, bank_name=?, bank_account=?, leave_start=?, leave_end=?, zalo_chat_id=?, overtime_mode=?, use_custom_work_hours=?, extra_fields_json=? WHERE id=?");
-        $stmt->bind_param("ssssssssssssssiisi", $name, $work_start_time, $work_end_time, $work_schedule, $avatar, $dob, $gender, $citizen_id, $address, $bank_name, $bank_account, $leave_start, $leave_end, $zalo_chat_id, $overtime_mode, $use_custom_work_hours, $extra_fields_json, $targetUserId);
+        $stmt = $conn->prepare("UPDATE users SET full_name=?, work_start_time=?, work_end_time=?, work_schedule=?, avatar_url=?, dob=?, gender=?, citizen_id=?, address=?, bank_name=?, bank_account=?, leave_start=?, leave_end=?, zalo_chat_id=?, overtime_mode=?, use_custom_work_hours=?, extra_fields_json=?, bio=? WHERE id=?");
+        $stmt->bind_param("ssssssssssssssiissi", $name, $work_start_time, $work_end_time, $work_schedule, $avatar, $dob, $gender, $citizen_id, $address, $bank_name, $bank_account, $leave_start, $leave_end, $zalo_chat_id, $overtime_mode, $use_custom_work_hours, $extra_fields_json, $bio, $targetUserId);
         $success = $stmt->execute();
         $stmt->close();
 
         // 2. Update consultants table (if it exists as a separate table, otherwise it's a VIEW of users)
         $successC = true;
         try {
-            $stmtC = $conn->prepare("UPDATE consultants SET name=?, work_start_time=?, work_end_time=?, work_schedule=?, avatar=?, dob=?, gender=?, citizen_id=?, address=?, bank_name=?, bank_account=?, leave_start=?, leave_end=?, zalo_chat_id=?, overtime_mode=?, use_custom_work_hours=?, extra_fields_json=? WHERE id=?");
+            $stmtC = $conn->prepare("UPDATE consultants SET name=?, work_start_time=?, work_end_time=?, work_schedule=?, avatar=?, dob=?, gender=?, citizen_id=?, address=?, bank_name=?, bank_account=?, leave_start=?, leave_end=?, zalo_chat_id=?, overtime_mode=?, use_custom_work_hours=?, extra_fields_json=?, bio=? WHERE id=?");
             if ($stmtC) {
-                $stmtC->bind_param("ssssssssssssssiisi", $name, $work_start_time, $work_end_time, $work_schedule, $avatar, $dob, $gender, $citizen_id, $address, $bank_name, $bank_account, $leave_start, $leave_end, $zalo_chat_id, $overtime_mode, $use_custom_work_hours, $extra_fields_json, $realConsultantId);
+                $stmtC->bind_param("ssssssssssssssiissi", $name, $work_start_time, $work_end_time, $work_schedule, $avatar, $dob, $gender, $citizen_id, $address, $bank_name, $bank_account, $leave_start, $leave_end, $zalo_chat_id, $overtime_mode, $use_custom_work_hours, $extra_fields_json, $bio, $realConsultantId);
                 $successC = $stmtC->execute();
                 $stmtC->close();
             }

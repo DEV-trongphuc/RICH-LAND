@@ -106,7 +106,8 @@ SELECT
   `use_custom_work_hours`,
   `created_at`,
   `phone`,
-  `is_active`
+  `is_active`,
+  `bio`
 FROM `users`;
 
 -- 2.2 View: accounts (Backward compatibility for DATA app)

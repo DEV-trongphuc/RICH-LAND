@@ -239,6 +239,7 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
 
   // 2. Personal Profile Fields
   const [dob, setDob] = useState('');
+  const [bio, setBio] = useState('');
   const [gender, setGender] = useState('');
   const [citizenId, setCitizenId] = useState('');
   const [hometown, setHometown] = useState('');
@@ -248,6 +249,10 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
   const [personalPhone, setPersonalPhone] = useState('');
   const [extNumber, setExtNumber] = useState('');
   const [address, setAddress] = useState('');
+  const [facebookLink, setFacebookLink] = useState('');
+  const [tiktokLink, setTiktokLink] = useState('');
+  const [linkedinLink, setLinkedinLink] = useState('');
+  const [instagramLink, setInstagramLink] = useState('');
   const [signatureUrl, setSignatureUrl] = useState<string | null>(null);
   const [showSignatureModal, setShowSignatureModal] = useState(false);
 
@@ -400,7 +405,19 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
             setLeaveStart(d.leave_start || '');
             setLeaveEnd(d.leave_end || '');
             setDob(d.dob || '');
+            setBio(d.bio || '');
             setGender(d.gender || '');
+
+            let extraFields: any = {};
+            if (d.extra_fields_json) {
+              try {
+                extraFields = typeof d.extra_fields_json === 'string' ? JSON.parse(d.extra_fields_json) : d.extra_fields_json;
+              } catch (e) {}
+            }
+            setFacebookLink(extraFields.facebook || '');
+            setTiktokLink(extraFields.tiktok || '');
+            setLinkedinLink(extraFields.linkedin || '');
+            setInstagramLink(extraFields.instagram || '');
             setCitizenId(d.citizen_id || '');
             setBankName(d.bank_name || '');
             setBankAccount(d.bank_account || '');
@@ -518,7 +535,12 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
       setBankAccount('');
 
       setDob('');
+      setBio('');
       setGender('');
+      setFacebookLink('');
+      setTiktokLink('');
+      setLinkedinLink('');
+      setInstagramLink('');
       setCitizenId('');
       setHometown('');
       setNationality('');
@@ -902,7 +924,14 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
         phone,
         is_active: isActive,
         dob: dob || null,
+        bio: bio || null,
         gender: gender || null,
+        extra_fields_json: {
+          facebook: facebookLink || null,
+          tiktok: tiktokLink || null,
+          linkedin: linkedinLink || null,
+          instagram: instagramLink || null
+        },
         citizen_id: citizenId || null,
         address: addressPayload,
         bank_name: bankName || null,
@@ -935,7 +964,14 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
           work_end_time: workEndTime,
           work_schedule: scheduleMode === 'custom' ? workSchedule : null,
           dob: dob || null,
+          bio: bio || null,
           gender: gender || null,
+          extra_fields_json: {
+            facebook: facebookLink || null,
+            tiktok: tiktokLink || null,
+            linkedin: linkedinLink || null,
+            instagram: instagramLink || null
+          },
           citizen_id: citizenId || null,
           address: addressPayload,
           bank_name: bankName || null,
@@ -1632,6 +1668,37 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
                       <div className="form-group">
                         <label className="form-label">{t('Email cá nhân')}</label>
                         <input type="email" className="form-input" value={personalEmail} onChange={e => setPersonalEmail(e.target.value)} placeholder="a@gmail.com" />
+                      </div>
+                      <div className="form-group" style={{ gridColumn: isMobileOrTablet ? 'span 1' : 'span 2' }}>
+                        <label className="form-label">{t('Giới thiệu bản thân (Bio)')}</label>
+                        <textarea
+                          className="form-input"
+                          rows={3}
+                          style={{ resize: 'none' }}
+                          value={bio}
+                          onChange={e => setBio(e.target.value)}
+                          placeholder={t('Nhập một vài dòng giới thiệu về bản thân...')}
+                        />
+                      </div>
+                      <div className="form-group" style={{ gridColumn: isMobileOrTablet ? 'span 1' : 'span 2' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: isMobileOrTablet ? '1fr' : '1fr 1fr', gap: '1rem' }}>
+                          <div className="form-group">
+                            <label className="form-label">{t('Liên kết Facebook')}</label>
+                            <input className="form-input" value={facebookLink} onChange={e => setFacebookLink(e.target.value)} placeholder="https://facebook.com/username..." />
+                          </div>
+                          <div className="form-group">
+                            <label className="form-label">{t('Liên kết TikTok')}</label>
+                            <input className="form-input" value={tiktokLink} onChange={e => setTiktokLink(e.target.value)} placeholder="https://tiktok.com/@username..." />
+                          </div>
+                          <div className="form-group">
+                            <label className="form-label">{t('Liên kết LinkedIn')}</label>
+                            <input className="form-input" value={linkedinLink} onChange={e => setLinkedinLink(e.target.value)} placeholder="https://linkedin.com/in/username..." />
+                          </div>
+                          <div className="form-group">
+                            <label className="form-label">{t('Liên kết Instagram')}</label>
+                            <input className="form-input" value={instagramLink} onChange={e => setInstagramLink(e.target.value)} placeholder="https://instagram.com/username..." />
+                          </div>
+                        </div>
                       </div>
                       <div className="form-group" style={{ gridColumn: isMobileOrTablet ? 'span 1' : 'span 2', marginTop: '0.5rem', paddingTop: '1rem', borderTop: '1px solid var(--color-border-light)' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>

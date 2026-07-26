@@ -17,6 +17,7 @@ type User = {
   job_title?: string;
   address?: string;
   erp_profile?: any;
+  bio?: string | null;
 };
 
 interface AuthContextType {

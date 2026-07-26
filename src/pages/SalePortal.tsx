@@ -1418,6 +1418,13 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
   const [editCitizenId, setEditCitizenId] = useState('');
   const [editAddress, setEditAddress] = useState('');
   const [editBankName, setEditBankName] = useState('');
+  const [editBio, setEditBio] = useState('');
+  const [editZaloChatId, setEditZaloChatId] = useState('');
+  const [editTelegramChatId, setEditTelegramChatId] = useState('');
+  const [editFacebookLink, setEditFacebookLink] = useState('');
+  const [editTiktokLink, setEditTiktokLink] = useState('');
+  const [editLinkedinLink, setEditLinkedinLink] = useState('');
+  const [editInstagramLink, setEditInstagramLink] = useState('');
   const [editBankAccount, setEditBankAccount] = useState('');
   const [editLeaveStart, setEditLeaveStart] = useState('');
   const [editLeaveEnd, setEditLeaveEnd] = useState('');
@@ -3566,6 +3573,22 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
         setEditDob(data.consultant_profile.dob || '');
         setEditGender(data.consultant_profile.gender || '');
         setEditCitizenId(data.consultant_profile.citizen_id || '');
+        setEditBio(data.consultant_profile.bio || '');
+        setEditZaloChatId(data.consultant_profile.zalo_chat_id || '');
+        setEditTelegramChatId(data.consultant_profile.telegram_chat_id || '');
+        
+        let extraFields: any = {};
+        if (data.consultant_profile.extra_fields_json) {
+          try {
+            extraFields = typeof data.consultant_profile.extra_fields_json === 'string' 
+              ? JSON.parse(data.consultant_profile.extra_fields_json) 
+              : data.consultant_profile.extra_fields_json;
+          } catch (e) {}
+        }
+        setEditFacebookLink(extraFields.facebook || '');
+        setEditTiktokLink(extraFields.tiktok || '');
+        setEditLinkedinLink(extraFields.linkedin || '');
+        setEditInstagramLink(extraFields.instagram || '');
         
         const rawAddress = data.consultant_profile.address || '';
         if (rawAddress.startsWith('{"erp_profile":')) {
@@ -3805,7 +3828,16 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
         bank_name: editBankName,
         bank_account: editBankAccount,
         leave_start: editLeaveStart || null,
-        leave_end: editLeaveEnd || null
+        leave_end: editLeaveEnd || null,
+        bio: editBio || null,
+        zalo_chat_id: editZaloChatId,
+        telegram_chat_id: editTelegramChatId,
+        extra_fields_json: {
+          facebook: editFacebookLink || null,
+          tiktok: editTiktokLink || null,
+          linkedin: editLinkedinLink || null,
+          instagram: editInstagramLink || null
+        }
       };
 
       const res = await fetchAPI('update_consultant_self_profile', {
@@ -11356,15 +11388,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                       {renderColoredIcon(AlertCircle, '#ff9500')}
                       <span style={{ whiteSpace: 'nowrap' }}>{t('Khen thưởng & Kỷ luật')}</span>
                     </button>
-                    <button
-                      type="button"
-                      className={`${styles.sidebarTabBtn} ${profileActiveTab === 'contact' ? styles.sidebarTabActive : ''}`}
-                      onClick={() => setProfileActiveTab('contact')}
-                      style={{ width: '100%', border: 'none', textAlign: 'left', cursor: 'pointer' }}
-                    >
-                      {renderColoredIcon(Server, '#007af5')}
-                      <span style={{ whiteSpace: 'nowrap' }}>{t('Thông tin liên hệ')}</span>
-                    </button>
+
                     <button
                       type="button"
                       className={`${styles.sidebarTabBtn} ${profileActiveTab === 'payment' ? styles.sidebarTabActive : ''}`}
@@ -11588,6 +11612,252 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                         onChange={val => setEditMaritalStatus(String(val))}
                         placeholder={t('Chọn tình trạng...')}
                       />
+                    </div>
+
+                    <div className="form-group">
+                      <label className="form-label" style={{ fontWeight: 600, fontSize: isMobile ? '0.75rem' : '0.875rem' }}>{t('Giới thiệu bản thân (Bio)')}</label>
+                      <textarea
+                        className="form-input"
+                        rows={3}
+                        style={{ resize: 'none', fontSize: isMobile ? '0.8125rem' : '0.875rem' }}
+                        value={editBio}
+                        onChange={(e) => setEditBio(e.target.value)}
+                        placeholder={t('Nhập một vài dòng giới thiệu về bản thân...')}
+                      />
+                    </div>
+
+                    <div style={{ marginTop: '1rem', paddingTop: '1.25rem', borderTop: '1px solid var(--color-border-light)' }}>
+                      <h4 style={{ fontSize: '0.9rem', fontWeight: 700, margin: '0 0 1rem 0', color: 'var(--color-primary)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <Mail size={15} /> {t('Thông tin liên hệ')}
+                      </h4>
+
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                        <div className="form-group">
+                          <label className="form-label" style={{ fontWeight: 600, color: 'var(--color-text-muted)' }}>{t('Email đăng nhập')}</label>
+                          <input
+                            type="email"
+                            className="form-input"
+                            value={profile.email || ''}
+                            disabled
+                            style={{
+                              opacity: 0.7,
+                              cursor: 'not-allowed',
+                              background: 'var(--color-bg)',
+                              borderColor: 'var(--color-border-light)'
+                            }}
+                          />
+                        </div>
+
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                          <div className="form-group">
+                            <label className="form-label" style={{ fontWeight: 600 }}>{t('Số điện thoại cá nhân')}</label>
+                            <input
+                              type="text"
+                              className="form-input"
+                              value={editPersonalPhone}
+                              onChange={(e) => setEditPersonalPhone(e.target.value)}
+                              placeholder="Nhập SĐT cá nhân"
+                            />
+                          </div>
+                          <div className="form-group">
+                            <label className="form-label" style={{ fontWeight: 600 }}>{t('Số điện thoại nội bộ')}</label>
+                            <input
+                              type="text"
+                              className="form-input"
+                              value={editExtNumber}
+                              onChange={(e) => setEditExtNumber(e.target.value)}
+                              placeholder="VD: 104"
+                            />
+                          </div>
+                        </div>
+
+                        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '1rem' }}>
+                          <div className="form-group">
+                            <label className="form-label" style={{ fontWeight: 600 }}>{t('Zalo Chat ID')}</label>
+                            <input
+                              type="text"
+                              className="form-input"
+                              value={editZaloChatId}
+                              onChange={(e) => setEditZaloChatId(e.target.value)}
+                              placeholder="Nhập Zalo Chat ID để nhận OTP/Thông báo..."
+                            />
+                          </div>
+                          <div className="form-group">
+                            <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 4, fontWeight: 600 }}>
+                              <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/8/82/Telegram_logo.svg/3840px-Telegram_logo.svg.png" alt="Telegram" style={{ width: 14, height: 14, borderRadius: '50%' }} />
+                              {t('Telegram Chat ID')}
+                            </label>
+                            <input
+                              type="text"
+                              className="form-input"
+                              value={editTelegramChatId}
+                              onChange={(e) => setEditTelegramChatId(e.target.value)}
+                              placeholder="Nhập Telegram Chat ID..."
+                            />
+                          </div>
+                        </div>
+
+                        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '1rem' }}>
+                          <div className="form-group">
+                            <label className="form-label" style={{ fontWeight: 600 }}>{t('Liên kết Facebook')}</label>
+                            <input
+                              type="text"
+                              className="form-input"
+                              value={editFacebookLink}
+                              onChange={(e) => setEditFacebookLink(e.target.value)}
+                              placeholder="https://facebook.com/username..."
+                            />
+                          </div>
+                          <div className="form-group">
+                            <label className="form-label" style={{ fontWeight: 600 }}>{t('Liên kết TikTok')}</label>
+                            <input
+                              type="text"
+                              className="form-input"
+                              value={editTiktokLink}
+                              onChange={(e) => setEditTiktokLink(e.target.value)}
+                              placeholder="https://tiktok.com/@username..."
+                            />
+                          </div>
+                          <div className="form-group">
+                            <label className="form-label" style={{ fontWeight: 600 }}>{t('Liên kết LinkedIn')}</label>
+                            <input
+                              type="text"
+                              className="form-input"
+                              value={editLinkedinLink}
+                              onChange={(e) => setEditLinkedinLink(e.target.value)}
+                              placeholder="https://linkedin.com/in/username..."
+                            />
+                          </div>
+                          <div className="form-group">
+                            <label className="form-label" style={{ fontWeight: 600 }}>{t('Liên kết Instagram')}</label>
+                            <input
+                              type="text"
+                              className="form-input"
+                              value={editInstagramLink}
+                              onChange={(e) => setEditInstagramLink(e.target.value)}
+                              placeholder="https://instagram.com/username..."
+                            />
+                          </div>
+                        </div>
+
+                        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '1rem' }}>
+                          <div className="form-group">
+                            <AddressSelect
+                              label={t('Địa chỉ thường trú')}
+                              value={editAddress}
+                              onChange={(val) => setEditAddress(val)}
+                              placeholder={t('Chọn địa chỉ thường trú...')}
+                            />
+                          </div>
+                          <div className="form-group">
+                            <AddressSelect
+                              label={t('Địa chỉ tạm trú')}
+                              value={editAddressTemporary}
+                              onChange={(val) => setEditAddressTemporary(val)}
+                              placeholder={t('Chọn địa chỉ tạm trú...')}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div style={{ marginTop: '1rem', paddingTop: '1.25rem', borderTop: '1px solid var(--color-border-light)' }}>
+                      <h4 style={{ fontSize: '0.9rem', fontWeight: 700, margin: '0 0 1rem 0', color: 'var(--color-primary)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <Users size={15} /> {t('Liên hệ khẩn cấp / Người thân')}
+                      </h4>
+                      <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', margin: '0 0 1rem 0' }}>
+                        {t('Thêm danh sách liên hệ khẩn cấp của bạn để công ty có thể chủ động liên lạc khi cần thiết.')}
+                      </p>
+
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                        {emergencyContacts.map((contact, index) => (
+                          <div key={index} style={{
+                            padding: '1rem',
+                            background: 'var(--color-bg-alt)',
+                            borderRadius: '8px',
+                            border: '1px solid var(--color-border-light)',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '1rem',
+                            position: 'relative'
+                          }}>
+                            {emergencyContacts.length > 1 && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setEmergencyContacts(emergencyContacts.filter((_, i) => i !== index));
+                                }}
+                                style={{
+                                  position: 'absolute', top: '10px', right: '10px',
+                                  background: 'transparent', border: 'none',
+                                  color: 'var(--color-danger)', cursor: 'pointer',
+                                  padding: '4px', borderRadius: '4px'
+                                }}
+                                className="hover-bg-danger-light"
+                                title={t('Xóa liên hệ')}
+                              >
+                                <Trash2 size={16} />
+                              </button>
+                            )}
+
+                            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '1rem' }}>
+                              <div className="form-group" style={{ margin: 0 }}>
+                                <label className="form-label" style={{ fontWeight: 600 }}>{t('Người liên hệ')}</label>
+                                <input
+                                  type="text"
+                                  className="form-input"
+                                  value={contact.name || ''}
+                                  onChange={(e) => {
+                                    const updated = [...emergencyContacts];
+                                    updated[index] = { ...updated[index], name: e.target.value };
+                                    setEmergencyContacts(updated);
+                                  }}
+                                  placeholder="Họ tên người liên hệ"
+                                />
+                              </div>
+                              <div className="form-group" style={{ margin: 0 }}>
+                                <label className="form-label" style={{ fontWeight: 600 }}>{t('Mối quan hệ')}</label>
+                                <input
+                                  type="text"
+                                  className="form-input"
+                                  value={contact.relationship || ''}
+                                  onChange={(e) => {
+                                    const updated = [...emergencyContacts];
+                                    updated[index] = { ...updated[index], relationship: e.target.value };
+                                    setEmergencyContacts(updated);
+                                  }}
+                                  placeholder="VD: Bố, Mẹ, Vợ, Chồng..."
+                                />
+                              </div>
+                            </div>
+
+                            <div className="form-group" style={{ margin: 0 }}>
+                              <label className="form-label" style={{ fontWeight: 600 }}>{t('Số điện thoại khẩn cấp')}</label>
+                              <input
+                                type="text"
+                                className="form-input"
+                                value={contact.phone || ''}
+                                onChange={(e) => {
+                                  const updated = [...emergencyContacts];
+                                  updated[index] = { ...updated[index], phone: e.target.value };
+                                  setEmergencyContacts(updated);
+                                }}
+                                placeholder="SĐT người liên hệ"
+                              />
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+
+                      <button
+                        type="button"
+                        className="btn outline sm"
+                        onClick={() => setEmergencyContacts([...emergencyContacts, { name: '', relationship: '', phone: '' }])}
+                        style={{ width: 'fit-content', alignSelf: 'flex-start', marginTop: '0.75rem', display: 'flex', alignItems: 'center', gap: '6px' }}
+                      >
+                        <Plus size={14} />
+                        {t('Thêm người liên hệ')}
+                      </button>
                     </div>
 
                     <div className="form-group" style={{ marginTop: '0.5rem', paddingTop: '1rem', borderTop: '1px solid var(--color-border-light)' }}>
@@ -12783,73 +13053,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
               </div>
             )}
 
-            {/* 3. CONTACT & LOGIN */}
-            {renderedTab === 'contact' && (
-              <div className={isMobile ? "animate-fade-in" : "card animate-fade-in"} style={cardContainerStyle(isMobile)}>
-                <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-text)', textTransform: 'uppercase', letterSpacing: '0.5px', margin: '0 0 0.5rem 0', display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <Server size={16} color="var(--color-primary)" /> {t('Thông tin liên hệ')}
-                </h3>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                    <div className="form-group">
-                      <label className="form-label" style={{ fontWeight: 600, color: 'var(--color-text-muted)' }}>{t('Email đăng nhập')}</label>
-                      <input
-                        type="email"
-                        className="form-input"
-                        value={profile.email || ''}
-                        disabled
-                        style={{
-                          opacity: 0.7,
-                          cursor: 'not-allowed',
-                          background: 'var(--color-bg)',
-                          borderColor: 'var(--color-border-light)'
-                        }}
-                      />
-                    </div>
 
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                      <div className="form-group">
-                        <label className="form-label" style={{ fontWeight: 600 }}>{t('Số điện thoại cá nhân')}</label>
-                        <input
-                          type="text"
-                          className="form-input"
-                          value={editPersonalPhone}
-                          onChange={(e) => setEditPersonalPhone(e.target.value)}
-                          placeholder="Nhập SĐT cá nhân"
-                        />
-                      </div>
-                      <div className="form-group">
-                        <label className="form-label" style={{ fontWeight: 600 }}>{t('Số điện thoại nội bộ')}</label>
-                        <input
-                          type="text"
-                          className="form-input"
-                          value={editExtNumber}
-                          onChange={(e) => setEditExtNumber(e.target.value)}
-                          placeholder="VD: 104"
-                        />
-                      </div>
-                    </div>
-
-                    <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '1rem' }}>
-                      <div className="form-group">
-                        <AddressSelect
-                          label={t('Địa chỉ thường trú')}
-                          value={editAddress}
-                          onChange={(val) => setEditAddress(val)}
-                          placeholder={t('Chọn địa chỉ thường trú...')}
-                        />
-                      </div>
-                      <div className="form-group">
-                        <AddressSelect
-                          label={t('Địa chỉ tạm trú')}
-                          value={editAddressTemporary}
-                          onChange={(val) => setEditAddressTemporary(val)}
-                          placeholder={t('Chọn địa chỉ tạm trú...')}
-                        />
-                      </div>
-                    </div>
-                </div>
-              </div>
-            )}
 
             {/* SECURITY & ACCOUNT TAB (TÀI KHOẢN & BẢO MẬT) */}
             {renderedTab === 'security' && (
@@ -13121,107 +13325,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
               </div>
             )}
 
-            {/* 5. EMERGENCY CONTACT (Merged into Contact & Account) */}
-            {(renderedTab === 'contact' || renderedTab === 'emergency') && (
-              <div className={isMobile ? "animate-fade-in" : "card animate-fade-in"} style={cardContainerStyle(isMobile)}>
-                <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-text)', textTransform: 'uppercase', letterSpacing: '0.5px', margin: '0 0 0.5rem 0', display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <Scale size={16} color="var(--color-primary)" /> {t('Liên hệ khẩn cấp')}
-                </h3>
-                <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', margin: 0 }}>
-                  {t('Thêm danh sách liên hệ khẩn cấp của bạn để công ty có thể chủ động liên lạc khi cần thiết.')}
-                </p>
 
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                  {emergencyContacts.map((contact, index) => (
-                    <div key={index} style={{
-                      padding: '1.25rem',
-                      background: 'var(--color-bg-alt)',
-                      borderRadius: '10px',
-                      border: '1px solid var(--color-border-light)',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      gap: '1rem',
-                      position: 'relative'
-                    }}>
-                      {emergencyContacts.length > 1 && (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setEmergencyContacts(emergencyContacts.filter((_, i) => i !== index));
-                          }}
-                          style={{
-                            position: 'absolute', top: '10px', right: '10px',
-                            background: 'transparent', border: 'none',
-                            color: 'var(--color-danger)', cursor: 'pointer',
-                            padding: '4px', borderRadius: '4px'
-                          }}
-                          className="hover-bg-danger-light"
-                          title={t('Xóa liên hệ')}
-                        >
-                          <Trash2 size={16} />
-                        </button>
-                      )}
-
-                      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '1rem' }}>
-                        <div className="form-group" style={{ margin: 0 }}>
-                          <label className="form-label" style={{ fontWeight: 600 }}>{t('Người liên hệ')}</label>
-                          <input
-                            type="text"
-                            className="form-input"
-                            value={contact.name || ''}
-                            onChange={(e) => {
-                              const updated = [...emergencyContacts];
-                              updated[index] = { ...updated[index], name: e.target.value };
-                              setEmergencyContacts(updated);
-                            }}
-                            placeholder="Họ tên người liên hệ"
-                          />
-                        </div>
-                        <div className="form-group" style={{ margin: 0 }}>
-                          <label className="form-label" style={{ fontWeight: 600 }}>{t('Mối quan hệ')}</label>
-                          <input
-                            type="text"
-                            className="form-input"
-                            value={contact.relationship || ''}
-                            onChange={(e) => {
-                              const updated = [...emergencyContacts];
-                              updated[index] = { ...updated[index], relationship: e.target.value };
-                              setEmergencyContacts(updated);
-                            }}
-                            placeholder="VD: Bố, Mẹ, Vợ, Chồng..."
-                          />
-                        </div>
-                      </div>
-
-                      <div className="form-group" style={{ margin: 0 }}>
-                        <label className="form-label" style={{ fontWeight: 600 }}>{t('Số điện thoại khẩn cấp')}</label>
-                        <input
-                          type="text"
-                          className="form-input"
-                          value={contact.phone || ''}
-                          onChange={(e) => {
-                            const updated = [...emergencyContacts];
-                            updated[index] = { ...updated[index], phone: e.target.value };
-                            setEmergencyContacts(updated);
-                          }}
-                          placeholder="SĐT người liên hệ"
-                        />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                <button
-                  type="button"
-                  className="btn outline sm"
-                  onClick={() => setEmergencyContacts([...emergencyContacts, { name: '', relationship: '', phone: '' }])}
-                  style={{ width: 'fit-content', alignSelf: 'flex-start', marginTop: '0.5rem', display: 'flex', alignItems: 'center', gap: '6px' }}
-                >
-                  <Plus size={14} />
-                  {t('Thêm người liên hệ')}
-                </button>
-              </div>
-            )}
 
             {/* 6. WORK SCHEDULE & DATA ROTATION */}
             {renderedTab === 'schedule' && (

@@ -57,7 +57,7 @@ class UserController {
         $whereClause = implode(" AND ", $where);
         
         try {
-            $stmt=$this->db->prepare("SELECT id,email,full_name,role,job_title,avatar_url,signature_url,phone,is_active,last_login_at,created_at,dob,gender,citizen_id,address,bank_name,bank_account,team_id,permissions_json FROM users WHERE $whereClause ORDER BY full_name");
+            $stmt=$this->db->prepare("SELECT id,email,full_name,role,job_title,avatar_url,signature_url,phone,is_active,last_login_at,created_at,dob,gender,citizen_id,address,bank_name,bank_account,team_id,permissions_json,bio FROM users WHERE $whereClause ORDER BY full_name");
             $stmt->execute($params);
             respond(200,$stmt->fetchAll());
         } catch (Throwable $e) {
@@ -108,7 +108,7 @@ class UserController {
             respond(403, null, 'Quyền truy cập không đủ', false);
         }
         try {
-            $stmt=$this->db->prepare("SELECT id,email,full_name,role,job_title,avatar_url,signature_url,phone,is_active,last_login_at,created_at,dob,gender,citizen_id,address,bank_name,bank_account,two_factor_enabled,two_factor_type,permissions_json FROM users WHERE id=? AND tenant_id=?");
+            $stmt=$this->db->prepare("SELECT id,email,full_name,role,job_title,avatar_url,signature_url,phone,is_active,last_login_at,created_at,dob,gender,citizen_id,address,bank_name,bank_account,two_factor_enabled,two_factor_type,permissions_json,bio FROM users WHERE id=? AND tenant_id=?");
             $stmt->execute([$id,$auth['tenant_id']]); $row=$stmt->fetch();
         } catch (PDOException $e) {
             $stmt=$this->db->prepare("SELECT id,email,full_name,role,avatar_url,signature_url,phone,is_active,last_login_at,created_at FROM users WHERE id=? AND tenant_id=?");
@@ -121,7 +121,7 @@ class UserController {
         if (!in_array($auth['role'], ['admin', 'super_admin', 'superadmin', 'director'], true) && (int)$auth['user_id'] !== (int)$id) respond(403, null, 'Không có quyền cập nhật thông tin người khác', false);
         
         $b = getBody();
-        $fields = ['email', 'full_name', 'phone', 'avatar_url', 'signature_url', 'is_active', 'dob', 'gender', 'citizen_id', 'address', 'bank_name', 'bank_account', 'permissions_json', 'job_title', 'team_id', 'zalo_chat_id', 'telegram_chat_id'];
+        $fields = ['email', 'full_name', 'phone', 'avatar_url', 'signature_url', 'is_active', 'dob', 'gender', 'citizen_id', 'address', 'bank_name', 'bank_account', 'permissions_json', 'job_title', 'team_id', 'zalo_chat_id', 'telegram_chat_id', 'bio'];
         if (in_array($auth['role'], ['admin', 'super_admin', 'superadmin', 'director'], true)) {
             $fields[] = 'role';
             $fields[] = 'is_active';

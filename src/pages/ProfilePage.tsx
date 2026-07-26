@@ -96,6 +96,11 @@ export const ProfilePage: React.FC = () => {
   const [personalPhone, setPersonalPhone] = useState('');
   const [extNumber, setExtNumber] = useState('');
   const [address, setAddress] = useState('');
+  const [bio, setBio] = useState('');
+  const [facebookLink, setFacebookLink] = useState('');
+  const [tiktokLink, setTiktokLink] = useState('');
+  const [linkedinLink, setLinkedinLink] = useState('');
+  const [instagramLink, setInstagramLink] = useState('');
 
   // ERP & Job
   const [employeeId, setEmployeeId] = useState('');
@@ -178,6 +183,7 @@ export const ProfilePage: React.FC = () => {
         setCitizenId(d.citizen_id || '');
         setBankName(d.bank_name || '');
         setBankAccount(d.bank_account || '');
+        setBio(d.bio || '');
 
         let addressPayload = d.address || '';
         try {
@@ -212,6 +218,17 @@ export const ProfilePage: React.FC = () => {
         } catch (e) {
           setAddress(addressPayload);
         }
+
+        let extraFields: any = {};
+        if (d.extra_fields_json) {
+          try {
+            extraFields = typeof d.extra_fields_json === 'string' ? JSON.parse(d.extra_fields_json) : d.extra_fields_json;
+          } catch (e) {}
+        }
+        setFacebookLink(extraFields.facebook || '');
+        setTiktokLink(extraFields.tiktok || '');
+        setLinkedinLink(extraFields.linkedin || '');
+        setInstagramLink(extraFields.instagram || '');
 
         if (d.work_schedule && typeof d.work_schedule === 'object') {
           setWorkSchedule(d.work_schedule);
@@ -354,7 +371,14 @@ export const ProfilePage: React.FC = () => {
           telegram_chat_id: telegramChatId,
           overtime_mode: overtimeMode ? 1 : 0,
           leave_start: leaveStart || null,
-          leave_end: leaveEnd || null
+          leave_end: leaveEnd || null,
+          bio: bio || null,
+          extra_fields_json: {
+            facebook: facebookLink || null,
+            tiktok: tiktokLink || null,
+            linkedin: linkedinLink || null,
+            instagram: instagramLink || null
+          }
         })
       });
 
@@ -362,7 +386,7 @@ export const ProfilePage: React.FC = () => {
         toast.success(t('Cập nhật thông tin thành công!'));
         const token = localStorage.getItem('access_token') || localStorage.getItem('richland_token') || '';
         if (user) {
-          login(token, { ...user, name: profileData.name, avatar: profileData.avatar, avatar_url: profileData.avatar } as any);
+          login(token, { ...user, name: profileData.name, avatar: profileData.avatar, avatar_url: profileData.avatar, bio } as any);
         }
         fetchConsultantProfile();
         fetchLogs();
@@ -603,6 +627,18 @@ export const ProfilePage: React.FC = () => {
                   />
                 </div>
 
+                <div className="form-group">
+                  <label className="form-label" style={{ fontWeight: 600 }}>{t('Giới thiệu bản thân (Bio)')}</label>
+                  <textarea
+                    className="form-input"
+                    rows={3}
+                    style={{ resize: 'none' }}
+                    value={bio}
+                    onChange={e => setBio(e.target.value)}
+                    placeholder={t("Nhập một vài dòng giới thiệu về bản thân...")}
+                  />
+                </div>
+
                 <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '1rem' }}>
                   <div className="form-group">
                     <label className="form-label" style={{ fontWeight: 600 }}>{t('Ngày sinh')}</label>
@@ -800,7 +836,26 @@ export const ProfilePage: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="form-group">
+                <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '1rem', marginTop: '1rem' }}>
+                  <div className="form-group">
+                    <label className="form-label" style={{ fontWeight: 600 }}>{t('Liên kết Facebook')}</label>
+                    <input type="text" className="form-input" value={facebookLink} onChange={e => setFacebookLink(e.target.value)} placeholder="https://facebook.com/username..." />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label" style={{ fontWeight: 600 }}>{t('Liên kết TikTok')}</label>
+                    <input type="text" className="form-input" value={tiktokLink} onChange={e => setTiktokLink(e.target.value)} placeholder="https://tiktok.com/@username..." />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label" style={{ fontWeight: 600 }}>{t('Liên kết LinkedIn')}</label>
+                    <input type="text" className="form-input" value={linkedinLink} onChange={e => setLinkedinLink(e.target.value)} placeholder="https://linkedin.com/in/username..." />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label" style={{ fontWeight: 600 }}>{t('Liên kết Instagram')}</label>
+                    <input type="text" className="form-input" value={instagramLink} onChange={e => setInstagramLink(e.target.value)} placeholder="https://instagram.com/username..." />
+                  </div>
+                </div>
+
+                <div className="form-group" style={{ marginTop: '1rem' }}>
                   <label className="form-label" style={{ fontWeight: 600 }}>{t('Địa chỉ thường trú')}</label>
                   <textarea className="form-input" rows={2} value={address} onChange={e => setAddress(e.target.value)} placeholder="Nhập địa chỉ nhà của bạn..." style={{ minHeight: '60px', padding: '10px 14px' }} />
                 </div>
