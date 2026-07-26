@@ -15,8 +15,49 @@ function getTranslatedError(key: string, replacements?: Record<string, string | 
 
 import api from '../api/axios';
 
+let settingsCachePromise: Promise<any> | null = null;
+let cachedToken: string | null = null;
+
+export function clearSettingsCache() {
+  settingsCachePromise = null;
+  cachedToken = null;
+}
+
 export async function fetchAPI(action: string, options: RequestInit = {}) {
   const originalMethod = (options.method || 'GET').toUpperCase();
+  
+  // Transparent caching for get_settings action
+  if (action === 'get_settings' && originalMethod === 'GET') {
+    const token = localStorage.getItem('richland_token');
+    if (token !== cachedToken) {
+      settingsCachePromise = null;
+      cachedToken = token;
+    }
+    
+    if (!settingsCachePromise) {
+      settingsCachePromise = (async () => {
+        let url = `api.php?action=get_settings`;
+        if (token) {
+          url += `&token=${token}`;
+        }
+        try {
+          const response = await api({
+            method: 'GET',
+            url,
+            headers: options.headers as Record<string, string>,
+          });
+          return response.data;
+        } catch (err: any) {
+          settingsCachePromise = null; // Clear on error to allow retries
+          if (err.response) {
+            throw new Error(err.response.data?.message || err.message, { cause: err });
+          }
+          throw err;
+        }
+      })();
+    }
+    return settingsCachePromise;
+  }
   
   const headers: Record<string, string> = {
     ...(options.headers as Record<string, string>),

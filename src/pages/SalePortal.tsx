@@ -223,6 +223,30 @@ interface SalePortalProps {
   embedMode?: boolean;
 }
 
+function parseTimerString(str: string) {
+  if (!str) return { value: 1, unit: 'days' };
+  const match = str.trim().match(/^\+?(\d+)\s*(hour|day|week|month|year)s?$/i);
+  if (match) {
+    const value = parseInt(match[1], 10);
+    let unit = match[2].toLowerCase();
+    if (unit === 'hour') unit = 'hours';
+    if (unit === 'day') unit = 'days';
+    if (unit === 'week') unit = 'weeks';
+    if (unit === 'month') unit = 'months';
+    if (unit === 'year') unit = 'years';
+    return { value, unit };
+  }
+  const digits = str.replace(/[^0-9]/g, '');
+  const num = digits ? parseInt(digits, 10) : 1;
+  return { value: num, unit: 'days' };
+}
+
+function formatTimerString(value: number, unit: string) {
+  const cleanUnit = unit.endsWith('s') ? unit.slice(0, -1) : unit;
+  const finalUnit = value > 1 ? `${cleanUnit}s` : cleanUnit;
+  return `+${value} ${finalUnit}`;
+}
+
 const ALLOWED_PORTAL_ROLES = ['sale', 'sales', 'superadmin', 'admin', 'super_admin', 'manager', 'director', 'assistant', 'viewer'];
 
 const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePortalProps) => {
@@ -18013,151 +18037,271 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
         isOpen={showDatabankSettingsModal}
         onClose={() => setShowDatabankSettingsModal(false)}
         title={t("Cấu hình nhanh Kho Databank")}
-        width="620px"
+        width="650px"
       >
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-          <div>
-            <h4 style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--color-text)', marginBottom: '0.75rem' }}>
-              {t("1. Hạn mức nhận số (Claim Limits)")}
-            </h4>
+          
+          {/* Section 1: Hạn mức nhận số (Claim Limits) */}
+          <div style={{
+            background: theme === 'dark' ? 'rgba(255, 255, 255, 0.02)' : 'rgba(0, 0, 0, 0.015)',
+            border: '1px solid var(--color-border-light)',
+            borderRadius: '12px',
+            padding: '1.25rem'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '0.5rem' }}>
+              <span style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: '28px',
+                height: '28px',
+                borderRadius: '8px',
+                background: 'var(--color-primary-light)',
+                color: 'var(--color-primary)'
+              }}>
+                <Award size={15} />
+              </span>
+              <h4 style={{ fontSize: '0.9rem', fontWeight: 800, color: 'var(--color-text)', margin: 0 }}>
+                {t("1. Hạn mức nhận số (Claim Limits)")}
+              </h4>
+            </div>
+            <p style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)', margin: '0 0 1rem 0', lineHeight: 1.4 }}>
+              {t("Hạn mức tối đa mà một tư vấn viên có thể nhận từ Databank để chăm sóc.")}
+            </p>
+            
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px' }}>
-              <div>
-                <label className="form-label" style={{ fontSize: '0.75rem' }}>{t("Hạn mức giờ")}</label>
-                <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-                  <input
-                    type="number"
-                    className="form-input"
-                    value={dbLimitHour}
-                    onChange={e => setDbLimitHour(Number(e.target.value))}
-                    min={0}
-                    style={{ width: '100%', height: '34px', paddingRight: '2.5rem' }}
-                  />
-                  <span style={{ position: 'absolute', right: '8px', fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>/giờ</span>
+              {[
+                { label: t("Hạn mức giờ"), value: dbLimitHour, setter: setDbLimitHour, suffix: "/giờ" },
+                { label: t("Hạn mức ngày"), value: dbLimitDay, setter: setDbLimitDay, suffix: "/ngày" },
+                { label: t("Hạn mức tháng"), value: dbLimitMonth, setter: setDbLimitMonth, suffix: "/tháng" }
+              ].map((limit, idx) => (
+                <div key={idx}>
+                  <label className="form-label" style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-light)', marginBottom: '4px', display: 'block' }}>
+                    {limit.label}
+                  </label>
+                  <div style={{ display: 'flex', alignItems: 'center', width: '100%' }}>
+                    <input
+                      type="number"
+                      className="form-input"
+                      value={limit.value}
+                      onChange={e => limit.setter(Number(e.target.value))}
+                      min={0}
+                      style={{
+                        flex: 1,
+                        height: '38px',
+                        borderRadius: '8px 0 0 8px',
+                        borderRight: 'none',
+                        textAlign: 'center',
+                        fontWeight: 700,
+                        color: 'var(--color-text)'
+                      }}
+                    />
+                    <span style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      height: '38px',
+                      padding: '0 10px',
+                      fontSize: '0.72rem',
+                      fontWeight: 600,
+                      color: 'var(--color-text-muted)',
+                      background: 'var(--color-bg)',
+                      border: '1px solid var(--color-border)',
+                      borderRadius: '0 8px 8px 0',
+                      whiteSpace: 'nowrap',
+                      userSelect: 'none'
+                    }}>{limit.suffix}</span>
+                  </div>
                 </div>
-              </div>
-              <div>
-                <label className="form-label" style={{ fontSize: '0.75rem' }}>{t("Hạn mức ngày")}</label>
-                <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-                  <input
-                    type="number"
-                    className="form-input"
-                    value={dbLimitDay}
-                    onChange={e => setDbLimitDay(Number(e.target.value))}
-                    min={0}
-                    style={{ width: '100%', height: '34px', paddingRight: '2.5rem' }}
-                  />
-                  <span style={{ position: 'absolute', right: '8px', fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>/ngày</span>
-                </div>
-              </div>
-              <div>
-                <label className="form-label" style={{ fontSize: '0.75rem' }}>{t("Hạn mức tháng")}</label>
-                <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-                  <input
-                    type="number"
-                    className="form-input"
-                    value={dbLimitMonth}
-                    onChange={e => setDbLimitMonth(Number(e.target.value))}
-                    min={0}
-                    style={{ width: '100%', height: '34px', paddingRight: '2.5rem' }}
-                  />
-                  <span style={{ position: 'absolute', right: '8px', fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>/tháng</span>
-                </div>
-              </div>
+              ))}
             </div>
           </div>
 
-          <div style={{ borderTop: '1px solid var(--color-border-light)', paddingTop: '1rem' }}>
-            <h4 style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--color-text)', marginBottom: '0.75rem' }}>
-              {t("2. Thời hạn bảo mật (Security Timers)")}
-            </h4>
+          {/* Section 2: Thời hạn bảo mật (Security Timers) */}
+          <div style={{
+            background: theme === 'dark' ? 'rgba(255, 255, 255, 0.02)' : 'rgba(0, 0, 0, 0.015)',
+            border: '1px solid var(--color-border-light)',
+            borderRadius: '12px',
+            padding: '1.25rem'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '0.5rem' }}>
+              <span style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: '28px',
+                height: '28px',
+                borderRadius: '8px',
+                background: 'rgba(217, 119, 6, 0.1)',
+                color: '#d97706'
+              }}>
+                <Clock size={15} />
+              </span>
+              <h4 style={{ fontSize: '0.9rem', fontWeight: 800, color: 'var(--color-text)', margin: 0 }}>
+                {t("2. Thời hạn bảo mật (Security Timers)")}
+              </h4>
+            </div>
+            <p style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)', margin: '0 0 1rem 0', lineHeight: 1.4 }}>
+              {t("Thời hạn bảo vệ lead ở từng trạng thái. Hết hạn sẽ tự động thu hồi về Databank.")}
+            </p>
+            
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px' }}>
-              <div>
-                <label className="form-label" style={{ fontSize: '0.75rem' }}>{t("Chưa xác định")}</label>
-                <input
-                  type="text"
-                  className="form-input"
-                  value={dbTimerChuaXacDinh}
-                  onChange={e => setDbTimerChuaXacDinh(e.target.value)}
-                  placeholder="Ví dụ: +3 hours"
-                  style={{ height: '34px' }}
-                />
-              </div>
-              <div>
-                <label className="form-label" style={{ fontSize: '0.75rem' }}>{t("Quan tâm")}</label>
-                <input
-                  type="text"
-                  className="form-input"
-                  value={dbTimerQuanTam}
-                  onChange={e => setDbTimerQuanTam(e.target.value)}
-                  placeholder="Ví dụ: +1 day"
-                  style={{ height: '34px' }}
-                />
-              </div>
-              <div>
-                <label className="form-label" style={{ fontSize: '0.75rem' }}>{t("Thiện chí")}</label>
-                <input
-                  type="text"
-                  className="form-input"
-                  value={dbTimerThienChi}
-                  onChange={e => setDbTimerThienChi(e.target.value)}
-                  placeholder="Ví dụ: +3 days"
-                  style={{ height: '34px' }}
-                />
-              </div>
-              <div>
-                <label className="form-label" style={{ fontSize: '0.75rem' }}>{t("Đồng ý gặp")}</label>
-                <input
-                  type="text"
-                  className="form-input"
-                  value={dbTimerDongYGap}
-                  onChange={e => setDbTimerDongYGap(e.target.value)}
-                  placeholder="Ví dụ: +4 days"
-                  style={{ height: '34px' }}
-                />
-              </div>
-              <div>
-                <label className="form-label" style={{ fontSize: '0.75rem' }}>{t("Đã gặp")}</label>
-                <input
-                  type="text"
-                  className="form-input"
-                  value={dbTimerDaGap}
-                  onChange={e => setDbTimerDaGap(e.target.value)}
-placeholder="Ví dụ: +5 days"
-                  style={{ height: '34px' }}
-                />
-              </div>
-              <div>
-                <label className="form-label" style={{ fontSize: '0.75rem' }}>{t("Booking")}</label>
-                <input
-                  type="text"
-                  className="form-input"
-                  value={dbTimerBooking}
-                  onChange={e => setDbTimerBooking(e.target.value)}
-                  placeholder="Ví dụ: +3 months"
-                  style={{ height: '34px' }}
-                />
-              </div>
+              {[
+                { label: t("Chưa xác định"), value: dbTimerChuaXacDinh, setter: setDbTimerChuaXacDinh },
+                { label: t("Quan tâm"), value: dbTimerQuanTam, setter: setDbTimerQuanTam },
+                { label: t("Thiện chí"), value: dbTimerThienChi, setter: setDbTimerThienChi },
+                { label: t("Đồng ý gặp"), value: dbTimerDongYGap, setter: setDbTimerDongYGap },
+                { label: t("Đã gặp"), value: dbTimerDaGap, setter: setDbTimerDaGap },
+                { label: t("Booking"), value: dbTimerBooking, setter: setDbTimerBooking }
+              ].map((timer, idx) => {
+                const parsed = parseTimerString(timer.value);
+                return (
+                  <div key={idx}>
+                    <label className="form-label" style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-light)', marginBottom: '4px', display: 'block' }}>
+                      {timer.label}
+                    </label>
+                    <div style={{ display: 'flex', alignItems: 'center', width: '100%' }}>
+                      <input
+                        type="number"
+                        className="form-input"
+                        value={parsed.value}
+                        onChange={e => {
+                          const newNum = Math.max(1, parseInt(e.target.value, 10) || 1);
+                          timer.setter(formatTimerString(newNum, parsed.unit));
+                        }}
+                        min={1}
+                        style={{
+                          flex: 1,
+                          height: '38px',
+                          borderRadius: '8px 0 0 8px',
+                          borderRight: 'none',
+                          textAlign: 'center',
+                          fontWeight: 700,
+                          color: 'var(--color-text)'
+                        }}
+                      />
+                      <select
+                        className="form-select"
+                        value={parsed.unit}
+                        onChange={e => {
+                          const newUnit = e.target.value;
+                          timer.setter(formatTimerString(parsed.value, newUnit));
+                        }}
+                        style={{
+                          width: '100px',
+                          height: '38px',
+                          padding: '0 8px',
+                          fontSize: '0.8rem',
+                          fontWeight: 600,
+                          color: 'var(--color-text)',
+                          background: 'var(--color-bg)',
+                          border: '1px solid var(--color-border)',
+                          borderRadius: '0 8px 8px 0',
+                          outline: 'none',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        <option value="hours">{t("giờ")}</option>
+                        <option value="days">{t("ngày")}</option>
+                        <option value="weeks">{t("tuần")}</option>
+                        <option value="months">{t("tháng")}</option>
+                        <option value="years">{t("năm")}</option>
+                      </select>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
 
-          <div style={{ borderTop: '1px solid var(--color-border-light)', paddingTop: '1rem' }}>
-            <label className="form-label" style={{ fontSize: '0.75rem', fontWeight: 700 }}>{t("3. Nguồn lead áp dụng ra kho")}</label>
-            <input
-              type="text"
-              className="form-input"
-              value={dbApplicableSources}
-              onChange={e => setDbApplicableSources(e.target.value)}
-              placeholder="Ví dụ: R3_Fb,R3,R2,broadcast"
-              style={{ height: '34px' }}
-            />
-            <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', marginTop: '4px', display: 'block' }}>
-              {t("Các nguồn lead cách nhau bằng dấu phẩy.")}
-            </span>
+          {/* Section 3: Nguồn lead áp dụng ra kho */}
+          <div style={{
+            background: theme === 'dark' ? 'rgba(255, 255, 255, 0.02)' : 'rgba(0, 0, 0, 0.015)',
+            border: '1px solid var(--color-border-light)',
+            borderRadius: '12px',
+            padding: '1.25rem'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '0.5rem' }}>
+              <span style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: '28px',
+                height: '28px',
+                borderRadius: '8px',
+                background: 'rgba(37, 99, 235, 0.1)',
+                color: '#2563eb'
+              }}>
+                <Database size={15} />
+              </span>
+              <h4 style={{ fontSize: '0.9rem', fontWeight: 800, color: 'var(--color-text)', margin: 0 }}>
+                {t("3. Nguồn lead áp dụng ra kho")}
+              </h4>
+            </div>
+            <p style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)', margin: '0 0 1rem 0', lineHeight: 1.4 }}>
+              {t("Chỉ thu hồi những lead có nguồn tương ứng về Databank khi hết hạn bảo mật.")}
+            </p>
+            
+            <div>
+              <input
+                type="text"
+                className="form-input"
+                value={dbApplicableSources}
+                onChange={e => setDbApplicableSources(e.target.value)}
+                placeholder="Ví dụ: R3_Fb,R3,R2,broadcast"
+                style={{
+                  height: '38px',
+                  borderRadius: '8px',
+                  fontSize: '0.8rem',
+                  fontWeight: 600,
+                  color: 'var(--color-text)'
+                }}
+              />
+              <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', marginTop: '6px', display: 'block' }}>
+                {t("Các nguồn lead cách nhau bằng dấu phẩy.")}
+              </span>
+            </div>
           </div>
 
-          <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1.5rem', gap: '0.75rem', borderTop: '1px solid var(--color-border-light)', paddingTop: '1rem' }}>
-            <button className="btn outline" onClick={() => setShowDatabankSettingsModal(false)} disabled={isSavingDbSettings}>{t("Hủy")}</button>
-            <button className="btn primary" onClick={handleSaveDatabankSettings} disabled={isSavingDbSettings}>
+          {/* Action Buttons */}
+          <div style={{
+            display: 'flex',
+            justifyContent: 'flex-end',
+            marginTop: '0.5rem',
+            gap: '0.75rem',
+            borderTop: '1px solid var(--color-border-light)',
+            paddingTop: '1.25rem'
+          }}>
+            <button
+              className="btn outline"
+              onClick={() => setShowDatabankSettingsModal(false)}
+              disabled={isSavingDbSettings}
+              style={{
+                height: '38px',
+                borderRadius: '8px',
+                padding: '0 16px',
+                fontSize: '0.82rem',
+                fontWeight: 600
+              }}
+            >
+              {t("Hủy")}
+            </button>
+            <button
+              className="btn primary"
+              onClick={handleSaveDatabankSettings}
+              disabled={isSavingDbSettings}
+              style={{
+                height: '38px',
+                borderRadius: '8px',
+                padding: '0 18px',
+                fontSize: '0.82rem',
+                fontWeight: 700,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px'
+              }}
+            >
+              {isSavingDbSettings ? <Loader2 className="animate-spin" size={14} /> : <Save size={14} />}
               {isSavingDbSettings ? t("Đang lưu...") : t("Lưu cấu hình")}
             </button>
           </div>

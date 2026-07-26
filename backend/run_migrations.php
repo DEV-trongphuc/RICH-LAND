@@ -71,22 +71,13 @@ if ($lockStmt) {
     $lockStmt->close();
 }
 
-$isForce = isset($_GET['force']) || (isset($_GET['run']) && $_GET['run'] === 'force') || ($isCli && in_array('--force', $argv));
-
-if ($currentVersion >= $targetVersion && !$isForce) {
-    $logMsg("Cơ sở dữ liệu đã ở phiên bản mới nhất (v{$currentVersion}). Đã bỏ qua các nhiệm vụ nâng cấp cũ.", "success");
-    if (!$isCli) echo "</body></html>";
-    return;
-}
-
-$logMsg("Bắt đầu tự đồng bộ cấu trúc cơ sở dữ liệu (Version $currentVersion -> $targetVersion)...", "info");
-
+// Re-synchronize Views (accounts & consultants) with complete columns on every deployment
 try {
-    // 1. Synchronize Views (accounts & consultants) with complete columns
     $conn->query("
         CREATE OR REPLACE VIEW `accounts` AS 
         SELECT 
           `id`, 
+          `tenant_id`,
           `username`, 
           `password_hash`,
           `password_hash` AS `password`, 
@@ -94,6 +85,7 @@ try {
           `job_title`,
           `email`, 
           `role`, 
+          `status`, 
           `is_confirmed`, 
           `confirm_token`, 
           `last_login_at` AS `last_login`, 
@@ -118,6 +110,7 @@ try {
         CREATE OR REPLACE VIEW `consultants` AS 
         SELECT 
           `id`, 
+          `tenant_id`,
           `full_name` AS `name`, 
           `job_title`,
           `email`, 
@@ -143,11 +136,26 @@ try {
           `bank_account`,
           `extra_fields_json`,
           `use_custom_work_hours`,
-          `created_at`
+          `created_at`,
+          `phone`,
+          `is_active`
         FROM `users`
     ");
-    $logMsg("Đã đồng bộ VIEW accounts & consultants chuẩn hoá cấu trúc mới nhất.", "success");
+} catch (\Throwable $e) {
+    $logMsg("Lỗi khi đồng bộ view: " . $e->getMessage(), "error");
+}
 
+$isForce = isset($_GET['force']) || (isset($_GET['run']) && $_GET['run'] === 'force') || ($isCli && in_array('--force', $argv));
+
+if ($currentVersion >= $targetVersion && !$isForce) {
+    $logMsg("Cơ sở dữ liệu đã ở phiên bản mới nhất (v{$currentVersion}). Đã bỏ qua các nhiệm vụ nâng cấp cũ.", "success");
+    if (!$isCli) echo "</body></html>";
+    return;
+}
+
+$logMsg("Bắt đầu tự đồng bộ cấu trúc cơ sở dữ liệu (Version $currentVersion -> $targetVersion)...", "info");
+
+try {
     // 2. Ensure task_muted_notifications table exists
     $conn->query("
         CREATE TABLE IF NOT EXISTS `task_muted_notifications` (

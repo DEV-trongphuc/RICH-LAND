@@ -628,71 +628,52 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
 
 
 
+  const isFetchingCountsRef = useRef(false);
+
   const fetchPendingCounts = useCallback(() => {
-    const role = user?.role as string;
-    if (role === 'admin' || role === 'superadmin' || role === 'super_admin' || role === 'director' || role === 'manager') {
-      let ticketsCount = 0;
-      let heldCount = 0;
-      let checkinsCount = 0;
-      let coopsCount = 0;
-      let supportCount = 0;
-      let expensesCount = 0;
+    if (!user || isFetchingCountsRef.current) return;
+    
+    isFetchingCountsRef.current = true;
+    
+    fetchAPI('get_all_pending_counts')
+      .then(res => {
+        if (res.success && res.data) {
+          const {
+            ticketsCount,
+            heldCount,
+            checkinsCount,
+            coopsCount,
+            supportCount,
+            expensesCount,
+            salesPendingSignCount
+          } = res.data;
 
-      const p1 = fetchAPI('get_reports&status=pending&date=all&pageSize=1')
-        .then(res => { if (res.success) ticketsCount = res.total_count ?? 0; });
-      const p2 = fetchAPI('get_held_leads&pageSize=1&date=all')
-        .then(res => { if (res.success) heldCount = res.total_count ?? 0; });
-      const p3 = fetchAPI('check-ins&status=pending_approval')
-        .then(res => { if (res.success && Array.isArray(res.data)) checkinsCount = res.data.length; });
-      const p4 = fetchAPI('cooperation-slips')
-        .then(res => {
-          if (res.success && Array.isArray(res.data)) {
-            coopsCount = res.data.filter((c: any) => 
-              c.status === 'pending_manager_approval' || 
-              (c.status === 'approved' && c.adjustment_request)
-            ).length;
-          }
-        });
-      const p5 = fetchAPI('get_support_tickets_count&status=open')
-        .then(res => {
-          if (res && res.success) {
-            supportCount = res.count || 0;
-          }
-        }).catch(() => {});
-      const p6 = fetchAPI('expenses?status=pending&limit=1')
-        .then(res => { if (res.success) expensesCount = res.data?.total ?? 0; }).catch(() => {});
+          setPendingTicketsCount(ticketsCount);
+          setHeldLeadsCount(heldCount);
+          setPendingCheckInsCount(checkinsCount);
+          setPendingCoopsCount(coopsCount);
+          setSupportTicketsCount(supportCount);
+          setPendingExpensesCount(expensesCount);
+          setSalesPendingSignCount(salesPendingSignCount);
 
-      Promise.all([p1, p2, p3, p4, p5, p6]).then(() => {
-        setPendingTicketsCount(ticketsCount);
-        setHeldLeadsCount(heldCount);
-        setPendingCheckInsCount(checkinsCount);
-        setPendingCoopsCount(coopsCount);
-        setSupportTicketsCount(supportCount);
-        setPendingExpensesCount(expensesCount);
-        
-        if (location.pathname !== '/support-tickets' && location.pathname !== '/expenses') {
-          if (ticketsCount > 0 || heldCount > 0 || checkinsCount > 0 || coopsCount > 0 || supportCount > 0 || expensesCount > 0) {
-            if (!hasAutoOpenedRef.current) {
-              setIsUnifiedInboxOpen(true);
-              hasAutoOpenedRef.current = true;
+          const currentPath = window.location.pathname;
+          if (currentPath !== '/support-tickets' && currentPath !== '/expenses') {
+            if (ticketsCount > 0 || heldCount > 0 || checkinsCount > 0 || coopsCount > 0 || supportCount > 0 || expensesCount > 0 || salesPendingSignCount > 0) {
+              if (!hasAutoOpenedRef.current) {
+                setIsUnifiedInboxOpen(true);
+                hasAutoOpenedRef.current = true;
+              }
             }
           }
         }
-      }).catch(err => console.error('Error loading unified approvals:', err));
-    } else if (user?.role === 'sale') {
-      fetchAPI('cooperation-slips')
-        .then(res => {
-          if (res.success && Array.isArray(res.data)) {
-            const pendingSign = res.data.filter((c: any) => 
-              (c.status === 'pending_signatures' || c.status === 'approved_pending_signatures') &&
-              c.shareholders?.some((sh: any) => sh.user_id === user?.id && !sh.signed)
-            );
-            setSalesPendingSignCount(pendingSign.length);
-          }
-        })
-        .catch(err => console.error('Error loading sales coops:', err));
-    }
-  }, [user, location.pathname]);
+      })
+      .catch(err => {
+        console.error('Error loading unified approvals:', err);
+      })
+      .finally(() => {
+        isFetchingCountsRef.current = false;
+      });
+  }, [user]);
 
   useEffect(() => {
     fetchPendingCounts();

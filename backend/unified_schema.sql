@@ -78,39 +78,68 @@ ALTER TABLE `users` ADD CONSTRAINT `fk_user_team` FOREIGN KEY (`team_id`) REFERE
 CREATE OR REPLACE VIEW `consultants` AS 
 SELECT 
   `id`, 
+  `tenant_id`,
   `full_name` AS `name`, 
+  `job_title`,
   `email`, 
+  `role`, 
   `status`, 
   `leave_start`, 
   `leave_end`, 
-  `created_at`, 
-  `zalo_chat_id`, 
   `work_start_time`, 
   `work_end_time`, 
   `work_schedule`, 
   `avatar_url` AS `avatar`, 
-  `vacation_mode`,
-  `team_id`
-FROM `users` 
-WHERE `role` = 'sales';
+  `signature_url`,
+  `zalo_chat_id`,
+  `telegram_chat_id`,
+  `vacation_mode`, 
+  `overtime_mode`,
+  `team_id`,
+  `dob`,
+  `gender`,
+  `citizen_id`,
+  `address`,
+  `bank_name`,
+  `bank_account`,
+  `extra_fields_json`,
+  `use_custom_work_hours`,
+  `created_at`,
+  `phone`,
+  `is_active`
+FROM `users`;
 
 -- 2.2 View: accounts (Backward compatibility for DATA app)
 CREATE OR REPLACE VIEW `accounts` AS 
 SELECT 
   `id`, 
+  `tenant_id`,
   `username`, 
-  `password_hash`, 
-  `role`, 
-  `full_name` AS `name`, 
-  `created_at`, 
+  `password_hash`,
+  `password_hash` AS `password`, 
+  `full_name` AS `name`,
+  `job_title`,
   `email`, 
-  `zalo_chat_id`, 
+  `role`, 
+  `status`, 
   `is_confirmed`, 
   `confirm_token`, 
   `last_login_at` AS `last_login`, 
-  `avatar_url` AS `avatar` 
-FROM `users` 
-WHERE `role` IN ('super_admin', 'admin', 'assistant', 'viewer', 'superadmin');
+  `avatar_url` AS `avatar`,
+  `signature_url`,
+  `zalo_chat_id`,
+  `telegram_chat_id`,
+  `created_at`,
+  `dob`,
+  `gender`,
+  `citizen_id`,
+  `address`,
+  `bank_name`,
+  `bank_account`,
+  `phone`,
+  `is_active`,
+  `team_id`
+FROM `users`;
 
 -- 3. Table: projects (Rễ liên kết - Module 6)
 CREATE TABLE IF NOT EXISTS `projects` (
