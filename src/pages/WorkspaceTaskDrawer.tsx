@@ -252,7 +252,7 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
     if (!isFocusedRef.current && editorRef.current) {
       editorRef.current.innerHTML = erpMeta?.description || '';
     }
-  }, [erpMeta?.description]);
+  }, [erpMeta?.description, task?.id]);
 
   const handleEditorUploadImage = () => {
     let savedRange = null;
@@ -1851,7 +1851,6 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
                   key={task.id}
                   ref={editorRef}
                   contentEditable
-                  dangerouslySetInnerHTML={{ __html: erpMeta.description || '' }}
                   onFocus={() => {
                     isFocusedRef.current = true;
                   }}
