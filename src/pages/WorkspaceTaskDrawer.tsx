@@ -292,7 +292,15 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
             }
           }
 
-          document.execCommand('insertImage', false, fileUrl);
+          const apiBase = import.meta.env.VITE_API_URL || '/backend';
+          let resolvedUrl = fileUrl;
+          if (fileUrl && fileUrl.startsWith('uploads/')) {
+            resolvedUrl = `${apiBase}/${fileUrl}`;
+          } else if (fileUrl && fileUrl.startsWith('storage/uploads/')) {
+            resolvedUrl = `${apiBase}/${fileUrl.replace('storage/uploads/', 'uploads/')}`;
+          }
+
+          document.execCommand('insertImage', false, resolvedUrl);
 
           if (editorRef.current) {
             const html = editorRef.current.innerHTML;
@@ -353,7 +361,15 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
             }
           }
 
-          document.execCommand('insertImage', false, fileUrl);
+          const apiBase = import.meta.env.VITE_API_URL || '/backend';
+          let resolvedUrl = fileUrl;
+          if (fileUrl && fileUrl.startsWith('uploads/')) {
+            resolvedUrl = `${apiBase}/${fileUrl}`;
+          } else if (fileUrl && fileUrl.startsWith('storage/uploads/')) {
+            resolvedUrl = `${apiBase}/${fileUrl.replace('storage/uploads/', 'uploads/')}`;
+          }
+
+          document.execCommand('insertImage', false, resolvedUrl);
 
           if (editorRef.current) {
             const html = editorRef.current.innerHTML;
