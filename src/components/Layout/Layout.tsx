@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useLanguage } from '../../contexts/LanguageContext';
@@ -106,6 +106,7 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
   const [pendingCoopsCount, setPendingCoopsCount] = useState<number>(0);
   const [pendingExpensesCount, setPendingExpensesCount] = useState<number>(0);
   const [isUnifiedInboxOpen, setIsUnifiedInboxOpen] = useState<boolean>(false);
+  const hasAutoOpenedRef = useRef<boolean>(false);
   
   // Sales pending signatures state
   const [salesPendingSignCount, setSalesPendingSignCount] = useState<number>(0);
@@ -671,7 +672,10 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
         
         if (location.pathname !== '/support-tickets' && location.pathname !== '/expenses') {
           if (ticketsCount > 0 || heldCount > 0 || checkinsCount > 0 || coopsCount > 0 || supportCount > 0 || expensesCount > 0) {
-            setIsUnifiedInboxOpen(true);
+            if (!hasAutoOpenedRef.current) {
+              setIsUnifiedInboxOpen(true);
+              hasAutoOpenedRef.current = true;
+            }
           }
         }
       }).catch(err => console.error('Error loading unified approvals:', err));
