@@ -53,6 +53,36 @@ export const SettingsPage: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(false);
 
+  const renderLastLogin = (lastLoginStr: string | null) => {
+    if (!lastLoginStr) {
+      return <span className="text-sm text-light">—</span>;
+    }
+    const lastLoginDate = new Date(lastLoginStr.replace(/-/g, '/'));
+    const now = new Date();
+    const diffMins = Math.abs(now.getTime() - lastLoginDate.getTime()) / (1000 * 60);
+
+    if (diffMins < 5) {
+      return (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#10b981', fontSize: '0.8125rem', fontWeight: 600 }}>
+          <span style={{
+            width: '8px',
+            height: '8px',
+            borderRadius: '50%',
+            background: '#10b981',
+            boxShadow: '0 0 8px #10b981'
+          }} />
+          <span>Đang hoạt động</span>
+        </div>
+      );
+    }
+
+    return (
+      <span className="text-sm text-light">
+        {lastLoginDate.toLocaleString('vi-VN', { dateStyle: 'short', timeStyle: 'short' })}
+      </span>
+    );
+  };
+
   const [pipelines, setPipelines] = useState<any[]>([]);
   const [tags, setTags] = useState<any[]>([]);
   const [customFields, setCustomFields] = useState<any[]>([]);
@@ -313,7 +343,7 @@ export const SettingsPage: React.FC = () => {
                     <td style={{ padding: '0.875rem 1rem', verticalAlign: 'middle' }}><span className={`badge ${R_COLOR[u.role]}`}>{R_LABEL[u.role]}</span></td>
                     <td style={{ padding: '0.875rem 1rem', verticalAlign: 'middle' }}><span className={`badge ${u.is_active ? 'success' : 'danger'}`}>{u.is_active ? 'Đang hoạt động' : 'Vô hiệu hóa'}</span></td>
                     <td style={{ padding: '0.875rem 1rem', verticalAlign: 'middle' }}>
-                      <span className="text-sm text-light">{u.last_login_at ? new Date(u.last_login_at).toLocaleString('vi-VN', { dateStyle: 'short', timeStyle: 'short' }) : '—'}</span>
+                      {renderLastLogin(u.last_login_at)}
                     </td>
                     <td style={{ padding: '0.875rem 1rem', verticalAlign: 'middle' }}>
                       <div className="flex gap-2">

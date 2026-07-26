@@ -22,6 +22,48 @@ const AccountsInner = () => {
   const { user } = useAuth();
   const { showConfirm } = useUIStore();
   const isSale = user?.role === 'sale';
+
+  const renderLastLogin = (lastLoginStr: string | null) => {
+    if (!lastLoginStr) {
+      return (
+        <span style={{ color: 'var(--color-text-muted)', fontSize: '0.8125rem', fontStyle: 'italic' }}>
+          {t('Chưa đăng nhập')}
+        </span>
+      );
+    }
+    const lastLoginDate = new Date(lastLoginStr.replace(/-/g, '/'));
+    const now = new Date();
+    const diffMins = Math.abs(now.getTime() - lastLoginDate.getTime()) / (1000 * 60);
+
+    if (diffMins < 5) {
+      return (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#10b981', fontSize: '0.8125rem', fontWeight: 600 }}>
+          <span style={{
+            width: '8px',
+            height: '8px',
+            borderRadius: '50%',
+            background: '#10b981',
+            boxShadow: '0 0 8px #10b981'
+          }} />
+          <span>{t('Đang hoạt động')}</span>
+        </div>
+      );
+    }
+
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#b5b5c3' }} />
+          <span style={{ fontSize: '0.8125rem', color: 'var(--color-text)', fontWeight: 600 }}>
+            {lastLoginDate.toLocaleDateString('vi-VN')}
+          </span>
+        </div>
+        <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', paddingLeft: '14px' }}>
+          {lastLoginDate.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
+        </span>
+      </div>
+    );
+  };
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
 
   useEffect(() => {
@@ -1331,14 +1373,7 @@ const AccountsInner = () => {
                           {getRoleBadge(acc.role)}
                         </td>
                         <td data-label={t('Hoạt động')} style={{ padding: '1rem 1.5rem' }}>
-                          {acc.last_login ? (
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                              <span style={{ fontSize: '0.8125rem', color: 'var(--color-text)', fontWeight: 600 }}>{new Date(acc.last_login).toLocaleDateString('vi-VN')}</span>
-                              <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{new Date(acc.last_login).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}</span>
-                            </div>
-                          ) : (
-                            <span style={{ color: 'var(--color-text-muted)', fontSize: '0.8125rem', fontStyle: 'italic' }}>{t('Chưa đăng nhập')}</span>
-                          )}
+                          {renderLastLogin(acc.last_login)}
                         </td>
                         <td data-label={t('Thao tác')} style={{ padding: '1rem 1.5rem', textAlign: 'right' }}>
                           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, alignItems: 'center' }}>
