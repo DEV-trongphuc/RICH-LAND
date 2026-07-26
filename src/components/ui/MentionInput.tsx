@@ -291,20 +291,45 @@ export const MentionInput: React.FC<MentionInputProps> = ({
       if (res.data && res.data.success && fileUrl) {
         toast.success('Tải ảnh lên thành công!', { id: toastId });
         
+        const apiBase = import.meta.env.VITE_API_URL || '/backend';
+        let resolvedUrl = fileUrl;
+        if (fileUrl && fileUrl.startsWith('uploads/')) {
+          resolvedUrl = `${apiBase}/${fileUrl}`;
+        } else if (fileUrl && fileUrl.startsWith('storage/uploads/')) {
+          resolvedUrl = `${apiBase}/${fileUrl.replace('storage/uploads/', 'uploads/')}`;
+        }
+
+        // Create image node directly
+        const img = document.createElement('img');
+        img.src = resolvedUrl;
+        img.alt = 'Uploaded Image';
+        img.style.maxWidth = '100%';
+        img.style.borderRadius = '8px';
+        img.style.margin = '8px 0';
+        img.style.display = 'block';
+
         if (editorRef.current) {
           editorRef.current.focus();
-          if (range) {
-            const selection = window.getSelection();
-            if (selection) {
-              selection.removeAllRanges();
+          const selection = window.getSelection();
+          if (selection) {
+            selection.removeAllRanges();
+            if (range) {
               selection.addRange(range);
             }
           }
-        }
-        
-        document.execCommand('insertImage', false, fileUrl);
-        
-        if (editorRef.current) {
+
+          if (selection && selection.rangeCount > 0) {
+            const r = selection.getRangeAt(0);
+            r.deleteContents();
+            r.insertNode(img);
+            r.setStartAfter(img);
+            r.setEndAfter(img);
+            selection.removeAllRanges();
+            selection.addRange(r);
+          } else {
+            editorRef.current.appendChild(img);
+          }
+
           const html = editorRef.current.innerHTML;
           onChange({ target: { value: html } } as any);
           checkEmpty();
