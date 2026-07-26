@@ -281,17 +281,6 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
         if (res.data && res.data.success && fileUrl) {
           toast.success(t('Tải ảnh lên thành công!'), { id: toastId });
 
-          if (editorRef.current) {
-            editorRef.current.focus();
-            if (savedRange) {
-              const selection = window.getSelection();
-              if (selection) {
-                selection.removeAllRanges();
-                selection.addRange(savedRange);
-              }
-            }
-          }
-
           const apiBase = import.meta.env.VITE_API_URL || '/backend';
           let resolvedUrl = fileUrl;
           if (fileUrl && fileUrl.startsWith('uploads/')) {
@@ -300,9 +289,37 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
             resolvedUrl = `${apiBase}/${fileUrl.replace('storage/uploads/', 'uploads/')}`;
           }
 
-          document.execCommand('insertImage', false, resolvedUrl);
+          // Create image node directly
+          const img = document.createElement('img');
+          img.src = resolvedUrl;
+          img.alt = 'Uploaded Image';
+          img.style.maxWidth = '100%';
+          img.style.borderRadius = '8px';
+          img.style.margin = '8px 0';
+          img.style.display = 'block';
 
           if (editorRef.current) {
+            editorRef.current.focus();
+            const selection = window.getSelection();
+            if (selection) {
+              selection.removeAllRanges();
+              if (savedRange) {
+                selection.addRange(savedRange);
+              }
+            }
+
+            if (selection && selection.rangeCount > 0) {
+              const range = selection.getRangeAt(0);
+              range.deleteContents();
+              range.insertNode(img);
+              range.setStartAfter(img);
+              range.setEndAfter(img);
+              selection.removeAllRanges();
+              selection.addRange(range);
+            } else {
+              editorRef.current.appendChild(img);
+            }
+
             const html = editorRef.current.innerHTML;
             setErpMeta((prev) => ({ ...prev, description: html }));
             handleSaveMeta({ ...erpMeta, description: html });
@@ -350,17 +367,6 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
         if (res.data && res.data.success && fileUrl) {
           toast.success(t('Tải ảnh lên thành công!'), { id: toastId });
 
-          if (editorRef.current) {
-            editorRef.current.focus();
-            if (savedRange) {
-              const selection = window.getSelection();
-              if (selection) {
-                selection.removeAllRanges();
-                selection.addRange(savedRange);
-              }
-            }
-          }
-
           const apiBase = import.meta.env.VITE_API_URL || '/backend';
           let resolvedUrl = fileUrl;
           if (fileUrl && fileUrl.startsWith('uploads/')) {
@@ -369,9 +375,37 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
             resolvedUrl = `${apiBase}/${fileUrl.replace('storage/uploads/', 'uploads/')}`;
           }
 
-          document.execCommand('insertImage', false, resolvedUrl);
+          // Create image node directly
+          const img = document.createElement('img');
+          img.src = resolvedUrl;
+          img.alt = 'Pasted Image';
+          img.style.maxWidth = '100%';
+          img.style.borderRadius = '8px';
+          img.style.margin = '8px 0';
+          img.style.display = 'block';
 
           if (editorRef.current) {
+            editorRef.current.focus();
+            const selection = window.getSelection();
+            if (selection) {
+              selection.removeAllRanges();
+              if (savedRange) {
+                selection.addRange(savedRange);
+              }
+            }
+
+            if (selection && selection.rangeCount > 0) {
+              const range = selection.getRangeAt(0);
+              range.deleteContents();
+              range.insertNode(img);
+              range.setStartAfter(img);
+              range.setEndAfter(img);
+              selection.removeAllRanges();
+              selection.addRange(range);
+            } else {
+              editorRef.current.appendChild(img);
+            }
+
             const html = editorRef.current.innerHTML;
             setErpMeta((prev) => ({ ...prev, description: html }));
             handleSaveMeta({ ...erpMeta, description: html });
