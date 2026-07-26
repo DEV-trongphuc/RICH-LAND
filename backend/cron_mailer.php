@@ -328,6 +328,89 @@ function runZaloMailerCron($conn) {
     echo "[" . date('Y-m-d H:i:s') . "] Zalo: Processed $successCount sent, $failCount failed.\n";
 }
 
+function runTelegramMailerCron($conn) {
+    require_once __DIR__ . '/telegram_bot.php';
+
+    // 1. Tự động khôi phục các tin nhắn bị kẹt ở trạng thái 'processing' từ phiên chạy trước bị lỗi (quá 10 phút)
+    $conn->query("UPDATE telegram_queue SET status = 'pending' WHERE status = 'processing' AND (updated_at IS NULL OR updated_at <= DATE_SUB(NOW(), INTERVAL 10 MINUTE))");
+
+    // 2. Kéo tối đa 50 tin nhắn đang chờ gửi hoặc bị lỗi dưới 3 lần
+    $conn->begin_transaction();
+    $res = $conn->query("SELECT id, bot_token, chat_id, body_text, attempts, lead_id FROM telegram_queue WHERE status = 'pending' OR (status = 'failed' AND attempts < 3) ORDER BY id ASC LIMIT 50 FOR UPDATE SKIP LOCKED");
+    
+    $msgs = [];
+    $ids = [];
+    if ($res) {
+        while ($row = $res->fetch_assoc()) {
+            $msgs[] = $row;
+            $ids[] = (int)$row['id'];
+        }
+    }
+
+    if (empty($msgs)) {
+        $conn->commit();
+        echo "[" . date('Y-m-d H:i:s') . "] No pending or retryable Telegram messages to send.\n";
+        return;
+    }
+
+    $idsStr = implode(',', $ids);
+    $conn->query("UPDATE telegram_queue SET status = 'processing' WHERE id IN ($idsStr)");
+    $conn->commit();
+
+    echo "[" . date('Y-m-d H:i:s') . "] Found " . count($msgs) . " Telegram messages to process. Processing...\n";
+
+    $successCount = 0;
+    $failCount = 0;
+
+    $updSuccessStmt = $conn->prepare("UPDATE telegram_queue SET status = 'sent', sent_at = NOW(), attempts = attempts + 1, last_error = NULL WHERE id = ?");
+    $updFailStmt = $conn->prepare("UPDATE telegram_queue SET status = 'failed', attempts = attempts + 1, last_error = ? WHERE id = ?");
+
+    foreach ($msgs as $row) {
+        $msgId = $row['id'];
+        $botToken = $row['bot_token'];
+        $chatId = $row['chat_id'];
+        $text = $row['body_text'];
+        $leadId = isset($row['lead_id']) ? (int)$row['lead_id'] : 0;
+
+        // Gửi trực tiếp cURL bằng cách truyền $sync = true
+        $isSent = sendTelegramMessage($botToken, $chatId, $text, true, $leadId);
+
+        try {
+            if ($isSent) {
+                if ($updSuccessStmt) {
+                    $updSuccessStmt->bind_param("i", $msgId);
+                    $updSuccessStmt->execute();
+                }
+                $successCount++;
+            } else {
+                $err = "Telegram API Send Failed";
+                if ($updFailStmt) {
+                    $updFailStmt->bind_param("si", $err, $msgId);
+                    $updFailStmt->execute();
+                }
+                $failCount++;
+            }
+        } catch (Throwable $dbEx) {
+            error_log("Database write failed for Telegram item $msgId: " . $dbEx->getMessage());
+        }
+
+        // Nghỉ 100ms
+        usleep(100000);
+    }
+
+    if ($updSuccessStmt) $updSuccessStmt->close();
+    if ($updFailStmt) $updFailStmt->close();
+
+    // Dọn dẹp cũ
+    try {
+        $conn->query("DELETE FROM telegram_queue WHERE (status = 'sent' OR status = 'failed') AND (sent_at < DATE_SUB(NOW(), INTERVAL 30 DAY) OR (sent_at IS NULL AND created_at < DATE_SUB(NOW(), INTERVAL 30 DAY)))");
+    } catch (Exception $e) {
+        error_log("Failed to prune Telegram queue: " . $e->getMessage());
+    }
+
+    echo "[" . date('Y-m-d H:i:s') . "] Telegram: Processed $successCount sent, $failCount failed.\n";
+}
+
 // Nếu gọi trực tiếp từ CLI hoặc Cron
 if (php_sapi_name() === 'cli' || isset($_GET['run'])) {
     try {
@@ -342,6 +425,13 @@ if (php_sapi_name() === 'cli' || isset($_GET['run'])) {
     } catch (Throwable $e) {
         error_log("Error running Zalo Mailer Cron: " . $e->getMessage());
         echo "Error running Zalo Mailer Cron: " . $e->getMessage() . "\n";
+    }
+
+    try {
+        runTelegramMailerCron($conn);
+    } catch (Throwable $e) {
+        error_log("Error running Telegram Mailer Cron: " . $e->getMessage());
+        echo "Error running Telegram Mailer Cron: " . $e->getMessage() . "\n";
     }
     $conn->close();
 }

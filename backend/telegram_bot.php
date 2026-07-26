@@ -27,40 +27,34 @@ function sendTelegramMessage($botToken, $chatId, $text, $syncOrLeadId = true, $l
     }
 
     if (!$sync) {
-        $url = "https://api.telegram.org/bot" . $botToken . "/sendMessage";
-        $parts = parse_url($url);
-        $host = $parts['host'];
-        $path = $parts['path'];
-
-        $payload = json_encode([
-            "chat_id" => $chatId,
-            "text" => $text,
-            "parse_mode" => "HTML"
-        ], JSON_UNESCAPED_UNICODE);
-
-        $fp = @fsockopen("ssl://" . $host, 443, $errno, $errstr, 2);
-        if ($fp) {
-            $out = "POST " . $path . " HTTP/1.1\r\n";
-            $out .= "Host: " . $host . "\r\n";
-            $out .= "Content-Type: application/json\r\n";
-            $out .= "Content-Length: " . strlen($payload) . "\r\n";
-            $out .= "Connection: Close\r\n\r\n";
-            $out .= $payload;
-
-            @fwrite($fp, $out);
-            @fclose($fp);
-
-            // Ghi nhận log gửi tin nhắn Telegram để kiểm tra lỗi
-            $logMsg = date('[Y-m-d H:i:s]') . " Target ChatId: $chatId, ASYNC SENT (fsockopen)\n";
-            $logFile = __DIR__ . '/telegram_send_log.txt';
-            @file_put_contents($logFile, $logMsg, FILE_APPEND | LOCK_EX);
-
-            if (function_exists('log_communication')) {
-                log_communication($conn ?? $GLOBALS['pdo'] ?? null, $leadId, 'telegram', $chatId, 'sent', null);
+        $lId = ($leadId > 0) ? $leadId : null;
+        if ($conn instanceof PDO) {
+            $stmt = $conn->prepare("INSERT INTO telegram_queue (bot_token, chat_id, body_text, status, lead_id) VALUES (?, ?, ?, 'pending', ?)");
+            $result = $stmt->execute([$botToken, $chatId, $text, $lId]);
+            if ($leadId > 0) {
+                $stmtLead = $conn->prepare("UPDATE leads SET telegram_notify_status = 'pending' WHERE id = ?");
+                $stmtLead->execute([$leadId]);
             }
-            return true;
+            return $result;
+        } else {
+            $stmt = $conn->prepare("INSERT INTO telegram_queue (bot_token, chat_id, body_text, status, lead_id) VALUES (?, ?, ?, 'pending', ?)");
+            if ($stmt) {
+                $stmt->bind_param("sssi", $botToken, $chatId, $text, $lId);
+                $result = $stmt->execute();
+                $stmt->close();
+
+                if ($leadId > 0) {
+                    $stmtLead = $conn->prepare("UPDATE leads SET telegram_notify_status = 'pending' WHERE id = ?");
+                    if ($stmtLead) {
+                        $stmtLead->bind_param("i", $leadId);
+                        $stmtLead->execute();
+                        $stmtLead->close();
+                    }
+                }
+                return $result;
+            }
         }
-        // Fallback to sync curl if socket connection fails
+        return false;
     }
 
     $url = "https://api.telegram.org/bot" . $botToken . "/sendMessage";
@@ -103,6 +97,16 @@ function sendTelegramMessage($botToken, $chatId, $text, $syncOrLeadId = true, $l
     $newStatus = $isSent ? 'sent' : 'failed';
     $errorMessage = $isSent ? null : ("HTTP Code: " . $httpCode . ", Response: " . ($response ?: 'NO RESPONSE'));
 
+    if ($leadId > 0) {
+        $sentAtExpr = $isSent ? ", telegram_notify_sent_at = NOW(), last_interaction_date = NOW()" : "";
+        $stmtLead = $conn->prepare("UPDATE leads SET telegram_notify_status = ? $sentAtExpr WHERE id = ?");
+        if ($stmtLead) {
+            $stmtLead->bind_param("si", $newStatus, $leadId);
+            $stmtLead->execute();
+            $stmtLead->close();
+        }
+    }
+
     if (function_exists('log_communication')) {
         log_communication($conn ?? $GLOBALS['pdo'] ?? null, $leadId, 'telegram', $chatId, $newStatus, $errorMessage);
     }
@@ -113,7 +117,7 @@ function sendTelegramMessage($botToken, $chatId, $text, $syncOrLeadId = true, $l
 /**
  * Gửi tin nhắn thông báo data mới cho Sale qua Telegram
  */
-function sendLeadAssignedTelegramMessageToSale($consultantId, $consultantName, $leadName, $leadPhone, $leadNote = '', $leadSource = '', $roundName = '', $leadId = 0, $roundId = 0, $leadEmail = '', $leadType = '')
+function sendLeadAssignedTelegramMessageToSale($consultantId, $consultantName, $leadName, $leadPhone, $leadNote = '', $leadSource = '', $roundName = '', $leadId = 0, $roundId = 0, $leadEmail = '', $leadType = '', $sync = false)
 {
     global $conn;
 
@@ -159,29 +163,13 @@ function sendLeadAssignedTelegramMessageToSale($consultantId, $consultantName, $
         $text .= " • <b>Ghi chú:</b> <i>" . htmlspecialchars($leadNote) . "</i>\n";
     }
     
-    $res = sendTelegramMessage($botToken, $chatId, $text, $leadId);
-    if ($res && $leadId > 0) {
-        $stmtUpdate = $conn->prepare("UPDATE leads SET telegram_notify_status = 'sent', telegram_notify_sent_at = NOW() WHERE id = ?");
-        if ($stmtUpdate) {
-            $stmtUpdate->bind_param("i", $leadId);
-            $stmtUpdate->execute();
-            $stmtUpdate->close();
-        }
-    } else if (!$res && $leadId > 0) {
-        $stmtUpdate = $conn->prepare("UPDATE leads SET telegram_notify_status = 'failed' WHERE id = ?");
-        if ($stmtUpdate) {
-            $stmtUpdate->bind_param("i", $leadId);
-            $stmtUpdate->execute();
-            $stmtUpdate->close();
-        }
-    }
-    return $res;
+    return sendTelegramMessage($botToken, $chatId, $text, $sync, $leadId);
 }
 
 /**
  * Gửi thông báo nhắc nhở chăm sóc Lead cho Sale qua Telegram
  */
-function sendLeadReminderTelegramMessageToSale($consultantId, $consultantName, $leadName, $leadPhone, $leadNote = '', $leadSource = '', $roundName = '', $timeline = [], $leadId = 0, $leadEmail = '', $leadType = '')
+function sendLeadReminderTelegramMessageToSale($consultantId, $consultantName, $leadName, $leadPhone, $leadNote = '', $leadSource = '', $roundName = '', $timeline = [], $leadId = 0, $leadEmail = '', $leadType = '', $sync = false)
 {
     global $conn;
 
@@ -221,23 +209,7 @@ function sendLeadReminderTelegramMessageToSale($consultantId, $consultantName, $
         $text .= " • <b>Ghi chú:</b> <i>" . htmlspecialchars($leadNote) . "</i>\n";
     }
 
-    $res = sendTelegramMessage($botToken, $chatId, $text, $leadId);
-    if ($res && $leadId > 0) {
-        $stmtUpdate = $conn->prepare("UPDATE leads SET telegram_notify_status = 'sent', telegram_notify_sent_at = NOW() WHERE id = ?");
-        if ($stmtUpdate) {
-            $stmtUpdate->bind_param("i", $leadId);
-            $stmtUpdate->execute();
-            $stmtUpdate->close();
-        }
-    } else if (!$res && $leadId > 0) {
-        $stmtUpdate = $conn->prepare("UPDATE leads SET telegram_notify_status = 'failed' WHERE id = ?");
-        if ($stmtUpdate) {
-            $stmtUpdate->bind_param("i", $leadId);
-            $stmtUpdate->execute();
-            $stmtUpdate->close();
-        }
-    }
-    return $res;
+    return sendTelegramMessage($botToken, $chatId, $text, $sync, $leadId);
 }
 
 /**

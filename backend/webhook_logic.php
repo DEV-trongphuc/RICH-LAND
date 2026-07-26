@@ -1686,7 +1686,7 @@ function sendDirectSaleLeadNotification($conn, $leadId, $assignedToId, $roundId 
         // 5. Send Zalo
         if (!empty($botToken) && !empty($sale['zalo_chat_id'])) {
             require_once __DIR__ . '/zalo_bot.php';
-            sendZaloMessage($botToken, $sale['zalo_chat_id'], $zaloMsg, true, (int)$leadId);
+            sendZaloMessage($botToken, $sale['zalo_chat_id'], $zaloMsg, false, (int)$leadId);
         }
 
         // 6. Send Email
@@ -1710,7 +1710,7 @@ function sendDirectSaleLeadNotification($conn, $leadId, $assignedToId, $roundId 
                 . "⏰ <i>Vui lòng truy cập hệ thống CRM để TIẾP NHẬN LEAD NGAY!</i>";
             
             if (function_exists('sendTelegramMessage')) {
-                sendTelegramMessage($teleBotToken, $sale['telegram_chat_id'], $teleMsg, true, (int)$leadId);
+                sendTelegramMessage($teleBotToken, $sale['telegram_chat_id'], $teleMsg, false, (int)$leadId);
             }
         }
 

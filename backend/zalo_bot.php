@@ -114,7 +114,7 @@ function sendZaloMessage($botToken, $chatId, $text, $sync = true, $leadId = 0)
     log_communication($conn ?? null, $leadId, 'zalo', $chatId, $newStatus, $errorMessage);
 
     if ($leadId > 0) {
-        $sentAtExpr = $isSent ? ", zalo_notify_sent_at = NOW()" : "";
+        $sentAtExpr = $isSent ? ", zalo_notify_sent_at = NOW(), last_interaction_date = NOW()" : "";
         $stmtLead = $conn->prepare("UPDATE leads SET zalo_notify_status = ? $sentAtExpr WHERE id = ?");
         if ($stmtLead) {
             $stmtLead->bind_param("si", $newStatus, $leadId);
