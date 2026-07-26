@@ -797,6 +797,14 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
       return;
     }
 
+    if (isMobile) {
+      setWsTaskFilter('assigned_to_me');
+      setWsStatus('pending');
+      setWsDatePreset('today');
+      setWsSubTab('personal');
+      return;
+    }
+
     setFocusTasksList(focusList);
     setFocusTaskIndex(0);
     setIsFocusSessionActive(true);
@@ -5632,7 +5640,6 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                   {[
                     { value: 'all', label: t('Tất cả') },
                     { value: 'assigned_to_me', label: isMobile ? t('Tôi làm') : t('Tôi thực hiện') },
-                    currentUser && ['admin', 'superadmin', 'super_admin', 'manager', 'director', 'vp', 'leader', 'assistant'].includes(String(currentUser.role).toLowerCase()) && { value: 'approve_by_me', label: isMobile ? t('Tôi duyệt') : t('Tôi duyệt') },
                     { value: 'collaborator', label: isMobile ? t('Liên quan') : t('Tôi liên quan') }
                   ].filter((tab): tab is { value: string; label: string } => !!tab).map(tab => {
                     const isSelected = wsTaskFilter === tab.value;
