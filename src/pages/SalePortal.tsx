@@ -9638,6 +9638,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                         key={lead.id} 
                         className="table-row-hover" 
                         onClick={() => {
+                          if (Number(lead.is_won) === 1) return;
                           if (isAdmin) {
                             setAdminActionLead(lead);
                           } else if (canClaim) {
@@ -9648,7 +9649,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                           borderBottom: '1px solid var(--color-border-light)', 
                           color: 'var(--color-text)', 
                           transition: 'background 0.2s',
-                          cursor: (canClaim || isAdmin) ? 'pointer' : (isQuotaExceeded && !hasClaimed ? 'not-allowed' : 'default'),
+                          cursor: Number(lead.is_won) === 1 ? 'default' : ((canClaim || isAdmin) ? 'pointer' : (isQuotaExceeded && !hasClaimed ? 'not-allowed' : 'default')),
                           opacity: (isQuotaExceeded && !hasClaimed) ? 0.65 : 1
                         }}
                       >
@@ -9682,7 +9683,13 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                         <td style={{ padding: '1rem' }}>
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'flex-start' }}>
                             <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
-                              {getStatusBadge('databank', undefined, undefined, undefined, lead.takers)}
+                              {Number(lead.is_won) === 1 ? (
+                                <span className="badge" style={{ background: '#ffe3e8', color: '#8a0f1b', border: '1px solid #ffe3e8', fontWeight: 700 }}>
+                                  {t('Đặt cọc')}
+                                </span>
+                              ) : (
+                                getStatusBadge('databank', undefined, undefined, undefined, lead.takers)
+                              )}
                               {Number(lead.deleted_from_databank) === 1 && (
                                 <span className="badge" style={{ background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', border: '1px solid rgba(239, 68, 68, 0.2)' }}>
                                   {t('Đã ẩn/xóa')}
@@ -9756,136 +9763,142 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                         </td>
                         <td style={{ padding: '1rem', textAlign: 'right' }}>
                           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '8px' }}>
-                            {isAdmin && (
+                            {Number(lead.is_won) === 1 ? (
+                              <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', fontStyle: 'italic', paddingRight: '8px' }}>-</span>
+                            ) : (
                               <>
-                                {Number(lead.deleted_from_databank) === 1 ? (
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleRestorePublicLeads([lead.id]);
-                                    }}
-                                    className="btn sm outline success-hover"
-                                    style={{
-                                      height: 32,
-                                      width: 32,
-                                      padding: 0,
-                                      borderRadius: '50%',
-                                      display: 'inline-flex',
-                                      alignItems: 'center',
-                                      justifyContent: 'center',
-                                      border: '1px solid var(--color-border)',
-                                      background: 'transparent',
-                                      color: 'var(--color-text-muted)',
-                                      cursor: 'pointer'
-                                    }}
-                                    title={t('Khôi phục hiển thị Databank')}
-                                  >
-                                    <RotateCcw size={14} />
-                                  </button>
-                                ) : (
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleDeletePublicLeads([lead.id]);
-                                    }}
-                                    className="btn sm outline danger-hover"
-                                    style={{
-                                      height: 32,
-                                      width: 32,
-                                      padding: 0,
-                                      borderRadius: '50%',
-                                      display: 'inline-flex',
-                                      alignItems: 'center',
-                                      justifyContent: 'center',
-                                      border: '1px solid var(--color-border)',
-                                      background: 'transparent',
-                                      color: 'var(--color-text-muted)',
-                                      cursor: 'pointer'
-                                    }}
-                                    title={t('Ẩn/Xóa khỏi Databank')}
-                                  >
-                                    <Trash2 size={14} />
-                                  </button>
-                                )}
+                                {isAdmin && (
+                                  <>
+                                    {Number(lead.deleted_from_databank) === 1 ? (
+                                      <button
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleRestorePublicLeads([lead.id]);
+                                        }}
+                                        className="btn sm outline success-hover"
+                                        style={{
+                                          height: 32,
+                                          width: 32,
+                                          padding: 0,
+                                          borderRadius: '50%',
+                                          display: 'inline-flex',
+                                          alignItems: 'center',
+                                          justifyContent: 'center',
+                                          border: '1px solid var(--color-border)',
+                                          background: 'transparent',
+                                          color: 'var(--color-text-muted)',
+                                          cursor: 'pointer'
+                                        }}
+                                        title={t('Khôi phục hiển thị Databank')}
+                                      >
+                                        <RotateCcw size={14} />
+                                      </button>
+                                    ) : (
+                                      <button
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleDeletePublicLeads([lead.id]);
+                                        }}
+                                        className="btn sm outline danger-hover"
+                                        style={{
+                                          height: 32,
+                                          width: 32,
+                                          padding: 0,
+                                          borderRadius: '50%',
+                                          display: 'inline-flex',
+                                          alignItems: 'center',
+                                          justifyContent: 'center',
+                                          border: '1px solid var(--color-border)',
+                                          background: 'transparent',
+                                          color: 'var(--color-text-muted)',
+                                          cursor: 'pointer'
+                                        }}
+                                        title={t('Ẩn/Xóa khỏi Databank')}
+                                      >
+                                        <Trash2 size={14} />
+                                      </button>
+                                    )}
 
-                                {Number(lead.is_blocked) === 1 ? (
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleUnblockPublicLeads([lead.id]);
-                                    }}
-                                    className="btn sm outline info-hover"
-                                    style={{
-                                      height: 32,
-                                      width: 32,
-                                      padding: 0,
-                                      borderRadius: '50%',
-                                      display: 'inline-flex',
-                                      alignItems: 'center',
-                                      justifyContent: 'center',
-                                      border: '1px solid var(--color-border)',
-                                      background: 'transparent',
-                                      color: 'var(--color-text-muted)',
-                                      cursor: 'pointer'
-                                    }}
-                                    title={t('Hủy chặn vĩnh viễn')}
-                                  >
-                                    <CheckSquare size={14} />
-                                  </button>
-                                ) : (
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleBlockPublicLeads([lead.id]);
-                                    }}
-                                    className="btn sm outline danger-hover"
-                                    style={{
-                                      height: 32,
-                                      width: 32,
-                                      padding: 0,
-                                      borderRadius: '50%',
-                                      display: 'inline-flex',
-                                      alignItems: 'center',
-                                      justifyContent: 'center',
-                                      border: '1px solid var(--color-border)',
-                                      background: 'transparent',
-                                      color: 'var(--color-text-muted)',
-                                      cursor: 'pointer'
-                                    }}
-                                    title={t('Chặn vĩnh viễn liên hệ')}
-                                  >
-                                    <Ban size={14} />
-                                  </button>
+                                    {Number(lead.is_blocked) === 1 ? (
+                                      <button
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleUnblockPublicLeads([lead.id]);
+                                        }}
+                                        className="btn sm outline info-hover"
+                                        style={{
+                                          height: 32,
+                                          width: 32,
+                                          padding: 0,
+                                          borderRadius: '50%',
+                                          display: 'inline-flex',
+                                          alignItems: 'center',
+                                          justifyContent: 'center',
+                                          border: '1px solid var(--color-border)',
+                                          background: 'transparent',
+                                          color: 'var(--color-text-muted)',
+                                          cursor: 'pointer'
+                                        }}
+                                        title={t('Hủy chặn vĩnh viễn')}
+                                      >
+                                        <CheckSquare size={14} />
+                                      </button>
+                                    ) : (
+                                      <button
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleBlockPublicLeads([lead.id]);
+                                        }}
+                                        className="btn sm outline danger-hover"
+                                        style={{
+                                          height: 32,
+                                          width: 32,
+                                          padding: 0,
+                                          borderRadius: '50%',
+                                          display: 'inline-flex',
+                                          alignItems: 'center',
+                                          justifyContent: 'center',
+                                          border: '1px solid var(--color-border)',
+                                          background: 'transparent',
+                                          color: 'var(--color-text-muted)',
+                                          cursor: 'pointer'
+                                        }}
+                                        title={t('Chặn vĩnh viễn liên hệ')}
+                                      >
+                                        <Ban size={14} />
+                                      </button>
+                                    )}
+                                  </>
                                 )}
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleClaimLead(lead.id, lead.full_name || lead.name);
+                                  }}
+                                  disabled={isClaimingLeadId !== null || hasClaimed || isFull || isAdmin || isQuotaExceeded}
+                                  className={isFull ? "btn outline sm" : (hasClaimed ? "btn success sm" : "btn primary sm")}
+                                  style={{
+                                    height: 32,
+                                    fontSize: '0.72rem',
+                                    fontWeight: 700,
+                                    padding: '0 10px',
+                                    background: isAdmin ? 'rgba(0,0,0,0.04)' : (hasClaimed ? 'rgba(16,185,129,0.12)' : (isFull ? 'transparent' : (isQuotaExceeded ? 'rgba(0,0,0,0.04)' : '#BD1D2D'))),
+                                    color: isAdmin ? 'var(--color-text-muted)' : (hasClaimed ? '#10b981' : (isFull ? 'var(--color-text-muted)' : (isQuotaExceeded ? 'var(--color-text-muted)' : '#ffffff'))),
+                                    border: isAdmin ? '1px solid var(--color-border-light)' : (hasClaimed ? '1px solid rgba(16,185,129,0.2)' : (isFull ? '1px solid var(--color-border)' : (isQuotaExceeded ? '1px solid var(--color-border-light)' : 'none'))),
+                                    borderRadius: '16px',
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    boxShadow: (hasClaimed || isFull || isAdmin || isQuotaExceeded) ? 'none' : '0 4px 12px rgba(189,29,45,0.15)',
+                                    cursor: (isAdmin || isQuotaExceeded) ? 'not-allowed' : 'pointer'
+                                  }}
+                                >
+                                  {isClaimingLeadId === lead.id 
+                                    ? t('Đang nhận...') 
+                                    : (hasClaimed ? t('Đã nhận') : (isFull ? t('Hết lượt') : (isAdmin ? t('Chỉ dành cho Sales') : (isQuotaExceeded ? t('Đạt giới hạn') : t('Nhận Data')))))}
+                                </button>
                               </>
                             )}
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleClaimLead(lead.id, lead.full_name || lead.name);
-                              }}
-                              disabled={isClaimingLeadId !== null || hasClaimed || isFull || isAdmin || isQuotaExceeded}
-                              className={isFull ? "btn outline sm" : (hasClaimed ? "btn success sm" : "btn primary sm")}
-                              style={{
-                                height: 32,
-                                fontSize: '0.72rem',
-                                fontWeight: 700,
-                                padding: '0 10px',
-                                background: isAdmin ? 'rgba(0,0,0,0.04)' : (hasClaimed ? 'rgba(16,185,129,0.12)' : (isFull ? 'transparent' : (isQuotaExceeded ? 'rgba(0,0,0,0.04)' : '#BD1D2D'))),
-                                color: isAdmin ? 'var(--color-text-muted)' : (hasClaimed ? '#10b981' : (isFull ? 'var(--color-text-muted)' : (isQuotaExceeded ? 'var(--color-text-muted)' : '#ffffff'))),
-                                border: isAdmin ? '1px solid var(--color-border-light)' : (hasClaimed ? '1px solid rgba(16,185,129,0.2)' : (isFull ? '1px solid var(--color-border)' : (isQuotaExceeded ? '1px solid var(--color-border-light)' : 'none'))),
-                                borderRadius: '16px',
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                boxShadow: (hasClaimed || isFull || isAdmin || isQuotaExceeded) ? 'none' : '0 4px 12px rgba(189,29,45,0.15)',
-                                cursor: (isAdmin || isQuotaExceeded) ? 'not-allowed' : 'pointer'
-                              }}
-                            >
-                              {isClaimingLeadId === lead.id 
-                                ? t('Đang nhận...') 
-                                : (hasClaimed ? t('Đã nhận') : (isFull ? t('Hết lượt') : (isAdmin ? t('Chỉ dành cho Sales') : (isQuotaExceeded ? t('Đạt giới hạn') : t('Nhận Data')))))}
-                            </button>
                           </div>
                         </td>
                       </tr>

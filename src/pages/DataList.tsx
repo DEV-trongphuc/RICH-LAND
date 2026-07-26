@@ -2055,11 +2055,12 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                         style={{ 
                           borderBottom: '1px solid var(--color-border)', 
                           transition: 'background-color 0.2s', 
-                          cursor: (isAdmin || (lead.takers && !lead.takers.some((t: any) => Number(t.id) === Number(user?.id) || Number(t.id) === Number(user?.consultant_id)) && lead.takers.length < 2)) ? 'pointer' : 'default'
+                          cursor: Number(lead.is_won) === 1 ? 'default' : ((isAdmin || (lead.takers && !lead.takers.some((t: any) => Number(t.id) === Number(user?.id) || Number(t.id) === Number(user?.consultant_id)) && lead.takers.length < 2)) ? 'pointer' : 'default')
                         }} 
                         onMouseEnter={e => e.currentTarget.style.backgroundColor = theme === 'dark' ? 'rgba(255,255,255,0.01)' : '#fff9fa'} 
                         onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
                         onClick={() => {
+                          if (Number(lead.is_won) === 1) return;
                           if (isAdmin) {
                             setSelectedLead({
                               id: lead.id,
@@ -2137,7 +2138,22 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
 
                         <td style={{ padding: '12px 16px', color: 'var(--color-text-muted)', fontSize: '0.8125rem' }}>{lead.released_to_kho_at || '-'}</td>
                         <td style={{ padding: '12px 16px', textAlign: 'center' }} onClick={e => e.stopPropagation()}>
-                          {isAdmin ? (
+                          {Number(lead.is_won) === 1 ? (
+                            <span 
+                              className="badge" 
+                              style={{ 
+                                background: '#ffe3e8', 
+                                color: '#8a0f1b', 
+                                border: '1px solid #ffe3e8',
+                                fontWeight: 700,
+                                fontSize: '0.8rem',
+                                padding: '4px 10px',
+                                borderRadius: '20px'
+                              }}
+                            >
+                              {t('Đặt cọc')}
+                            </span>
+                          ) : isAdmin ? (
                             <span 
                               className="badge" 
                               style={{ 

@@ -17933,12 +17933,15 @@ switch ($action) {
             $sql = "SELECT p.id, p.full_name, p.phone, p.email, p.released_to_kho_at, p.deleted_from_databank, p.is_blocked,
                            (SELECT project_id FROM contacts WHERE person_id = p.id ORDER BY id ASC LIMIT 1) as project_id,
                            (SELECT name FROM projects WHERE id = (SELECT project_id FROM contacts WHERE person_id = p.id ORDER BY id ASC LIMIT 1)) as project_name,
-                           (SELECT source FROM contacts WHERE person_id = p.id ORDER BY id ASC LIMIT 1) as original_source
+                           (SELECT source FROM contacts WHERE person_id = p.id ORDER BY id ASC LIMIT 1) as original_source,
+                           EXISTS (
+                               SELECT 1 FROM contacts 
+                               WHERE person_id = p.id 
+                                 AND pipeline_status = (SELECT setting_value FROM system_settings WHERE setting_key = 'deal_won_status' LIMIT 1) 
+                                 AND deleted_at IS NULL
+                           ) as is_won
                     FROM persons p
                     WHERE p.released_to_kho_at IS NOT NULL
-                      AND (p.is_public = 1 OR NOT EXISTS (
-                          SELECT 1 FROM contacts WHERE person_id = p.id AND pipeline_status = (SELECT setting_value FROM system_settings WHERE setting_key = 'deal_won_status' LIMIT 1) AND deleted_at IS NULL
-                      ))
                       $deletedCond
                       $blockCond
                     ORDER BY p.released_to_kho_at DESC";
