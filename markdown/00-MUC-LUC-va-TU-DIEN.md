@@ -18,7 +18,7 @@ Mỗi luồng nghiệp vụ = 1 file, bên trong có 4 lớp cố định:
 
 ---
 
-## TRẠNG THÁI 7 LUỒNG
+## TRẠNG THÁI LUỒNG NGHIỆP VỤ
 
 | # | Luồng | Trạng thái | File |
 |---|---|---|---|
@@ -29,6 +29,9 @@ Mỗi luồng nghiệp vụ = 1 file, bên trong có 4 lớp cố định:
 | 5 | Kho data (Databank) | ✅ Đã review cùng Sếp | `06-Luong-5-Kho-Data.md` |
 | 6 | Tiền (cọc → doanh thu → phí môi giới) | ✅ Đã review cùng Sếp (kế toán: gác, mục riêng) | `07-Luong-6-Tien.md` |
 | 7 | Dữ liệu ngược (CAPI, báo cáo, AI) | ✅ Đã review cùng Sếp | `08-Luong-7-Du-Lieu-Nguoc.md` |
+| 8 | AI Training & Vector RAG | ✅ Đã chốt thiết kế | `12-Logic-AI-RAG-va-Vector-Search.md` |
+| 9 | Đồng bộ 2 chiều Google Sheets & Webhooks | ✅ Đã chốt thiết kế | `13-Dong-Bo-Hai-Chieu-Google-Sheets.md` |
+| 10 | Trung tâm điều khiển Chatbot Webhooks | ✅ Đã chốt thiết kế | `14-Command-Center-Chatbot-Webhooks.md` |
 
 **Tài liệu ngang (cắt qua mọi luồng):**
 
@@ -43,7 +46,6 @@ Mỗi luồng nghiệp vụ = 1 file, bên trong có 4 lớp cố định:
 **Tài liệu nền (đã có):**
 - `01-bao-cao-hien-trang-database.md` — audit 24 bảng MySQL hiện tại
 - `10-ERD-v0.1.mermaid` + `10-ERD-v0.1-tu-dien-du-lieu.md` — schema v0.1 (28 bảng nghiệp vụ + 3 hạ tầng), mỗi bảng neo số luật
-- BRD gốc (bạn hệ thống viết) — dùng đối chiếu, KHÔNG phải bản gốc để số hóa
 
 ---
 
