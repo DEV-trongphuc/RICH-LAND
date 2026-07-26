@@ -33,7 +33,7 @@ tar -czf "$tempArchive" -C "$tempPackageDir" .
 
 # 3. Stream and extract via 1 single SSH connection (pipeline)
 Write-Host "3. Uploading and executing remote deployment in a single SSH session..." -ForegroundColor Yellow
-cmd /c "ssh -4 -p 2210 -o StrictHostKeyChecking=no vhvxoigh@chiefaiofficer.vn ""tar -xzf - -C /home/vhvxoigh/open.domation.net/richland/ && php /home/vhvxoigh/open.domation.net/richland/run_migrations.php --apply"" < ""$tempArchive"""
+cmd /c "ssh -4 -p 2210 -o StrictHostKeyChecking=no vhvxoigh@chiefaiofficer.vn ""tar -xzf - -C open.domation.net/richland/ && php open.domation.net/richland/run_migrations.php --apply"" < ""$tempArchive"""
 
 $sshExit = $LASTEXITCODE
 
