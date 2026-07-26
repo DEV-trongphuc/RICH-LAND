@@ -6308,6 +6308,33 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                     )}
                   </div>
 
+                  {/* Task Image Preview */}
+                  {task.first_image_url && (
+                    <div style={{
+                      width: '100%',
+                      height: '120px',
+                      borderRadius: '8px',
+                      overflow: 'hidden',
+                      border: '1px solid var(--color-border-light)',
+                      background: 'var(--color-bg-alt)',
+                      marginBottom: '8px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}>
+                      <img 
+                        src={task.first_image_url.startsWith('http') || task.first_image_url.startsWith('blob:') || task.first_image_url.startsWith('data:')
+                          ? task.first_image_url 
+                          : `${import.meta.env.VITE_API_URL || '/backend'}/${task.first_image_url}`} 
+                        alt="Task Preview" 
+                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                        onError={(e) => {
+                          (e.currentTarget as HTMLElement).parentElement!.style.display = 'none';
+                        }}
+                      />
+                    </div>
+                  )}
+
                   {/* Title & Description */}
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
                     <h3 style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--color-text)', margin: 0, lineHeight: 1.3 }}>
@@ -6626,6 +6653,33 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                                 {task.priority === 'high' ? 'Cao' : 'Trung bình'}
                               </span>
                             </div>
+
+                            {/* Task Image Preview */}
+                            {task.first_image_url && (
+                              <div style={{
+                                width: '100%',
+                                height: '100px',
+                                borderRadius: '6px',
+                                overflow: 'hidden',
+                                border: '1px solid var(--color-border-light)',
+                                background: 'var(--color-bg-alt)',
+                                marginBottom: '6px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center'
+                              }}>
+                                <img 
+                                  src={task.first_image_url.startsWith('http') || task.first_image_url.startsWith('blob:') || task.first_image_url.startsWith('data:')
+                                    ? task.first_image_url 
+                                    : `${import.meta.env.VITE_API_URL || '/backend'}/${task.first_image_url}`} 
+                                  alt="Task Preview" 
+                                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                                  onError={(e) => {
+                                    (e.currentTarget as HTMLElement).parentElement!.style.display = 'none';
+                                  }}
+                                />
+                              </div>
+                            )}
 
                             {/* Task Title */}
                             <p style={{ 

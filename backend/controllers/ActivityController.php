@@ -11,6 +11,95 @@ class ActivityController {
         } catch (Exception $e) {}
     }
 
+    private function getFirstImageUrl(array $activity): ?string {
+        // 1. Check description/body HTML for <img> tag or markdown image
+        $body = $activity['body'] ?? '';
+        if ($body) {
+            // Check if it's erp_task JSON
+            if (strpos($body, '{"erp_task"') === 0 || strpos($body, '{"erp_task":') === 0) {
+                try {
+                    $parsed = json_decode($body, true);
+                    if ($parsed && isset($parsed['erp_task'])) {
+                        // Check erp_task.links
+                        if (isset($parsed['erp_task']['links']) && is_array($parsed['erp_task']['links'])) {
+                            foreach ($parsed['erp_task']['links'] as $link) {
+                                $url = $link['url'] ?? '';
+                                $isImg = $link['is_image'] ?? false;
+                                if ($isImg || preg_match('/\.(jpg|jpeg|png|gif|webp|svg)/i', $url)) {
+                                    return $url;
+                                }
+                            }
+                        }
+                        // Check description inside erp_task
+                        $desc = $parsed['erp_task']['description'] ?? '';
+                        if ($desc) {
+                            if (preg_match('/<img[^>]+src=["\']([^"\']+)["\']/i', $desc, $matches)) {
+                                return $matches[1];
+                            }
+                            if (preg_match('/!\[.*?\]\((.*?)\)/i', $desc, $matches)) {
+                                return $matches[1];
+                            }
+                        }
+                    }
+                } catch (Exception $e) {}
+            } else {
+                if (preg_match('/<img[^>]+src=["\']([^"\']+)["\']/i', $body, $matches)) {
+                    return $matches[1];
+                }
+                if (preg_match('/!\[.*?\]\((.*?)\)/i', $body, $matches)) {
+                    return $matches[1];
+                }
+            }
+        }
+
+        // 2. Check comments
+        $actId = (int)($activity['id'] ?? 0);
+        if ($actId > 0) {
+            $cStmt = $this->db->prepare("
+                SELECT content, attachments 
+                FROM activity_comments 
+                WHERE activity_id = ? AND deleted_at IS NULL 
+                ORDER BY id ASC
+            ");
+            $cStmt->execute([$actId]);
+            $comments = $cStmt->fetchAll(PDO::FETCH_ASSOC);
+            foreach ($comments as $comment) {
+                // Check attachments column (JSON array of URLs)
+                $atts = $comment['attachments'] ?? '';
+                if ($atts) {
+                    try {
+                        $parsedAtts = is_string($atts) ? json_decode($atts, true) : $atts;
+                        if (is_array($parsedAtts)) {
+                            foreach ($parsedAtts as $att) {
+                                $url = is_string($att) ? $att : ($att['url'] ?? '');
+                                if ($url && preg_match('/\.(jpg|jpeg|png|gif|webp|svg)/i', $url)) {
+                                    return $url;
+                                }
+                            }
+                        }
+                    } catch (Exception $e) {}
+                }
+                // Check inline images in comment content HTML
+                $content = $comment['content'] ?? '';
+                if ($content) {
+                    if (preg_match('/<img[^>]+src=["\']([^"\']+)["\']/i', $content, $matches)) {
+                        return $matches[1];
+                    }
+                    if (preg_match('/!\[.*?\]\((.*?)\)/i', $content, $matches)) {
+                        return $matches[1];
+                    }
+                }
+            }
+        }
+
+        // 3. Fallback to expense image url if it exists
+        if (!empty($activity['expense_image_url'])) {
+            return $activity['expense_image_url'];
+        }
+
+        return null;
+    }
+
     private function hasAccess(array $auth, array $activity): bool {
         if (in_array($auth['role'], ['super_admin', 'admin', 'superadmin'], true)) {
             return true;
@@ -476,7 +565,11 @@ class ActivityController {
             LIMIT $limit OFFSET $offset
         ");
         $stmt->execute($params);
-        respond(200,['items'=>$stmt->fetchAll(),'total'=>$total,'page'=>$page,'limit'=>$limit]);
+        $items = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        foreach ($items as &$item) {
+            $item['first_image_url'] = $this->getFirstImageUrl($item);
+        }
+        respond(200,['items'=>$items,'total'=>$total,'page'=>$page,'limit'=>$limit]);
     }
 
     public function store(array $auth): void {
@@ -648,6 +741,7 @@ class ActivityController {
             respond(403, null, 'Bạn không có quyền truy cập hoạt động này', false);
         }
 
+        $row['first_image_url'] = $this->getFirstImageUrl($row);
         respond(200,$row);
     }
 
