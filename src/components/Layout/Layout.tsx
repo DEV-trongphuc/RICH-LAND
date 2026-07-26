@@ -1713,8 +1713,45 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
                     
                     {(() => {
                       const totalPages = Math.ceil(feedItems.length / pageSize);
-                      return Array.from({ length: totalPages }).map((_, i) => {
-                        const pageNum = i + 1;
+                      const pages: (number | string)[] = [];
+                      if (totalPages <= 7) {
+                        for (let i = 1; i <= totalPages; i++) pages.push(i);
+                      } else {
+                        pages.push(1);
+                        if (currentPage > 4) pages.push('ellipsis-start');
+                        
+                        const start = Math.max(2, currentPage - 2);
+                        const end = Math.min(totalPages - 1, currentPage + 2);
+                        
+                        for (let i = start; i <= end; i++) {
+                          pages.push(i);
+                        }
+                        
+                        if (currentPage < totalPages - 3) pages.push('ellipsis-end');
+                        pages.push(totalPages);
+                      }
+
+                      return pages.map((page, idx) => {
+                        if (page === 'ellipsis-start' || page === 'ellipsis-end') {
+                          return (
+                            <span 
+                              key={`ellipsis-${idx}`} 
+                              style={{ 
+                                width: '26px', 
+                                height: '26px', 
+                                display: 'flex', 
+                                alignItems: 'center', 
+                                justifyContent: 'center', 
+                                fontSize: '0.75rem', 
+                                color: 'var(--color-text-muted)' 
+                              }}
+                            >
+                              ...
+                            </span>
+                          );
+                        }
+
+                        const pageNum = page as number;
                         return (
                           <button
                             key={pageNum}
@@ -2130,35 +2167,69 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
                     
                     {(() => {
                       const totalPages = Math.ceil(notifTotalCount / 10);
-                      const pages = [];
-                      const startPage = Math.max(1, notifPage - 2);
-                      const endPage = Math.min(totalPages, startPage + 4);
-                      for (let i = startPage; i <= endPage; i++) {
-                        pages.push(i);
+                      const pages: (number | string)[] = [];
+                      if (totalPages <= 7) {
+                        for (let i = 1; i <= totalPages; i++) pages.push(i);
+                      } else {
+                        pages.push(1);
+                        if (notifPage > 4) pages.push('ellipsis-start');
+                        
+                        const start = Math.max(2, notifPage - 2);
+                        const end = Math.min(totalPages - 1, notifPage + 2);
+                        
+                        for (let i = start; i <= end; i++) {
+                          pages.push(i);
+                        }
+                        
+                        if (notifPage < totalPages - 3) pages.push('ellipsis-end');
+                        pages.push(totalPages);
                       }
-                      return pages.map((pageNum) => (
-                        <button
-                          key={pageNum}
-                          onClick={() => setNotifPage(pageNum)}
-                          style={{
-                            width: '26px',
-                            height: '26px',
-                            borderRadius: '4px',
-                            border: '1px solid var(--color-border-light)',
-                            background: notifPage === pageNum ? 'var(--color-primary)' : 'var(--color-surface)',
-                            color: notifPage === pageNum ? 'white' : 'var(--color-text)',
-                            fontSize: '0.7rem',
-                            fontWeight: 700,
-                            cursor: 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            transition: 'all 0.2s'
-                          }}
-                        >
-                          {pageNum}
-                        </button>
-                      ));
+
+                      return pages.map((page, idx) => {
+                        if (page === 'ellipsis-start' || page === 'ellipsis-end') {
+                          return (
+                            <span 
+                              key={`ellipsis-${idx}`} 
+                              style={{ 
+                                width: '26px', 
+                                height: '26px', 
+                                display: 'flex', 
+                                alignItems: 'center', 
+                                justifyContent: 'center', 
+                                fontSize: '0.75rem', 
+                                color: 'var(--color-text-muted)' 
+                              }}
+                            >
+                              ...
+                            </span>
+                          );
+                        }
+
+                        const pageNum = page as number;
+                        return (
+                          <button
+                            key={pageNum}
+                            onClick={() => setNotifPage(pageNum)}
+                            style={{
+                              width: '26px',
+                              height: '26px',
+                              borderRadius: '4px',
+                              border: '1px solid var(--color-border-light)',
+                              background: notifPage === pageNum ? 'var(--color-primary)' : 'var(--color-surface)',
+                              color: notifPage === pageNum ? 'white' : 'var(--color-text)',
+                              fontSize: '0.7rem',
+                              fontWeight: 700,
+                              cursor: 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              transition: 'all 0.2s'
+                            }}
+                          >
+                            {pageNum}
+                          </button>
+                        );
+                      });
                     })()}
 
                     <button
