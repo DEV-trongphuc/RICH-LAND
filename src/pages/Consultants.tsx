@@ -101,6 +101,42 @@ const ConsultantsInner = () => {
   const userRole = user?.role;
   const isSale = userRole === 'sale';
   const isWriteAuthorized = ['admin', 'superadmin', 'super_admin', 'director', 'manager'].includes(userRole || '');
+
+  const renderLastLogin = (lastLoginStr: string | null) => {
+    if (!lastLoginStr) {
+      return (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--color-text-muted)', fontSize: '0.78rem' }}>
+          <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#b5b5c3' }} />
+          <span>{t('Chưa truy cập')}</span>
+        </div>
+      );
+    }
+    const lastLoginDate = new Date(lastLoginStr.replace(/-/g, '/'));
+    const now = new Date();
+    const diffMins = Math.abs(now.getTime() - lastLoginDate.getTime()) / (1000 * 60);
+
+    if (diffMins < 5) {
+      return (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#10b981', fontSize: '0.78rem', fontWeight: 600 }}>
+          <span style={{
+            width: '8px',
+            height: '8px',
+            borderRadius: '50%',
+            background: '#10b981',
+            boxShadow: '0 0 8px #10b981'
+          }} />
+          <span>{t('Đang hoạt động')}</span>
+        </div>
+      );
+    }
+
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--color-text)', fontSize: '0.78rem' }}>
+        <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#b5b5c3' }} />
+        <span>{lastLoginDate.toLocaleString('vi-VN')}</span>
+      </div>
+    );
+  };
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
     return (document.documentElement.getAttribute('data-theme') as 'light' | 'dark') || 'light';
   });
@@ -1443,15 +1479,16 @@ const ConsultantsInner = () => {
                     <th style={{ position: 'sticky', top: 0, background: 'var(--color-bg)', zIndex: 10, borderBottom: '1px solid var(--color-border)' }}>{t('Zalo Bot')}</th>
                     <th style={{ position: 'sticky', top: 0, background: 'var(--color-bg)', zIndex: 10, borderBottom: '1px solid var(--color-border)' }}>{t('Telegram Bot')}</th>
                     <th style={{ position: 'sticky', top: 0, background: 'var(--color-bg)', zIndex: 10, borderBottom: '1px solid var(--color-border)' }}>{t('Trạng thái')}</th>
+                    {isWriteAuthorized && <th style={{ position: 'sticky', top: 0, background: 'var(--color-bg)', zIndex: 10, borderBottom: '1px solid var(--color-border)' }}>{t('Truy cập gần nhất')}</th>}
                     {isWriteAuthorized && <th style={{ position: 'sticky', top: 0, background: 'var(--color-bg)', zIndex: 10, borderBottom: '1px solid var(--color-border)', textAlign: 'right' }}>{t('Thao tác')}</th>}
                   </tr>
                 </thead>
                 <tbody>
                   {loading ? (
-                    [...Array(5)].map((_, i) => <TableRowSkeleton key={i} cols={isWriteAuthorized ? 6 : 5} />)
+                    [...Array(5)].map((_, i) => <TableRowSkeleton key={i} cols={isWriteAuthorized ? 7 : 5} />)
                   ) : users.length === 0 ? (
                     <tr className="empty-state-row">
-                      <td colSpan={isWriteAuthorized ? 6 : 5}>
+                      <td colSpan={isWriteAuthorized ? 7 : 5}>
                       <div style={{ padding: '3rem 2rem', textAlign: 'center' }}>
                         <div style={{ width: 64, height: 64, borderRadius: '50%', background: 'var(--color-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.5rem', boxShadow: 'var(--shadow-sm)' }}>
                           <Users size={32} color="var(--color-text-muted)" />
@@ -1667,6 +1704,11 @@ const ConsultantsInner = () => {
                           )}
                         </div>
                       </td>
+                      {isWriteAuthorized && (
+                        <td data-label={t('Truy cập gần nhất')} onClick={e => e.stopPropagation()}>
+                          {renderLastLogin(u.last_login)}
+                        </td>
+                      )}
                       {isWriteAuthorized && (
                         <td className="col-actions" data-label={t('Thao tác')} style={{ textAlign: 'right' }} onClick={e => e.stopPropagation()}>
                           <div className="row-actions" style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.25rem', opacity: 0, transition: 'opacity 0.15s' }}>
