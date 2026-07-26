@@ -3,13 +3,13 @@
 
 Write-Host "=== STARTING BACKEND-ONLY DEPLOYMENT & MIGRATION ===" -ForegroundColor Cyan
 
-$tempBackend = Join-Path $env:TEMP "richland_backend.tar.gz"
+$tempBackend = "richland_backend.tar.gz"
 
 Write-Host "1. Compressing backend files to system temp directory..." -ForegroundColor Yellow
 tar -czf "$tempBackend" -C backend .
 
 Write-Host "2. Uploading backend archive and applying remote migrations in a single session..." -ForegroundColor Yellow
-cmd /c "ssh -4 -p 2210 -o StrictHostKeyChecking=no vhvxoigh@chiefaiofficer.vn ""tar -xzf - -C /home/vhvxoigh/open.domation.net/richland/ && php /home/vhvxoigh/open.domation.net/richland/run_migrations.php --apply"" < ""$tempBackend"""
+cmd /c "ssh -4 -p 2210 -o StrictHostKeyChecking=no vhvxoigh@chiefaiofficer.vn ""tar -xzf - -C open.domation.net/richland/ && php open.domation.net/richland/run_migrations.php --apply"" < ""$tempBackend"""
 
 $sshExit = $LASTEXITCODE
 
