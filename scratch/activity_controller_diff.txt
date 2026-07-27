@@ -1,0 +1,263 @@
+﻿diff --git a/backend/controllers/ActivityController.php b/backend/controllers/ActivityController.php
+index 4144080b..f33aebf2 100644
+--- a/backend/controllers/ActivityController.php
++++ b/backend/controllers/ActivityController.php
+@@ -9,6 +9,9 @@ class ActivityController {
+         try {
+             $this->db->exec("ALTER TABLE activity_comments ADD COLUMN parent_id INT NULL DEFAULT NULL");
+         } catch (Exception $e) {}
++        try {
++            $this->db->exec("ALTER TABLE activity_comments ADD COLUMN subtask_id VARCHAR(255) NULL DEFAULT NULL");
++        } catch (Exception $e) {}
+     }
+ 
+     private function getFirstImageUrl(array $activity): ?string {
+@@ -105,6 +108,11 @@ class ActivityController {
+             return true;
+         }
+ 
++        // General workspace tasks (not linked to private CRM entities contact, company, deal) are accessible to all tenant members
++        if (empty($activity['related_type']) || in_array($activity['related_type'], ['project', 'campaign', 'team'], true)) {
++            return true;
++        }
++
+         // Project / Campaign roster checks for sales, managers, and directors
+         if (!empty($activity['related_type']) && in_array($activity['related_type'], ['project', 'campaign'], true)) {
+             if (in_array($auth['role'], ['sale', 'sales', 'manager', 'director'], true)) {
+@@ -314,39 +322,53 @@ class ActivityController {
+         
+         // 5. Team-based tags check
+         if (!empty($activity['tags']) && strpos($activity['tags'], 'internal_') === 0) {
+-            if (in_array($auth['role'], ['sales', 'sale'], true)) {
+-                // For sales, they can only access if they are creator/assignee/participant (checked elsewhere)
+-                // OR if the task is unassigned and they belong to the same team as the creator
+-                if (empty($activity['user_id'])) {
+-                    $creatorId = !empty($activity['created_by']) ? (int)$activity['created_by'] : 0;
+-                    if ($creatorId > 0) {
+-                        $stmtTeamCheck = $this->db->prepare("
+-                            SELECT 1 FROM users u 
+-                            WHERE u.id = ? 
+-                              AND u.team_id = (SELECT team_id FROM users WHERE id = ?)
+-                        ");
+-                        $stmtTeamCheck->execute([$creatorId, $auth['user_id']]);
+-                        if ($stmtTeamCheck->fetch()) {
+-                            return true;
+-                        }
+-                    }
+-                }
+-                // Check if it's a global scope announcement
+-                if (!empty($activity['body']) && strpos($activity['body'], '"scope":"global"') !== false) {
++            // Check if it's a global scope announcement
++            if (!empty($activity['body']) && strpos($activity['body'], '"scope":"global"') !== false) {
++                return true;
++            }
++
++            // Check if user belongs to the same team as the creator
++            $creatorId = !empty($activity['created_by']) ? (int)$activity['created_by'] : 0;
++            if ($creatorId > 0) {
++                $stmtTeamCheck = $this->db->prepare("
++                    SELECT 1 FROM users u 
++                    WHERE u.id = ? 
++                      AND u.team_id = (SELECT team_id FROM users WHERE id = ?)
++                ");
++                $stmtTeamCheck->execute([$creatorId, $auth['user_id']]);
++                if ($stmtTeamCheck->fetch()) {
+                     return true;
+                 }
+-            } elseif ($auth['role'] === 'manager') {
++            }
++
++            // Check if user belongs to the same team as the assignee
++            $assigneeId = !empty($activity['user_id']) ? (int)$activity['user_id'] : 0;
++            if ($assigneeId > 0) {
+                 $stmtTeamCheck = $this->db->prepare("
+                     SELECT 1 FROM users u 
+                     WHERE u.id = ? 
+-                      AND (u.team_id IN (SELECT id FROM teams WHERE FIND_IN_SET(?, CONCAT(leader_id, CHAR(44), COALESCE(co_leader_ids, leader_id)))) 
+-                           OR ? LIKE '%\"scope\":\"global\"%')
++                      AND u.team_id = (SELECT team_id FROM users WHERE id = ?)
+                 ");
+-                $stmtTeamCheck->execute([$activity['user_id'], $auth['user_id'], $activity['body']]);
++                $stmtTeamCheck->execute([$assigneeId, $auth['user_id']]);
+                 if ($stmtTeamCheck->fetch()) {
+                     return true;
+                 }
+             }
++
++            // If the current user is a manager of the creator or assignee's team
++            if ($auth['role'] === 'manager') {
++                $checkMgr = $this->db->prepare("
++                    SELECT 1 FROM teams 
++                    WHERE FIND_IN_SET(?, CONCAT(leader_id, CHAR(44), COALESCE(co_leader_ids, leader_id)))
++                      AND id IN (
++                          SELECT team_id FROM users WHERE id = ? OR id = ?
++                      )
++                ");
++                $checkMgr->execute([$auth['user_id'], $creatorId, $assigneeId]);
++                if ($checkMgr->fetch()) {
++                    return true;
++                }
++            }
+         }
+         
+         // 6. Check if target user belongs to manager's team
+@@ -1018,14 +1040,27 @@ class ActivityController {
+             respond(403, null, 'Bß║ín kh├┤ng c├│ quyß╗ün truy cß║¡p hoß║ít ─æß╗Öng n├áy', false);
+         }
+ 
+-        $stmt = $this->db->prepare("
+-            SELECT c.*, u.full_name as user_name, u.avatar_url 
+-            FROM activity_comments c 
+-            LEFT JOIN users u ON c.user_id = u.id 
+-            WHERE c.activity_id = ? AND c.tenant_id = ? 
+-            ORDER BY c.created_at DESC
+-        ");
+-        $stmt->execute([$id, $auth['tenant_id']]);
++        $subtaskId = isset($_GET['subtask_id']) && $_GET['subtask_id'] !== '' ? $_GET['subtask_id'] : null;
++
++        if ($subtaskId) {
++            $stmt = $this->db->prepare("
++                SELECT c.*, u.full_name as user_name, u.avatar_url 
++                FROM activity_comments c 
++                LEFT JOIN users u ON c.user_id = u.id 
++                WHERE c.activity_id = ? AND c.tenant_id = ? AND c.subtask_id = ?
++                ORDER BY c.created_at DESC
++            ");
++            $stmt->execute([$id, $auth['tenant_id'], $subtaskId]);
++        } else {
++            $stmt = $this->db->prepare("
++                SELECT c.*, u.full_name as user_name, u.avatar_url 
++                FROM activity_comments c 
++                LEFT JOIN users u ON c.user_id = u.id 
++                WHERE c.activity_id = ? AND c.tenant_id = ? AND c.subtask_id IS NULL
++                ORDER BY c.created_at DESC
++            ");
++            $stmt->execute([$id, $auth['tenant_id']]);
++        }
+         
+         $comments = array_map(function($row) {
+             $row['attachments'] = $row['attachments'] ? json_decode($row['attachments'], true) : [];
+@@ -1035,6 +1070,32 @@ class ActivityController {
+         respond(200, $comments);
+     }
+ 
++    public function getSubtasksCommentCounts(array $auth, int $id): void {
++        // Verify activity belongs to tenant and user has permission
++        $check = $this->db->prepare("SELECT * FROM activities WHERE id=? AND tenant_id=? AND deleted_at IS NULL");
++        $check->execute([$id, $auth['tenant_id']]);
++        $activity = $check->fetch();
++        if (!$activity) respond(404, null, 'Kh├┤ng t├¼m thß║Ñy hoß║ít ─æß╗Öng hoß║╖c kh├┤ng c├│ quyß╗ün truy cß║¡p', false);
++
++        if (!$this->hasAccess($auth, $activity)) {
++            respond(403, null, 'Bß║ín kh├┤ng c├│ quyß╗ün truy cß║¡p hoß║ít ─æß╗Öng n├áy', false);
++        }
++
++        $stmt = $this->db->prepare("
++            SELECT subtask_id, COUNT(*) as count 
++            FROM activity_comments 
++            WHERE activity_id = ? AND tenant_id = ? AND subtask_id IS NOT NULL
++            GROUP BY subtask_id
++        ");
++        $stmt->execute([$id, $auth['tenant_id']]);
++        $counts = [];
++        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
++            $counts[$row['subtask_id']] = (int)$row['count'];
++        }
++
++        respond(200, $counts);
++    }
++
+     public function addComment(array $auth, int $id): void {
+         if ($auth['role'] === 'viewer') respond(403, null, 'Bß║ín kh├┤ng c├│ quyß╗ün b├¼nh luß║¡n', false);
+         // Verify activity belongs to tenant and user has permission
+@@ -1055,10 +1116,11 @@ class ActivityController {
+         $attachments = !empty($b['attachments']) && is_array($b['attachments']) ? json_encode($b['attachments']) : null;
+ 
+         $parentId = !empty($b['parent_id']) ? (int)$b['parent_id'] : null;
++        $subtaskId = !empty($b['subtask_id']) ? $b['subtask_id'] : null;
+ 
+         $stmt = $this->db->prepare("
+-            INSERT INTO activity_comments (tenant_id, activity_id, user_id, content, attachments, parent_id)
+-            VALUES (?, ?, ?, ?, ?, ?)
++            INSERT INTO activity_comments (tenant_id, activity_id, user_id, content, attachments, parent_id, subtask_id)
++            VALUES (?, ?, ?, ?, ?, ?, ?)
+         ");
+         $stmt->execute([
+             $auth['tenant_id'],
+@@ -1066,7 +1128,8 @@ class ActivityController {
+             $auth['user_id'],
+             $b['content'] ?? null,
+             $attachments,
+-            $parentId
++            $parentId,
++            $subtaskId
+         ]);
+ 
+         $commentId = $this->db->lastInsertId();
+@@ -1090,14 +1153,31 @@ class ActivityController {
+         // Parse mentions in comment content
+         $content = $b['content'] ?? '';
+         $mentions = [];
++
++        // 1. First, parse by data-user-id (HTML editor mentions)
++        if (preg_match_all('/data-user-id="(\d+)"/i', (string)$content, $matches)) {
++            $uids = array_filter(array_map('intval', $matches[1]));
++            foreach ($uids as $uid) {
++                if ($uid !== (int)$auth['user_id']) {
++                    $stmtUser = $this->db->prepare("SELECT id, email, full_name FROM users WHERE tenant_id=? AND id=?");
++                    $stmtUser->execute([$auth['tenant_id'], $uid]);
++                    $userRow = $stmtUser->fetch(PDO::FETCH_ASSOC);
++                    if ($userRow) {
++                        $mentions[$uid] = $userRow;
++                    }
++                }
++            }
++        }
++
++        // 2. Fallback to traditional @name parsing for plaintext comments
+         $matches = [];
+         preg_match_all('/@([a-zA-Z0-9_\x{00C0}-\x{1EF9}()]+)/u', (string)$content, $matches);
+         $names = is_array($matches[1] ?? null) ? $matches[1] : [];
+         if (!empty($names)) {
+             foreach ($names as $nameWithUnderscores) {
+                 $fullName = str_replace('_', ' ', $nameWithUnderscores);
+-                $stmtUser = $this->db->prepare("SELECT id, email, full_name FROM users WHERE tenant_id=? AND full_name=?");
+-                $stmtUser->execute([$auth['tenant_id'], $fullName]);
++                $stmtUser = $this->db->prepare("SELECT id, email, full_name FROM users WHERE tenant_id=? AND (full_name=? OR REPLACE(full_name, ' ', '_')=?)");
++                $stmtUser->execute([$auth['tenant_id'], $fullName, $nameWithUnderscores]);
+                 $userRow = $stmtUser->fetch(PDO::FETCH_ASSOC);
+                 if ($userRow) {
+                     $uid = (int)$userRow['id'];
+@@ -1110,12 +1190,12 @@ class ActivityController {
+ 
+         if (!empty($mentions)) {
+             require_once __DIR__ . '/../NotificationService.php';
+-            $targetLink = "/activities/{$id}?comment_id={$commentId}";
++            $targetLink = "/activities/{$id}?comment_id={$commentId}" . ($subtaskId ? "&subtask_id={$subtaskId}" : "");
+             if (!empty($activity['related_type']) && !empty($activity['related_id'])) {
+                 if ($activity['related_type'] === 'contact') {
+-                    $targetLink = "/contacts?open_contact_id={$activity['related_id']}&highlight_activity_id={$id}&highlight_comment_id={$commentId}";
++                    $targetLink = "/contacts?open_contact_id={$activity['related_id']}&highlight_activity_id={$id}&highlight_comment_id={$commentId}" . ($subtaskId ? "&subtask_id={$subtaskId}" : "");
+                 } else if ($activity['related_type'] === 'deal') {
+-                    $targetLink = "/deals?id={$activity['related_id']}&highlight_activity_id={$id}&highlight_comment_id={$commentId}";
++                    $targetLink = "/deals?id={$activity['related_id']}&highlight_activity_id={$id}&highlight_comment_id={$commentId}" . ($subtaskId ? "&subtask_id={$subtaskId}" : "");
+                 }
+             }
+             foreach ($mentions as $uid => $userRow) {
+@@ -1465,13 +1545,14 @@ class ActivityController {
+             NotificationService::send($this->db, $tenantId, 'WORKFLOW_TASK_ASSIGNED', [
+                 'user_id' => $userId,
+                 'task_title' => $title,
+-                'reason' => $body
++                'reason' => $body,
++                'link' => $link
+             ]);
+ 
+             // Send Email
+             if (!empty($u['email'])) {
+                 require_once __DIR__ . '/../mailer.php';
+-                $emailSubject = "[RICH LAND] " . $title;
++                $emailSubject = "[IDEAS] " . $title;
+                 $emailTitle = mb_strtoupper($type, 'UTF-8');
+                 $emailContent = "Ch├áo <strong>" . htmlspecialchars($u['full_name']) . "</strong>,<br/><br/>" .
+                                 htmlspecialchars($body) . "<br/><br/>" .

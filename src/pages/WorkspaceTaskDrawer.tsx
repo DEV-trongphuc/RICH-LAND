@@ -92,6 +92,15 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
   const [uploadingFile, setUploadingFile] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
+  // Subtask comments state
+  const [selectedSubtask, setSelectedSubtask] = useState<any | null>(null);
+  const [subtaskComments, setSubtaskComments] = useState<any[]>([]);
+  const [loadingSubtaskComments, setLoadingSubtaskComments] = useState(false);
+  const [newSubtaskCommentText, setNewSubtaskCommentText] = useState('');
+  const [isSubmittingSubtaskComment, setIsSubmittingSubtaskComment] = useState(false);
+  const [subtaskCommentAttachments, setSubtaskCommentAttachments] = useState<any[]>([]);
+  const [subtaskCommentCounts, setSubtaskCommentCounts] = useState<Record<string, number>>({});
+
   const [isMuted, setIsMuted] = useState(false);
   const [loadingMute, setLoadingMute] = useState(false);
   const [showMuteConfirmModal, setShowMuteConfirmModal] = useState(false);
@@ -107,6 +116,17 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
   const [cancelReason, setCancelReason] = useState('');
   const [savingCancel, setSavingCancel] = useState(false);
 
+  const loadSubtaskCommentCounts = () => {
+    if (!task?.id || task.id === 'new') return;
+    api.get(`/activities/${task.id}/subtasks-comment-counts`)
+      .then(res => {
+        if (res.data && res.data.success) {
+          setSubtaskCommentCounts(res.data.data || {});
+        }
+      })
+      .catch(err => console.error("Lỗi lấy số lượng bình luận việc con:", err));
+  };
+
   useEffect(() => {
     if (isOpen && task?.id) {
       setLoadingMute(true);
@@ -118,6 +138,8 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
         })
         .catch(err => console.error("Lỗi lấy trạng thái thông báo task:", err))
         .finally(() => setLoadingMute(false));
+
+      loadSubtaskCommentCounts();
     }
   }, [isOpen, task?.id]);
 
@@ -158,10 +180,16 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
       .finally(() => setLoadingMute(false));
   };
 
+  const getTomorrowString = () => {
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    return tomorrow.toISOString().split('T')[0];
+  };
+
   // Checklist adding state
   const [newSubTitle, setNewSubTitle] = useState('');
   const [newSubAssignee, setNewSubAssignee] = useState('');
-  const [newSubDeadline, setNewSubDeadline] = useState('');
+  const [newSubDeadline, setNewSubDeadline] = useState(getTomorrowString());
   const [newSubPriority, setNewSubPriority] = useState<string>('medium');
 
   // Checklist inline edit & assignee picker state
@@ -505,11 +533,69 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
     }
   };
 
+  const loadSubtaskComments = async (taskId: number, subtaskId: string) => {
+    setLoadingSubtaskComments(true);
+    try {
+      const res = await api.get(`/activities/${taskId}/comments?subtask_id=${subtaskId}`);
+      if (res.data && res.data.success) {
+        setSubtaskComments(res.data.data || []);
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoadingSubtaskComments(false);
+    }
+  };
+
+  useEffect(() => {
+    if (task && task.id !== 'new' && selectedSubtask) {
+      loadSubtaskComments(Number(task.id), selectedSubtask.id);
+    }
+  }, [selectedSubtask]);
+
+  useEffect(() => {
+    if (isOpen && task && erpMeta?.checklist) {
+      const targetSubtaskId = searchParams.get('subtask_id');
+      if (targetSubtaskId) {
+        const found = erpMeta.checklist.find((item: any) => String(item.id) === String(targetSubtaskId));
+        if (found) {
+          setSelectedSubtask(found);
+        }
+      }
+    }
+  }, [isOpen, task, erpMeta?.checklist]);
+
+  useEffect(() => {
+    if (subtaskComments.length > 0) {
+      const targetSubtaskId = searchParams.get('subtask_id');
+      const highlightCommentId = searchParams.get('comment_id') || searchParams.get('highlight_comment_id');
+      if (targetSubtaskId && highlightCommentId) {
+        setTimeout(() => {
+          const element = document.getElementById(`workspace-comment-${highlightCommentId}`);
+          if (element) {
+            element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            element.style.backgroundColor = 'var(--color-primary-light)';
+            setTimeout(() => {
+              element.style.backgroundColor = 'var(--color-surface)';
+            }, 2500);
+
+            // Clean URL parameters
+            const newParams = new URLSearchParams(searchParams);
+            newParams.delete('subtask_id');
+            newParams.delete('comment_id');
+            newParams.delete('highlight_comment_id');
+            setSearchParams(newParams, { replace: true });
+          }
+        }, 500);
+      }
+    }
+  }, [subtaskComments]);
+
   useEffect(() => {
     if (comments.length > 0) {
       const params = new URLSearchParams(window.location.search);
       const highlightCommentId = params.get('comment_id') || params.get('highlight_comment_id');
-      if (highlightCommentId) {
+      if (highlightCommentId && !params.get('subtask_id')) {
         setTimeout(() => {
           const element = document.getElementById(`workspace-comment-${highlightCommentId}`);
           if (element) {
@@ -1031,37 +1117,46 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
 
   // Checklist Actions
   const handleAddChecklistItem = () => {
-    if (!newSubTitle.trim()) {
+    const titles = newSubTitle.split('\n').map(t => t.trim()).filter(Boolean);
+    if (titles.length === 0) {
       toast.error(t('Vui lòng nhập tên công việc con'));
       return;
     }
-    const newItem = {
-      id: 'sub_' + Date.now(),
-      title: newSubTitle.trim(),
-      assignee_id: newSubAssignee ? Number(newSubAssignee) : null,
-      due_date: newSubDeadline || null,
-      priority: newSubPriority || 'medium',
-      done: false
-    };
+    
+    let currentParticipantIds = getParticipantIds(formData.participant_ids);
+    const newItems = titles.map((title, idx) => {
+      const itemId = 'sub_' + (Date.now() + idx);
+      const assigneeId = newSubAssignee ? Number(newSubAssignee) : null;
+      if (assigneeId) {
+        const idStr = String(assigneeId);
+        if (!currentParticipantIds.includes(idStr)) {
+          currentParticipantIds.push(idStr);
+        }
+      }
+      return {
+        id: itemId,
+        title: title,
+        assignee_id: assigneeId,
+        due_date: newSubDeadline || null,
+        priority: newSubPriority || 'medium',
+        done: false
+      };
+    });
 
-    const newChecklist = [...(erpMeta.checklist || []), newItem];
+    const newChecklist = [...(erpMeta.checklist || []), ...newItems];
     const updatedMeta = { ...erpMeta, checklist: newChecklist };
     handleSaveMeta(updatedMeta);
 
-    if (newItem.assignee_id) {
-      const current = getParticipantIds(formData.participant_ids);
-      if (!current.includes(String(newItem.assignee_id))) {
-        const next = [...current, String(newItem.assignee_id)];
-        const nextString = next.join(',');
-        setFormData((prev: any) => ({ ...prev, participant_ids: nextString }));
-        handleUpdateField('participant_ids', nextString);
-      }
+    const nextString = currentParticipantIds.join(',');
+    if (formData.participant_ids !== nextString) {
+      setFormData((prev: any) => ({ ...prev, participant_ids: nextString }));
+      handleUpdateField('participant_ids', nextString);
     }
 
     // Reset input
     setNewSubTitle('');
     setNewSubAssignee('');
-    setNewSubDeadline('');
+    setNewSubDeadline(getTomorrowString());
     setNewSubPriority('medium');
     setShowAddChecklist(false);
     toast.success(t('Đã thêm việc con'));
@@ -1108,10 +1203,18 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
     });
 
     if (newAssigneeId) {
+      const assignedIds = newAssigneeId.split(',').map(id => id.trim()).filter(Boolean);
       const current = getParticipantIds(formData.participant_ids);
-      if (!current.includes(String(newAssigneeId))) {
-        const next = [...current, String(newAssigneeId)];
-        const nextString = next.join(',');
+      let updated = [...current];
+      let hasChange = false;
+      assignedIds.forEach(id => {
+        if (!updated.includes(id)) {
+          updated.push(id);
+          hasChange = true;
+        }
+      });
+      if (hasChange) {
+        const nextString = updated.join(',');
         setFormData((prev: any) => ({ ...prev, participant_ids: nextString }));
         handleUpdateField('participant_ids', nextString);
       }
@@ -1346,6 +1449,95 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
     }
   };
 
+  // Subtask Comment Attachments Upload Helpers
+  const addLocalSubtaskCommentAttachment = (file: File) => {
+    if (!file) return;
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error(t('Dung lượng tệp đính kèm không được vượt quá 10MB'));
+      return;
+    }
+    const previewUrl = file.type.startsWith('image/') ? URL.createObjectURL(file) : undefined;
+    setSubtaskCommentAttachments(prev => [...prev, { file, name: file.name, previewUrl }]);
+    toast.success(t('Đã thêm tệp đính kèm!'));
+  };
+
+  const handleSubtaskCommentAttachmentUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) addLocalSubtaskCommentAttachment(file);
+    e.target.value = '';
+  };
+
+  const removeSubtaskCommentAttachment = (index: number) => {
+    setSubtaskCommentAttachments(prev => {
+      const target = prev[index];
+      if (target?.previewUrl) {
+        URL.revokeObjectURL(target.previewUrl);
+      }
+      return prev.filter((_, i) => i !== index);
+    });
+  };
+
+  const handlePostSubtaskComment = async () => {
+    if (!task || !selectedSubtask) return;
+    if (!newSubtaskCommentText.trim() && subtaskCommentAttachments.length === 0) return;
+    setIsSubmittingSubtaskComment(true);
+    setUploadingFile(true);
+
+    try {
+      const uploadedUrls: string[] = [];
+      for (const att of subtaskCommentAttachments) {
+        if (att.file) {
+          const sizeStr = (att.file.size / (1024 * 1024)).toFixed(1) + ' MB';
+          const taskId = startUpload(att.name, sizeStr);
+
+          const fd = new FormData();
+          fd.append('file', att.file);
+
+          updateProgress(taskId, 20, 'uploading');
+          const res = await api.post('/upload', fd, {
+            headers: { 'Content-Type': 'multipart/form-data' },
+            onUploadProgress: (progressEvent) => {
+              if (progressEvent.total) {
+                const percent = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+                updateProgress(taskId, percent, percent === 100 ? 'processing' : 'uploading');
+              }
+            }
+          });
+          const fileUrl = res.data?.data?.url || res.data?.url;
+          if (fileUrl) {
+            finishUpload(taskId, true);
+            uploadedUrls.push(fileUrl);
+            if (att.previewUrl) URL.revokeObjectURL(att.previewUrl);
+          } else {
+            finishUpload(taskId, false, res.data?.message || t('Lỗi tải tệp lên'));
+            throw new Error(res.data?.message || t('Lỗi tải tệp lên'));
+          }
+        }
+      }
+
+      const commentText = newSubtaskCommentText.trim();
+      setNewSubtaskCommentText('');
+      setSubtaskCommentAttachments([]);
+
+      const res = await api.post(`/activities/${task.id}/comments`, {
+        content: commentText,
+        attachments: uploadedUrls,
+        subtask_id: selectedSubtask.id
+      });
+
+      if (res.data && res.data.success) {
+        loadSubtaskComments(Number(task.id), selectedSubtask.id);
+        loadSubtaskCommentCounts();
+        toast.success(t('Đã thêm bình luận việc con!'));
+      }
+    } catch (e: any) {
+      toast.error(t('Không thể gửi bình luận: ') + e.message);
+    } finally {
+      setIsSubmittingSubtaskComment(false);
+      setUploadingFile(false);
+    }
+  };
+
   const getParticipantIds = (ids: any): string[] => {
     if (Array.isArray(ids)) {
       return ids.map(String).filter(Boolean);
@@ -1471,6 +1663,13 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
 
   const hasChanges = originalHash !== currentHash;
 
+  const handleImageClick = (e: React.MouseEvent) => {
+    const target = e.target as HTMLElement;
+    if (target.tagName === 'IMG' && target.closest('.rich-comment-content')) {
+      target.classList.toggle('zoomed');
+    }
+  };
+
   const isApproverOrAdmin = currentUser && (
     Number(currentUser.id) === Number(formData.approver_id) ||
     ['admin', 'superadmin', 'super_admin', 'director', 'manager'].includes((currentUser.role || '').toLowerCase())
@@ -1478,6 +1677,7 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
 
   const content = (
     <motion.div 
+      onClick={handleImageClick}
       className={`${embedMode ? '' : styles.drawer} ${embedMode ? 'focus-right-column' : ''}`}
       {...drawerMotionProps}
       style={embedMode ? {
@@ -1743,6 +1943,26 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
                   margin: 8px 0 !important;
                   display: block !important;
                 }
+                .rich-comment-content img {
+                  max-width: 150px !important;
+                  max-height: 120px !important;
+                  border-radius: 8px !important;
+                  cursor: pointer !important;
+                  transition: transform 0.2s ease, max-width 0.25s ease, max-height 0.25s ease !important;
+                  object-fit: cover !important;
+                  display: block !important;
+                  margin: 6px 0 !important;
+                }
+                .rich-comment-content img:hover {
+                  transform: scale(1.02) !important;
+                  box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important;
+                }
+                .rich-comment-content img.zoomed {
+                  max-width: 100% !important;
+                  max-height: 600px !important;
+                  object-fit: contain !important;
+                  box-shadow: 0 10px 30px rgba(0,0,0,0.2) !important;
+                }
               `}</style>
               <label style={cardLabelStyle}>
                 {t('Mô tả chi tiết')}
@@ -1987,11 +2207,10 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
                   {/* Row 1: Title */}
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                     <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>{t('Tên công việc con')}</span>
-                    <input
-                      type="text"
+                    <textarea
                       className="form-input"
-                      style={{ fontSize: '0.8rem', padding: '8px 12px', height: '38px', borderRadius: '8px', border: '1px solid var(--color-border)', width: '100%' }}
-                      placeholder={t('Ví dụ: Gửi hợp đồng cho khách...')}
+                      style={{ fontSize: '0.8rem', padding: '8px 12px', minHeight: '60px', borderRadius: '8px', border: '1px solid var(--color-border)', width: '100%', resize: 'vertical', fontFamily: 'inherit' }}
+                      placeholder={t('Nhập công việc con (Có thể xuống dòng để thêm nhiều mục cùng lúc...)')}
                       value={newSubTitle}
                       onChange={(e) => setNewSubTitle(e.target.value)}
                     />
@@ -2071,254 +2290,281 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
                   </div>
                 ) : (
                   erpMeta.checklist.map((item: any) => {
-                    const itemUser = users.find(u => Number(u.id) === Number(item.assignee_id));
+                    const assignedIds = item.assignee_id ? String(item.assignee_id).split(',').map(id => id.trim()).filter(Boolean) : [];
+                    const itemUsers = users.filter(u => assignedIds.includes(String(u.id)));
+                    const itemUser = itemUsers[0] || null;
                     const isEditingThis = editingChecklistId === item.id;
                     const isAssigneeDropdownOpen = activeAssigneeDropdownId === item.id;
+                    const isCommentsOpen = selectedSubtask?.id === item.id;
 
                     return (
-                      <div 
-                        key={item.id}
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'space-between',
-                          background: item.done ? 'rgba(16, 185, 129, 0.03)' : 'var(--color-bg)',
-                          border: '1px solid var(--color-border-light)',
-                          padding: '10px 14px',
-                          borderRadius: '10px',
-                          transition: 'all 0.2s',
-                          opacity: item.done ? 0.8 : 1,
-                          position: 'relative',
-                          gap: '10px'
-                        }}
-                      >
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1, minWidth: 0 }}>
-                          {/* Round & Large Custom Checkbox */}
-                          <div style={{ position: 'relative', width: 22, height: 22, flexShrink: 0 }}>
-                            <input
-                              type="checkbox"
-                              checked={!!item.done}
-                              onChange={() => handleToggleChecklist(item.id)}
-                              disabled={currentUser?.role === 'viewer'}
-                              style={{
-                                opacity: 0,
-                                position: 'absolute',
-                                width: '100%',
-                                height: '100%',
-                                cursor: currentUser?.role === 'viewer' ? 'not-allowed' : 'pointer',
-                                margin: 0,
-                                zIndex: 1
-                              }}
-                            />
-                            <motion.div
-                              animate={{
-                                backgroundColor: item.done ? 'var(--color-success)' : 'var(--color-surface)',
-                                borderColor: item.done ? 'var(--color-success)' : 'var(--color-border)',
-                                opacity: currentUser?.role === 'viewer' ? 0.6 : 1
-                              }}
-                              style={{
-                                width: 22,
-                                height: 22,
-                                border: '2px solid',
-                                borderRadius: '50%',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                transition: 'background-color 0.2s, border-color 0.2s'
-                              }}
-                            >
-                              <AnimatePresence>
-                                {item.done && (
-                                  <motion.div
-                                    initial={{ scale: 0, opacity: 0 }}
-                                    animate={{ scale: 1, opacity: 1 }}
-                                    exit={{ scale: 0, opacity: 0 }}
-                                    transition={{ type: 'spring', damping: 15, stiffness: 300 }}
-                                  >
-                                    <Check size={14} color="white" strokeWidth={4} />
-                                  </motion.div>
-                                )}
-                              </AnimatePresence>
-                            </motion.div>
-                          </div>
+                      <div key={item.id} style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                        {/* Subtask Card */}
+                        <div 
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            background: item.done ? 'rgba(16, 185, 129, 0.03)' : 'var(--color-bg)',
+                            border: '1px solid var(--color-border-light)',
+                            padding: '10px 14px',
+                            borderRadius: '10px',
+                            transition: 'all 0.2s',
+                            opacity: item.done ? 0.8 : 1,
+                            position: 'relative',
+                            gap: '10px'
+                          }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1, minWidth: 0 }}>
+                            {/* Round & Large Custom Checkbox */}
+                            <div style={{ position: 'relative', width: 22, height: 22, flexShrink: 0 }}>
+                              <input
+                                type="checkbox"
+                                checked={!!item.done}
+                                onChange={() => handleToggleChecklist(item.id)}
+                                disabled={currentUser?.role === 'viewer'}
+                                style={{
+                                  opacity: 0,
+                                  position: 'absolute',
+                                  width: '100%',
+                                  height: '100%',
+                                  cursor: currentUser?.role === 'viewer' ? 'not-allowed' : 'pointer',
+                                  margin: 0,
+                                  zIndex: 1
+                                }}
+                              />
+                              <motion.div
+                                animate={{
+                                  backgroundColor: item.done ? 'var(--color-success)' : 'var(--color-surface)',
+                                  borderColor: item.done ? 'var(--color-success)' : 'var(--color-border)',
+                                  opacity: currentUser?.role === 'viewer' ? 0.6 : 1
+                                }}
+                                style={{
+                                  width: 22,
+                                  height: 22,
+                                  border: '2px solid',
+                                  borderRadius: '50%',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  transition: 'background-color 0.2s, border-color 0.2s'
+                                }}
+                              >
+                                <AnimatePresence>
+                                  {item.done && (
+                                    <motion.div
+                                      initial={{ scale: 0, opacity: 0 }}
+                                      animate={{ scale: 1, opacity: 1 }}
+                                      exit={{ scale: 0, opacity: 0 }}
+                                      transition={{ type: 'spring', damping: 15, stiffness: 300 }}
+                                    >
+                                      <Check size={14} color="white" strokeWidth={4} />
+                                    </motion.div>
+                                  )}
+                                </AnimatePresence>
+                              </motion.div>
+                            </div>
 
-                          <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0, gap: '3px' }}>
-                            {/* Title / Inline Edit */}
-                            {isEditingThis ? (
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                <input
-                                  type="text"
-                                  className="form-input"
-                                  value={editingChecklistTitle}
-                                  onChange={(e) => setEditingChecklistTitle(e.target.value)}
-                                  onKeyDown={(e) => {
-                                    if (e.key === 'Enter') {
-                                      handleUpdateChecklistItemTitle(item.id, editingChecklistTitle);
-                                      setEditingChecklistId(null);
-                                    } else if (e.key === 'Escape') {
-                                      setEditingChecklistId(null);
-                                    }
-                                  }}
-                                  autoFocus
-                                  style={{ fontSize: '0.82rem', padding: '4px 8px', height: '32px', borderRadius: '6px', width: '100%' }}
-                                />
-                                <button
-                                  type="button"
-                                  className="btn primary sm"
-                                  onClick={() => {
-                                    handleUpdateChecklistItemTitle(item.id, editingChecklistTitle);
-                                    setEditingChecklistId(null);
-                                  }}
-                                  style={{ padding: '4px 10px', height: '32px', fontSize: '0.75rem', flexShrink: 0 }}
-                                >
-                                  {t('Lưu')}
-                                </button>
-                                <button
-                                  type="button"
-                                  className="btn outline sm"
-                                  onClick={() => setEditingChecklistId(null)}
-                                  style={{ padding: '4px 8px', height: '32px', fontSize: '0.75rem', flexShrink: 0 }}
-                                >
-                                  ✕
-                                </button>
-                              </div>
-                            ) : (
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                <span style={{
-                                  fontSize: '0.82rem',
-                                  fontWeight: 700,
-                                  color: item.done ? 'var(--color-text-muted)' : 'var(--color-text)',
-                                  textDecoration: item.done ? 'line-through' : 'none',
-                                  wordBreak: 'break-word'
-                                }}>
-                                  {item.title}
-                                </span>
-                                {currentUser?.role !== 'viewer' && (
+                            <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0, gap: '3px' }}>
+                              {/* Title / Inline Edit */}
+                              {isEditingThis ? (
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                  <input
+                                    type="text"
+                                    className="form-input"
+                                    value={editingChecklistTitle}
+                                    onChange={(e) => setEditingChecklistTitle(e.target.value)}
+                                    onKeyDown={(e) => {
+                                      if (e.key === 'Enter') {
+                                        handleUpdateChecklistItemTitle(item.id, editingChecklistTitle);
+                                        setEditingChecklistId(null);
+                                      } else if (e.key === 'Escape') {
+                                        setEditingChecklistId(null);
+                                      }
+                                    }}
+                                    autoFocus
+                                    style={{ fontSize: '0.82rem', padding: '4px 8px', height: '32px', borderRadius: '6px', width: '100%' }}
+                                  />
                                   <button
                                     type="button"
+                                    className="btn primary sm"
                                     onClick={() => {
-                                      setEditingChecklistId(item.id);
-                                      setEditingChecklistTitle(item.title);
+                                      handleUpdateChecklistItemTitle(item.id, editingChecklistTitle);
+                                      setEditingChecklistId(null);
                                     }}
-                                    style={{
-                                      border: 'none',
-                                      background: 'transparent',
-                                      color: 'var(--color-text-muted)',
-                                      cursor: 'pointer',
-                                      padding: '2px 4px',
-                                      borderRadius: '4px',
-                                      display: 'inline-flex',
-                                      alignItems: 'center'
-                                    }}
-                                    className="hover-bg-alt hover-color-primary"
-                                    title={t('Sửa tiêu đề')}
+                                    style={{ padding: '4px 10px', height: '32px', fontSize: '0.75rem', flexShrink: 0 }}
                                   >
-                                    <Edit3 size={13} />
+                                    {t('Lưu')}
                                   </button>
+                                  <button
+                                    type="button"
+                                    className="btn outline sm"
+                                    onClick={() => setEditingChecklistId(null)}
+                                    style={{ padding: '4px 8px', height: '32px', fontSize: '0.75rem', flexShrink: 0 }}
+                                  >
+                                    ✕
+                                  </button>
+                                </div>
+                              ) : (
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                  <span style={{
+                                    fontSize: '0.82rem',
+                                    fontWeight: 700,
+                                    color: item.done ? 'var(--color-text-muted)' : 'var(--color-text)',
+                                    textDecoration: item.done ? 'line-through' : 'none',
+                                    wordBreak: 'break-word'
+                                  }}>
+                                    {item.title}
+                                  </span>
+                                  {currentUser?.role !== 'viewer' && (
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setEditingChecklistId(item.id);
+                                        setEditingChecklistTitle(item.title);
+                                      }}
+                                      style={{
+                                        border: 'none',
+                                        background: 'transparent',
+                                        color: 'var(--color-text-muted)',
+                                        cursor: 'pointer',
+                                        padding: '2px 4px',
+                                        borderRadius: '4px',
+                                        display: 'inline-flex',
+                                        alignItems: 'center'
+                                      }}
+                                      className="hover-bg-alt hover-color-primary"
+                                      title={t('Sửa tiêu đề')}
+                                    >
+                                      <Edit3 size={13} />
+                                    </button>
+                                  )}
+                                </div>
+                              )}
+
+                              {/* Subtitle Assignee & Due Date Row */}
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '2px' }}>
+                                <span style={{ fontSize: '0.68rem', color: 'var(--color-text-muted)' }}>
+                                  {t('Giao cho')}: <strong style={{ color: itemUsers.length > 0 ? 'var(--color-text)' : 'var(--color-text-muted)' }}>{itemUsers.length > 0 ? itemUsers.map(u => u.full_name || u.name).join(', ') : t('Chưa phân công')}</strong>
+                                </span>
+                                {item.due_date && (
+                                  <span style={{ fontSize: '0.68rem', color: 'var(--color-text-muted)' }}>
+                                    {` • Hạn: ${new Date(item.due_date).toLocaleDateString('vi-VN')}`}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Right Actions (Round User Icon & Delete Trash Icon) */}
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
+                            {/* Avatars stack if multiple */}
+                            {itemUsers.length > 1 && (
+                              <div style={{ display: 'flex', alignItems: 'center', marginRight: '4px' }}>
+                                {itemUsers.slice(0, 3).map((u, idx) => (
+                                  <div 
+                                    key={u.id} 
+                                    style={{ 
+                                      marginLeft: idx > 0 ? '-6px' : 0, 
+                                      zIndex: 10 - idx,
+                                      border: '2px solid var(--color-surface)',
+                                      borderRadius: '50%',
+                                      overflow: 'hidden',
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'center'
+                                    }}
+                                  >
+                                    <Avatar src={u.avatar || u.avatar_url} name={u.full_name || u.name} size={24} />
+                                  </div>
+                                ))}
+                                {itemUsers.length > 3 && (
+                                  <div 
+                                    style={{ 
+                                      marginLeft: '-6px', 
+                                      zIndex: 5,
+                                      border: '2px solid var(--color-surface)',
+                                      borderRadius: '50%',
+                                      background: 'var(--color-primary-light)',
+                                      color: 'var(--color-primary)',
+                                      fontSize: '9px',
+                                      fontWeight: 800,
+                                      width: '24px',
+                                      height: '24px',
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'center'
+                                    }}
+                                  >
+                                    +{itemUsers.length - 3}
+                                  </div>
                                 )}
                               </div>
                             )}
 
-                            {/* Subtitle Assignee & Due Date Row */}
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '2px' }}>
-                              <span style={{ fontSize: '0.68rem', color: 'var(--color-text-muted)' }}>
-                                {t('Giao cho')}: <strong style={{ color: itemUser ? 'var(--color-text)' : 'var(--color-text-muted)' }}>{itemUser ? (itemUser.full_name || itemUser.name) : t('Chưa phân công')}</strong>
-                              </span>
-                              {item.due_date && (
-                                <span style={{ fontSize: '0.68rem', color: 'var(--color-text-muted)' }}>
-                                  {` • Hạn: ${new Date(item.due_date).toLocaleDateString('vi-VN')}`}
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                        </div>
+                            {/* Round User Assignee Icon Button */}
+                            <div style={{ position: 'relative' }}>
+                              <button
+                                type="button"
+                                onClick={() => setActiveAssigneeDropdownId(isAssigneeDropdownOpen ? null : item.id)}
+                                disabled={currentUser?.role === 'viewer'}
+                                style={{
+                                  border: itemUsers.length > 1 
+                                    ? '1px dashed rgba(189, 29, 45, 0.4)' 
+                                    : (itemUsers.length === 1 ? '1.5px solid var(--color-primary-light)' : '1px solid var(--color-border-light)'),
+                                  background: itemUsers.length > 0 ? 'transparent' : 'rgba(163, 20, 34, 0.06)',
+                                  width: '28px',
+                                  height: '28px',
+                                  borderRadius: '50%',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  cursor: currentUser?.role === 'viewer' ? 'default' : 'pointer',
+                                  padding: 0,
+                                  transition: 'all 0.15s ease'
+                                }}
+                                className="hover-scale"
+                                title={itemUsers.length > 0 ? `${t('Giao cho')}: ${itemUsers.map(u => u.full_name || u.name).join(', ')}` : t('Phân công người thực hiện')}
+                              >
+                                {itemUsers.length === 1 && itemUser ? (
+                                  <Avatar 
+                                    src={itemUser.avatar || itemUser.avatar_url} 
+                                    name={itemUser.full_name || itemUser.name} 
+                                    size={26} 
+                                  />
+                                ) : (
+                                  <UserPlus size={14} color="var(--color-primary)" />
+                                )}
+                              </button>
 
-                        {/* Right Actions (Round User Icon & Delete Trash Icon) */}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
-                          {/* Round User Assignee Icon Button */}
-                          <div style={{ position: 'relative' }}>
-                            <button
-                              type="button"
-                              onClick={() => setActiveAssigneeDropdownId(isAssigneeDropdownOpen ? null : item.id)}
-                              disabled={currentUser?.role === 'viewer'}
-                              style={{
-                                border: itemUser ? '1.5px solid var(--color-primary-light)' : '1px solid var(--color-border-light)',
-                                background: itemUser ? 'transparent' : 'rgba(163, 20, 34, 0.06)',
-                                width: '28px',
-                                height: '28px',
-                                borderRadius: '50%',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                cursor: currentUser?.role === 'viewer' ? 'default' : 'pointer',
-                                padding: 0,
-                                transition: 'all 0.15s ease'
-                              }}
-                              className="hover-scale"
-                              title={itemUser ? `${t('Giao cho')}: ${itemUser.full_name || itemUser.name}` : t('Phân công người thực hiện')}
-                            >
-                              {itemUser ? (
-                                <Avatar 
-                                  src={itemUser.avatar || itemUser.avatar_url} 
-                                  name={itemUser.full_name || itemUser.name} 
-                                  size={26} 
-                                />
-                              ) : (
-                                <UserPlus size={14} color="var(--color-primary)" />
-                              )}
-                            </button>
-
-                            {/* User selection dropdown popup */}
-                            {isAssigneeDropdownOpen && (
-                              <div style={{
-                                position: 'absolute',
-                                top: '100%',
-                                right: 0,
-                                marginTop: '6px',
-                                zIndex: 9999,
-                                background: 'var(--color-surface)',
-                                border: '1px solid var(--color-border-light)',
-                                borderRadius: '12px',
-                                boxShadow: '0 10px 25px rgba(0, 0, 0, 0.18)',
-                                minWidth: '220px',
-                                maxHeight: '230px',
-                                overflowY: 'auto',
-                                padding: '6px',
-                                display: 'flex',
-                                flexDirection: 'column',
-                                gap: '2px'
-                              }}>
-                                <div style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--color-text-muted)', padding: '4px 8px' }}>
-                                  {t('Phân công người thực hiện:')}
-                                </div>
-                                
-                                {/* Unassign option */}
-                                <div
-                                  onClick={() => {
-                                    handleUpdateChecklistItemAssignee(item.id, '');
-                                    setActiveAssigneeDropdownId(null);
-                                  }}
-                                  style={{
-                                    padding: '6px 8px',
-                                    borderRadius: '6px',
-                                    cursor: 'pointer',
-                                    fontSize: '0.75rem',
-                                    color: 'var(--color-danger)',
-                                    fontWeight: 600,
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '6px'
-                                  }}
-                                  className="hover-bg-alt"
-                                >
-                                  <span>✕ {t('Bỏ phân công (Chưa ai làm)')}</span>
-                                </div>
-
-                                {users.map((u: any) => (
+                              {/* User selection dropdown popup */}
+                              {isAssigneeDropdownOpen && (
+                                <div style={{
+                                  position: 'absolute',
+                                  top: '100%',
+                                  right: 0,
+                                  marginTop: '6px',
+                                  zIndex: 9999,
+                                  background: 'var(--color-surface)',
+                                  border: '1px solid var(--color-border-light)',
+                                  borderRadius: '12px',
+                                  boxShadow: '0 10px 25px rgba(0, 0, 0, 0.18)',
+                                  minWidth: '220px',
+                                  maxHeight: '230px',
+                                  overflowY: 'auto',
+                                  padding: '6px',
+                                  display: 'flex',
+                                  flexDirection: 'column',
+                                  gap: '2px'
+                                }}>
+                                  <div style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--color-text-muted)', padding: '4px 8px' }}>
+                                    {t('Phân công người thực hiện:')}
+                                  </div>
+                                  
+                                  {/* Unassign option */}
                                   <div
-                                    key={u.id}
                                     onClick={() => {
-                                      handleUpdateChecklistItemAssignee(item.id, String(u.id));
+                                      handleUpdateChecklistItemAssignee(item.id, '');
                                       setActiveAssigneeDropdownId(null);
                                     }}
                                     style={{
@@ -2326,47 +2572,299 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
                                       borderRadius: '6px',
                                       cursor: 'pointer',
                                       fontSize: '0.75rem',
+                                      color: 'var(--color-danger)',
+                                      fontWeight: 600,
                                       display: 'flex',
                                       alignItems: 'center',
-                                      gap: '8px',
-                                      background: String(u.id) === String(item.assignee_id) ? 'var(--color-primary-light)' : 'transparent',
-                                      color: String(u.id) === String(item.assignee_id) ? 'var(--color-primary)' : 'var(--color-text)',
-                                      fontWeight: String(u.id) === String(item.assignee_id) ? 700 : 500
+                                      gap: '6px'
                                     }}
                                     className="hover-bg-alt"
                                   >
-                                    <Avatar src={u.avatar || u.avatar_url} name={u.full_name || u.name} size={18} />
-                                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                      {u.full_name || u.name}
-                                    </span>
+                                    <span>✕ {t('Bỏ phân công (Chưa ai làm)')}</span>
                                   </div>
-                                ))}
-                              </div>
+
+                                  {users.map((u: any) => {
+                                    const isAssigned = assignedIds.includes(String(u.id));
+                                    return (
+                                      <div
+                                        key={u.id}
+                                        onClick={() => {
+                                          const nextAssignees = isAssigned
+                                            ? assignedIds.filter(id => id !== String(u.id))
+                                            : [...assignedIds, String(u.id)];
+                                          handleUpdateChecklistItemAssignee(item.id, nextAssignees.join(','));
+                                        }}
+                                        style={{
+                                          padding: '6px 8px',
+                                          borderRadius: '6px',
+                                          cursor: 'pointer',
+                                          fontSize: '0.75rem',
+                                          display: 'flex',
+                                          alignItems: 'center',
+                                          justifyContent: 'space-between',
+                                          gap: '8px',
+                                          background: isAssigned ? 'var(--color-primary-light)' : 'transparent',
+                                          color: isAssigned ? 'var(--color-primary)' : 'var(--color-text)',
+                                          fontWeight: isAssigned ? 700 : 500
+                                        }}
+                                        className="hover-bg-alt"
+                                      >
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
+                                          <Avatar src={u.avatar || u.avatar_url} name={u.full_name || u.name} size={18} />
+                                          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                            {u.full_name || u.name}
+                                          </span>
+                                        </div>
+                                        {isAssigned && <Check size={12} color="var(--color-primary)" />}
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              )}
+                            </div>
+
+                            {/* Subtask Discussion / Comments Trigger */}
+                            {task?.id !== 'new' && (() => {
+                              const commentCount = subtaskCommentCounts[item.id] || 0;
+                              return (
+                                <div style={{ position: 'relative' }}>
+                                  <button
+                                    type="button"
+                                    onClick={() => setSelectedSubtask(isCommentsOpen ? null : item)}
+                                    style={{
+                                      border: isCommentsOpen ? '1px solid var(--color-primary)' : '1px solid var(--color-border-light)',
+                                      background: isCommentsOpen ? 'rgba(163, 20, 34, 0.06)' : 'transparent',
+                                      width: '28px',
+                                      height: '28px',
+                                      borderRadius: '50%',
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'center',
+                                      cursor: 'pointer',
+                                      padding: 0,
+                                      color: isCommentsOpen ? 'var(--color-primary)' : 'var(--color-text-muted)',
+                                      transition: 'all 0.15s ease'
+                                    }}
+                                    className="hover-scale hover-color-primary"
+                                    title={t('Thảo luận / Bình luận việc con')}
+                                  >
+                                    <MessageSquare size={13} />
+                                  </button>
+                                  {commentCount > 0 && (
+                                    <span style={{
+                                      position: 'absolute',
+                                      top: '-5px',
+                                      right: '-5px',
+                                      background: 'var(--color-primary)',
+                                      color: 'white',
+                                      fontSize: '9px',
+                                      fontWeight: 800,
+                                      borderRadius: '50%',
+                                      width: '16px',
+                                      height: '16px',
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'center',
+                                      lineHeight: 1,
+                                      border: '1.5px solid var(--color-surface)',
+                                      pointerEvents: 'none'
+                                    }}>
+                                      {commentCount}
+                                    </span>
+                                  )}
+                                </div>
+                              );
+                            })()}
+
+                            {/* Delete Trash Can */}
+                            {currentUser?.role !== 'viewer' && (
+                              <button
+                                type="button"
+                                onClick={() => setDeleteSubtaskTarget({ id: item.id, title: item.title })}
+                                style={{
+                                  border: 'none',
+                                  background: 'transparent',
+                                  color: 'var(--color-danger)',
+                                  cursor: 'pointer',
+                                  padding: '4px',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center'
+                                }}
+                                className="hover-lift"
+                                title={t('Xóa việc con')}
+                              >
+                                <Trash2 size={15} />
+                              </button>
                             )}
                           </div>
-
-                          {/* Delete Trash Can */}
-                          {currentUser?.role !== 'viewer' && (
-                            <button
-                              type="button"
-                              onClick={() => setDeleteSubtaskTarget({ id: item.id, title: item.title })}
-                              style={{
-                                border: 'none',
-                                background: 'transparent',
-                                color: 'var(--color-danger)',
-                                cursor: 'pointer',
-                                padding: '4px',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center'
-                              }}
-                              className="hover-lift"
-                              title={t('Xóa việc con')}
-                            >
-                              <Trash2 size={15} />
-                            </button>
-                          )}
                         </div>
+
+                        {/* Inline Comments Area */}
+                        <AnimatePresence>
+                          {isCommentsOpen && (
+                            <motion.div
+                              initial={{ opacity: 0, height: 0 }}
+                              animate={{ opacity: 1, height: 'auto' }}
+                              exit={{ opacity: 0, height: 0 }}
+                              transition={{ duration: 0.25 }}
+                              style={{
+                                overflow: 'hidden',
+                                background: 'rgba(0, 0, 0, 0.015)',
+                                border: '1px solid var(--color-border-light)',
+                                borderRadius: '12px',
+                                padding: '14px',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: '10px',
+                                marginLeft: '34px'
+                              }}
+                            >
+                              {/* Comments Feed */}
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '250px', overflowY: 'auto' }} className="custom-scrollbar">
+                                {loadingSubtaskComments ? (
+                                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                    <StatRowSkeleton />
+                                    <StatRowSkeleton />
+                                  </div>
+                                ) : subtaskComments.length === 0 ? (
+                                  <div style={{ textAlign: 'center', padding: '12px', color: 'var(--color-text-muted)', fontSize: '0.75rem' }}>
+                                    {t('Chưa có thảo luận nào.')}
+                                  </div>
+                                ) : (
+                                  subtaskComments.map((comment: any) => {
+                                    const commUser = users.find(u => Number(u.id) === Number(comment.user_id));
+                                    let commentParsedAtts = [];
+                                    if (comment.attachments) {
+                                      try {
+                                        commentParsedAtts = typeof comment.attachments === 'string' ? JSON.parse(comment.attachments) : comment.attachments;
+                                      } catch (e) {
+                                        console.error(e);
+                                      }
+                                    }
+                                    if (!Array.isArray(commentParsedAtts)) commentParsedAtts = [];
+
+                                    return (
+                                      <div 
+                                        key={comment.id}
+                                        id={`workspace-comment-${comment.id}`}
+                                        style={{ 
+                                          display: 'flex', 
+                                          gap: '8px', 
+                                          background: 'var(--color-surface)', 
+                                          border: '1px solid var(--color-border-light)', 
+                                          padding: '8px 12px', 
+                                          borderRadius: '10px',
+                                          transition: 'background-color 0.5s ease'
+                                        }}
+                                      >
+                                        <Avatar src={comment.avatar_url || commUser?.avatar || commUser?.avatar_url} name={commUser?.full_name || comment.user_name || 'Đồng nghiệp'} size={22} />
+                                        <div style={{ flex: 1, minWidth: 0 }}>
+                                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                            <span style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--color-text)' }}>{commUser?.full_name || comment.user_name || 'Đồng nghiệp'}</span>
+                                            <span style={{ fontSize: '0.6rem', color: 'var(--color-text-muted)' }}>{new Date(comment.created_at.replace(/-/g, '/')).toLocaleString('vi-VN')}</span>
+                                          </div>
+                                          {comment.content && /<[a-z][\s\S]*>/i.test(comment.content) ? (
+                                            <div 
+                                              className="rich-comment-content"
+                                              dangerouslySetInnerHTML={{ __html: comment.content }}
+                                              style={{ fontSize: '0.78rem', color: 'var(--color-text-light)', margin: '2px 0 0', lineHeight: '1.4' }}
+                                            />
+                                          ) : (
+                                            <div style={{ fontSize: '0.78rem', color: 'var(--color-text-light)', margin: '2px 0 0', lineHeight: '1.4', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                                              {renderCommentContent(comment.content)}
+                                            </div>
+                                          )}
+                                          {commentParsedAtts.length > 0 && (
+                                            <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', marginTop: '6px' }}>
+                                              {commentParsedAtts.map((url: any, aIdx: number) => {
+                                                const name = typeof url === 'string' ? url.substring(url.lastIndexOf('/') + 1) : (url.name || 'File');
+                                                const rawHref = typeof url === 'string' ? url : (url.url || '#');
+
+                                                const apiBase = import.meta.env.VITE_API_URL || '/backend';
+                                                let href = rawHref;
+                                                if (rawHref && rawHref.startsWith('uploads/')) {
+                                                  href = `${apiBase}/${rawHref}`;
+                                                } else if (rawHref && rawHref.startsWith('storage/uploads/')) {
+                                                  href = `${apiBase}/${rawHref.replace('storage/uploads/', 'uploads/')}`;
+                                                }
+
+                                                const isImg = name.match(/\.(jpg|jpeg|png|gif|webp|svg)/i);
+                                                if (isImg) {
+                                                  return (
+                                                    <a key={aIdx} href={href} target="_blank" rel="noopener noreferrer" style={{ display: 'block', borderRadius: '6px', overflow: 'hidden', border: '1px solid var(--color-border-light)' }}>
+                                                      <img src={href} alt={name} style={{ maxHeight: '60px', maxWidth: '100px', objectFit: 'contain' }} />
+                                                    </a>
+                                                  );
+                                                }
+                                                return (
+                                                  <a key={aIdx} href={href} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', padding: '3px 6px', borderRadius: '10px', background: 'rgba(0, 0, 0, 0.03)', fontSize: '0.68rem', color: 'var(--color-primary)', fontWeight: 600, border: '1px solid var(--color-border-light)' }} className="hover-opacity">
+                                                    <Paperclip size={9} />
+                                                    <span style={{ maxWidth: '120px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name}</span>
+                                                  </a>
+                                                );
+                                              })}
+                                            </div>
+                                          )}
+                                        </div>
+                                      </div>
+                                    );
+                                  })
+                                )}
+                              </div>
+
+                              {/* Comment Input */}
+                              {currentUser?.role !== 'viewer' && (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', borderTop: '1px dashed var(--color-border-light)', paddingTop: '10px' }}>
+                                  <div style={{ position: 'relative' }}>
+                                    <MentionInput
+                                      value={newSubtaskCommentText}
+                                      onChange={e => setNewSubtaskCommentText(e.target.value)}
+                                      onImagePaste={addLocalSubtaskCommentAttachment}
+                                      onFilePaste={addLocalSubtaskCommentAttachment}
+                                      placeholder={t('Viết bình luận việc con... (Dán ảnh Ctrl+V)')}
+                                      style={{ minHeight: '48px', fontSize: '0.8rem', paddingRight: '40px' }}
+                                      disabled={isSubmittingSubtaskComment || uploadingFile}
+                                    />
+                                    <label style={{ position: 'absolute', right: '8px', bottom: '8px', cursor: (uploadingFile || isSubmittingSubtaskComment) ? 'not-allowed' : 'pointer', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center' }} title={t('Đính kèm file')}>
+                                      <input type="file" onChange={handleSubtaskCommentAttachmentUpload} style={{ display: 'none' }} disabled={uploadingFile || isSubmittingSubtaskComment} />
+                                      {uploadingFile ? <RefreshCw className="spin" size={15} /> : <Paperclip size={15} />}
+                                    </label>
+                                  </div>
+
+                                  {/* Attachment Chips */}
+                                  {subtaskCommentAttachments.length > 0 && (
+                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                                      {subtaskCommentAttachments.map((att: any, idx: number) => (
+                                        <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '4px', background: 'var(--color-surface)', border: '1px solid var(--color-border-light)', padding: '2px 6px', borderRadius: '10px', fontSize: '0.68rem', color: 'var(--color-text)' }}>
+                                          {att.previewUrl ? (
+                                            <img src={att.previewUrl} alt="preview" style={{ width: '18px', height: '18px', borderRadius: '3px', objectFit: 'cover' }} />
+                                          ) : (
+                                            <Paperclip size={10} color="var(--color-primary)" />
+                                          )}
+                                          <span style={{ maxWidth: '140px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: 600 }}>{att.name}</span>
+                                          <button onClick={() => removeSubtaskCommentAttachment(idx)} style={{ border: 'none', background: 'transparent', color: 'var(--color-danger)', cursor: 'pointer', fontSize: '0.75rem', padding: '0 2px' }}>×</button>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  )}
+
+                                  <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
+                                    <button
+                                      onClick={handlePostSubtaskComment}
+                                      disabled={isSubmittingSubtaskComment || uploadingFile || (!newSubtaskCommentText.trim() && subtaskCommentAttachments.length === 0)}
+                                      className="btn primary sm"
+                                      style={{ padding: '4px 14px', fontSize: '0.72rem', borderRadius: '15px', display: 'flex', alignItems: 'center', gap: '4px', background: 'var(--color-primary)', borderColor: 'var(--color-primary)', color: '#fff' }}
+                                    >
+                                      {isSubmittingSubtaskComment ? <RefreshCw className="spin" size={11} /> : <Send size={11} />}
+                                      <span>{t('Gửi')}</span>
+                                    </button>
+                                  </div>
+                                </div>
+                              )}
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
                       </div>
                     );
                   })

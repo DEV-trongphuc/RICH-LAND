@@ -628,6 +628,7 @@ switch ($resource) {
         $auth = requireAuth();
         $ctrl = new ActivityController($db);
         if     ($resourceId && $subResource === 'comments' && $method === 'GET')  $ctrl->getComments($auth, (int)$resourceId);
+        elseif ($resourceId && $subResource === 'subtasks-comment-counts' && $method === 'GET') $ctrl->getSubtasksCommentCounts($auth, (int)$resourceId);
         elseif ($resourceId && $subResource === 'comments' && $method === 'POST') $ctrl->addComment($auth, (int)$resourceId);
         elseif ($resourceId === 'comments' && $subResource && $method === 'DELETE') $ctrl->deleteComment($auth, (int)$subResource);
         elseif ($resourceId && $subResource === 'cancel-meeting' && $method === 'POST') $ctrl->cancelMeeting($auth, (int)$resourceId);

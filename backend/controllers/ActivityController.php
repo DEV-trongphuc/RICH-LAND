@@ -9,6 +9,9 @@ class ActivityController {
         try {
             $this->db->exec("ALTER TABLE activity_comments ADD COLUMN parent_id INT NULL DEFAULT NULL");
         } catch (Exception $e) {}
+        try {
+            $this->db->exec("ALTER TABLE activity_comments ADD COLUMN subtask_id VARCHAR(255) NULL DEFAULT NULL");
+        } catch (Exception $e) {}
     }
 
     private function getFirstImageUrl(array $activity): ?string {
@@ -1018,14 +1021,27 @@ class ActivityController {
             respond(403, null, 'Bạn không có quyền truy cập hoạt động này', false);
         }
 
-        $stmt = $this->db->prepare("
-            SELECT c.*, u.full_name as user_name, u.avatar_url 
-            FROM activity_comments c 
-            LEFT JOIN users u ON c.user_id = u.id 
-            WHERE c.activity_id = ? AND c.tenant_id = ? 
-            ORDER BY c.created_at DESC
-        ");
-        $stmt->execute([$id, $auth['tenant_id']]);
+        $subtaskId = isset($_GET['subtask_id']) && $_GET['subtask_id'] !== '' ? $_GET['subtask_id'] : null;
+
+        if ($subtaskId) {
+            $stmt = $this->db->prepare("
+                SELECT c.*, u.full_name as user_name, u.avatar_url 
+                FROM activity_comments c 
+                LEFT JOIN users u ON c.user_id = u.id 
+                WHERE c.activity_id = ? AND c.tenant_id = ? AND c.subtask_id = ?
+                ORDER BY c.created_at DESC
+            ");
+            $stmt->execute([$id, $auth['tenant_id'], $subtaskId]);
+        } else {
+            $stmt = $this->db->prepare("
+                SELECT c.*, u.full_name as user_name, u.avatar_url 
+                FROM activity_comments c 
+                LEFT JOIN users u ON c.user_id = u.id 
+                WHERE c.activity_id = ? AND c.tenant_id = ? AND c.subtask_id IS NULL
+                ORDER BY c.created_at DESC
+            ");
+            $stmt->execute([$id, $auth['tenant_id']]);
+        }
         
         $comments = array_map(function($row) {
             $row['attachments'] = $row['attachments'] ? json_decode($row['attachments'], true) : [];
@@ -1033,6 +1049,32 @@ class ActivityController {
         }, $stmt->fetchAll(PDO::FETCH_ASSOC));
 
         respond(200, $comments);
+    }
+
+    public function getSubtasksCommentCounts(array $auth, int $id): void {
+        // Verify activity belongs to tenant and user has permission
+        $check = $this->db->prepare("SELECT * FROM activities WHERE id=? AND tenant_id=? AND deleted_at IS NULL");
+        $check->execute([$id, $auth['tenant_id']]);
+        $activity = $check->fetch();
+        if (!$activity) respond(404, null, 'Không tìm thấy hoạt động hoặc không có quyền truy cập', false);
+
+        if (!$this->hasAccess($auth, $activity)) {
+            respond(403, null, 'Bạn không có quyền truy cập hoạt động này', false);
+        }
+
+        $stmt = $this->db->prepare("
+            SELECT subtask_id, COUNT(*) as count 
+            FROM activity_comments 
+            WHERE activity_id = ? AND tenant_id = ? AND subtask_id IS NOT NULL
+            GROUP BY subtask_id
+        ");
+        $stmt->execute([$id, $auth['tenant_id']]);
+        $counts = [];
+        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+            $counts[$row['subtask_id']] = (int)$row['count'];
+        }
+
+        respond(200, $counts);
     }
 
     public function addComment(array $auth, int $id): void {
@@ -1055,10 +1097,11 @@ class ActivityController {
         $attachments = !empty($b['attachments']) && is_array($b['attachments']) ? json_encode($b['attachments']) : null;
 
         $parentId = !empty($b['parent_id']) ? (int)$b['parent_id'] : null;
+        $subtaskId = !empty($b['subtask_id']) ? $b['subtask_id'] : null;
 
         $stmt = $this->db->prepare("
-            INSERT INTO activity_comments (tenant_id, activity_id, user_id, content, attachments, parent_id)
-            VALUES (?, ?, ?, ?, ?, ?)
+            INSERT INTO activity_comments (tenant_id, activity_id, user_id, content, attachments, parent_id, subtask_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
         ");
         $stmt->execute([
             $auth['tenant_id'],
@@ -1066,7 +1109,8 @@ class ActivityController {
             $auth['user_id'],
             $b['content'] ?? null,
             $attachments,
-            $parentId
+            $parentId,
+            $subtaskId
         ]);
 
         $commentId = $this->db->lastInsertId();
@@ -1082,7 +1126,7 @@ class ActivityController {
                     'user_id' => $parentOwnerId,
                     'author_name' => $auth['full_name'] ?? 'Đồng nghiệp',
                     'comment' => "Đã trả lời bình luận của bạn trong hoạt động: " . ($activity['subject'] ?? 'Công việc'),
-                    'link' => "/contacts?id=" . ($activity['contact_id'] ?? $activity['related_id'] ?? '') . "&highlight_comment_id=" . $commentId
+                    'link' => "/contacts?id=" . ($activity['contact_id'] ?? $activity['related_id'] ?? '') . "&highlight_comment_id=" . $commentId . ($subtaskId ? "&subtask_id={$subtaskId}" : "")
                 ]);
             }
         }
@@ -1090,14 +1134,31 @@ class ActivityController {
         // Parse mentions in comment content
         $content = $b['content'] ?? '';
         $mentions = [];
+
+        // 1. First, parse by data-user-id (HTML editor mentions)
+        if (preg_match_all('/data-user-id="(\d+)"/i', (string)$content, $matches)) {
+            $uids = array_filter(array_map('intval', $matches[1]));
+            foreach ($uids as $uid) {
+                if ($uid !== (int)$auth['user_id']) {
+                    $stmtUser = $this->db->prepare("SELECT id, email, full_name FROM users WHERE tenant_id=? AND id=?");
+                    $stmtUser->execute([$auth['tenant_id'], $uid]);
+                    $userRow = $stmtUser->fetch(PDO::FETCH_ASSOC);
+                    if ($userRow) {
+                        $mentions[$uid] = $userRow;
+                    }
+                }
+            }
+        }
+
+        // 2. Fallback to traditional @name parsing for plaintext comments
         $matches = [];
         preg_match_all('/@([a-zA-Z0-9_\x{00C0}-\x{1EF9}()]+)/u', (string)$content, $matches);
         $names = is_array($matches[1] ?? null) ? $matches[1] : [];
         if (!empty($names)) {
             foreach ($names as $nameWithUnderscores) {
                 $fullName = str_replace('_', ' ', $nameWithUnderscores);
-                $stmtUser = $this->db->prepare("SELECT id, email, full_name FROM users WHERE tenant_id=? AND full_name=?");
-                $stmtUser->execute([$auth['tenant_id'], $fullName]);
+                $stmtUser = $this->db->prepare("SELECT id, email, full_name FROM users WHERE tenant_id=? AND (full_name=? OR REPLACE(full_name, ' ', '_')=?)");
+                $stmtUser->execute([$auth['tenant_id'], $fullName, $nameWithUnderscores]);
                 $userRow = $stmtUser->fetch(PDO::FETCH_ASSOC);
                 if ($userRow) {
                     $uid = (int)$userRow['id'];
@@ -1110,12 +1171,12 @@ class ActivityController {
 
         if (!empty($mentions)) {
             require_once __DIR__ . '/../NotificationService.php';
-            $targetLink = "/activities/{$id}?comment_id={$commentId}";
+            $targetLink = "/activities/{$id}?comment_id={$commentId}" . ($subtaskId ? "&subtask_id={$subtaskId}" : "");
             if (!empty($activity['related_type']) && !empty($activity['related_id'])) {
                 if ($activity['related_type'] === 'contact') {
-                    $targetLink = "/contacts?open_contact_id={$activity['related_id']}&highlight_activity_id={$id}&highlight_comment_id={$commentId}";
+                    $targetLink = "/contacts?open_contact_id={$activity['related_id']}&highlight_activity_id={$id}&highlight_comment_id={$commentId}" . ($subtaskId ? "&subtask_id={$subtaskId}" : "");
                 } else if ($activity['related_type'] === 'deal') {
-                    $targetLink = "/deals?id={$activity['related_id']}&highlight_activity_id={$id}&highlight_comment_id={$commentId}";
+                    $targetLink = "/deals?id={$activity['related_id']}&highlight_activity_id={$id}&highlight_comment_id={$commentId}" . ($subtaskId ? "&subtask_id={$subtaskId}" : "");
                 }
             }
             foreach ($mentions as $uid => $userRow) {

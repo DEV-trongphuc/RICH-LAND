@@ -1,0 +1,452 @@
+﻿diff --git a/backend/run_migrations.php b/backend/run_migrations.php
+index af1bc9e3..05df9495 100644
+--- a/backend/run_migrations.php
++++ b/backend/run_migrations.php
+@@ -3,7 +3,7 @@
+ 
+ // Safe check: Allow CLI, inclusion by diagnostic script, or token validation
+ $isCli = (php_sapi_name() === 'cli');
+-$hasValidToken = (($_GET['token'] ?? '') === 'RichLand_Diag_Secure_Token_2026_9e88d6c701fbc6b7') || defined('DIAG_TOKEN');
++$hasValidToken = (($_GET['token'] ?? '') === 'Ideas_Diag_Secure_Token_2026_9e88d6c701fbc6b7') || defined('DIAG_TOKEN');
+ if (!$isCli && !$hasValidToken) {
+     http_response_code(403);
+     header("Content-Type: application/json; charset=UTF-8");
+@@ -18,7 +18,7 @@ $apply = (isset($_GET['apply']) && $_GET['apply'] === 'true')
+       || (isset($_POST['execute_migration']) && $_POST['execute_migration'] === '1')
+       || ($isCli && in_array('--apply', $argv));
+ 
+-$targetVersion = 194;
++$targetVersion = 197;
+ $currentVersion = 186;
+ 
+ // Query current DB version
+@@ -204,8 +204,10 @@ try {
+     $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('attendance_report_enabled', '0')");
+     $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('attendance_report_trigger_day', '1')");
+     $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('attendance_report_date_mode', 'previous_month')");
+-    $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('require_checkout', '0')");
++    $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('require_checkout', '1')");
++    $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('auto_approve_checkin', '1')");
+     $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('golden_hours_max_leads_per_consultant', '0')");
++    $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('require_lead_claim', '0')");
+ 
+     // 5. Ensure 2FA columns exist in users table
+     $chk2FA = $conn->query("SHOW COLUMNS FROM users LIKE 'two_factor_enabled'");
+@@ -381,33 +383,396 @@ try {
+         $logMsg("─É├ú bß╗ò sung c├íc cß╗Öt ph├ón cß║Ñp ─æß║íi l├╜ (tier, parent_id, commission_rate, focus_markets, agent_count) v├áo bß║úng companies.", "success");
+     }
+ 
+-    // 8.9. Add Grab Lead columns to distribution_rounds (Version 192)
+-    $chkRT = $conn->query("SHOW COLUMNS FROM `distribution_rounds` LIKE 'round_type'");
+-    if (!$chkRT || $chkRT->num_rows == 0) {
+-        $conn->query("ALTER TABLE `distribution_rounds` 
+-            ADD COLUMN `round_type` ENUM('round_robin', 'grab') DEFAULT 'round_robin' COMMENT 'Loß║íi v├▓ng: round_robin hoß║╖c grab (tranh lead)', 
+-            ADD COLUMN `grab_countdown_seconds` INT DEFAULT 300 COMMENT 'Thß╗¥i gian ─æß║┐m ng╞░ß╗úc nhß║¡n lead (gi├óy)', 
+-            ADD COLUMN `grab_cooldown_seconds` INT DEFAULT 3600 COMMENT 'Thß╗¥i gian block sau khi nhß║¡n lead (gi├óy)'");
+-        $logMsg("─É├ú bß╗ò sung c├íc cß╗Öt round_type, grab_countdown_seconds, grab_cooldown_seconds v├áo bß║úng distribution_rounds.", "success");
++    // 9. Create HRM and Payroll tables
++    $conn->query("CREATE TABLE IF NOT EXISTS `hrm_profiles` (
++        `user_id` INT PRIMARY KEY,
++        `joined_date` DATE NOT NULL,
++        `base_salary` DECIMAL(15,2) DEFAULT 0.00,
++        `deal_salary` DECIMAL(15,2) DEFAULT 0.00,
++        `has_insurance` TINYINT(1) DEFAULT 1,
++        `allowance_meal` DECIMAL(15,2) DEFAULT 0.00,
++        `allowance_travel` DECIMAL(15,2) DEFAULT 0.00,
++        `allowance_phone` DECIMAL(15,2) DEFAULT 0.00,
++        `kpi_target` DECIMAL(15,2) DEFAULT 0.00,
++        `kpi_multiplier_rules` TEXT NULL,
++        `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
++        `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
++    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
++
++    $conn->query("CREATE TABLE IF NOT EXISTS `hrm_contracts` (
++        `id` INT AUTO_INCREMENT PRIMARY KEY,
++        `user_id` INT NOT NULL,
++        `contract_code` VARCHAR(50) NOT NULL,
++        `contract_type` VARCHAR(30) DEFAULT 'probation',
++        `salary_base` DECIMAL(15,2) DEFAULT 0.00,
++        `salary_deal` DECIMAL(15,2) DEFAULT 0.00,
++        `salary_type` VARCHAR(10) DEFAULT 'net',
++        `probation_rate` DECIMAL(5,2) DEFAULT 85.00,
++        `start_date` DATE NOT NULL,
++        `end_date` DATE NULL,
++        `status` VARCHAR(20) DEFAULT 'active',
++        `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
++        `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
++        KEY `idx_hrm_contracts_user` (`user_id`)
++    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
++
++    $conn->query("CREATE TABLE IF NOT EXISTS `hrm_salary_advances` (
++        `id` INT AUTO_INCREMENT PRIMARY KEY,
++        `user_id` INT NOT NULL,
++        `amount` DECIMAL(15,2) DEFAULT 0.00,
++        `request_date` DATE NOT NULL,
++        `reason` TEXT NULL,
++        `status` VARCHAR(20) DEFAULT 'pending',
++        `deducted_payslip_id` INT NULL,
++        `approver_id` INT NULL,
++        `approver_id_2` INT NULL,
++        `approved_by_2` INT NULL,
++        `status_level_1` VARCHAR(20) DEFAULT 'pending',
++        `status_level_2` VARCHAR(20) DEFAULT 'pending',
++        `related_user_ids` TEXT NULL,
++        `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
++        `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
++        KEY `idx_hrm_advances_user` (`user_id`)
++    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
++
++    $conn->query("CREATE TABLE IF NOT EXISTS `hrm_leave_requests` (
++        `id` INT AUTO_INCREMENT PRIMARY KEY,
++        `user_id` INT NOT NULL,
++        `leave_type` VARCHAR(30) DEFAULT 'annual',
++        `start_date` DATETIME NOT NULL,
++        `end_date` DATETIME NOT NULL,
++        `total_days` DECIMAL(3,1) DEFAULT 1.0,
++        `reason` TEXT NULL,
++        `status` VARCHAR(20) DEFAULT 'pending',
++        `approved_by` INT NULL,
++        `approver_id` INT NULL,
++        `approver_id_2` INT NULL,
++        `approved_by_2` INT NULL,
++        `status_level_1` VARCHAR(20) DEFAULT 'pending',
++        `status_level_2` VARCHAR(20) DEFAULT 'pending',
++        `related_user_ids` TEXT NULL,
++        `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
++        `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
++        KEY `idx_hrm_leaves_user` (`user_id`)
++    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
++
++    $conn->query("CREATE TABLE IF NOT EXISTS `hrm_assets` (
++        `id` INT AUTO_INCREMENT PRIMARY KEY,
++        `user_id` INT NOT NULL,
++        `asset_name` VARCHAR(255) NOT NULL,
++        `asset_code` VARCHAR(100) NOT NULL,
++        `given_date` DATE NOT NULL,
++        `returned_date` DATE NULL,
++        `condition_note` TEXT NULL,
++        `status` VARCHAR(20) DEFAULT 'assigned',
++        `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
++        `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
++        KEY `idx_hrm_assets_user` (`user_id`)
++    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
++
++    $conn->query("CREATE TABLE IF NOT EXISTS `monthly_payslips` (
++        `id` INT AUTO_INCREMENT PRIMARY KEY,
++        `user_id` INT NOT NULL,
++        `month_year` VARCHAR(7) NOT NULL,
++        `work_days_required` INT DEFAULT 26,
++        `work_days_actual` DECIMAL(4,1) DEFAULT 0.0,
++        `lateness_minutes` INT DEFAULT 0,
++        `lateness_penalty` DECIMAL(15,2) DEFAULT 0.00,
++        `salary_basic_calculated` DECIMAL(15,2) DEFAULT 0.00,
++        `allowance_total` DECIMAL(15,2) DEFAULT 0.00,
++        `kpi_bonus` DECIMAL(15,2) DEFAULT 0.00,
++        `insurance_bhxh` DECIMAL(15,2) DEFAULT 0.00,
++        `insurance_bhyt` DECIMAL(15,2) DEFAULT 0.00,
++        `insurance_bhtn` DECIMAL(15,2) DEFAULT 0.00,
++        `tax_pit` DECIMAL(15,2) DEFAULT 0.00,
++        `advance_deduction` DECIMAL(15,2) DEFAULT 0.00,
++        `net_salary` DECIMAL(15,2) DEFAULT 0.00,
++        `status` VARCHAR(20) DEFAULT 'draft',
++        `signature_url` TEXT NULL,
++        `confirmed_at` DATETIME NULL,
++        `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
++        `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
++        UNIQUE KEY `uk_user_month` (`user_id`, `month_year`)
++    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
++
++    // 9.6. Add roles 'hr', 'accountant', 'marketing' (Version 193)
++    if ($currentVersion < 193 || $isForce) {
++        $logMsg("─Éang n├óng cß║Ñp CSDL l├¬n phi├¬n bß║ún 193 (Cß║Ñu h├¼nh Role mß╗¢i v├á ch├¿n t├ái khoß║ún)...", "info");
++        
++        // Update users table enum
++        $conn->query("ALTER TABLE `users` MODIFY COLUMN `role` ENUM('super_admin','admin','manager','assistant','sales','viewer','superadmin','director','hr','accountant','marketing') NOT NULL DEFAULT 'sales'");
++        $logMsg("─É├ú cß║¡p nhß║¡t ENUM role cß╗ºa bß║úng users.", "success");
++
++        // Insert test accounts if they do not exist
++        $testUsers = [
++            [
++                'email' => 'hr@Ideas.test',
++                'role' => 'hr',
++                'full_name' => 'Nh├ón sß╗▒ Demo',
++                'username' => 'hr_demo',
++                'password' => 'hr123'
++            ],
++            [
++                'email' => 'accountant@Ideas.test',
++                'role' => 'accountant',
++                'full_name' => 'Kß║┐ to├ín Demo',
++                'username' => 'accountant_demo',
++                'password' => 'accountant123'
++            ],
++            [
++                'email' => 'marketing@Ideas.test',
++                'role' => 'marketing',
++                'full_name' => 'Marketing Demo',
++                'username' => 'marketing_demo',
++                'password' => 'marketing123'
++            ]
++        ];
++
++        foreach ($testUsers as $tu) {
++            $chk = $conn->prepare("SELECT id FROM users WHERE email = ? LIMIT 1");
++            $chk->execute([$tu['email']]);
++            $res = $chk->get_result();
++            $exists = $res ? $res->fetch_assoc() : null;
++            $chk->close();
++
++            if (!$exists) {
++                $hash = password_hash($tu['password'], PASSWORD_BCRYPT);
++                $ins = $conn->prepare("
++                    INSERT INTO users (tenant_id, username, email, password_hash, full_name, role, is_active, status) 
++                    VALUES (1, ?, ?, ?, ?, ?, 1, 'active')
++                ");
++                $ins->execute([$tu['username'], $tu['email'], $hash, $tu['full_name'], $tu['role']]);
++                $ins->close();
++                $logMsg("─É├ú ch├¿n t├ái khoß║ún thß╗¡ nghiß╗çm: " . $tu['email'], "success");
++            }
++        }
++        $logMsg("N├óng cß║Ñp l├¬n phi├¬n bß║ún 193 ho├án tß║Ñt.", "success");
+     }
+ 
+-    // 8.10. Add grab_fallback_to_databank to distribution_rounds (Version 193)
+-    $chkGF = $conn->query("SHOW COLUMNS FROM `distribution_rounds` LIKE 'grab_fallback_to_databank'");
+-    if (!$chkGF || $chkGF->num_rows == 0) {
+-        $conn->query("ALTER TABLE `distribution_rounds` 
+-            ADD COLUMN `grab_fallback_to_databank` TINYINT(1) DEFAULT 0 COMMENT '1: fallback vß╗ü databank, 0: fallback vß╗ü admin chß╗¥ ph├ón bß╗ò lß║íi'");
+-        $logMsg("─É├ú bß╗ò sung cß╗Öt grab_fallback_to_databank v├áo bß║úng distribution_rounds.", "success");
++    // 9.7. Add custom_fields_json to hrm_profiles (Version 194)
++    if ($currentVersion < 194 || $isForce) {
++        $logMsg("─Éang n├óng cß║Ñp CSDL l├¬n phi├¬n bß║ún 194 (Th├¬m cß╗Öt custom_fields_json v├áo hrm_profiles)...", "info");
++        
++        $checkCol = $conn->query("SHOW COLUMNS FROM `hrm_profiles` LIKE 'custom_fields_json'");
++        if (!$checkCol || $checkCol->num_rows === 0) {
++            $conn->query("ALTER TABLE `hrm_profiles` ADD COLUMN `custom_fields_json` TEXT NULL AFTER `kpi_multiplier_rules`");
++            $logMsg("─É├ú th├¬m cß╗Öt custom_fields_json v├áo bß║úng hrm_profiles.", "success");
++        } else {
++            $logMsg("Cß╗Öt custom_fields_json ─æ├ú tß╗ôn tß║íi trong bß║úng hrm_profiles.", "warning");
++        }
++        
++        $logMsg("N├óng cß║Ñp l├¬n phi├¬n bß║ún 194 ho├án tß║Ñt.", "success");
+     }
+ 
+-    // 8.11. Add grab_max_attempts to distribution_rounds (Version 194)
+-    $chkGMA = $conn->query("SHOW COLUMNS FROM `distribution_rounds` LIKE 'grab_max_attempts'");
+-    if (!$chkGMA || $chkGMA->num_rows == 0) {
+-        $conn->query("ALTER TABLE `distribution_rounds` ADD COLUMN `grab_max_attempts` INT(11) NULL DEFAULT NULL");
+-        $logMsg("─É├ú bß╗ò sung cß╗Öt grab_max_attempts v├áo bß║úng distribution_rounds.", "success");
++    // 9.8. Seed default departments and assign users (Version 195)
++    if ($currentVersion < 195 || $isForce) {
++        $logMsg("─Éang n├óng cß║Ñp CSDL l├¬n phi├¬n bß║ún 195 (Khß╗ƒi tß║ío c├íc ph├▓ng ban mß║╖c ─æß╗ïnh v├á g├ín nh├ón sß╗▒)...", "info");
++
++        // Seed default departments if they don't exist
++        $defaultTeams = [
++            'Ph├▓ng Nh├ón sß╗▒' => 'Ph├▓ng ban chß╗ïu tr├ích nhiß╗çm quß║ún l├╜ hß╗ô s╞í nh├ón sß╗▒, bß║úng l╞░╞íng v├á trß╗▒c ca.',
++            'Ph├▓ng Kß║┐ to├ín' => 'Ph├▓ng ban chß╗ïu tr├ích nhiß╗çm quß║ún l├╜ d├▓ng tiß╗ün, h├│a ─æ╞ín, cß╗ìc v├á chi ph├¡.',
++            'Ph├▓ng Marketing' => 'Ph├▓ng ban chß╗ïu tr├ích nhiß╗çm chß║íy chiß║┐n dß╗ïch quß║úng c├ío v├á ─æiß╗üu phß╗æi data lead.',
++            'Ph├▓ng Kinh doanh' => 'Ph├▓ng ban t╞░ vß║Ñn v├á b├ín h├áng, quß║ún l├╜ ch─âm s├│c leads v├á giao dß╗ïch.'
++        ];
++
++        // We find the first admin user to set as default leader
++        $admQ = $conn->query("SELECT id FROM users WHERE role IN ('admin', 'superadmin', 'super_admin') LIMIT 1");
++        $admRow = $admQ ? $admQ->fetch_assoc() : null;
++        $leaderId = $admRow ? (int)$admRow['id'] : 1;
++
++        foreach ($defaultTeams as $name => $desc) {
++            $chk = $conn->prepare("SELECT id FROM teams WHERE name = ? LIMIT 1");
++            $chk->execute([$name]);
++            $res = $chk->get_result();
++            $exists = $res ? $res->fetch_assoc() : null;
++            $chk->close();
++
++            if (!$exists) {
++                $ins = $conn->prepare("INSERT INTO teams (name, description, leader_id) VALUES (?, ?, ?)");
++                $ins->execute([$name, $desc, $leaderId]);
++                $ins->close();
++                $logMsg("─É├ú khß╗ƒi tß║ío ph├▓ng ban: " . $name, "success");
++            }
++        }
++
++        // Link default roles to their departments
++        $roleDepts = [
++            'hr' => 'Ph├▓ng Nh├ón sß╗▒',
++            'accountant' => 'Ph├▓ng Kß║┐ to├ín',
++            'marketing' => 'Ph├▓ng Marketing',
++            'sales' => 'Ph├▓ng Kinh doanh',
++            'sale' => 'Ph├▓ng Kinh doanh'
++        ];
++
++        foreach ($roleDepts as $role => $deptName) {
++            // Find team ID
++            $tQ = $conn->prepare("SELECT id FROM teams WHERE name = ? LIMIT 1");
++            $tQ->execute([$deptName]);
++            $tRes = $tQ->get_result();
++            $tRow = $tRes ? $tRes->fetch_assoc() : null;
++            $tQ->close();
++
++            if ($tRow) {
++                $teamId = (int)$tRow['id'];
++                // Update users with this role to belong to this team/department
++                $upd = $conn->prepare("UPDATE users SET team_id = ? WHERE role = ?");
++                $upd->execute([$teamId, $role]);
++                $upd->close();
++                $logMsg("─É├ú g├ín nh├ón sß╗▒ vai tr├▓ '" . $role . "' v├áo " . $deptName, "success");
++            }
++        }
++
++        $logMsg("N├óng cß║Ñp l├¬n phi├¬n bß║ún 195 ho├án tß║Ñt.", "success");
++    }
++
++    // 9.9. Performance indexes & data cleanup (Version 196)
++    if ($currentVersion < 196 || $isForce) {
++        $logMsg("─Éang n├óng cß║Ñp CSDL l├¬n phi├¬n bß║ún 196 (Tß║ío 9 chß╗ë mß╗Ñc hiß╗çu n─âng v├á dß╗ìn dß║╣p dß╗» liß╗çu)...", "info");
++
++        // 1. Clean up corrupted dates in main tables
++        $tables = [
++            'users' => ['dob'],
++            'hrm_profiles' => ['joined_date'],
++            'check_ins' => ['check_in_date'],
++            'hrm_leave_requests' => ['start_date', 'end_date']
++        ];
++        foreach ($tables as $table => $cols) {
++            foreach ($cols as $col) {
++                $conn->query("UPDATE `$table` SET `$col` = NULL WHERE `$col` = '0000-00-00' OR `$col` = '1970-01-01'");
++            }
++        }
++        $logMsg("─É├ú dß╗ìn dß║╣p c├íc gi├í trß╗ï ng├áy th├íng lß╗ùi (0000-00-00, 1970-01-01) vß╗ü NULL.", "success");
++
++        // 2. Add BTREE indexes for high-frequency queries
++        $indexes = [
++            'users' => ['idx_users_team' => 'team_id'],
++            'contacts' => ['idx_contacts_tenant_owner' => 'tenant_id, owner_id'],
++            'deals' => ['idx_deals_contact_tenant' => 'contact_id, tenant_id'],
++            'deposits' => ['idx_deposits_contact_creator' => 'contact_id, created_by'],
++            'deposit_milestones' => ['idx_milestones_deposit_status' => 'deposit_id, status'],
++            'invoices' => ['idx_invoices_contact_status' => 'contact_id, status'],
++            'expenses' => ['idx_expenses_tenant_status' => 'tenant_id, status'],
++            'activities' => ['idx_activities_contact_user' => 'contact_id, user_id'],
++            'comments' => ['idx_comments_entity' => 'entity_type(50), entity_id']
++        ];
++
++        foreach ($indexes as $table => $idxList) {
++            foreach ($idxList as $idxName => $columns) {
++                // Check if index already exists
++                $chk = $conn->query("SHOW INDEX FROM `$table` WHERE Key_name = '$idxName'");
++                if (!$chk || $chk->num_rows === 0) {
++                    $conn->query("ALTER TABLE `$table` ADD INDEX `$idxName` ($columns)");
++                    $logMsg("─É├ú tß║ío chß╗ë mß╗Ñc $idxName tr├¬n bß║úng $table.", "success");
++                } else {
++                    $logMsg("Chß╗ë mß╗Ñc $idxName ─æ├ú tß╗ôn tß║íi tr├¬n bß║úng $table.", "warning");
++                }
++            }
++        }
++
++        $logMsg("N├óng cß║Ñp l├¬n phi├¬n bß║ún 196 ho├án tß║Ñt.", "success");
++    }
++
++    // 9.10. Seed cohesive relational demo data (Version 197)
++    if ($currentVersion < 197 || $isForce) {
++        $logMsg("─Éang n├óng cß║Ñp CSDL l├¬n phi├¬n bß║ún 197 (Khß╗ƒi tß║ío chuß╗ùi dß╗» liß╗çu Demo li├¬n kß║┐t chß║╖t chß║╜)...", "info");
++
++        // 1. Projects & Units
++        $conn->query("DELETE FROM `projects` WHERE name = 'Vinhomes Grand Park'");
++        
++        // Ensure we have sale_agent and sale_manager users
++        $chkAgent = $conn->query("SELECT id FROM users WHERE email = 'agent@ideas.test' LIMIT 1");
++        $agentRow = $chkAgent ? $chkAgent->fetch_assoc() : null;
++        if (!$agentRow) {
++            $hash = password_hash('agent123', PASSWORD_BCRYPT);
++            $conn->query("INSERT INTO users (tenant_id, username, email, password_hash, full_name, role, is_active, status) VALUES (1, 'sale_agent_demo', 'agent@ideas.test', '$hash', 'Sale Agent Demo', 'sale', 1, 'active')");
++            $agentId = (int)$conn->insert_id;
++        } else {
++            $agentId = (int)$agentRow['id'];
++        }
++
++        $chkMgr = $conn->query("SELECT id FROM users WHERE email = 'manager@ideas.test' LIMIT 1");
++        $mgrRow = $chkMgr ? $chkMgr->fetch_assoc() : null;
++        if (!$mgrRow) {
++            $hash = password_hash('manager123', PASSWORD_BCRYPT);
++            $conn->query("INSERT INTO users (tenant_id, username, email, password_hash, full_name, role, is_active, status) VALUES (1, 'sale_manager_demo', 'manager@ideas.test', '$hash', 'Sale Manager Demo', 'manager', 1, 'active')");
++            $managerId = (int)$conn->insert_id;
++        } else {
++            $managerId = (int)$mgrRow['id'];
++        }
++
++        // Link them to 'Ph├▓ng Kinh doanh'
++        $tQ = $conn->query("SELECT id FROM teams WHERE name = 'Ph├▓ng Kinh doanh' LIMIT 1");
++        $tRow = $tQ ? $tQ->fetch_assoc() : null;
++        if ($tRow) {
++            $teamId = (int)$tRow['id'];
++            $conn->query("UPDATE users SET team_id = $teamId WHERE id IN ($agentId, $managerId)");
++        }
++
++        $conn->query("INSERT INTO `projects` (tenant_id, name, code, status, description, created_by) VALUES (1, 'Vinhomes Grand Park', 'VHGP', 'active', 'Dß╗▒ ├ín c─ân hß╗Ö mß║½u', $managerId)");
++        $projectId = (int)$conn->insert_id;
++        $logMsg("─É├ú khß╗ƒi tß║ío dß╗▒ ├ín Vinhomes Grand Park (ID: $projectId).", "success");
++
++        // 2. Marketing Campaign & Leads
++        $conn->query("DELETE FROM `marketing_campaigns` WHERE name = 'Mß╗ƒ b├ín ph├ón khu The Beverly'");
++        $conn->query("INSERT INTO `marketing_campaigns` (tenant_id, name, status) VALUES (1, 'Mß╗ƒ b├ín ph├ón khu The Beverly', 'active')");
++        $campaignId = (int)$conn->insert_id;
++
++        // Get first stage ID from pipeline_stages
++        $stQ = $conn->query("SELECT id FROM pipeline_stages WHERE tenant_id = 1 ORDER BY order_index LIMIT 1");
++        $stRow = $stQ ? $stQ->fetch_assoc() : null;
++        $stageId = $stRow ? (int)$stRow['id'] : 1;
++
++        // Create Lead Nguyß╗àn V─ân A
++        $conn->query("DELETE FROM `contacts` WHERE phone = '0909123456'");
++        $conn->query("INSERT INTO `contacts` (tenant_id, first_name, last_name, phone, mobile, email, source, status, owner_id, created_by, stage_id) VALUES (1, 'Nguyß╗àn V─ân', 'A', '0909123456', '0909123456', 'nguyenvana@ideas.test', 'Mß╗ƒ b├ín ph├ón khu The Beverly', 'customer', $agentId, $agentId, $stageId)");
++        $contactId = (int)$conn->insert_id;
++        $logMsg("─É├ú khß╗ƒi tß║ío Lead Nguyß╗àn V─ân A (ID: $contactId) thuß╗Öc chiß║┐n dß╗ïch The Beverly.", "success");
++
++        // 3. CRM Activity & Deal
++        $conn->query("DELETE FROM `deals` WHERE contact_id = $contactId");
++        $conn->query("INSERT INTO `deals` (tenant_id, stage_id, contact_id, owner_id, created_by, title, description, value) VALUES (1, $stageId, $contactId, $agentId, $agentId, 'Mua c─ân hß╗Ö S10.05-201', 'Kh├ích h├áng quan t├óm c─ân 2PN', 3500000000.00)");
++        $dealId = (int)$conn->insert_id;
++
++        $conn->query("DELETE FROM `activities` WHERE contact_id = $contactId");
++        $conn->query("INSERT INTO `activities` (tenant_id, contact_id, user_id, type, subject, body, status) VALUES (1, $contactId, $agentId, 'call', 'Cuß╗Öc gß╗ìi t╞░ vß║Ñn', 'Gß╗ìi ─æiß╗çn t╞░ vß║Ñn c─ân hß╗Ö mß║½u S10.05-201', 'completed')");
++
++        // 4. Deposits, Cooperation Slips, Invoices & Expenses
++        $conn->query("DELETE FROM `deposits` WHERE contact_id = $contactId");
++        $conn->query("INSERT INTO `deposits` (contact_id, project_id, unit_code, price, expected_commission, status, created_by) VALUES ($contactId, $projectId, 'S10.05-201', 3500000000.00, 105000000.00, 'approved', $agentId)");
++        $depositId = (int)$conn->insert_id;
++
++        $conn->query("DELETE FROM `deposit_milestones` WHERE deposit_id = $depositId");
++        $conn->query("INSERT INTO `deposit_milestones` (deposit_id, milestone_name, expected_amount, status) VALUES ($depositId, '─Éß╗út 1', 50000000.00, 'approved')");
++        $milestoneId = (int)$conn->insert_id;
++
++        $conn->query("DELETE FROM `cooperation_slips` WHERE contact_id = $contactId");
++        $sharesJson = json_encode([$agentId => 80, $managerId => 20]);
++        $conn->query("INSERT INTO `cooperation_slips` (contact_id, deposit_slip_id, version, total_percentage, shares_json, status, created_by) VALUES ($contactId, $depositId, 1, 100, '$sharesJson', 'approved', $agentId)");
++
++        $conn->query("DELETE FROM `invoices` WHERE contact_id = $contactId");
++        $conn->query("INSERT INTO `invoices` (tenant_id, contact_id, created_by, invoice_number, title, status, subtotal, total, paid_at) VALUES (1, $contactId, $agentId, 'INV-2026-0001', 'H├│a ─æ╞ín ─æß║╖t cß╗ìc c─ân hß╗Ö S10.05-201', 'paid', 50000000.00, 50000000.00, NOW())");
++
++        // Marketing Campaign Expense
++        $conn->query("DELETE FROM `expenses` WHERE title LIKE '%quß║úng c├ío Facebook%'");
++        $conn->query("INSERT INTO `expenses` (tenant_id, created_by, title, category, amount, date, status, notes) VALUES (1, $managerId, 'Chi ph├¡ chß║íy quß║úng c├ío Facebook th├íng 7', 'Marketing', 15000000.00, CURDATE(), 'approved', 'Chi ph├¡ ─æ╞░ß╗úc ph├¬ duyß╗çt bß╗ƒi Kß║┐ to├ín')");
++
++        $logMsg("─É├ú khß╗ƒi tß║ío phiß║┐u cß╗ìc, ph├ón chia hoa hß╗ông 80-20, h├│a ─æ╞ín ─æ├ú ─æ├│ng v├á chi ph├¡ marketing.", "success");
++
++        // 5. HRM Profiles for Agent
++        $conn->query("DELETE FROM `hrm_profiles` WHERE user_id = $agentId");
++        $customAllowancesJson = json_encode([
++            ['name' => 'Phß╗Ñ cß║Ñp ─æi lß║íi', 'value' => 500000.00],
++            ['name' => 'Th╞░ß╗ƒng dß╗▒ ├ín mß║½u', 'value' => 1000000.00]
++        ]);
++        $conn->query("INSERT INTO `hrm_profiles` (user_id, joined_date, base_salary, deal_salary, has_insurance, allowance_meal, custom_fields_json) VALUES ($agentId, '2026-01-01', 10000000.00, 8000000.00, 1, 650000.00, '$customAllowancesJson')");
++
++        $logMsg("─É├ú khß╗ƒi tß║ío hß╗ô s╞í l╞░╞íng v├á phß╗Ñ cß║Ñp ─æß╗Öng cho nh├ón vi├¬n Sale Agent.", "success");
++        $logMsg("N├óng cß║Ñp l├¬n phi├¬n bß║ún 197 ho├án tß║Ñt.", "success");
+     }
+ 
+-    // 9. Update DB version in system_settings
+-    $conn->query("INSERT INTO system_settings (setting_key, setting_value) VALUES ('db_version', '194') ON DUPLICATE KEY UPDATE setting_value = '194'");
++    // 10. Update DB version in system_settings
++    $conn->query("INSERT INTO system_settings (setting_key, setting_value) VALUES ('db_version', '197') ON DUPLICATE KEY UPDATE setting_value = '197'");
+     
+     $logMsg("Hß╗ç thß╗æng ─æ├ú duy tr├¼ cß║Ñu tr├║c C╞í sß╗ƒ dß╗» liß╗çu ß╗ƒ phi├¬n bß║ún mß╗¢i nhß║Ñt: " . $targetVersion, "success");
+ 
