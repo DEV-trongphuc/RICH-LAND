@@ -1497,16 +1497,20 @@ const RoundsInner = ({ isActive }: { isActive: boolean }) => {
 
                         {/* Loại Vòng phân bổ */}
                         <div className="form-group">
-                          <label className="form-label">{t("Loại Vòng Phân Bổ")}</label>
-                          <select
-                            className="form-input"
-                            value={formData.round_type}
-                            onChange={e => setFormData({ ...formData, round_type: e.target.value })}
-                            style={{ background: 'var(--color-bg)' }}
-                          >
-                            <option value="round_robin">{t("Xoay vòng tỷ lệ (Round-Robin)")}</option>
-                            <option value="grab">{t("Tranh nhận nhanh (Grab Lead)")}</option>
-                          </select>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                            <label className="form-label" style={{ margin: 0 }}>
+                              {t("Tranh nhận nhanh (Grab Lead)")}
+                            </label>
+                            <ToggleSwitch
+                              checked={formData.round_type === 'grab'}
+                              onChange={(checked) => setFormData({ ...formData, round_type: checked ? 'grab' : 'round_robin' })}
+                            />
+                          </div>
+                          <p style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', marginTop: 4 }}>
+                            {formData.round_type === 'grab' 
+                              ? t("Tín hiệu sẽ được gửi đồng thời cho tất cả Sale đủ điều kiện. Ai bấm trước nhận trước.") 
+                              : t("Hệ thống sẽ chia đều lượt nhận cho các Sale theo tỷ số xoay vòng.")}
+                          </p>
                         </div>
 
                         {formData.round_type === 'grab' && (
