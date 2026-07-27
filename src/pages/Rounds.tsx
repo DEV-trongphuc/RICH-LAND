@@ -1144,13 +1144,17 @@ const RoundsInner = ({ isActive }: { isActive: boolean }) => {
                     </div>
 
                     {r.round_type === 'grab' ? (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.375rem' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
                         <div style={{ padding: '0.375rem 0.5rem', background: theme === 'dark' ? '#374151' : 'var(--color-bg)', border: '1px solid var(--color-border-light)', borderRadius: 'var(--radius-md)', display: 'flex', alignItems: 'center', gap: 6 }}>
                           <Clock size={14} color="var(--color-text-muted)" />
                           <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 500 }}>
-                            {t("Hạn nhận: {countdown} phút • Chờ: {cooldown} giờ")
-                              .replace('{countdown}', String(Math.round((r.grab_countdown_seconds || 300) / 60)))
-                              .replace('{cooldown}', String(Math.round((r.grab_cooldown_seconds || 3600) / 3600)))}
+                            {t("Hạn nhận: {countdown} phút").replace('{countdown}', String(Math.round((r.grab_countdown_seconds || 300) / 60)))}
+                          </span>
+                        </div>
+                        <div style={{ padding: '0.375rem 0.5rem', background: theme === 'dark' ? '#374151' : 'var(--color-bg)', border: '1px solid var(--color-border-light)', borderRadius: 'var(--radius-md)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <Clock size={14} color="var(--color-text-muted)" />
+                          <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 500 }}>
+                            {t("Chờ: {cooldown} giờ").replace('{cooldown}', String(Math.round((r.grab_cooldown_seconds || 3600) / 3600)))}
                           </span>
                         </div>
                       </div>
@@ -1396,13 +1400,20 @@ const RoundsInner = ({ isActive }: { isActive: boolean }) => {
                   </div>
 
                   {r.round_type === 'grab' ? (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <Clock size={12} color="var(--color-text-muted)" />
-                      <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 500 }}>
-                        {t("Hạn nhận: {countdown}m • Cooldown: {cooldown}h")
-                          .replace('{countdown}', String(Math.round((r.grab_countdown_seconds || 300) / 60)))
-                          .replace('{cooldown}', String(Math.round((r.grab_cooldown_seconds || 3600) / 3600)))}
-                      </span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                        <Clock size={12} color="var(--color-text-muted)" />
+                        <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 500 }}>
+                          {t("Hạn nhận: {countdown}m").replace('{countdown}', String(Math.round((r.grab_countdown_seconds || 300) / 60)))}
+                        </span>
+                      </div>
+                      <span style={{ color: 'var(--color-border)' }}>|</span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                        <Clock size={12} color="var(--color-text-muted)" />
+                        <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 500 }}>
+                          {t("Cooldown: {cooldown}h").replace('{cooldown}', String(Math.round((r.grab_cooldown_seconds || 3600) / 3600)))}
+                        </span>
+                      </div>
                     </div>
                   ) : compensatedConsultants.length > 0 ? (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
