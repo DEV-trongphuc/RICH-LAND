@@ -28,13 +28,13 @@ assertTest("Tạo vòng Grab Lead thử nghiệm", $roundId > 0, "Round ID: $rou
 
 // 3. Tạo 2 Consultant & 2 User tương ứng
 // Consultant 1
-$conn->query("INSERT INTO users (name, email, role, status, vacation_mode) VALUES ('Test Grab Sale 1', 'test_grab_sale1@richland.vn', 'sale', 'active', 0)");
+$conn->query("INSERT INTO users (full_name, email, role, status, vacation_mode) VALUES ('Test Grab Sale 1', 'test_grab_sale1@richland.vn', 'sale', 'active', 0)");
 $user1Id = $conn->insert_id;
 $conn->query("INSERT INTO consultants (name, email, status, vacation_mode) VALUES ('Test Grab Sale 1', 'test_grab_sale1@richland.vn', 'active', 0)");
 $c1Id = $conn->insert_id;
 
 // Consultant 2
-$conn->query("INSERT INTO users (name, email, role, status, vacation_mode) VALUES ('Test Grab Sale 2', 'test_grab_sale2@richland.vn', 'sale', 'active', 0)");
+$conn->query("INSERT INTO users (full_name, email, role, status, vacation_mode) VALUES ('Test Grab Sale 2', 'test_grab_sale2@richland.vn', 'sale', 'active', 0)");
 $user2Id = $conn->insert_id;
 $conn->query("INSERT INTO consultants (name, email, status, vacation_mode) VALUES ('Test Grab Sale 2', 'test_grab_sale2@richland.vn', 'active', 0)");
 $c2Id = $conn->insert_id;
