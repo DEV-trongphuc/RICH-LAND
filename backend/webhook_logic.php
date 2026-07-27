@@ -1694,10 +1694,8 @@ function sendGrabOfferNotification($conn, $leadId, $consultantId, $roundId, $cou
         $competingTextZalo = "";
         $competingTextTele = "";
         if (!empty($competingNames)) {
-            $competingTextZalo = "\n👥 DANH SÁCH TVV CÙNG TRANH NHẬN:\n" 
-                . implode("\n", array_map(function($name) { return "  • " . $name; }, $competingNames)) . "\n";
-            $competingTextTele = "\n👥 <b>DANH SÁCH TVV CÙNG TRANH NHẬN:</b>\n" 
-                . implode("\n", array_map(function($name) { return "  • " . htmlspecialchars($name); }, $competingNames)) . "\n";
+            $competingTextZalo = "\n👥 Số lượng TVV cùng tranh nhận: " . count($competingNames) . "\n";
+            $competingTextTele = "\n👥 <b>Số lượng TVV cùng tranh nhận:</b> " . count($competingNames) . "\n";
         }
 
         // 3. Construct messages
