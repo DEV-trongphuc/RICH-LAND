@@ -24,6 +24,9 @@ export class ErrorBoundary extends Component<Props, State> {
 
   public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error('Uncaught error:', error, errorInfo);
+    try {
+      window.alert('LỖI HỆ THỐNG:\n' + error.message + '\n\nStack:\n' + (error.stack || '').substring(0, 500));
+    } catch (e) {}
   }
 
   public render() {
@@ -50,10 +53,11 @@ export class ErrorBoundary extends Component<Props, State> {
               <RefreshCw size={18} /> {t('Tải lại trang')}
             </button>
           </div>
-          {import.meta.env.DEV && this.state.error && (
+          {this.state.error && (
             <div className="mt-8 p-4 bg-red-50 rounded text-left w-full overflow-auto max-h-64 border border-red-100">
-              <p className="text-red-800 font-mono text-sm whitespace-pre-wrap">
-                {this.state.error.toString()}
+              <p className="text-red-800 font-mono text-xs whitespace-pre-wrap" style={{ color: '#b91c1c' }}>
+                <strong>{this.state.error.toString()}</strong>
+                {this.state.error.stack && `\n\nStack Trace:\n${this.state.error.stack}`}
               </p>
             </div>
           )}
