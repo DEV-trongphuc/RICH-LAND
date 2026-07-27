@@ -1664,6 +1664,81 @@ function updateLead($conn, $phone, $email, $assignedConsultantId, $source, $type
     return null;
 }
 
+function sendGrabOfferNotification($conn, $leadId, $consultantId, $roundId, $countdownSec, $competingNames = []) {
+    if (!$leadId || !$consultantId || !$roundId) return;
+
+    try {
+        // 1. Get Sale info (zalo_chat_id, telegram_chat_id, name)
+        $saleStmt = $conn->prepare("SELECT id, full_name AS name, zalo_chat_id, telegram_chat_id FROM users WHERE id = ?");
+        if (!$saleStmt) return;
+        $saleStmt->bind_param("i", $consultantId);
+        $saleStmt->execute();
+        $sale = $saleStmt->get_result()->fetch_assoc();
+        $saleStmt->close();
+
+        if (!$sale) return;
+
+        // 2. Get Round info
+        $roundStmt = $conn->prepare("SELECT round_name FROM distribution_rounds WHERE id = ?");
+        if (!$roundStmt) return;
+        $roundStmt->bind_param("i", $roundId);
+        $roundStmt->execute();
+        $round = $roundStmt->get_result()->fetch_assoc();
+        $roundStmt->close();
+
+        $roundName = $round ? $round['round_name'] : 'Vòng Tranh Nhận';
+        $roundTitle = mb_strtoupper($roundName, 'UTF-8');
+        $mins = ceil($countdownSec / 60);
+
+        // Format competing list
+        $competingTextZalo = "";
+        $competingTextTele = "";
+        if (!empty($competingNames)) {
+            $competingTextZalo = "\n👥 DANH SÁCH TVV CÙNG TRANH NHẬN:\n" 
+                . implode("\n", array_map(function($name) { return "  • " . $name; }, $competingNames)) . "\n";
+            $competingTextTele = "\n👥 <b>DANH SÁCH TVV CÙNG TRANH NHẬN:</b>\n" 
+                . implode("\n", array_map(function($name) { return "  • " . htmlspecialchars($name); }, $competingNames)) . "\n";
+        }
+
+        // 3. Construct messages
+        $zaloMsg = "⚡ [ TRANH NHẬN DATA NHANH - $roundTitle ] ⚡\n"
+            . "━━━━━━━━━━━━━━━━━━━━\n"
+            . "Chào " . $sale['name'] . ",\n\n"
+            . "Hệ thống vừa phát tín hiệu tranh nhận khách hàng mới thuộc vòng: " . $roundName . ".\n"
+            . "⏰ Thời gian đếm ngược: " . $mins . " phút.\n"
+            . $competingTextZalo
+            . "\n👉 Vui lòng đăng nhập CRM và mở trang BÀN LÀM VIỆC để TRANH NHẬN NGAY!";
+
+        $teleMsg = "⚡ <b>[ TRANH NHẬN DATA NHANH - " . htmlspecialchars($roundTitle) . " ]</b> ⚡\n"
+            . "━━━━━━━━━━━━━━━━━━━━\n"
+            . "Chào <b>" . htmlspecialchars($sale['name']) . "</b>,\n\n"
+            . "Hệ thống vừa phát tín hiệu tranh nhận khách hàng mới thuộc vòng: <b>" . htmlspecialchars($roundName) . "</b>.\n"
+            . "⏰ Thời gian đếm ngược: <b>" . $mins . " phút</b>.\n"
+            . $competingTextTele
+            . "\n👉 <i>Vui lòng đăng nhập CRM và mở trang Bàn làm việc để TRANH NHẬN NGAY!</i>";
+
+        // Send Zalo
+        $botToken = get_system_setting($conn, 'zalo_bot_token');
+        if (!empty($botToken) && !empty($sale['zalo_chat_id']) && strtolower($sale['zalo_chat_id']) !== 'chưa liên kết') {
+            require_once __DIR__ . '/zalo_bot.php';
+            if (function_exists('sendZaloMessage')) {
+                sendZaloMessage($botToken, $sale['zalo_chat_id'], $zaloMsg, false, (int)$leadId);
+            }
+        }
+
+        // Send Telegram
+        $teleBotToken = get_system_setting($conn, 'telegram_bot_token');
+        if (!empty($teleBotToken) && !empty($sale['telegram_chat_id'])) {
+            require_once __DIR__ . '/telegram_bot.php';
+            if (function_exists('sendTelegramMessage')) {
+                sendTelegramMessage($teleBotToken, $sale['telegram_chat_id'], $teleMsg, false, (int)$leadId);
+            }
+        }
+    } catch (Throwable $e) {
+        error_log("Error in sendGrabOfferNotification: " . $e->getMessage());
+    }
+}
+
 function sendDirectSaleLeadNotification($conn, $leadId, $assignedToId, $roundId = null) {
     if (!$leadId || !$assignedToId) return;
 

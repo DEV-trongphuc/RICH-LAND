@@ -897,9 +897,14 @@ try {
             INSERT INTO lead_offers (lead_id, user_id, round_id, expires_at, status) 
             VALUES (?, ?, ?, DATE_ADD(NOW(), INTERVAL ? SECOND), 'pending')
         ");
+        $competingNames = [];
+        foreach ($eligibleConsultants as $c) {
+            $competingNames[] = $c['name'] ?? 'TVV';
+        }
         foreach ($eligibleConsultants as $c) {
             $offerStmt->bind_param("iiii", $leadId, $c['id'], $targetRoundId, $grabCountdownSeconds);
             $offerStmt->execute();
+            sendGrabOfferNotification($conn, $leadId, $c['id'], $targetRoundId, $grabCountdownSeconds, $competingNames);
         }
         $offerStmt->close();
     }

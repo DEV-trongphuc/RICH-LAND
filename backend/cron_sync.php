@@ -1555,11 +1555,17 @@ if (!function_exists('recallExpiredGrabLeads')) {
                         $offerTime = date('Y-m-d H:i:s');
                         $expiresTime = date('Y-m-d H:i:s', time() + $countdownSec);
                         
+                        $competingNames = [];
+                        foreach ($eligible as $c) {
+                            $competingNames[] = $c['name'] ?? 'TVV';
+                        }
+                        
                         foreach ($eligible as $c) {
                             $conn->query("
                                 INSERT INTO lead_offers (lead_id, user_id, round_id, offered_at, expires_at, status) 
                                 VALUES ($leadId, " . (int)$c['id'] . ", $roundId, '$offerTime', '$expiresTime', 'pending')
                             ");
+                            sendGrabOfferNotification($conn, $leadId, $c['id'], $roundId, $countdownSec, $competingNames);
                         }
                         
                         // Update lead's last interaction date
