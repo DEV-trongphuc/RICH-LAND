@@ -212,6 +212,13 @@ try {
     flush();
 
     // 7. KIỂM THỬ INTERCEPT DUPLICATE NOTLEAD
+    // Xóa lead cũ 1 trước để giải phóng số điện thoại 0901234567 độc nhất
+    if ($leadId > 0) {
+        $conn->query("DELETE FROM lead_offers WHERE lead_id = $leadId");
+        $conn->query("DELETE FROM leads WHERE id = $leadId");
+        $leadId = 0;
+    }
+
     $conn->query("
         INSERT INTO leads (name, phone, email, status, is_accepted, assigned_to) 
         VALUES ('Khách hàng Cũ', '0901234567', 'test_grab_old@gmail.com', 'active', 1, $c2Id)
