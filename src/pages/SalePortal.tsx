@@ -18960,7 +18960,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                 textAlign: 'left'
               }}>
                 <h4 style={{ fontSize: '1.3rem', fontWeight: 800, color: 'var(--color-text)', margin: 0, lineHeight: 1.2 }}>
-                  {t('Khách hàng mới')}
+                  {activeIncomingOffer.lead.round_name || t('Khách hàng mới')}
                 </h4>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <span style={{

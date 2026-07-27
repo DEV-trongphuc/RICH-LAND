@@ -1026,17 +1026,6 @@ try {
                     $stmtDbNotif->execute();
                     $stmtDbNotif->close();
                 }
-
-                try {
-                    sendLeadAssignedEmailToSale($c['email'], $c['name'], $name, $phone, $note, $source, $ccEmails, $roundName, $leadId, $assignedConsultantId, $targetRoundId);
-                } catch (Exception $mailEx) {
-                    error_log("Error sending webhook assigned sale email: " . $mailEx->getMessage());
-                }
-                try {
-                    sendLeadAssignedZaloMessageToSale($assignedConsultantId, $c['name'], $name, $phone, $note, $source, $roundName, $leadId, $targetRoundId, $email, $type);
-                } catch (Exception $zaloEx) {
-                    error_log("Error sending webhook assigned sale Zalo: " . $zaloEx->getMessage());
-                }
             }
             $stmt->close();
         }

@@ -1384,62 +1384,7 @@ if (!function_exists('recallInactiveLeads')) {
                 // Post-commit: trigger live write-back
                 triggerTwoWaySync($conn, $leadId);
 
-                // Send notifications
-                if ($newConsultantId && $newStatus !== 'pending_work_hours') {
-                    try {
-                        sendLeadAssignedEmailToSale(
-                            $newConsultantEmail,
-                            $newConsultantName,
-                            $row['lead_name'] ?: 'Khách hàng ẩn danh',
-                            $row['lead_phone'] ?: '',
-                            $row['lead_note'] ?: '',
-                            $row['lead_source'] ?: '',
-                            $ccEmails,
-                            $roundName,
-                            $leadId,
-                            $newConsultantId,
-                            $roundId
-                        );
-                    } catch (Exception $mailEx) {
-                        logSync("Error sending email to new consultant: " . $mailEx->getMessage());
-                    }
-                    try {
-                        sendLeadAssignedZaloMessageToSale(
-                            $newConsultantId,
-                            $newConsultantName,
-                            $row['lead_name'] ?: 'Khách hàng ẩn danh',
-                            $row['lead_phone'] ?: '',
-                            $row['lead_note'] ?: '',
-                            $row['lead_source'] ?: '',
-                            $roundName,
-                            $leadId,
-                            $roundId,
-                            $row['lead_email'] ?: '',
-                            $row['lead_type'] ?: ''
-                        );
-                    } catch (Exception $zaloEx) {
-                        logSync("Error sending Zalo to new consultant: " . $zaloEx->getMessage());
-                    }
-                } else if ($isFallbackAdmin && $fallbackAdminData) {
-                    try {
-                        sendLeadAssignedEmailToSale(
-                            $fallbackAdminData['email'],
-                            $fallbackAdminData['name'],
-                            $row['lead_name'] ?: 'Khách hàng ẩn danh',
-                            $row['lead_phone'] ?: '',
-                            $row['lead_note'] ?: '',
-                            $row['lead_source'] ?: '',
-                            $fallbackCcEmails,
-                            'Fallback Admin',
-                            $leadId,
-                            0,
-                            0
-                        );
-                    } catch (Exception $mailEx) {
-                        logSync("Error sending email to fallback admin: " . $mailEx->getMessage());
-                    }
-                }
-                
+                // Send notifications handled centrally by logDistribution
 
 
                 logSync("Recalled lead ID $leadId from sale $oldConsultantName successfully.");
