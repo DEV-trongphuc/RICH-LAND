@@ -957,10 +957,30 @@ function checkNightShiftAvailability($conn, $consultantId, $currentTime)
     return false;
 }
 
+if (!function_exists('isConsultantOnNormalCooldown')) {
+    function isConsultantOnNormalCooldown($conn, $consultantId, $roundId, $cooldownSec) {
+        if ($cooldownSec <= 0) return false;
+        $stmtCool = $conn->prepare("
+            SELECT 1 FROM distribution_logs 
+            WHERE assigned_to = ? 
+              AND round_id = ? 
+              AND status IN ('assigned', 'compensation') 
+              AND received_at >= DATE_SUB(NOW(), INTERVAL ? SECOND) 
+            LIMIT 1
+        ");
+        if (!$stmtCool) return false;
+        $stmtCool->bind_param("iii", $consultantId, $roundId, $cooldownSec);
+        $stmtCool->execute();
+        $isCool = (bool)$stmtCool->get_result()->fetch_assoc();
+        $stmtCool->close();
+        return $isCool;
+    }
+}
+
 function getNextConsultantInRound($conn, $roundId, $lead = null, $excludeIds = [])
 {
     // 1. Get round info with FOR UPDATE lock
-    $stmt = $conn->prepare("SELECT last_assigned_consultant_id FROM distribution_rounds WHERE id = ? AND is_active = 1 FOR UPDATE");
+    $stmt = $conn->prepare("SELECT last_assigned_consultant_id, round_type FROM distribution_rounds WHERE id = ? AND is_active = 1 FOR UPDATE");
     $stmt->bind_param("i", $roundId);
     $stmt->execute();
     $res = $stmt->get_result();
@@ -972,7 +992,21 @@ function getNextConsultantInRound($conn, $roundId, $lead = null, $excludeIds = [
 
     $roundInfo = $res->fetch_assoc();
     $lastAssignedId = $roundInfo['last_assigned_consultant_id'];
+    $roundType = $roundInfo['round_type'] ?? 'round_robin';
     $stmt->close();
+
+    $isRoundRobin = ($roundType === 'round_robin');
+    $normalCooldownSec = 0;
+    if ($isRoundRobin) {
+        $cooldownMins = (int) get_system_setting($conn, 'normal_round_cooldown_minutes');
+        if ($cooldownMins === -1) {
+            $normalCooldownSec = 0;
+        } else if ($cooldownMins <= 0) {
+            $normalCooldownSec = 300; // default 5 mins
+        } else {
+            $normalCooldownSec = $cooldownMins * 60;
+        }
+    }
 
     // Get absolute last assigned consultant for this round from distribution_logs to prevent back-to-back leads
     $absoluteLastAssignedId = null;
@@ -1094,7 +1128,8 @@ function getNextConsultantInRound($conn, $roundId, $lead = null, $excludeIds = [
         $isGatePassed = (checkConsultantGates($conn, (int)$c['id'], $lead) === true);
         $cInWorkHours = isConsultantInWorkHours($currentTime, $c['work_start_time'], $c['work_end_time'], $c['work_schedule']);
         $cNightShift = checkNightShiftAvailability($conn, (int)$c['id'], $currentTime);
-        if (!$isOnVacation && $isGatePassed && ($cInWorkHours || $cNightShift || $isGoldenHoursTime)) {
+        $isCool = isConsultantOnNormalCooldown($conn, (int)$c['id'], $roundId, $normalCooldownSec);
+        if (!$isOnVacation && $isGatePassed && ($cInWorkHours || $cNightShift || $isGoldenHoursTime) && !$isCool) {
             $activeCount++;
         }
     }
@@ -1110,8 +1145,10 @@ function getNextConsultantInRound($conn, $roundId, $lead = null, $excludeIds = [
             error_log("RICH LAND INFO: Consultant ID " . $row['id'] . " failed gate check: " . $gateResult);
         }
 
+        $isCool = isConsultantOnNormalCooldown($conn, (int)$row['id'], $roundId, $normalCooldownSec);
+
         // Must be on duty (either in regular work hours OR active approved night shift OR active checked-in golden hours)
-        $isAvailable = !$isOnVacation && $isGatePassed && ($isInWorkHours || $isNightShiftActive || $isGoldenHoursTime);
+        $isAvailable = !$isOnVacation && $isGatePassed && ($isInWorkHours || $isNightShiftActive || $isGoldenHoursTime) && !$isCool;
 
         // Priority 1: Compensation (error data replacement) - only if available (not on vacation)
         // BUGFIX/ENHANCEMENT: Tránh dồn dập đền bù liên tục cho cùng 1 sale. 

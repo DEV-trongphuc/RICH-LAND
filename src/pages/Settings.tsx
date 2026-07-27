@@ -322,6 +322,7 @@ const SettingsInner = () => {
   // Business Configurations (Dynamic settings from markdown rules)
   const [temperatureDecayDays, setTemperatureDecayDays] = useState<number>(5);
   const [leadResponseTimeoutMinutes, setLeadResponseTimeoutMinutes] = useState<number>(2);
+  const [normalRoundCooldownMinutes, setNormalRoundCooldownMinutes] = useState<number>(5);
   const [leadMaxRecallAttempts, setLeadMaxRecallAttempts] = useState<number>(2);
   const [leadRecallCooldownMinutes, setLeadRecallCooldownMinutes] = useState<number>(30);
   const [parallelAssignmentTriggerStatus, setParallelAssignmentTriggerStatus] = useState<string>('chua_xac_dinh');
@@ -848,6 +849,7 @@ const SettingsInner = () => {
         // Business configurations from markdown rules
         if (json.data.temperature_decay_days !== undefined) setTemperatureDecayDays(Number(json.data.temperature_decay_days));
         if (json.data.lead_response_timeout_minutes !== undefined) setLeadResponseTimeoutMinutes(Number(json.data.lead_response_timeout_minutes));
+        if (json.data.normal_round_cooldown_minutes !== undefined) setNormalRoundCooldownMinutes(Number(json.data.normal_round_cooldown_minutes));
         if (json.data.lead_max_recall_attempts !== undefined) setLeadMaxRecallAttempts(Number(json.data.lead_max_recall_attempts));
         if (json.data.lead_recall_cooldown_minutes !== undefined) setLeadRecallCooldownMinutes(Number(json.data.lead_recall_cooldown_minutes));
         if (json.data.parallel_assignment_trigger_status !== undefined) setParallelAssignmentTriggerStatus(json.data.parallel_assignment_trigger_status);
@@ -1401,6 +1403,7 @@ const SettingsInner = () => {
       deal_won_status: dealWonStatus,
       temperature_decay_days: temperatureDecayDays,
       lead_response_timeout_minutes: leadResponseTimeoutMinutes,
+      normal_round_cooldown_minutes: normalRoundCooldownMinutes,
       lead_max_recall_attempts: leadMaxRecallAttempts,
       lead_recall_cooldown_minutes: leadRecallCooldownMinutes,
       parallel_assignment_trigger_status: parallelAssignmentTriggerStatus,
@@ -4823,7 +4826,7 @@ function doPost(e) {
                             </h5>
                           </div>
                           
-                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem' }}>
                             <div>
                               <label className="form-label" style={{ fontWeight: 600, fontSize: '0.75rem' }}>{t('Giờ hành chính (HC)')}</label>
                               <div style={{ display: 'flex', alignItems: 'center', position: 'relative' }}>
@@ -4849,6 +4852,21 @@ function doPost(e) {
                                   value={leadResponseTimeoutOvertimeMinutes}
                                   onChange={e => setLeadResponseTimeoutOvertimeMinutes(Number(e.target.value))}
                                   min={1}
+                                />
+                                <span style={{ position: 'absolute', right: '12px', fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>{t('phút')}</span>
+                              </div>
+                            </div>
+
+                            <div>
+                              <label className="form-label" style={{ fontWeight: 600, fontSize: '0.75rem' }}>{t('Giãn cách vòng xoay (mặc định 5p)')}</label>
+                              <div style={{ display: 'flex', alignItems: 'center', position: 'relative' }}>
+                                <input
+                                  type="number"
+                                  className="form-input"
+                                  style={{ paddingRight: '3.5rem', height: '34px', fontSize: '0.8125rem' }}
+                                  value={normalRoundCooldownMinutes}
+                                  onChange={e => setNormalRoundCooldownMinutes(Number(e.target.value))}
+                                  min={0}
                                 />
                                 <span style={{ position: 'absolute', right: '12px', fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>{t('phút')}</span>
                               </div>
