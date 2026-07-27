@@ -143,7 +143,7 @@ const GrabLeadOfferModal: React.FC<{
 
   return (
     <div style={{
-      position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 9999,
+      position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 99999999,
       background: 'rgba(0, 0, 0, 0.65)', backdropFilter: 'blur(8px)',
       display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem'
     }}>
@@ -181,26 +181,6 @@ const GrabLeadOfferModal: React.FC<{
             <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', textTransform: 'uppercase', fontWeight: 600 }}>{t("Khách hàng")}</div>
             <div style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--color-text)', marginTop: '0.25rem' }}>{offer.lead_name || t("Ẩn danh")}</div>
           </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', background: theme === 'dark' ? '#374151' : 'var(--color-bg)', padding: '0.75rem 1rem', borderRadius: '12px' }}>
-            <div>
-              <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', fontWeight: 500 }}>{t("Nguồn")}</div>
-              <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--color-text)', marginTop: '0.125rem' }}>{offer.lead_source || t("Chưa xác định")}</div>
-            </div>
-            <div>
-              <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', fontWeight: 500 }}>{t("Phân khúc")}</div>
-              <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--color-text)', marginTop: '0.125rem' }}>{offer.lead_type || t("Chưa xác định")}</div>
-            </div>
-          </div>
-
-          {offer.lead_note && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-              <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', fontWeight: 500 }}>{t("Ghi chú khách hàng")}</div>
-              <p style={{ fontSize: '0.8rem', color: 'var(--color-text-light)', background: theme === 'dark' ? '#111827' : 'rgba(0,0,0,0.02)', padding: '0.5rem 0.75rem', borderRadius: '8px', margin: 0, maxHeight: '60px', overflowY: 'auto' }}>
-                {offer.lead_note}
-              </p>
-            </div>
-          )}
 
           {/* Countdown graphic */}
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem', marginTop: '0.5rem' }}>
@@ -248,7 +228,7 @@ const GrabLeadOfferModal: React.FC<{
             ) : (
               <>
                 <Zap size={18} style={{ fill: '#ffffff' }} />
-                <span>{t("Cướp Khách Ngay")}</span>
+                <span>{t("Nhận Khách Ngay")}</span>
               </>
             )}
           </button>
