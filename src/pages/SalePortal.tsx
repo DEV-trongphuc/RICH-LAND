@@ -42,7 +42,7 @@ import { EmptyCard } from '../components/ui/EmptyCard';
 import { Pagination } from '../components/ui/Pagination';
 import { TableSkeleton, StatRowSkeleton, CalendarSkeleton, CardSkeleton, Skeleton } from '../components/ui/Skeleton';
 import { SignaturePadModal } from '../components/ui/SignaturePadModal';
-import { Edit3, ExternalLink, Briefcase } from 'lucide-react';
+import { Edit3, ExternalLink, Briefcase, Zap } from 'lucide-react';
 const FairShareAudit = lazy(() => import('./FairShareAudit').then(module => ({ default: module.FairShareAudit })));
 const InvoicesPage = lazy(() => import('./InvoicesPage').then(module => ({ default: module.InvoicesPage })));
 const ProjectsPage = lazy(() => import('./ProjectsPage'));
@@ -104,6 +104,157 @@ const LeadRecallTimer: React.FC<{
     <span style={{ fontSize: '0.75rem', color: '#f59e0b', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
       <Clock size={12} /> {formatted}
     </span>
+  );
+};
+
+const GrabLeadOfferModal: React.FC<{
+  offer: any;
+  onClaim: (leadId: number) => Promise<void>;
+  onClose: () => void;
+  t: (key: string) => string;
+  theme: string;
+}> = ({ offer, onClaim, onClose, t, theme }) => {
+  const [timeLeft, setTimeLeft] = useState(offer.seconds_remaining);
+  const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    setTimeLeft(offer.seconds_remaining);
+  }, [offer]);
+
+  useEffect(() => {
+    if (timeLeft <= 0) {
+      onClose();
+      return;
+    }
+    const interval = setInterval(() => {
+      setTimeLeft((prev: number) => prev - 1);
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [timeLeft, onClose]);
+
+  const handleClaimClick = async () => {
+    if (submitting) return;
+    setSubmitting(true);
+    await onClaim(offer.lead_id);
+    setSubmitting(false);
+  };
+
+  const percentage = Math.max(0, Math.min(100, (timeLeft / (offer.seconds_remaining || 300)) * 100));
+
+  return (
+    <div style={{
+      position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 9999,
+      background: 'rgba(0, 0, 0, 0.65)', backdropFilter: 'blur(8px)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem'
+    }}>
+      <div className="card animate-scale-up" style={{
+        width: '100%', maxWidth: '480px', background: theme === 'dark' ? '#1f2937' : '#ffffff',
+        borderRadius: '20px', overflow: 'hidden', border: '2px solid #f59e0b',
+        boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.15), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
+        display: 'flex', flexDirection: 'column', position: 'relative'
+      }}>
+        {/* Animated header banner */}
+        <div style={{
+          background: 'linear-gradient(135deg, #f59e0b, #d97706)',
+          padding: '1.5rem', color: '#ffffff', textAlign: 'center',
+          display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem'
+        }}>
+          <div style={{
+            width: '48px', height: '48px', borderRadius: '50%',
+            background: 'rgba(255, 255, 255, 0.2)', display: 'flex',
+            alignItems: 'center', justifyContent: 'center',
+            animation: 'pulse 1.5s infinite'
+          }}>
+            <Zap size={24} style={{ fill: '#ffffff' }} />
+          </div>
+          <h2 style={{ fontSize: '1.25rem', fontWeight: 800, margin: 0, letterSpacing: '0.05em', textTransform: 'uppercase' }}>
+            {t("Tranh Nhận Lead Mới")}
+          </h2>
+          <span style={{ fontSize: '0.75rem', opacity: 0.9 }}>
+            {offer.round_name}
+          </span>
+        </div>
+
+        {/* Lead details */}
+        <div style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem', flex: 1 }}>
+          <div style={{ textAlign: 'center', marginBottom: '0.5rem' }}>
+            <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', textTransform: 'uppercase', fontWeight: 600 }}>{t("Khách hàng")}</div>
+            <div style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--color-text)', marginTop: '0.25rem' }}>{offer.lead_name || t("Ẩn danh")}</div>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', background: theme === 'dark' ? '#374151' : 'var(--color-bg)', padding: '0.75rem 1rem', borderRadius: '12px' }}>
+            <div>
+              <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', fontWeight: 500 }}>{t("Nguồn")}</div>
+              <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--color-text)', marginTop: '0.125rem' }}>{offer.lead_source || t("Chưa xác định")}</div>
+            </div>
+            <div>
+              <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', fontWeight: 500 }}>{t("Phân khúc")}</div>
+              <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--color-text)', marginTop: '0.125rem' }}>{offer.lead_type || t("Chưa xác định")}</div>
+            </div>
+          </div>
+
+          {offer.lead_note && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+              <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', fontWeight: 500 }}>{t("Ghi chú khách hàng")}</div>
+              <p style={{ fontSize: '0.8rem', color: 'var(--color-text-light)', background: theme === 'dark' ? '#111827' : 'rgba(0,0,0,0.02)', padding: '0.5rem 0.75rem', borderRadius: '8px', margin: 0, maxHeight: '60px', overflowY: 'auto' }}>
+                {offer.lead_note}
+              </p>
+            </div>
+          )}
+
+          {/* Countdown graphic */}
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem', marginTop: '0.5rem' }}>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px' }}>
+              <span style={{ fontSize: '2rem', fontWeight: 900, color: timeLeft <= 10 ? 'var(--color-danger)' : '#f59e0b' }}>
+                {timeLeft}
+              </span>
+              <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>
+                {t("giây")}
+              </span>
+            </div>
+            {/* Progress bar */}
+            <div style={{ width: '100%', height: '8px', background: theme === 'dark' ? '#374151' : '#e5e7eb', borderRadius: '4px', overflow: 'hidden' }}>
+              <div style={{
+                width: `${percentage}%`, height: '100%',
+                background: timeLeft <= 10 ? 'var(--color-danger)' : 'linear-gradient(90deg, #f59e0b, #d97706)',
+                transition: 'width 1s linear'
+              }} />
+            </div>
+          </div>
+        </div>
+
+        {/* Action Button */}
+        <div style={{ padding: '1rem 1.5rem 1.5rem', display: 'flex', flexDirection: 'column', gap: '0.5rem', borderTop: '1px solid var(--color-border-light)' }}>
+          <button
+            onClick={handleClaimClick}
+            disabled={submitting}
+            style={{
+              width: '100%', padding: '1rem', borderRadius: '12px', border: 'none',
+              background: 'linear-gradient(135deg, #f59e0b, #d97706)', color: '#ffffff',
+              fontSize: '1rem', fontWeight: 800, textTransform: 'uppercase', cursor: 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+              boxShadow: '0 4px 12px rgba(245, 158, 11, 0.3)', transition: 'all 0.2s',
+              animation: 'pulse 2s infinite'
+            }}
+            onMouseEnter={e => {
+              if (!submitting) e.currentTarget.style.transform = 'scale(1.02)';
+            }}
+            onMouseLeave={e => {
+              e.currentTarget.style.transform = 'none';
+            }}
+          >
+            {submitting ? (
+              <span>{t("Đang nhận...")}</span>
+            ) : (
+              <>
+                <Zap size={18} style={{ fill: '#ffffff' }} />
+                <span>{t("Cướp Khách Ngay")}</span>
+              </>
+            )}
+          </button>
+        </div>
+      </div>
+    </div>
   );
 };
 
@@ -337,6 +488,8 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
 
   const [isLangOpen, setIsLangOpen] = useState(false);
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
+  const [activeOffers, setActiveOffers] = useState<any[]>([]);
+  const [isClaiming, setIsClaiming] = useState(false);
 
   useEffect(() => {
     if (!isLangOpen) return;
@@ -359,6 +512,46 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
       document.documentElement.setAttribute('data-theme', 'light');
     }
   }, []);
+
+  const fetchActiveOffers = async () => {
+    try {
+      const res = await fetchAPI('get_active_offers');
+      if (res && res.success) {
+        setActiveOffers(res.offers || []);
+      }
+    } catch (err) {
+      console.error("Error fetching active offers:", err);
+    }
+  };
+
+  useEffect(() => {
+    const roleLower = String(user?.role || '').toLowerCase();
+    const isSale = ['sale', 'sales'].includes(roleLower);
+    if (!isSale) return;
+
+    fetchActiveOffers();
+    const interval = setInterval(fetchActiveOffers, 10000); // 10s polling
+    return () => clearInterval(interval);
+  }, [user?.role]);
+
+  const handleGrabLead = async (leadId: number) => {
+    try {
+      const json = await fetchAPI('claim_lead', {
+        method: 'POST',
+        body: JSON.stringify({ lead_id: leadId })
+      });
+      if (json.success) {
+        toast.success(t('Chúc mừng! Bạn đã tranh nhận khách hàng thành công!'));
+        loadPortalData();
+        fetchActiveOffers();
+      } else {
+        toast.error(json.message || t('Lỗi tranh nhận khách hàng'));
+        fetchActiveOffers();
+      }
+    } catch (err: any) {
+      toast.error(t('Lỗi kết nối: ') + err.message);
+    }
+  };
 
   const toggleTheme = (event?: React.MouseEvent) => {
     const nextTheme = theme === 'light' ? 'dark' : 'light';
@@ -18022,6 +18215,16 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
         </div>
         </>,
         document.body
+      )}
+
+      {activeOffers.length > 0 && (
+        <GrabLeadOfferModal
+          offer={activeOffers[0]}
+          onClaim={handleGrabLead}
+          onClose={fetchActiveOffers}
+          t={t}
+          theme={theme}
+        />
       )}
 
       {/* Interactive Explanation Modals */}

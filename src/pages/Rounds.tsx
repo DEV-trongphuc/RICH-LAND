@@ -146,7 +146,10 @@ const RoundsInner = ({ isActive }: { isActive: boolean }) => {
     compensations: {} as Record<string, number>,
     is_fallback: false,
     project_id: null as number | null,
-    campaign_id: null as number | null
+    campaign_id: null as number | null,
+    round_type: 'round_robin',
+    grab_countdown_minutes: 5,
+    grab_cooldown_hours: 1
   });
 
   const [searchUser, setSearchUser] = useState('');
@@ -293,7 +296,7 @@ const RoundsInner = ({ isActive }: { isActive: boolean }) => {
   const openAddModal = () => {
     setEditingRound(null);
     setScopeType('none');
-    setFormData({ round_name: '', is_active: 1, cc_emails: '', selected_users: [], starting_consultant_id: null, ratios: {}, data_per_turns: {}, compensations: {}, is_fallback: false, project_id: null, campaign_id: null });
+    setFormData({ round_name: '', is_active: 1, cc_emails: '', selected_users: [], starting_consultant_id: null, ratios: {}, data_per_turns: {}, compensations: {}, is_fallback: false, project_id: null, campaign_id: null, round_type: 'round_robin', grab_countdown_minutes: 5, grab_cooldown_hours: 1 });
     setSelectedAdmins([]);
     setEnableExternalCc(false);
     setExternalCcEmails('');
@@ -356,7 +359,10 @@ const RoundsInner = ({ isActive }: { isActive: boolean }) => {
       compensations: r.compensations || {},
       is_fallback: !!r.is_fallback,
       project_id: currentProjId,
-      campaign_id: currentCampId
+      campaign_id: currentCampId,
+      round_type: r.round_type || 'round_robin',
+      grab_countdown_minutes: r.grab_countdown_seconds ? Math.round(Number(r.grab_countdown_seconds) / 60) : 5,
+      grab_cooldown_hours: r.grab_cooldown_seconds ? Math.round(Number(r.grab_cooldown_seconds) / 3600) : 1
     });
 
     // Parse cc_emails into selected admins and external emails
@@ -558,7 +564,9 @@ const RoundsInner = ({ isActive }: { isActive: boolean }) => {
         ...formData, 
         cc_emails: combinedCcEmails,
         id: editingRound?.id, 
-        consultants: formData.selected_users 
+        consultants: formData.selected_users,
+        grab_countdown_seconds: Number(formData.grab_countdown_minutes) * 60,
+        grab_cooldown_seconds: Number(formData.grab_cooldown_hours) * 3600
       };
 
       const json = await fetchAPI(action, {
@@ -928,6 +936,15 @@ const RoundsInner = ({ isActive }: { isActive: boolean }) => {
                       <div>
                         <h3 style={{ fontWeight: 700, fontSize: '0.9375rem', color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                           {r.round_name}
+                          {r.round_type === 'grab' ? (
+                            <span className="badge warning" style={{ fontSize: '0.65rem', padding: '2px 6px', background: 'rgba(245, 158, 11, 0.08)', color: '#d97706', border: '1px solid rgba(245, 158, 11, 0.15)' }}>
+                              ⚡ {t("Tranh Lead")}
+                            </span>
+                          ) : (
+                            <span className="badge info" style={{ fontSize: '0.65rem', padding: '2px 6px', background: 'rgba(59, 130, 246, 0.08)', color: '#2563eb', border: '1px solid rgba(59, 130, 246, 0.15)' }}>
+                              🔄 {t("Xoay vòng")}
+                            </span>
+                          )}
                           {r.project_name && (
                             <span className="badge success" style={{ fontSize: '0.65rem', padding: '2px 6px', background: 'rgba(16, 185, 129, 0.08)', color: '#10b981', border: '1px solid rgba(16, 185, 129, 0.15)' }}>
                               {r.project_name}
@@ -1080,7 +1097,18 @@ const RoundsInner = ({ isActive }: { isActive: boolean }) => {
                       </div>
                     </div>
 
-                    {compensatedConsultants.length > 0 ? (
+                    {r.round_type === 'grab' ? (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.375rem' }}>
+                        <div style={{ padding: '0.375rem 0.5rem', background: theme === 'dark' ? '#374151' : 'var(--color-bg)', border: '1px solid var(--color-border-light)', borderRadius: 'var(--radius-md)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <Clock size={14} color="var(--color-text-muted)" />
+                          <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 500 }}>
+                            {t("Hạn nhận: {countdown} phút • Chờ: {cooldown} giờ")
+                              .replace('{countdown}', String(Math.round((r.grab_countdown_seconds || 300) / 60)))
+                              .replace('{cooldown}', String(Math.round((r.grab_cooldown_seconds || 3600) / 3600)))}
+                          </span>
+                        </div>
+                      </div>
+                    ) : compensatedConsultants.length > 0 ? (
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.375rem' }}>
                         <div style={{ padding: '0.375rem 0.5rem', background: 'var(--color-warning-light)', border: '1px solid rgba(245, 158, 11, 0.2)', borderRadius: 'var(--radius-md)', display: 'flex', alignItems: 'center', gap: 6 }}>
                           <Zap size={14} color="var(--color-warning)" style={{ fill: 'var(--color-warning)', flexShrink: 0 }} />
@@ -1168,6 +1196,15 @@ const RoundsInner = ({ isActive }: { isActive: boolean }) => {
                 <div style={{ flex: 1, minWidth: 200 }}>
                   <h3 style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                     {r.round_name}
+                    {r.round_type === 'grab' ? (
+                      <span className="badge warning" style={{ fontSize: '0.65rem', padding: '2px 6px', background: 'rgba(245, 158, 11, 0.08)', color: '#d97706', border: '1px solid rgba(245, 158, 11, 0.15)' }}>
+                        ⚡ {t("Tranh Lead")}
+                      </span>
+                    ) : (
+                      <span className="badge info" style={{ fontSize: '0.65rem', padding: '2px 6px', background: 'rgba(59, 130, 246, 0.08)', color: '#2563eb', border: '1px solid rgba(59, 130, 246, 0.15)' }}>
+                        🔄 {t("Xoay vòng")}
+                      </span>
+                    )}
                     {r.project_name && (
                       <span className="badge success" style={{ fontSize: '0.65rem', padding: '2px 6px', background: 'rgba(16, 185, 129, 0.08)', color: '#10b981', border: '1px solid rgba(16, 185, 129, 0.15)' }}>
                         {r.project_name}
@@ -1312,7 +1349,16 @@ const RoundsInner = ({ isActive }: { isActive: boolean }) => {
                     </div>
                   </div>
 
-                  {compensatedConsultants.length > 0 ? (
+                  {r.round_type === 'grab' ? (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <Clock size={12} color="var(--color-text-muted)" />
+                      <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 500 }}>
+                        {t("Hạn nhận: {countdown}m • Cooldown: {cooldown}h")
+                          .replace('{countdown}', String(Math.round((r.grab_countdown_seconds || 300) / 60)))
+                          .replace('{cooldown}', String(Math.round((r.grab_cooldown_seconds || 3600) / 3600)))}
+                      </span>
+                    </div>
+                  ) : compensatedConsultants.length > 0 ? (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                         <Zap size={12} color="var(--color-warning)" style={{ fill: 'var(--color-warning)', flexShrink: 0 }} />
@@ -1448,6 +1494,47 @@ const RoundsInner = ({ isActive }: { isActive: boolean }) => {
                             autoFocus
                           />
                         </div>
+
+                        {/* Loại Vòng phân bổ */}
+                        <div className="form-group">
+                          <label className="form-label">{t("Loại Vòng Phân Bổ")}</label>
+                          <select
+                            className="form-input"
+                            value={formData.round_type}
+                            onChange={e => setFormData({ ...formData, round_type: e.target.value })}
+                            style={{ background: 'var(--color-bg)' }}
+                          >
+                            <option value="round_robin">{t("Xoay vòng tỷ lệ (Round-Robin)")}</option>
+                            <option value="grab">{t("Tranh nhận nhanh (Grab Lead)")}</option>
+                          </select>
+                        </div>
+
+                        {formData.round_type === 'grab' && (
+                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', animation: 'fadeIn 0.2s ease-out' }}>
+                            <div className="form-group">
+                              <label className="form-label">{t("Thời gian đếm ngược (phút)")}</label>
+                              <input
+                                type="number"
+                                className="form-input"
+                                min={1}
+                                max={60}
+                                value={formData.grab_countdown_minutes}
+                                onChange={e => setFormData({ ...formData, grab_countdown_minutes: Math.max(1, parseInt(e.target.value) || 1) })}
+                              />
+                            </div>
+                            <div className="form-group">
+                              <label className="form-label">{t("Thời gian chờ nhận tiếp (giờ)")}</label>
+                              <input
+                                type="number"
+                                className="form-input"
+                                min={0.5}
+                                step={0.5}
+                                value={formData.grab_cooldown_hours}
+                                onChange={e => setFormData({ ...formData, grab_cooldown_hours: Math.max(0.1, parseFloat(e.target.value) || 1) })}
+                              />
+                            </div>
+                          </div>
+                        )}
 
                         {/* Phạm vi áp dụng & Roster Scope Selector */}
                         <div className="form-group">
@@ -1691,7 +1778,7 @@ const RoundsInner = ({ isActive }: { isActive: boolean }) => {
                           </div>
                         </div>
 
-                        {formData.selected_users.length > 0 && (
+                        {formData.selected_users.length > 0 && formData.round_type === 'round_robin' && (
                           <div className="form-group">
                             <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}><Zap size={14} /> {t("Chọn Sale bắt đầu / kế tiếp (Tuỳ chọn)")}</label>
                             <div ref={startSaleDropdownRef} style={{ position: 'relative' }}>
@@ -1908,7 +1995,8 @@ const RoundsInner = ({ isActive }: { isActive: boolean }) => {
                                   </div>
 
                                   {/* Special Rule: Ratio + Data Per Turn */}
-                                  <div style={{ borderTop: '1px dashed var(--color-border)', paddingTop: '0.5rem', marginTop: '0.25rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', flexWrap: 'wrap' }}>
+                                  {formData.round_type === 'round_robin' && (
+                                    <div style={{ borderTop: '1px dashed var(--color-border)', paddingTop: '0.5rem', marginTop: '0.25rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', flexWrap: 'wrap' }}>
                                     {/* Column 1: Data per turn */}
                                     <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                                       <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 500 }}>{t("Nhận:")}</span>
@@ -1936,6 +2024,7 @@ const RoundsInner = ({ isActive }: { isActive: boolean }) => {
                                       <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 500 }}>{t("vòng chia")}</span>
                                     </div>
                                   </div>
+                                  )}
                                 </div>
                               );
                             })}

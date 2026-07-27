@@ -385,8 +385,11 @@ if (!$targetRoundId) {
 // Fetch round details (cc_emails, round_name)
 $ccEmails = '';
 $roundName = '';
+$roundType = 'round_robin';
+$grabCountdownSeconds = 300;
+$grabCooldownSeconds = 3600;
 if ($targetRoundId) {
-    $stmtQ = $conn->prepare("SELECT round_name, cc_emails FROM distribution_rounds WHERE id = ?");
+    $stmtQ = $conn->prepare("SELECT round_name, cc_emails, round_type, grab_countdown_seconds, grab_cooldown_seconds FROM distribution_rounds WHERE id = ?");
     if ($stmtQ) {
         $stmtQ->bind_param("i", $targetRoundId);
         $stmtQ->execute();
@@ -395,6 +398,9 @@ if ($targetRoundId) {
             $rData = $qRound->fetch_assoc();
             $ccEmails = $rData['cc_emails'] ?? '';
             $roundName = $rData['round_name'] ?? '';
+            $roundType = $rData['round_type'] ?? 'round_robin';
+            $grabCountdownSeconds = (int)($rData['grab_countdown_seconds'] ?? 300);
+            $grabCooldownSeconds = (int)($rData['grab_cooldown_seconds'] ?? 3600);
         }
         $stmtQ->close();
     }
@@ -489,6 +495,52 @@ if ($isSilent == 1) {
         'message' => 'Chỉ đồng bộ check trùng, không định tuyến.'
     ];
     respondAndNotifyAdmin($conn, $connData, $leadId, $custData, $distData, ["success" => true, "status" => "silent", "message" => "Chỉ đồng bộ check trùng, không định tuyến."], $lockKey, $lockReleased);
+}
+
+// --- Intercept Duplicate lead marked as Notlead by MKT ---
+$isMktNotlead = false;
+if (isset($data['notlead']) && ($data['notlead'] == 1 || $data['notlead'] === 'true' || $data['notlead'] === 'notlead' || $data['notlead'] === 'yes')) {
+    $isMktNotlead = true;
+} else if (isset($data['is_notlead']) && ($data['is_notlead'] == 1 || $data['is_notlead'] === 'true' || $data['is_notlead'] === 'yes')) {
+    $isMktNotlead = true;
+} else if (isset($data['status']) && $data['status'] === 'notlead') {
+    $isMktNotlead = true;
+}
+
+if ($crmCheckResult['leadExists'] && $isMktNotlead) {
+    $conn->begin_transaction();
+    try {
+        $leadId = updateLead($conn, $phone, $email, null, $source, $type, $note, $connectionId, null, $name);
+        
+        $updHeld = $conn->prepare("UPDATE leads SET status = 'pending_approval', is_accepted = 0, assigned_to = NULL, ai_screener_status = 'failed', ai_evaluation = 'Trùng số nhưng MKT đánh dấu Notlead' WHERE id = ?");
+        $updHeld->bind_param("i", $leadId);
+        $updHeld->execute();
+        $updHeld->close();
+        
+        logDistribution($conn, $leadId, null, $targetRoundId, 'pending_approval', 'Lead cũ trùng số được MKT đánh dấu Notlead. Đã đưa vào danh sách chờ duyệt (Pending).', false);
+        $conn->commit();
+        if (!empty($leadId)) {
+            triggerTwoWaySync($conn, $leadId);
+        }
+    } catch (Exception $e) {
+        $conn->rollback();
+        if ($e instanceof mysqli_sql_exception && ($e->getCode() === 1062 || strpos($e->getMessage(), 'Duplicate entry') !== false)) {
+            echo json_encode(["success" => true, "status" => "pending_approval", "message" => "Dữ liệu trùng lặp đã tồn tại trong hàng chờ duyệt."]);
+        } else {
+            echo json_encode(["success" => false, "message" => "Lỗi Database: " . $e->getMessage()]);
+        }
+        releaseAdvisoryLock($conn, $lockKey, $lockReleased);
+        exit();
+    }
+    
+    $custData = ['name' => $name, 'phone' => $phone, 'email' => $email, 'source' => $source, 'type' => $type, 'note' => $note];
+    $distData = [
+        'status' => 'pending_approval',
+        'assigned_to_id' => null,
+        'round_id' => $targetRoundId,
+        'message' => 'Lead cũ trùng số được MKT đánh dấu Notlead. Chuyển về Pending.'
+    ];
+    respondAndNotifyAdmin($conn, $connData, $leadId, $custData, $distData, ["success" => true, "status" => "pending_approval", "message" => "Lead cũ trùng số được MKT đánh dấu Notlead. Chuyển về Pending."], $lockKey, $lockReleased);
 }
 
 if ($crmCheckResult['isDuplicate'] && $crmCheckResult['monthsSinceLastInteraction'] < $dupCheckMonths && !empty($crmCheckResult['assignedTo'])) {
@@ -713,37 +765,93 @@ try {
         $dupSuffix = " (Trùng số: Sale cũ $oldSaleName > $oldSaleMonths tháng).";
     }
 
+    $eligibleConsultants = [];
     if ($targetRoundId) {
-        $assignResult = getNextConsultantInRound($conn, $targetRoundId, $data);
-        if ($assignResult) {
-            $assignedConsultantId = $assignResult['id'];
-            $status = $assignResult['is_compensation'] ? 'compensation' : 'assigned';
-            $message = $assignResult['is_compensation'] 
-                ? (isset($assignResult['is_starvation']) ? 'Được phân bổ bù lượt ngoài giờ/nghỉ phép (Starvation Prevention).' : 'Được phân bổ đền bù lượt lỗi.') 
-                : 'Được phân bổ tự động qua vòng xoay.';
-            $message .= $dupSuffix;
+        if ($roundType === 'grab') {
+            // Fetch active consultants of this round
+            $cStmt = $conn->prepare("
+                SELECT c.id, c.name, c.email, c.work_start_time, c.work_end_time, c.work_schedule
+                FROM round_consultants rc 
+                JOIN consultants c ON rc.consultant_id = c.id 
+                WHERE rc.round_id = ? 
+                  AND rc.is_active = 1 
+                  AND c.status = 'active'
+                  AND c.vacation_mode = 0
+            ");
+            $cStmt->bind_param("i", $targetRoundId);
+            $cStmt->execute();
+            $cRes = $cStmt->get_result();
+            $activeConsultants = $cRes->fetch_all(MYSQLI_ASSOC);
+            $cStmt->close();
 
-            // Check working hours
-            $whStmt = $conn->prepare("SELECT work_start_time, work_end_time, work_schedule FROM consultants WHERE id = ?");
-            $whStmt->bind_param("i", $assignedConsultantId);
-            $whStmt->execute();
-            $whRes = $whStmt->get_result();
-            if ($whRes && $whRow = $whRes->fetch_assoc()) {
-                $whStart = $whRow['work_start_time'] ?? '00:00';
-                $whEnd = $whRow['work_end_time'] ?? '23:59';
-                $workSchedule = $whRow['work_schedule'] ?? null;
-                $currentTime = date('H:i');
-                if (!isConsultantInWorkHours($currentTime, $whStart, $whEnd, $workSchedule, $assignedConsultantId, $conn)) {
-                    $status = 'pending_work_hours';
-                    $message .= ' (Trì hoãn: ngoài khung giờ làm việc)';
-                    $assignedConsultantId = null; // Do NOT pre-assign to any sale! Hold by system!
+            $currentTime = date('H:i');
+            foreach ($activeConsultants as $c) {
+                // Check cooldown (grab_cooldown_seconds)
+                $cooldownStmt = $conn->prepare("
+                    SELECT 1 FROM distribution_logs 
+                    WHERE assigned_to = ? 
+                      AND round_id = ? 
+                      AND status = 'grabbed' 
+                      AND received_at >= DATE_SUB(NOW(), INTERVAL ? SECOND) 
+                    LIMIT 1
+                ");
+                $cooldownStmt->bind_param("iii", $c['id'], $targetRoundId, $grabCooldownSeconds);
+                $cooldownStmt->execute();
+                $isOnCooldown = $cooldownStmt->get_result()->num_rows > 0;
+                $cooldownStmt->close();
+
+                if ($isOnCooldown) {
+                    continue;
+                }
+
+                // Check gates
+                if (checkConsultantGates($conn, $c['id'], $data) === true) {
+                    $eligibleConsultants[] = $c;
                 }
             }
-            $whStmt->close();
+
+            if (!empty($eligibleConsultants)) {
+                $status = 'pending_claim';
+                $assignedConsultantId = null;
+                $message = 'Lead được đưa vào hàng tranh nhận cho ' . count($eligibleConsultants) . ' tư vấn viên.';
+                $message .= $dupSuffix;
+            } else {
+                $status = 'pending_work_hours';
+                $message = 'Ngoài khung giờ làm việc / Tất cả TVV trong hàng tranh nhận đang bận/cooldown. Hệ thống tạm giữ Lead.' . $dupSuffix;
+                $assignedConsultantId = null;
+            }
         } else {
-            $status = 'pending_work_hours';
-            $message = 'Ngoài khung giờ làm việc / Chưa có TVV trực ca. Hệ thống tạm giữ Lead.' . $dupSuffix;
-            $assignedConsultantId = null;
+            $assignResult = getNextConsultantInRound($conn, $targetRoundId, $data);
+            if ($assignResult) {
+                $assignedConsultantId = $assignResult['id'];
+                $status = $assignResult['is_compensation'] ? 'compensation' : 'assigned';
+                $message = $assignResult['is_compensation'] 
+                    ? (isset($assignResult['is_starvation']) ? 'Được phân bổ bù lượt ngoài giờ/nghỉ phép (Starvation Prevention).' : 'Được phân bổ đền bù lượt lỗi.') 
+                    : 'Được phân bổ tự động qua vòng xoay.';
+                $message .= $dupSuffix;
+
+                // Check working hours
+                $whStmt = $conn->prepare("SELECT work_start_time, work_end_time, work_schedule FROM consultants WHERE id = ?");
+                $whStmt->bind_param("i", $assignedConsultantId);
+                $whStmt->execute();
+                $whRes = $whStmt->get_result();
+                if ($whRes && $whRow = $whRes->fetch_assoc()) {
+                    $whStart = $whRow['work_start_time'] ?? '00:00';
+                    $whEnd = $whRow['work_end_time'] ?? '23:59';
+                    $workSchedule = $whRow['work_schedule'] ?? null;
+                    $currentTime = date('H:i');
+                    if (!isConsultantInWorkHours($currentTime, $whStart, $whEnd, $workSchedule, $assignedConsultantId, $conn)) {
+                        $status = 'pending_work_hours';
+                        $message .= ' (Trì hoãn: ngoài khung giờ làm việc)';
+                        $assignedConsultantId = null; // Do NOT pre-assign to any sale! Hold by system!
+                    }
+                }
+                $whStmt->close();
+            } else {
+                $status = 'pending_work_hours';
+                $message = 'Ngoài khung giờ làm việc / Chưa có TVV trực ca. Hệ thống tạm giữ Lead.' . $dupSuffix;
+                $assignedConsultantId = null;
+            }
         }
     } else {
         $status = 'unassigned';
@@ -777,6 +885,25 @@ try {
         $updAi->close();
     }
 
+    if ($status === 'pending_claim' && $leadId && !empty($eligibleConsultants)) {
+        // Set lead status to pending_claim in database
+        $updL = $conn->prepare("UPDATE leads SET status = 'pending_claim', is_accepted = 0, assigned_to = NULL WHERE id = ?");
+        $updL->bind_param("i", $leadId);
+        $updL->execute();
+        $updL->close();
+
+        // Create offers
+        $offerStmt = $conn->prepare("
+            INSERT INTO lead_offers (lead_id, user_id, round_id, expires_at, status) 
+            VALUES (?, ?, ?, DATE_ADD(NOW(), INTERVAL ? SECOND), 'pending')
+        ");
+        foreach ($eligibleConsultants as $c) {
+            $offerStmt->bind_param("iiii", $leadId, $c['id'], $targetRoundId, $grabCountdownSeconds);
+            $offerStmt->execute();
+        }
+        $offerStmt->close();
+    }
+
     logDistribution($conn, $leadId, $assignedConsultantId, $targetRoundId, $status, $message, false);
     $conn->commit();
     if (!empty($leadId)) {
@@ -807,7 +934,7 @@ if ($status === 'unassigned' || $status === 'pending' || ($status === 'fallback'
 // Send success response immediately to prevent Google Sheets Webhook timeout
 $response = [
     "success" => true,
-    "status" => "assigned",
+    "status" => $status === 'pending_claim' ? 'pending_claim' : 'assigned',
     "assignedTo" => $assignedConsultantId,
     "roundId" => $targetRoundId
 ];

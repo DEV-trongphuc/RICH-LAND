@@ -5754,6 +5754,199 @@ switch ($action) {
         }
         break;
 
+    case 'get_active_offers':
+        try {
+            $userId = (int)($decodedUser['id'] ?? 0);
+            if (!$userId) {
+                echo json_encode(['success' => false, 'message' => 'Người dùng không hợp lệ']);
+                break;
+            }
+
+            // Clean expired offers
+            $conn->query("UPDATE lead_offers SET status = 'expired' WHERE status = 'pending' AND expires_at < NOW()");
+
+            // Query active offers
+            $stmt = $conn->prepare("
+                SELECT lo.id as offer_id, lo.lead_id, lo.expires_at,
+                       l.name as lead_name, l.source as lead_source, l.type as lead_type, l.note as lead_note,
+                       TIMESTAMPDIFF(SECOND, NOW(), lo.expires_at) as seconds_remaining,
+                       dr.round_name
+                FROM lead_offers lo
+                JOIN leads l ON lo.lead_id = l.id
+                JOIN distribution_rounds dr ON lo.round_id = dr.id
+                WHERE lo.user_id = ? 
+                  AND lo.status = 'pending' 
+                  AND lo.expires_at > NOW()
+                ORDER BY lo.expires_at ASC
+            ");
+            $stmt->bind_param("i", $userId);
+            $stmt->execute();
+            $res = $stmt->get_result();
+            $offers = $res->fetch_all(MYSQLI_ASSOC);
+            $stmt->close();
+
+            echo json_encode(['success' => true, 'offers' => $offers]);
+        } catch (Exception $e) {
+            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+        }
+        break;
+
+    case 'claim_lead':
+        try {
+            $input = json_decode(file_get_contents('php://input'), true);
+            $lead_id = (int) ($input['lead_id'] ?? 0);
+            $userId = (int) ($decodedUser['id'] ?? 0);
+
+            if (!$lead_id || !$userId) {
+                echo json_encode(['success' => false, 'message' => 'Thông tin yêu cầu không hợp lệ']);
+                break;
+            }
+
+            $conn->begin_transaction();
+
+            // Lock the lead row for update to prevent concurrent claims
+            $stmtChk = $conn->prepare("
+                SELECT id, assigned_to, is_accepted, target_round_id, name, phone, email, source, type, note 
+                FROM leads 
+                WHERE id = ? 
+                FOR UPDATE
+            ");
+            $stmtChk->bind_param("i", $lead_id);
+            $stmtChk->execute();
+            $resChk = $stmtChk->get_result()->fetch_assoc();
+            $stmtChk->close();
+
+            if (!$resChk) {
+                $conn->rollback();
+                echo json_encode(['success' => false, 'message' => 'Không tìm thấy thông tin khách hàng']);
+                break;
+            }
+
+            if ((int)$resChk['is_accepted'] === 1 || !empty($resChk['assigned_to'])) {
+                $claimedByName = 'một Sale khác';
+                $ownerStmt = $conn->prepare("SELECT name FROM consultants WHERE id = ? LIMIT 1");
+                if ($ownerStmt) {
+                    $ownerStmt->bind_param("i", $resChk['assigned_to']);
+                    $ownerStmt->execute();
+                    $oRow = $ownerStmt->get_result()->fetch_assoc();
+                    $ownerStmt->close();
+                    if ($oRow) {
+                        $claimedByName = $oRow['name'];
+                    }
+                }
+                $conn->rollback();
+                echo json_encode([
+                    'success' => false, 
+                    'message' => "Rất tiếc! Khách hàng này đã được tranh nhận thành công bởi {$claimedByName} trước đó một tích tắc."
+                ]);
+                break;
+            }
+
+            // Lock and verify user's claim offer
+            $offerStmt = $conn->prepare("
+                SELECT id, expires_at 
+                FROM lead_offers 
+                WHERE lead_id = ? AND user_id = ? AND status = 'pending' 
+                FOR UPDATE
+            ");
+            $offerStmt->bind_param("ii", $lead_id, $userId);
+            $offerStmt->execute();
+            $offerRes = $offerStmt->get_result()->fetch_assoc();
+            $offerStmt->close();
+
+            if (!$offerRes) {
+                $conn->rollback();
+                echo json_encode(['success' => false, 'message' => 'Bạn không có lời mời nhận khách hàng này hoặc đã hết hạn']);
+                break;
+            }
+
+            if (strtotime($offerRes['expires_at']) < time()) {
+                $conn->query("UPDATE lead_offers SET status = 'expired' WHERE id = " . (int)$offerRes['id']);
+                $conn->rollback();
+                echo json_encode(['success' => false, 'message' => 'Thời gian đếm ngược nhận khách hàng này đã kết thúc']);
+                break;
+            }
+
+            // Check van chống ôm (backpressure limit)
+            $backpressureLimit = (int) get_system_setting($conn, 'backpressure_limit');
+            if ($backpressureLimit <= 0) {
+                $backpressureLimit = 5;
+            }
+            
+            $targetUserId = $userId;
+            $stmtU = $conn->prepare("SELECT id FROM users WHERE id = ? OR email = (SELECT email FROM consultants WHERE id = ? LIMIT 1) LIMIT 1");
+            if ($stmtU) {
+                $stmtU->bind_param("ii", $userId, $userId);
+                $stmtU->execute();
+                $uRes = $stmtU->get_result()->fetch_column();
+                if ($uRes) $targetUserId = (int)$uRes;
+                $stmtU->close();
+            }
+
+            $stmtKhtn = $conn->prepare("
+                SELECT COUNT(*) as cnt 
+                FROM contacts c
+                WHERE c.owner_id = ? 
+                  AND c.deleted_at IS NULL
+                  AND c.status != 'rejected'
+                  AND c.pipeline_status IN ('chua_xac_dinh', 'quan_tam')
+                  AND NOT EXISTS (
+                      SELECT 1 FROM notes n 
+                      WHERE n.entity_type = 'contact' 
+                        AND n.entity_id = c.id 
+                  )
+                  AND NOT EXISTS (
+                      SELECT 1 FROM activities a
+                      WHERE (a.related_type = 'contact' AND a.related_id = c.id)
+                         OR a.contact_id = c.id
+                  )
+            ");
+            $stmtKhtn->bind_param("i", $targetUserId);
+            $stmtKhtn->execute();
+            $khtnCnt = (int) ($stmtKhtn->get_result()->fetch_assoc()['cnt'] ?? 0);
+            $stmtKhtn->close();
+
+            if ($khtnCnt >= $backpressureLimit) {
+                $conn->rollback();
+                echo json_encode([
+                    'success' => false, 
+                    'message' => "Bạn đã vượt quá van chống ôm ($khtnCnt/$backpressureLimit data chưa xử lý). Vui lòng tương tác/ghi chú các data hiện tại trước khi nhận thêm."
+                ]);
+                break;
+            }
+
+            // User wins!
+            $stmtUp = $conn->prepare("UPDATE leads SET assigned_to = ?, is_accepted = 1, accepted_at = NOW(), status = 'active', last_interaction_date = NOW() WHERE id = ?");
+            $stmtUp->bind_param("ii", $userId, $lead_id);
+            $stmtUp->execute();
+            $stmtUp->close();
+
+            $upMyOffer = $conn->prepare("UPDATE lead_offers SET status = 'accepted', responded_at = NOW() WHERE lead_id = ? AND user_id = ? AND status = 'pending'");
+            $upMyOffer->bind_param("ii", $lead_id, $userId);
+            $upMyOffer->execute();
+            $upMyOffer->close();
+
+            $upOtherOffers = $conn->prepare("UPDATE lead_offers SET status = 'expired', responded_at = NOW() WHERE lead_id = ? AND user_id != ? AND status = 'pending'");
+            $upOtherOffers->bind_param("ii", $lead_id, $userId);
+            $upOtherOffers->execute();
+            $upOtherOffers->close();
+
+            $roundId = $resChk['target_round_id'] ? (int)$resChk['target_round_id'] : null;
+            require_once __DIR__ . '/webhook_logic.php';
+            logDistribution($conn, $lead_id, $userId, $roundId, 'grabbed', 'Tranh nhận lead thành công (Grab lead).', false);
+
+            ensurePersonAndContact($conn, $lead_id);
+
+            $conn->commit();
+            triggerTwoWaySync($conn, $lead_id);
+
+            echo json_encode(['success' => true, 'message' => 'Tranh nhận khách hàng thành công!']);
+        } catch (Exception $e) {
+            $conn->rollback();
+            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+        }
+        break;
+
     case 'accept_lead':
         try {
             $input = json_decode(file_get_contents('php://input'), true);
@@ -6813,9 +7006,13 @@ switch ($action) {
                 }
             }
 
+            $round_type = $input['round_type'] ?? 'round_robin';
+            $grab_countdown_seconds = isset($input['grab_countdown_seconds']) ? (int)$input['grab_countdown_seconds'] : 300;
+            $grab_cooldown_seconds = isset($input['grab_cooldown_seconds']) ? (int)$input['grab_cooldown_seconds'] : 3600;
+
             $project_id = isset($input['project_id']) && $input['project_id'] !== '' ? (int)$input['project_id'] : null;
-            $stmt = $conn->prepare("INSERT INTO distribution_rounds (round_name, is_active, cc_emails, last_assigned_consultant_id, project_id) VALUES (?, ?, ?, ?, ?)");
-            $stmt->bind_param("sisii", $name, $status, $cc, $last_assigned, $project_id);
+            $stmt = $conn->prepare("INSERT INTO distribution_rounds (round_name, is_active, cc_emails, last_assigned_consultant_id, project_id, round_type, grab_countdown_seconds, grab_cooldown_seconds) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
+            $stmt->bind_param("sisiisii", $name, $status, $cc, $last_assigned, $project_id, $round_type, $grab_countdown_seconds, $grab_cooldown_seconds);
             $stmt->execute();
             $roundId = $conn->insert_id;
             $stmt->close();
@@ -6940,13 +7137,17 @@ switch ($action) {
                 }
             }
 
+            $round_type = $input['round_type'] ?? 'round_robin';
+            $grab_countdown_seconds = isset($input['grab_countdown_seconds']) ? (int)$input['grab_countdown_seconds'] : 300;
+            $grab_cooldown_seconds = isset($input['grab_cooldown_seconds']) ? (int)$input['grab_cooldown_seconds'] : 3600;
+
             $project_id = isset($input['project_id']) && $input['project_id'] !== '' ? (int)$input['project_id'] : null;
             if ($starting_consultant_id) {
-                $stmt = $conn->prepare("UPDATE distribution_rounds SET round_name=?, is_active=?, cc_emails=?, last_assigned_consultant_id=?, project_id=? WHERE id=?");
-                $stmt->bind_param("sisiii", $name, $status, $cc, $last_assigned, $project_id, $id);
+                $stmt = $conn->prepare("UPDATE distribution_rounds SET round_name=?, is_active=?, cc_emails=?, last_assigned_consultant_id=?, project_id=?, round_type=?, grab_countdown_seconds=?, grab_cooldown_seconds=? WHERE id=?");
+                $stmt->bind_param("sisiiiisii", $name, $status, $cc, $last_assigned, $project_id, $round_type, $grab_countdown_seconds, $grab_cooldown_seconds, $id);
             } else {
-                $stmt = $conn->prepare("UPDATE distribution_rounds SET round_name=?, is_active=?, cc_emails=?, project_id=? WHERE id=?");
-                $stmt->bind_param("sisii", $name, $status, $cc, $project_id, $id);
+                $stmt = $conn->prepare("UPDATE distribution_rounds SET round_name=?, is_active=?, cc_emails=?, project_id=?, round_type=?, grab_countdown_seconds=?, grab_cooldown_seconds=? WHERE id=?");
+                $stmt->bind_param("sisiiisii", $name, $status, $cc, $project_id, $round_type, $grab_countdown_seconds, $grab_cooldown_seconds, $id);
             }
             $stmt->execute();
             $stmt->close();

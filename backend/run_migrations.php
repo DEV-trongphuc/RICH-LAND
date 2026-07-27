@@ -18,7 +18,7 @@ $apply = (isset($_GET['apply']) && $_GET['apply'] === 'true')
       || (isset($_POST['execute_migration']) && $_POST['execute_migration'] === '1')
       || ($isCli && in_array('--apply', $argv));
 
-$targetVersion = 191;
+$targetVersion = 192;
 $currentVersion = 186;
 
 // Query current DB version
@@ -381,8 +381,18 @@ try {
         $logMsg("Đã bổ sung các cột phân cấp đại lý (tier, parent_id, commission_rate, focus_markets, agent_count) vào bảng companies.", "success");
     }
 
+    // 8.9. Add Grab Lead columns to distribution_rounds (Version 192)
+    $chkRT = $conn->query("SHOW COLUMNS FROM `distribution_rounds` LIKE 'round_type'");
+    if (!$chkRT || $chkRT->num_rows == 0) {
+        $conn->query("ALTER TABLE `distribution_rounds` 
+            ADD COLUMN `round_type` ENUM('round_robin', 'grab') DEFAULT 'round_robin' COMMENT 'Loại vòng: round_robin hoặc grab (tranh lead)', 
+            ADD COLUMN `grab_countdown_seconds` INT DEFAULT 300 COMMENT 'Thời gian đếm ngược nhận lead (giây)', 
+            ADD COLUMN `grab_cooldown_seconds` INT DEFAULT 3600 COMMENT 'Thời gian block sau khi nhận lead (giây)'");
+        $logMsg("Đã bổ sung các cột round_type, grab_countdown_seconds, grab_cooldown_seconds vào bảng distribution_rounds.", "success");
+    }
+
     // 9. Update DB version in system_settings
-    $conn->query("INSERT INTO system_settings (setting_key, setting_value) VALUES ('db_version', '191') ON DUPLICATE KEY UPDATE setting_value = '191'");
+    $conn->query("INSERT INTO system_settings (setting_key, setting_value) VALUES ('db_version', '192') ON DUPLICATE KEY UPDATE setting_value = '192'");
     
     $logMsg("Hệ thống đã duy trì cấu trúc Cơ sở dữ liệu ở phiên bản mới nhất: " . $targetVersion, "success");
 
