@@ -3,6 +3,41 @@
 
 require_once __DIR__ . '/db_connect.php';
 
+if (!function_exists('maskPhone')) {
+    function maskPhone($phone) {
+        if (empty($phone)) return '';
+        $phone = trim($phone);
+        if (strlen($phone) <= 6) return $phone;
+        return substr($phone, 0, 3) . '****' . substr($phone, -3);
+    }
+}
+if (!function_exists('maskEmail')) {
+    function maskEmail($email) {
+        if (empty($email)) return '';
+        $parts = explode('@', $email);
+        if (count($parts) < 2) return $email;
+        $namePart = $parts[0];
+        $domainPart = $parts[1];
+        if (strlen($namePart) <= 3) {
+            $maskedEmail = substr($namePart, 0, 1) . '***@' . $domainPart;
+        } else {
+            $maskedEmail = substr($namePart, 0, 3) . '***' . substr($namePart, -1) . '@' . $domainPart;
+        }
+        return $maskedEmail;
+    }
+}
+if (!function_exists('maskName')) {
+    function maskName($name) {
+        if (empty($name)) return '';
+        $nameParts = explode(' ', trim($name));
+        if (count($nameParts) > 1) {
+            $lastPart = array_pop($nameParts);
+            return implode(' ', $nameParts) . ' ' . str_repeat('*', mb_strlen($lastPart, 'UTF-8'));
+        }
+        return mb_substr($name, 0, 2, 'UTF-8') . '***';
+    }
+}
+
 /**
  * Gửi tin nhắn qua Telegram Bot API
  *
@@ -145,16 +180,20 @@ function sendLeadAssignedTelegramMessageToSale($consultantId, $consultantName, $
     $frontendUrl = get_system_setting($conn, 'frontend_url') ?: 'http://localhost:5173';
     $detailLink = rtrim($frontendUrl, '/') . "/leads?id=" . $leadId;
 
+    $maskedName = maskName($leadName);
+    $maskedPhone = maskPhone($leadPhone);
+    $maskedEmail = maskEmail($leadEmail);
+
     $text = "📥 <b>[ THÔNG BÁO DATA MỚI" . htmlspecialchars($roundTitle) . " ]</b> 📥\n"
         . "━━━━━━━━━━━━━━━━━━━━━\n"
         . "Chào <b>" . htmlspecialchars($consultantName) . "</b>,\n\n"
         . "Hệ thống vừa phân bổ cho bạn một khách hàng mới:\n"
-        . " • <b>Tên KH:</b> " . htmlspecialchars($leadName) . "\n"
-        . " • <b>Số ĐT:</b> " . htmlspecialchars($leadPhone) . "\n"
+        . " • <b>Tên KH:</b> " . htmlspecialchars($maskedName) . "\n"
+        . " • <b>Số ĐT:</b> " . htmlspecialchars($maskedPhone) . "\n"
         . " • <b>Nguồn:</b> " . htmlspecialchars($leadSource) . "\n";
     
     if (!empty($leadEmail)) {
-        $text .= " • <b>Email:</b> " . htmlspecialchars($leadEmail) . "\n";
+        $text .= " • <b>Email:</b> " . htmlspecialchars($maskedEmail) . "\n";
     }
     if (!empty($leadType)) {
         $text .= " • <b>Loại:</b> " . htmlspecialchars($leadType) . "\n";
@@ -196,12 +235,15 @@ function sendLeadReminderTelegramMessageToSale($consultantId, $consultantName, $
     $frontendUrl = get_system_setting($conn, 'frontend_url') ?: 'http://localhost:5173';
     $detailLink = rtrim($frontendUrl, '/') . "/leads?id=" . $leadId;
 
+    $maskedName = maskName($leadName);
+    $maskedPhone = maskPhone($leadPhone);
+
     $text = "⏰ <b>[ NHẮC NHỞ CHĂM SÓC KHÁCH HÀNG ]</b> ⏰\n"
         . "━━━━━━━━━━━━━━━━━━━━━\n"
         . "Chào <b>" . htmlspecialchars($consultantName) . "</b>,\n\n"
         . "Bạn có khách hàng mới đăng ký lại/nhắc lịch chăm sóc:\n"
-        . " • <b>Tên KH:</b> " . htmlspecialchars($leadName) . "\n"
-        . " • <b>Số ĐT:</b> " . htmlspecialchars($leadPhone) . "\n"
+        . " • <b>Tên KH:</b> " . htmlspecialchars($maskedName) . "\n"
+        . " • <b>Số ĐT:</b> " . htmlspecialchars($maskedPhone) . "\n"
         . " • <b>Nguồn:</b> " . htmlspecialchars($leadSource) . "\n"
         . " • <b>Vòng:</b> " . htmlspecialchars($roundName) . "\n";
 

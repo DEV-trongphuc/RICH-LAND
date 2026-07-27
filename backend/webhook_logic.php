@@ -1657,26 +1657,68 @@ function sendDirectSaleLeadNotification($conn, $leadId, $assignedToId, $roundId 
         $custPhone = !empty($lead['phone']) ? $lead['phone'] : 'Không có';
         $custEmail = !empty($lead['email']) ? $lead['email'] : 'Không có';
 
+        // Masking functions for privacy protection
+        $maskedName = $custName;
+        if (!empty($custName) && $custName !== 'Khách hàng mới') {
+            $nameParts = explode(' ', trim($custName));
+            if (count($nameParts) > 1) {
+                $lastPart = array_pop($nameParts);
+                $maskedName = implode(' ', $nameParts) . ' ' . str_repeat('*', mb_strlen($lastPart, 'UTF-8'));
+            } else {
+                $maskedName = mb_substr($custName, 0, 2, 'UTF-8') . '***';
+            }
+        }
+        
+        $maskedPhone = '';
+        if (!empty($custPhone) && $custPhone !== 'Không có') {
+            $trimmed = trim($custPhone);
+            if (strlen($trimmed) >= 7) {
+                $maskedPhone = substr($trimmed, 0, 3) . '****' . substr($trimmed, -3);
+            } else {
+                $maskedPhone = substr($trimmed, 0, 2) . str_repeat('*', strlen($trimmed) - 2);
+            }
+        } else {
+            $maskedPhone = 'Không có';
+        }
+        
+        $maskedEmail = '';
+        if (!empty($custEmail) && $custEmail !== 'Không có') {
+            $parts = explode('@', $custEmail);
+            if (count($parts) === 2) {
+                $namePart = $parts[0];
+                $domainPart = $parts[1];
+                if (strlen($namePart) <= 3) {
+                    $maskedEmail = substr($namePart, 0, 1) . '***@' . $domainPart;
+                } else {
+                    $maskedEmail = substr($namePart, 0, 3) . '***' . substr($namePart, -1) . '@' . $domainPart;
+                }
+            } else {
+                $maskedEmail = $custEmail;
+            }
+        } else {
+            $maskedEmail = 'Không có';
+        }
+
         // 3. Construct Zalo message for Sale
         $zaloMsg = "🚨 [ CÓ LEAD MỚI ĐƯỢC PHÂN BỔ CHO BẠN! ] 🚨\n"
             . "━━━━━━━━━━━━━━━━━━━━\n"
-            . "👤 Khách hàng: " . $custName . "\n"
-            . "📞 Số ĐT: " . $custPhone . "\n"
-            . "✉️ Email: " . $custEmail . "\n"
+            . "👤 Khách hàng: " . $maskedName . "\n"
+            . "📞 Số ĐT: " . $maskedPhone . "\n"
+            . "✉️ Email: " . $maskedEmail . "\n"
             . "🌐 Nguồn: " . ($lead['source'] ?? 'Không có') . "\n"
             . "📋 Phân loại: " . ($lead['type'] ?? 'Không có') . "\n"
             . "📝 Ghi chú: " . ($lead['note'] ?? 'Không có') . "\n\n"
             . "⏰ Vui lòng truy cập hệ thống CRM để TIẾP NHẬN LEAD NGAY!";
 
         // 4. Construct Email message for Sale
-        $emailSubj = "[Rich Land CRM] 🚨 Bạn vừa nhận được Lead mới: " . $custName;
+        $emailSubj = "[Rich Land CRM] 🚨 Bạn vừa nhận được Lead mới: " . $maskedName;
         $emailBody = "<h3>🚨 Thông báo Lead mới phân bổ!</h3>"
             . "<p>Chào <strong>" . htmlspecialchars($sale['name']) . "</strong>,</p>"
             . "<p>Hệ thống vừa tự động phân bổ cho bạn một Lead mới từ vòng chia:</p>"
             . "<ul>"
-            . "    <li><strong>Khách hàng:</strong> " . htmlspecialchars($custName) . "</li>"
-            . "    <li><strong>Số điện thoại:</strong> " . htmlspecialchars($custPhone) . "</li>"
-            . "    <li><strong>Email:</strong> " . htmlspecialchars($custEmail) . "</li>"
+            . "    <li><strong>Khách hàng:</strong> " . htmlspecialchars($maskedName) . "</li>"
+            . "    <li><strong>Số điện thoại:</strong> " . htmlspecialchars($maskedPhone) . "</li>"
+            . "    <li><strong>Email:</strong> " . htmlspecialchars($maskedEmail) . "</li>"
             . "    <li><strong>Nguồn:</strong> " . htmlspecialchars($lead['source'] ?? '-') . "</li>"
             . "    <li><strong>Phân loại:</strong> " . htmlspecialchars($lead['type'] ?? '-') . "</li>"
             . "    <li><strong>Ghi chú:</strong> " . nl2br(htmlspecialchars($lead['note'] ?? '-')) . "</li>"
@@ -1701,9 +1743,9 @@ function sendDirectSaleLeadNotification($conn, $leadId, $assignedToId, $roundId 
             require_once __DIR__ . '/telegram_bot.php';
             $teleMsg = "🚨 <b>[ CÓ LEAD MỚI ĐƯỢC PHÂN BỔ CHO BẠN! ]</b> 🚨\n"
                 . "━━━━━━━━━━━━━━━━━━━━\n"
-                . "👤 <b>Khách hàng:</b> " . htmlspecialchars($custName) . "\n"
-                . "📞 <b>Số ĐT:</b> " . htmlspecialchars($custPhone) . "\n"
-                . "✉️ <b>Email:</b> " . htmlspecialchars($custEmail) . "\n"
+                . "👤 <b>Khách hàng:</b> " . htmlspecialchars($maskedName) . "\n"
+                . "📞 <b>Số ĐT:</b> " . htmlspecialchars($maskedPhone) . "\n"
+                . "✉️ <b>Email:</b> " . htmlspecialchars($maskedEmail) . "\n"
                 . "🌐 <b>Nguồn:</b> " . htmlspecialchars($lead['source'] ?? 'Không có') . "\n"
                 . "📋 <b>Phân loại:</b> " . htmlspecialchars($lead['type'] ?? 'Không có') . "\n"
                 . "📝 <b>Ghi chú:</b> " . htmlspecialchars($lead['note'] ?? 'Không có') . "\n\n"
