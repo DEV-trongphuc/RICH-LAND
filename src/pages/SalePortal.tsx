@@ -229,6 +229,27 @@ const GrabLeadOfferModal: React.FC<{
               </>
             )}
           </button>
+          <button
+            onClick={onClose}
+            disabled={submitting}
+            style={{
+              width: '100%', padding: '0.75rem', borderRadius: '12px', border: '1px solid var(--color-border)',
+              background: 'transparent', color: 'var(--color-text-muted)',
+              fontSize: '0.875rem', fontWeight: 700, cursor: 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              transition: 'all 0.2s', marginTop: '0.5rem'
+            }}
+            onMouseEnter={e => {
+              e.currentTarget.style.background = theme === 'dark' ? '#374151' : '#f3f4f6';
+              e.currentTarget.style.color = 'var(--color-text)';
+            }}
+            onMouseLeave={e => {
+              e.currentTarget.style.background = 'transparent';
+              e.currentTarget.style.color = 'var(--color-text-muted)';
+            }}
+          >
+            {t("Đóng")}
+          </button>
         </div>
       </div>
     </div>
@@ -467,6 +488,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
   const [activeOffers, setActiveOffers] = useState<any[]>([]);
   const [isClaiming, setIsClaiming] = useState(false);
+  const [dismissedOfferIds, setDismissedOfferIds] = useState<number[]>([]);
 
   useEffect(() => {
     if (!isLangOpen) return;
@@ -18195,11 +18217,13 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
         document.body
       )}
 
-      {activeOffers.length > 0 && createPortal(
+      {activeOffers.length > 0 && !dismissedOfferIds.includes(activeOffers[0].offer_id) && createPortal(
         <GrabLeadOfferModal
           offer={activeOffers[0]}
           onClaim={handleGrabLead}
-          onClose={fetchActiveOffers}
+          onClose={() => {
+            setDismissedOfferIds(prev => [...prev, activeOffers[0].offer_id]);
+          }}
           t={t}
           theme={theme}
         />,
