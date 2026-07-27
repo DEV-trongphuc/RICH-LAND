@@ -18195,14 +18195,15 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
         document.body
       )}
 
-      {activeOffers.length > 0 && (
+      {activeOffers.length > 0 && createPortal(
         <GrabLeadOfferModal
           offer={activeOffers[0]}
           onClaim={handleGrabLead}
           onClose={fetchActiveOffers}
           t={t}
           theme={theme}
-        />
+        />,
+        document.body
       )}
 
       {/* Interactive Explanation Modals */}
