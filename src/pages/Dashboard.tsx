@@ -1651,7 +1651,7 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
                                   : log.assigned_to_name}
                         </div>
                         <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                          {log.lead_name || t('Khách hàng')} • {new Date(log.created_at).toLocaleString(language === 'en' ? 'en-US' : 'vi-VN')}
+                          {log.lead_name || t('Khách hàng')} • {parseServerDate(log.created_at).toLocaleString(language === 'en' ? 'en-US' : 'vi-VN')}
                         </div>
                       </div>
                       <div style={{ textAlign: 'right' }}>
