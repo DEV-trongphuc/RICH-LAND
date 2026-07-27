@@ -7009,10 +7009,11 @@ switch ($action) {
             $round_type = $input['round_type'] ?? 'round_robin';
             $grab_countdown_seconds = isset($input['grab_countdown_seconds']) ? (int)$input['grab_countdown_seconds'] : 300;
             $grab_cooldown_seconds = isset($input['grab_cooldown_seconds']) ? (int)$input['grab_cooldown_seconds'] : 3600;
+            $grab_fallback_to_databank = isset($input['grab_fallback_to_databank']) ? (int)$input['grab_fallback_to_databank'] : 0;
 
             $project_id = isset($input['project_id']) && $input['project_id'] !== '' ? (int)$input['project_id'] : null;
-            $stmt = $conn->prepare("INSERT INTO distribution_rounds (round_name, is_active, cc_emails, last_assigned_consultant_id, project_id, round_type, grab_countdown_seconds, grab_cooldown_seconds) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
-            $stmt->bind_param("sisiisii", $name, $status, $cc, $last_assigned, $project_id, $round_type, $grab_countdown_seconds, $grab_cooldown_seconds);
+            $stmt = $conn->prepare("INSERT INTO distribution_rounds (round_name, is_active, cc_emails, last_assigned_consultant_id, project_id, round_type, grab_countdown_seconds, grab_cooldown_seconds, grab_fallback_to_databank) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
+            $stmt->bind_param("sisiisiii", $name, $status, $cc, $last_assigned, $project_id, $round_type, $grab_countdown_seconds, $grab_cooldown_seconds, $grab_fallback_to_databank);
             $stmt->execute();
             $roundId = $conn->insert_id;
             $stmt->close();
@@ -7140,14 +7141,15 @@ switch ($action) {
             $round_type = $input['round_type'] ?? 'round_robin';
             $grab_countdown_seconds = isset($input['grab_countdown_seconds']) ? (int)$input['grab_countdown_seconds'] : 300;
             $grab_cooldown_seconds = isset($input['grab_cooldown_seconds']) ? (int)$input['grab_cooldown_seconds'] : 3600;
+            $grab_fallback_to_databank = isset($input['grab_fallback_to_databank']) ? (int)$input['grab_fallback_to_databank'] : 0;
 
             $project_id = isset($input['project_id']) && $input['project_id'] !== '' ? (int)$input['project_id'] : null;
             if ($starting_consultant_id) {
-                $stmt = $conn->prepare("UPDATE distribution_rounds SET round_name=?, is_active=?, cc_emails=?, last_assigned_consultant_id=?, project_id=?, round_type=?, grab_countdown_seconds=?, grab_cooldown_seconds=? WHERE id=?");
-                $stmt->bind_param("sisiiiisii", $name, $status, $cc, $last_assigned, $project_id, $round_type, $grab_countdown_seconds, $grab_cooldown_seconds, $id);
+                $stmt = $conn->prepare("UPDATE distribution_rounds SET round_name=?, is_active=?, cc_emails=?, last_assigned_consultant_id=?, project_id=?, round_type=?, grab_countdown_seconds=?, grab_cooldown_seconds=?, grab_fallback_to_databank=? WHERE id=?");
+                $stmt->bind_param("sisiiiisiii", $name, $status, $cc, $last_assigned, $project_id, $round_type, $grab_countdown_seconds, $grab_cooldown_seconds, $grab_fallback_to_databank, $id);
             } else {
-                $stmt = $conn->prepare("UPDATE distribution_rounds SET round_name=?, is_active=?, cc_emails=?, project_id=?, round_type=?, grab_countdown_seconds=?, grab_cooldown_seconds=? WHERE id=?");
-                $stmt->bind_param("sisiiisii", $name, $status, $cc, $project_id, $round_type, $grab_countdown_seconds, $grab_cooldown_seconds, $id);
+                $stmt = $conn->prepare("UPDATE distribution_rounds SET round_name=?, is_active=?, cc_emails=?, project_id=?, round_type=?, grab_countdown_seconds=?, grab_cooldown_seconds=?, grab_fallback_to_databank=? WHERE id=?");
+                $stmt->bind_param("sisiiisiii", $name, $status, $cc, $project_id, $round_type, $grab_countdown_seconds, $grab_cooldown_seconds, $grab_fallback_to_databank, $id);
             }
             $stmt->execute();
             $stmt->close();

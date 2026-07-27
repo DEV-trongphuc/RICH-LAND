@@ -149,7 +149,8 @@ const RoundsInner = ({ isActive }: { isActive: boolean }) => {
     campaign_id: null as number | null,
     round_type: 'round_robin',
     grab_countdown_minutes: 5,
-    grab_cooldown_hours: 1
+    grab_cooldown_hours: 1,
+    grab_fallback_to_databank: 0
   });
 
   const [searchUser, setSearchUser] = useState('');
@@ -296,7 +297,7 @@ const RoundsInner = ({ isActive }: { isActive: boolean }) => {
   const openAddModal = () => {
     setEditingRound(null);
     setScopeType('none');
-    setFormData({ round_name: '', is_active: 1, cc_emails: '', selected_users: [], starting_consultant_id: null, ratios: {}, data_per_turns: {}, compensations: {}, is_fallback: false, project_id: null, campaign_id: null, round_type: 'round_robin', grab_countdown_minutes: 5, grab_cooldown_hours: 1 });
+    setFormData({ round_name: '', is_active: 1, cc_emails: '', selected_users: [], starting_consultant_id: null, ratios: {}, data_per_turns: {}, compensations: {}, is_fallback: false, project_id: null, campaign_id: null, round_type: 'round_robin', grab_countdown_minutes: 5, grab_cooldown_hours: 1, grab_fallback_to_databank: 0 });
     setSelectedAdmins([]);
     setEnableExternalCc(false);
     setExternalCcEmails('');
@@ -362,7 +363,8 @@ const RoundsInner = ({ isActive }: { isActive: boolean }) => {
       campaign_id: currentCampId,
       round_type: r.round_type || 'round_robin',
       grab_countdown_minutes: r.grab_countdown_seconds ? Math.round(Number(r.grab_countdown_seconds) / 60) : 5,
-      grab_cooldown_hours: r.grab_cooldown_seconds ? Math.round(Number(r.grab_cooldown_seconds) / 3600) : 1
+      grab_cooldown_hours: r.grab_cooldown_seconds ? Math.round(Number(r.grab_cooldown_seconds) / 3600) : 1,
+      grab_fallback_to_databank: r.grab_fallback_to_databank ? Number(r.grab_fallback_to_databank) : 0
     });
 
     // Parse cc_emails into selected admins and external emails
@@ -1536,6 +1538,22 @@ const RoundsInner = ({ isActive }: { isActive: boolean }) => {
                                 value={formData.grab_cooldown_hours}
                                 onChange={e => setFormData({ ...formData, grab_cooldown_hours: Math.max(0.1, parseFloat(e.target.value) || 1) })}
                               />
+                            </div>
+                            <div className="form-group" style={{ gridColumn: 'span 2', marginTop: '-0.5rem' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 6, margin: 0 }}>
+                                  {t("Tự động đẩy vào Databank nếu quá hạn")}
+                                </label>
+                                <ToggleSwitch
+                                  checked={formData.grab_fallback_to_databank === 1}
+                                  onChange={(checked) => setFormData({ ...formData, grab_fallback_to_databank: checked ? 1 : 0 })}
+                                />
+                              </div>
+                              <p style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', marginTop: 4 }}>
+                                {formData.grab_fallback_to_databank === 1 
+                                  ? t("Khi hết đếm ngược chia lại N lần mà không Sale nào nhận, khách hàng sẽ tự động được đưa vào Kho Databank dùng chung.") 
+                                  : t("Khách hàng sẽ nằm lại ở hàng chờ của Admin để phê duyệt / phân bổ thủ công.")}
+                              </p>
                             </div>
                           </div>
                         )}

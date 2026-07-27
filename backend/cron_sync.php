@@ -1452,12 +1452,201 @@ if (!function_exists('recallInactiveLeads')) {
     }
 }
 
+if (!function_exists('recallExpiredGrabLeads')) {
+    function recallExpiredGrabLeads($conn) {
+        logSync("Checking for expired grab lead offers to recall...");
+        
+        $sql = "SELECT l.id as lead_id, l.name as lead_name, l.phone as lead_phone, l.email as lead_email,
+                       l.source as lead_source, l.type as lead_type, l.note as lead_note,
+                       l.target_round_id as round_id, dr.round_name, dr.cc_emails, dr.grab_fallback_to_databank
+                FROM leads l
+                JOIN distribution_rounds dr ON l.target_round_id = dr.id
+                WHERE l.is_accepted = 0
+                  AND l.status = 'pending_claim'
+                  AND dr.round_type = 'grab'
+                  AND EXISTS (
+                      SELECT 1 FROM lead_offers lo
+                      WHERE lo.lead_id = l.id
+                        AND lo.status = 'pending'
+                        AND lo.expires_at <= NOW()
+                  )
+                ORDER BY l.id ASC";
+                
+        $res = $conn->query($sql);
+        if (!$res) {
+            logSync("Error querying expired grab leads.");
+            return;
+        }
+        
+        $leads = [];
+        while ($row = $res->fetch_assoc()) {
+            $leads[] = $row;
+        }
+        
+        if (empty($leads)) {
+            logSync("No expired grab leads found.");
+            return;
+        }
+        
+        logSync("Found " . count($leads) . " expired grab leads.");
+        
+        $maxAttempts = (int) get_system_setting($conn, 'lead_max_recall_attempts');
+        if ($maxAttempts <= 0) {
+            $maxAttempts = 2; // Default to 2
+        }
+        
+        foreach ($leads as $row) {
+            $leadId = (int)$row['lead_id'];
+            $roundId = (int)$row['round_id'];
+            $roundName = $row['round_name'];
+            
+            $conn->begin_transaction();
+            try {
+                // Re-verify under lock
+                $chk = $conn->query("SELECT is_accepted, status FROM leads WHERE id = $leadId FOR UPDATE");
+                $lRow = $chk ? $chk->fetch_assoc() : null;
+                if (!$lRow || (int)$lRow['is_accepted'] !== 0 || $lRow['status'] !== 'pending_claim') {
+                    $conn->commit();
+                    continue;
+                }
+                
+                // 1. Mark all pending offers for this lead as expired
+                $conn->query("UPDATE lead_offers SET status = 'expired', responded_at = NOW() WHERE lead_id = $leadId AND status = 'pending'");
+                
+                // 2. Count expired attempts
+                $attRes = $conn->query("SELECT COUNT(*) as cnt FROM distribution_logs WHERE lead_id = $leadId AND status = 'expired'");
+                $attempts = $attRes ? (int)$attRes->fetch_assoc()['cnt'] : 0;
+                
+                if ($attempts >= $maxAttempts) {
+                    $fallbackToDatabank = isset($row['grab_fallback_to_databank']) ? (int)$row['grab_fallback_to_databank'] : 0;
+                    
+                    if ($fallbackToDatabank === 1) {
+                        $phone = $row['lead_phone'];
+                        $email = $row['lead_email'];
+                        $name = $row['lead_name'];
+                        
+                        $personId = null;
+                        if (!empty($phone)) {
+                            $pCheck = $conn->query("SELECT id FROM persons WHERE phone = '" . $conn->real_escape_string($phone) . "' LIMIT 1");
+                            if ($pCheck && $pCheck->num_rows > 0) {
+                                $personId = (int)$pCheck->fetch_assoc()['id'];
+                                $conn->query("UPDATE persons SET is_public = 1, released_to_kho_at = NOW(), deleted_from_databank = 0 WHERE id = $personId");
+                            }
+                        }
+                        
+                        if (!$personId && !empty($email)) {
+                            $pCheck = $conn->query("SELECT id FROM persons WHERE email = '" . $conn->real_escape_string($email) . "' LIMIT 1");
+                            if ($pCheck && $pCheck->num_rows > 0) {
+                                $personId = (int)$pCheck->fetch_assoc()['id'];
+                                $conn->query("UPDATE persons SET is_public = 1, released_to_kho_at = NOW(), deleted_from_databank = 0 WHERE id = $personId");
+                            }
+                        }
+                        
+                        if (!$personId) {
+                            $conn->query("INSERT INTO persons (phone, email, full_name, is_public, released_to_kho_at, deleted_from_databank) VALUES ('" . $conn->real_escape_string($phone) . "', '" . $conn->real_escape_string($email) . "', '" . $conn->real_escape_string($name) . "', 1, NOW(), 0)");
+                            $personId = (int)$conn->insert_id;
+                        }
+                        
+                        $conn->query("UPDATE leads SET person_id = $personId, assigned_to = NULL, is_accepted = 0, status = 'unassigned', last_interaction_date = NOW() WHERE id = $leadId");
+                        logDistribution($conn, $leadId, null, $roundId, 'unassigned', "Hết lượt tranh nhận ($attempts lần). Tự động đẩy vào Kho Databank.", false);
+                    } else {
+                        // Fallback to Admin (pending_approval)
+                        $conn->query("UPDATE leads SET status = 'pending_approval', assigned_to = NULL, is_accepted = 0, last_interaction_date = NOW() WHERE id = $leadId");
+                        logDistribution($conn, $leadId, null, $roundId, 'pending_approval', "Hết lượt tranh nhận ($attempts lần). Chuyển về hàng chờ Admin phân bổ lại.", false);
+                    }
+                } else {
+                    // Redistribute!
+                    // Log the expired recall
+                    $conn->query("INSERT INTO distribution_logs (lead_id, round_id, status, message) VALUES ($leadId, $roundId, 'expired', 'Hết hạn tranh nhận lần " . ($attempts + 1) . ". Bắt đầu tái phân bổ tranh nhận.')");
+                    
+                    // We trigger redistribution
+                    $eligible = [];
+                    $cRes = $conn->query("
+                        SELECT c.id, c.name, c.email
+                        FROM round_consultants rc 
+                        JOIN consultants c ON rc.consultant_id = c.id 
+                        WHERE rc.round_id = $roundId AND rc.is_active = 1 AND c.status = 'active' AND c.vacation_mode = 0
+                    ");
+                    
+                    // Retrieve round grab parameters
+                    $drRow = $conn->query("SELECT grab_countdown_seconds, grab_cooldown_seconds FROM distribution_rounds WHERE id = $roundId")->fetch_assoc();
+                    $countdownSec = !empty($drRow['grab_countdown_seconds']) ? (int)$drRow['grab_countdown_seconds'] : 300;
+                    $cooldownSec = !empty($drRow['grab_cooldown_seconds']) ? (int)$drRow['grab_cooldown_seconds'] : 3600;
+                    
+                    $leadData = [
+                        'name' => $row['lead_name'],
+                        'phone' => $row['lead_phone'],
+                        'email' => $row['lead_email'],
+                        'source' => $row['lead_source'],
+                        'type' => $row['lead_type'],
+                        'note' => $row['lead_note']
+                    ];
+                    
+                    if ($cRes) {
+                        while ($c = $cRes->fetch_assoc()) {
+                            // Check cooldown block
+                            $cooldownRes = $conn->query("
+                                SELECT 1 FROM distribution_logs 
+                                WHERE assigned_to = " . (int)$c['id'] . " 
+                                  AND round_id = $roundId 
+                                  AND status = 'grabbed' 
+                                  AND received_at >= DATE_SUB(NOW(), INTERVAL $cooldownSec SECOND) 
+                                LIMIT 1
+                            ");
+                            $isOnCooldown = ($cooldownRes && $cooldownRes->num_rows > 0);
+                            if ($isOnCooldown) {
+                                continue;
+                            }
+                            
+                            // Check gates
+                            require_once __DIR__ . '/webhook_logic.php';
+                            if (checkConsultantGates($conn, $c['id'], $leadData) === true) {
+                                $eligible[] = $c;
+                            }
+                        }
+                    }
+                    
+                    if (!empty($eligible)) {
+                        $offerTime = date('Y-m-d H:i:s');
+                        $expiresTime = date('Y-m-d H:i:s', time() + $countdownSec);
+                        
+                        foreach ($eligible as $c) {
+                            $conn->query("
+                                INSERT INTO lead_offers (lead_id, user_id, round_id, offered_at, expires_at, status) 
+                                VALUES ($leadId, " . (int)$c['id'] . ", $roundId, '$offerTime', '$expiresTime', 'pending')
+                            ");
+                        }
+                        
+                        // Update lead's last interaction date
+                        $conn->query("UPDATE leads SET last_interaction_date = NOW() WHERE id = $leadId");
+                        
+                        logDistribution($conn, $leadId, null, $roundId, 'pending_claim', "Đã tái phát tín hiệu tranh nhận cho " . count($eligible) . " Sale. Thời gian chờ: $countdownSec giây.", false);
+                    } else {
+                        // No eligible consultants currently, move to pending
+                        $conn->query("UPDATE leads SET status = 'pending_approval', last_interaction_date = NOW() WHERE id = $leadId");
+                        logDistribution($conn, $leadId, null, $roundId, 'pending_approval', "Không tìm thấy Sale nào đủ điều kiện nhận tranh lúc này. Chuyển lead về Hàng chờ duyệt.", false);
+                    }
+                }
+                
+                $conn->commit();
+                triggerTwoWaySync($conn, $leadId);
+                logSync("Recalled expired grab lead ID $leadId successfully.");
+                
+            } catch (Exception $e) {
+                $conn->rollback();
+                logSync("Error recalling expired grab lead ID $leadId: " . $e->getMessage());
+            }
+        }
+    }
+}
+
 
 logSync("Starting Google Sheets Sync Cronjob...");
 if (!isset($argv[1])) {
     deescalateFailedConnections($conn);
     releasePendingWorkHoursLeads($conn);
     recallInactiveLeads($conn);
+    recallExpiredGrabLeads($conn);
     redistributePendingLeads($conn);
 }
 

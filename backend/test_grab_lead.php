@@ -211,6 +211,88 @@ try {
     assertTest("Bộ lọc Cooldown block Sale 1", count($eligibleRound2) === 1 && $eligibleRound2[0]['id'] == $c2Id, "Chỉ còn Sale 2 (" . ($eligibleRound2[0]['id'] ?? 'none') . ") được nhận lead mới.");
     flush();
 
+    // 6.5. KIỂM THỬ THU HỒI TỰ ĐỘNG KHI HẾT HẠN ĐẾM NGƯỢC (EXPIRED RECALL & REDISTRIBUTION)
+    // Tạo 1 lead test hết hạn
+    $conn->query("
+        INSERT INTO leads (name, phone, email, source, type, note, status, is_accepted, target_round_id) 
+        VALUES ('Khách hàng Hết Hạn 1', '0907654321', 'test_grab_expired@gmail.com', 'Facebook Ads', 'Căn hộ', 'Hết hạn để tự động chia lại.', 'pending_claim', 0, $roundId)
+    ");
+    $expiredLeadId = (int)$conn->insert_id;
+    
+    // Tạo offer đã hết hạn (expires_at ở quá khứ 10 giây trước)
+    $conn->query("
+        INSERT INTO lead_offers (lead_id, user_id, round_id, offered_at, expires_at, status) 
+        VALUES ($expiredLeadId, $c2Id, $roundId, DATE_SUB(NOW(), INTERVAL 20 SECOND), DATE_SUB(NOW(), INTERVAL 10 SECOND), 'pending')
+    ");
+    
+    // Chạy logic thu hồi
+    require_once __DIR__ . '/cron_sync.php';
+    recallExpiredGrabLeads($conn);
+    
+    // Kiểm tra xem offer cũ đã bị đánh dấu expired
+    $oldOfferStatus = $conn->query("SELECT status FROM lead_offers WHERE lead_id = $expiredLeadId AND user_id = $c2Id ORDER BY id ASC LIMIT 1")->fetch_assoc()['status'] ?? '';
+    assertTest("Offer cũ của lead hết hạn được cập nhật thành expired", $oldOfferStatus === 'expired', "Trạng thái: $oldOfferStatus");
+    
+    // Kiểm tra xem có offer mới được tạo ra (tái phân phối)
+    $newOffersCount = $conn->query("SELECT COUNT(*) as cnt FROM lead_offers WHERE lead_id = $expiredLeadId AND status = 'pending'")->fetch_assoc()['cnt'];
+    assertTest("Tự động tái phân phối: Tạo offer mới thành công", (int)$newOffersCount === 1, "Số offer pending mới: $newOffersCount");
+    
+    // Chạy thử nghiệm vượt quá số lần recall tối đa:
+    // Case A: grab_fallback_to_databank = 0 (Chuyển Admin)
+    $conn->query("UPDATE distribution_rounds SET grab_fallback_to_databank = 0 WHERE id = $roundId");
+    
+    // Đánh dấu offer hiện tại thành expired và giả lập đã ghi nhận logs hết hạn 2 lần
+    $conn->query("UPDATE lead_offers SET status = 'expired' WHERE lead_id = $expiredLeadId");
+    $conn->query("INSERT INTO distribution_logs (lead_id, round_id, status, message) VALUES ($expiredLeadId, $roundId, 'expired', 'Hết hạn 1'), ($expiredLeadId, $roundId, 'expired', 'Hết hạn 2')");
+    
+    // Tạo thêm 1 offer pending đã hết hạn nữa để kích hoạt cron tiếp theo
+    $conn->query("
+        INSERT INTO lead_offers (lead_id, user_id, round_id, offered_at, expires_at, status) 
+        VALUES ($expiredLeadId, $c2Id, $roundId, DATE_SUB(NOW(), INTERVAL 20 SECOND), DATE_SUB(NOW(), INTERVAL 10 SECOND), 'pending')
+    ");
+    
+    // Chạy thu hồi lần 2 (vượt giới hạn)
+    recallExpiredGrabLeads($conn);
+    
+    $fallbackStatus = $conn->query("SELECT status, assigned_to FROM leads WHERE id = $expiredLeadId")->fetch_assoc()['status'] ?? '';
+    assertTest("Hết lượt tranh nhận (fallback Admin): Lead chuyển thành pending_approval", $fallbackStatus === 'pending_approval', "Status thực tế: $fallbackStatus");
+    
+    // Case B: grab_fallback_to_databank = 1 (Chuyển Databank)
+    $conn->query("UPDATE distribution_rounds SET grab_fallback_to_databank = 1 WHERE id = $roundId");
+    
+    $conn->query("
+        INSERT INTO leads (name, phone, email, source, type, note, status, is_accepted, target_round_id) 
+        VALUES ('Khách hàng Hết Hạn 2', '0907654322', 'test_grab_expired2@gmail.com', 'Facebook Ads', 'Căn hộ', 'Hết hạn chuyển Databank.', 'pending_claim', 0, $roundId)
+    ");
+    $expiredLeadId2 = (int)$conn->insert_id;
+    
+    // Tạo 2 logs expired và 1 offer pending hết hạn
+    $conn->query("INSERT INTO distribution_logs (lead_id, round_id, status, message) VALUES ($expiredLeadId2, $roundId, 'expired', 'Hết hạn 1'), ($expiredLeadId2, $roundId, 'expired', 'Hết hạn 2')");
+    $conn->query("
+        INSERT INTO lead_offers (lead_id, user_id, round_id, offered_at, expires_at, status) 
+        VALUES ($expiredLeadId2, $c2Id, $roundId, DATE_SUB(NOW(), INTERVAL 20 SECOND), DATE_SUB(NOW(), INTERVAL 10 SECOND), 'pending')
+    ");
+    
+    recallExpiredGrabLeads($conn);
+    
+    $fallbackStatus2 = $conn->query("SELECT status, person_id FROM leads WHERE id = $expiredLeadId2")->fetch_assoc();
+    $personId = (int)($fallbackStatus2['person_id'] ?? 0);
+    assertTest("Hết lượt tranh nhận (fallback Databank): Lead chuyển thành unassigned", $fallbackStatus2['status'] === 'unassigned', "Status thực tế: " . $fallbackStatus2['status']);
+    
+    $personPublic = 0;
+    if ($personId > 0) {
+        $personPublic = (int)($conn->query("SELECT is_public FROM persons WHERE id = $personId")->fetch_assoc()['is_public'] ?? 0);
+    }
+    assertTest("Khách hàng tương ứng được kích hoạt is_public = 1 trong Databank", $personPublic === 1, "Public thực tế: $personPublic");
+    
+    // Dọn dẹp
+    $conn->query("DELETE FROM lead_offers WHERE lead_id IN ($expiredLeadId, $expiredLeadId2)");
+    $conn->query("DELETE FROM leads WHERE id IN ($expiredLeadId, $expiredLeadId2)");
+    if ($personId > 0) {
+        $conn->query("DELETE FROM persons WHERE id = $personId");
+    }
+    flush();
+
     // 7. KIỂM THỬ INTERCEPT DUPLICATE NOTLEAD
     // Xóa lead cũ 1 trước để giải phóng số điện thoại 0901234567 độc nhất
     if ($leadId > 0) {

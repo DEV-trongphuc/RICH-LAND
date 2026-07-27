@@ -18,7 +18,7 @@ $apply = (isset($_GET['apply']) && $_GET['apply'] === 'true')
       || (isset($_POST['execute_migration']) && $_POST['execute_migration'] === '1')
       || ($isCli && in_array('--apply', $argv));
 
-$targetVersion = 192;
+$targetVersion = 193;
 $currentVersion = 186;
 
 // Query current DB version
@@ -391,8 +391,16 @@ try {
         $logMsg("Đã bổ sung các cột round_type, grab_countdown_seconds, grab_cooldown_seconds vào bảng distribution_rounds.", "success");
     }
 
+    // 8.10. Add grab_fallback_to_databank to distribution_rounds (Version 193)
+    $chkGF = $conn->query("SHOW COLUMNS FROM `distribution_rounds` LIKE 'grab_fallback_to_databank'");
+    if (!$chkGF || $chkGF->num_rows == 0) {
+        $conn->query("ALTER TABLE `distribution_rounds` 
+            ADD COLUMN `grab_fallback_to_databank` TINYINT(1) DEFAULT 0 COMMENT '1: fallback về databank, 0: fallback về admin chờ phân bổ lại'");
+        $logMsg("Đã bổ sung cột grab_fallback_to_databank vào bảng distribution_rounds.", "success");
+    }
+
     // 9. Update DB version in system_settings
-    $conn->query("INSERT INTO system_settings (setting_key, setting_value) VALUES ('db_version', '192') ON DUPLICATE KEY UPDATE setting_value = '192'");
+    $conn->query("INSERT INTO system_settings (setting_key, setting_value) VALUES ('db_version', '193') ON DUPLICATE KEY UPDATE setting_value = '193'");
     
     $logMsg("Hệ thống đã duy trì cấu trúc Cơ sở dữ liệu ở phiên bản mới nhất: " . $targetVersion, "success");
 
