@@ -939,12 +939,12 @@ const RoundsInner = ({ isActive }: { isActive: boolean }) => {
                         <h3 style={{ fontWeight: 700, fontSize: '0.9375rem', color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                           {r.round_name}
                           {r.round_type === 'grab' ? (
-                            <span className="badge warning" style={{ fontSize: '0.65rem', padding: '2px 6px', background: 'rgba(245, 158, 11, 0.08)', color: '#d97706', border: '1px solid rgba(245, 158, 11, 0.15)' }}>
-                              ⚡ {t("Tranh Lead")}
+                            <span className="badge warning" style={{ fontSize: '0.65rem', padding: '2px 6px', background: 'rgba(245, 158, 11, 0.08)', color: '#d97706', border: '1px solid rgba(245, 158, 11, 0.15)', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                              <Zap size={10} /> {t("Tranh Lead")}
                             </span>
                           ) : (
-                            <span className="badge info" style={{ fontSize: '0.65rem', padding: '2px 6px', background: 'rgba(59, 130, 246, 0.08)', color: '#2563eb', border: '1px solid rgba(59, 130, 246, 0.15)' }}>
-                              🔄 {t("Xoay vòng")}
+                            <span className="badge info" style={{ fontSize: '0.65rem', padding: '2px 6px', background: 'rgba(59, 130, 246, 0.08)', color: '#2563eb', border: '1px solid rgba(59, 130, 246, 0.15)', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                              <RefreshCw size={10} /> {t("Xoay vòng")}
                             </span>
                           )}
                           {r.project_name && (
@@ -1199,12 +1199,12 @@ const RoundsInner = ({ isActive }: { isActive: boolean }) => {
                   <h3 style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                     {r.round_name}
                     {r.round_type === 'grab' ? (
-                      <span className="badge warning" style={{ fontSize: '0.65rem', padding: '2px 6px', background: 'rgba(245, 158, 11, 0.08)', color: '#d97706', border: '1px solid rgba(245, 158, 11, 0.15)' }}>
-                        ⚡ {t("Tranh Lead")}
+                      <span className="badge warning" style={{ fontSize: '0.65rem', padding: '2px 6px', background: 'rgba(245, 158, 11, 0.08)', color: '#d97706', border: '1px solid rgba(245, 158, 11, 0.15)', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                        <Zap size={10} /> {t("Tranh Lead")}
                       </span>
                     ) : (
-                      <span className="badge info" style={{ fontSize: '0.65rem', padding: '2px 6px', background: 'rgba(59, 130, 246, 0.08)', color: '#2563eb', border: '1px solid rgba(59, 130, 246, 0.15)' }}>
-                        🔄 {t("Xoay vòng")}
+                      <span className="badge info" style={{ fontSize: '0.65rem', padding: '2px 6px', background: 'rgba(59, 130, 246, 0.08)', color: '#2563eb', border: '1px solid rgba(59, 130, 246, 0.15)', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                        <RefreshCw size={10} /> {t("Xoay vòng")}
                       </span>
                     )}
                     {r.project_name && (
