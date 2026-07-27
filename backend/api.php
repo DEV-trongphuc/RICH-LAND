@@ -603,7 +603,8 @@ if (!in_array($action, $publicActions)) {
         'delete_consultant_leave',
         // Whitelisted missing front-controller routes for Sales
         'notifications', 'check-ins', 'deposits', 'search', 'workflow-task-templates', 'products', 'dashboard',
-        'update_profile', 'change_password', 'get_my_activity_logs'
+        'update_profile', 'change_password', 'get_my_activity_logs',
+        'get_active_offers', 'claim_lead', 'get_all_pending_counts'
     ];
 
     // Read the input body to check for self-operation
