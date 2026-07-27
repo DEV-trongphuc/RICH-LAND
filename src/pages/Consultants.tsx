@@ -1478,17 +1478,16 @@ const ConsultantsInner = () => {
                     <th style={{ position: 'sticky', top: 0, background: 'var(--color-bg)', zIndex: 10, borderBottom: '1px solid var(--color-border)' }}>{t('Thông tin liên hệ')}</th>
                     <th style={{ position: 'sticky', top: 0, background: 'var(--color-bg)', zIndex: 10, borderBottom: '1px solid var(--color-border)' }}>{t('Zalo Bot')}</th>
                     <th style={{ position: 'sticky', top: 0, background: 'var(--color-bg)', zIndex: 10, borderBottom: '1px solid var(--color-border)' }}>{t('Telegram Bot')}</th>
-                    <th style={{ position: 'sticky', top: 0, background: 'var(--color-bg)', zIndex: 10, borderBottom: '1px solid var(--color-border)' }}>{t('Trạng thái')}</th>
                     {isWriteAuthorized && <th style={{ position: 'sticky', top: 0, background: 'var(--color-bg)', zIndex: 10, borderBottom: '1px solid var(--color-border)' }}>{t('Truy cập gần nhất')}</th>}
                     {isWriteAuthorized && <th style={{ position: 'sticky', top: 0, background: 'var(--color-bg)', zIndex: 10, borderBottom: '1px solid var(--color-border)', textAlign: 'right' }}>{t('Thao tác')}</th>}
                   </tr>
                 </thead>
                 <tbody>
                   {loading ? (
-                    [...Array(5)].map((_, i) => <TableRowSkeleton key={i} cols={isWriteAuthorized ? 7 : 5} />)
+                    [...Array(5)].map((_, i) => <TableRowSkeleton key={i} cols={isWriteAuthorized ? 6 : 4} />)
                   ) : users.length === 0 ? (
                     <tr className="empty-state-row">
-                      <td colSpan={isWriteAuthorized ? 7 : 5}>
+                      <td colSpan={isWriteAuthorized ? 6 : 4}>
                       <div style={{ padding: '3rem 2rem', textAlign: 'center' }}>
                         <div style={{ width: 64, height: 64, borderRadius: '50%', background: 'var(--color-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.5rem', boxShadow: 'var(--shadow-sm)' }}>
                           <Users size={32} color="var(--color-text-muted)" />
@@ -1672,38 +1671,6 @@ const ConsultantsInner = () => {
                             </div>
                           )}
                         </td>
-                        <td data-label={t('Trạng thái')} onClick={e => e.stopPropagation()}>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                          {u.status === 'active' ? (
-                            Number(u.vacation_mode) ? (
-                              <span className="badge warning" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, alignSelf: 'flex-start', background: 'var(--color-warning-light)', color: 'var(--color-warning)' }}>
-                                <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'currentColor' }} />
-                                {t('Tạm ngưng')}
-                              </span>
-                            ) : (
-                              <span className="badge success" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, alignSelf: 'flex-start' }}>
-                                <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'currentColor' }} />
-                                {t('Đang nhận Data')}
-                              </span>
-                            )
-                          ) : u.status === 'leave' ? (
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                              <span className="badge warning" style={{ background: 'var(--color-warning-light)', color: 'var(--color-warning)', display: 'inline-flex', alignItems: 'center', gap: 6, alignSelf: 'flex-start' }}>
-                                <Clock size={12} /> {t('Nghỉ phép')}
-                              </span>
-                              {(u.leave_start || u.leave_end) && (
-                                <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>
-                                  {u.leave_start ? new Date(u.leave_start).toLocaleDateString('vi-VN') : '...'} - {u.leave_end ? new Date(u.leave_end).toLocaleDateString('vi-VN') : '...'}
-                                </span>
-                              )}
-                            </div>
-                          ) : (
-                            <span className="badge danger" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, alignSelf: 'flex-start' }}>
-                              <UserX size={12} /> {t('Ngừng HĐ')}
-                            </span>
-                          )}
-                        </div>
-                      </td>
                       {isWriteAuthorized && (
                         <td data-label={t('Truy cập gần nhất')} onClick={e => e.stopPropagation()}>
                           {renderLastLogin(u.last_login)}

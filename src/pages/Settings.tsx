@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useUIStore } from '../store/uiStore';
 import { withRouterFreezer } from '../components/RouterFreezer';
-import { Mail, Settings2, Save, Send, Server, Database, Activity, ChevronDown, ChevronUp, Zap, Shield, MessageCircle, RefreshCw, Settings as SettingsIcon, BarChart2, Clock, Calendar, Users, CheckCircle, Plus, Trash2, Edit2, FileSpreadsheet, Upload, Download, X, Search, UserCheck, FileText, Tag, Scale, Layers, HelpCircle, Filter, Briefcase, GripVertical, Info, ChevronRight, ArrowLeft, ChevronLeft, CheckSquare, DollarSign, LifeBuoy } from 'lucide-react';
+import { Mail, Settings2, Save, Send, Server, Database, Activity, ChevronDown, ChevronUp, Zap, Shield, MessageCircle, RefreshCw, Settings as SettingsIcon, BarChart2, Clock, Calendar, Users, CheckCircle, Plus, Trash2, Edit2, FileSpreadsheet, Upload, Download, X, Search, UserCheck, FileText, Tag, Scale, Layers, HelpCircle, Filter, Briefcase, GripVertical, Info, ChevronRight, ArrowLeft, ChevronLeft, CheckSquare, DollarSign, LifeBuoy, Eye } from 'lucide-react';
 import { CustomSelect } from '../components/ui/CustomSelect';
 import { ToggleSwitch } from '../components/ui/ToggleSwitch';
 import { CustomModal } from '../components/ui/CustomModal';
@@ -572,6 +572,18 @@ const SettingsInner = () => {
   const [depositCancelDemotedStatus, setDepositCancelDemotedStatus] = useState('da_gap');
   const [depositCancelDemotedBookingStatus, setDepositCancelDemotedBookingStatus] = useState('booking');
   const [capiEventTriggers, setCapiEventTriggers] = useState('');
+  const [capiMap, setCapiMap] = useState<Record<string, string>>({});
+
+  const capiEventOptions = [
+    { value: 'Skip', label: t('Không gửi (Skip)'), icon: <X size={14} style={{ color: 'var(--color-text-muted)' }} /> },
+    { value: 'Lead', label: t('Lead (Khách tiềm năng)'), icon: <Search size={14} style={{ color: '#3b82f6' }} /> },
+    { value: 'Schedule', label: t('Schedule (Hẹn gặp)'), icon: <Calendar size={14} style={{ color: '#10b981' }} /> },
+    { value: 'CompleteRegistration', label: 'CompleteRegistration', icon: <CheckCircle size={14} style={{ color: '#f59e0b' }} /> },
+    { value: 'SubmitApplication', label: 'SubmitApplication', icon: <FileText size={14} style={{ color: '#6366f1' }} /> },
+    { value: 'Contact', label: t('Contact (Liên hệ)'), icon: <MessageCircle size={14} style={{ color: '#ec4899' }} /> },
+    { value: 'ViewContent', label: t('ViewContent (Xem hàng)'), icon: <Eye size={14} style={{ color: '#8b5cf6' }} /> },
+    { value: 'Purchase', label: t('Purchase (Đặt cọc)'), icon: <Zap size={14} style={{ color: 'var(--color-primary)' }} /> }
+  ];
 
   // Enterprise Approval Matrix Config
   const [approvalMatrixConfig, setApprovalMatrixConfig] = useState<Record<string, any>>({
@@ -810,7 +822,21 @@ const SettingsInner = () => {
         if (json.data.duplicate_check_months) setDuplicateCheckMonths(Number(json.data.duplicate_check_months));
         if (json.data.deposit_cancel_demoted_status) setDepositCancelDemotedStatus(json.data.deposit_cancel_demoted_status);
         if (json.data.deposit_cancel_demoted_booking_status) setDepositCancelDemotedBookingStatus(json.data.deposit_cancel_demoted_booking_status);
-        if (json.data.capi_event_triggers) setCapiEventTriggers(json.data.capi_event_triggers);
+        if (json.data.capi_event_triggers) {
+          setCapiEventTriggers(json.data.capi_event_triggers);
+          try {
+            setCapiMap(JSON.parse(json.data.capi_event_triggers) || {});
+          } catch(e) {
+            setCapiMap({});
+          }
+        } else {
+          setCapiMap({
+            'dong_y_gap': 'Schedule',
+            'da_gap': 'Schedule',
+            'not_lead': 'Skip',
+            'dat_coc': 'Purchase'
+          });
+        }
         setReassignIfOwnerInactive(json.data.reassign_if_owner_inactive === undefined || json.data.reassign_if_owner_inactive === '1' || json.data.reassign_if_owner_inactive === 1);
         if (json.data.starvation_prevention_enabled !== undefined) {
           setStarvationPreventionEnabled(json.data.starvation_prevention_enabled === '1' || json.data.starvation_prevention_enabled === 1);
@@ -1361,7 +1387,7 @@ const SettingsInner = () => {
       duplicate_check_months: duplicateCheckMonths,
       deposit_cancel_demoted_status: depositCancelDemotedStatus,
       deposit_cancel_demoted_booking_status: depositCancelDemotedBookingStatus,
-      capi_event_triggers: capiEventTriggers,
+      capi_event_triggers: JSON.stringify(capiMap),
       reassign_if_owner_inactive: reassignIfOwnerInactive ? '1' : '0',
       starvation_prevention_enabled: starvationPreventionEnabled ? 1 : 0,
       starvation_max_leads_per_hour: starvationMaxLeadsPerHour,
@@ -2614,32 +2640,42 @@ const SettingsInner = () => {
                   {t('Cấu hình ánh xạ các sự kiện Conversions API của Meta để gửi tín hiệu hành vi khách hàng về Pixel của Facebook.')}
                 </p>
 
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                   <label style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text-light)' }}>
-                    {t('Cấu hình Ánh xạ Sự kiện (JSON Map)')}
+                    {t('Ánh xạ Trạng thái & Sự kiện Meta CAPI')}
                   </label>
-                  <textarea
-                    rows={4}
-                    value={capiEventTriggers}
-                    onChange={e => setCapiEventTriggers(e.target.value)}
-                    placeholder={`{\n  "dong_y_gap": "Schedule",\n  "da_gap": "Schedule",\n  "not_lead": "BAD",\n  "dat_coc": "Purchase"\n}`}
-                    style={{
-                      padding: '10px 12px',
-                      border: '1px solid var(--color-border)',
-                      borderRadius: '8px',
-                      fontSize: '0.875rem',
-                      outline: 'none',
-                      background: 'var(--color-bg)',
-                      color: 'var(--color-text)',
-                      width: '100%',
-                      fontFamily: 'monospace',
-                      lineHeight: 1.5,
-                      resize: 'vertical'
-                    }}
-                  />
-                  <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
-                    {t('Nhập chuỗi JSON cấu hình ánh xạ trạng thái sang tên sự kiện CAPI của Meta (ví dụ: Schedule, Lead, Purchase, CompleteRegistration).')}
-                  </span>
+                  <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', margin: 0, lineHeight: 1.4 }}>
+                    {t('Chỉ định sự kiện Standard Meta CAPI tương ứng sẽ tự động kích hoạt khi khách hàng chuyển sang từng trạng thái phễu.')}
+                  </p>
+                  
+                  <div style={{ 
+                    display: 'flex', 
+                    flexDirection: 'column', 
+                    gap: '10px', 
+                    border: '1px solid var(--color-border-light)', 
+                    borderRadius: '8px', 
+                    padding: '12px', 
+                    background: 'rgba(0, 0, 0, 0.01)',
+                    maxWidth: '600px'
+                  }}>
+                    {((Array.isArray(pipelineStatusHierarchy) && pipelineStatusHierarchy.length > 0) 
+                      ? pipelineStatusHierarchy 
+                      : ['chua_xac_dinh', 'quan_tam', 'dong_y_gap', 'da_gap', 'booking', 'dat_coc', 'dong_deal', 'not_lead']
+                    ).map(status => (
+                      <div key={status} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
+                        <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--color-text)' }}>
+                          {pipelineStatusLabels[status] || status}
+                        </span>
+                        <CustomSelect
+                          options={capiEventOptions}
+                          value={capiMap[status] || 'Skip'}
+                          onChange={val => setCapiMap(prev => ({ ...prev, [status]: val }))}
+                          width="240px"
+                          placeholder={t('Chọn sự kiện...')}
+                        />
+                      </div>
+                    ))}
+                  </div>
                 </div>
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '1rem', borderTop: '1px solid var(--color-border-light)', paddingTop: '1rem' }}>

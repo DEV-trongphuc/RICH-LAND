@@ -5,7 +5,7 @@ import {
   X, Camera, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Save, Trash2, Download, 
   Paperclip, Loader2, Eye, EyeOff, User, Shield, Info, Send, 
   Link2Off, RefreshCw, KeyRound, Building2, Calendar, Clock, Plus, FileText, Package,
-  CreditCard, PhoneCall, Lock, Search, Check, Award, AlertCircle, Edit3
+  CreditCard, PhoneCall, Lock, Search, Check, Award, AlertCircle, Edit3, ExternalLink, ArrowUpRight
 } from 'lucide-react';
 import { fetchAPI } from '../utils/api';
 import { compressToWebP } from '../utils/imageCompress';
@@ -180,6 +180,11 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
   const [addressTemporary, setAddressTemporary] = useState('');
   const [certificates, setCertificates] = useState<{ id: string, name: string, code: string, issuer: string, link: string, image: string, issuedDate: string, expiryDate: string }[]>([]);
   const [hrRecords, setHrRecords] = useState<{ id: string, type: 'award' | 'warning' | 'discipline', title: string, date: string, amount: string, reason: string, decisionNumber: string, documentLink: string }[]>([]);
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
+  const [isEditingCertificates, setIsEditingCertificates] = useState(false);
+  const [isEditingHRRecords, setIsEditingHRRecords] = useState(false);
+  const [activeHRSubTab, setActiveHRSubTab] = useState<'award' | 'warning' | 'discipline'>('award');
+  const [hoveredImgIndex, setHoveredImgIndex] = useState<number | null>(null);
   const [assignedAssets, setAssignedAssets] = useState<AssignedAsset[]>([]);
 
   // Collapsible sections
@@ -354,6 +359,9 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
   // Reset/Load form on account change
   useEffect(() => {
     if (!isOpen) return;
+    setIsEditingCertificates(false);
+    setIsEditingHRRecords(false);
+    setActiveHRSubTab('award');
 
     // Fetch all teams
     const fetchTeams = async () => {
@@ -2927,256 +2935,265 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
               {/* CARD 7: TÀI LIỆU & HỒ SƠ ĐÍNH KÈM */}
               {activeTab === 'certificates' && (
                 <div className="card animate-fade-in" style={{ padding: '2rem', display: 'flex', flexDirection: 'column', gap: '1.5rem', background: 'var(--color-surface)', borderRadius: '16px', border: '1px solid var(--color-border-light)', boxShadow: '0 4px 20px rgba(0,0,0,0.02)' }}>
-                  <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-text)', textTransform: 'uppercase', letterSpacing: '0.5px', margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <Award size={18} color="var(--color-primary)" />
-                    {t('BẰNG CẤP & CHỨNG CHỈ HÀNH NGHỀ')}
-                  </h3>
-                  <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', margin: 0 }}>
-                    {t('Cập nhật các bằng cấp, chứng chỉ chuyên môn của nhân viên để phục vụ công tác thẩm định hồ sơ.')}
-                  </p>
-
-                  {certificates.length === 0 ? (
-                    <div style={{ textAlign: 'center', padding: '2rem', background: 'var(--color-bg)', borderRadius: '12px', border: '1px dashed var(--color-border-light)' }}>
-                      <span style={{ fontSize: '0.825rem', color: 'var(--color-text-muted)', fontStyle: 'italic' }}>
-                        {t('Chưa có chứng chỉ hoặc bằng cấp nào được thêm.')}
-                      </span>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem', flexWrap: 'wrap', gap: '12px' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: 1, minWidth: '250px' }}>
+                      <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-text)', textTransform: 'uppercase', letterSpacing: '0.5px', margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <Award size={18} color="var(--color-primary)" />
+                        {t('BẰNG CẤP & CHỨNG CHỈ HÀNH NGHỀ')}
+                      </h3>
+                      <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', margin: 0 }}>
+                        {t('Cập nhật các bằng cấp, chứng chỉ chuyên môn của nhân viên để phục vụ công tác thẩm định hồ sơ.')}
+                      </p>
                     </div>
-                  ) : (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                      {certificates.map((cert, index) => (
-                        <div key={cert.id || index} style={{
-                          display: 'flex',
-                          flexDirection: isMobileOrTablet ? 'column' : 'row',
-                          gap: '1.5rem',
-                          padding: '1.5rem',
-                          background: 'var(--color-bg-alt)',
-                          borderRadius: '12px',
-                          border: '1px solid var(--color-border-light)',
-                          position: 'relative'
-                        }}>
+                    
+                    {!effectiveReadOnly && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        {isEditingCertificates && (
+                          <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontStyle: 'italic' }}>
+                            {t('(Bấm "Lưu thay đổi" ở dưới cùng để lưu thiết lập)')}
+                          </span>
+                        )}
+                        <button
+                          type="button"
+                          className={isEditingCertificates ? "btn primary sm" : "btn outline sm"}
+                          onClick={() => setIsEditingCertificates(!isEditingCertificates)}
+                          style={{ display: 'flex', alignItems: 'center', gap: '6px', height: '34px', fontSize: '0.8125rem', borderRadius: '8px' }}
+                        >
+                          {isEditingCertificates ? (
+                            <>
+                              <Check size={14} />
+                              {t('Xong')}
+                            </>
+                          ) : (
+                            <>
+                              <Edit3 size={14} />
+                              {t('Chỉnh sửa')}
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  {(!isEditingCertificates || effectiveReadOnly) ? (
+                    /* --- VIEW MODE --- */
+                    certificates.length === 0 ? (
+                      <div style={{ textAlign: 'center', padding: '3rem 2rem', background: 'var(--color-bg)', borderRadius: '16px', border: '1px dashed var(--color-border-light)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px' }}>
+                        <Award size={36} style={{ color: 'var(--color-text-muted)', opacity: 0.3 }} />
+                        <span style={{ fontSize: '0.825rem', color: 'var(--color-text-muted)', fontStyle: 'italic' }}>
+                          {t('Chưa có chứng chỉ hoặc bằng cấp nào được thêm.')}
+                        </span>
+                        {!effectiveReadOnly && (
                           <button
                             type="button"
+                            className="btn outline sm"
                             onClick={() => {
-                              if (window.confirm(t('Bạn có chắc chắn muốn xóa chứng chỉ này?'))) {
-                                setCertificates(certificates.filter((_, i) => i !== index));
-                              }
+                              setIsEditingCertificates(true);
+                              setCertificates([{
+                                id: 'cert_' + Math.random().toString(36).substring(2, 9),
+                                name: '',
+                                code: '',
+                                issuer: '',
+                                link: '',
+                                image: '',
+                                issuedDate: '',
+                                expiryDate: ''
+                              }]);
                             }}
-                            style={{
-                              position: 'absolute', top: '12px', right: '12px',
-                              background: 'rgba(239, 68, 68, 0.08)', border: 'none',
-                              color: 'var(--color-danger)', cursor: 'pointer',
-                              padding: '6px', borderRadius: '50%',
-                              display: 'flex', alignItems: 'center', justifyContent: 'center',
-                              transition: 'all 0.2s'
-                            }}
-                            className="hover-bg-danger-light"
-                            title={t('Xóa chứng chỉ')}
+                            style={{ marginTop: '8px', height: '32px', fontSize: '0.75rem' }}
                           >
-                            <Trash2 size={16} />
+                            <Plus size={14} /> {t('Thêm bằng cấp mới')}
                           </button>
-
-                          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', minWidth: '150px' }}>
-                            <div style={{
-                              width: '140px',
-                              height: '90px',
-                              borderRadius: '8px',
-                              border: '2px dashed var(--color-border)',
-                              background: 'var(--color-surface)',
+                        )}
+                      </div>
+                    ) : (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                        {certificates.map((cert, index) => {
+                          const isExpired = cert.expiryDate ? new Date(cert.expiryDate) < new Date() : false;
+                          return (
+                            <div key={cert.id || index} style={{
                               display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              overflow: 'hidden',
-                              position: 'relative',
-                              boxShadow: 'var(--shadow-sm)'
+                              flexDirection: isMobileOrTablet ? 'column' : 'row',
+                              gap: '1.25rem',
+                              padding: '1.25rem',
+                              background: theme === 'dark' ? 'rgba(255, 255, 255, 0.015)' : '#ffffff',
+                              borderRadius: '16px',
+                              border: '1px solid var(--color-border-light)',
+                              boxShadow: 'var(--shadow-sm)',
+                              alignItems: isMobileOrTablet ? 'stretch' : 'center',
+                              position: 'relative'
                             }}>
-                              {cert.image ? (
-                                <img src={resolveAttachmentUrl(cert.image)} alt="Certificate" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                              ) : (
-                                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', color: 'var(--color-text-muted)' }}>
-                                  <Camera size={20} />
-                                  <span style={{ fontSize: '0.65rem' }}>{t('Chưa có ảnh')}</span>
-                                </div>
-                              )}
-                            </div>
-
-                            <label style={{
-                              background: 'var(--color-primary-light)',
-                              color: 'var(--color-primary)',
-                              padding: '4px 10px',
-                              borderRadius: '6px',
-                              fontSize: '0.75rem',
-                              fontWeight: 600,
-                              cursor: 'pointer',
-                              textAlign: 'center',
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: '4px'
-                            }} className="hover-lift">
-                              <Plus size={12} />
-                              {cert.image ? t('Thay ảnh') : t('Tải ảnh')}
-                              <input
-                                type="file"
-                                accept="image/*"
-                                style={{ display: 'none' }}
-                                onChange={(e) => {
-                                  const file = e.target.files?.[0];
-                                  if (file) handleCertificateImageUpload(index, file);
+                              {/* Certificate Image Thumbnail */}
+                              <div 
+                                onClick={() => cert.image && setPreviewImage(cert.image)}
+                                onMouseEnter={() => setHoveredImgIndex(index)}
+                                onMouseLeave={() => setHoveredImgIndex(null)}
+                                style={{ 
+                                  width: isMobileOrTablet ? '100%' : '180px', 
+                                  height: '120px', 
+                                  borderRadius: '12px', 
+                                  overflow: 'hidden', 
+                                  background: 'var(--color-bg)',
+                                  border: '1px solid var(--color-border-light)',
+                                  cursor: cert.image ? 'pointer' : 'default',
+                                  position: 'relative',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  flexShrink: 0
                                 }}
-                              />
-                            </label>
-                          </div>
-
-                          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                            <div style={{ display: 'grid', gridTemplateColumns: isMobileOrTablet ? '1fr' : '1.5fr 1fr', gap: '1rem' }}>
-                              <div className="form-group" style={{ margin: 0 }}>
-                                <label className="form-label" style={{ fontWeight: 600 }}>{t('Tên bằng cấp / chứng chỉ')}</label>
-                                <input
-                                  type="text"
-                                  className="form-input"
-                                  value={cert.name || ''}
-                                  onChange={(e) => {
-                                    const updated = [...certificates];
-                                    updated[index] = { ...updated[index], name: e.target.value };
-                                    setCertificates(updated);
-                                  }}
-                                  placeholder={t('Ví dụ: Chứng chỉ hành nghề Môi giới BĐS')}
-                                />
+                              >
+                                {cert.image ? (
+                                  <>
+                                    <img 
+                                      src={resolveAttachmentUrl(cert.image)} 
+                                      alt="Certificate" 
+                                      style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+                                    />
+                                    <div style={{
+                                      position: 'absolute',
+                                      inset: 0,
+                                      background: 'rgba(0,0,0,0.4)',
+                                      opacity: hoveredImgIndex === index ? 1 : 0,
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'center',
+                                      color: '#fff',
+                                      fontSize: '0.65rem',
+                                      fontWeight: 600,
+                                      transition: 'opacity 0.2s',
+                                      gap: '2px',
+                                      pointerEvents: 'none'
+                                    }}>
+                                      <Eye size={12} />
+                                      {t('Xem')}
+                                    </div>
+                                  </>
+                                ) : (
+                                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', color: 'var(--color-text-muted)' }}>
+                                    <Award size={20} style={{ opacity: 0.5 }} />
+                                    <span style={{ fontSize: '0.6rem', fontWeight: 500 }}>{t('Trống')}</span>
+                                  </div>
+                                )}
                               </div>
-                              <div className="form-group" style={{ margin: 0 }}>
-                                <label className="form-label" style={{ fontWeight: 600 }}>{t('Mã số chứng chỉ')}</label>
-                                <input
-                                  type="text"
-                                  className="form-input"
-                                  value={cert.code || ''}
-                                  onChange={(e) => {
-                                    const updated = [...certificates];
-                                    updated[index] = { ...updated[index], code: e.target.value };
-                                    setCertificates(updated);
-                                  }}
-                                  placeholder={t('Số hiệu / Mã số')}
-                                />
+
+                              {/* Certificate Info Details */}
+                              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '6px', minWidth: 0 }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px' }}>
+                                  <h4 style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flex: 1 }}>
+                                    {cert.name || t('Chưa đặt tên')}
+                                  </h4>
+                                  
+                                  {(() => {
+                                    if (!cert.expiryDate) {
+                                      return (
+                                        <span style={{
+                                          display: 'inline-flex',
+                                          alignItems: 'center',
+                                          gap: '3px',
+                                          background: 'rgba(59, 130, 246, 0.1)',
+                                          color: 'var(--color-info)',
+                                          padding: '2px 8px',
+                                          borderRadius: '10px',
+                                          fontSize: '0.65rem',
+                                          fontWeight: 700,
+                                          whiteSpace: 'nowrap'
+                                        }}>
+                                          {t('Vô thời hạn')}
+                                        </span>
+                                      );
+                                    }
+                                    return isExpired ? (
+                                      <span style={{
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        gap: '3px',
+                                        background: 'rgba(239, 68, 68, 0.1)',
+                                        color: 'var(--color-danger)',
+                                        padding: '2px 8px',
+                                        borderRadius: '10px',
+                                        fontSize: '0.65rem',
+                                        fontWeight: 700,
+                                        whiteSpace: 'nowrap'
+                                      }}>
+                                        {t('Hết hạn')}
+                                      </span>
+                                    ) : (
+                                      <span style={{
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        gap: '3px',
+                                        background: 'rgba(16, 185, 129, 0.1)',
+                                        color: 'var(--color-success)',
+                                        padding: '2px 8px',
+                                        borderRadius: '10px',
+                                        fontSize: '0.65rem',
+                                        fontWeight: 700,
+                                        whiteSpace: 'nowrap'
+                                      }}>
+                                        {t('Hiệu lực')}
+                                      </span>
+                                    );
+                                  })()}
+                                </div>
+
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--color-text-muted)', fontSize: '0.75rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                  <Building2 size={12} style={{ flexShrink: 0 }} />
+                                  <span>{cert.issuer || t('Chưa rõ tổ chức cấp')}</span>
+                                </div>
+
+                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px 12px', fontSize: '0.7rem', color: 'var(--color-text-muted)', marginTop: '4px', borderTop: '1px solid var(--color-border-light)', paddingTop: '4px' }}>
+                                  {cert.code && (
+                                    <div>
+                                      {t('Mã:')} <span style={{ fontFamily: 'monospace', fontWeight: 600, color: 'var(--color-text)' }}>{cert.code}</span>
+                                    </div>
+                                  )}
+                                  {cert.issuedDate && (
+                                    <div>
+                                      {t('Cấp:')} <strong style={{ color: 'var(--color-text)' }}>{cert.issuedDate}</strong>
+                                    </div>
+                                  )}
+                                  {cert.expiryDate && (
+                                    <div>
+                                      {t('Hạn:')} <strong style={{ color: isExpired ? 'var(--color-danger)' : 'var(--color-text)' }}>{cert.expiryDate}</strong>
+                                    </div>
+                                  )}
+                                  {cert.link && (
+                                    <a 
+                                      href={cert.link} 
+                                      target="_blank" 
+                                      rel="noopener noreferrer"
+                                      style={{ 
+                                        display: 'inline-flex', 
+                                        alignItems: 'center', 
+                                        gap: '3px', 
+                                        color: 'var(--color-primary)', 
+                                        fontWeight: 600,
+                                        textDecoration: 'none'
+                                      }}
+                                      className="hover-underline"
+                                    >
+                                      <ExternalLink size={11} />
+                                      {t('Liên kết')}
+                                    </a>
+                                  )}
+                                </div>
                               </div>
                             </div>
-
-                            <div style={{ display: 'grid', gridTemplateColumns: isMobileOrTablet ? '1fr' : '1fr 1fr', gap: '1rem' }}>
-                              <div className="form-group" style={{ margin: 0 }}>
-                                <label className="form-label" style={{ fontWeight: 600 }}>{t('Tổ chức cấp')}</label>
-                                <input
-                                  type="text"
-                                  className="form-input"
-                                  value={cert.issuer || ''}
-                                  onChange={(e) => {
-                                    const updated = [...certificates];
-                                    updated[index] = { ...updated[index], issuer: e.target.value };
-                                    setCertificates(updated);
-                                  }}
-                                  placeholder={t('Ví dụ: Sở Xây Dựng TP.HCM')}
-                                />
-                              </div>
-                              <div className="form-group" style={{ margin: 0 }}>
-                                <label className="form-label" style={{ fontWeight: 600 }}>{t('Đường dẫn liên kết (Link)')}</label>
-                                <input
-                                  type="text"
-                                  className="form-input"
-                                  value={cert.link || ''}
-                                  onChange={(e) => {
-                                    const updated = [...certificates];
-                                    updated[index] = { ...updated[index], link: e.target.value };
-                                    setCertificates(updated);
-                                  }}
-                                  placeholder={t('Ví dụ: https://example.com/certificate')}
-                                />
-                              </div>
-                            </div>
-
-                            <div style={{ display: 'grid', gridTemplateColumns: isMobileOrTablet ? '1fr' : '1fr 1fr', gap: '1rem' }}>
-                              <div className="form-group" style={{ margin: 0 }}>
-                                <label className="form-label" style={{ fontWeight: 600 }}>{t('Ngày cấp')}</label>
-                                <input
-                                  type="date"
-                                  className="form-input"
-                                  value={cert.issuedDate || ''}
-                                  onChange={(e) => {
-                                    const updated = [...certificates];
-                                    updated[index] = { ...updated[index], issuedDate: e.target.value };
-                                    setCertificates(updated);
-                                  }}
-                                />
-                              </div>
-                              <div className="form-group" style={{ margin: 0 }}>
-                                <label className="form-label" style={{ fontWeight: 600 }}>{t('Ngày hết hạn')}</label>
-                                <input
-                                  type="date"
-                                  className="form-input"
-                                  value={cert.expiryDate || ''}
-                                  onChange={(e) => {
-                                    const updated = [...certificates];
-                                    updated[index] = { ...updated[index], expiryDate: e.target.value };
-                                    setCertificates(updated);
-                                  }}
-                                />
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-
-                  <button
-                    type="button"
-                    className="btn outline"
-                    onClick={() => {
-                      setCertificates([...certificates, {
-                        id: 'cert_' + Math.random().toString(36).substring(2, 9),
-                        name: '',
-                        code: '',
-                        issuer: '',
-                        link: '',
-                        image: '',
-                        issuedDate: '',
-                        expiryDate: ''
-                      }]);
-                    }}
-                    style={{ width: 'fit-content', alignSelf: 'flex-start', marginTop: '0.5rem', display: 'flex', alignItems: 'center', gap: '6px' }}
-                  >
-                    <Plus size={16} />
-                    {t('Thêm bằng cấp / chứng chỉ')}
-                  </button>
-                </div>
-              )}
-
-              {activeTab === 'hr_records' && (
-                <div className="card animate-fade-in" style={{ padding: '2rem', display: 'flex', flexDirection: 'column', gap: '1.5rem', background: 'var(--color-surface)', borderRadius: '16px', border: '1px solid var(--color-border-light)', boxShadow: '0 4px 20px rgba(0,0,0,0.02)' }}>
-                  <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-text)', textTransform: 'uppercase', letterSpacing: '0.5px', margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <AlertCircle size={18} color="var(--color-primary)" />
-                    {t('KHEN THƯỞNG, CẢNH CÁO & KỶ LUẬT')}
-                  </h3>
-                  <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', margin: 0 }}>
-                    {t('Lịch sử ghi nhận thành tích, nhắc nhở hoặc các quyết định kỷ luật nhân sự.')}
-                  </p>
-
-                  {hrRecords.length === 0 ? (
-                    <div style={{ textAlign: 'center', padding: '2rem', background: 'var(--color-bg)', borderRadius: '12px', border: '1px dashed var(--color-border-light)' }}>
-                      <span style={{ fontSize: '0.825rem', color: 'var(--color-text-muted)', fontStyle: 'italic' }}>
-                        {t('Chưa có ghi nhận khen thưởng hoặc kỷ luật nào.')}
-                      </span>
-                    </div>
+                          );
+                        })}
+                      </div>
+                    )
                   ) : (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-                      {hrRecords.map((record, index) => {
-                        const isAward = record.type === 'award';
-                        const isWarning = record.type === 'warning';
-
-                        const badgeColor = isAward ? 'var(--color-success)' : (isWarning ? 'var(--color-warning)' : 'var(--color-danger)');
-                        const badgeBg = isAward ? 'rgba(16, 185, 129, 0.1)' : (isWarning ? 'rgba(245, 158, 11, 0.1)' : 'rgba(239, 68, 68, 0.1)');
-                        
-                        return (
-                          <div key={record.id || index} style={{
+                    /* --- EDIT MODE --- */
+                    <>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                        {certificates.map((cert, index) => (
+                          <div key={cert.id || index} style={{
                             display: 'flex',
-                            flexDirection: 'column',
-                            gap: '1rem',
-                            padding: '1.25rem',
+                            flexDirection: isMobileOrTablet ? 'column' : 'row',
+                            gap: '1.5rem',
+                            padding: '1.5rem',
                             background: 'var(--color-bg-alt)',
                             borderRadius: '12px',
                             border: '1px solid var(--color-border-light)',
@@ -3185,8 +3202,8 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
                             <button
                               type="button"
                               onClick={() => {
-                                if (window.confirm(t('Bạn có chắc chắn muốn xóa ghi nhận này?'))) {
-                                  setHrRecords(hrRecords.filter((_, i) => i !== index));
+                                if (window.confirm(t('Bạn có chắc chắn muốn xóa chứng chỉ này?'))) {
+                                  setCertificates(certificates.filter((_, i) => i !== index));
                                 }
                               }}
                               style={{
@@ -3195,150 +3212,664 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
                                 color: 'var(--color-danger)', cursor: 'pointer',
                                 padding: '6px', borderRadius: '50%',
                                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                transition: 'all 0.2s'
+                                transition: 'all 0.2s',
+                                zIndex: 10
                               }}
                               className="hover-bg-danger-light"
-                              title={t('Xóa ghi nhận')}
+                              title={t('Xóa chứng chỉ')}
                             >
                               <Trash2 size={16} />
                             </button>
 
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                              <div style={{ display: 'grid', gridTemplateColumns: isMobileOrTablet ? '1fr' : '1fr 1.5fr 1fr', gap: '1rem' }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', minWidth: '150px' }}>
+                              <div style={{
+                                width: '140px',
+                                height: '90px',
+                                borderRadius: '8px',
+                                border: '2px dashed var(--color-border)',
+                                background: 'var(--color-surface)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                overflow: 'hidden',
+                                position: 'relative',
+                                boxShadow: 'var(--shadow-sm)'
+                              }}>
+                                {cert.image ? (
+                                  <img src={resolveAttachmentUrl(cert.image)} alt="Certificate" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                ) : (
+                                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', color: 'var(--color-text-muted)' }}>
+                                    <Camera size={20} />
+                                    <span style={{ fontSize: '0.65rem' }}>{t('Chưa có ảnh')}</span>
+                                  </div>
+                                )}
+                              </div>
+
+                              <label style={{
+                                background: 'var(--color-primary-light)',
+                                color: 'var(--color-primary)',
+                                padding: '4px 10px',
+                                borderRadius: '6px',
+                                fontSize: '0.75rem',
+                                fontWeight: 600,
+                                cursor: 'pointer',
+                                textAlign: 'center',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '4px'
+                              }} className="hover-lift">
+                                <Plus size={12} />
+                                {cert.image ? t('Thay ảnh') : t('Tải ảnh')}
+                                <input
+                                  type="file"
+                                  accept="image/*"
+                                  style={{ display: 'none' }}
+                                  onChange={(e) => {
+                                    const file = e.target.files?.[0];
+                                    if (file) handleCertificateImageUpload(index, file);
+                                  }}
+                                />
+                              </label>
+                            </div>
+
+                            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                              <div style={{ display: 'grid', gridTemplateColumns: isMobileOrTablet ? '1fr' : '1.5fr 1fr', gap: '1rem' }}>
                                 <div className="form-group" style={{ margin: 0 }}>
-                                  <label className="form-label" style={{ fontWeight: 600 }}>{t('Phân loại')}</label>
-                                  <CustomSelect
-                                    options={[
-                                      { value: 'award', label: t('Khen thưởng') },
-                                      { value: 'warning', label: t('Cảnh cáo') },
-                                      { value: 'discipline', label: t('Kỷ luật') }
-                                    ]}
-                                    value={record.type}
-                                    onChange={val => {
-                                      const updated = [...hrRecords];
-                                      updated[index] = { ...updated[index], type: val as any };
-                                      setHrRecords(updated);
-                                    }}
-                                    placeholder={t('Chọn loại...')}
-                                    disabled={readOnly}
-                                  />
-                                </div>
-                                <div className="form-group" style={{ margin: 0 }}>
-                                  <label className="form-label" style={{ fontWeight: 600 }}>{t('Tiêu đề / Tên quyết định')}</label>
+                                  <label className="form-label" style={{ fontWeight: 600 }}>{t('Tên bằng cấp / chứng chỉ')}</label>
                                   <input
                                     type="text"
                                     className="form-input"
-                                    value={record.title || ''}
+                                    value={cert.name || ''}
                                     onChange={(e) => {
-                                      const updated = [...hrRecords];
-                                      updated[index] = { ...updated[index], title: e.target.value };
-                                      setHrRecords(updated);
+                                      const updated = [...certificates];
+                                      updated[index] = { ...updated[index], name: e.target.value };
+                                      setCertificates(updated);
                                     }}
-                                    placeholder={t('Ví dụ: Vinh danh chuyên xuất sắc quý 2')}
+                                    placeholder={t('Ví dụ: Chứng chỉ hành nghề Môi giới BĐS')}
                                   />
                                 </div>
                                 <div className="form-group" style={{ margin: 0 }}>
-                                  <label className="form-label" style={{ fontWeight: 600 }}>{t('Số quyết định')}</label>
+                                  <label className="form-label" style={{ fontWeight: 600 }}>{t('Mã số chứng chỉ')}</label>
                                   <input
                                     type="text"
                                     className="form-input"
-                                    value={record.decisionNumber || ''}
+                                    value={cert.code || ''}
                                     onChange={(e) => {
-                                      const updated = [...hrRecords];
-                                      updated[index] = { ...updated[index], decisionNumber: e.target.value };
-                                      setHrRecords(updated);
+                                      const updated = [...certificates];
+                                      updated[index] = { ...updated[index], code: e.target.value };
+                                      setCertificates(updated);
                                     }}
-                                    placeholder="Ví dụ: QĐ-12/2026/RL"
+                                    placeholder={t('Số hiệu / Mã số')}
                                   />
                                 </div>
                               </div>
 
-                              <div style={{ display: 'grid', gridTemplateColumns: isMobileOrTablet ? '1fr' : '1fr 1fr 1.5fr', gap: '1rem' }}>
+                              <div style={{ display: 'grid', gridTemplateColumns: isMobileOrTablet ? '1fr' : '1fr 1fr', gap: '1rem' }}>
                                 <div className="form-group" style={{ margin: 0 }}>
-                                  <label className="form-label" style={{ fontWeight: 600 }}>{t('Ngày quyết định')}</label>
+                                  <label className="form-label" style={{ fontWeight: 600 }}>{t('Tổ chức cấp')}</label>
+                                  <input
+                                    type="text"
+                                    className="form-input"
+                                    value={cert.issuer || ''}
+                                    onChange={(e) => {
+                                      const updated = [...certificates];
+                                      updated[index] = { ...updated[index], issuer: e.target.value };
+                                      setCertificates(updated);
+                                    }}
+                                    placeholder={t('Ví dụ: Sở Xây Dựng TP.HCM')}
+                                  />
+                                </div>
+                                <div className="form-group" style={{ margin: 0 }}>
+                                  <label className="form-label" style={{ fontWeight: 600 }}>{t('Đường dẫn liên kết (Link)')}</label>
+                                  <input
+                                    type="text"
+                                    className="form-input"
+                                    value={cert.link || ''}
+                                    onChange={(e) => {
+                                      const updated = [...certificates];
+                                      updated[index] = { ...updated[index], link: e.target.value };
+                                      setCertificates(updated);
+                                    }}
+                                    placeholder={t('Ví dụ: https://example.com/certificate')}
+                                  />
+                                </div>
+                              </div>
+
+                              <div style={{ display: 'grid', gridTemplateColumns: isMobileOrTablet ? '1fr' : '1fr 1fr', gap: '1rem' }}>
+                                <div className="form-group" style={{ margin: 0 }}>
+                                  <label className="form-label" style={{ fontWeight: 600 }}>{t('Ngày cấp')}</label>
                                   <input
                                     type="date"
                                     className="form-input"
-                                    value={record.date || ''}
+                                    value={cert.issuedDate || ''}
                                     onChange={(e) => {
-                                      const updated = [...hrRecords];
-                                      updated[index] = { ...updated[index], date: e.target.value };
-                                      setHrRecords(updated);
+                                      const updated = [...certificates];
+                                      updated[index] = { ...updated[index], issuedDate: e.target.value };
+                                      setCertificates(updated);
                                     }}
                                   />
                                 </div>
                                 <div className="form-group" style={{ margin: 0 }}>
-                                  <label className="form-label" style={{ fontWeight: 600 }}>{t('Giá trị phạt/thưởng (nếu có)')}</label>
+                                  <label className="form-label" style={{ fontWeight: 600 }}>{t('Ngày hết hạn')}</label>
                                   <input
-                                    type="text"
+                                    type="date"
                                     className="form-input"
-                                    value={record.amount || ''}
+                                    value={cert.expiryDate || ''}
                                     onChange={(e) => {
-                                      const updated = [...hrRecords];
-                                      updated[index] = { ...updated[index], amount: e.target.value };
-                                      setHrRecords(updated);
+                                      const updated = [...certificates];
+                                      updated[index] = { ...updated[index], expiryDate: e.target.value };
+                                      setCertificates(updated);
                                     }}
-                                    placeholder="Ví dụ: +1,000,000đ hoặc -500,000đ"
                                   />
                                 </div>
-                                <div className="form-group" style={{ margin: 0 }}>
-                                  <label className="form-label" style={{ fontWeight: 600 }}>{t('Đường dẫn văn bản đính kèm')}</label>
-                                  <input
-                                    type="text"
-                                    className="form-input"
-                                    value={record.documentLink || ''}
-                                    onChange={(e) => {
-                                      const updated = [...hrRecords];
-                                      updated[index] = { ...updated[index], documentLink: e.target.value };
-                                      setHrRecords(updated);
-                                    }}
-                                    placeholder="https://example.com/decision.pdf"
-                                  />
-                                </div>
-                              </div>
-
-                              <div className="form-group" style={{ margin: 0 }}>
-                                <label className="form-label" style={{ fontWeight: 600 }}>{t('Lý do & Nội dung chi tiết')}</label>
-                                <textarea
-                                  className="form-input"
-                                  rows={2}
-                                  value={record.reason || ''}
-                                  onChange={(e) => {
-                                    const updated = [...hrRecords];
-                                    updated[index] = { ...updated[index], reason: e.target.value };
-                                    setHrRecords(updated);
-                                  }}
-                                  placeholder={t('Ghi chú chi tiết lý do và nội dung sự việc')}
-                                  style={{ minHeight: '60px' }}
-                                />
                               </div>
                             </div>
                           </div>
-                        );
-                      })}
-                    </div>
-                  )}
+                        ))}
+                      </div>
 
-                  <button
-                    type="button"
-                    className="btn outline"
-                    onClick={() => {
-                      setHrRecords([...hrRecords, {
-                        id: 'hr_' + Math.random().toString(36).substring(2, 9),
-                        type: 'award',
-                        title: '',
-                        decisionNumber: '',
-                        date: new Date().toISOString().split('T')[0],
-                        amount: '',
-                        documentLink: '',
-                        reason: ''
-                      }]);
-                    }}
-                    style={{ width: 'fit-content', alignSelf: 'flex-start', marginTop: '0.5rem', display: 'flex', alignItems: 'center', gap: '6px' }}
-                  >
-                    <Plus size={16} />
-                    {t('Thêm khen thưởng / kỷ luật')}
-                  </button>
+                      <button
+                        type="button"
+                        className="btn outline"
+                        onClick={() => {
+                          setCertificates([...certificates, {
+                            id: 'cert_' + Math.random().toString(36).substring(2, 9),
+                            name: '',
+                            code: '',
+                            issuer: '',
+                            link: '',
+                            image: '',
+                            issuedDate: '',
+                            expiryDate: ''
+                          }]);
+                        }}
+                        style={{ width: 'fit-content', alignSelf: 'flex-start', marginTop: '0.5rem', display: 'flex', alignItems: 'center', gap: '6px' }}
+                      >
+                        <Plus size={16} />
+                        {t('Thêm bằng cấp / chứng chỉ')}
+                      </button>
+                    </>
+                  )}
+                </div>
+              )}
+
+              {activeTab === 'hr_records' && (
+                <div className="card animate-fade-in" style={{ padding: '2rem', display: 'flex', flexDirection: 'column', gap: '1.5rem', background: 'var(--color-surface)', borderRadius: '16px', border: '1px solid var(--color-border-light)', boxShadow: '0 4px 20px rgba(0,0,0,0.02)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem', flexWrap: 'wrap', gap: '12px' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: 1, minWidth: '250px' }}>
+                      <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-text)', textTransform: 'uppercase', letterSpacing: '0.5px', margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <AlertCircle size={18} color="var(--color-primary)" />
+                        {t('KHEN THƯỞNG, CẢNH CÁO & KỶ LUẬT')}
+                      </h3>
+                      <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', margin: 0 }}>
+                        {t('Lịch sử ghi nhận thành tích, nhắc nhở hoặc các quyết định kỷ luật nhân sự.')}
+                      </p>
+                    </div>
+                    
+                    {!effectiveReadOnly && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        {isEditingHRRecords && (
+                          <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontStyle: 'italic' }}>
+                            {t('(Bấm "Lưu thay đổi" ở dưới cùng để lưu thiết lập)')}
+                          </span>
+                        )}
+                        <button
+                          type="button"
+                          className={isEditingHRRecords ? "btn primary sm" : "btn outline sm"}
+                          onClick={() => setIsEditingHRRecords(!isEditingHRRecords)}
+                          style={{ display: 'flex', alignItems: 'center', gap: '6px', height: '34px', fontSize: '0.8125rem', borderRadius: '8px' }}
+                        >
+                          {isEditingHRRecords ? (
+                            <>
+                              <Check size={14} />
+                              {t('Xong')}
+                            </>
+                          ) : (
+                            <>
+                              <Edit3 size={14} />
+                              {t('Chỉnh sửa')}
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Subtab Navigation Bar */}
+                  <div style={{ 
+                    display: 'flex', 
+                    gap: '8px', 
+                    borderBottom: '1px solid var(--color-border-light)', 
+                    paddingBottom: '12px', 
+                    marginBottom: '1.25rem',
+                    overflowX: 'auto',
+                    whiteSpace: 'nowrap'
+                  }}>
+                    <button
+                      type="button"
+                      onClick={() => setActiveHRSubTab('award')}
+                      style={{
+                        padding: '6px 16px',
+                        borderRadius: '20px',
+                        fontSize: '0.8rem',
+                        fontWeight: 700,
+                        border: 'none',
+                        background: activeHRSubTab === 'award' ? 'rgba(16, 185, 129, 0.12)' : 'transparent',
+                        color: activeHRSubTab === 'award' ? '#10b981' : 'var(--color-text-muted)',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '6px'
+                      }}
+                    >
+                      <span>🎉</span>
+                      <span>{t('Khen thưởng')}</span>
+                      <span style={{ 
+                        fontSize: '0.7rem', 
+                        background: activeHRSubTab === 'award' ? '#10b981' : 'var(--color-bg-alt)', 
+                        color: activeHRSubTab === 'award' ? '#fff' : 'var(--color-text-muted)',
+                        padding: '2px 6px',
+                        borderRadius: '10px',
+                        marginLeft: '4px',
+                        fontWeight: 700
+                      }}>
+                        {hrRecords.filter(r => r.type === 'award').length}
+                      </span>
+                    </button>
+                    
+                    <button
+                      type="button"
+                      onClick={() => setActiveHRSubTab('warning')}
+                      style={{
+                        padding: '6px 16px',
+                        borderRadius: '20px',
+                        fontSize: '0.8rem',
+                        fontWeight: 700,
+                        border: 'none',
+                        background: activeHRSubTab === 'warning' ? 'rgba(245, 158, 11, 0.12)' : 'transparent',
+                        color: activeHRSubTab === 'warning' ? '#f59e0b' : 'var(--color-text-muted)',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '6px'
+                      }}
+                    >
+                      <span>⚠️</span>
+                      <span>{t('Cảnh cáo')}</span>
+                      <span style={{ 
+                        fontSize: '0.7rem', 
+                        background: activeHRSubTab === 'warning' ? '#f59e0b' : 'var(--color-bg-alt)', 
+                        color: activeHRSubTab === 'warning' ? '#fff' : 'var(--color-text-muted)',
+                        padding: '2px 6px',
+                        borderRadius: '10px',
+                        marginLeft: '4px',
+                        fontWeight: 700
+                      }}>
+                        {hrRecords.filter(r => r.type === 'warning').length}
+                      </span>
+                    </button>
+                    
+                    <button
+                      type="button"
+                      onClick={() => setActiveHRSubTab('discipline')}
+                      style={{
+                        padding: '6px 16px',
+                        borderRadius: '20px',
+                        fontSize: '0.8rem',
+                        fontWeight: 700,
+                        border: 'none',
+                        background: activeHRSubTab === 'discipline' ? 'rgba(239, 68, 68, 0.12)' : 'transparent',
+                        color: activeHRSubTab === 'discipline' ? '#ef4444' : 'var(--color-text-muted)',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '6px'
+                      }}
+                    >
+                      <span>🚫</span>
+                      <span>{t('Kỷ luật')}</span>
+                      <span style={{ 
+                        fontSize: '0.7rem', 
+                        background: activeHRSubTab === 'discipline' ? '#ef4444' : 'var(--color-bg-alt)', 
+                        color: activeHRSubTab === 'discipline' ? '#fff' : 'var(--color-text-muted)',
+                        padding: '2px 6px',
+                        borderRadius: '10px',
+                        marginLeft: '4px',
+                        fontWeight: 700
+                      }}>
+                        {hrRecords.filter(r => r.type === 'discipline').length}
+                      </span>
+                    </button>
+                  </div>
+
+                  {(!isEditingHRRecords || effectiveReadOnly) ? (
+                    /* --- VIEW MODE --- */
+                    hrRecords.filter(r => r.type === activeHRSubTab).length === 0 ? (
+                      <div style={{ textAlign: 'center', padding: '3rem 2rem', background: 'var(--color-bg)', borderRadius: '16px', border: '1px dashed var(--color-border-light)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px' }}>
+                        <span style={{ fontSize: '1.5rem' }}>
+                          {activeHRSubTab === 'award' ? '🏆' : (activeHRSubTab === 'warning' ? '🔔' : '🛡️')}
+                        </span>
+                        <span style={{ fontSize: '0.825rem', color: 'var(--color-text-muted)', fontStyle: 'italic' }}>
+                          {activeHRSubTab === 'award' ? t('Chưa có ghi nhận khen thưởng nào.') : (activeHRSubTab === 'warning' ? t('Không có ghi nhận cảnh cáo nào.') : t('Không có ghi nhận kỷ luật nào.'))}
+                        </span>
+                        {!effectiveReadOnly && (
+                          <button
+                            type="button"
+                            className="btn outline sm"
+                            onClick={() => {
+                              setIsEditingHRRecords(true);
+                              setHrRecords([...hrRecords, {
+                                id: 'hr_' + Math.random().toString(36).substring(2, 9),
+                                type: activeHRSubTab,
+                                title: '',
+                                decisionNumber: '',
+                                date: new Date().toISOString().split('T')[0],
+                                amount: '',
+                                documentLink: '',
+                                reason: ''
+                              }]);
+                            }}
+                            style={{ marginTop: '8px', height: '32px', fontSize: '0.75rem' }}
+                          >
+                            <Plus size={14} /> {activeHRSubTab === 'award' ? t('Thêm khen thưởng') : (activeHRSubTab === 'warning' ? t('Thêm cảnh cáo') : t('Thêm kỷ luật'))}
+                          </button>
+                        )}
+                      </div>
+                    ) : (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                        {hrRecords.filter(r => r.type === activeHRSubTab).map((record, index) => {
+                          const isAward = record.type === 'award';
+                          const isWarning = record.type === 'warning';
+                          const badgeColor = isAward ? 'var(--color-success)' : (isWarning ? 'var(--color-warning)' : 'var(--color-danger)');
+                          const badgeBg = isAward ? 'rgba(16, 185, 129, 0.1)' : (isWarning ? 'rgba(245, 158, 11, 0.1)' : 'rgba(239, 68, 68, 0.1)');
+
+                          return (
+                            <div key={record.id || index} style={{
+                              display: 'flex',
+                              flexDirection: 'column',
+                              gap: '0.75rem',
+                              padding: '1.25rem 0',
+                              borderBottom: index < hrRecords.filter(r => r.type === activeHRSubTab).length - 1 ? '1px solid var(--color-border-light)' : 'none',
+                              position: 'relative'
+                            }}>
+                              {/* Header row inside card */}
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', justifyContent: 'space-between' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                                  <span style={{
+                                    fontSize: '0.65rem', fontWeight: 800, textTransform: 'uppercase',
+                                    padding: '4px 10px', borderRadius: '10px', color: badgeColor, background: badgeBg,
+                                    display: 'inline-flex', alignItems: 'center', gap: '4px', letterSpacing: '0.5px'
+                                  }}>
+                                    {isAward ? <Award size={10} /> : <AlertCircle size={10} />}
+                                    {isAward ? t('Khen thưởng') : (isWarning ? t('Cảnh cáo') : t('Kỷ luật'))}
+                                  </span>
+                                  
+                                  <h4 style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--color-text)', margin: 0 }}>
+                                    {record.title || t('Chưa đặt tiêu đề')}
+                                  </h4>
+                                </div>
+
+                                {record.decisionNumber && (
+                                  <span style={{ 
+                                    fontSize: '0.7rem', 
+                                    color: 'var(--color-text-muted)', 
+                                    background: 'var(--color-bg)',
+                                    padding: '3px 8px',
+                                    borderRadius: '6px',
+                                    border: '1px solid var(--color-border-light)',
+                                    fontFamily: 'monospace'
+                                  }}>
+                                    {t('Số QĐ')}: {record.decisionNumber}
+                                  </span>
+                                )}
+                              </div>
+
+                              {/* Details row inside card */}
+                              <div style={{ 
+                                display: 'flex', 
+                                flexWrap: 'wrap', 
+                                gap: '12px 24px', 
+                                fontSize: '0.75rem', 
+                                color: 'var(--color-text-muted)',
+                                borderTop: '1px solid var(--color-border-light)',
+                                paddingTop: '8px',
+                                marginTop: '2px'
+                              }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                  <Calendar size={13} />
+                                  <span>{t('Ngày quyết định:')} <strong>{record.date ? new Date(record.date).toLocaleDateString('vi-VN') : t('Chưa rõ')}</strong></span>
+                                </div>
+
+                                {record.amount && (
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                    <span>💰</span>
+                                    <span>{t('Giá trị:')} <strong style={{ color: isAward ? 'var(--color-success)' : 'var(--color-danger)' }}>{record.amount}</strong></span>
+                                  </div>
+                                )}
+
+                                {record.documentLink && (
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                    <a 
+                                      href={record.documentLink} 
+                                      target="_blank" 
+                                      rel="noreferrer" 
+                                      style={{ 
+                                        color: 'var(--color-primary)', 
+                                        textDecoration: 'none', 
+                                        fontWeight: 600,
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        gap: '3px'
+                                      }} 
+                                      className="hover-underline"
+                                    >
+                                      <ArrowUpRight size={12} />
+                                      {t('Xem tài liệu đính kèm')}
+                                    </a>
+                                  </div>
+                                )}
+                              </div>
+
+                              {/* Reason Description Box */}
+                              {record.reason && (
+                                <div style={{ 
+                                  fontSize: '0.8rem', 
+                                  color: 'var(--color-text-muted)', 
+                                  padding: '10px 12px', 
+                                  background: theme === 'dark' ? 'rgba(255,255,255,0.02)' : 'var(--color-surface)', 
+                                  borderRadius: '8px', 
+                                  marginTop: '4px',
+                                  lineHeight: 1.4
+                                }}>
+                                  <strong>{t('Lý do & Nội dung chi tiết')}:</strong> {record.reason}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )
+                  ) : (
+                    /* --- EDIT MODE --- */
+                    <>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                        {hrRecords.filter(r => r.type === activeHRSubTab).map((record) => {
+                          const originalIndex = hrRecords.findIndex(r => r.id === record.id);
+                          if (originalIndex === -1) return null;
+
+                          return (
+                            <div key={record.id} style={{
+                              display: 'flex',
+                              flexDirection: 'column',
+                              gap: '1rem',
+                              padding: '1.25rem',
+                              background: 'var(--color-bg-alt)',
+                              borderRadius: '12px',
+                              border: '1px solid var(--color-border-light)',
+                              position: 'relative'
+                            }}>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  if (window.confirm(t('Bạn có chắc chắn muốn xóa ghi nhận này?'))) {
+                                    setHrRecords(hrRecords.filter((_, i) => i !== originalIndex));
+                                  }
+                                }}
+                                style={{
+                                  position: 'absolute', top: '12px', right: '12px',
+                                  background: 'rgba(239, 68, 68, 0.08)', border: 'none',
+                                  color: 'var(--color-danger)', cursor: 'pointer',
+                                  padding: '6px', borderRadius: '50%',
+                                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                  transition: 'all 0.2s',
+                                  zIndex: 10
+                                }}
+                                className="hover-bg-danger-light"
+                                title={t('Xóa ghi nhận')}
+                              >
+                                <Trash2 size={16} />
+                              </button>
+
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                                <div style={{ display: 'grid', gridTemplateColumns: isMobileOrTablet ? '1fr' : '1fr 1.5fr 1fr', gap: '1rem' }}>
+                                  <div className="form-group" style={{ margin: 0 }}>
+                                    <label className="form-label" style={{ fontWeight: 600 }}>{t('Phân loại')}</label>
+                                    <CustomSelect
+                                      options={[
+                                        { value: 'award', label: t('Khen thưởng') },
+                                        { value: 'warning', label: t('Cảnh cáo') },
+                                        { value: 'discipline', label: t('Kỷ luật') }
+                                      ]}
+                                      value={record.type}
+                                      onChange={val => {
+                                        const updated = [...hrRecords];
+                                        updated[originalIndex] = { ...updated[originalIndex], type: val as any };
+                                        setHrRecords(updated);
+                                      }}
+                                      placeholder={t('Chọn loại...')}
+                                      disabled={readOnly}
+                                    />
+                                  </div>
+                                  <div className="form-group" style={{ margin: 0 }}>
+                                    <label className="form-label" style={{ fontWeight: 600 }}>{t('Tiêu đề / Tên quyết định')}</label>
+                                    <input
+                                      type="text"
+                                      className="form-input"
+                                      value={record.title || ''}
+                                      onChange={(e) => {
+                                        const updated = [...hrRecords];
+                                        updated[originalIndex] = { ...updated[originalIndex], title: e.target.value };
+                                        setHrRecords(updated);
+                                      }}
+                                      placeholder={t('Ví dụ: Vinh danh chuyên xuất sắc quý 2')}
+                                    />
+                                  </div>
+                                  <div className="form-group" style={{ margin: 0 }}>
+                                    <label className="form-label" style={{ fontWeight: 600 }}>{t('Số quyết định')}</label>
+                                    <input
+                                      type="text"
+                                      className="form-input"
+                                      value={record.decisionNumber || ''}
+                                      onChange={(e) => {
+                                        const updated = [...hrRecords];
+                                        updated[originalIndex] = { ...updated[originalIndex], decisionNumber: e.target.value };
+                                        setHrRecords(updated);
+                                      }}
+                                      placeholder="Ví dụ: QĐ-12/2026/RL"
+                                    />
+                                  </div>
+                                </div>
+
+                                <div style={{ display: 'grid', gridTemplateColumns: isMobileOrTablet ? '1fr' : '1fr 1fr 1.5fr', gap: '1rem' }}>
+                                  <div className="form-group" style={{ margin: 0 }}>
+                                    <label className="form-label" style={{ fontWeight: 600 }}>{t('Ngày quyết định')}</label>
+                                    <input
+                                      type="date"
+                                      className="form-input"
+                                      value={record.date || ''}
+                                      onChange={(e) => {
+                                        const updated = [...hrRecords];
+                                        updated[originalIndex] = { ...updated[originalIndex], date: e.target.value };
+                                        setHrRecords(updated);
+                                      }}
+                                    />
+                                  </div>
+                                  <div className="form-group" style={{ margin: 0 }}>
+                                    <label className="form-label" style={{ fontWeight: 600 }}>{t('Giá trị phạt/thưởng (nếu có)')}</label>
+                                    <input
+                                      type="text"
+                                      className="form-input"
+                                      value={record.amount || ''}
+                                      onChange={(e) => {
+                                        const updated = [...hrRecords];
+                                        updated[originalIndex] = { ...updated[originalIndex], amount: e.target.value };
+                                        setHrRecords(updated);
+                                      }}
+                                      placeholder="Ví dụ: +1,000,000đ hoặc -500,000đ"
+                                    />
+                                  </div>
+                                  <div className="form-group" style={{ margin: 0 }}>
+                                    <label className="form-label" style={{ fontWeight: 600 }}>{t('Đường dẫn văn bản đính kèm')}</label>
+                                    <input
+                                      type="text"
+                                      className="form-input"
+                                      value={record.documentLink || ''}
+                                      onChange={(e) => {
+                                        const updated = [...hrRecords];
+                                        updated[originalIndex] = { ...updated[originalIndex], documentLink: e.target.value };
+                                        setHrRecords(updated);
+                                      }}
+                                      placeholder="https://example.com/decision.pdf"
+                                    />
+                                  </div>
+                                </div>
+
+                                <div className="form-group" style={{ margin: 0 }}>
+                                  <label className="form-label" style={{ fontWeight: 600 }}>{t('Lý do & Nội dung chi tiết')}</label>
+                                  <textarea
+                                    className="form-input"
+                                    rows={2}
+                                    value={record.reason || ''}
+                                    onChange={(e) => {
+                                      const updated = [...hrRecords];
+                                      updated[originalIndex] = { ...updated[originalIndex], reason: e.target.value };
+                                      setHrRecords(updated);
+                                    }}
+                                    placeholder={t('Ghi chú chi tiết lý do và nội dung sự việc')}
+                                    style={{ minHeight: '60px' }}
+                                  />
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      <button
+                        type="button"
+                        className="btn outline"
+                        onClick={() => {
+                          setHrRecords([...hrRecords, {
+                            id: 'hr_' + Math.random().toString(36).substring(2, 9),
+                            type: activeHRSubTab,
+                            title: '',
+                            decisionNumber: '',
+                            date: new Date().toISOString().split('T')[0],
+                            amount: '',
+                            documentLink: '',
+                            reason: ''
+                          }]);
+                        }}
+                        style={{ width: 'fit-content', alignSelf: 'flex-start', marginTop: '0.5rem', display: 'flex', alignItems: 'center', gap: '6px' }}
+                      >
+                        <Plus size={16} />
+                        {activeHRSubTab === 'award' ? t('Thêm khen thưởng') : (activeHRSubTab === 'warning' ? t('Thêm cảnh cáo') : t('Thêm kỷ luật'))}
+                      </button>
+                    </>
+                  )}
                 </div>
               )}
 
@@ -4190,6 +4721,54 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
         onSave={handleSaveSignature}
         initialSignatureUrl={signatureUrl}
       />
+
+      {previewImage && (
+        <div 
+          style={{ 
+            position: 'fixed',
+            inset: 0,
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'center', 
+            zIndex: 1000500, 
+            background: 'rgba(0,0,0,0.85)',
+            padding: '24px'
+          }} 
+          onClick={() => setPreviewImage(null)}
+        >
+          <div 
+            style={{ 
+              position: 'relative', 
+              maxWidth: '100%', 
+              maxHeight: '100%', 
+              display: 'flex', 
+              flexDirection: 'column', 
+              alignItems: 'center' 
+            }}
+            onClick={e => e.stopPropagation()}
+          >
+            <img 
+              src={resolveAttachmentUrl(previewImage)} 
+              alt={t("Ảnh bằng cấp / chứng chỉ")} 
+              style={{ 
+                maxWidth: '90vw', 
+                maxHeight: '80vh', 
+                borderRadius: '12px', 
+                border: '4px solid #ffffff', 
+                boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.55)',
+                objectFit: 'contain'
+              }} 
+            />
+            <button 
+              className="btn primary" 
+              onClick={() => setPreviewImage(null)} 
+              style={{ marginTop: '1.25rem', borderRadius: '24px', padding: '8px 24px', fontSize: '0.875rem', fontWeight: 600 }}
+            >
+              {t('Đóng')}
+            </button>
+          </div>
+        </div>
+      )}
     </>,
     document.body
   );

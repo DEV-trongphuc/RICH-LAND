@@ -15684,48 +15684,132 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                     const callCount = calendarActivities.filter(a => a.type === 'call').length;
 
                     return (
-                      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(4, 1fr)', gap: '1rem', marginBottom: '0.5rem' }}>
+                      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)', gap: isMobile ? '0.75rem' : '1.25rem', marginBottom: '0.5rem' }}>
                         {/* Card 1: Ghi chú & Nhật ký */}
-                        <div className="stat-card" style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '1rem 1.25rem', borderRadius: '12px', background: 'var(--color-surface)', border: '1px solid var(--color-border)', boxShadow: 'var(--shadow-sm)' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '42px', height: '42px', borderRadius: '10px', background: 'rgba(16, 185, 129, 0.12)', color: '#10b981' }}>
-                            <FileText size={20} />
+                        <div className="stat-card hover-lift personal-card" style={{ display: 'flex', flexDirection: 'column', padding: '1rem', minHeight: isMobile ? '105px' : '120px', borderRadius: '12px', border: '1px solid var(--color-border-light)', position: 'relative', overflow: 'hidden', background: 'var(--color-surface)', boxShadow: 'var(--shadow-sm)' }}>
+                          <div className="decor-svg" style={{ color: '#10b981' }}>
+                            <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: '100%', height: '100%' }}>
+                              <circle cx="50" cy="50" r="30" stroke="currentColor" strokeWidth="2" strokeDasharray="4 4" />
+                            </svg>
                           </div>
-                          <div style={{ display: 'flex', flexDirection: 'column' }}>
-                            <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', fontWeight: 700 }}>{t('Ghi chú & Nhật ký')}</span>
-                            <span style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--color-text)' }}>{noteCount}</span>
+                          
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: isMobile ? '6px' : '12px', position: 'relative', zIndex: 2 }}>
+                            <span className="stat-label" style={{ textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 800, fontSize: isMobile ? '0.625rem' : '0.7rem', color: 'var(--color-text-muted)' }}>{t('Ghi chú & Nhật ký')}</span>
+                            <div className="stat-icon" style={{
+                              color: '#10b981',
+                              background: 'rgba(16, 185, 129, 0.08)',
+                              width: isMobile ? '28px' : '36px',
+                              height: isMobile ? '28px' : '36px',
+                              borderRadius: '50%',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              flexShrink: 0
+                            }}>
+                              <FileText size={isMobile ? 15 : 18} />
+                            </div>
+                          </div>
+
+                          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', position: 'relative', zIndex: 2 }}>
+                            <div className="stat-value" style={{ fontWeight: 800, color: 'var(--color-text)', fontSize: isMobile ? '1.5rem' : '2.25rem', lineHeight: 1.1 }}>
+                              {noteCount}
+                            </div>
                           </div>
                         </div>
 
                         {/* Card 2: Công việc quan trọng */}
-                        <div className="stat-card" style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '1rem 1.25rem', borderRadius: '12px', background: 'var(--color-surface)', border: '1px solid var(--color-border)', boxShadow: 'var(--shadow-sm)' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '42px', height: '42px', borderRadius: '10px', background: 'rgba(59, 130, 246, 0.12)', color: '#3b82f6' }}>
-                            <CheckSquare size={20} />
+                        <div className="stat-card hover-lift distributed-card" style={{ display: 'flex', flexDirection: 'column', padding: '1rem', minHeight: isMobile ? '105px' : '120px', borderRadius: '12px', border: '1px solid var(--color-border-light)', position: 'relative', overflow: 'hidden', background: 'var(--color-surface)', boxShadow: 'var(--shadow-sm)' }}>
+                          <div className="decor-svg" style={{ color: '#3b82f6' }}>
+                            <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: '100%', height: '100%' }}>
+                              <path d="M20 20 H 80 V 80 H 20 Z" stroke="currentColor" strokeWidth="2" strokeDasharray="4 4" />
+                            </svg>
                           </div>
-                          <div style={{ display: 'flex', flexDirection: 'column' }}>
-                            <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', fontWeight: 700 }}>{t('Công việc quan trọng')}</span>
-                            <span style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--color-text)' }}>{taskCount}</span>
+
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: isMobile ? '6px' : '12px', position: 'relative', zIndex: 2 }}>
+                            <span className="stat-label" style={{ textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 800, fontSize: isMobile ? '0.625rem' : '0.7rem', color: 'var(--color-text-muted)' }}>{t('Công việc quan trọng')}</span>
+                            <div className="stat-icon" style={{
+                              color: '#3b82f6',
+                              background: 'rgba(59, 130, 246, 0.08)',
+                              width: isMobile ? '28px' : '36px',
+                              height: isMobile ? '28px' : '36px',
+                              borderRadius: '50%',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              flexShrink: 0
+                            }}>
+                              <CheckSquare size={isMobile ? 15 : 18} />
+                            </div>
+                          </div>
+
+                          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', position: 'relative', zIndex: 2 }}>
+                            <div className="stat-value" style={{ fontWeight: 800, color: 'var(--color-text)', fontSize: isMobile ? '1.5rem' : '2.25rem', lineHeight: 1.1 }}>
+                              {taskCount}
+                            </div>
                           </div>
                         </div>
 
                         {/* Card 3: Lịch gặp gỡ */}
-                        <div className="stat-card" style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '1rem 1.25rem', borderRadius: '12px', background: 'var(--color-surface)', border: '1px solid var(--color-border)', boxShadow: 'var(--shadow-sm)' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '42px', height: '42px', borderRadius: '10px', background: 'rgba(139, 92, 246, 0.12)', color: '#8b5cf6' }}>
-                            <Users size={20} />
+                        <div className="stat-card hover-lift" style={{ display: 'flex', flexDirection: 'column', padding: '1rem', minHeight: isMobile ? '105px' : '120px', borderRadius: '12px', border: '1px solid var(--color-border-light)', position: 'relative', overflow: 'hidden', background: 'var(--color-surface)', boxShadow: 'var(--shadow-sm)' }}>
+                          <div className="decor-svg" style={{ color: '#8b5cf6' }}>
+                            <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: '100%', height: '100%' }}>
+                              <path d="M50 20 L80 80 H20 Z" stroke="currentColor" strokeWidth="2" strokeDasharray="4 4" />
+                            </svg>
                           </div>
-                          <div style={{ display: 'flex', flexDirection: 'column' }}>
-                            <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', fontWeight: 700 }}>{t('Lịch gặp gỡ')}</span>
-                            <span style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--color-text)' }}>{meetingCount}</span>
+
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: isMobile ? '6px' : '12px', position: 'relative', zIndex: 2 }}>
+                            <span className="stat-label" style={{ textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 800, fontSize: isMobile ? '0.625rem' : '0.7rem', color: 'var(--color-text-muted)' }}>{t('Lịch gặp gỡ')}</span>
+                            <div className="stat-icon" style={{
+                              color: '#8b5cf6',
+                              background: 'rgba(139, 92, 246, 0.08)',
+                              width: isMobile ? '28px' : '36px',
+                              height: isMobile ? '28px' : '36px',
+                              borderRadius: '50%',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              flexShrink: 0
+                            }}>
+                              <Users size={isMobile ? 15 : 18} />
+                            </div>
+                          </div>
+
+                          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', position: 'relative', zIndex: 2 }}>
+                            <div className="stat-value" style={{ fontWeight: 800, color: 'var(--color-text)', fontSize: isMobile ? '1.5rem' : '2.25rem', lineHeight: 1.1 }}>
+                              {meetingCount}
+                            </div>
                           </div>
                         </div>
 
                         {/* Card 4: Cuộc gọi liên hệ */}
-                        <div className="stat-card" style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '1rem 1.25rem', borderRadius: '12px', background: 'var(--color-surface)', border: '1px solid var(--color-border)', boxShadow: 'var(--shadow-sm)' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '42px', height: '42px', borderRadius: '10px', background: 'rgba(245, 158, 11, 0.12)', color: '#f59e0b' }}>
-                            <Phone size={20} />
+                        <div className="stat-card hover-lift" style={{ display: 'flex', flexDirection: 'column', padding: '1rem', minHeight: isMobile ? '105px' : '120px', borderRadius: '12px', border: '1px solid var(--color-border-light)', position: 'relative', overflow: 'hidden', background: 'var(--color-surface)', boxShadow: 'var(--shadow-sm)' }}>
+                          <div className="decor-svg" style={{ color: '#f59e0b' }}>
+                            <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: '100%', height: '100%' }}>
+                              <circle cx="50" cy="50" r="25" stroke="currentColor" strokeWidth="2" />
+                            </svg>
                           </div>
-                          <div style={{ display: 'flex', flexDirection: 'column' }}>
-                            <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', fontWeight: 700 }}>{t('Cuộc gọi liên hệ')}</span>
-                            <span style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--color-text)' }}>{callCount}</span>
+
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: isMobile ? '6px' : '12px', position: 'relative', zIndex: 2 }}>
+                            <span className="stat-label" style={{ textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 800, fontSize: isMobile ? '0.625rem' : '0.7rem', color: 'var(--color-text-muted)' }}>{t('Cuộc gọi liên hệ')}</span>
+                            <div className="stat-icon" style={{
+                              color: '#f59e0b',
+                              background: 'rgba(245, 158, 11, 0.08)',
+                              width: isMobile ? '28px' : '36px',
+                              height: isMobile ? '28px' : '36px',
+                              borderRadius: '50%',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              flexShrink: 0
+                            }}>
+                              <Phone size={isMobile ? 15 : 18} />
+                            </div>
+                          </div>
+
+                          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', position: 'relative', zIndex: 2 }}>
+                            <div className="stat-value" style={{ fontWeight: 800, color: 'var(--color-text)', fontSize: isMobile ? '1.5rem' : '2.25rem', lineHeight: 1.1 }}>
+                              {callCount}
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -17199,7 +17283,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                         display: 'flex',
                         alignItems: 'center',
                         gap: '6px',
-                        alignSelf: 'flex-start',
+                        alignSelf: 'flex-end',
                         fontSize: '0.78rem',
                         padding: '6px 12px',
                         borderRadius: '6px',
@@ -17456,7 +17540,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                         display: 'flex',
                         alignItems: 'center',
                         gap: '6px',
-                        alignSelf: 'flex-start',
+                        alignSelf: 'flex-end',
                         fontSize: '0.78rem',
                         padding: '6px 12px',
                         borderRadius: '6px',

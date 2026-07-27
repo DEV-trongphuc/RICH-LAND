@@ -3093,12 +3093,13 @@ function sendShiftRemindersAndCheckInAlerts($conn) {
             }
         }
         
-        // Query active users who have not checked in today
+        // Query active users who have not checked in today (only Sales, or Managers in combined mode)
         $userQuery = "
             SELECT u.id, u.full_name, u.email, u.zalo_chat_id, u.telegram_chat_id, u.work_schedule,
                    IF(u.use_custom_work_hours = 1, u.work_start_time, (SELECT setting_value FROM system_settings WHERE setting_key = 'global_work_start_time' LIMIT 1)) AS work_start_time
             FROM users u
             WHERE u.status = 'active'
+              AND (u.role = 'sales' OR (u.role = 'manager' AND u.manager_behavior_mode = 'combined'))
         ";
         $userRes = $conn->query($userQuery);
         if ($userRes) {
@@ -3371,6 +3372,7 @@ function sendCheckOutReminders($conn) {
         FROM check_ins c
         JOIN users u ON c.user_id = u.id
         WHERE c.check_in_date = ? AND c.check_out_time IS NULL AND u.status = 'active'
+          AND (u.role = 'sales' OR (u.role = 'manager' AND u.manager_behavior_mode = 'combined'))
     ";
     $stmt = $conn->prepare($sql);
     $stmt->bind_param("s", $todayStr);
