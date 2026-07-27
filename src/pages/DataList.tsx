@@ -1181,8 +1181,9 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
           lead.round_name || '',
           lead.assigned_to_name || t('Chưa phân bổ'),
           lead.status === 'assigned' ? t('Đã chia') :
-            lead.status === 'compensation' ? t('Data Bù') :
-              lead.status === 'pending' ? t('Chờ chia') :
+            lead.status === 'active' ? t('Đã tranh') :
+              lead.status === 'compensation' ? t('Data Bù') :
+                lead.status === 'pending' ? t('Chờ chia') :
                 lead.status === 'pending_claim' ? t('Chờ nhận') :
                   lead.status === 'fallback' ? t('Fallback') :
                   lead.status === 'silent' ? t('Chỉ đồng bộ') :
@@ -1319,6 +1320,7 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
       }
     }
     switch (status) {
+      case 'active': return <span className="badge success">{t('Đã tranh')}</span>;
       case 'assigned': return <span className="badge success">{t('Đã chia')}</span>;
       case 'compensation': return <span className="badge purple">{t('Data Bù')}</span>;
       case 'pending_claim': return <span className="badge warning">{t('Chờ nhận')}</span>;
