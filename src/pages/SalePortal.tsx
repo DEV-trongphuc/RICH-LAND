@@ -170,9 +170,6 @@ const GrabLeadOfferModal: React.FC<{
           <h2 style={{ fontSize: '1.25rem', fontWeight: 800, margin: 0, letterSpacing: '0.05em', textTransform: 'uppercase' }}>
             {t("Tranh Nhận Lead Mới")}
           </h2>
-          <span style={{ fontSize: '0.75rem', opacity: 0.9 }}>
-            {offer.round_name}
-          </span>
         </div>
 
         {/* Lead details */}
