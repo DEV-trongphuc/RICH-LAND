@@ -18,7 +18,7 @@ $apply = (isset($_GET['apply']) && $_GET['apply'] === 'true')
       || (isset($_POST['execute_migration']) && $_POST['execute_migration'] === '1')
       || ($isCli && in_array('--apply', $argv));
 
-$targetVersion = 193;
+$targetVersion = 194;
 $currentVersion = 186;
 
 // Query current DB version
@@ -399,8 +399,15 @@ try {
         $logMsg("Đã bổ sung cột grab_fallback_to_databank vào bảng distribution_rounds.", "success");
     }
 
+    // 8.11. Add grab_max_attempts to distribution_rounds (Version 194)
+    $chkGMA = $conn->query("SHOW COLUMNS FROM `distribution_rounds` LIKE 'grab_max_attempts'");
+    if (!$chkGMA || $chkGMA->num_rows == 0) {
+        $conn->query("ALTER TABLE `distribution_rounds` ADD COLUMN `grab_max_attempts` INT(11) NULL DEFAULT NULL");
+        $logMsg("Đã bổ sung cột grab_max_attempts vào bảng distribution_rounds.", "success");
+    }
+
     // 9. Update DB version in system_settings
-    $conn->query("INSERT INTO system_settings (setting_key, setting_value) VALUES ('db_version', '193') ON DUPLICATE KEY UPDATE setting_value = '193'");
+    $conn->query("INSERT INTO system_settings (setting_key, setting_value) VALUES ('db_version', '194') ON DUPLICATE KEY UPDATE setting_value = '194'");
     
     $logMsg("Hệ thống đã duy trì cấu trúc Cơ sở dữ liệu ở phiên bản mới nhất: " . $targetVersion, "success");
 

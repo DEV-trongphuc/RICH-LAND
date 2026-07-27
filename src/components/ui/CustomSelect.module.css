@@ -87,10 +87,12 @@
   width: max-content;
   max-width: min(340px, 92vw);
   box-sizing: border-box;
-  background: var(--color-surface);
-  border: 1px solid rgba(0, 0, 0, 0.1);
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-lg);
+  background: rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  border-radius: var(--radius-xl);
+  box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.08), 0 8px 10px -6px rgba(0, 0, 0, 0.08);
   z-index: 1000;
   overflow: hidden;
   display: flex;
@@ -98,9 +100,11 @@
 }
 
 :global([data-theme="dark"]) .dropdown {
-  background: #1c1c1e;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow: var(--shadow-xl), 0 4px 12px rgba(255, 69, 58, 0.08);
+  background: rgba(28, 28, 30, 0.88);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.3), 0 8px 10px -6px rgba(0, 0, 0, 0.3);
 }
 
 .searchBox {
@@ -109,11 +113,11 @@
   padding: 0.75rem 1rem;
   border-bottom: 1px solid var(--color-border-light);
   gap: 0.75rem;
-  background: #f8fafc;
+  background: rgba(248, 250, 252, 0.5);
 }
 
 :global([data-theme="dark"]) .searchBox {
-  background: var(--color-bg);
+  background: rgba(0, 0, 0, 0.2);
   border-bottom: 1px solid rgba(255, 255, 255, 0.06);
 }
 
@@ -147,22 +151,29 @@
   font-size: 0.875rem;
   color: var(--color-text);
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
   margin-bottom: 2px;
 }
 
 .option:hover {
-  background: #f1f5f9;
+  background: rgba(189, 29, 45, 0.05);
+  color: var(--color-primary);
 }
 
 :global([data-theme="dark"]) .option:hover {
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(255, 69, 58, 0.08);
+  color: #ff453a;
 }
 
 .optionSelected {
-  background: var(--color-primary-light) !important;
+  background: rgba(189, 29, 45, 0.08) !important;
   color: var(--color-primary);
   font-weight: 700;
+}
+
+:global([data-theme="dark"]) .optionSelected {
+  background: rgba(255, 69, 58, 0.15) !important;
+  color: #ff453a;
 }
 
 .optionDisabled {

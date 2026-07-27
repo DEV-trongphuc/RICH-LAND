@@ -150,9 +150,11 @@ const RoundsInner = ({ isActive }: { isActive: boolean }) => {
     round_type: 'round_robin',
     grab_countdown_minutes: 5,
     grab_cooldown_hours: 1,
-    grab_fallback_to_databank: 0
+    grab_fallback_to_databank: 0,
+    grab_max_attempts: '' as number | string
   });
 
+  const [systemMaxAttempts, setSystemMaxAttempts] = useState<number>(2);
   const [roundCooldowns, setRoundCooldowns] = useState<any>({});
 
   const loadRoundCooldowns = async (roundId: number) => {
@@ -334,10 +336,19 @@ const RoundsInner = ({ isActive }: { isActive: boolean }) => {
     return () => window.removeEventListener('lead-added', handleLeadAdded);
   }, [dateFilter, isActive]);
 
+  useEffect(() => {
+    if (!isActive) return;
+    fetchAPI('get_system_settings').then(res => {
+      if (res && res.success && res.data && res.data.lead_max_recall_attempts !== undefined) {
+        setSystemMaxAttempts(Number(res.data.lead_max_recall_attempts) || 2);
+      }
+    }).catch(() => {});
+  }, [isActive]);
+
   const openAddModal = () => {
     setEditingRound(null);
     setScopeType('none');
-    setFormData({ round_name: '', is_active: 1, cc_emails: '', selected_users: [], starting_consultant_id: null, ratios: {}, data_per_turns: {}, compensations: {}, is_fallback: false, project_id: null, campaign_id: null, round_type: 'round_robin', grab_countdown_minutes: 5, grab_cooldown_hours: 1, grab_fallback_to_databank: 0 });
+    setFormData({ round_name: '', is_active: 1, cc_emails: '', selected_users: [], starting_consultant_id: null, ratios: {}, data_per_turns: {}, compensations: {}, is_fallback: false, project_id: null, campaign_id: null, round_type: 'round_robin', grab_countdown_minutes: 5, grab_cooldown_hours: 1, grab_fallback_to_databank: 0, grab_max_attempts: '' });
     setSelectedAdmins([]);
     setEnableExternalCc(false);
     setExternalCcEmails('');
@@ -408,7 +419,8 @@ const RoundsInner = ({ isActive }: { isActive: boolean }) => {
       round_type: r.round_type || 'round_robin',
       grab_countdown_minutes: r.grab_countdown_seconds ? Math.round(Number(r.grab_countdown_seconds) / 60) : 5,
       grab_cooldown_hours: r.grab_cooldown_seconds ? Math.round(Number(r.grab_cooldown_seconds) / 3600) : 1,
-      grab_fallback_to_databank: r.grab_fallback_to_databank ? Number(r.grab_fallback_to_databank) : 0
+      grab_fallback_to_databank: r.grab_fallback_to_databank ? Number(r.grab_fallback_to_databank) : 0,
+      grab_max_attempts: r.grab_max_attempts !== null && r.grab_max_attempts !== undefined ? String(r.grab_max_attempts) : ''
     });
 
     // Parse cc_emails into selected admins and external emails
@@ -1609,6 +1621,30 @@ const RoundsInner = ({ isActive }: { isActive: boolean }) => {
                                   ? t("Khi hết đếm ngược chia lại N lần mà không Sale nào nhận, khách hàng sẽ tự động được đưa vào Kho Databank dùng chung.") 
                                   : t("Khách hàng sẽ nằm lại ở hàng chờ của Admin để phê duyệt / phân bổ thủ công.")}
                               </p>
+                              {formData.grab_fallback_to_databank === 1 && (
+                                <div style={{ marginTop: '0.75rem', animation: 'fadeIn 0.2s ease-out' }}>
+                                  <label className="form-label" style={{ fontSize: '0.75rem', fontWeight: 600 }}>
+                                    {t("Số lần chia lại tối đa (N)")}
+                                  </label>
+                                  <input
+                                    type="number"
+                                    className="form-input"
+                                    placeholder={t("Mặc định hệ thống ({count} lần)").replace('{count}', String(systemMaxAttempts))}
+                                    min={1}
+                                    value={formData.grab_max_attempts}
+                                    onChange={e => {
+                                      const val = e.target.value;
+                                      setFormData(prev => ({
+                                        ...prev,
+                                        grab_max_attempts: val === '' ? '' : Math.max(1, parseInt(val) || 1)
+                                      }));
+                                    }}
+                                  />
+                                  <p style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)', marginTop: 4 }}>
+                                    {t("Để trống để sử dụng giá trị mặc định được cấu hình chung trong Cấu hình hệ thống.")}
+                                  </p>
+                                </div>
+                              )}
                             </div>
                           </div>
                         )}

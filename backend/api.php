@@ -7200,10 +7200,11 @@ switch ($action) {
             $grab_countdown_seconds = isset($input['grab_countdown_seconds']) ? (int)$input['grab_countdown_seconds'] : 300;
             $grab_cooldown_seconds = isset($input['grab_cooldown_seconds']) ? (int)$input['grab_cooldown_seconds'] : 3600;
             $grab_fallback_to_databank = isset($input['grab_fallback_to_databank']) ? (int)$input['grab_fallback_to_databank'] : 0;
+            $grab_max_attempts = isset($input['grab_max_attempts']) && $input['grab_max_attempts'] !== '' ? (int)$input['grab_max_attempts'] : null;
 
             $project_id = isset($input['project_id']) && $input['project_id'] !== '' ? (int)$input['project_id'] : null;
-            $stmt = $conn->prepare("INSERT INTO distribution_rounds (round_name, is_active, cc_emails, last_assigned_consultant_id, project_id, round_type, grab_countdown_seconds, grab_cooldown_seconds, grab_fallback_to_databank) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
-            $stmt->bind_param("sisiisiii", $name, $status, $cc, $last_assigned, $project_id, $round_type, $grab_countdown_seconds, $grab_cooldown_seconds, $grab_fallback_to_databank);
+            $stmt = $conn->prepare("INSERT INTO distribution_rounds (round_name, is_active, cc_emails, last_assigned_consultant_id, project_id, round_type, grab_countdown_seconds, grab_cooldown_seconds, grab_fallback_to_databank, grab_max_attempts) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+            $stmt->bind_param("sisiisiiii", $name, $status, $cc, $last_assigned, $project_id, $round_type, $grab_countdown_seconds, $grab_cooldown_seconds, $grab_fallback_to_databank, $grab_max_attempts);
             $stmt->execute();
             $roundId = $conn->insert_id;
             $stmt->close();
@@ -7332,14 +7333,15 @@ switch ($action) {
             $grab_countdown_seconds = isset($input['grab_countdown_seconds']) ? (int)$input['grab_countdown_seconds'] : 300;
             $grab_cooldown_seconds = isset($input['grab_cooldown_seconds']) ? (int)$input['grab_cooldown_seconds'] : 3600;
             $grab_fallback_to_databank = isset($input['grab_fallback_to_databank']) ? (int)$input['grab_fallback_to_databank'] : 0;
+            $grab_max_attempts = isset($input['grab_max_attempts']) && $input['grab_max_attempts'] !== '' ? (int)$input['grab_max_attempts'] : null;
 
             $project_id = isset($input['project_id']) && $input['project_id'] !== '' ? (int)$input['project_id'] : null;
             if ($starting_consultant_id) {
-                $stmt = $conn->prepare("UPDATE distribution_rounds SET round_name=?, is_active=?, cc_emails=?, last_assigned_consultant_id=?, project_id=?, round_type=?, grab_countdown_seconds=?, grab_cooldown_seconds=?, grab_fallback_to_databank=? WHERE id=?");
-                $stmt->bind_param("sisiisiiii", $name, $status, $cc, $last_assigned, $project_id, $round_type, $grab_countdown_seconds, $grab_cooldown_seconds, $grab_fallback_to_databank, $id);
+                $stmt = $conn->prepare("UPDATE distribution_rounds SET round_name=?, is_active=?, cc_emails=?, last_assigned_consultant_id=?, project_id=?, round_type=?, grab_countdown_seconds=?, grab_cooldown_seconds=?, grab_fallback_to_databank=?, grab_max_attempts=? WHERE id=?");
+                $stmt->bind_param("sisiisiiiiii", $name, $status, $cc, $last_assigned, $project_id, $round_type, $grab_countdown_seconds, $grab_cooldown_seconds, $grab_fallback_to_databank, $grab_max_attempts, $id);
             } else {
-                $stmt = $conn->prepare("UPDATE distribution_rounds SET round_name=?, is_active=?, cc_emails=?, project_id=?, round_type=?, grab_countdown_seconds=?, grab_cooldown_seconds=?, grab_fallback_to_databank=? WHERE id=?");
-                $stmt->bind_param("sisiisiii", $name, $status, $cc, $project_id, $round_type, $grab_countdown_seconds, $grab_cooldown_seconds, $grab_fallback_to_databank, $id);
+                $stmt = $conn->prepare("UPDATE distribution_rounds SET round_name=?, is_active=?, cc_emails=?, project_id=?, round_type=?, grab_countdown_seconds=?, grab_cooldown_seconds=?, grab_fallback_to_databank=?, grab_max_attempts=? WHERE id=?");
+                $stmt->bind_param("sisiisiiiii", $name, $status, $cc, $project_id, $round_type, $grab_countdown_seconds, $grab_cooldown_seconds, $grab_fallback_to_databank, $grab_max_attempts, $id);
             }
             $stmt->execute();
             $stmt->close();

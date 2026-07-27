@@ -1403,7 +1403,8 @@ if (!function_exists('recallExpiredGrabLeads')) {
         
         $sql = "SELECT l.id as lead_id, l.name as lead_name, l.phone as lead_phone, l.email as lead_email,
                        l.source as lead_source, l.type as lead_type, l.note as lead_note,
-                       l.target_round_id as round_id, dr.round_name, dr.cc_emails, dr.grab_fallback_to_databank
+                       l.target_round_id as round_id, dr.round_name, dr.cc_emails, dr.grab_fallback_to_databank,
+                       dr.grab_max_attempts
                 FROM leads l
                 JOIN distribution_rounds dr ON l.target_round_id = dr.id
                 WHERE l.is_accepted = 0
@@ -1435,15 +1436,18 @@ if (!function_exists('recallExpiredGrabLeads')) {
         
         logSync("Found " . count($leads) . " expired grab leads.");
         
-        $maxAttempts = (int) get_system_setting($conn, 'lead_max_recall_attempts');
-        if ($maxAttempts <= 0) {
-            $maxAttempts = 2; // Default to 2
+        $maxAttemptsGlobal = (int) get_system_setting($conn, 'lead_max_recall_attempts');
+        if ($maxAttemptsGlobal <= 0) {
+            $maxAttemptsGlobal = 2; // Default to 2
         }
         
         foreach ($leads as $row) {
             $leadId = (int)$row['lead_id'];
             $roundId = (int)$row['round_id'];
             $roundName = $row['round_name'];
+            $maxAttempts = isset($row['grab_max_attempts']) && $row['grab_max_attempts'] !== null && (int)$row['grab_max_attempts'] > 0 
+                ? (int)$row['grab_max_attempts'] 
+                : $maxAttemptsGlobal;
             
             $conn->begin_transaction();
             try {
