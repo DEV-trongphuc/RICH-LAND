@@ -1578,6 +1578,15 @@ function processManualLead($conn, $leadData, $override_round_id, $override_consu
                         $leadId = insertLead($conn, [], $consultantId, $phone, $email, $name, $source, $type, $note);
                     }
 
+                    if ($assignedRoundId && $leadId) {
+                        $updRound = $conn->prepare("UPDATE leads SET target_round_id = ? WHERE id = ?");
+                        if ($updRound) {
+                            $updRound->bind_param("ii", $assignedRoundId, $leadId);
+                            $updRound->execute();
+                            $updRound->close();
+                        }
+                    }
+
                     if ($roundType === 'grab' && $status === 'pending_claim' && $leadId && !empty($eligibleConsultants)) {
                         $updL = $conn->prepare("UPDATE leads SET status = 'pending_claim', is_accepted = 0, assigned_to = NULL WHERE id = ?");
                         $updL->bind_param("i", $leadId);
