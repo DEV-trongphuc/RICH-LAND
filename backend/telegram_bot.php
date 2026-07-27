@@ -235,15 +235,12 @@ function sendLeadReminderTelegramMessageToSale($consultantId, $consultantName, $
     $frontendUrl = get_system_setting($conn, 'frontend_url') ?: 'http://localhost:5173';
     $detailLink = rtrim($frontendUrl, '/') . "/leads?id=" . $leadId;
 
-    $maskedName = maskName($leadName);
-    $maskedPhone = maskPhone($leadPhone);
-
     $text = "⏰ <b>[ NHẮC NHỞ CHĂM SÓC KHÁCH HÀNG ]</b> ⏰\n"
         . "━━━━━━━━━━━━━━━━━━━━━\n"
         . "Chào <b>" . htmlspecialchars($consultantName) . "</b>,\n\n"
         . "Bạn có khách hàng mới đăng ký lại/nhắc lịch chăm sóc:\n"
-        . " • <b>Tên KH:</b> " . htmlspecialchars($maskedName) . "\n"
-        . " • <b>Số ĐT:</b> " . htmlspecialchars($maskedPhone) . "\n"
+        . " • <b>Tên KH:</b> " . htmlspecialchars($leadName) . "\n"
+        . " • <b>Số ĐT:</b> " . htmlspecialchars($leadPhone) . "\n"
         . " • <b>Nguồn:</b> " . htmlspecialchars($leadSource) . "\n"
         . " • <b>Vòng:</b> " . htmlspecialchars($roundName) . "\n";
 
