@@ -3960,7 +3960,7 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
                                     {doc.name}
                                   </p>
                                   <span style={{ fontSize: '0.6875rem', color: 'var(--color-text-muted)' }}>
-                                    {Math.round(doc.file_size / 1024)} KB · {new Date(doc.created_at).toLocaleDateString('vi-VN')} {t('bởi')} {doc.uploader_name || t('Hệ thống')}
+                                    {Math.round(doc.file_size / 1024)} KB · {new Date(doc.created_at.replace(/-/g, '/')).toLocaleDateString('vi-VN')} {t('bởi')} {doc.uploader_name || t('Hệ thống')}
                                   </span>
                                 </div>
                               </div>

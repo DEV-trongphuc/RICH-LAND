@@ -2022,7 +2022,7 @@ const RoundsInner = ({ isActive }: { isActive: boolean }) => {
                               </div>
                               <div style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: 4 }}>
                                 <Clock size={12} style={{ opacity: 0.6 }} />
-                                <span>{t('Báo cáo:')} {new Date(r.created_at).toLocaleString('vi-VN')}</span>
+                                 <span>{t('Báo cáo:')} {new Date(r.created_at.replace(/-/g, '/')).toLocaleString('vi-VN')}</span>
                               </div>
                             </div>
                           </div>
@@ -2098,7 +2098,7 @@ const RoundsInner = ({ isActive }: { isActive: boolean }) => {
                                     <Avatar src={r.resolved_by_avatar} name={r.resolved_by} size={16} />
                                     <span>
                                       {r.resolved_by} • {(() => {
-                                        const d = new Date(r.resolved_at);
+                                        const d = new Date(r.resolved_at.replace(/-/g, '/'));
                                         const pad = (n: number) => n.toString().padStart(2, '0');
                                         return `${pad(d.getHours())}:${pad(d.getMinutes())} ${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()}`;
                                       })()}
@@ -2222,7 +2222,7 @@ const RoundsInner = ({ isActive }: { isActive: boolean }) => {
                             border: '1px solid var(--color-border-light)'
                           }}>
                             <Clock size={11} style={{ opacity: 0.7 }} />
-                            <span>{new Date(log.created_at).toLocaleString('vi-VN')}</span>
+                             <span>{new Date(log.created_at.replace(/-/g, '/')).toLocaleString('vi-VN')}</span>
                           </div>
                         </div>
                       );

@@ -312,7 +312,7 @@ export const TicketsPage: React.FC = () => {
                       <AlertCircle size={16} color={PRIORITIES.find(p => p.id === t.priority)?.color} style={{ marginTop: '2px' }} />
                       <div>
                         <p style={{ fontWeight: 700, color: 'var(--color-text)', fontSize: '0.9rem', marginBottom: '2px' }}>{t.subject}</p>
-                        <p style={{ fontSize: '0.75rem', color: 'var(--color-text-light)', fontWeight: 600 }}>#{t.id} • Tạo: {new Date(t.created_at).toLocaleDateString('vi-VN')}</p>
+                        <p style={{ fontSize: '0.75rem', color: 'var(--color-text-light)', fontWeight: 600 }}>#{t.id} • Tạo: {new Date(t.created_at.replace(/-/g, '/')).toLocaleDateString('vi-VN')}</p>
                       </div>
                     </div>
                   </td>

@@ -1534,7 +1534,7 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
                               <span>{maskPhone(r.lead_phone)}</span>
                             </div>
                             <div style={{ fontSize: '0.7rem', color: 'var(--color-text-light)', marginTop: 2 }}>
-                              {new Date(r.created_at).toLocaleString('vi-VN')}
+                              {new Date(r.created_at.replace(/-/g, '/')).toLocaleString('vi-VN')}
                             </div>
                           </div>
                         </div>
@@ -1582,7 +1582,7 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
                             {r.resolved_at && (
                               <>
                                 <span style={{ opacity: 0.5 }}>•</span>
-                                <span>{new Date(r.resolved_at).toLocaleString('vi-VN')}</span>
+                                <span>{new Date(r.resolved_at.replace(/-/g, '/')).toLocaleString('vi-VN')}</span>
                               </>
                             )}
                           </div>
@@ -1667,8 +1667,8 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
 
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
                       <div style={{ fontSize: '0.7rem', color: 'var(--color-text-light)', textAlign: 'right' }}>
-                        {new Date(r.created_at).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}<br />
-                        {new Date(r.created_at).toLocaleDateString('vi-VN')}
+                        {new Date(r.created_at.replace(/-/g, '/')).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}<br />
+                        {new Date(r.created_at.replace(/-/g, '/')).toLocaleDateString('vi-VN')}
                       </div>
                       {r.round_name && (
                         <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: 'rgba(163, 20, 34,0.08)', color: 'var(--color-primary)', padding: '2px 8px', borderRadius: 4, fontSize: '0.7rem', fontWeight: 700 }}>
@@ -1719,7 +1719,7 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
                           {r.status === 'approved' || r.status === 'approved_no_comp' ? t('Duyệt') : t('Từ chối')} {t('bởi')} <strong>{t(r.resolved_by || 'Hệ thống')}</strong>
                         </span>
                         {r.resolved_at && (
-                          <span>• {new Date(r.resolved_at).toLocaleString('vi-VN')}</span>
+                          <span>• {new Date(r.resolved_at.replace(/-/g, '/')).toLocaleString('vi-VN')}</span>
                         )}
                       </div>
                     )}

@@ -63,7 +63,7 @@ const LeadRecallTimer: React.FC<{
   onTimeout?: () => void;
   t: (key: string) => string;
 }> = ({ lastInteractionDate, receivedAt, leadRecallMinutes, defaultTimeoutMinutes = 2, onTimeout, t }) => {
-  const targetDate = React.useMemo(() => new Date(receivedAt || lastInteractionDate).getTime(), [lastInteractionDate, receivedAt]);
+  const targetDate = React.useMemo(() => parseServerDate(receivedAt || lastInteractionDate).getTime(), [lastInteractionDate, receivedAt]);
   const leadRecallMins = leadRecallMinutes || defaultTimeoutMinutes;
   const limitMs = leadRecallMins * 60 * 1000;
 
@@ -2008,7 +2008,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
         if (erp.recurrence.last_generated === todayStr) continue;
 
         // Calculate next due date
-        const currentDueDate = new Date(t.due_date || t.created_at);
+        const currentDueDate = parseServerDate(t.due_date || t.created_at);
         let nextDueDate = new Date(currentDueDate);
 
         if (erp.recurrence.pattern === 'daily') {
@@ -4880,7 +4880,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                 {pendingLeads.map((lead: any) => {
                   const leadRecallMins = Number(lead.lead_recall_minutes) || Number(sysSettings?.lead_response_timeout_minutes) || 2;
                   const limitMs = leadRecallMins * 60 * 1000;
-                  const isOverdue = leadRecallMins > 0 && (Date.now() - new Date(lead.received_at || lead.last_interaction_date).getTime()) >= limitMs;
+                  const isOverdue = leadRecallMins > 0 && (Date.now() - parseServerDate(lead.received_at || lead.last_interaction_date).getTime()) >= limitMs;
 
                   return (
                     <div 
@@ -4926,7 +4926,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px dashed var(--color-border-light)', paddingTop: '0.5rem' }}>
                         <div style={{ display: 'flex', flexDirection: 'column' }}>
                           <span style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)' }}>
-                            {t('Chia lúc:')} {lead.received_at ? new Date(lead.received_at).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) : '—'}
+                            {t('Chia lúc:')} {lead.received_at ? parseServerDate(lead.received_at).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) : '—'}
                           </span>
                           {leadRecallMins > 0 && (
                             <span style={{ fontSize: '0.72rem', color: isOverdue ? 'var(--color-danger)' : '#f59e0b', fontWeight: 700, marginTop: '2px' }}>
@@ -8413,7 +8413,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                           {lead.lead_name || t('Ẩn danh')}
                         </div>
                         <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                          {lead.phone} • {lead.round_name || t('Mặc định')} • {lead.received_at ? new Date(lead.received_at).toLocaleString('vi-VN') : ''}
+                          {lead.phone} • {lead.round_name || t('Mặc định')} • {lead.received_at ? parseServerDate(lead.received_at).toLocaleString('vi-VN') : ''}
                         </div>
                       </div>
                       <div style={{ textAlign: 'right' }}>
@@ -8939,7 +8939,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                           )}
                         </div>
                         <div style={{ textAlign: 'right', color: '#64748b' }}>
-                          {lead.received_at ? new Date(lead.received_at).toLocaleString('vi-VN') : '—'}
+                          {lead.received_at ? parseServerDate(lead.received_at).toLocaleString('vi-VN') : '—'}
                         </div>
                       </div>
 
@@ -9094,7 +9094,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
 
                         <td style={{ padding: '1rem' }}>
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>
-                            <span>{lead.received_at ? new Date(lead.received_at).toLocaleString('vi-VN') : '—'}</span>
+                            <span>{lead.received_at ? parseServerDate(lead.received_at).toLocaleString('vi-VN') : '—'}</span>
                             {lead.status === 'compensation' && (
                               <span style={{ alignSelf: 'flex-start', padding: '2px 6px', borderRadius: '4px', background: '#d1fae5', color: '#065f46', fontSize: '0.7rem', fontWeight: 700 }}>
                                 {t('Data bù')}
@@ -9736,7 +9736,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                                           zIndex: 10 - tIdx,
                                           position: 'relative'
                                         }}
-                                        title={`${taker.name || 'Sale'} (${taker.claimed_at ? new Date(taker.claimed_at).toLocaleString('vi-VN') : ''})`}
+                                        title={`${taker.name || 'Sale'} (${taker.claimed_at ? parseServerDate(taker.claimed_at).toLocaleString('vi-VN') : ''})`}
                                       >
                                         <Avatar 
                                           src={taker.avatar} 
@@ -9759,7 +9759,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                           </div>
                         </td>
                         <td style={{ padding: '1rem', color: 'var(--color-text-muted)', fontSize: '0.8125rem' }}>
-                          {lead.released_to_kho_at ? new Date(lead.released_to_kho_at).toLocaleString('vi-VN') : '-'}
+                          {lead.released_to_kho_at ? parseServerDate(lead.released_to_kho_at).toLocaleString('vi-VN') : '-'}
                         </td>
                         <td style={{ padding: '1rem', textAlign: 'right' }}>
                           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '8px' }}>
@@ -9973,7 +9973,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                 </p>
                 {adminActionLead.released_to_kho_at && (
                   <p style={{ fontSize: '0.75rem', color: 'var(--color-text-light)', margin: '4px 0 0' }}>
-                    {t('Thời gian ra kho:')} {new Date(adminActionLead.released_to_kho_at).toLocaleString('vi-VN')}
+                    {t('Thời gian ra kho:')} {parseServerDate(adminActionLead.released_to_kho_at).toLocaleString('vi-VN')}
                   </p>
                 )}
               </div>
@@ -10257,7 +10257,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                         </td>
 
                         <td style={{ padding: '1rem 1.25rem', color: 'var(--color-text-muted)', fontSize: '0.8rem' }}>
-                          {ticket.created_at ? new Date(ticket.created_at).toLocaleString('vi-VN') : '—'}
+                          {ticket.created_at ? parseServerDate(ticket.created_at).toLocaleString('vi-VN') : '—'}
                         </td>
                       </tr>
                     );
@@ -14709,7 +14709,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                             {doc.name}
                           </a>
                           <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>
-                            {t('Tải lên bởi')} {doc.uploader_name || t('Hệ thống')} • {new Date(doc.created_at).toLocaleDateString('vi-VN')}
+                            {t('Tải lên bởi')} {doc.uploader_name || t('Hệ thống')} • {parseServerDate(doc.created_at).toLocaleDateString('vi-VN')}
                           </span>
                         </div>
 
@@ -16155,7 +16155,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                   {activeDetailLead.is_accepted === 1 ? t('Nhận lúc:') : t('Chia lúc:')}
                 </span>
                 <span style={{ color: 'var(--color-text-light)' }}>
-                  {activeDetailLead.received_at ? new Date(activeDetailLead.received_at).toLocaleString('vi-VN') : 'N/A'}
+                  {activeDetailLead.received_at ? parseServerDate(activeDetailLead.received_at).toLocaleString('vi-VN') : 'N/A'}
                 </span>
               </div>
 
@@ -16260,7 +16260,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                               </span>
                               {item.received_at && (
                                 <span style={{ fontSize: '0.75rem', opacity: 0.8 }}>
-                                  {new Date(item.received_at).toLocaleString('vi-VN')}
+                                  {parseServerDate(item.received_at).toLocaleString('vi-VN')}
                                 </span>
                               )}
                             </div>
@@ -16291,7 +16291,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                               {t(item.status)} {item.round_name ? `(${item.round_name})` : ''}
                             </span>
                             <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
-                              {new Date(item.received_at).toLocaleString('vi-VN')}
+                              {parseServerDate(item.received_at).toLocaleString('vi-VN')}
                             </span>
                           </div>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
@@ -16456,7 +16456,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
 
               {selectedDetailTicket.created_at && (
                 <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px', textAlign: 'right' }}>
-                  {t('Ngày gửi báo cáo: ')}{new Date(selectedDetailTicket.created_at).toLocaleString('vi-VN')}
+                  {t('Ngày gửi báo cáo: ')}{parseServerDate(selectedDetailTicket.created_at).toLocaleString('vi-VN')}
                 </div>
               )}
             </div>
@@ -16489,7 +16489,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
             setDayDetails(null);
             setActiveCalendarModalTab('sales');
           }}
-          title={`${t('Chi tiết hoạt động ngày')} ${selectedCalendarDate ? new Date(selectedCalendarDate).toLocaleDateString(language === 'vi' ? 'vi-VN' : 'en-US', { day: '2-digit', month: '2-digit', year: 'numeric' }) : ''}`}
+          title={`${t('Chi tiết hoạt động ngày')} ${selectedCalendarDate ? new Date(selectedCalendarDate.replace(/-/g, '/')).toLocaleDateString(language === 'vi' ? 'vi-VN' : 'en-US', { day: '2-digit', month: '2-digit', year: 'numeric' }) : ''}`}
           width="900px"
         >
           {dayDetailsLoading ? (
@@ -16636,7 +16636,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                           </div>
                           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6 }}>
                             <span style={{ fontSize: '0.75rem', color: 'var(--color-text-light)', fontWeight: 600 }}>
-                              {item.received_at ? new Date(item.received_at).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) : ''}
+                              {item.received_at ? parseServerDate(item.received_at).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) : ''}
                             </span>
                             {getStatusBadge(item.status, item.report_status)}
                           </div>

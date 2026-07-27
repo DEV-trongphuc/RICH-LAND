@@ -1586,7 +1586,7 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
                       <Calendar size={12} style={{ color: 'var(--color-primary)' }} />
                       <span>{t('Ngày tạo:')}</span>
                       <strong style={{ color: 'var(--color-text)' }}>
-                        {new Date(formData.created_at).toLocaleDateString('vi-VN')} {new Date(formData.created_at).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
+                        {new Date(formData.created_at.replace(/-/g, '/')).toLocaleDateString('vi-VN')} {new Date(formData.created_at.replace(/-/g, '/')).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
                       </strong>
                     </div>
                   )}
@@ -1596,7 +1596,7 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
                       <Clock size={12} style={{ color: 'var(--color-danger, #ef4444)' }} />
                       <span>{t('Hạn hoàn thành:')}</span>
                       <strong style={{ color: 'var(--color-text)' }}>
-                        {new Date(formData.due_date).toLocaleDateString('vi-VN')} {new Date(formData.due_date).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
+                        {new Date(formData.due_date.replace(/-/g, '/')).toLocaleDateString('vi-VN')} {new Date(formData.due_date.replace(/-/g, '/')).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
                       </strong>
                     </div>
                   )}
@@ -2690,7 +2690,7 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
                       const getReplies = (parentId: number) => {
                         return comments
                           .filter((c: any) => Number(c.parent_id) === Number(parentId))
-                          .sort((a: any, b: any) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+                          .sort((a: any, b: any) => new Date(a.created_at.replace(/-/g, '/')).getTime() - new Date(b.created_at.replace(/-/g, '/')).getTime());
                       };
 
                       const renderSingleComment = (comment: any, isReply: boolean = false) => {
@@ -2725,7 +2725,7 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
                             <div style={{ flex: 1 }}>
                               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                 <span style={{ fontSize: isReply ? '0.75rem' : '0.8rem', fontWeight: 800, color: 'var(--color-text)' }}>{commUser?.full_name || comment.user_name || 'Đồng nghiệp'}</span>
-                                <span style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)', fontWeight: 500 }}>{new Date(comment.created_at).toLocaleString('vi-VN')}</span>
+                                <span style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)', fontWeight: 500 }}>{new Date(comment.created_at.replace(/-/g, '/')).toLocaleString('vi-VN')}</span>
                               </div>
                               {comment.content && /<[a-z][\s\S]*>/i.test(comment.content) ? (
                                 <div 

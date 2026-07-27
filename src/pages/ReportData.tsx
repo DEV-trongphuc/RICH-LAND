@@ -58,7 +58,7 @@ const CountdownTimer = ({ assignedAt, recallMinutes }: { assignedAt: string; rec
 
   useEffect(() => {
     const calculateTimeLeft = () => {
-      const start = new Date(assignedAt).getTime();
+      const start = new Date(assignedAt.replace(/-/g, '/')).getTime();
       const limit = start + recallMinutes * 60 * 1000;
       const diff = limit - Date.now();
       return diff > 0 ? Math.floor(diff / 1000) : 0;
@@ -321,7 +321,7 @@ export const ReportData = () => {
                         <div style={{ height: 1, background: 'var(--color-border)' }} />
                         <InfoItem label={t("Vòng phân bổ")} value={context.round_name} accent />
                         <div style={{ height: 1, background: 'var(--color-border)' }} />
-                        <InfoItem label={context.is_accepted === 1 ? t("Nhận lúc") : t("Chia lúc")} value={context.assigned_at ? new Date(context.assigned_at).toLocaleString('vi-VN', { dateStyle: 'short', timeStyle: 'short' }) : '—'} />
+                        <InfoItem label={context.is_accepted === 1 ? t("Nhận lúc") : t("Chia lúc")} value={context.assigned_at ? new Date(context.assigned_at.replace(/-/g, '/')).toLocaleString('vi-VN', { dateStyle: 'short', timeStyle: 'short' }) : '—'} />
                         {context.is_accepted === 0 && context.assigned_at && (
                           <CountdownTimer assignedAt={context.assigned_at} recallMinutes={context.lead_recall_minutes || 2} />
                         )}
