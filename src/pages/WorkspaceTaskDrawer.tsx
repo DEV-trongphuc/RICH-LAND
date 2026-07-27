@@ -1671,8 +1671,10 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
   };
 
   const isApproverOrAdmin = currentUser && (
-    Number(currentUser.id) === Number(formData.approver_id) ||
-    ['admin', 'superadmin', 'super_admin', 'director', 'manager'].includes((currentUser.role || '').toLowerCase())
+    // 1. Phải là người duyệt được chỉ định và không phải là người thực hiện công việc (tránh tự duyệt)
+    (Number(currentUser.id) === Number(formData.approver_id) && Number(currentUser.id) !== Number(formData.user_id)) ||
+    // 2. Hoặc là Admin/Superadmin hệ thống nhưng không phải là người thực hiện công việc
+    (['admin', 'superadmin', 'super_admin'].includes((currentUser.role || '').toLowerCase()) && Number(currentUser.id) !== Number(formData.user_id))
   );
 
   const content = (
