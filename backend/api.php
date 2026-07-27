@@ -17257,14 +17257,20 @@ switch ($action) {
                     'is_mid_turn' => (intval($simulated['current_turn_remaining'] ?? 0) > 0)
                 ];
 
-                $stmtR = $conn->prepare("SELECT round_name FROM distribution_rounds WHERE id = ?");
-                $stmtR->bind_param("i", $assignedRoundId);
-                $stmtR->execute();
-                $rRes = $stmtR->get_result();
-                if ($rRes->num_rows > 0) {
-                    $consultant['round_name'] = $rRes->fetch_assoc()['round_name'];
-                } else {
-                    $consultant['round_name'] = 'Không rõ';
+                $roundType = 'round_robin';
+                $stmtR = $conn->prepare("SELECT round_name, round_type FROM distribution_rounds WHERE id = ?");
+                if ($stmtR) {
+                    $stmtR->bind_param("i", $assignedRoundId);
+                    $stmtR->execute();
+                    $rRes = $stmtR->get_result();
+                    if ($rRes->num_rows > 0) {
+                        $rRow = $rRes->fetch_assoc();
+                        $roundType = $rRow['round_type'] ?? 'round_robin';
+                        $consultant['round_name'] = $rRow['round_name'];
+                    } else {
+                        $consultant['round_name'] = 'Không rõ';
+                    }
+                    $stmtR->close();
                 }
             }
         } else if ($isFallbackAdmin) {
@@ -17274,11 +17280,15 @@ switch ($action) {
                 'email' => 'Admin Fallback',
                 'round_name' => 'Không có (Fallback về Admin)'
             ];
+            $roundType = 'round_robin';
+        } else {
+            $roundType = 'round_robin';
         }
 
         echo json_encode([
             'success' => true,
             'round_id' => $assignedRoundId,
+            'round_type' => $roundType,
             'consultant' => $consultant,
             'is_fallback' => $isFallback,
             'is_fallback_admin' => $isFallbackAdmin,

@@ -1390,94 +1390,112 @@ export const QuickAddLeadModal = () => {
                       </div>
                     </div>
 
-                    <div style={{ background: theme === 'dark' ? 'var(--color-surface)' : 'white', padding: '12px', borderRadius: 12, border: theme === 'dark' ? '1px solid var(--color-border)' : '1px solid #e2e8f0', marginTop: 12, display: 'flex', flexDirection: 'column', gap: 12 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                          <Avatar src={previewCons.consultant?.avatar} name={previewCons.consultant?.name || '?'} size={32} />
-                          <div>
-                            <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{t('Sale dự kiến nhận')}</div>
-                            <div style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)' }}>{previewCons.consultant?.name || t('Không có TVV hoạt động')}</div>
-                          </div>
-                        </div>
-
-                        {!showOverrideSelector && !overrideConsId && (
-                          <button
-                            type="button"
-                            onClick={() => setShowOverrideSelector(true)}
-                            style={{
-                              background: theme === 'dark' ? 'var(--color-bg)' : '#f8fafc',
-                              border: theme === 'dark' ? '1px solid var(--color-border)' : '1px solid #cbd5e1',
-                              borderRadius: '6px',
-                              padding: '4px 8px',
-                              fontSize: '0.75rem',
-                              fontWeight: 600,
-                              color: theme === 'dark' ? 'var(--color-text-muted)' : '#64748b',
-                              cursor: 'pointer',
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: '4px',
-                              transition: 'all 0.2s',
-                              outline: 'none'
-                            }}
-                            onMouseEnter={(e) => {
-                              e.currentTarget.style.background = theme === 'dark' ? 'var(--color-surface)' : '#f1f5f9';
-                              e.currentTarget.style.borderColor = theme === 'dark' ? 'var(--color-text-muted)' : '#94a3b8';
-                              e.currentTarget.style.color = theme === 'dark' ? 'var(--color-text)' : '#334155';
-                            }}
-                            onMouseLeave={(e) => {
-                              e.currentTarget.style.background = theme === 'dark' ? 'var(--color-bg)' : '#f8fafc';
-                              e.currentTarget.style.borderColor = theme === 'dark' ? 'var(--color-border)' : '#cbd5e1';
-                              e.currentTarget.style.color = theme === 'dark' ? 'var(--color-text-muted)' : '#64748b';
-                            }}
-                          >
-                            {t('Chỉ định Sale khác')}
-                          </button>
-                        )}
+                    {previewCons?.round_type === 'grab' ? (
+                      <div style={{ 
+                        background: theme === 'dark' ? 'rgba(189, 29, 45, 0.08)' : '#ffe3e8', 
+                        color: theme === 'dark' ? '#f87171' : '#8a0f1b', 
+                        padding: '12px', 
+                        borderRadius: 12, 
+                        border: theme === 'dark' ? '1px solid rgba(189, 29, 45, 0.15)' : '1px solid rgba(189, 29, 45, 0.3)',
+                        marginTop: 12, 
+                        fontSize: '0.8125rem', 
+                        fontWeight: 600,
+                        lineHeight: 1.4
+                      }}>
+                        ⚡ {t('Đây là Vòng tranh nhận nhanh (Grab Lead). Lead sẽ được phát cho các TVV đủ điều kiện tự tranh nhận trên Portal, không chỉ định trước cho ai.')}
                       </div>
+                    ) : (
+                      <>
+                        <div style={{ background: theme === 'dark' ? 'var(--color-surface)' : 'white', padding: '12px', borderRadius: 12, border: theme === 'dark' ? '1px solid var(--color-border)' : '1px solid #e2e8f0', marginTop: 12, display: 'flex', flexDirection: 'column', gap: 12 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                              <Avatar src={previewCons.consultant?.avatar} name={previewCons.consultant?.name || '?'} size={32} />
+                              <div>
+                                <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{t('Sale dự kiến nhận')}</div>
+                                <div style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)' }}>{previewCons.consultant?.name || t('Không có TVV hoạt động')}</div>
+                              </div>
+                            </div>
 
-                      {(showOverrideSelector || !!overrideConsId) && (
-                        <>
-                          <hr style={{ border: 0, borderTop: '1px dashed var(--color-border)', margin: 0 }} />
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                            {(() => {
-                              const selectedForceCons = consultants.find(c => String(c.id) === overrideConsId);
-                              return (
-                                <>
-                                  <Avatar src={selectedForceCons?.avatar} name={selectedForceCons?.name || '?'} size={32} />
-                                  <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 4 }}>
-                                    <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{t('Chỉ định Sale nhận (Ép lượt)')}</div>
-                                    <div style={{ maxWidth: 240 }}>
-                                      <CustomSelect
-                                        options={[
-                                          { value: '', label: t('-- Chọn để ép (Override) --') },
-                                          ...consultants
-                                            .filter(c => !previewCons?.consultant || String(c.id) !== String(previewCons.consultant.consultant_id))
-                                            .map(c => ({
-                                              value: c.id.toString(),
-                                              label: c.name + (c.status === 'leave' ? ` (${t('Nghỉ phép')})` : Number(c.vacation_mode) === 1 ? ` (${t('Tạm ngưng')})` : c.status === 'inactive' ? ` (${t('Nghỉ việc')})` : ''),
-                                              avatar: c.avatar,
-                                              disabled: c.status !== 'active' || Number(c.vacation_mode) === 1,
-                                              disabledType: 'sale' as const
-                                            }))
-                                        ]}
-                                        showAvatars={true}
-                                        value={overrideConsId}
-                                        onChange={val => setOverrideConsId(val.toString())}
-                                        width="100%"
-                                        direction="up"
-                                      />
-                                    </div>
-                                  </div>
-                                </>
-                              );
-                            })()}
+                            {!showOverrideSelector && !overrideConsId && (
+                              <button
+                                type="button"
+                                onClick={() => setShowOverrideSelector(true)}
+                                style={{
+                                  background: theme === 'dark' ? 'var(--color-bg)' : '#f8fafc',
+                                  border: theme === 'dark' ? '1px solid var(--color-border)' : '1px solid #cbd5e1',
+                                  borderRadius: '6px',
+                                  padding: '4px 8px',
+                                  fontSize: '0.75rem',
+                                  fontWeight: 600,
+                                  color: theme === 'dark' ? 'var(--color-text-muted)' : '#64748b',
+                                  cursor: 'pointer',
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '4px',
+                                  transition: 'all 0.2s',
+                                  outline: 'none'
+                                }}
+                                onMouseEnter={(e) => {
+                                  e.currentTarget.style.background = theme === 'dark' ? 'var(--color-surface)' : '#f1f5f9';
+                                  e.currentTarget.style.borderColor = theme === 'dark' ? 'var(--color-text-muted)' : '#94a3b8';
+                                  e.currentTarget.style.color = theme === 'dark' ? 'var(--color-text)' : '#334155';
+                                }}
+                                onMouseLeave={(e) => {
+                                  e.currentTarget.style.background = theme === 'dark' ? 'var(--color-bg)' : '#f8fafc';
+                                  e.currentTarget.style.borderColor = theme === 'dark' ? 'var(--color-border)' : '#cbd5e1';
+                                  e.currentTarget.style.color = theme === 'dark' ? 'var(--color-text-muted)' : '#64748b';
+                                }}
+                              >
+                                {t('Chỉ định Sale khác')}
+                              </button>
+                            )}
                           </div>
-                        </>
-                      )}
-                    </div>
-                    <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginTop: 8, fontStyle: 'italic' }}>
-                      {t('* Nếu bạn chọn ép (Override), người được chọn sẽ nhận Data này bất kể tỷ lệ vòng xoay.')}
-                    </div>
+
+                          {(showOverrideSelector || !!overrideConsId) && (
+                            <>
+                              <hr style={{ border: 0, borderTop: '1px dashed var(--color-border)', margin: 0 }} />
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                {(() => {
+                                  const selectedForceCons = consultants.find(c => String(c.id) === overrideConsId);
+                                  return (
+                                    <>
+                                      <Avatar src={selectedForceCons?.avatar} name={selectedForceCons?.name || '?'} size={32} />
+                                      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 4 }}>
+                                        <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{t('Chỉ định Sale nhận (Ép lượt)')}</div>
+                                        <div style={{ maxWidth: 240 }}>
+                                          <CustomSelect
+                                            options={[
+                                              { value: '', label: t('-- Chọn để ép (Override) --') },
+                                              ...consultants
+                                                .filter(c => !previewCons?.consultant || String(c.id) !== String(previewCons.consultant.consultant_id))
+                                                .map(c => ({
+                                                  value: c.id.toString(),
+                                                  label: c.name + (c.status === 'leave' ? ` (${t('Nghỉ phép')})` : Number(c.vacation_mode) === 1 ? ` (${t('Tạm ngưng')})` : c.status === 'inactive' ? ` (${t('Nghỉ việc')})` : ''),
+                                                  avatar: c.avatar,
+                                                  disabled: c.status !== 'active' || Number(c.vacation_mode) === 1,
+                                                  disabledType: 'sale' as const
+                                                }))
+                                            ]}
+                                            showAvatars={true}
+                                            value={overrideConsId}
+                                            onChange={val => setOverrideConsId(val.toString())}
+                                            width="100%"
+                                            direction="up"
+                                          />
+                                        </div>
+                                      </div>
+                                    </>
+                                  );
+                                })()}
+                              </div>
+                            </>
+                          )}
+                        </div>
+                        <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginTop: 8, fontStyle: 'italic' }}>
+                          {t('* Nếu bạn chọn ép (Override), người được chọn sẽ nhận Data này bất kể tỷ lệ vòng xoay.')}
+                        </div>
+                      </>
+                    )}
 
                     {showOverrideSelector && previewCons.consultant && (
                       <div style={{ marginTop: 12, padding: '12px 16px', background: theme === 'dark' ? 'rgba(245, 158, 11, 0.08)' : '#fefce8', border: theme === 'dark' ? '1px solid rgba(245, 158, 11, 0.15)' : '1px solid #fef08a', borderRadius: 8 }}>
