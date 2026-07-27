@@ -2149,7 +2149,7 @@ function simulateNextConsultantInRound($conn, $roundId, $lead = null)
  * 4. Backpressure Valve (uncontacted lead limit)
  * 5. Hour/Day/Month Quotas
  */
-function checkConsultantGates($conn, $consultantId, $lead = null)
+function checkConsultantGates($conn, $consultantId, $lead = null, $bypassBackpressure = false)
 {
     // Resolve user ID via email mapping to query tables that use user_id instead of consultant_id
     $targetUserId = null;
@@ -2338,37 +2338,39 @@ function checkConsultantGates($conn, $consultantId, $lead = null)
     }
 
     // GATE 4: Van chống ôm (Backpressure Valve)
-    $backpressureLimit = (int) get_system_setting($conn, 'backpressure_limit');
-    if ($backpressureLimit <= 0) {
-        $backpressureLimit = 5;
-    }
-    
-    // Count lead tính công in 'chua_xac_dinh' or 'quan_tam' with no notes created by owner
-    $stmtKhtn = $conn->prepare("
-        SELECT COUNT(*) as cnt 
-        FROM contacts c
-        WHERE c.owner_id = ? 
-          AND c.deleted_at IS NULL
-          AND c.status != 'rejected'
-          AND c.pipeline_status IN ('chua_xac_dinh', 'quan_tam')
-          AND NOT EXISTS (
-              SELECT 1 FROM notes n 
-              WHERE n.entity_type = 'contact' 
-                AND n.entity_id = c.id 
-          )
-          AND NOT EXISTS (
-              SELECT 1 FROM activities a
-              WHERE (a.related_type = 'contact' AND a.related_id = c.id)
-                 OR a.contact_id = c.id
-          )
-    ");
-    $stmtKhtn->bind_param("i", $targetUserId);
-    $stmtKhtn->execute();
-    $khtnCnt = (int) ($stmtKhtn->get_result()->fetch_assoc()['cnt'] ?? 0);
-    $stmtKhtn->close();
-    
-    if ($khtnCnt >= $backpressureLimit) {
-        return "Failed Gate 4: Backpressure valve limit exceeded ($khtnCnt >= $backpressureLimit 'Chưa Xác Định' leads)";
+    if (!$bypassBackpressure) {
+        $backpressureLimit = (int) get_system_setting($conn, 'backpressure_limit');
+        if ($backpressureLimit <= 0) {
+            $backpressureLimit = 5;
+        }
+        
+        // Count lead tính công in 'chua_xac_dinh' or 'quan_tam' with no notes created by owner
+        $stmtKhtn = $conn->prepare("
+            SELECT COUNT(*) as cnt 
+            FROM contacts c
+            WHERE c.owner_id = ? 
+              AND c.deleted_at IS NULL
+              AND c.status != 'rejected'
+              AND c.pipeline_status IN ('chua_xac_dinh', 'quan_tam')
+              AND NOT EXISTS (
+                  SELECT 1 FROM notes n 
+                  WHERE n.entity_type = 'contact' 
+                    AND n.entity_id = c.id 
+              )
+              AND NOT EXISTS (
+                  SELECT 1 FROM activities a
+                  WHERE (a.related_type = 'contact' AND a.related_id = c.id)
+                     OR a.contact_id = c.id
+              )
+        ");
+        $stmtKhtn->bind_param("i", $targetUserId);
+        $stmtKhtn->execute();
+        $khtnCnt = (int) ($stmtKhtn->get_result()->fetch_assoc()['cnt'] ?? 0);
+        $stmtKhtn->close();
+        
+        if ($khtnCnt >= $backpressureLimit) {
+            return "Failed Gate 4: Backpressure valve limit exceeded ($khtnCnt >= $backpressureLimit 'Chưa Xác Định' leads)";
+        }
     }
 
     // GATE 5: Hạn mức Giờ Vàng (Golden Hours Cap per Consultant)

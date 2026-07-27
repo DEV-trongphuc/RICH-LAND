@@ -1545,7 +1545,7 @@ if (!function_exists('recallExpiredGrabLeads')) {
                             
                             // Check gates
                             require_once __DIR__ . '/webhook_logic.php';
-                            if (checkConsultantGates($conn, $c['id'], $leadData) === true) {
+                            if (checkConsultantGates($conn, $c['id'], $leadData, true) === true) {
                                 $eligible[] = $c;
                             }
                         }

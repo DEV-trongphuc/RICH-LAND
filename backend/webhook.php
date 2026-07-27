@@ -805,7 +805,7 @@ try {
                 }
 
                 // Check gates
-                if (checkConsultantGates($conn, $c['id'], $data) === true) {
+                if (checkConsultantGates($conn, $c['id'], $data, true) === true) {
                     $eligibleConsultants[] = $c;
                 }
             }

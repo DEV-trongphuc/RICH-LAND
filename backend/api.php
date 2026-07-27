@@ -1351,7 +1351,7 @@ function processManualLead($conn, $leadData, $override_round_id, $override_consu
                             }
 
                             // Check gates
-                            if (checkConsultantGates($conn, $c['id'], $leadData) === true) {
+                            if (checkConsultantGates($conn, $c['id'], $leadData, true) === true) {
                                 $eligibleConsultants[] = $c;
                             }
                         }
