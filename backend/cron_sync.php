@@ -1409,11 +1409,11 @@ if (!function_exists('recallExpiredGrabLeads')) {
                 WHERE l.is_accepted = 0
                   AND l.status = 'pending_claim'
                   AND dr.round_type = 'grab'
-                  AND EXISTS (
+                  AND NOT EXISTS (
                       SELECT 1 FROM lead_offers lo
                       WHERE lo.lead_id = l.id
                         AND lo.status = 'pending'
-                        AND lo.expires_at <= NOW()
+                        AND lo.expires_at > NOW()
                   )
                 ORDER BY l.id ASC";
                 
