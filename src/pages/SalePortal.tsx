@@ -10839,7 +10839,14 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
     const canEditUserAssets = ['admin', 'superadmin', 'manager'].includes(String(user?.role).toLowerCase());
 
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', gap: isMobile ? '1rem' : '1rem', padding: isMobile ? '0.25rem 0' : '0.5rem 0' }}>
+      <div style={{
+        display: 'flex',
+        flexDirection: 'column',
+        gap: isMobile ? '1rem' : '1rem',
+        padding: isMobile ? '0.25rem 0' : '0.5rem 0',
+        width: '100%',
+        overflowX: isMobile ? 'hidden' : 'visible'
+      }}>
         {/* Sticky Header block */}
         {!isMobile && (
           <div style={{
