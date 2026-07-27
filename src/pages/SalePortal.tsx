@@ -178,8 +178,8 @@ const GrabLeadOfferModal: React.FC<{
         {/* Lead details */}
         <div style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem', flex: 1 }}>
           <div style={{ textAlign: 'center', marginBottom: '0.5rem' }}>
-            <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', textTransform: 'uppercase', fontWeight: 600 }}>{t("Khách hàng")}</div>
-            <div style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--color-text)', marginTop: '0.25rem' }}>{offer.lead_name || t("Ẩn danh")}</div>
+            <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', textTransform: 'uppercase', fontWeight: 600 }}>{t("Vòng chia")}</div>
+            <div style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--color-text)', marginTop: '0.25rem' }}>{offer.round_name}</div>
           </div>
 
           {/* Countdown graphic */}
