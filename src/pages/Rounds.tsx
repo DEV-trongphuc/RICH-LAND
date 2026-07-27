@@ -153,6 +153,19 @@ const RoundsInner = ({ isActive }: { isActive: boolean }) => {
     grab_fallback_to_databank: 0
   });
 
+  const [roundCooldowns, setRoundCooldowns] = useState<any>({});
+
+  const loadRoundCooldowns = async (roundId: number) => {
+    try {
+      const json = await fetchAPI(`get_round_cooldowns&round_id=${roundId}`);
+      if (json && json.success) {
+        setRoundCooldowns(json.cooldowns || {});
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
   const [searchUser, setSearchUser] = useState('');
   const [showDropdown, setShowDropdown] = useState(false);
   const [showStartSaleDropdown, setShowStartSaleDropdown] = useState(false);
@@ -339,6 +352,10 @@ const RoundsInner = ({ isActive }: { isActive: boolean }) => {
 
   const openEditModal = (r: any) => {
     setEditingRound(r);
+    setRoundCooldowns({});
+    if (r && r.id) {
+      loadRoundCooldowns(Number(r.id));
+    }
     setActiveTab('config');
     let matchedIds: number[] = [];
     if (r.consultant_ids) {
@@ -1998,6 +2015,44 @@ const RoundsInner = ({ isActive }: { isActive: boolean }) => {
                                             <span>{user.email}</span>
                                           </>
                                         )}
+                                      </div>
+                                      <div style={{ marginTop: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
+                                        {(() => {
+                                          const cool = roundCooldowns[user.id];
+                                          if (cool && cool.on_cooldown) {
+                                            const mins = Math.ceil(cool.remaining_seconds / 60);
+                                            return (
+                                              <span style={{ 
+                                                fontSize: '0.7rem', 
+                                                fontWeight: 700, 
+                                                color: '#d97706', 
+                                                background: theme === 'dark' ? 'rgba(217, 119, 6, 0.15)' : '#fef3c7', 
+                                                padding: '2px 8px', 
+                                                borderRadius: 6,
+                                                display: 'inline-flex',
+                                                alignItems: 'center',
+                                                gap: 4
+                                              }}>
+                                                {t("Đang đếm chờ ({mins}p)").replace('{mins}', String(mins))}
+                                              </span>
+                                            );
+                                          }
+                                          return (
+                                            <span style={{ 
+                                              fontSize: '0.7rem', 
+                                              fontWeight: 700, 
+                                              color: '#059669', 
+                                              background: theme === 'dark' ? 'rgba(5, 150, 105, 0.15)' : '#d1fae5', 
+                                              padding: '2px 8px', 
+                                              borderRadius: 6,
+                                              display: 'inline-flex',
+                                              alignItems: 'center',
+                                              gap: 4
+                                            }}>
+                                              {t("Sẵn sàng")}
+                                            </span>
+                                          );
+                                        })()}
                                       </div>
                                     </div>
                                     <button

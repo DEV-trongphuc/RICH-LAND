@@ -5380,6 +5380,80 @@ switch ($action) {
         $stmtDel->close();
         break;
 
+    case 'get_round_cooldowns':
+        $roundId = (int)($_GET['round_id'] ?? 0);
+        if ($roundId <= 0) {
+            echo json_encode(['success' => false, 'message' => 'Invalid round_id']);
+            break;
+        }
+
+        // Get round type and cooldowns
+        $stmt = $conn->prepare("SELECT round_type, grab_cooldown_seconds FROM distribution_rounds WHERE id = ?");
+        if (!$stmt) {
+            echo json_encode(['success' => false, 'message' => 'Query error']);
+            break;
+        }
+        $stmt->bind_param("i", $roundId);
+        $stmt->execute();
+        $round = $stmt->get_result()->fetch_assoc();
+        $stmt->close();
+
+        if (!$round) {
+            echo json_encode(['success' => true, 'cooldowns' => []]);
+            break;
+        }
+
+        $roundType = $round['round_type'] ?? 'round_robin';
+        $cooldownSec = 0;
+        $statuses = [];
+
+        if ($roundType === 'grab') {
+            $cooldownSec = (int)($round['grab_cooldown_seconds'] ?? 3600);
+            $statuses = ["'grabbed'"];
+        } else {
+            $cooldownMins = (int) get_system_setting($conn, 'normal_round_cooldown_minutes');
+            if ($cooldownMins === -1) {
+                $cooldownSec = 0;
+            } else if ($cooldownMins <= 0) {
+                $cooldownSec = 300; // default 5 mins
+            } else {
+                $cooldownSec = $cooldownMins * 60;
+            }
+            $statuses = ["'assigned'", "'compensation'"];
+        }
+
+        $cooldowns = [];
+        if ($cooldownSec > 0) {
+            $statusList = implode(',', $statuses);
+            // Fetch last received_at for each user in this round
+            $res = $conn->query("
+                SELECT assigned_to, MAX(received_at) as last_received 
+                FROM distribution_logs 
+                WHERE round_id = $roundId 
+                  AND status IN ($statusList) 
+                  AND received_at >= DATE_SUB(NOW(), INTERVAL $cooldownSec SECOND)
+                GROUP BY assigned_to
+            ");
+            if ($res) {
+                while ($row = $res->fetch_assoc()) {
+                    $uId = (int)$row['assigned_to'];
+                    $lastTime = strtotime($row['last_received']);
+                    $elapsed = time() - $lastTime;
+                    $remaining = $cooldownSec - $elapsed;
+                    if ($remaining > 0) {
+                        $cooldowns[$uId] = [
+                            'on_cooldown' => true,
+                            'remaining_seconds' => $remaining,
+                            'last_received' => $row['last_received']
+                        ];
+                    }
+                }
+            }
+        }
+
+        echo json_encode(['success' => true, 'cooldowns' => (object)$cooldowns]);
+        break;
+
     case 'get_consultants':
         $role = $decodedUser['role'] ?? '';
         $currentUserId = (int)($decodedUser['id'] ?? 0);
