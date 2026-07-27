@@ -289,6 +289,22 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
       );
     }
     switch (status) {
+      case 'pending_claim':
+        return (
+          <span style={{
+            padding: '4px 10px',
+            borderRadius: '20px',
+            fontSize: '0.72rem',
+            fontWeight: 600,
+            background: 'var(--color-warning-light)',
+            color: 'var(--color-warning)',
+            border: '1px solid rgba(245, 158, 11, 0.25)',
+            display: 'inline-flex',
+            alignItems: 'center'
+          }}>
+            {t('Chờ nhận')}
+          </span>
+        );
       case 'assigned':
       case 'active':
         return (

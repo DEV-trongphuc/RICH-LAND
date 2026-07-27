@@ -1183,7 +1183,8 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
           lead.status === 'assigned' ? t('Đã chia') :
             lead.status === 'compensation' ? t('Data Bù') :
               lead.status === 'pending' ? t('Chờ chia') :
-                lead.status === 'fallback' ? t('Fallback') :
+                lead.status === 'pending_claim' ? t('Chờ nhận') :
+                  lead.status === 'fallback' ? t('Fallback') :
                   lead.status === 'silent' ? t('Chỉ đồng bộ') :
                     lead.status === 'reminder' ? t('Nhắc lại') :
                       lead.status === 'pending_approval' ? (
@@ -1320,6 +1321,7 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
     switch (status) {
       case 'assigned': return <span className="badge success">{t('Đã chia')}</span>;
       case 'compensation': return <span className="badge purple">{t('Data Bù')}</span>;
+      case 'pending_claim': return <span className="badge warning">{t('Chờ nhận')}</span>;
       case 'pending_work_hours': return <span className="badge warm">{t('Chờ giờ làm')}</span>;
       case 'error': return <span className="badge danger">{t('Ticket')}</span>;
       case 'pending': return <span className="badge warning">{t('Chờ chia')}</span>;
@@ -1826,6 +1828,7 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                   { value: 'not_contacted', label: t('Chưa liên hệ') },
                   { value: 'assigned', label: t('Đã chia') },
                   { value: 'compensation', label: t('Data Bù') },
+                  { value: 'pending_claim', label: t('Chờ nhận') },
                   { value: 'pending_work_hours', label: t('Chờ giờ làm') },
                   { value: 'databank_claim', label: 'Databank Claim' },
                   { value: 'pending', label: t('Chờ chia') },
@@ -2392,10 +2395,18 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                                 return <span style={{ color: 'var(--color-text-muted)' }}>{t('Chưa ai nhận')}</span>;
                               }
                             })()
-                          ) : (lead.assigned_to_name !== '-' && lead.status !== 'pending_work_hours') ? (
+                          ) : (lead.assigned_to_name !== '-' && lead.status !== 'pending_work_hours' && lead.status !== 'pending_claim') ? (
                             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                               <Avatar src={lead.assigned_to_avatar || '/LOGO.jpg'} name={lead.assigned_to_name} size={20} aiScreened={!!(lead.ai_screener_status && lead.ai_screener_status !== 'not_screened')} />
                               <span style={{ fontWeight: 700, color: 'var(--color-text)' }}>{lead.assigned_to_name}</span>
+                            </div>
+                          ) : lead.status === 'pending_claim' ? (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                              <Avatar src="/LOGO.jpg" name="Rich Land Bot" size={20} />
+                              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+                                <span style={{ fontWeight: 700, color: 'var(--color-text)', fontSize: '0.75rem', lineHeight: '1rem' }}>Rich Land Bot</span>
+                                <span style={{ fontSize: '0.6rem', color: 'var(--color-text-muted)', lineHeight: '0.8rem' }}>{t('Đang chờ nhận')}</span>
+                              </div>
                             </div>
                           ) : (
                             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -2560,13 +2571,23 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                                 return <span style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem' }}>{t('Chưa ai nhận')}</span>;
                               }
                             })()
-                          ) : (lead.assigned_to_name !== '-' && lead.status !== 'pending_work_hours') ? (
+                          ) : (lead.assigned_to_name !== '-' && lead.status !== 'pending_work_hours' && lead.status !== 'pending_claim') ? (
                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                               <Avatar src={lead.assigned_to_avatar || '/LOGO.jpg'} name={lead.assigned_to_name} size={32} aiScreened={!!(lead.ai_screener_status && lead.ai_screener_status !== 'not_screened')} />
                               <div>
                                 <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>{lead.assigned_to_name}</div>
                                 <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2 }}>
                                   {(lead.status === 'reminder' && (!lead.round_name || lead.round_name === '-')) ? 'Reminder' : lead.round_name}
+                                </div>
+                              </div>
+                            </div>
+                          ) : lead.status === 'pending_claim' ? (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                              <Avatar src="/LOGO.jpg" name="Rich Land Bot" size={32} />
+                              <div>
+                                <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>Rich Land Bot</div>
+                                <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2 }}>
+                                  {t('Đang chờ nhận')}
                                 </div>
                               </div>
                             </div>

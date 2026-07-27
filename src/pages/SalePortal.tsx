@@ -4633,6 +4633,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
     switch (status) {
       case 'assigned': return <span className="badge" style={{ background: 'rgba(13, 148, 136, 0.1)', color: '#0f766e', border: '1px solid rgba(13, 148, 136, 0.2)' }}>{t('Đã chia')}</span>;
       case 'compensation': return <span className="badge" style={{ background: 'rgba(139, 92, 246, 0.1)', color: '#6d28d9', border: '1px solid rgba(139, 92, 246, 0.2)' }}>{t('Data Bù')}</span>;
+      case 'pending_claim': return <span className="badge" style={{ background: 'rgba(234, 179, 8, 0.1)', color: '#a16207', border: '1px solid rgba(234, 179, 8, 0.2)' }}>{t('Chờ nhận')}</span>;
       case 'pending_work_hours': return <span className="badge" style={{ background: 'rgba(245, 158, 11, 0.1)', color: '#b45309', border: '1px solid rgba(245, 158, 11, 0.2)' }}>{t('Chờ giờ làm')}</span>;
       case 'error': return <span className="badge" style={{ background: 'rgba(244, 63, 94, 0.1)', color: '#be123c', border: '1px solid rgba(244, 63, 94, 0.2)' }}>{t('Ticket')}</span>;
       case 'pending': return <span className="badge" style={{ background: 'rgba(234, 179, 8, 0.1)', color: '#a16207', border: '1px solid rgba(234, 179, 8, 0.2)' }}>{t('Chờ chia')}</span>;
