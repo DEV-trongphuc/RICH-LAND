@@ -658,7 +658,8 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
 
           const currentPath = window.location.pathname;
           if (currentPath !== '/support-tickets' && currentPath !== '/expenses') {
-            if (ticketsCount > 0 || heldCount > 0 || checkinsCount > 0 || coopsCount > 0 || supportCount > 0 || expensesCount > 0 || salesPendingSignCount > 0) {
+            const totalPending = Number(ticketsCount || 0) + Number(heldCount || 0) + Number(checkinsCount || 0) + Number(coopsCount || 0) + Number(supportCount || 0) + Number(expensesCount || 0) + Number(salesPendingSignCount || 0);
+            if (totalPending > 0) {
               if (!hasAutoOpenedRef.current) {
                 setIsUnifiedInboxOpen(true);
                 hasAutoOpenedRef.current = true;

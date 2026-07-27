@@ -166,6 +166,33 @@ const RoundsInner = ({ isActive }: { isActive: boolean }) => {
     }
   };
 
+  useEffect(() => {
+    const hasCooldowns = Object.values(roundCooldowns).some((cool: any) => cool && cool.on_cooldown && cool.remaining_seconds > 0);
+    if (!hasCooldowns) return;
+
+    const interval = setInterval(() => {
+      setRoundCooldowns((prev: any) => {
+        const next = { ...prev };
+        let changed = false;
+        Object.keys(next).forEach((key) => {
+          const cool = next[key];
+          if (cool && cool.on_cooldown && cool.remaining_seconds > 0) {
+            const nextSec = cool.remaining_seconds - 1;
+            next[key] = {
+              ...cool,
+              remaining_seconds: nextSec,
+              on_cooldown: nextSec > 0
+            };
+            changed = true;
+          }
+        });
+        return changed ? next : prev;
+      });
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [roundCooldowns]);
+
   const [searchUser, setSearchUser] = useState('');
   const [showDropdown, setShowDropdown] = useState(false);
   const [showStartSaleDropdown, setShowStartSaleDropdown] = useState(false);
@@ -2020,7 +2047,10 @@ const RoundsInner = ({ isActive }: { isActive: boolean }) => {
                                         {(() => {
                                           const cool = roundCooldowns[user.id];
                                           if (cool && cool.on_cooldown) {
-                                            const mins = Math.ceil(cool.remaining_seconds / 60);
+                                            const totalSecs = cool.remaining_seconds;
+                                            const mins = Math.floor(totalSecs / 60);
+                                            const secs = totalSecs % 60;
+                                            const timeText = mins > 0 ? `${mins} phút ${secs}s` : `${secs}s`;
                                             return (
                                               <span style={{ 
                                                 fontSize: '0.7rem', 
@@ -2033,7 +2063,7 @@ const RoundsInner = ({ isActive }: { isActive: boolean }) => {
                                                 alignItems: 'center',
                                                 gap: 4
                                               }}>
-                                                {t("Đang đếm chờ ({mins}p)").replace('{mins}', String(mins))}
+                                                {t("Đang chờ {time}").replace('{time}', timeText)}
                                               </span>
                                             );
                                           }
