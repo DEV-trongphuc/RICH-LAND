@@ -159,10 +159,14 @@ export const Header = ({
         setNotifications(prev => [...prev]);
         if (permission === 'granted') {
           toast.success('Đã kích hoạt thông báo trình duyệt thành công!');
-          new Notification('RICH LAND', {
-            body: 'Bạn đã kích hoạt nhận thông báo trình duyệt thành công.',
-            icon: '/LOGO.jpg'
-          });
+          try {
+            new Notification('RICH LAND', {
+              body: 'Bạn đã kích hoạt nhận thông báo trình duyệt thành công.',
+              icon: '/LOGO.jpg'
+            });
+          } catch (err) {
+            console.warn('Desktop notifications not supported:', err);
+          }
         } else {
           toast('Bạn đã từ chối nhận thông báo trình duyệt.', { icon: '⚠️' });
         }
@@ -190,10 +194,14 @@ export const Header = ({
       prevPendingInboxCount.current = pendingInboxCount;
       if (prev !== undefined && pendingInboxCount > prev) {
         if ('Notification' in window && Notification.permission === 'granted') {
-          new Notification('Hộp kiểm duyệt RICH LAND', {
-            body: `Có dữ liệu mới đang chờ xử lý trong Hộp kiểm duyệt (${pendingInboxCount} yêu cầu).`,
-            icon: '/LOGO.jpg'
-          });
+          try {
+            new Notification('Hộp kiểm duyệt RICH LAND', {
+              body: `Có dữ liệu mới đang chờ xử lý trong Hộp kiểm duyệt (${pendingInboxCount} yêu cầu).`,
+              icon: '/LOGO.jpg'
+            });
+          } catch (err) {
+            console.warn('Desktop notifications not supported:', err);
+          }
         }
         if (!isWindowFocused.current) {
           startFlashingTitle(unreadCount + pendingInboxCount);
@@ -258,10 +266,14 @@ export const Header = ({
           if (newUnreadCount > 0 && hasNewUnread && latestNotif) {
             // Trigger desktop notification
             if ('Notification' in window && Notification.permission === 'granted') {
-              new Notification(latestNotif.title || 'Thông báo RICH LAND', {
-                body: latestNotif.body || 'Bạn có thông báo mới.',
-                icon: '/LOGO.jpg'
-              });
+              try {
+                new Notification(latestNotif.title || 'Thông báo RICH LAND', {
+                  body: latestNotif.body || 'Bạn có thông báo mới.',
+                  icon: '/LOGO.jpg'
+                });
+              } catch (err) {
+                console.warn('Desktop notifications not supported:', err);
+              }
             }
             
             // Dispatch event for auto-refreshing other active components
