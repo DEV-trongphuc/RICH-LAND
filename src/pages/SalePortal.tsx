@@ -256,6 +256,121 @@ const GrabLeadOfferModal: React.FC<{
   );
 };
 
+const GrabLeadOfferWidget: React.FC<{
+  offer: any;
+  onClaim: (leadId: number) => Promise<void>;
+  t: (key: string) => string;
+  theme: string;
+}> = ({ offer, onClaim, t, theme }) => {
+  const [timeLeft, setTimeLeft] = useState(offer.seconds_remaining);
+  const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    setTimeLeft(offer.seconds_remaining);
+  }, [offer]);
+
+  useEffect(() => {
+    if (timeLeft <= 0) return;
+    const interval = setInterval(() => {
+      setTimeLeft((prev: number) => prev - 1);
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [timeLeft]);
+
+  const handleClaimClick = async () => {
+    if (submitting) return;
+    setSubmitting(true);
+    await onClaim(offer.lead_id);
+    setSubmitting(false);
+  };
+
+  if (timeLeft <= 0) return null;
+
+  return (
+    <div style={{
+      background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.08) 0%, rgba(239, 68, 68, 0.08) 100%)',
+      border: '2px dashed #f59e0b',
+      borderRadius: '16px',
+      padding: '1.25rem 1.5rem',
+      marginBottom: '1rem',
+      boxShadow: '0 4px 20px rgba(245, 158, 11, 0.1)',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: '1.5rem',
+      flexWrap: 'wrap',
+      position: 'relative',
+      overflow: 'hidden',
+      animation: 'pulse-light 2s infinite'
+    }}>
+      <style>{`
+        @keyframes pulse-light {
+          0% { box-shadow: 0 4px 20px rgba(245, 158, 11, 0.1); border-color: rgba(245, 158, 11, 0.7); }
+          50% { box-shadow: 0 4px 25px rgba(245, 158, 11, 0.25); border-color: rgba(245, 158, 11, 1); }
+          100% { box-shadow: 0 4px 20px rgba(245, 158, 11, 0.1); border-color: rgba(245, 158, 11, 0.7); }
+        }
+      `}</style>
+
+      <div style={{ display: 'flex', alignItems: 'center', gap: '14px', minWidth: '280px', flex: 1 }}>
+        <div style={{
+          width: 44,
+          height: 44,
+          borderRadius: '12px',
+          background: 'linear-gradient(135deg, #f59e0b 0%, #ef4444 100%)',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          color: '#fff',
+          boxShadow: '0 4px 12px rgba(245, 158, 11, 0.3)',
+          flexShrink: 0
+        }}>
+          <Zap size={20} style={{ fill: '#ffffff' }} />
+        </div>
+        <div>
+          <h3 style={{ fontSize: '0.95rem', fontWeight: 800, color: 'var(--color-text)', margin: 0 }}>
+            {t("TRANH NHẬN DATA NHANH")}
+          </h3>
+          <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', margin: '4px 0 0', fontWeight: 500 }}>
+            {t("Vòng:")} <strong style={{ color: '#d97706' }}>{offer.round_name || 'Vòng tranh nhận'}</strong>
+            <span style={{ margin: '0 8px', color: 'var(--color-border)' }}>|</span>
+            {t("Thời gian còn lại:")} <strong style={{ color: '#ef4444', fontFamily: 'monospace', fontSize: '0.85rem' }}>{timeLeft}s</strong>
+          </p>
+        </div>
+      </div>
+
+      <button
+        onClick={handleClaimClick}
+        disabled={submitting}
+        style={{
+          background: 'linear-gradient(135deg, #f59e0b 0%, #ef4444 100%)',
+          color: '#fff',
+          border: 'none',
+          padding: '10px 20px',
+          borderRadius: '10px',
+          fontSize: '0.85rem',
+          fontWeight: 800,
+          cursor: 'pointer',
+          boxShadow: '0 4px 12px rgba(245, 158, 11, 0.25)',
+          transition: 'all 0.2s',
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: '6px',
+          marginLeft: 'auto'
+        }}
+        onMouseEnter={e => {
+          if (!submitting) e.currentTarget.style.transform = 'translateY(-1px)';
+        }}
+        onMouseLeave={e => {
+          e.currentTarget.style.transform = 'none';
+        }}
+      >
+        <Zap size={14} style={{ fill: '#ffffff' }} />
+        <span>{submitting ? t("Đang nhận...") : t("TRANH NHẬN NGAY")}</span>
+      </button>
+    </div>
+  );
+};
+
 const DAY_LABELS: { [key: string]: string } = {
   "1": "Thứ 2",
   "2": "Thứ 3",
@@ -5439,6 +5554,17 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
             })}
           </div>
         )}
+
+        {/* Grab Lead Workspace Widget */}
+        {activeOffers.map((offer: any) => (
+          <GrabLeadOfferWidget
+            key={offer.offer_id}
+            offer={offer}
+            onClaim={handleGrabLead}
+            t={t}
+            theme={theme}
+          />
+        ))}
 
         {/* Unified Alert & Suggestion Center */}
         {(() => {

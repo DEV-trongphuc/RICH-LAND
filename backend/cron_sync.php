@@ -1462,7 +1462,7 @@ if (!function_exists('recallExpiredGrabLeads')) {
                 $attRes = $conn->query("SELECT COUNT(*) as cnt FROM distribution_logs WHERE lead_id = $leadId AND status = 'expired'");
                 $attempts = $attRes ? (int)$attRes->fetch_assoc()['cnt'] : 0;
                 
-                if ($attempts >= $maxAttempts) {
+                if (($attempts + 1) >= $maxAttempts) {
                     $fallbackToDatabank = isset($row['grab_fallback_to_databank']) ? (int)$row['grab_fallback_to_databank'] : 0;
                     
                     if ($fallbackToDatabank === 1) {
