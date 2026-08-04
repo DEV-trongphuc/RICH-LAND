@@ -3,15 +3,6 @@ class ActivityController {
     private PDO $db;
     public function __construct(PDO $db) { 
         $this->db = $db; 
-        try {
-            $this->db->exec("ALTER TABLE activities ADD COLUMN contact_id INT NULL AFTER related_id");
-        } catch (Exception $e) {}
-        try {
-            $this->db->exec("ALTER TABLE activity_comments ADD COLUMN parent_id INT NULL DEFAULT NULL");
-        } catch (Exception $e) {}
-        try {
-            $this->db->exec("ALTER TABLE activity_comments ADD COLUMN subtask_id VARCHAR(255) NULL DEFAULT NULL");
-        } catch (Exception $e) {}
     }
 
     private function getFirstImageUrl(array $activity): ?string {

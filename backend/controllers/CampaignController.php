@@ -6,62 +6,6 @@ class CampaignController {
 
     public function __construct(PDO $db) {
         $this->db = $db;
-        try {
-            $this->db->exec("
-                CREATE TABLE IF NOT EXISTS marketing_campaigns (
-                    id INT AUTO_INCREMENT PRIMARY KEY,
-                    tenant_id INT NOT NULL DEFAULT 1,
-                    name VARCHAR(255) NOT NULL,
-                    description TEXT DEFAULT NULL,
-                    status VARCHAR(50) DEFAULT 'active',
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-            ");
-            
-            try {
-                $this->db->exec("ALTER TABLE marketing_campaigns ADD COLUMN start_date DATE DEFAULT NULL");
-            } catch (Exception $e) {}
-            try {
-                $this->db->exec("ALTER TABLE marketing_campaigns ADD COLUMN end_date DATE DEFAULT NULL");
-            } catch (Exception $e) {}
-            try {
-                $this->db->exec("ALTER TABLE marketing_campaigns ADD COLUMN project_ids TEXT NULL");
-            } catch (Exception $e) {}
-            try {
-                $this->db->exec("ALTER TABLE marketing_campaigns ADD COLUMN project_id INT NULL DEFAULT NULL");
-            } catch (Exception $e) {}
-            try {
-                $this->db->exec("ALTER TABLE marketing_campaigns ADD COLUMN user_ids TEXT NULL");
-            } catch (Exception $e) {}
-            try {
-                $this->db->exec("ALTER TABLE marketing_campaigns ADD COLUMN manager_ids TEXT NULL");
-            } catch (Exception $e) {}
-            try {
-                $this->db->exec("ALTER TABLE marketing_campaigns ADD COLUMN document_ids TEXT NULL");
-            } catch (Exception $e) {}
-            try {
-                $this->db->exec("ALTER TABLE marketing_campaigns ADD COLUMN folder_path VARCHAR(500) DEFAULT NULL");
-            } catch (Exception $e) {}
-            try {
-                $this->db->exec("ALTER TABLE marketing_campaigns ADD COLUMN created_by INT DEFAULT NULL");
-            } catch (Exception $e) {}
-            try {
-                $this->db->exec("ALTER TABLE marketing_campaigns ADD COLUMN reference_url VARCHAR(500) DEFAULT NULL");
-            } catch (Exception $e) {}
-
-            // Delete mock campaigns if they exist to keep only production/user data
-            $this->db->exec("
-                DELETE FROM marketing_campaigns 
-                WHERE name IN (
-                    'Chiến dịch Mở bán Q1 2026', 
-                    'Facebook Lead Ads - HCMC', 
-                    'Google Search - Căn hộ cao cấp', 
-                    'TikTok Ads - Biệt thự nghỉ dưỡng', 
-                    'Chiến dịch Email & Inbound M2'
-                ) OR description = 'Chiến dịch marketing chạy quảng cáo thu lead phân phối về cho các dự án bất động sản.';
-            ");
-        } catch (Exception $e) {}
     }
 
     public function index(array $auth): void {

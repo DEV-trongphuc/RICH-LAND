@@ -5,12 +5,6 @@ class FileCategoryController {
 
     public function __construct(PDO $db) {
         $this->db = $db;
-        try {
-            $this->db->exec("ALTER TABLE file_categories ADD COLUMN created_by INT NULL");
-        } catch (Exception $e) {}
-        try {
-            $this->db->exec("ALTER TABLE file_categories ADD COLUMN visibility VARCHAR(50) DEFAULT 'shared'");
-        } catch (Exception $e) {}
     }
 
     public function index(array $auth): void {

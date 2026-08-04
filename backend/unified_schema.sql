@@ -1272,6 +1272,91 @@ CREATE TABLE IF NOT EXISTS `sync_queue` (
   `updated_at` datetime DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- Table: user_notification_settings
+CREATE TABLE IF NOT EXISTS `user_notification_settings` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `user_id` int(11) NOT NULL,
+  `tenant_id` int(11) NOT NULL,
+  `email_warning` tinyint(1) DEFAULT 1,
+  `email_mention` tinyint(1) DEFAULT 1,
+  `email_approval_request` tinyint(1) DEFAULT 1,
+  `email_project_document` tinyint(1) DEFAULT 0,
+  `email_project_comment` tinyint(1) DEFAULT 0,
+  `email_project_roster` tinyint(1) DEFAULT 0,
+  `email_info` tinyint(1) DEFAULT 0,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  `matrix_config` longtext DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `idx_user_tenant` (`user_id`,`tenant_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Table: check_ins
+CREATE TABLE IF NOT EXISTS `check_ins` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `user_id` int(11) NOT NULL,
+  `check_in_date` date NOT NULL,
+  `check_in_time` time NOT NULL,
+  `late_minutes` int(11) DEFAULT 0 COMMENT 'Số phút đi trễ',
+  `selfie_url` varchar(255) DEFAULT NULL,
+  `status` enum('approved','pending_approval','rejected') NOT NULL DEFAULT 'approved',
+  `reason` varchar(255) DEFAULT NULL,
+  `sla_notified_at` datetime DEFAULT NULL,
+  `admin_note` varchar(255) DEFAULT NULL COMMENT 'Ghi chú phê duyệt từ Admin/Manager',
+  `check_out_time` datetime DEFAULT NULL,
+  `early_minutes` int(11) DEFAULT 0,
+  `check_out_status` varchar(50) DEFAULT NULL,
+  `latitude` varchar(50) DEFAULT NULL COMMENT 'Vĩ độ check-in',
+  `longitude` varchar(50) DEFAULT NULL COMMENT 'Kinh độ check-in',
+  `location_address` varchar(500) DEFAULT NULL COMMENT 'Địa chỉ check-in',
+  `checkout_latitude` varchar(50) DEFAULT NULL COMMENT 'Vĩ độ check-out',
+  `checkout_longitude` varchar(50) DEFAULT NULL COMMENT 'Kinh độ check-out',
+  `checkout_location_address` varchar(500) DEFAULT NULL COMMENT 'Địa chỉ check-out',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `user_date` (`user_id`,`check_in_date`),
+  CONSTRAINT `check_ins_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Table: marketing_campaigns
+CREATE TABLE IF NOT EXISTS `marketing_campaigns` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `tenant_id` int(11) NOT NULL DEFAULT 1,
+  `project_id` int(11) DEFAULT NULL,
+  `name` varchar(255) NOT NULL,
+  `description` text DEFAULT NULL,
+  `status` varchar(50) DEFAULT 'active',
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  `reference_url` varchar(500) DEFAULT NULL,
+  `start_date` date DEFAULT NULL,
+  `end_date` date DEFAULT NULL,
+  `project_ids` text DEFAULT NULL,
+  `user_ids` text DEFAULT NULL,
+  `manager_ids` text DEFAULT NULL,
+  `document_ids` text DEFAULT NULL,
+  `folder_path` varchar(500) DEFAULT NULL,
+  `created_by` int(11) DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `fk_mc_project_id` (`project_id`),
+  CONSTRAINT `fk_mc_project_id` FOREIGN KEY (`project_id`) REFERENCES `projects` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Table: comments
+CREATE TABLE IF NOT EXISTS `comments` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `tenant_id` int(11) NOT NULL DEFAULT 1,
+  `entity_type` varchar(50) NOT NULL,
+  `entity_id` int(11) NOT NULL,
+  `user_id` int(11) NOT NULL,
+  `body` text NOT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `parent_id` int(11) DEFAULT NULL,
+  `attachments` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL CHECK (json_valid(`attachments`)),
+  PRIMARY KEY (`id`),
+  KEY `user_id` (`user_id`),
+  CONSTRAINT `comments_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 ALTER TABLE `activities` ADD PRIMARY KEY (`id`),
   ADD KEY `idx_activity_tenant` (`tenant_id`),
   ADD KEY `idx_activity_user` (`user_id`),

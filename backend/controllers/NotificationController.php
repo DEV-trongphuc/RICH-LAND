@@ -89,10 +89,7 @@ class NotificationController {
     }
 
     public function getSettings(array $auth): void {
-        // Ensure matrix_config column exists in user_notification_settings table
-        try {
-            $this->db->exec("ALTER TABLE user_notification_settings ADD COLUMN matrix_config LONGTEXT NULL");
-        } catch (\Throwable $e) {}
+
 
         // Fetch user account linking information safely
         $userInfo = ['email' => '', 'zalo_chat_id' => '', 'telegram_chat_id' => ''];
@@ -197,10 +194,7 @@ class NotificationController {
     public function updateSettings(array $auth): void {
         $b = getBody();
 
-        // Ensure matrix_config column exists in user_notification_settings table
-        try {
-            $this->db->exec("ALTER TABLE user_notification_settings ADD COLUMN matrix_config LONGTEXT NULL");
-        } catch (\Throwable $e) {}
+
 
         // Fetch existing settings row
         $stmtEx = $this->db->prepare("SELECT * FROM user_notification_settings WHERE user_id = ? AND tenant_id = ? LIMIT 1");

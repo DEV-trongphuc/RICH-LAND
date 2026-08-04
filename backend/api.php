@@ -18285,7 +18285,19 @@ switch ($action) {
             $stmtLead->close();
             $leadId = $lRow ? (int)$lRow['id'] : null;
 
-            if ($leadId > 0) {
+            if (empty($leadId)) {
+                // If there's no lead record for this person (e.g. deleted or direct person record), create one to ensure data integrity
+                $stmtLeadCreate = $conn->prepare("
+                    INSERT INTO leads (person_id, name, phone, email, source, type, assigned_to, last_assigned_at, is_accepted, accepted_at, status)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), 1, NOW(), 'active')
+                ");
+                $leadSource = !empty($sourceVal) ? $sourceVal : 'databank';
+                $leadType = !empty($typeVal) ? $typeVal : 'neutral';
+                $stmtLeadCreate->bind_param("isssssi", $personId, $fullName, $person['phone'], $person['email'], $leadSource, $leadType, $saleConsultantId);
+                $stmtLeadCreate->execute();
+                $leadId = (int)$conn->insert_id;
+                $stmtLeadCreate->close();
+            } else {
                 $stmtLeadClaim = $conn->prepare("UPDATE leads SET assigned_to = ?, last_assigned_at = NOW() WHERE id = ?");
                 $stmtLeadClaim->bind_param("ii", $saleConsultantId, $leadId);
                 $stmtLeadClaim->execute();
@@ -18636,6 +18648,26 @@ switch ($action) {
             $realL = $stmtReal->get_result()->fetch_assoc();
             $stmtReal->close();
             $realLeadId = $realL ? (int)$realL['id'] : null;
+
+            if (empty($realLeadId)) {
+                // Fetch person details to insert a new lead
+                $stmtP = $conn->prepare("SELECT * FROM persons WHERE id = ? LIMIT 1");
+                $stmtP->bind_param("i", $personId);
+                $stmtP->execute();
+                $personRow = $stmtP->get_result()->fetch_assoc();
+                $stmtP->close();
+                
+                if ($personRow) {
+                    $stmtLeadCreate = $conn->prepare("
+                        INSERT INTO leads (person_id, name, phone, email, source, type, assigned_to, last_assigned_at, is_accepted, accepted_at, status)
+                        VALUES (?, ?, ?, ?, 'databank', 'neutral', NULL, NULL, 0, NULL, 'unassigned')
+                    ");
+                    $stmtLeadCreate->bind_param("isss", $personId, $personRow['full_name'], $personRow['phone'], $personRow['email']);
+                    $stmtLeadCreate->execute();
+                    $realLeadId = (int)$conn->insert_id;
+                    $stmtLeadCreate->close();
+                }
+            }
 
               // Check status of contacts for this person to prevent releasing active/deposit clients
               $stmtStatus = $conn->prepare("SELECT pipeline_status FROM contacts WHERE person_id = ? AND deleted_at IS NULL LIMIT 1");

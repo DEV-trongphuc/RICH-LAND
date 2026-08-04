@@ -3,15 +3,6 @@ class CloudFileController {
     private PDO $db;
     public function __construct(PDO $db) { 
         $this->db = $db; 
-        try {
-            $this->db->exec("ALTER TABLE cloud_files ADD COLUMN project_id INT NULL");
-        } catch (Exception $e) {}
-        try {
-            $this->db->exec("ALTER TABLE cloud_files ADD COLUMN contact_id INT NULL");
-        } catch (Exception $e) {}
-        try {
-            $this->db->exec("ALTER TABLE cloud_files ADD COLUMN campaign_id INT NULL");
-        } catch (Exception $e) {}
     }
 
     public function index(array $auth): void {

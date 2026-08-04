@@ -6,63 +6,6 @@ class ProjectController {
 
     public function __construct(PDO $db) {
         $this->db = $db;
-        try {
-            $this->db->exec("ALTER TABLE projects ADD COLUMN document_ids TEXT NULL");
-        } catch (Exception $e) {}
-        try {
-            $this->db->exec("ALTER TABLE projects ADD COLUMN campaign_ids TEXT NULL");
-        } catch (Exception $e) {}
-        try {
-            $this->db->exec("ALTER TABLE projects ADD COLUMN progress_percent INT DEFAULT 0");
-        } catch (Exception $e) {}
-        try {
-            $this->db->exec("ALTER TABLE projects ADD COLUMN construction_status VARCHAR(100) DEFAULT 'Chưa khởi công'");
-        } catch (Exception $e) {}
-        try {
-            $this->db->exec("ALTER TABLE projects ADD COLUMN legal_status VARCHAR(255) DEFAULT 'Đang hoàn thiện pháp lý'");
-        } catch (Exception $e) {}
-        try {
-            $this->db->exec("ALTER TABLE projects ADD COLUMN scale_block_count INT DEFAULT 1");
-        } catch (Exception $e) {}
-        try {
-            $this->db->exec("ALTER TABLE projects ADD COLUMN scale_unit_count INT DEFAULT 100");
-        } catch (Exception $e) {}
-        try {
-            $this->db->exec("ALTER TABLE projects ADD COLUMN handover_year INT DEFAULT 2026");
-        } catch (Exception $e) {}
-        try {
-            $this->db->exec("ALTER TABLE projects ADD COLUMN manager_ids TEXT NULL");
-        } catch (Exception $e) {}
-        try {
-            $this->db->exec("ALTER TABLE projects ADD COLUMN folder_path VARCHAR(500) DEFAULT NULL");
-        } catch (Exception $e) {}
-        try {
-            $this->db->exec("ALTER TABLE projects ADD COLUMN created_by INT DEFAULT NULL");
-        } catch (Exception $e) {}
-        try {
-            $this->db->exec("ALTER TABLE projects ADD COLUMN campaign_sharing_mode VARCHAR(50) DEFAULT 'independent'");
-        } catch (Exception $e) {}
-        try {
-            $this->db->exec("
-                CREATE TABLE IF NOT EXISTS comments (
-                    id INT AUTO_INCREMENT PRIMARY KEY,
-                    tenant_id INT NOT NULL DEFAULT 1,
-                    entity_type VARCHAR(50) NOT NULL,
-                    entity_id INT NOT NULL,
-                    user_id INT NOT NULL,
-                    body TEXT NOT NULL,
-                    parent_id INT NULL DEFAULT NULL,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
-                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-            ");
-        } catch (Exception $e) {}
-        try {
-            $this->db->exec("ALTER TABLE comments ADD COLUMN parent_id INT NULL DEFAULT NULL");
-        } catch (Exception $e) {}
-        try {
-            $this->db->exec("ALTER TABLE comments ADD COLUMN attachments JSON NULL DEFAULT NULL");
-        } catch (Exception $e) {}
     }
 
     private function requireProjectAccess(array $auth, int $projectId): void {

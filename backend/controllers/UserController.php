@@ -3,27 +3,6 @@ class UserController {
     private PDO $db;
     public function __construct(PDO $db) { 
         $this->db = $db; 
-        try {
-            $this->db->exec("ALTER TABLE users ADD COLUMN dob DATE NULL");
-        } catch (Exception $e) {}
-        try {
-            $this->db->exec("ALTER TABLE users ADD COLUMN gender VARCHAR(20) NULL");
-        } catch (Exception $e) {}
-        try {
-            $this->db->exec("ALTER TABLE users ADD COLUMN citizen_id VARCHAR(50) NULL");
-        } catch (Exception $e) {}
-        try {
-            $this->db->exec("ALTER TABLE users ADD COLUMN address TEXT NULL");
-        } catch (Exception $e) {}
-        try {
-            $this->db->exec("ALTER TABLE users ADD COLUMN bank_name VARCHAR(100) NULL");
-        } catch (Exception $e) {}
-        try {
-            $this->db->exec("ALTER TABLE users ADD COLUMN bank_account VARCHAR(100) NULL");
-        } catch (Exception $e) {}
-        try {
-            $this->db->exec("ALTER TABLE users ADD COLUMN permissions_json LONGTEXT NULL");
-        } catch (Exception $e) {}
     }
 
     public function index(array $auth): void {

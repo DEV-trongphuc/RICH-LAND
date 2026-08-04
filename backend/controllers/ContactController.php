@@ -5,18 +5,6 @@ class ContactController {
     private PDO $db;
     public function __construct(PDO $db) { 
         $this->db = $db; 
-        try {
-            $this->db->exec("ALTER TABLE contacts ADD COLUMN not_lead_proposed TINYINT(1) DEFAULT 0");
-        } catch (Exception $e) {}
-        try {
-            $this->db->exec("ALTER TABLE contacts ADD COLUMN not_lead_proposed_by INT(11) NULL");
-        } catch (Exception $e) {}
-        try {
-            $this->db->exec("ALTER TABLE contacts ADD COLUMN not_lead_proposed_at TIMESTAMP NULL");
-        } catch (Exception $e) {}
-        try {
-            $this->db->exec("ALTER TABLE contacts ADD COLUMN campaign_id INT(11) NULL");
-        } catch (Exception $e) {}
     }
 
     public function index(array $auth): void {
