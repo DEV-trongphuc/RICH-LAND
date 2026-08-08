@@ -155,7 +155,7 @@ class TeamController
         }
 
         // Fetch members
-        $mStmt = $this->db->prepare("SELECT id, name, email, status, avatar FROM consultants WHERE team_id = ?");
+        $mStmt = $this->db->prepare("SELECT id, name, email, status, avatar, vacation_mode, leave_start, leave_end FROM consultants WHERE team_id = ?");
         $mStmt->execute([$id]);
         $row['members'] = $mStmt->fetchAll();
 

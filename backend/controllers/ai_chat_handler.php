@@ -437,6 +437,10 @@ try {
     $currentTurn = 0;
     $replyText = '';
 
+    $accumulatedPromptTokens = 0;
+    $accumulatedCompletionTokens = 0;
+    $accumulatedTotalTokens = 0;
+
     while ($currentTurn < $maxTurns) {
         $payload = [
             'contents' => $contents,
@@ -494,6 +498,14 @@ try {
         }
 
         $resJson = json_decode($response, true);
+
+        // Accumulate Gemini token usage
+        if (isset($resJson['usageMetadata'])) {
+            $accumulatedPromptTokens += (int) ($resJson['usageMetadata']['promptTokenCount'] ?? 0);
+            $accumulatedCompletionTokens += (int) ($resJson['usageMetadata']['candidatesTokenCount'] ?? 0);
+            $accumulatedTotalTokens += (int) ($resJson['usageMetadata']['totalTokenCount'] ?? 0);
+        }
+
         $candidate = $resJson['candidates'][0] ?? null;
         if (!$candidate) {
             $replyText = "Không nhận được phản hồi từ AI.";
@@ -563,6 +575,16 @@ try {
 
     if (empty($replyText)) {
         $replyText = "Tôi không nhận được câu trả lời từ AI hoặc quá trình xử lý quá hạn. Vui lòng thử lại.";
+    }
+
+    // Log the accumulated usage in admin_logs
+    if ($accumulatedTotalTokens > 0 && isset($decodedUser['id'])) {
+        logAdminAction($conn, (int)$decodedUser['id'], 'AI_CHAT_TOKEN_USAGE', [
+            'prompt_tokens' => $accumulatedPromptTokens,
+            'completion_tokens' => $accumulatedCompletionTokens,
+            'total_tokens' => $accumulatedTotalTokens,
+            'message_length' => mb_strlen($message)
+        ]);
     }
 
     echo json_encode([

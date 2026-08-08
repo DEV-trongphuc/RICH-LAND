@@ -1516,7 +1516,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
       'company_id', 'company_name', 'owner_id', 'first_name', 'last_name', 'email', 'phone',
       'mobile', 'job_title', 'department', 'source', 'status', 'notes',
       'birthday', 'address', 'city', 'ward', 'expected_revenue', 'win_probability', 'gender', 'zalo_link', 'fb_link', 'customer_type', 'industry', 'budget_range',
-      'project_id', 'campaign_id', 'ttl1_completed', 'ttl1_data'
+      'project_id', 'campaign_id', 'ttl1_completed', 'ttl1_data', 'collaborator_ids', 'stage_id', 'pipeline_status', 'temperature', 'suggested_temperature'
     ];
 
     const cleanObject = (obj: any) => {

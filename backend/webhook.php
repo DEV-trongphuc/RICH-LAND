@@ -417,6 +417,63 @@ if ($dupCheckMonths <= 0) {
     $dupCheckMonths = 6;
 }
 
+$isFacebookLead = false;
+$isGoogleLead = false;
+if (!empty($source)) {
+    $srcLower = strtolower($source);
+    if ($srcLower === 'facebook' || $srcLower === 'fb' || strpos($srcLower, 'facebook') !== false || strpos($srcLower, 'fb') !== false || $srcLower === 'messenger' || $srcLower === 'mess') {
+        $isFacebookLead = true;
+    }
+    if ($srcLower === 'google' || $srcLower === 'google_lp' || strpos($srcLower, 'google') !== false) {
+        $isGoogleLead = true;
+    }
+}
+
+$gopGoogleLeadId = null;
+if ($isGoogleLead && $crmCheckResult['leadExists'] && !empty($phone)) {
+    $todayStart = date('Y-m-d 00:00:00');
+    $todayEnd = date('Y-m-d 23:59:59');
+    $chkStmt = $conn->prepare("SELECT id FROM leads WHERE phone = ? AND connection_id = ? AND created_at BETWEEN ? AND ? LIMIT 1");
+    if ($chkStmt) {
+        $chkStmt->bind_param("siss", $phone, $connectionId, $todayStart, $todayEnd);
+        $chkStmt->execute();
+        $chkRes = $chkStmt->get_result()->fetch_assoc();
+        $chkStmt->close();
+        if ($chkRes) {
+            $gopGoogleLeadId = (int)$chkRes['id'];
+        }
+    }
+}
+
+if ($gopGoogleLeadId) {
+    $conn->begin_transaction();
+    try {
+        $noteStmt = $conn->prepare("SELECT note FROM leads WHERE id = ?");
+        $noteStmt->bind_param("i", $gopGoogleLeadId);
+        $noteStmt->execute();
+        $oldNote = $noteStmt->get_result()->fetch_assoc()['note'] ?? '';
+        $noteStmt->close();
+        
+        $newNote = $oldNote;
+        if (!empty($note)) {
+            $newNote = !empty($newNote) ? $newNote . "\n---\n" . $note : $note;
+        }
+        
+        $updStmt = $conn->prepare("UPDATE leads SET note = ?, last_interaction_date = NOW() WHERE id = ?");
+        $updStmt->bind_param("si", $newNote, $gopGoogleLeadId);
+        $updStmt->execute();
+        $updStmt->close();
+        
+        $conn->commit();
+        triggerTwoWaySync($conn, $gopGoogleLeadId);
+    } catch (Exception $e) {
+        $conn->rollback();
+    }
+    echo json_encode(["success" => true, "status" => "gop_lead", "message" => "Gộp lead Google cùng ngày thành công."]);
+    releaseAdvisoryLock($conn, $lockKey, $lockReleased);
+    exit();
+}
+
 if ($isSilent == 1) {
     $assignedToId = null;
     if ($syncSaleperson == 1) {
@@ -435,7 +492,7 @@ if ($isSilent == 1) {
     
     $conn->begin_transaction();
     try {
-        if ($crmCheckResult['leadExists']) {
+        if ($crmCheckResult['leadExists'] && !$isFacebookLead) {
             $ownerId = !empty($crmCheckResult['assignedTo']) ? $crmCheckResult['assignedTo'] : $assignedToId;
             $leadId = updateLead($conn, $phone, $email, $ownerId, $source, $type, $note, $connectionId, null, $name, false, true);
         } else {
@@ -547,8 +604,11 @@ if ($crmCheckResult['isDuplicate'] && $crmCheckResult['monthsSinceLastInteractio
     $assignedTo = $crmCheckResult['assignedTo'];
     $conn->begin_transaction();
     try {
-        // Update last interaction
-        $leadId = updateLead($conn, $phone, $email, $assignedTo, $source, $type, $note, $connectionId, null, $name);
+        if ($isFacebookLead) {
+            $leadId = insertLead($conn, $data, $assignedTo, $phone, $email, $name, $source, $type, $note, $connectionId);
+        } else {
+            $leadId = updateLead($conn, $phone, $email, $assignedTo, $source, $type, $note, $connectionId, null, $name);
+        }
         logDistribution($conn, $leadId, $assignedTo, null, 'reminder', 'Khách cũ đăng ký lại < ' . $dupCheckMonths . ' tháng.', false);
         $conn->commit();
         if (!empty($leadId)) {

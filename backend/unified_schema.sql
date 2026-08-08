@@ -276,7 +276,7 @@ CREATE TABLE IF NOT EXISTS `contacts` (
 CREATE TABLE IF NOT EXISTS `leads` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `person_id` int(11) DEFAULT NULL,
-  `phone` varchar(20) DEFAULT NULL UNIQUE,
+  `phone` varchar(20) DEFAULT NULL,
   `email` varchar(255) DEFAULT NULL,
   `name` varchar(255) DEFAULT NULL,
   `source` varchar(255) DEFAULT NULL,
@@ -307,7 +307,8 @@ CREATE TABLE IF NOT EXISTS `leads` (
   FOREIGN KEY (`person_id`) REFERENCES `persons` (`id`) ON DELETE SET NULL,
   FOREIGN KEY (`assigned_to`) REFERENCES `users` (`id`) ON DELETE SET NULL,
   INDEX `idx_connection_id` (`connection_id`),
-  INDEX `idx_last_interaction_date` (`last_interaction_date`)
+  INDEX `idx_last_interaction_date` (`last_interaction_date`),
+  INDEX `idx_leads_phone` (`phone`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- 9. Table: lead_offers (Module 2 - 2 Minute Timeout Lead Offer Queue)
@@ -1449,7 +1450,8 @@ ALTER TABLE `invoices` ADD PRIMARY KEY (`id`),
   ADD KEY `contact_id` (`contact_id`),
   ADD KEY `idx_inv_tenant` (`tenant_id`),
   ADD KEY `idx_inv_status` (`status`),
-  ADD KEY `idx_invoices_deep_filter` (`tenant_id`,`status`,`paid_at`);
+  ADD KEY `idx_invoices_deep_filter` (`tenant_id`,`status`,`paid_at`),
+  ADD UNIQUE KEY `idx_invoices_invoice_number` (`invoice_number`);
 ALTER TABLE `invoice_items` ADD PRIMARY KEY (`id`),
   ADD KEY `invoice_id` (`invoice_id`),
   ADD KEY `product_id` (`product_id`);
@@ -1694,7 +1696,8 @@ ALTER TABLE `contacts`
   ADD KEY `idx_contacts_status` (`status`),
   ADD KEY `idx_contacts_pipeline_status` (`pipeline_status`),
   ADD KEY `idx_contacts_created_at` (`created_at`),
-  ADD KEY `idx_contacts_deleted_at` (`deleted_at`);
+  ADD KEY `idx_contacts_deleted_at` (`deleted_at`),
+  ADD KEY `idx_contacts_security_expires` (`security_expires_at`);
 
 ALTER TABLE `activities`
   ADD KEY `idx_activities_tenant_user` (`tenant_id`, `user_id`),
@@ -1721,7 +1724,8 @@ ALTER TABLE `lead_offers`
   ADD KEY `idx_lead_offers_user_status` (`user_id`, `status`);
 
 ALTER TABLE `cooperation_slips`
-  ADD KEY `idx_coop_slips_status_created` (`status`, `created_at`);
+  ADD KEY `idx_coop_slips_status_created` (`status`, `created_at`),
+  ADD KEY `idx_coop_deposit_slip` (`deposit_slip_id`);
 
 ALTER TABLE `deposits`
   ADD KEY `idx_deposits_status_created` (`status`, `created_at`);

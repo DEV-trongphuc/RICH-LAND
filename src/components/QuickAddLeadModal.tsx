@@ -21,6 +21,14 @@ const beautifyPhone = (phoneStr: string): string => {
   return cleaned;
 };
 
+const isValidPhone = (phone: string): boolean => {
+  if (!phone) return false;
+  if (phone.startsWith('+')) {
+    return /^\+\d{8,15}$/.test(phone);
+  }
+  return /^(03|05|07|08|09)\d{8}$/.test(phone);
+};
+
 const removeAccents = (str: string): string => {
   return str
     .normalize('NFD')
@@ -1151,6 +1159,12 @@ export const QuickAddLeadModal = () => {
           return;
         }
         
+        if (manualData.phone && !isValidPhone(manualData.phone)) {
+          toast.error(t('Số điện thoại không hợp lệ (Ví dụ: 0912345678)'));
+          setIsSubmittingManual(false);
+          return;
+        }
+        
         const payload = {
           data: manualData,
           override_round_id: distributionMode === 'auto_round' ? previewCons?.round_id : null,
@@ -1181,6 +1195,14 @@ export const QuickAddLeadModal = () => {
       } else {
         if (bulkParsedLeads.length === 0) {
           toast.error(t('Danh sách liên hệ trống'));
+          setIsSubmittingManual(false);
+          return;
+        }
+
+        const invalidLeads = bulkParsedLeads.filter(lead => lead.phone && !isValidPhone(lead.phone));
+        if (invalidLeads.length > 0) {
+          const names = invalidLeads.slice(0, 3).map(l => l.name || t('Ẩn danh')).join(', ');
+          toast.error(t(`Có ${invalidLeads.length} số điện thoại không hợp lệ (ví dụ: ${names}). Vui lòng kiểm tra lại.`));
           setIsSubmittingManual(false);
           return;
         }
@@ -1522,7 +1544,20 @@ export const QuickAddLeadModal = () => {
               </div>
               <div>
                 <label className="form-label" style={{ fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase' }}>{t('Số điện thoại (*)')}</label>
-                <input className="form-input" placeholder="VD: 0912345678" value={manualData.phone} onChange={e => setManualData({ ...manualData, phone: beautifyPhone(e.target.value) })} />
+                <input 
+                  className="form-input" 
+                  placeholder="VD: 0912345678" 
+                  value={manualData.phone} 
+                  onChange={e => setManualData({ ...manualData, phone: beautifyPhone(e.target.value) })}
+                  style={{
+                    borderColor: (manualData.phone && !isValidPhone(manualData.phone)) ? 'var(--color-danger)' : 'var(--color-border)',
+                  }}
+                />
+                {manualData.phone && !isValidPhone(manualData.phone) && (
+                  <div style={{ color: 'var(--color-danger)', fontSize: '0.75rem', marginTop: '4px', fontWeight: 500 }}>
+                    {t('Số điện thoại không hợp lệ (Ví dụ: 0912345678)')}
+                  </div>
+                )}
               </div>
               <div>
                 <label className="form-label" style={{ fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase' }}>Email</label>
@@ -1844,7 +1879,14 @@ export const QuickAddLeadModal = () => {
                       {bulkParsedLeads.map((lead, idx) => (
                         <tr key={idx} style={{ borderBottom: '1px solid var(--color-border)' }}>
                           <td style={{ padding: '8px 12px' }}>{lead.name}</td>
-                          <td style={{ padding: '8px 12px' }}>{lead.phone}</td>
+                          <td style={{ padding: '8px 12px', color: (lead.phone && !isValidPhone(lead.phone)) ? 'var(--color-danger)' : 'inherit' }}>
+                            {lead.phone}
+                            {lead.phone && !isValidPhone(lead.phone) && (
+                              <span style={{ marginLeft: '6px', fontSize: '0.6875rem', background: 'rgba(239, 68, 68, 0.1)', color: 'var(--color-danger)', padding: '2px 6px', borderRadius: '4px', fontWeight: 600 }}>
+                                {t('Không hợp lệ')}
+                              </span>
+                            )}
+                          </td>
                           <td style={{ padding: '8px 12px' }}>{lead.email || '-'}</td>
                           <td style={{ padding: '8px 12px' }}>{lead.source}</td>
                           <td style={{ padding: '8px 12px' }}>{lead.type}</td>

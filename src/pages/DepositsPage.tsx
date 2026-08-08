@@ -340,6 +340,22 @@ export default function DepositsPage() {
       return;
     }
 
+    if (parseFloat(price) <= 0) {
+      addToast('Giá bán phải lớn hơn 0', 'error');
+      return;
+    }
+
+    if (expectedCommission && parseFloat(expectedCommission) < 0) {
+      addToast('Hoa hồng dự kiến không được nhỏ hơn 0', 'error');
+      return;
+    }
+
+    const hasInvalidMilestone = milestonesInput.some(m => !m.amount || parseFloat(m.amount) <= 0);
+    if (hasInvalidMilestone) {
+      addToast('Số tiền các đợt thanh toán phải lớn hơn 0', 'error');
+      return;
+    }
+
     // Verify milestones total sum
     const totalM = milestonesInput.reduce((acc, m) => acc + (parseFloat(m.amount) || 0), 0);
     if (Math.abs(totalM - parseFloat(price)) > 1) {

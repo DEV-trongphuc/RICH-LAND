@@ -278,9 +278,6 @@ class DashboardController {
             
             $invoiceSubFilter = " AND i.created_by = ?";
             $invoiceSubParams[] = $uid;
-            
-            $invoiceShippingFilter = " AND created_by = ?";
-            $invoiceShippingParams[] = $uid;
         } else if ($isManager) {
             $placeholders = implode(',', array_fill(0, count($userIds), '?'));
             
@@ -292,70 +289,73 @@ class DashboardController {
             
             $invoiceSubFilter = " AND i.created_by IN ($placeholders)";
             $invoiceSubParams = $userIds;
-            
-            $invoiceShippingFilter = " AND created_by IN ($placeholders)";
-            $invoiceShippingParams = $userIds;
         }
 
-        // Tạo chuỗi các tháng gần đây
-        $sql = "
-            SELECT 
-                DATE_FORMAT(dates.date, '%m/%Y') as month,
-                (
-                    SELECT COALESCE(SUM(total), 0) 
-                    FROM invoices 
-                    WHERE tenant_id = ? 
-                      AND status = 'paid' 
-                      AND paid_at BETWEEN DATE_FORMAT(dates.date, '%Y-%m-01 00:00:00') AND CONCAT(LAST_DAY(dates.date), ' 23:59:59')
-                      $invoiceFilter
-                ) as revenue,
-                (
-                    (SELECT COALESCE(SUM(amount), 0) 
-                     FROM expenses 
-                     WHERE tenant_id = ? 
-                       AND status = 'approved' 
-                       AND date BETWEEN DATE_FORMAT(dates.date, '%Y-%m-01') AND LAST_DAY(dates.date)
-                       $expenseFilter
-                    ) +
-                    (SELECT COALESCE(SUM(ii.quantity * p.cost), 0)
-                     FROM invoice_items ii 
-                     JOIN products p ON ii.product_id = p.id 
-                     JOIN invoices i ON ii.invoice_id = i.id
-                     WHERE i.tenant_id = ?
-                       AND i.status = 'paid'
-                       AND i.paid_at BETWEEN DATE_FORMAT(dates.date, '%Y-%m-01 00:00:00') AND CONCAT(LAST_DAY(dates.date), ' 23:59:59')
-                       $invoiceSubFilter
-                    ) +
-                    (SELECT COALESCE(SUM(shipping_fee), 0)
-                     FROM invoices
-                     WHERE tenant_id = ?
-                       AND status = 'paid'
-                       AND shipping_customer_pay = 0
-                       AND paid_at BETWEEN DATE_FORMAT(dates.date, '%Y-%m-01 00:00:00') AND CONCAT(LAST_DAY(dates.date), ' 23:59:59')
-                       $invoiceShippingFilter
-                    )
-                ) as cost
-            FROM (
-                SELECT LAST_DAY(CURRENT_DATE) - INTERVAL (a.a + (10 * b.a)) MONTH as date
-                FROM (SELECT 0 as a UNION ALL SELECT 1 UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4 UNION ALL SELECT 5 UNION ALL SELECT 6 UNION ALL SELECT 7 UNION ALL SELECT 8 UNION ALL SELECT 9) as a
-                CROSS JOIN (SELECT 0 as a UNION ALL SELECT 1) as b
-            ) dates
-            WHERE dates.date >= DATE_SUB(LAST_DAY(CURRENT_DATE), INTERVAL ($months - 1) MONTH)
-              AND dates.date <= LAST_DAY(CURRENT_DATE)
-            GROUP BY month
-            ORDER BY dates.date ASC
-        ";
-        
-        $p = array_merge(
-            [$tid], $invoiceParams,
-            [$tid], $expenseParams,
-            [$tid], $invoiceSubParams,
-            [$tid], $invoiceShippingParams
-        );
-        
-        $stmt = $this->db->prepare($sql);
-        $stmt->execute($p);
-        respond(200, $stmt->fetchAll());
+        // Calculate starting date
+        $startDate = date('Y-m-01 00:00:00', strtotime("-".($months - 1)." months"));
+
+        // Query 1: Revenue & Shop Paid Shipping
+        $sqlRev = "SELECT DATE_FORMAT(paid_at, '%m/%Y') as month, 
+                          SUM(total) as revenue, 
+                          SUM(CASE WHEN shipping_customer_pay = 0 THEN shipping_fee ELSE 0 END) as shop_paid_shipping
+                   FROM invoices 
+                   WHERE tenant_id = ? AND status = 'paid' AND paid_at >= ?
+                   $invoiceFilter
+                   GROUP BY month";
+        $pRev = array_merge([$tid, $startDate], $invoiceParams);
+        $revData = $this->queryAll($sqlRev, $pRev);
+
+        // Query 2: Expenses
+        $startDateExp = date('Y-m-01', strtotime("-".($months - 1)." months"));
+        $sqlExp = "SELECT DATE_FORMAT(date, '%m/%Y') as month, SUM(amount) as expenses
+                   FROM expenses 
+                   WHERE tenant_id = ? AND status = 'approved' AND date >= ?
+                   $expenseFilter
+                   GROUP BY month";
+        $pExp = array_merge([$tid, $startDateExp], $expenseParams);
+        $expData = $this->queryAll($sqlExp, $pExp);
+
+        // Query 3: COGS
+        $sqlCogs = "SELECT DATE_FORMAT(i.paid_at, '%m/%Y') as month, SUM(ii.quantity * p.cost) as cogs
+                    FROM invoice_items ii 
+                    JOIN products p ON ii.product_id = p.id 
+                    JOIN invoices i ON ii.invoice_id = i.id
+                    WHERE i.tenant_id = ? AND i.status = 'paid' AND i.paid_at >= ?
+                    $invoiceSubFilter
+                    GROUP BY month";
+        $pCogs = array_merge([$tid, $startDate], $invoiceSubParams);
+        $cogsData = $this->queryAll($sqlCogs, $pCogs);
+
+        // Map data in PHP
+        $chart = [];
+        for ($i = $months - 1; $i >= 0; $i--) {
+            $mLabel = date('m/Y', strtotime("-$i months"));
+            $chart[$mLabel] = ['month' => $mLabel, 'revenue' => 0.0, 'cost' => 0.0];
+        }
+
+        foreach ($revData as $row) {
+            $m = $row['month'];
+            if (isset($chart[$m])) {
+                $chart[$m]['revenue'] += (float)$row['revenue'];
+                $chart[$m]['cost'] += (float)$row['shop_paid_shipping'];
+            }
+        }
+
+        foreach ($expData as $row) {
+            $m = $row['month'];
+            if (isset($chart[$m])) {
+                $chart[$m]['cost'] += (float)$row['expenses'];
+            }
+        }
+
+        foreach ($cogsData as $row) {
+            $m = $row['month'];
+            if (isset($chart[$m])) {
+                $chart[$m]['cost'] += (float)$row['cogs'];
+            }
+        }
+
+        respond(200, array_values($chart));
     }
 
     public function topDeals(array $auth): void {

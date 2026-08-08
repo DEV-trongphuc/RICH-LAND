@@ -110,11 +110,16 @@ class NotificationService {
                     @fastcgi_finish_request();
                 }
 
-                // Recreate database connection inside shutdown function using global configuration variables
+                // Recreate database connection inside shutdown function using global variables or defined constants
                 global $servername, $username, $password, $dbname;
-                if (!empty($servername) && !empty($username)) {
+                $host = !empty($servername) ? $servername : (defined('DB_HOST') ? DB_HOST : 'localhost');
+                $user = !empty($username) ? $username : (defined('DB_USER') ? DB_USER : '');
+                $pass = !empty($password) ? $password : (defined('DB_PASS') ? DB_PASS : '');
+                $dbNameVal = !empty($dbname) ? $dbname : (defined('DB_NAME') ? DB_NAME : '');
+
+                if (!empty($host) && !empty($user)) {
                     try {
-                        $shutdownDb = new PDO("mysql:host=$servername;dbname=$dbname;charset=utf8mb4", $username, $password, [
+                        $shutdownDb = new PDO("mysql:host=$host;dbname=$dbNameVal;charset=utf8mb4", $user, $pass, [
                             PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION
                         ]);
                         $GLOBALS['pdo'] = $shutdownDb;
@@ -145,9 +150,13 @@ class NotificationService {
 
                         foreach ($zaloChatIds as $zId) {
                             try {
-                                sendZaloMessage($zaloBotToken, $zId, $zaloMsg, false);
+                                $res = sendZaloMessage($zaloBotToken, $zId, $zaloMsg, false);
+                                if (!$res) {
+                                    self::logOfflineNotification('zalo', $zId, $zaloMsg);
+                                }
                             } catch (\Throwable $ze) {
                                 error_log("NotificationService Zalo send error ($zId): " . $ze->getMessage());
+                                self::logOfflineNotification('zalo', $zId, $zaloMsg);
                             }
                         }
                     }
@@ -176,9 +185,13 @@ class NotificationService {
 
                         foreach ($tgChatIds as $cId) {
                             try {
-                                sendTelegramMessage($tgBotToken, $cId, $tgMsg, false);
+                                $res = sendTelegramMessage($tgBotToken, $cId, $tgMsg, false);
+                                if (!$res) {
+                                    self::logOfflineNotification('telegram', $cId, $tgMsg);
+                                }
                             } catch (\Throwable $tge) {
                                 error_log("NotificationService Telegram send error ($cId): " . $tge->getMessage());
+                                self::logOfflineNotification('telegram', $cId, $tgMsg);
                             }
                         }
                     }
@@ -194,9 +207,13 @@ class NotificationService {
                             $rId = (int)($rec['id'] ?? 0);
                             if (!empty($rec['email']) && $isChannelEnabled($rId, 'email')) {
                                 try {
-                                    sendEmailNotification($rec['email'], $emailSubject, $emailTitle, $emailContent, '', false, false);
+                                    $res = sendEmailNotification($rec['email'], $emailSubject, $emailTitle, $emailContent, '', false, false);
+                                    if (!$res) {
+                                        self::logOfflineNotification('email', $rec['email'], $emailSubject . " | " . $emailContent);
+                                    }
                                 } catch (\Throwable $ee) {
                                     error_log("NotificationService Email send error (" . $rec['email'] . "): " . $ee->getMessage());
+                                    self::logOfflineNotification('email', $rec['email'], $emailSubject . " | " . $emailContent);
                                 }
                             }
                         }
@@ -208,6 +225,23 @@ class NotificationService {
 
         } catch (\Throwable $outerEx) {
             error_log("NotificationService Global Dispatch Error: " . $outerEx->getMessage());
+        }
+    }
+
+    /**
+     * Ghi nhận thông báo ngoại tuyến khi cơ sở dữ liệu gặp sự cố hoặc hàng đợi bị kẹt
+     */
+    private static function logOfflineNotification(string $channel, string $recipient, string $body): void {
+        try {
+            $logDir = __DIR__ . '/logs';
+            if (!is_dir($logDir)) {
+                @mkdir($logDir, 0755, true);
+            }
+            $logFile = $logDir . '/offline_notifications.log';
+            $logMsg = date('[Y-m-d H:i:s]') . " [$channel] Target: $recipient, Body: " . str_replace(["\r", "\n"], " ", $body) . "\n";
+            @file_put_contents($logFile, $logMsg, FILE_APPEND | LOCK_EX);
+        } catch (\Throwable $e) {
+            error_log("logOfflineNotification error: " . $e->getMessage());
         }
     }
 

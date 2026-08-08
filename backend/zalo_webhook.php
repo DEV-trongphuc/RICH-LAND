@@ -40,10 +40,10 @@ if ($stmt && $stmt->num_rows > 0) {
     $secretToken = trim($stmt->fetch_assoc()['setting_value'] ?? '');
 }
 
-// 3. Xác thực Secret Token (nếu có cấu hình secretToken và headerSecret không rỗng)
+// 3. Xác thực Secret Token (nếu có cấu hình secretToken)
 if (!empty($secretToken)) {
-    if (!empty($headerSecret) && $headerSecret !== $secretToken) {
-        @file_put_contents($logFile, date('[Y-m-d H:i:s]') . " REJECTED 403: HeaderSecret mismatch ('$headerSecret' vs '$secretToken')\n\n", FILE_APPEND | LOCK_EX);
+    if (empty($headerSecret) || $headerSecret !== $secretToken) {
+        @file_put_contents($logFile, date('[Y-m-d H:i:s]') . " REJECTED 403: HeaderSecret mismatch or missing ('$headerSecret' vs '$secretToken')\n\n", FILE_APPEND | LOCK_EX);
         http_response_code(403);
         echo json_encode(["message" => "Unauthorized"]);
         exit;

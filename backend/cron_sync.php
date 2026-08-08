@@ -2005,6 +2005,65 @@ foreach ($connections as $connItem) {
                     $dupCheckMonths = 6;
                 }
 
+                $isFacebookLead = false;
+                $isGoogleLead = false;
+                if (!empty($source)) {
+                    $srcLower = strtolower($source);
+                    if ($srcLower === 'facebook' || $srcLower === 'fb' || strpos($srcLower, 'facebook') !== false || strpos($srcLower, 'fb') !== false || $srcLower === 'messenger' || $srcLower === 'mess') {
+                        $isFacebookLead = true;
+                    }
+                    if ($srcLower === 'google' || $srcLower === 'google_lp' || strpos($srcLower, 'google') !== false) {
+                        $isGoogleLead = true;
+                    }
+                }
+
+                $gopGoogleLeadId = null;
+                if ($isGoogleLead && $crmCheckResult['leadExists'] && !empty($phone)) {
+                    $todayStart = date('Y-m-d 00:00:00');
+                    $todayEnd = date('Y-m-d 23:59:59');
+                    $chkStmt = $conn->prepare("SELECT id FROM leads WHERE phone = ? AND connection_id = ? AND created_at BETWEEN ? AND ? LIMIT 1");
+                    if ($chkStmt) {
+                        $chkStmt->bind_param("siss", $phone, $connItem['id'], $todayStart, $todayEnd);
+                        $chkStmt->execute();
+                        $chkRes = $chkStmt->get_result()->fetch_assoc();
+                        $chkStmt->close();
+                        if ($chkRes) {
+                            $gopGoogleLeadId = (int)$chkRes['id'];
+                        }
+                    }
+                }
+
+                if ($gopGoogleLeadId) {
+                    $conn->begin_transaction();
+                    try {
+                        $noteStmt = $conn->prepare("SELECT note FROM leads WHERE id = ?");
+                        $noteStmt->bind_param("i", $gopGoogleLeadId);
+                        $noteStmt->execute();
+                        $oldNote = $noteStmt->get_result()->fetch_assoc()['note'] ?? '';
+                        $noteStmt->close();
+                        
+                        $newNote = $oldNote;
+                        if (!empty($note)) {
+                            $newNote = !empty($newNote) ? $newNote . "\n---\n" . $note : $note;
+                        }
+                        
+                        $updStmt = $conn->prepare("UPDATE leads SET note = ?, last_interaction_date = NOW() WHERE id = ?");
+                        $updStmt->bind_param("si", $newNote, $gopGoogleLeadId);
+                        $updStmt->execute();
+                        $updStmt->close();
+                        
+                        $recordStmt->bind_param("is", $connItem['id'], $rowHash);
+                        $recordStmt->execute();
+                        $hashMap[$rowHash] = true;
+                        
+                        $conn->commit();
+                        triggerTwoWaySync($conn, $gopGoogleLeadId);
+                    } catch (Exception $txE) {
+                        $conn->rollback();
+                    }
+                    continue;
+                }
+
                 if (!empty($connItem['is_silent'])) {
                     $assignedToId = null;
                     if (!empty($connItem['sync_saleperson'])) {
@@ -2019,7 +2078,7 @@ foreach ($connections as $connItem) {
                     
                     $conn->begin_transaction();
                     try {
-                        if ($crmCheckResult['leadExists']) {
+                        if ($crmCheckResult['leadExists'] && !$isFacebookLead) {
                             $ownerId = !empty($crmCheckResult['assignedTo']) ? $crmCheckResult['assignedTo'] : $assignedToId;
                             $leadId = updateLead($conn, $phone, $email, $ownerId, $source, $type, $note, $connItem['id'], null, $name, false, true);
                         } else {
@@ -2081,7 +2140,11 @@ foreach ($connections as $connItem) {
                     
                     $conn->begin_transaction();
                     try {
-                        $leadId = updateLead($conn, $phone, $email, $assignedTo, $source, $type, $note, $connItem['id'], null, $name);
+                        if ($isFacebookLead) {
+                            $leadId = insertLead($conn, $rowData, $assignedTo, $phone, $email, $name, $source, $type, $note, $connItem['id']);
+                        } else {
+                            $leadId = updateLead($conn, $phone, $email, $assignedTo, $source, $type, $note, $connItem['id'], null, $name);
+                        }
                         logDistribution($conn, $leadId, $assignedTo, null, 'reminder', 'Khách cũ đăng ký lại < ' . $dupCheckMonths . ' tháng (đồng bộ hệ thống).', false);
                         
                         // Record hash so we don't spam duplicate logs on next run

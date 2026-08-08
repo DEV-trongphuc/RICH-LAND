@@ -454,6 +454,13 @@ try {
             exit;
         }
 
+        $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+        $allowedExts = ['txt', 'pdf', 'csv', 'doc', 'docx', 'xls', 'xlsx'];
+        if (!in_array($ext, $allowedExts, true)) {
+            echo json_encode(['success' => false, 'message' => 'Định dạng file không được hỗ trợ. Chỉ hỗ trợ các loại: ' . implode(', ', $allowedExts)]);
+            exit;
+        }
+
         $uploadDir = __DIR__ . '/../uploads/tenant_1/';
         if (!is_dir($uploadDir)) {
             mkdir($uploadDir, 0755, true);

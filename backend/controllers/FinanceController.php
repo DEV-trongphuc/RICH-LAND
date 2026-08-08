@@ -291,6 +291,33 @@ class FinanceController
                     $data['company_id'] = null;
             }
 
+            // Calculate server-side total and subtotal to prevent tampering
+            $calculatedSubtotal = 0;
+            if (!empty($data['items']) && is_array($data['items'])) {
+                foreach ($data['items'] as $item) {
+                    $qty = (float) ($item['quantity'] ?? 1);
+                    $price = (float) ($item['unit_price'] ?? 0);
+                    if ($qty <= 0 || $price < 0) {
+                        throw new Exception('Số lượng sản phẩm phải lớn hơn 0 và đơn giá không được âm');
+                    }
+                    $calculatedSubtotal += $qty * $price;
+                }
+                
+                $discount = (float)($data['discount'] ?? 0);
+                $tax = (float)($data['tax'] ?? 0);
+                $shippingFee = (float)($data['shipping_fee'] ?? 0);
+                $shippingCustomerPay = (int)($data['shipping_customer_pay'] ?? 1);
+                
+                if ($discount < 0 || $tax < 0 || $shippingFee < 0) {
+                    throw new Exception('Chiết khấu, thuế và phí vận chuyển không được nhỏ hơn 0');
+                }
+                
+                $expectedTotal = $calculatedSubtotal - $discount + $tax + ($shippingCustomerPay ? $shippingFee : 0);
+                if (abs($expectedTotal - (float)($data['total'] ?? 0)) > 1) {
+                    throw new Exception('Tổng tiền hóa đơn không khớp với danh sách sản phẩm. Vui lòng kiểm tra lại.');
+                }
+            }
+
             $isPaid = ($data['status'] ?? 'pending') === 'paid';
             $stmt = $this->db->prepare("
                 INSERT INTO invoices (tenant_id,deal_id,company_id,contact_id,created_by,invoice_number,title,status,issue_date,due_date,subtotal,discount,tax,total,notes,shipping_customer_pay,shipping_fee,is_inventory_deducted,paid_at)
@@ -307,7 +334,7 @@ class FinanceController
                 $data['status'] ?? 'pending',
                 empty($data['issue_date']) ? date('Y-m-d') : $data['issue_date'],
                 empty($data['due_date']) ? date('Y-m-d', strtotime('+30 days')) : $data['due_date'],
-                $data['subtotal'] ?? 0,
+                !empty($data['items']) ? $calculatedSubtotal : ($data['subtotal'] ?? 0),
                 $data['discount'] ?? 0,
                 $data['tax'] ?? 0,
                 $data['total'] ?? 0,
@@ -324,9 +351,7 @@ class FinanceController
                 foreach ($data['items'] as $item) {
                     $qty = (float) ($item['quantity'] ?? 1);
                     $price = (float) ($item['unit_price'] ?? 0);
-                    if ($qty <= 0 || $price < 0) {
-                        throw new Exception('Số lượng sản phẩm phải lớn hơn 0 và đơn giá không được âm');
-                    }
+                    $itemSubtotal = $qty * $price;
 
                     $trackInventory = 0;
                     if (!empty($item['product_id'])) {
@@ -339,7 +364,7 @@ class FinanceController
                         $trackInventory = (int)$prod['track_inventory'];
                     }
 
-                    $sItem->execute([$invId, $item['product_id'] ?? null, $item['name'], $qty, $price, $item['subtotal'] ?? 0]);
+                    $sItem->execute([$invId, $item['product_id'] ?? null, $item['name'], $qty, $price, $itemSubtotal]);
 
                     if ($isPaid && !empty($item['product_id']) && $trackInventory) {
                         deductStockFIFO($this->db, $tid, $uid, (int) $item['product_id'], (float) $item['quantity'], $data['invoice_number']);
@@ -366,6 +391,13 @@ class FinanceController
     {
         if (!in_array($auth['role'], ['admin', 'superadmin', 'super_admin', 'manager', 'director'], true)) respond(403, null, 'Bạn không có quyền cập nhật hóa đơn', false);
         $data = getBody();
+
+        if (isset($data['total']) && (float)$data['total'] < 0) respond(422, null, 'Tổng tiền hóa đơn không được âm', false);
+        if (isset($data['subtotal']) && (float)$data['subtotal'] < 0) respond(422, null, 'Số tiền subtotal không được âm', false);
+        if (isset($data['discount']) && (float)$data['discount'] < 0) respond(422, null, 'Chiết khấu không được âm', false);
+        if (isset($data['tax']) && (float)$data['tax'] < 0) respond(422, null, 'Thuế không được âm', false);
+        if (isset($data['shipping_fee']) && (float)$data['shipping_fee'] < 0) respond(422, null, 'Phí vận chuyển không được âm', false);
+
         $fields = ['title', 'status', 'issue_date', 'due_date', 'subtotal', 'discount', 'tax', 'total', 'notes', 'contact_id', 'company_id', 'deal_id', 'shipping_customer_pay', 'shipping_fee'];
         $sets = [];
         $params = [];
@@ -826,7 +858,14 @@ class FinanceController
 
         // Validate split amounts
         if (!empty($entities)) {
-            $splitSum = array_reduce($entities, fn($s, $e) => $s + (float) ($e['amount'] ?? 0), 0);
+            $splitSum = 0;
+            foreach ($entities as $ee) {
+                $eeAmt = (float)($ee['amount'] ?? 0);
+                if ($eeAmt < 0) {
+                    respond(422, null, 'Số tiền phân bổ cho từng đối tượng không được nhỏ hơn 0', false);
+                }
+                $splitSum += $eeAmt;
+            }
             if ($splitSum > $totalAmount) {
                 respond(422, null, 'Tổng số tiền phân bổ không được lớn hơn tổng số tiền chi phí', false);
             }
@@ -994,7 +1033,14 @@ class FinanceController
 
             if (isset($data['entities']) && is_array($data['entities'])) {
                 $entities = $data['entities'];
-                $splitSum = array_reduce($entities, fn($s, $e) => $s + (float) ($e['amount'] ?? 0), 0);
+                $splitSum = 0;
+                foreach ($entities as $ee) {
+                    $eeAmt = (float)($ee['amount'] ?? 0);
+                    if ($eeAmt < 0) {
+                        throw new Exception('Số tiền phân bổ cho từng đối tượng không được nhỏ hơn 0');
+                    }
+                    $splitSum += $eeAmt;
+                }
                 if ($splitSum > $currentTotal) {
                     throw new Exception('Tổng số tiền phân bổ không được lớn hơn tổng số tiền chi phí');
                 }

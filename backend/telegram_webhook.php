@@ -22,6 +22,23 @@ if (file_exists($logFile) && @filesize($logFile) > 5 * 1024 * 1024) {
 }
 @file_put_contents($logFile, date('[Y-m-d H:i:s]') . " PAYLOAD: " . $rawBody . "\n\n", FILE_APPEND | LOCK_EX);
 
+// 2. Xác thực Secret Token (nếu có cấu hình telegram_webhook_secret)
+$stmtSecret = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'telegram_webhook_secret' LIMIT 1");
+$secretToken = '';
+if ($stmtSecret && $stmtSecret->num_rows > 0) {
+    $secretToken = trim($stmtSecret->fetch_assoc()['setting_value'] ?? '');
+}
+
+if (!empty($secretToken)) {
+    $headerSecret = $_SERVER['HTTP_X_TELEGRAM_BOT_API_SECRET_TOKEN'] ?? '';
+    if (empty($headerSecret) || $headerSecret !== $secretToken) {
+        @file_put_contents($logFile, date('[Y-m-d H:i:s]') . " REJECTED 403: HeaderSecret mismatch or missing ('$headerSecret' vs '$secretToken')\n\n", FILE_APPEND | LOCK_EX);
+        http_response_code(403);
+        echo json_encode(["message" => "Unauthorized"]);
+        exit;
+    }
+}
+
 $data = json_decode($rawBody, true);
 
 if (!$data || !isset($data['message'])) {

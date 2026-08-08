@@ -304,14 +304,23 @@ class CheckInController {
             respond(409, null, 'Bạn đã thực hiện check-in hoặc gửi yêu cầu cho ngày này rồi', false);
         }
 
-        if (empty($selfieUrl) && !$isSupplementary) {
-            respond(422, null, 'Ảnh selfie check-in là bắt buộc', false);
+        if (!$isSupplementary) {
+            if (empty($selfieUrl) || !filter_var($selfieUrl, FILTER_VALIDATE_URL)) {
+                respond(422, null, 'Đường dẫn ảnh selfie check-in không hợp lệ hoặc thiếu.', false);
+            }
         }
 
         $lat = trim($b['latitude'] ?? '');
         $lng = trim($b['longitude'] ?? '');
-        if (!$isSupplementary && (empty($lat) || empty($lng))) {
-            respond(422, null, 'Quyền truy cập vị trí (GPS) là bắt buộc để chấm công. Vui lòng cho phép định vị trên thiết bị.', false);
+        if (!$isSupplementary) {
+            if (empty($lat) || empty($lng) || !is_numeric($lat) || !is_numeric($lng)) {
+                respond(422, null, 'Quyền truy cập vị trí (GPS) là bắt buộc để chấm công. Vui lòng cho phép định vị trên thiết bị.', false);
+            }
+            $latVal = (float)$lat;
+            $lngVal = (float)$lng;
+            if ($latVal < -90 || $latVal > 90 || $lngVal < -180 || $lngVal > 180) {
+                respond(422, null, 'Tọa độ GPS nằm ngoài phạm vi địa lý hợp lệ.', false);
+            }
         }
 
         if ($isSupplementary && empty($reason)) {
