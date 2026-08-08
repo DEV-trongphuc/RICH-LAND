@@ -1805,3 +1805,13 @@ CREATE TABLE IF NOT EXISTS `blocked_leads` (
   KEY `idx_blocked_email` (`email`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- 81. Table: returned_databank_leads (Exclusion from Databank view for active returner)
+CREATE TABLE IF NOT EXISTS `returned_databank_leads` (
+  `person_id` int(11) NOT NULL,
+  `user_id` int(11) NOT NULL,
+  `returned_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`person_id`, `user_id`),
+  FOREIGN KEY (`person_id`) REFERENCES `persons` (`id`) ON DELETE CASCADE,
+  FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+

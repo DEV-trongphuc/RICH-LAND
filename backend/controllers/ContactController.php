@@ -1247,6 +1247,10 @@ class ContactController {
             $stmtPerson = $this->db->prepare("UPDATE persons SET is_public = 1, released_to_kho_at = NOW(), deleted_from_databank = 0 WHERE id = ?");
             $stmtPerson->execute([$personId]);
 
+            // Record active returner to hide it from this user in Databank
+            $stmtRecordReturn = $this->db->prepare("INSERT IGNORE INTO returned_databank_leads (person_id, user_id) VALUES (?, ?)");
+            $stmtRecordReturn->execute([$personId, $auth['user_id']]);
+
             // Also update leads to set assigned_to = NULL
             if ($personId) {
                 $stmtLeadUpdate = $this->db->prepare("UPDATE leads SET assigned_to = NULL, last_assigned_at = NULL WHERE person_id = ?");
@@ -1278,6 +1282,10 @@ class ContactController {
             $stmtDelete->execute([$id, $tid]);
             
             $this->restorePersonPublicStatus($id, $tid);
+
+            // Record active returner to hide it from this user in Databank
+            $stmtRecordReturn = $this->db->prepare("INSERT IGNORE INTO returned_databank_leads (person_id, user_id) VALUES (?, ?)");
+            $stmtRecordReturn->execute([$personId, $auth['user_id']]);
 
             // Xóa thông tin công việc (activities) và ghi chú (notes) liên quan đến contact bị xóa này
             $stmtDelNotes = $this->db->prepare("DELETE FROM notes WHERE entity_type = 'contact' AND entity_id = ?");

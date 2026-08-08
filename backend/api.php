@@ -18363,12 +18363,17 @@ switch ($action) {
                       $blockCond
                     ORDER BY p.released_to_kho_at DESC";
         } else {
+            $currentUserId = (int)($decodedUser['id'] ?? 0);
             $sql = "SELECT p.id, p.full_name, p.phone, p.email, p.released_to_kho_at,
                            (SELECT project_id FROM contacts WHERE person_id = p.id ORDER BY id ASC LIMIT 1) as project_id,
                            (SELECT name FROM projects WHERE id = (SELECT project_id FROM contacts WHERE person_id = p.id ORDER BY id ASC LIMIT 1)) as project_name,
                            (SELECT source FROM contacts WHERE person_id = p.id ORDER BY id ASC LIMIT 1) as original_source
                     FROM persons p
                     WHERE p.is_public = 1
+                      AND NOT EXISTS (
+                          SELECT 1 FROM returned_databank_leads 
+                          WHERE person_id = p.id AND user_id = $currentUserId
+                      )
                       $deletedCond
                       $blockCond
                     ORDER BY p.released_to_kho_at DESC";

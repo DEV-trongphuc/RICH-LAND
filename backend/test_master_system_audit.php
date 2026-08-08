@@ -164,6 +164,50 @@ try {
     $conn->query("DELETE FROM contacts WHERE id = $expContactId");
     $conn->query("DELETE FROM persons WHERE id = $expPersonId");
 
+    // -------------------------------------------------------------------------
+    // PART 5: Active Returner databank visibility exclusion
+    // -------------------------------------------------------------------------
+    echo "\n--- PART 5: Active Returner Databank Visibility ---\n";
+    
+    $saleId = 1000 + rand(100, 999);
+    $otherSaleId = $saleId + 1;
+    $personPhone = '0901888' . rand(100, 999);
+    
+    $conn->query("INSERT INTO persons (phone, full_name, is_public) VALUES ('$personPhone', 'Manually Returned Client', 1)");
+    $returnedPersonId = $conn->insert_id;
+    
+    // Simulate manually returning to databank
+    $conn->query("INSERT INTO returned_databank_leads (person_id, user_id) VALUES ($returnedPersonId, $saleId)");
+    
+    // 1. Check visibility for the returning Sale
+    $resReturner = $conn->query("
+        SELECT id FROM persons 
+        WHERE id = $returnedPersonId 
+          AND is_public = 1 
+          AND NOT EXISTS (
+              SELECT 1 FROM returned_databank_leads 
+              WHERE person_id = id AND user_id = $saleId
+          )
+    ")->fetch_assoc();
+    
+    // 2. Check visibility for another Sale
+    $resOther = $conn->query("
+        SELECT id FROM persons 
+        WHERE id = $returnedPersonId 
+          AND is_public = 1 
+          AND NOT EXISTS (
+              SELECT 1 FROM returned_databank_leads 
+              WHERE person_id = id AND user_id = $otherSaleId
+          )
+    ")->fetch_assoc();
+    
+    assertTest("E1: Manually returned lead hidden from the returner sale", empty($resReturner));
+    assertTest("E2: Manually returned lead visible to other sales", !empty($resOther));
+    
+    // Clean mock records for Part 5
+    $conn->query("DELETE FROM returned_databank_leads WHERE person_id = $returnedPersonId");
+    $conn->query("DELETE FROM persons WHERE id = $returnedPersonId");
+
 } catch (Throwable $e) {
     echo "❌ CRITICAL ERROR IN HARNESS: " . $e->getMessage() . "\n";
 }
